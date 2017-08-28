@@ -1,7 +1,8 @@
 FROM ubuntu:16.04
 
 # Update source
-RUN sed -i 's/http:\/\/archive\.ubuntu\.com\/ubuntu\//http:\/\/mirrors\.163\.com\/ubuntu\//g' /etc/apt/sources.list
+# Looks like mirrors.163.com does not work in xiaomi network
+# RUN sed -i 's/http:\/\/archive\.ubuntu\.com\/ubuntu\//http:\/\/mirrors\.163\.com\/ubuntu\//g' /etc/apt/sources.list
 RUN apt-get update -y
 
 ## Basic tools
@@ -37,7 +38,7 @@ ENV ANDROID_NDK_VERSION r15c
 # download
 RUN mkdir /opt/android-ndk-tmp && \
     cd /opt/android-ndk-tmp && \
-    wget https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip && \
+    wget -q https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip && \
 # uncompress
     unzip -q android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip && \
 # move to its final location
@@ -50,19 +51,6 @@ RUN mkdir /opt/android-ndk-tmp && \
 ENV PATH ${PATH}:${ANDROID_NDK_HOME}
 
 # Set up Bazel.
-
-# We need to add a custom PPA to pick up JDK8, since trusty doesn't
-# have an openjdk8 backport.  openjdk-r is maintained by a reliable contributor:
-# Matthias Klose (https://launchpad.net/~doko).  It will do until
-# we either update the base image beyond 14.04 or openjdk-8 is
-# finally backported to trusty; see e.g.
-#   https://bugs.launchpad.net/trusty-backports/+bug/1368094
-RUN add-apt-repository -y ppa:openjdk-r/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends openjdk-8-jdk openjdk-8-jre-headless && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
 # Running bazel inside a `docker build` command causes trouble, cf:
 #   https://github.com/bazelbuild/bazel/issues/134
 # The easiest solution is to set up a bazelrc file forcing --batch.
