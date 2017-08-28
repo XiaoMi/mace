@@ -1,6 +1,7 @@
-#include <cstdio>
+#include "mace/core/logging.h"
 
 int main() {
-  printf("Hello world\n");
+  LOG(INFO, "Hello World");
+
   return 0;
 }
