@@ -15,5 +15,6 @@ cc_library(
     deps = [
         "//mace/proto:cc_proto",
     ],
+    copts = ['-std=c++11'],
 )
 

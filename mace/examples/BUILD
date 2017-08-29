@@ -1,8 +1,5 @@
 # Examples
-load(
-    "//mace:mace.bzl",
-    "if_android",
-    )
+load("//mace:mace.bzl", "if_android")
 
 cc_binary(
     name = "helloworld",

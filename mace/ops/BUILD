@@ -8,6 +8,8 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
+load("//mace:mace.bzl", "if_android")
+
 cc_library(
     name = "ops",
     srcs = ["relu.cc"],
@@ -16,14 +18,20 @@ cc_library(
         "//mace/proto:cc_proto",
         "//mace/core:core",
     ],
+    copts = ['-std=c++11'],
 )
 
 cc_test(
     name = "relu_test",
     srcs = ["relu_test.cc",],
     deps = [
-        "@gtest//:gtest",
+        "@gtest//:gtest_main",
         ":ops",
     ],
+    copts = ['-std=c++11'],
+    linkopts = if_android([
+        "-pie",
+        "-llog",
+        ])
 )
 
