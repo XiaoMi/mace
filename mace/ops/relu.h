@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPERATORS_RELU_H_
-#define MACE_OPERATORS_RELU_H_
+#ifndef MACE_OPS_RELU_H_
+#define MACE_OPS_RELU_H_
 
 #include "mace/core/operator.h"
 
@@ -19,4 +19,4 @@ class ReluOp : public Operator<D, T> {
 
 } // namespace mace
 
-#endif // MACE_OPERATORS_RELU_H_
+#endif // MACE_OPS_RELU_H_

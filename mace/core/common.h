@@ -6,6 +6,7 @@
 #define MACE_CORE_COMMON_H_
 
 #include <set>
+#include <map>
 #include <string>
 #include <memory>
 #include <vector>
@@ -15,6 +16,7 @@
 #include "mace/core/logging.h"
 
 using std::set;
+using std::map;
 using std::string;
 using std::unique_ptr;
 using std::vector;

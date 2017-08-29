@@ -53,7 +53,7 @@ class Tensor {
         size_(0), dtype_(DT_FLOAT), data_(nullptr) {};
 
   Tensor(Allocator* a, DataType type)
-      : alloc_(a), size_(0), dtype_(DT_FLOAT), data_(nullptr) {};
+      : alloc_(a), size_(0), dtype_(type), data_(nullptr) {};
 
   ~Tensor() {
     if (alloc_ && data_.get()) {
@@ -64,10 +64,6 @@ class Tensor {
   inline DataType dtype() const { return dtype_; }
 
   inline const vector<TIndex>& shape() const { return shape_; }
-
-  inline int64 NumElements() const {
-    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64>());
-  }
 
   inline TIndex dim_size() { return shape_.size(); }
 
@@ -84,10 +80,6 @@ class Tensor {
         data_.get() || size_ == 0,
         "The tensor is of non-zero shape, but its data is not allocated yet. ");
     return static_cast<T*>(data_.get());
-  }
-
-  void Deleter(void* data) {
-    alloc_->Delete(data);
   }
 
   inline void* raw_mutable_data() {
@@ -113,7 +105,7 @@ class Tensor {
     shape_ = shape;
     TIndex size = NumElements();
     if (size_ != size) {
-      size_ = NumElements();
+      size_ = size;
       data_.reset();
     }
   }
@@ -127,6 +119,10 @@ class Tensor {
   }
 
  private:
+  inline int64 NumElements() const {
+    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64>());
+  }
+
   Allocator* alloc_;
   TIndex size_;
   DataType dtype_;

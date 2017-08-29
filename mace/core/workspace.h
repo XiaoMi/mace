@@ -14,7 +14,7 @@ namespace mace {
 
 class Workspace {
  public:
-  typedef std::map<string, unique_ptr<Tensor>> TensorMap;
+  typedef map<string, unique_ptr<Tensor>> TensorMap;
 
   Workspace() {}
 

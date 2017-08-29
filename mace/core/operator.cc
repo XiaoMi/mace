@@ -6,8 +6,8 @@
 
 namespace mace {
 
-std::map<int32_t, OperatorRegistry*>* gDeviceTypeRegistry() {
-  static std::map<int32_t, OperatorRegistry*> g_device_type_registry;
+std::map<int32, OperatorRegistry*>* gDeviceTypeRegistry() {
+  static std::map<int32, OperatorRegistry*> g_device_type_registry;
   return &g_device_type_registry;
 }
 

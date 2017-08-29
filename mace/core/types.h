@@ -16,7 +16,7 @@ struct IsValidDataType;
 template <class T>
 struct DataTypeToEnum {
   static_assert(IsValidDataType<T>::value, "Specified Data Type not supported");
-};  // Specializations below
+};
 
 
 // EnumToDataType<VALUE>::Type is the type for DataType constant VALUE, e.g.
