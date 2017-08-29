@@ -6,19 +6,14 @@
 #ifndef MACE_CORE_ALLOCATOR_H_
 #define MACE_CORE_ALLOCATOR_H_
 
-#include <unordered_map>
-#include <functional>
 #include <malloc.h>
-#include <cstring>
-
 #include "mace/core/common.h"
 #include "mace/proto/mace.pb.h"
 
 namespace mace {
 
+// 16 bytes = 32 * 4 (Neon)
 constexpr size_t kMaceAlignment = 16;
-
-using MemoryDeleter = std::function<void(void* ptr)>;
 
 class Allocator {
  public:
@@ -44,9 +39,9 @@ class CPUAllocator: public Allocator {
   void* New(size_t nbytes) override {
     void* data = nullptr;
 #ifdef __ANDROID__
-    data = memalign(gMaceAlignment, nbytes);
+    data = memalign(kMaceAlignment, nbytes);
 #elif defined(_MSC_VER)
-    data = _aligned_malloc(nbytes, gMaceAlignment);
+    data = _aligned_malloc(nbytes, kMaceAlignment);
 #else
     CHECK(posix_memalign(&data, kMaceAlignment, nbytes) == 0);
 #endif
@@ -72,7 +67,7 @@ CPUAllocator* cpu_allocator();
 // ownership of the pointer.
 void SetCPUAllocator(CPUAllocator* alloc);
 
-template <DeviceType DT>
+template <DeviceType D>
 struct DeviceContext {};
 
 template <>

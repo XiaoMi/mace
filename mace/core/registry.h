@@ -5,11 +5,7 @@
 #ifndef MACE_CORE_REGISTRY_H_
 #define MACE_CORE_REGISTRY_H_
 
-#include <memory>
 #include <mutex>
-#include <string>
-#include <map>
-#include "mace/core/common.h"
 
 namespace mace {
 

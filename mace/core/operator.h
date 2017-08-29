@@ -58,10 +58,7 @@ class OperatorBase {
   inline const vector<const Tensor *> &Inputs() const { return inputs_; }
   inline const vector<Tensor *> &Outputs() { return outputs_; }
 
-  virtual bool Run() {
-    MACE_NOT_IMPLEMENTED;
-    return false;
-  }
+  virtual bool Run() = 0;
 
   inline const OperatorDef &debug_def() const {
     REQUIRE(has_debug_def(), "operator_def was null!");
@@ -108,10 +105,7 @@ class Operator : public OperatorBase {
                          DataTypeToEnum<T>::v())));
     }
   }
-  virtual bool Run() {
-    MACE_NOT_IMPLEMENTED;
-    return false;
-  }
+  virtual bool Run() = 0;
   ~Operator() noexcept override {}
 };
 

@@ -15,7 +15,9 @@ vector<string> Workspace::Tensors() const {
   return names;
 }
 
-Tensor* Workspace::CreateTensor(const string& name, Allocator* alloc, DataType type) {
+Tensor* Workspace::CreateTensor(const string& name,
+                                Allocator* alloc,
+                                DataType type) {
   if (HasTensor(name)) {
     VLOG(1) << "Tensor " << name << " already exists. Skipping.";
   } else {

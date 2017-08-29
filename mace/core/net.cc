@@ -8,8 +8,8 @@ namespace mace {
 
 NetBase::NetBase(const std::shared_ptr<const NetDef> &net_def,
                  Workspace *ws,
-                 DeviceType type) {
-
+                 DeviceType type)
+  : name_(net_def->name()) {
 }
 
 
