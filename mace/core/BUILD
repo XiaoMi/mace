@@ -1,10 +1,19 @@
-package(default_visibility = ["//visibility:public"])
+# Description:
+# Mace core.
+#
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+
+licenses(["notice"])  # Apache 2.0
 
 cc_library(
-    name = "lib_core",
-    hdrs = [
-        "logging.h"
-        ],
-    srcs = [
-        ],
-    )
+    name = "core",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    deps = [
+        "//mace/proto:cc_proto",
+    ],
+)
+
