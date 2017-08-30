@@ -2,6 +2,7 @@ Examples
 =======
 
 * Build the example (e.g., with armeabi-v7a target)
+
 ```
 # To enable debug mode build, use '-c dbg' flag.
 # To check the underlying commands executed, use '-s' flag.
