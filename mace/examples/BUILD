@@ -9,5 +9,6 @@ cc_binary(
     deps = [
         "//mace/core:core",
         ],
-    linkopts = if_android(["-pie", "-llog"])
-    )
+    copts = ['-std=c++11'],
+    linkopts = if_android(["-pie", "-llog"]),
+)
