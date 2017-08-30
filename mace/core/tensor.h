@@ -9,6 +9,7 @@
 #include "mace/proto/mace.pb.h"
 #include "mace/core/allocator.h"
 #include "mace/core/types.h"
+#include "mace/core/logging.h"
 
 namespace mace {
 
@@ -116,6 +117,41 @@ class Tensor {
 
   inline void ResizeLike(const Tensor* other) {
     Resize(other->shape());
+  }
+
+  template <typename T>
+  inline void Copy(const T* src, size_t size) {
+    REQUIRE(size == size_, "copy src and dst with different size.");
+    CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
+  }
+
+  template <typename SrcType, typename DstType>
+  inline void CopyWithCast(const SrcType* src, size_t size) {
+    REQUIRE(size == size_, "copy src and dst with different size.");
+    unique_ptr<DstType[]> buffer(new DstType[size]);
+    for (int i = 0; i < size; ++i) {
+      buffer[i] = static_cast<DstType>(src[i]);
+    }
+    CopyBytes(static_cast<const void*>(buffer.get()), sizeof(DstType) * size);
+  }
+
+  inline void CopyBytes(const void* src, size_t size) {
+    alloc_->CopyBytes(raw_mutable_data(), src, size);
+  }
+
+  inline void DebugPrint() {
+    std::stringstream os;
+    for (int i: shape_) {
+      os << i << ", ";
+    }
+    LOG(INFO) << "Tensor shape: " << os.str() << " type: " << DataType_Name(dtype_);
+
+    os.str("");
+    os.clear();
+    for (int i = 0; i < size_; ++i) {
+      CASES(dtype_, (os << this->data<T>()[i]) << ", ");
+    }
+    LOG(INFO) << os.str();
   }
 
  private:

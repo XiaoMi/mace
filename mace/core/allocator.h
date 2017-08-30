@@ -21,6 +21,7 @@ class Allocator {
   virtual ~Allocator() noexcept {}
   virtual void* New(size_t nbytes) = 0;
   virtual void Delete(void* data) = 0;
+  virtual void CopyBytes(void* dst, const void* src, size_t size) = 0;
 
   template <typename T>
   T* New(size_t num_elements) {
@@ -59,6 +60,10 @@ class CPUAllocator: public Allocator {
     free(data);
   }
 #endif
+
+  void CopyBytes(void* dst, const void* src, size_t size) {
+    memcpy(dst, src, size);
+  }
 };
 
 // Get the CPU Alloctor.
@@ -72,9 +77,10 @@ struct DeviceContext {};
 
 template <>
 struct DeviceContext<DeviceType::CPU> {
-  static Allocator* alloctor() { return cpu_allocator(); }
+  static Allocator* allocator() { return cpu_allocator(); }
 };
 
+Allocator* GetDeviceAllocator(DeviceType type);
 
 } // namespace mace
 

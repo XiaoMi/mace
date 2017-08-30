@@ -7,7 +7,7 @@ cc_binary(
         "helloworld.cc",
         ],
     deps = [
-        "//mace/core:core",
+        "//mace/ops:ops",
         ],
     copts = ['-std=c++11'],
     linkopts = if_android(["-pie", "-llog"]),

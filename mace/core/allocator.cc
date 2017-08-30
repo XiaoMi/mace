@@ -15,4 +15,13 @@ void SetCPUAllocator(CPUAllocator* alloc) {
   g_cpu_allocator.reset(alloc);
 }
 
+Allocator* GetDeviceAllocator(DeviceType type) {
+  if (type == DeviceType::CPU) {
+    return cpu_allocator();
+  } else {
+    REQUIRE(false, "device type ", type, " is not supported.");
+  }
+  return nullptr;
+}
+
 } // namespace mace

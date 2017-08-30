@@ -101,7 +101,7 @@ class Operator : public OperatorBase {
 
     for (const string &output_str : operator_def.output()) {
       outputs_.push_back(CHECK_NOTNULL(ws->CreateTensor(output_str,
-                         DeviceContext<D>::alloctor(),
+                         DeviceContext<D>::allocator(),
                          DataTypeToEnum<T>::v())));
     }
   }

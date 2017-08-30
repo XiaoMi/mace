@@ -32,10 +32,12 @@ class Workspace {
 
   Tensor* GetTensor(const string& name);
 
+  void LoadModelTensor(const NetDef& net_def, DeviceType type);
+
  private:
   TensorMap tensor_map_;
 
-  DISABLE_COPY_AND_ASSIGN(Workspace);
+ DISABLE_COPY_AND_ASSIGN(Workspace);
 };
 
 } // namespace mace
