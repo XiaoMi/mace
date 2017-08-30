@@ -32,6 +32,8 @@ cc_test(
     linkopts = if_android([
         "-pie",
         "-llog",
-        ])
+        "-latomic",
+        ]),
+    linkstatic = 1,
 )
 
