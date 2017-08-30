@@ -28,5 +28,5 @@ adb shell /data/local/tmp/helloword/helloworld
 
 * Check the logs
 ```
-adb logcat | grep MACE
+adb logcat | grep native
 ```
