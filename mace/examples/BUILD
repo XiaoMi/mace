@@ -7,7 +7,7 @@ cc_binary(
         "helloworld.cc",
         ],
     deps = [
-        "//mace/core:lib_core",
+        "//mace/core:core",
         ],
     linkopts = if_android(["-pie", "-llog"])
     )
