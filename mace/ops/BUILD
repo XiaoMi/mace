@@ -19,6 +19,7 @@ cc_library(
         "//mace/core:core",
     ],
     copts = ['-std=c++11'],
+    alwayslink = 1,
 )
 
 cc_test(
