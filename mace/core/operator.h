@@ -105,7 +105,7 @@ class Operator : public OperatorBase {
                          DataTypeToEnum<T>::v())));
     }
   }
-  virtual bool Run() = 0;
+  virtual bool Run() override = 0;
   ~Operator() noexcept override {}
 };
 

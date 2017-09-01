@@ -55,11 +55,11 @@ class CPUAllocator: public Allocator {
     return data;
   }
 
-  void Delete(void* data) {
+  void Delete(void* data) override {
     free(data);
   }
 
-  void CopyBytes(void* dst, const void* src, size_t size) {
+  void CopyBytes(void* dst, const void* src, size_t size) override {
     memcpy(dst, src, size);
   }
 };
