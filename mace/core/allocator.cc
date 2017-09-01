@@ -16,10 +16,12 @@ void SetCPUAllocator(CPUAllocator* alloc) {
 }
 
 Allocator* GetDeviceAllocator(DeviceType type) {
-  if (type == DeviceType::CPU) {
-    return cpu_allocator();
-  } else {
-    REQUIRE(false, "device type ", type, " is not supported.");
+  switch (type) {
+    case DeviceType::CPU:
+    case DeviceType::NEON:
+      return cpu_allocator();
+    default:
+      REQUIRE(false, "device type ", type, " is not supported.");
   }
   return nullptr;
 }
