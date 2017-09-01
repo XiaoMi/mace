@@ -17,6 +17,7 @@ cc_library(
     deps = [
         "//mace/proto:cc_proto",
         "//mace/core:core",
+        "//mace/kernels:kernels",
     ],
     copts = ['-std=c++11'],
     alwayslink = 1,
