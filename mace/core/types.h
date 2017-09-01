@@ -51,6 +51,8 @@ MATCH_TYPE_AND_ENUM(string, DT_STRING);
 MATCH_TYPE_AND_ENUM(int64, DT_INT64);
 MATCH_TYPE_AND_ENUM(bool, DT_BOOL);
 
+static const int32 kint32max = ((int32)0x7FFFFFFF);
+
 } // namespace mace
 
 #endif // MACE_CORE_TYPES_H_
