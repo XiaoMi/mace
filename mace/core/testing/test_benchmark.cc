@@ -37,6 +37,18 @@ Benchmark::Benchmark(const char* name, void (*fn)(int, int, int))
   Register();
 }
 
+Benchmark* Benchmark::Arg(int x) {
+  CHECK(num_args_ == 1);
+  args_.push_back(std::make_pair(x, -1));
+  return this;
+}
+
+Benchmark* Benchmark::ArgPair(int x, int y) {
+  CHECK(num_args_ == 2);
+  args_.push_back(std::make_pair(x, y));
+  return this;
+}
+
 
 // Run all benchmarks
 void Benchmark::Run() {
@@ -44,32 +56,31 @@ void Benchmark::Run() {
 
   // Compute name width.
   int width = 10;
-  string name;
+  char name[100];
   for (auto b : *all_benchmarks) {
-    name = b->name_;
     for (auto arg : b->args_) {
-      name.resize(b->name_.size());
+      strcpy(name, b->name_.c_str());
       if (arg.first >= 0) {
-        name += "/" + arg.first;
+        sprintf(name, "%s/%d", name, arg.first);
         if (arg.second >= 0) {
-          name += "/" + arg.second;
+          sprintf(name, "%s/%d", name, arg.second);
         }
       }
 
-      width = std::max<int>(width, name.size());
+      width = std::max<int>(width, strlen(name));
     }
   }
 
   printf("%-*s %10s %10s\n", width, "Benchmark", "Time(ns)", "Iterations");
   printf("%s\n", string(width + 22, '-').c_str());
   for (auto b : *all_benchmarks) {
-    name = b->name_;
+
     for (auto arg : b->args_) {
-      name.resize(b->name_.size());
+      strcpy(name, b->name_.c_str());
       if (arg.first >= 0) {
-        name += "/" + arg.first;
+        sprintf(name, "%s/%d", name, arg.first);
         if (arg.second >= 0) {
-          name += "/" + arg.second;
+          sprintf(name, "%s/%d", name, arg.second);
         }
       }
 
@@ -89,7 +100,7 @@ void Benchmark::Run() {
                  (items_processed * 1e-6) / seconds);
         full_label += buf;
       }
-      printf("%-*s %10.0f %10d\t%s\n", width, name.c_str(),
+      printf("%-*s %10.0f %10d\t%s\n", width, name,
              seconds * 1e9 / iters, iters, full_label.c_str());
     }
   }
