@@ -12,8 +12,13 @@
 
 namespace mace {
 
-// 16 bytes = 32 * 4 (Neon)
+#ifdef __ANDROID__
+// 16 bytes = 128 bits = 32 * 4 (Neon)
 constexpr size_t kMaceAlignment = 16;
+#else
+// 32 bytes = 256 bits (AVX512)
+constexpr size_t kMaceAlignment = 32;
+#endif
 
 class Allocator {
  public:
@@ -41,27 +46,20 @@ class CPUAllocator: public Allocator {
     void* data = nullptr;
 #ifdef __ANDROID__
     data = memalign(kMaceAlignment, nbytes);
-#elif defined(_MSC_VER)
-    data = _aligned_malloc(nbytes, kMaceAlignment);
 #else
     CHECK(posix_memalign(&data, kMaceAlignment, nbytes) == 0);
 #endif
     CHECK_NOTNULL(data);
+    // TODO(heliangliang) This should be avoided sometimes
     memset(data, 0, nbytes);
     return data;
   }
 
-#ifdef _MSC_VER
-  void Delete(void* data) {
-    _aligned_free(data);
-  }
-#else
-  void Delete(void* data) {
+  void Delete(void* data) override {
     free(data);
   }
-#endif
 
-  void CopyBytes(void* dst, const void* src, size_t size) {
+  void CopyBytes(void* dst, const void* src, size_t size) override {
     memcpy(dst, src, size);
   }
 };
@@ -77,6 +75,11 @@ struct DeviceContext {};
 
 template <>
 struct DeviceContext<DeviceType::CPU> {
+  static Allocator* allocator() { return cpu_allocator(); }
+};
+
+template <>
+struct DeviceContext<DeviceType::NEON> {
   static Allocator* allocator() { return cpu_allocator(); }
 };
 

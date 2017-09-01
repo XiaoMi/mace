@@ -3,8 +3,9 @@ syntax = "proto2";
 package mace;
 
 enum DeviceType {
-  CPU = 0;                    // In default, we will use CPU.
-  GPU = 1;
+  CPU    = 0;                    // In default, we will use CPU.
+  NEON   = 1;
+  OPENCL = 2;
 }
 
 enum DataType {
