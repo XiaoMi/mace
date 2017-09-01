@@ -21,9 +21,9 @@ docker run -it --net=host mace-dev /bin/bash
 
 * Push and run the example
 ```
-adb shell "mkdir /data/local/tmp/helloword"
-adb shell push bazel-bin/mace/examples/helloworld /data/local/tmp/helloword
-adb shell /data/local/tmp/helloword/helloworld
+adb shell "mkdir /data/local/tmp"
+adb push bazel-bin/mace/examples/helloworld /data/local/tmp/
+adb shell /data/local/tmp/helloworld
 ```
 
 * Check the logs
