@@ -23,7 +23,7 @@ MACE_DEFINE_REGISTRY(
     OperatorBase,
     const OperatorDef&,
     Workspace*);
-MACE_REGISTER_DEVICE_TYPE(DeviceType::NEON, CPUOperatorRegistry);
+MACE_REGISTER_DEVICE_TYPE(DeviceType::NEON, NEONOperatorRegistry);
 
 unique_ptr<OperatorBase> CreateOperator(
     const OperatorDef& operator_def,
