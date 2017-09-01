@@ -4,42 +4,32 @@
 
 #include "mace/ops/relu.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/kernels/relu.h"
+#if __ARM_NEON
+#include "mace/kernels/neon/relu_neon.h"
+#endif // __ARM_NEON
 
 namespace mace {
 
 template <>
 bool ReluOp<DeviceType::CPU, float>::Run() {
-  const Tensor* X = Input(0);
-  Tensor* Y = Output(0);
-  Y->ResizeLike(X);
-
-  const float* Xdata = X-> data<float>();
-  float* Ydata = Y->mutable_data<float>();
-  for (int i = 0; i < X->size(); ++i) {
-    Ydata[i] = std::max(Xdata[i], 0.f);
-    VLOG(0) << i << ": " << Xdata[i] << " " << Ydata[i];
-  }
-
+  const Tensor* input_tensor = Input(0);
+  Tensor* output_tensor = Output(0);
+  kernels::ReluFuntion<float>(input_tensor, output_tensor);
   return true;
 }
+REGISTER_CPU_OPERATOR(Relu, ReluOp<DeviceType::CPU, float>);
 
+
+#if __ARM_NEON
 template <>
 bool ReluOp<DeviceType::NEON, float>::Run() {
-  const Tensor* X = Input(0);
-  Tensor* Y = Output(0);
-  Y->ResizeLike(X);
-
-  const float* Xdata = X-> data<float>();
-  float* Ydata = Y->mutable_data<float>();
-  for (int i = 0; i < X->size(); ++i) {
-    Ydata[i] = std::max(Xdata[i], 0.f);
-    VLOG(0) << i << ": " << Xdata[i] << " " << Ydata[i];
-  }
-
+  const Tensor* input_tensor = Input(0);
+  Tensor* output_tensor = Output(0);
+  kernels::NeonReluFuntion_float(input_tensor, output_tensor);
   return true;
 }
-
-REGISTER_CPU_OPERATOR(Relu, ReluOp<DeviceType::CPU, float>);
 REGISTER_NEON_OPERATOR(Relu, ReluOp<DeviceType::NEON, float>);
+#endif // __ARM_NEON
 
 } //  namespace mace
