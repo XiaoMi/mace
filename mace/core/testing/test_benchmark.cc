@@ -2,8 +2,6 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/testing/test_benchmark.h"
-
 #include <cstdio>
 #include <cstdlib>
 
@@ -11,6 +9,7 @@
 #include <vector>
 #include "mace/core/logging.h"
 #include "mace/core/testing/env_time.h"
+#include "mace/core/testing/test_benchmark.h"
 
 namespace mace {
 namespace testing {
