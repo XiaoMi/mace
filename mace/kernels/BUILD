@@ -17,6 +17,9 @@ cc_library(
     deps = [
         "//mace/core:core",
     ],
-    copts = ['-std=c++11'],
+    copts = ['-std=c++11'] + if_android([
+        "-mfpu=neon", # TODO recheck the flags
+        "-mfloat-abi=hard",
+        ]),
 )
 
