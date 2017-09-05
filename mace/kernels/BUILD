@@ -17,9 +17,41 @@ cc_library(
     deps = [
         "//mace/core:core",
     ],
-    copts = ['-std=c++11'] + if_android([
-        "-mfpu=neon", # TODO recheck the flags
-        "-mfloat-abi=hard",
-        ]),
+    copts = ['-std=c++11'],
 )
 
+cc_test(
+    name = "kernel_test",
+    srcs = glob(["test/*.cc"]),
+    deps = [
+        "@gtest//:gtest_main",
+        ":kernels",
+        "//mace/core:core",
+    ],
+    copts = ['-std=c++11'],
+    linkopts = ["-fopenmp"] + if_android([
+        "-pie",
+        "-llog",
+        "-lm",
+    ]),
+    linkstatic = 1,
+    testonly = 1,
+)
+
+cc_test(
+    name = "benchmark",
+    srcs = glob(["benchmark/*.cc"]),
+    deps = [
+        ":kernels",
+        "//mace/core:core",
+        "//mace/core:test_benchmark_main",
+    ],
+    copts = ['-std=c++11'],
+    linkopts = ["-fopenmp"] + if_android([
+        "-pie",
+        "-llog",
+        "-lm",
+    ]),
+    linkstatic = 1,
+    testonly = 1,
+)

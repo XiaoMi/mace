@@ -28,6 +28,6 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/core",
-        "//mace/core:test_main",
+        "//mace/core:test_benchmark_main",
     ],
 )
