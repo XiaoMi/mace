@@ -108,17 +108,15 @@ class LogMessageFatal : public LogMessage {
   if (VLOG_IS_ON(lvl)) \
   ::mace::internal::LogMessage(__FILE__, __LINE__, mace::INFO)
 
-// CHECK dies with a fatal error if condition is not true.  It is *not*
+// MACE_CHECK dies with a fatal error if condition is not true.  It is *not*
 // controlled by NDEBUG, so the check will be executed regardless of
 // compilation mode.  Therefore, it is safe to do things like:
-//    CHECK(fp->Write(x) == 4)
-#define CHECK(condition)              \
+//    MACE_CHECK(fp->Write(x) == 4)
+//    MACE_CHECK(fp->Write(x) == 4, "Write failed")
+#define MACE_CHECK(condition, ...)     \
   if (!(condition)) \
-  LOG(FATAL) << "Check failed: " #condition " "
-
-#define REQUIRE(condition, ...)     \
-  if (!(condition)) \
-  LOG(FATAL) << "Check failed: " #condition " " << ::mace::internal::MakeString(__VA_ARGS__)
+    LOG(FATAL) << "Check failed: " #condition " " \
+    << ::mace::internal::MakeString(__VA_ARGS__)
 
 template <typename T>
 T&& CheckNotNull(const char* file, int line, const char* exprtext, T&& t) {
@@ -128,7 +126,7 @@ T&& CheckNotNull(const char* file, int line, const char* exprtext, T&& t) {
   return std::forward<T>(t);
 }
 
-#define CHECK_NOTNULL(val)                                 \
+#define MACE_CHECK_NOTNULL(val)                                 \
   ::mace::internal::CheckNotNull(__FILE__, __LINE__, \
                                        "'" #val "' Must be non NULL", (val))
 

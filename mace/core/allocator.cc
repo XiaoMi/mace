@@ -21,7 +21,7 @@ Allocator* GetDeviceAllocator(DeviceType type) {
     case DeviceType::NEON:
       return cpu_allocator();
     default:
-      REQUIRE(false, "device type ", type, " is not supported.");
+      MACE_CHECK(false, "device type ", type, " is not supported.");
   }
   return nullptr;
 }

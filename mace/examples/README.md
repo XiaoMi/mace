@@ -11,7 +11,7 @@ Examples
 bazel build -c opt mace/examples:helloworld \
    --crosstool_top=//external:android/crosstool \
    --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
-   --cpu=armeabi-v7a
+   --cpu=arm64-v8a
 ```
 
 * To run adb inside docker, the container network should use 'host'

@@ -101,7 +101,7 @@ using ::google::protobuf::io::CodedOutputStream;
 
 bool ReadProtoFromTextFile(const char* filename, Message* proto) {
   int fd = open(filename, O_RDONLY);
-  REQUIRE(fd != -1, "File not found: ", filename);
+  MACE_CHECK(fd != -1, "File not found: ", filename);
   FileInputStream* input = new FileInputStream(fd);
   bool success = google::protobuf::TextFormat::Parse(input, proto);
   delete input;
@@ -112,7 +112,7 @@ bool ReadProtoFromTextFile(const char* filename, Message* proto) {
 void WriteProtoToTextFile(const Message& proto, const char* filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   FileOutputStream* output = new FileOutputStream(fd);
-  CHECK(google::protobuf::TextFormat::Print(proto, output));
+  MACE_CHECK(google::protobuf::TextFormat::Print(proto, output));
   delete output;
   close(fd);
 }
@@ -123,7 +123,7 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
 #else
   int fd = open(filename, O_RDONLY);
 #endif
-  REQUIRE(fd != -1, "File not found: ", filename);
+  MACE_CHECK(fd != -1, "File not found: ", filename);
   std::unique_ptr<ZeroCopyInputStream> raw_input(new FileInputStream(fd));
   std::unique_ptr<CodedInputStream> coded_input(
       new CodedInputStream(raw_input.get()));
@@ -138,12 +138,12 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
 
 void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  REQUIRE(
+  MACE_CHECK(
       fd != -1, "File cannot be created: ", filename, " error number: ", errno);
   std::unique_ptr<ZeroCopyOutputStream> raw_output(new FileOutputStream(fd));
   std::unique_ptr<CodedOutputStream> coded_output(
       new CodedOutputStream(raw_output.get()));
-  CHECK(proto.SerializeToCodedStream(coded_output.get()));
+  MACE_CHECK(proto.SerializeToCodedStream(coded_output.get()));
   coded_output.reset();
   raw_output.reset();
   close(fd);
@@ -154,7 +154,7 @@ void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
 ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
   for (auto &arg : def.arg()) {
     if (arg_map_.find(arg.name()) != arg_map_.end()) {
-      REQUIRE(
+      MACE_CHECK(
           arg.SerializeAsString() == arg_map_[arg.name()].SerializeAsString(),
           "Found argument of the same name '",
           arg.name(),
@@ -171,7 +171,7 @@ ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
 
 ArgumentHelper::ArgumentHelper(const NetDef& netdef) {
   for (auto& arg : netdef.arg()) {
-    REQUIRE(
+    MACE_CHECK(
         arg_map_.count(arg.name()) == 0,
         "Duplicated argument name found in net def: ",
         ProtoDebugString(netdef));
@@ -202,7 +202,7 @@ bool SupportsLosslessConversion(const InputType& value) {
               << " for parameter " << name;                                   \
       return default_value;                                                   \
     }                                                                         \
-    REQUIRE(                                                            \
+    MACE_CHECK(                                                            \
         arg_map_.at(name).has_##fieldname(),                                  \
         "Argument ",                                                          \
         name,                                                                 \
@@ -211,7 +211,7 @@ bool SupportsLosslessConversion(const InputType& value) {
     if (enforce_lossless_conversion) {                                        \
       auto supportsConversion =                                               \
           SupportsLosslessConversion<decltype(value), T>(value);              \
-      REQUIRE(                                                          \
+      MACE_CHECK(                                                          \
           supportsConversion,                                                 \
           "Value",                                                            \
           value,                                                              \
@@ -255,7 +255,7 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
       if (enforce_lossless_conversion) {                               \
         auto supportsConversion =                                      \
             SupportsLosslessConversion<decltype(v), T>(v);             \
-        REQUIRE(                                                 \
+        MACE_CHECK(                                                 \
             supportsConversion,                                        \
             "Value",                                                   \
             v,                                                         \
@@ -328,7 +328,7 @@ const Argument& GetArgument(const OperatorDef& def, const string& name) {
       return arg;
     }
   }
-  REQUIRE(false,
+  MACE_CHECK(false,
       "Argument named ",
       name,
       "does not exist in operator ",
@@ -341,7 +341,7 @@ bool GetFlagArgument(
     bool def_value) {
   for (const Argument& arg : def.arg()) {
     if (arg.name() == name) {
-      REQUIRE(
+      MACE_CHECK(
           arg.has_i(), "Can't parse argument as bool: ", ProtoDebugString(arg));
       return arg.i();
     }

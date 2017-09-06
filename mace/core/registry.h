@@ -18,7 +18,7 @@ class Registry {
 
   void Register(const SrcType& key, Creator creator) {
     std::lock_guard<std::mutex> lock(register_mutex_);
-    REQUIRE(registry_.count(key) == 0, "Key already registered.");
+    MACE_CHECK(registry_.count(key) == 0, "Key already registered.");
     registry_[key] = creator;
   }
 

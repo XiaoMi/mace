@@ -13,8 +13,8 @@ namespace kernels {
 template<typename T>
 void AddNFuntion(const vector<const Tensor*>& input_tensor, Tensor *output_tensor) {
   int n = input_tensor.size();
-  CHECK(n > 1);
-  CHECK_NOTNULL(input_tensor[0]);
+  MACE_CHECK(n > 1);
+  MACE_CHECK_NOTNULL(input_tensor[0]);
   int64 size = input_tensor[0]->size();
   vector<const T*> inputs(n);
   for (int i = 0; i < n; ++i) {

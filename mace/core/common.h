@@ -31,7 +31,7 @@ private:                                                                       \
   classname& operator=(const classname&) = delete
 #endif
 
-#define MACE_NOT_IMPLEMENTED REQUIRE(false, "not implemented")
+#define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")
 
 #define kCostPerGroup 8192
 

@@ -22,5 +22,3 @@ cc_library(
     copts = ['-std=c++11'],
     alwayslink = 1,
 )
-
-

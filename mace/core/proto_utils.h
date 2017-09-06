@@ -213,10 +213,10 @@ class ArgumentHelper {
 
   template <typename MessageType>
   MessageType GetMessageArgument(const string& name) const {
-    REQUIRE(arg_map_.count(name), "Cannot find parameter named " + name);
+    MACE_CHECK(arg_map_.count(name), "Cannot find parameter named " + name);
     MessageType message;
     if (arg_map_.at(name).has_s()) {
-      REQUIRE(
+      MACE_CHECK(
           message.ParseFromString(arg_map_.at(name).s()),
           "Faild to parse content from the string");
     } else {
@@ -227,10 +227,10 @@ class ArgumentHelper {
 
   template <typename MessageType>
   vector<MessageType> GetRepeatedMessageArgument(const string& name) const {
-    REQUIRE(arg_map_.count(name), "Cannot find parameter named " + name);
+    MACE_CHECK(arg_map_.count(name), "Cannot find parameter named " + name);
     vector<MessageType> messages(arg_map_.at(name).strings_size());
     for (int i = 0; i < messages.size(); ++i) {
-      REQUIRE(
+      MACE_CHECK(
           messages[i].ParseFromString(arg_map_.at(name).strings(i)),
           "Faild to parse content from the string");
     }
