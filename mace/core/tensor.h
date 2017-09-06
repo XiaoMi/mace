@@ -68,15 +68,8 @@ class Tensor {
 
   inline TIndex dim_size() const { return shape_.size(); }
 
-  inline int dim32(int index) const {
-    MACE_CHECK(static_cast<size_t>(index) < shape_.size(), "Exceeding ndim limit");
-    MACE_CHECK(index >= 0, "Cannot have negative dimension index");
-    MACE_CHECK(shape_[index], std::numeric_limits<int>::max());
-    return static_cast<int>(shape_[index]);
-  }
-
-  inline TIndex dim(int index) const {
-    MACE_CHECK(static_cast<size_t>(index) < shape_.size(), "Exceeding ndim limit");
+  inline TIndex dim(TIndex index) const {
+    MACE_CHECK(index < shape_.size(), "Exceeding ndim limit");
     MACE_CHECK(index >= 0, "Cannot have negative dimension index");
     return shape_[index];
   }
@@ -133,8 +126,8 @@ class Tensor {
   }
 
   template <typename T>
-  inline void Copy(const T* src, size_t size) {
-    MACE_CHECK(static_cast<TIndex>(size) == size_, "copy src and dst with different size.");
+  inline void Copy(const T* src, TIndex size) {
+    MACE_CHECK(size == size_, "copy src and dst with different size.");
     CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
   }
 

@@ -14,7 +14,8 @@ template<DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
   public:
     BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-            : Operator<D, T>(operator_def, ws) {}
+            : Operator<D, T>(operator_def, ws),
+              functor_(OperatorBase::GetSingleArgument<float>("variance_epsilon", 1e-4)){}
 
     bool Run() override {
       const Tensor* input = this->Input(0);
@@ -22,8 +23,6 @@ class BatchNormOp : public Operator<D, T> {
       const Tensor* offset = this->Input(2);
       const Tensor* mean = this->Input(3);
       const Tensor* var = this->Input(4);
-
-      const float variance_epsilon = this->template GetSingleArgument<float>("variance_epsilon", 1e-4);
 
       MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ", input->dim_size());
       MACE_CHECK(scale->dim_size() == 1, "scale must be 1-dimensional. ", scale->dim_size());
@@ -34,9 +33,9 @@ class BatchNormOp : public Operator<D, T> {
       Tensor* output = this->Output(0);
       output->ResizeLike(input);
 
-      const int n = input->dim32(0);
-      const int channel = input->dim32(1);
-      const int sample_size = input->dim32(2) * input->dim32(3);
+      const TIndex n = input->dim(0);
+      const TIndex channel = input->dim(1);
+      const TIndex sample_size = input->dim(2) * input->dim(3);
 
       const float* input_ptr = input->data<float>();
       const float* scale_ptr = scale->data<float>();
@@ -45,11 +44,13 @@ class BatchNormOp : public Operator<D, T> {
       const float* var_ptr = var->data<float>();
       float* output_ptr = output->mutable_data<float>();
 
-      kernels::BatchNormFunctor<D>()(input_ptr, scale_ptr, offset_ptr, mean_ptr, var_ptr,
+      functor_(input_ptr, scale_ptr, offset_ptr, mean_ptr, var_ptr,
                                      n, channel, sample_size,
-                                     variance_epsilon, output_ptr);
+                                     output_ptr);
       return true;
     }
+  private:
+    kernels::BatchNormFunctor<D, T> functor_;
 
 };
 

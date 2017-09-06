@@ -3,7 +3,6 @@
 //
 
 #include "mace/ops/batch_norm.h"
-#include "mace/proto/mace.pb.h"
 
 namespace mace {
 
