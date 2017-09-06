@@ -12,7 +12,7 @@ load("//mace:mace.bzl", "if_android")
 cc_library(
     name = "test",
     testonly = 1,
-    srcs = [
+    hdrs = [
         "ops_test_util.h",
     ],
     deps = [
@@ -23,14 +23,14 @@ cc_library(
 
 cc_library(
     name = "ops",
-    srcs = [
-        "batch_norm.cc",
-        "relu.cc",
-    ],
-    hdrs = glob([
-        "relu.h",
-        "batch_norm.h",
-    ]),
+    srcs = glob(
+        ["*.cc"],
+        exclude = ["*_test.cc"],
+    ),
+    hdrs = glob(
+        ["*.h"],
+        exclude = ["ops_test_util.h"],
+    ),
     copts = ["-std=c++11"],
     deps = [
         "//mace/core",

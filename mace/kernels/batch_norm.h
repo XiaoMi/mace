@@ -47,7 +47,7 @@ struct BatchNormFunctor : public BatchNormFunctorBase<D, T> {
       new_offset = offset[c] - mean[c] * new_scale;
 
       for (TIndex i = 0; i < n; ++i) {
-        TIndex pos = i * channel * sample_size + c * sample_size;
+        TIndex pos = (i * channel + c) * sample_size;
         const T* input_sample_ptr = input + pos;
         T* output_sample_ptr = output + pos;
         for (TIndex j = 0; j < sample_size; ++j) {

@@ -41,7 +41,7 @@ struct BatchNormFunctor<DeviceType::NEON> : public BatchNormFunctorBase<DeviceTy
       float32x4_t new_scale_f = vdupq_n_f32(new_scale);
       float32x4_t new_offset_f = vdupq_n_f32(new_offset);
       for (TIndex i = 0; i < n; ++i) {
-        TIndex pos = i * channel * sample_size + c * sample_size;
+        TIndex pos = (i * channel + c) * sample_size;
         const float* input_sample_ptr = input + pos;
         float* output_sample_ptr = output + pos;
 
