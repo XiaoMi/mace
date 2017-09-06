@@ -23,7 +23,7 @@ cc_library(
 
 # Main program for tests
 cc_library(
-    name = "test_main",
+    name = "test_benchmark_main",
     testonly = 1,
     srcs = glob([
         "testing/*.cc",
