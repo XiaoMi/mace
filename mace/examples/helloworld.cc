@@ -27,10 +27,11 @@ int main() {
   arg_1->set_f(1.5);
 
   OperatorDef op_def_2;
+  op_def_2.add_input("Output0");
   op_def_2.add_input("Output1");
   op_def_2.add_output("Output2");
-  op_def_2.set_name("ReluTest2");
-  op_def_2.set_type("Relu");
+  op_def_2.set_name("AddNTest");
+  op_def_2.set_type("AddN");
   auto arg_2 = op_def_2.add_arg();
   arg_2->set_name("arg0");
   arg_2->set_f(2.5);

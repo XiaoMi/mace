@@ -4,22 +4,13 @@
 
 #include "mace/ops/relu.h"
 #include "mace/proto/mace.pb.h"
-#include "mace/kernels/relu.h"
 #if __ARM_NEON
 #include "mace/kernels/neon/relu_neon.h"
 #endif // __ARM_NEON
 
 namespace mace {
 
-template <>
-bool ReluOp<DeviceType::CPU, float>::Run() {
-  const Tensor* input_tensor = Input(0);
-  Tensor* output_tensor = Output(0);
-  kernels::ReluFuntion<float>(input_tensor, output_tensor);
-  return true;
-}
 REGISTER_CPU_OPERATOR(Relu, ReluOp<DeviceType::CPU, float>);
-
 
 #if __ARM_NEON
 template <>

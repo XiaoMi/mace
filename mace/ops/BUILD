@@ -12,7 +12,7 @@ load("//mace:mace.bzl", "if_android")
 
 cc_library(
     name = "ops",
-    srcs = ["relu.cc"],
+    srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     deps = [
         "//mace/proto:cc_proto",
@@ -23,19 +23,4 @@ cc_library(
     alwayslink = 1,
 )
 
-cc_test(
-    name = "relu_test",
-    srcs = ["relu_test.cc",],
-    deps = [
-        "@gtest//:gtest_main",
-        ":ops",
-    ],
-    copts = ['-std=c++11'],
-    linkopts = if_android([
-        "-pie",
-        "-llog",
-        "-latomic",
-        ]),
-    linkstatic = 1,
-)
 
