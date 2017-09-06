@@ -45,7 +45,7 @@ class OperatorBase {
   }
 
   inline const Tensor *Input(int idx) {
-    MACE_CHECK(idx < inputs_.size());
+    MACE_CHECK(static_cast<size_t>(idx) < inputs_.size());
     return inputs_[idx];
   }
 
