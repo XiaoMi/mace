@@ -18,10 +18,10 @@ void AddNFuntion(const vector<const Tensor*>& input_tensor, Tensor *output_tenso
   int64 size = input_tensor[0]->size();
   vector<const T*> inputs(n);
   for (int i = 0; i < n; ++i) {
-    inputs[i] = input_tensor[i]->data<float>();
+    inputs[i] = input_tensor[i]->data<T>();
   }
   output_tensor->ResizeLike(input_tensor[0]);
-  float* output = output_tensor->mutable_data<T>();
+  T* output = output_tensor->mutable_data<T>();
 
   for (int i = 0; i < n; ++i) {
     for (int64 j = 0; j < size; ++j) {
