@@ -12,8 +12,8 @@ namespace kernels {
 void NeonAddNFuntion_float(const vector<const Tensor *> &input_tensor,
                            Tensor *output_tensor) {
   int n = input_tensor.size();
-  CHECK(n > 1);
-  CHECK_NOTNULL(input_tensor[0]);
+  MACE_CHECK(n > 1);
+  MACE_CHECK_NOTNULL(input_tensor[0]);
   int64 size = input_tensor[0]->size();
   output_tensor->ResizeLike(input_tensor[0]);
   float *output = output_tensor->mutable_data<float>();

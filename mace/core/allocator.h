@@ -47,9 +47,9 @@ class CPUAllocator: public Allocator {
 #ifdef __ANDROID__
     data = memalign(kMaceAlignment, nbytes);
 #else
-    CHECK(posix_memalign(&data, kMaceAlignment, nbytes) == 0);
+    MACE_CHECK(posix_memalign(&data, kMaceAlignment, nbytes) == 0);
 #endif
-    CHECK_NOTNULL(data);
+    MACE_CHECK_NOTNULL(data);
     // TODO(heliangliang) This should be avoided sometimes
     memset(data, 0, nbytes);
     return data;

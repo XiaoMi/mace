@@ -38,13 +38,13 @@ Benchmark::Benchmark(const char* name, void (*fn)(int, int, int))
 }
 
 Benchmark* Benchmark::Arg(int x) {
-  CHECK(num_args_ == 1);
+  MACE_CHECK(num_args_ == 1);
   args_.push_back(std::make_pair(x, -1));
   return this;
 }
 
 Benchmark* Benchmark::ArgPair(int x, int y) {
-  CHECK(num_args_ == 2);
+  MACE_CHECK(num_args_ == 2);
   args_.push_back(std::make_pair(x, y));
   return this;
 }

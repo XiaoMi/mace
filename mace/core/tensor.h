@@ -71,13 +71,13 @@ class Tensor {
   inline TIndex size() const { return size_; }
 
   inline const void* raw_data() const {
-    CHECK(data_.get() || size_ == 0);
+    MACE_CHECK(data_.get() || size_ == 0);
     return data_.get();
   }
 
   template <typename T>
   inline const T* data() const {
-    REQUIRE(
+    MACE_CHECK(
         data_.get() || size_ == 0,
         "The tensor is of non-zero shape, but its data is not allocated yet. ");
     return static_cast<T*>(data_.get());
@@ -121,13 +121,13 @@ class Tensor {
 
   template <typename T>
   inline void Copy(const T* src, size_t size) {
-    REQUIRE(size == size_, "copy src and dst with different size.");
+    MACE_CHECK(size == size_, "copy src and dst with different size.");
     CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
   }
 
   template <typename SrcType, typename DstType>
   inline void CopyWithCast(const SrcType* src, size_t size) {
-    REQUIRE(size == size_, "copy src and dst with different size.");
+    MACE_CHECK(size == size_, "copy src and dst with different size.");
     unique_ptr<DstType[]> buffer(new DstType[size]);
     for (int i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
