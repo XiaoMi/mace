@@ -153,16 +153,16 @@ void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
 
 ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
   for (auto &arg : def.arg()) {
-    if (arg_map_.count(arg.name())) {
+    if (arg_map_.find(arg.name()) != arg_map_.end()) {
       REQUIRE(
           arg.SerializeAsString() == arg_map_[arg.name()].SerializeAsString(),
-          "Found argument of the same name ",
+          "Found argument of the same name '",
           arg.name(),
-          "but with different contents.",
+          "' but with different contents: ",
           ProtoDebugString(def));
-    } else {
+
       LOG(WARNING) << "Duplicated argument name found in operator def: "
-                   << ProtoDebugString(def);
+        << ProtoDebugString(def) << ", arg: " << ProtoDebugString(arg);
     }
 
     arg_map_[arg.name()] = arg;
