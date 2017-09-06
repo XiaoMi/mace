@@ -4,7 +4,6 @@
 #include <random>
 #include <cmath>
 #include "gtest/gtest.h"
-#include "mace/kernels/neon/relu_neon.h"
 #include "mace/kernels/relu.h"
 
 using namespace mace;
@@ -16,26 +15,20 @@ TEST(NeonTest, Relu) {
   std::normal_distribution<float> nd(0, 1);
 
   int64_t count = 100000;
-  Tensor input_tensor(cpu_allocator(), DataType::DT_FLOAT);
-  input_tensor.Resize({100, 1000});
-  Tensor output_tensor(cpu_allocator(), DataType::DT_FLOAT);
-  output_tensor.ResizeLike(input_tensor);
-  Tensor output_tensor_neon(cpu_allocator(), DataType::DT_FLOAT);
-  output_tensor_neon.ResizeLike(input_tensor);
-
-  float *input = input_tensor.mutable_data<float>();
-  float *output = output_tensor.mutable_data<float>();
-  float *output_neon = output_tensor_neon.mutable_data<float>();
+  vector<float> input(count);
+  vector<float> output(count);
+  vector<float> output_neon(count);
 
   for (int64_t i = 0; i < count; ++i) {
     input[i] = nd(gen);
   }
 
-  ReluFuntion<float>(&input_tensor, &output_tensor);
-  NeonReluFuntion_float(&input_tensor, &output_tensor_neon);
+  ReluFunctor<DeviceType::CPU, float> relu_functor;
+  ReluFunctor<DeviceType::NEON, float> neon_relu_functor;
 
-  ASSERT_EQ(count, output_tensor.size());
-  ASSERT_EQ(count, output_tensor_neon.size());
+  relu_functor(&input[0], &output[0], count);
+  neon_relu_functor(&input[0], &output_neon[0], count);
+
   for (int64_t i = 0; i < count; ++i) {
     ASSERT_FLOAT_EQ(output[i], output_neon[i]);
   }
