@@ -27,7 +27,7 @@ class OpDefBuilder {
       return *this;
     }
     void Finalize(OperatorDef* op_def) const {
-      REQUIRE(op_def != NULL, "input should not be null.");
+      MACE_CHECK(op_def != NULL, "input should not be null.");
       *op_def = op_def_;
     }
     OperatorDef op_def_;

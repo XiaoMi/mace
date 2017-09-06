@@ -25,11 +25,11 @@ class BatchNormOp : public Operator<D, T> {
 
       const float variance_epsilon = this->template GetSingleArgument<float>("variance_epsilon", 1e-4);
 
-      REQUIRE(input->dim_size() == 4, "input must be 4-dimensional. ", input->dim_size());
-      REQUIRE(scale->dim_size() == 1, "scale must be 1-dimensional. ", scale->dim_size());
-      REQUIRE(offset->dim_size() == 1, "offset must be 1-dimensional. ", offset->dim_size());
-      REQUIRE(mean->dim_size() == 1, "mean must be 1-dimensional. ", mean->dim_size());
-      REQUIRE(var->dim_size() == 1, "var must be 1-dimensional. ", var->dim_size());
+      MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ", input->dim_size());
+      MACE_CHECK(scale->dim_size() == 1, "scale must be 1-dimensional. ", scale->dim_size());
+      MACE_CHECK(offset->dim_size() == 1, "offset must be 1-dimensional. ", offset->dim_size());
+      MACE_CHECK(mean->dim_size() == 1, "mean must be 1-dimensional. ", mean->dim_size());
+      MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ", var->dim_size());
 
       Tensor* output = this->Output(0);
       output->ResizeLike(input);
