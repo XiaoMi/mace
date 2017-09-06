@@ -10,25 +10,18 @@
 namespace mace {
 namespace kernels {
 
-template<typename T>
-void AddNFuntion(const vector<const Tensor*>& input_tensor, Tensor *output_tensor) {
-  int n = input_tensor.size();
-  MACE_CHECK(n > 1);
-  MACE_CHECK_NOTNULL(input_tensor[0]);
-  int64_t size = input_tensor[0]->size();
-  vector<const T*> inputs(n);
-  for (int i = 0; i < n; ++i) {
-    inputs[i] = input_tensor[i]->data<T>();
-  }
-  output_tensor->ResizeLike(input_tensor[0]);
-  T* output = output_tensor->mutable_data<T>();
-
-  for (int i = 0; i < n; ++i) {
-    for (int64_t j = 0; j < size; ++j) {
-      output[j] += inputs[i][j];
+template<DeviceType D, typename T>
+struct AddNFunctor {
+  void operator()(const vector<const T*>& inputs,
+                  T *output, index_t size) {
+      int n = inputs.size();
+    for (int i = 0; i < n; ++i) {
+      for (index_t j = 0; j < size; ++j) {
+        output[j] += inputs[i][j];
+      }
     }
   }
-}
+};
 
 } //  namespace kernels
 } //  namespace mace
