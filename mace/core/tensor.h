@@ -66,7 +66,13 @@ class Tensor {
 
   inline const vector<TIndex>& shape() const { return shape_; }
 
-  inline TIndex dim_size() { return shape_.size(); }
+  inline TIndex dim_size() const { return shape_.size(); }
+
+  inline TIndex dim(TIndex index) const {
+    MACE_CHECK(index < shape_.size(), "Exceeding ndim limit");
+    MACE_CHECK(index >= 0, "Cannot have negative dimension index");
+    return shape_[index];
+  }
 
   inline TIndex size() const { return size_; }
 
@@ -120,16 +126,16 @@ class Tensor {
   }
 
   template <typename T>
-  inline void Copy(const T* src, size_t size) {
+  inline void Copy(const T* src, TIndex size) {
     MACE_CHECK(size == size_, "copy src and dst with different size.");
     CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
   }
 
   template <typename SrcType, typename DstType>
   inline void CopyWithCast(const SrcType* src, size_t size) {
-    MACE_CHECK(size == size_, "copy src and dst with different size.");
+    MACE_CHECK(static_cast<TIndex>(size) == size_, "copy src and dst with different size.");
     unique_ptr<DstType[]> buffer(new DstType[size]);
-    for (int i = 0; i < size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
     }
     CopyBytes(static_cast<const void*>(buffer.get()), sizeof(DstType) * size);
