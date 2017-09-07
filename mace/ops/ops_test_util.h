@@ -43,7 +43,7 @@ class OpsTestBase : public ::testing::Test {
     }
   public:
     template <typename T>
-    void AddInputFromArray(const char* name, const std::vector<TIndex>& shape, const std::vector<T>& data) {
+    void AddInputFromArray(const char* name, const std::vector<index_t>& shape, const std::vector<T>& data) {
       Tensor* input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
       input->Resize(shape);
       float* input_data = input->mutable_data<float>();
@@ -70,7 +70,7 @@ class OpsTestBase : public ::testing::Test {
 };
 
 template <typename T>
-Tensor CreateTensor(const std::vector<TIndex>& shape, const std::vector<T>& data) {
+Tensor CreateTensor(const std::vector<index_t>& shape, const std::vector<T>& data) {
   Tensor res(cpu_allocator(), DataTypeToEnum<T>::v());
   res.Resize(shape);
   float* input_data = res.mutable_data<float>();
@@ -90,7 +90,7 @@ inline std::string ShapeToString(const Tensor& x) {
   std::stringstream stream;
   for (int i = 0; i < x.dim_size(); i++) {
     if (i > 0) stream<<",";
-    int64 dim = x.dim(i);
+    int64_t dim = x.dim(i);
     if (dim < 0) {
       stream<<"?";
     } else {

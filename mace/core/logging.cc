@@ -69,18 +69,18 @@ void LogMessage::GenerateLogMessage() {
 
 namespace {
 
-// Parse log level (int64) from environment variable (char*)
-int64 LogLevelStrToInt(const char* tf_env_var_val) {
-  if (tf_env_var_val == nullptr) {
+// Parse log level (int64_t) from environment variable (char*)
+int64_t LogLevelStrToInt(const char* mace_env_var_val) {
+  if (mace_env_var_val == nullptr) {
     return 0;
   }
 
   // Ideally we would use env_var / safe_strto64, but it is
   // hard to use here without pulling in a lot of dependencies,
   // so we use std:istringstream instead
-  string min_log_level(tf_env_var_val);
+  string min_log_level(mace_env_var_val);
   std::istringstream ss(min_log_level);
-  int64 level;
+  int64_t level;
   if (!(ss >> level)) {
     // Invalid vlog level setting, set level to default (0)
     level = 0;
@@ -89,26 +89,26 @@ int64 LogLevelStrToInt(const char* tf_env_var_val) {
   return level;
 }
 
-int64 MinLogLevelFromEnv() {
-  const char* tf_env_var_val = getenv("MACE_CPP_MIN_LOG_LEVEL");
-  return LogLevelStrToInt(tf_env_var_val);
+int64_t MinLogLevelFromEnv() {
+  const char* mace_env_var_val = getenv("MACE_CPP_MIN_LOG_LEVEL");
+  return LogLevelStrToInt(mace_env_var_val);
 }
 
-int64 MinVLogLevelFromEnv() {
-  const char* tf_env_var_val = getenv("MACE_CPP_MIN_VLOG_LEVEL");
-  return LogLevelStrToInt(tf_env_var_val);
+int64_t MinVLogLevelFromEnv() {
+  const char* mace_env_var_val = getenv("MACE_CPP_MIN_VLOG_LEVEL");
+  return LogLevelStrToInt(mace_env_var_val);
 }
 
 }  // namespace
 
 LogMessage::~LogMessage() {
   // Read the min log level once during the first call to logging.
-  static int64 min_log_level = MinLogLevelFromEnv();
+  static int64_t min_log_level = MinLogLevelFromEnv();
   if (severity_ >= min_log_level) GenerateLogMessage();
 }
 
-int64 LogMessage::MinVLogLevel() {
-  static int64 min_vlog_level = MinVLogLevelFromEnv();
+int64_t LogMessage::MinVLogLevel() {
+  static int64_t min_vlog_level = MinVLogLevelFromEnv();
   return min_vlog_level;
 }
 

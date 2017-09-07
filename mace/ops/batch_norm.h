@@ -33,9 +33,9 @@ class BatchNormOp : public Operator<D, T> {
       Tensor* output = this->Output(0);
       output->ResizeLike(input);
 
-      const TIndex n = input->dim(0);
-      const TIndex channel = input->dim(1);
-      const TIndex sample_size = input->dim(2) * input->dim(3);
+      const index_t n = input->dim(0);
+      const index_t channel = input->dim(1);
+      const index_t sample_size = input->dim(2) * input->dim(3);
 
       const float* input_ptr = input->data<float>();
       const float* scale_ptr = scale->data<float>();

@@ -34,18 +34,18 @@ struct BatchNormFunctor<DeviceType::NEON, T> : public BatchNormFunctorBase<Devic
     T new_scale, new_offset;
     int count = sample_size >> 2;
     int remain_count = sample_size - count;
-    for (TIndex c = 0; c < channel; ++c) {
+    for (index_t c = 0; c < channel; ++c) {
       new_scale = scale[c] / std::sqrt(var[c] + this->variance_epsilon_);
       new_offset = offset[c] - mean[c] * new_scale;
-      TIndex pos = c * sample_size;
+      index_t pos = c * sample_size;
 
       float32x4_t new_scale_f = vdupq_n_f32(new_scale);
       float32x4_t new_offset_f = vdupq_n_f32(new_offset);
-      for (TIndex i = 0; i < n; ++i) {
+      for (index_t i = 0; i < n; ++i) {
         const float* input_sample_ptr = input + pos;
         float* output_sample_ptr = output + pos;
 
-        for(TIndex j = 0; j < count; ++j) {
+        for(index_t j = 0; j < count; ++j) {
           float32x4_t input_f = vld1q_f32(input_sample_ptr);
           float32x4_t output_f = new_offset_f;
           output_f = vfmaq_f32(output_f, input_f, new_scale_f);
@@ -53,7 +53,7 @@ struct BatchNormFunctor<DeviceType::NEON, T> : public BatchNormFunctorBase<Devic
           input_sample_ptr += 4;
           output_sample_ptr += 4;
         }
-        for(TIndex j = 0; j < remain_count; ++j) {
+        for(index_t j = 0; j < remain_count; ++j) {
           *output_sample_ptr = new_scale * *input_sample_ptr + new_offset;
           ++output_sample_ptr;
           ++input_sample_ptr;
