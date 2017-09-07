@@ -5,6 +5,8 @@
 #ifndef MACE_OPS_TEST_UTIL_H_
 #define MACE_OPS_TEST_UTIL_H_
 
+#include <type_traits>
+
 #include "gtest/gtest.h"
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
@@ -48,6 +50,48 @@ class OpsTestBase : public ::testing::Test {
       input->Resize(shape);
       float* input_data = input->mutable_data<float>();
       memcpy(input_data, data.data(), data.size() * sizeof(T));
+    }
+
+    void AddIntArg(const char* name, const int value) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      arg->set_i(value);
+    }
+
+    void AddFloatArg(const char* name, const float value) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      arg->set_f(value);
+    }
+
+    void AddStringArg(const char* name, const char* value) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      arg->set_s(value);
+    }
+
+    void AddIntsArg(const char* name, const std::vector<int>& values) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      for (auto value : values) {
+        arg->add_ints(value);
+      }
+    }
+
+    void AddFloatsArg(const char* name, const std::vector<float>& values) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      for (auto value : values) {
+        arg->add_floats(value);
+      }
+    }
+
+    void AddStringsArg(const char* name, const std::vector<const char*>& values) {
+      auto arg = op_def_.add_arg();
+      arg->set_name(name);
+      for (auto value : values) {
+        arg->add_strings(value);
+      }
     }
 
     OperatorDef* operator_def() { return &op_def_; }
