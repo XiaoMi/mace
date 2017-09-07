@@ -5,28 +5,43 @@
 #ifndef MACE_OPS_CONV_2D_H_
 #define MACE_OPS_CONV_2D_H_
 
+#include <memory>
+
 #include "mace/core/operator.h"
+#include "mace/kernels/conv_2d.h"
+#include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
 
-template<DeviceType D, class T>
-class Conv2dOp : public Operator<D, T> {
+template<DeviceType D, typename T>
+class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
-  Conv2dOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        kernels_(OperatorBase::GetRepeatedArgument<int>("kernels")),
-        strides_(OperatorBase::GetRepeatedArgument<int>("strides")),
-        paddings_(OperatorBase::GetRepeatedArgument<int>("paddings")),
-        dilations_(OperatorBase::GetRepeatedArgument<int>("dilations")) {}
+  Conv2dOp(const OperatorDef &op_def, Workspace *ws)
+    : ConvPool2dOpBase<D, T>(op_def, ws) {};
 
-  bool Run() override;
+  bool Run() override {
+    const Tensor* input = this->Input(INPUT);
+    const Tensor* filter = this->Input(FILTER);
+    const Tensor* bias = this->Input(BIAS);
+    Tensor* output = this->Output(OUTPUT);
 
- private:
-  vector<int> kernels_;
-  vector<int> strides_;
-  vector<int> paddings_;
-  vector<int> dilations_;
+    std::vector<index_t> output_shape;
+    std::vector<int> paddings;
+    this->CalcPaddingAndOutputSize(input, filter, &output_shape, &paddings);
+    output->Resize(output_shape);
 
+    auto conv2d = kernels::Conv2dFunctor<D, T>(this->strides_.data(),
+                                               paddings.data(),
+                                               this->dilations_.data());
+    conv2d(input->data<T>(), input->shape().data(),
+           filter->data<T>(), filter->shape().data(),
+           bias->data<T>(), output->mutable_data<T>(),
+           output->shape().data());
+
+    return true;
+  }
+
+ protected:
   OP_INPUT_TAGS(INPUT, FILTER, BIAS);
   OP_OUTPUT_TAGS(OUTPUT);
 };
