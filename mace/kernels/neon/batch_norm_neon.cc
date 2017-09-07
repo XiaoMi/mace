@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-//#if __ARM_NEON
+#if __ARM_NEON
 #include <arm_neon.h>
 #include "mace/kernels/batch_norm.h"
 
@@ -10,7 +10,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-struct BatchNormFunctor<DeviceType::NEON> : public BatchNormFunctorBase<DeviceType::NEON, T> {
+struct BatchNormFunctor<DeviceType::NEON, T> : public BatchNormFunctorBase<DeviceType::NEON, T> {
   BatchNormFunctor(const float variance_epsilon)
           :BatchNormFunctorBase<DeviceType::NEON, T>(variance_epsilon){}
 
@@ -35,13 +35,13 @@ struct BatchNormFunctor<DeviceType::NEON> : public BatchNormFunctorBase<DeviceTy
     int count = sample_size >> 2;
     int remain_count = sample_size - count;
     for (TIndex c = 0; c < channel; ++c) {
-      new_scale = scale[c] / std::sqrt(var[c] + variance_epsilon_);
+      new_scale = scale[c] / std::sqrt(var[c] + this->variance_epsilon_);
       new_offset = offset[c] - mean[c] * new_scale;
+      TIndex pos = c * sample_size;
 
       float32x4_t new_scale_f = vdupq_n_f32(new_scale);
       float32x4_t new_offset_f = vdupq_n_f32(new_offset);
       for (TIndex i = 0; i < n; ++i) {
-        TIndex pos = (i * channel + c) * sample_size;
         const float* input_sample_ptr = input + pos;
         float* output_sample_ptr = output + pos;
 
@@ -58,6 +58,7 @@ struct BatchNormFunctor<DeviceType::NEON> : public BatchNormFunctorBase<DeviceTy
           ++output_sample_ptr;
           ++input_sample_ptr;
         }
+        pos += channel * sample_size;
       }
     }
   }
@@ -65,4 +66,4 @@ struct BatchNormFunctor<DeviceType::NEON> : public BatchNormFunctorBase<DeviceTy
 
 } // namespace kernels
 } //  namespace mace
-//#endif // __ARM_NEON
+#endif // __ARM_NEON

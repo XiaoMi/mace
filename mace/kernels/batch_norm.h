@@ -45,14 +45,15 @@ struct BatchNormFunctor : public BatchNormFunctorBase<D, T> {
     for (TIndex c = 0; c < channel; ++c) {
       new_scale = scale[c] / std::sqrt(var[c] + this->variance_epsilon_);
       new_offset = offset[c] - mean[c] * new_scale;
+      TIndex pos = c * sample_size;
 
       for (TIndex i = 0; i < n; ++i) {
-        TIndex pos = (i * channel + c) * sample_size;
         const T* input_sample_ptr = input + pos;
         T* output_sample_ptr = output + pos;
         for (TIndex j = 0; j < sample_size; ++j) {
           output_sample_ptr[j] = new_scale * input_sample_ptr[j] + new_offset;
         }
+        pos += channel * sample_size;
       }
     }
   }
