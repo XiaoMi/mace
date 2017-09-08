@@ -15,12 +15,12 @@ TEST(BatchNormNeonTest, Simple) {
   srand(time(NULL));
 
   // generate random input
-  TIndex batch = 1 + rand() % 128;
-  TIndex channels = 3;
-  TIndex height = 2 + rand() % 100;
-  TIndex width = 2 + rand() % 100;
+  index_t batch = 1 + rand() % 128;
+  index_t channels = 3;
+  index_t height = 2 + rand() % 100;
+  index_t width = 2 + rand() % 100;
 
-  TIndex input_size = batch * channels * height * width;
+  index_t input_size = batch * channels * height * width;
   std::vector<float> input(input_size, 0.0);
   std::vector<float> scale(channels, 0.0);
   std::vector<float> offset(channels, 0.0);
@@ -64,7 +64,7 @@ TEST(BatchNormNeonTest, Simple) {
           output_neon.get()
   );
 
-  for (TIndex i = 0; i < input_size; ++i) {
+  for (index_t i = 0; i < input_size; ++i) {
     EXPECT_FLOAT_EQ(output[i], output_neon[i]);
   }
 
