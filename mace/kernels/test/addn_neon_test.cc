@@ -10,6 +10,7 @@ using namespace mace;
 using namespace mace::kernels;
 
 TEST(NeonTest, AddN) {
+  testing::internal::LogToStderr();
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);

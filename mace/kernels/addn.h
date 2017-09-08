@@ -23,6 +23,11 @@ struct AddNFunctor {
   }
 };
 
+template <>
+void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>& inputs,
+                                                      float *output,
+                                                      index_t size);
+
 } //  namespace kernels
 } //  namespace mace
 
