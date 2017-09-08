@@ -13,7 +13,7 @@ static void BatchNorm(int iters, int batch, int channels, int height, int width)
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
 
-  TIndex input_size = batch * channels * height * width;
+  index_t input_size = batch * channels * height * width;
   std::vector<T> input(input_size, 0.0);
   std::vector<T> scale(channels, 0.0);
   std::vector<T> offset(channels, 0.0);
@@ -50,7 +50,7 @@ static void BatchNorm(int iters, int batch, int channels, int height, int width)
 #define BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                  \
   static void BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
         int iters) {                                                    \
-    const int64 tot = static_cast<int64>(iters) * N * C * H * W;                        \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                        \
     mace::testing::ItemsProcessed(tot);                                 \
     mace::testing::BytesProcessed(tot * (sizeof(TYPE)));\
     BatchNorm<DEVICE, TYPE>(iters, N, C, H, W);                         \
