@@ -32,10 +32,14 @@ static void AddNBenchmark(int iters, int n, int type) {
 
   if (type == DeviceType::CPU) {
     AddNFunctor<DeviceType::CPU, float> addn_functor;
-    addn_functor(inputs, &output[0], n);
+    while (--iters) {
+      addn_functor(inputs, &output[0], n);
+    }
   } else if (type == DeviceType::NEON) {
     AddNFunctor<DeviceType::NEON, float> neon_addn_functor;
-    neon_addn_functor(inputs, &output[0], n);
+    while (--iters) {
+      neon_addn_functor(inputs, &output[0], n);
+    }
   }
 }
 
