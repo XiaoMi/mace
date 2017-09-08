@@ -3,25 +3,16 @@
 //
 
 #include <arm_neon.h>
-#include "mace/kernels/neon/addn_neon.h"
-#include "mace/core/common.h"
+#include "mace/kernels/addn.h"
 
 namespace mace {
 namespace kernels {
 
-void NeonAddNFuntion_float(const vector<const Tensor *> &input_tensor,
-                           Tensor *output_tensor) {
-  int n = input_tensor.size();
-  MACE_CHECK(n > 1);
-  MACE_CHECK_NOTNULL(input_tensor[0]);
-  int64_t size = input_tensor[0]->size();
-  output_tensor->ResizeLike(input_tensor[0]);
-  float *output = output_tensor->mutable_data<float>();
-  vector<const float *> inputs(n);
-  for (int i = 0; i < n; ++i) {
-    inputs[i] = input_tensor[i]->data<float>();
-  }
-
+template <>
+void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>& inputs,
+                                                float *output,
+                                                index_t size) {
+  int n = inputs.size();
   int64_t cost = size * n;
   int64_t groups = 1;
   if (cost > kCostPerGroup) {
@@ -53,7 +44,7 @@ void NeonAddNFuntion_float(const vector<const Tensor *> &input_tensor,
       }
     }
   }
-}
+};
 
 } // namespace kernels
 } // namespace mace
