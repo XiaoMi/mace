@@ -41,8 +41,10 @@ cc_library(
 )
 
 cc_test(
-    name = "relu_test",
-    srcs = ["relu_test.cc"],
+    name = "ops_test",
+    srcs = glob(
+        ["*_test.cc"],
+    ),
     copts = ["-std=c++11"],
     linkopts = if_android([
         "-pie",
@@ -52,46 +54,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":ops",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "pooling_test",
-    srcs = ["pooling_test.cc"],
-    copts = ["-std=c++11"],
-    linkopts = if_android([
-        "-pie",
-        "-llog",
-        "-latomic",
-    ]),
-    linkstatic = 1,
-    deps = [
-        ":ops",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "batch_norm_test",
-    srcs = ["batch_norm_test.cc"],
-    copts = ["-std=c++11"],
-    linkstatic = 1,
-    deps = [
-        ":ops",
         ":test",
         "@gtest//:gtest_main",
     ],
-)
-
-cc_test(
-    name = "conv_2d_test",
-    srcs = ["conv_2d_test.cc",],
-    deps = [
-        ":ops",
-        ":test",
-        "@gtest//:gtest_main",
-    ],
-    copts = ['-std=c++11'],
-    linkstatic = 1,
 )

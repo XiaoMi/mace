@@ -16,7 +16,7 @@ namespace mace {
 template<DeviceType D, typename T>
 class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
-  Conv2dOp(const OperatorDef &op_def, Workspace *ws)
+  Conv2dOp(const OperatorDef& op_def, Workspace* ws)
     : ConvPool2dOpBase<D, T>(op_def, ws) {};
 
   bool Run() override {
@@ -27,7 +27,10 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
 
     std::vector<index_t> output_shape;
     std::vector<int> paddings;
-    this->CalcPaddingAndOutputSize(input, filter, &output_shape, &paddings);
+    this->CalcPaddingAndOutputSize(input->shape().data(),
+                                   filter->shape().data(),
+                                   &output_shape,
+                                   &paddings);
     output->Resize(output_shape);
 
     auto conv2d = kernels::Conv2dFunctor<D, T>(this->strides_.data(),

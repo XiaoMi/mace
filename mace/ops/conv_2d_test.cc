@@ -21,7 +21,7 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
 
   // Add args
   AddIntsArg("strides", {1, 1});
-  AddIntArg("padding", static_cast<int>(Conv2dOp<DeviceType::CPU, float>::Padding::VALID));
+  AddIntArg("padding", Padding::VALID);
   AddIntsArg("dilations", {1, 1});
 
   // Add input data
@@ -58,7 +58,7 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
 
   // Add args
   AddIntsArg("strides", {1, 1});
-  AddIntArg("padding", static_cast<int>(Conv2dOp<DeviceType::CPU, float>::Padding::SAME));
+  AddIntArg("padding", Padding::SAME);
   AddIntsArg("dilations", {1, 1});
 
   // Add input data
@@ -98,7 +98,7 @@ TEST_F(Conv2dOpTest, Combined) {
 
   // Add args
   AddIntsArg("strides", {2, 2});
-  AddIntArg("padding", static_cast<int>(Conv2dOp<DeviceType::CPU, float>::Padding::SAME));
+  AddIntArg("padding", Padding::SAME);
   AddIntsArg("dilations", {1, 1});
 
   // Add input data

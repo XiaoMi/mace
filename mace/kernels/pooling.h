@@ -5,136 +5,127 @@
 #ifndef MACE_KERNELS_POOLING_H
 #define MACE_KERNELS_POOLING_H
 
+#include <limits>
 #include "mace/core/tensor.h"
 
 namespace mace {
+
+enum PoolingType {
+  AVG = 1, // avg_pool
+  MAX = 2, // max_pool
+};
+
 namespace kernels {
 
-enum { PoolMethod_MAX = 0, PoolMethod_AVE = 1 };
-enum { PADDING_DROP = 0, PADDING_ZERO = 1};
+template<DeviceType D, typename T>
+class PoolingFunctor {
+public:
+  PoolingFunctor(const PoolingType pooling_type,
+                 const int* kernels,
+                 const int* strides,
+                 const int* paddings,
+                 const int* dilations)
+  : pooling_type_(pooling_type),
+    kernels_(kernels),
+    strides_(strides),
+    paddings_(paddings),
+    dilations_(dilations) {}
 
-template<typename T>
-void PoolingFunction(const Tensor *input_tensor, Tensor *output_tensor, int pooling_type,
-                     int kernel_size, int stride, int padding) {
-  // max value in NxN window
-  // avg value in NxN window
+  void operator()(const T* input,
+                  const index_t* input_shape,
+                  T* output,
+                  const index_t* output_shape) {
+    index_t batch    = output_shape[0];
+    index_t channels = output_shape[1];
+    index_t height   = output_shape[2];
+    index_t width    = output_shape[3];
 
-  vector <int64> in_shape = input_tensor->shape();
-  REQUIRE(in_shape.size() == 4, "The input tensor shape should specify 4 dimensions(NCHW)");
+    index_t input_channels = input_shape[1];
+    index_t input_height   = input_shape[2];
+    index_t input_width    = input_shape[3];
 
-  int64 batch_size = in_shape[0];
-  int64 channels = in_shape[1];
-  int64 h = in_shape[2];
-  int64 w = in_shape[3];
+    int kernel_h = kernels_[0];
+    int kernel_w  = kernels_[1];
 
-  // calculate paddings and output tensor shape
-  int outw, outh, pad_top, pad_bottom, pad_left, pad_right;
-  if (padding == PADDING_ZERO) {
-    int wpad = kernel_size + (w - 1) / stride * stride - w;
-    int hpad = kernel_size + (h - 1) / stride * stride - h;
+    int stride_h = strides_[0];
+    int stride_w = strides_[1];
 
-    pad_top = hpad / 2;
-    pad_bottom = hpad - pad_top;
-    pad_left = wpad / 2;
-    pad_right = wpad - pad_left;
+    int dilation_h = dilations_[0];
+    int dilation_w = dilations_[1];
 
-    outw = (w + wpad - kernel_size) / stride + 1;
-    outh = (h + hpad - kernel_size) / stride + 1;
-  } else if (padding == PADDING_DROP)  // Drop bottom-most rows and right-most columns
-  {
-    pad_top = pad_bottom = pad_left = pad_right = 0;
+    // The left-upper most offset of the padded input
+    int padded_h_start = 0 - paddings_[0] / 2;
+    int padded_w_start = 0 - paddings_[1] / 2;
+    int padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
+    int padded_w_stop = input_width + paddings_[1] - paddings_[0] / 2;
 
-    outw = (w - kernel_size) / stride + 1;
-    outh = (h - kernel_size) / stride + 1;
-  }
-
-  output_tensor->Resize({batch_size, channels, outh, outw});
-
-  if (pooling_type == PoolMethod_MAX) {
-#pragma omp parallel for
-    for (int batch = 0; batch < batch_size; batch++) {
-      for (int q = 0; q < channels; q++) {
-        float *outptr = output_tensor->mutable_data<float>() + (batch * channels + q) * outw * outh;
-
-        for (int i = 0; i < outh; i++) {
-          for (int j = 0; j < outw; j++) {
-            float val;
-            float max;
-            if (padding == PADDING_ZERO) {
-              max = 0.0;
-              for (int m = 0; m < kernel_size; m++) {
-                for (int n = 0; n < kernel_size; n++) {
-                  if (i * stride - pad_top + m < 0 || j * stride - pad_left + n < 0 ||
-                      i * stride - pad_top + m >= h || j * stride - pad_left + n >= w) {
-                    val = 0.0;
-                  } else {
-                    int index = (batch * channels + q) * w * h + w * (i * stride - pad_top + m) + j * stride - pad_left + n;
-                    val = input_tensor->data<float>()[index];
+#pragma omp parallel for collpse(2)
+    for (int n = 0; n < batch; ++n) {
+      for (int c = 0; c < channels; ++c) {
+        index_t out_offset = n * channels * height * width +
+                             c * height * width;
+        index_t in_offset = n * input_channels * input_height * input_width +
+                            c * input_height * input_width;
+        for (int h = 0; h < height; ++h) {
+          for (int w = 0; w < width; ++w) {
+            T sum_or_max = 0;
+            switch (pooling_type_) {
+              case AVG:
+                break;
+              case MAX:
+                sum_or_max = -std::numeric_limits<T>::max();
+                break;
+              default:
+                MACE_CHECK(false, "Unsupported pooling type: ", pooling_type_);
+            }
+            for (int kh = 0; kh < kernel_h; ++kh) {
+              for (int kw = 0; kw < kernel_w; ++kw) {
+                int inh = padded_h_start + h * stride_h + dilation_h * kh;
+                int inw = padded_w_start + w * stride_w + dilation_w * kw;
+                if (inh >= 0 && inh < input_height &&
+                    inw >= 0 && inw < input_width) {
+                  index_t input_offset = in_offset +
+                                         inh * input_width + inw;
+                  switch (pooling_type_) {
+                    case AVG:
+                      sum_or_max += input[input_offset];
+                      break;
+                    case MAX:
+                      sum_or_max = std::max(sum_or_max, input[input_offset]);
+                      break;
+                    default:
+                      MACE_CHECK(false, "Unsupported pooling type: ",
+                                 pooling_type_);
                   }
-                  max = std::max(max, val);
-                }
-              }
-            } else {
-              const float *sptr = input_tensor->data<float>() + (batch * channels + q) * w * h + w * i * stride + j * stride;
-              max = sptr[0];
-              for (int m = 0; m < kernel_size; m++) {
-                for (int n = 0; n < kernel_size; n++) {
-                  val = sptr[w * m + n];
-                  max = std::max(max, val);
                 }
               }
             }
-            outptr[j] = max;
-          }
-
-          outptr += outw;
-        }
-      }
-    }
-  } else if (pooling_type == PoolMethod_AVE) {
-#pragma omp parallel for
-    for (int batch = 0; batch < batch_size; batch++) {
-      for (int q = 0; q < channels; q++) {
-        float *outptr = output_tensor->mutable_data<float>() + (batch * channels + q) * outw * outh;
-
-        for (int i = 0; i < outh; i++) {
-          for (int j = 0; j < outw; j++) {
-            float val;
-            float sum = 0.0;
-            if (padding == PADDING_ZERO) {
-              for (int m = 0; m < kernel_size; m++) {
-                for (int n = 0; n < kernel_size; n++) {
-                  if (i * stride - pad_top + m < 0 || j * stride - pad_left + n < 0 ||
-                      i * stride - pad_top + m >= h || j * stride - pad_left + n >= w) {
-                    val = 0.0;
-                  } else {
-                    int index =
-                    (batch * channels + q) * w * h + w * (i * stride - pad_top + m) + j * stride - pad_left + n;
-                    val = input_tensor->data<float>()[index];
-                  }
-                  sum += val;
-                }
-              }
-            } else {
-              const float *sptr =
-              input_tensor->data<float>() + (batch * channels + q) * w * h + w * i * stride + j * stride;
-              for (int m = 0; m < kernel_size; m++) {
-                for (int n = 0; n < kernel_size; n++) {
-                  val = sptr[w * m + n];
-                  sum += val;
-                }
-              }
+            switch (pooling_type_) {
+              case AVG:
+                output[out_offset] = sum_or_max / (kernel_h * kernel_w);
+                break;
+              case MAX:
+                output[out_offset] = sum_or_max;
+                break;
+              default:
+                MACE_CHECK(false, "Unsupported pooling type: ", pooling_type_);
             }
-            outptr[j] = sum / (kernel_size * kernel_size);
+            out_offset += 1;
           }
-
-          outptr += outw;
         }
       }
     }
   }
 
-}
+private:
+  const PoolingType pooling_type_;
+  const int* kernels_;
+  const int* strides_;
+  const int* paddings_;
+  const int* dilations_;
+};
+
+
 } //  namespace kernels
 } //  namespace mace
 

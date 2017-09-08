@@ -51,13 +51,13 @@ class Conv2dFunctor {
       MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
       // The left-upper most offset of the padded input
-      int padded_h_start = 0 - paddings_[0];
-      int padded_w_start = 0 - paddings_[1];
-      int padded_h_stop = input_height + paddings_[0];
-      int padded_w_stop = input_width + paddings_[1];
+      int padded_h_start = 0 - paddings_[0] / 2;
+      int padded_w_start = 0 - paddings_[1] / 2;
+      int padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
+      int padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
 
+#pragma omp parallel for collpse(2)
       for (int n = 0; n < batch; ++n) {
-        #pragma omp parallel for
         for (int c = 0; c < channels; ++c) {
           for (int h = 0; h < height; ++h) {
             for (int w = 0; w < width; ++w) {
