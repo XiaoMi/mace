@@ -11,19 +11,12 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
-struct BatchNormFunctorBase {
-  BatchNormFunctorBase(const float variance_epsilon)
-          :variance_epsilon_(variance_epsilon){}
-
-  float variance_epsilon_;
-};
-
-
 template<DeviceType D, typename T>
-struct BatchNormFunctor : public BatchNormFunctorBase<D, T> {
+struct BatchNormFunctor {
+  float variance_epsilon_;
+
   BatchNormFunctor(const float variance_epsilon)
-          :BatchNormFunctorBase<D, T>(variance_epsilon){}
+          : variance_epsilon_(variance_epsilon){}
 
   void operator()(const T* input,
                   const T* scale,
@@ -57,8 +50,19 @@ struct BatchNormFunctor : public BatchNormFunctorBase<D, T> {
       }
     }
   }
-
 };
+
+template <>
+void BatchNormFunctor<DeviceType::NEON, float>::operator()(const float* input,
+                                                           const float* scale,
+                                                           const float* offset,
+                                                           const float* mean,
+                                                           const float* var,
+                                                           const index_t n,
+                                                           const index_t channel,
+                                                           const index_t sample_size,
+                                                           float* output);
+
 
 } //  namepsace kernels
 } //  namespace mace

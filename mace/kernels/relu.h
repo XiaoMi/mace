@@ -19,6 +19,11 @@ struct ReluFunctor {
   }
 };
 
+template <>
+void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
+                                                      float *output,
+                                                      index_t size);
+
 } //  namespace kernels
 } //  namespace mace
 
