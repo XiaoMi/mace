@@ -17,8 +17,8 @@ TEST(BatchNormNeonTest, Simple) {
   // generate random input
   index_t batch = 1 + rand() % 128;
   index_t channels = 3;
-  index_t height = 2 + rand() % 100;
-  index_t width = 2 + rand() % 100;
+  index_t height = 10 + rand() % 100;
+  index_t width = 10 + rand() % 100;
 
   index_t input_size = batch * channels * height * width;
   std::vector<float> input(input_size, 0.0);
