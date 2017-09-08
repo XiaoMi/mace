@@ -12,7 +12,6 @@
 #include <vector>
 #include <algorithm>
 
-#include "mace/core/integral_types.h"
 #include "mace/core/logging.h"
 
 using std::set;
@@ -21,7 +20,7 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-typedef int64 TIndex;
+typedef int64_t index_t;
 
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN

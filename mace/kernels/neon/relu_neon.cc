@@ -10,14 +10,14 @@ namespace kernels {
 
 void NeonReluFuntion_float(const Tensor *input_tensor,
                            Tensor *output_tensor) {
-  int64 size = input_tensor->size();
+  int64_t size = input_tensor->size();
   output_tensor->ResizeLike(input_tensor);
   const float *input = input_tensor->data<float>();
   float *output = output_tensor->mutable_data<float>();
 
 #pragma omp parallel for num_threads(1) // no significant performance improve
-  for (int64 i = 0; i < size; i += kCostPerGroup) {
-    int64 count = std::min(static_cast<int64>(kCostPerGroup), size - i);
+  for (int64_t i = 0; i < size; i += kCostPerGroup) {
+    int64_t count = std::min(static_cast<int64_t>(kCostPerGroup), size - i);
     int nn = count >> 2;
     int remain = count - (nn << 2);
     const float *inptr = input + i;

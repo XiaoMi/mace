@@ -25,13 +25,13 @@ namespace mace {
   switch (TYPE_ENUM) {                                         \
     CASE(float, SINGLE_ARG(STMTS))                             \
     CASE(double, SINGLE_ARG(STMTS))                            \
-    CASE(int32, SINGLE_ARG(STMTS))                             \
-    CASE(uint8, SINGLE_ARG(STMTS))                             \
-    CASE(uint16, SINGLE_ARG(STMTS))                            \
-    CASE(int16, SINGLE_ARG(STMTS))                             \
-    CASE(int8, SINGLE_ARG(STMTS))                              \
+    CASE(int32_t, SINGLE_ARG(STMTS))                             \
+    CASE(uint8_t, SINGLE_ARG(STMTS))                             \
+    CASE(uint16_t, SINGLE_ARG(STMTS))                            \
+    CASE(int16_t, SINGLE_ARG(STMTS))                             \
+    CASE(int8_t, SINGLE_ARG(STMTS))                              \
     CASE(string, SINGLE_ARG(STMTS))                            \
-    CASE(int64, SINGLE_ARG(STMTS))                             \
+    CASE(int64_t, SINGLE_ARG(STMTS))                             \
     CASE(bool, SINGLE_ARG(STMTS))                              \
     case DT_INVALID:                                           \
       INVALID;                                                 \
@@ -64,17 +64,17 @@ class Tensor {
 
   inline DataType dtype() const { return dtype_; }
 
-  inline const vector<TIndex>& shape() const { return shape_; }
+  inline const vector<index_t>& shape() const { return shape_; }
 
-  inline TIndex dim_size() const { return shape_.size(); }
+  inline index_t dim_size() const { return shape_.size(); }
 
-  inline TIndex dim(TIndex index) const {
+  inline index_t dim(index_t index) const {
     MACE_CHECK(index < shape_.size(), "Exceeding ndim limit");
     MACE_CHECK(index >= 0, "Cannot have negative dimension index");
     return shape_[index];
   }
 
-  inline TIndex size() const { return size_; }
+  inline index_t size() const { return size_; }
 
   inline const void* raw_data() const {
     MACE_CHECK(data_.get() || size_ == 0);
@@ -108,9 +108,9 @@ class Tensor {
     return static_cast<T*>(raw_mutable_data());
   }
 
-  inline void Resize(const vector<TIndex>& shape) {
+  inline void Resize(const vector<index_t>& shape) {
     shape_ = shape;
-    TIndex size = NumElements();
+    index_t size = NumElements();
     if (size_ != size) {
       size_ = size;
       data_.reset();
@@ -126,14 +126,14 @@ class Tensor {
   }
 
   template <typename T>
-  inline void Copy(const T* src, TIndex size) {
+  inline void Copy(const T* src, index_t size) {
     MACE_CHECK(size == size_, "copy src and dst with different size.");
     CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
   }
 
   template <typename SrcType, typename DstType>
   inline void CopyWithCast(const SrcType* src, size_t size) {
-    MACE_CHECK(static_cast<TIndex>(size) == size_, "copy src and dst with different size.");
+    MACE_CHECK(static_cast<index_t>(size) == size_, "copy src and dst with different size.");
     unique_ptr<DstType[]> buffer(new DstType[size]);
     for (size_t i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
@@ -161,15 +161,15 @@ class Tensor {
   }
 
  private:
-  inline int64 NumElements() const {
-    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64>());
+  inline int64_t NumElements() const {
+    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64_t>());
   }
 
   Allocator* alloc_;
-  TIndex size_;
+  index_t size_;
   DataType dtype_;
   std::shared_ptr<void> data_;
-  vector<TIndex> shape_;
+  vector<index_t> shape_;
 };
 
 } // namespace tensor

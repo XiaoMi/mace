@@ -11,7 +11,7 @@ using namespace mace;
 using namespace mace::kernels;
 
 static void AddNBenchmark(int iters, int n, int type) {
-  const int64 tot = static_cast<int64>(iters) * n * 3;
+  const int64_t tot = static_cast<int64_t>(iters) * n * 3;
   mace::testing::ItemsProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
@@ -35,7 +35,7 @@ static void AddNBenchmark(int iters, int n, int type) {
   float *input3 = input_tensor3.mutable_data<float>();
   float *output = output_tensor.mutable_data<float>();
 
-  for (int64 i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     input1[i] = nd(gen);
     input2[i] = nd(gen);
     input3[i] = nd(gen);

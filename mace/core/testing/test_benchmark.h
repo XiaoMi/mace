@@ -42,8 +42,8 @@ class Benchmark {
 };
 
 void RunBenchmarks();
-void BytesProcessed(int64);
-void ItemsProcessed(int64);
+void BytesProcessed(int64_t);
+void ItemsProcessed(int64_t);
 void StartTiming();
 void StopTiming();
 

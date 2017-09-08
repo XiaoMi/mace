@@ -16,10 +16,10 @@ namespace mace {
 
 namespace testing {
 
-inline int64 NowMicros() {
+inline int64_t NowMicros() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
-  return static_cast<int64>(tv.tv_sec) * 1000000 + tv.tv_usec;
+  return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
 
 }  // namespace testing
