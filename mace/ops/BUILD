@@ -51,3 +51,15 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "conv_2d_test",
+    srcs = ["conv_2d_test.cc",],
+    deps = [
+        ":ops",
+        ":test",
+        "@gtest//:gtest_main",
+    ],
+    copts = ['-std=c++11'],
+    linkstatic = 1,
+)
