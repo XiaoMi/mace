@@ -7,6 +7,8 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
+load("//mace:mace.bzl", "if_android")
+
 cc_library(
     name = "core",
     srcs = glob([
@@ -19,6 +21,10 @@ cc_library(
     deps = [
         "//mace/proto:cc_proto",
     ],
+    linkopts = if_android([
+        "-llog",
+        "-pie",
+    ]),
 )
 
 # Main program for tests

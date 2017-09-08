@@ -15,7 +15,7 @@ TEST(NeonTest, AddN) {
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
 
-  int64 count = 100000;
+  int64_t count = 100000;
   Tensor input_tensor1(cpu_allocator(), DataType::DT_FLOAT);
   input_tensor1.Resize({100, 1000});
   Tensor input_tensor2(cpu_allocator(), DataType::DT_FLOAT);
@@ -37,7 +37,7 @@ TEST(NeonTest, AddN) {
   float *output = output_tensor.mutable_data<float>();
   float *output_neon = output_tensor_neon.mutable_data<float>();
 
-  for (int64 i = 0; i < count; ++i) {
+  for (int64_t i = 0; i < count; ++i) {
     input1[i] = nd(gen);
     input2[i] = nd(gen);
     input3[i] = nd(gen);
@@ -48,7 +48,7 @@ TEST(NeonTest, AddN) {
 
   ASSERT_EQ(count, output_tensor.size());
   ASSERT_EQ(count, output_tensor_neon.size());
-  for (int64 i = 0; i < count; ++i) {
+  for (int64_t i = 0; i < count; ++i) {
     ASSERT_FLOAT_EQ(output[i], output_neon[i]);
   }
 }

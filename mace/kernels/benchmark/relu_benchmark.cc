@@ -11,7 +11,7 @@ using namespace mace;
 using namespace mace::kernels;
 
 static void ReluBenchmark(int iters, int n, int type) {
-  const int64 tot = static_cast<int64>(iters) * n;
+  const int64_t tot = static_cast<int64_t>(iters) * n;
   mace::testing::ItemsProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
@@ -25,7 +25,7 @@ static void ReluBenchmark(int iters, int n, int type) {
   output_tensor.ResizeLike(input_tensor);
   float *input = input_tensor.mutable_data<float>();
   float *output = output_tensor.mutable_data<float>();
-  for (int64 i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     input[i] = nd(gen);
   }
 

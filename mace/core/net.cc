@@ -37,6 +37,7 @@ bool SimpleNet::Run() {
       return false;
     }
   }
+  return true;
 }
 
 unique_ptr<NetBase> CreateNet(const NetDef& net_def,

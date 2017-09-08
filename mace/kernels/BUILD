@@ -18,6 +18,9 @@ cc_library(
         "//mace/core:core",
     ],
     copts = ['-std=c++11'],
+    linkopts = ["-fopenmp"] + if_android([
+        "-lm",
+        ]),
 )
 
 cc_test(
@@ -29,11 +32,9 @@ cc_test(
         "//mace/core:core",
     ],
     copts = ['-std=c++11'],
-    linkopts = ["-fopenmp"] + if_android([
+    linkopts = if_android([
         "-pie",
-        "-llog",
-        "-lm",
-    ]),
+        ]),
     linkstatic = 1,
     testonly = 1,
 )
@@ -47,11 +48,6 @@ cc_test(
         "//mace/core:test_benchmark_main",
     ],
     copts = ['-std=c++11'],
-    linkopts = ["-fopenmp"] + if_android([
-        "-pie",
-        "-llog",
-        "-lm",
-    ]),
     linkstatic = 1,
     testonly = 1,
 )

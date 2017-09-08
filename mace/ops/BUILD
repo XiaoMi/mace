@@ -10,9 +10,27 @@ licenses(["notice"])  # Apache 2.0
 load("//mace:mace.bzl", "if_android")
 
 cc_library(
+    name = "test",
+    testonly = 1,
+    hdrs = [
+        "ops_test_util.h",
+    ],
+    deps = [
+        "//mace/core",
+        "@gtest//:gtest",
+    ],
+)
+
+cc_library(
     name = "ops",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
+    srcs = glob(
+        ["*.cc"],
+        exclude = ["*_test.cc"],
+    ),
+    hdrs = glob(
+        ["*.h"],
+        exclude = ["ops_test_util.h"],
+    ),
     copts = ["-std=c++11"],
     deps = [
         "//mace/core",
@@ -50,6 +68,18 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":ops",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "batch_norm_test",
+    srcs = ["batch_norm_test.cc"],
+    copts = ["-std=c++11"],
+    linkstatic = 1,
+    deps = [
+        ":ops",
+        ":test",
         "@gtest//:gtest_main",
     ],
 )
