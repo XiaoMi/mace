@@ -26,8 +26,8 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(const float* input,
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
   float new_scale, new_offset;
-  int count = sample_size >> 2;
-  int remain_count = sample_size - count;
+  index_t count = sample_size >> 2;
+  index_t remain_count = sample_size - (count << 2);
   for (index_t c = 0; c < channel; ++c) {
     new_scale = scale[c] / std::sqrt(var[c] + this->variance_epsilon_);
     new_offset = offset[c] - mean[c] * new_scale;
