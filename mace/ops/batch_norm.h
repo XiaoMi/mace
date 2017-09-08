@@ -37,12 +37,12 @@ class BatchNormOp : public Operator<D, T> {
       const index_t channel = input->dim(1);
       const index_t sample_size = input->dim(2) * input->dim(3);
 
-      const float* input_ptr = input->data<float>();
-      const float* scale_ptr = scale->data<float>();
-      const float* offset_ptr = offset->data<float>();
-      const float* mean_ptr = mean->data<float>();
-      const float* var_ptr = var->data<float>();
-      float* output_ptr = output->mutable_data<float>();
+      const T* input_ptr = input->data<T>();
+      const T* scale_ptr = scale->data<T>();
+      const T* offset_ptr = offset->data<T>();
+      const T* mean_ptr = mean->data<T>();
+      const T* var_ptr = var->data<T>();
+      T* output_ptr = output->mutable_data<T>();
 
       functor_(input_ptr, scale_ptr, offset_ptr, mean_ptr, var_ptr,
                                      n, channel, sample_size,
