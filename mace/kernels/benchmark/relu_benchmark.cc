@@ -27,10 +27,14 @@ static void ReluBenchmark(int iters, int n, int type) {
 
   if (type == DeviceType::CPU) {
     ReluFunctor<DeviceType::CPU, float> relu_functor;
-    relu_functor(&input[0], &output[0], n);
+    while (--iters) {
+      relu_functor(&input[0], &output[0], n);
+    }
   } else if (type == DeviceType::NEON) {
     ReluFunctor<DeviceType::NEON, float> neon_relu_functor;
-    neon_relu_functor(&input[0], &output[0], n);
+    while (--iters) {
+      neon_relu_functor(&input[0], &output[0], n);
+    }
   }
 }
 
