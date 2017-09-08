@@ -23,14 +23,10 @@ TEST_F(BatchNormOpTest, Simple) {
   // Add input data
   AddInputFromArray<float>("Input", {1, 1, 6, 2},
                     {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
-  AddInputFromArray<float>("Scale", {2},
-                           {4.0f, 4.0f});
-  AddInputFromArray<float>("Offset", {2},
-                           {2.0, 2.0});
-  AddInputFromArray<float>("Mean", {2},
-                           {10, 10});
-  AddInputFromArray<float>("Var", {2},
-                           {11.67f, 11.67f});
+  AddInputFromArray<float>("Scale", {1}, {4.0f});
+  AddInputFromArray<float>("Offset", {1}, {2.0});
+  AddInputFromArray<float>("Mean", {1}, {10});
+  AddInputFromArray<float>("Var", {1}, {11.67f});
 
   // Run
   RunOp();
