@@ -68,9 +68,8 @@ class Tensor {
 
   inline index_t dim_size() const { return shape_.size(); }
 
-  inline index_t dim(index_t index) const {
+  inline index_t dim(unsigned int index) const {
     MACE_CHECK(index < shape_.size(), "Exceeding ndim limit");
-    MACE_CHECK(index >= 0, "Cannot have negative dimension index");
     return shape_[index];
   }
 

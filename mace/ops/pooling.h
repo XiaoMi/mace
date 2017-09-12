@@ -29,10 +29,10 @@ public:
     std::vector<index_t> output_shape;
     std::vector<int> paddings;
     std::vector<index_t> filter_shape = std::vector<index_t>(4);
-    filter_shape[0] = kernels_[0];
-    filter_shape[1] = kernels_[1];
-    filter_shape[2] = in_shape[0];
-    filter_shape[3] = in_shape[1];
+    filter_shape[0] = in_shape[1];
+    filter_shape[1] = in_shape[0];
+    filter_shape[2] = kernels_[0];
+    filter_shape[3] = kernels_[1];
     this->CalcPaddingAndOutputSize(in_shape.data(), filter_shape.data(),
                                    &output_shape, &paddings);
     output->Resize(output_shape);
@@ -50,8 +50,8 @@ public:
   };
 
 protected:
-  PoolingType pooling_type_;
   std::vector<int> kernels_;
+  PoolingType pooling_type_;
 
   OP_INPUT_TAGS(INPUT);
   OP_OUTPUT_TAGS(OUTPUT);

@@ -5,7 +5,6 @@
 #include "gtest/gtest.h"
 
 #include "mace/core/operator.h"
-#include "mace/core/net.h"
 #include "mace/ops/ops_test_util.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/kernels/pooling.h"

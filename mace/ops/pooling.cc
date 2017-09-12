@@ -4,8 +4,6 @@
 
 
 #include "mace/ops/pooling.h"
-#include "mace/proto/mace.pb.h"
-#include "mace/kernels/pooling.h"
 
 namespace mace {
 
