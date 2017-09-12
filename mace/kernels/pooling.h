@@ -73,7 +73,7 @@ public:
               case AVG:
                 break;
               case MAX:
-                sum_or_max = -std::numeric_limits<T>::max();
+                sum_or_max = std::numeric_limits<T>::lowest();
                 break;
               default:
                 MACE_CHECK(false, "Unsupported pooling type: ", pooling_type_);
