@@ -41,9 +41,16 @@ cc_library(
 )
 
 cc_test(
-    name = "batch_norm_test",
-    srcs = ["batch_norm_test.cc"],
+    name = "ops_test",
+    srcs = glob(
+        ["*_test.cc"],
+    ),
     copts = ["-std=c++11"],
+    linkopts = if_android([
+        "-pie",
+        "-llog",
+        "-latomic",
+    ]),
     linkstatic = 1,
     deps = [
         ":ops",
