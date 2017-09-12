@@ -27,7 +27,7 @@ class ConvPool2dOpBase : public Operator<D, T> {
     dilations_(OperatorBase::GetRepeatedArgument<int>("dilations")) {}
 
   void CalcPaddingAndOutputSize(const index_t* input_shape,  // NCHW
-                                const index_t* filter_shape,  // HWIO
+                                const index_t* filter_shape,  // OIHW
                                 std::vector<index_t>* output_shape,
                                 std::vector<int>* padding_size) {
     MACE_CHECK(dilations_[0] > 0 && dilations_[1] > 0,
@@ -44,12 +44,12 @@ class ConvPool2dOpBase : public Operator<D, T> {
     *padding_size = {0, 0};
 
     index_t output_height, output_width;
-    index_t kernel_height = filter_shape[0];
-    index_t kernel_width = filter_shape[1];
-    index_t output_channels = filter_shape[3];
+    index_t kernel_height = filter_shape[2];
+    index_t kernel_width = filter_shape[3];
+    index_t output_channels = filter_shape[0];
 
-    int k_extent_height = (kernel_height - 1) * dilations_[0] + 1;
-    int k_extent_width = (kernel_width - 1) * dilations_[1] + 1;
+    index_t k_extent_height = (kernel_height - 1) * dilations_[0] + 1;
+    index_t k_extent_width = (kernel_width - 1) * dilations_[1] + 1;
 
     switch (padding_) {
       case VALID:

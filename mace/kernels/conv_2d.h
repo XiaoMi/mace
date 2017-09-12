@@ -22,7 +22,7 @@ class Conv2dFunctor {
 
     void operator()(const T* input, // NCHW
                     const index_t* input_shape,
-                    const T* filter, // kernel_h, kernel_w, c_in, c_out
+                    const T* filter, // c_out, c_in, kernel_h, kernel_w
                     const index_t* filter_shape,
                     const T* bias, // c_out
                     T* output, // NCHW
@@ -39,8 +39,8 @@ class Conv2dFunctor {
       index_t input_height   = input_shape[2];
       index_t input_width    = input_shape[3];
 
-      int kernel_h = filter_shape[0];
-      int kernel_w  = filter_shape[1];
+      index_t kernel_h = filter_shape[2];
+      index_t kernel_w  = filter_shape[3];
 
       int stride_h = strides_[0];
       int stride_w = strides_[1];
@@ -53,10 +53,12 @@ class Conv2dFunctor {
       // The left-upper most offset of the padded input
       int padded_h_start = 0 - paddings_[0] / 2;
       int padded_w_start = 0 - paddings_[1] / 2;
-      int padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
-      int padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
+      index_t padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
+      index_t padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
 
-#pragma omp parallel for collpse(2)
+      index_t kernel_size = input_channels * kernel_h * kernel_w;
+
+#pragma omp parallel for collapse(2)
       for (int n = 0; n < batch; ++n) {
         for (int c = 0; c < channels; ++c) {
           for (int h = 0; h < height; ++h) {
@@ -65,17 +67,10 @@ class Conv2dFunctor {
                                c * height * width +
                                h * width + w;
               T sum = 0;
+              const T* filter_ptr = filter + c * kernel_size;
               for (int inc = 0; inc < input_channels; ++inc) {
                 for (int kh = 0; kh < kernel_h; ++kh) {
                   for (int kw = 0; kw < kernel_w; ++kw) {
-                    /*
-                     *  TODO The tensorflow filter order is HWCiCo.
-                     *  We should consider other order for different
-                     *  implementaion to optimize memory access.
-                     */
-                    int filter_offset = kh * kernel_w * input_channels * channels +
-                                        kw * input_channels * channels +
-                                        inc * channels + c;
 
                     int inh = padded_h_start + h * stride_h + dilation_h * kh;
                     int inw = padded_w_start + w * stride_w + dilation_w * kw;
@@ -94,8 +89,9 @@ class Conv2dFunctor {
                         n * input_channels * input_height * input_width +
                         inc * input_height * input_width +
                         inh * input_width + inw;
-                      sum += input[input_offset] * filter[filter_offset];
+                      sum += input[input_offset] * *filter_ptr;
                     }
+                    ++filter_ptr;
                   }
                 }
                 output[offset] = sum + bias[c];

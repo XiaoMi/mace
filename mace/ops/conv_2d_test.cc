@@ -32,7 +32,7 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
                      1, 1, 1,
                      1, 1, 1,
                      1, 1, 1});
-  AddInputFromArray<float>("Filter", {3, 3, 2, 1},
+  AddInputFromArray<float>("Filter", {1, 2, 3, 3},
                            {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
                             1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
                             1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
@@ -69,7 +69,7 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
                      1, 1, 1,
                      1, 1, 1,
                      1, 1, 1});
-  AddInputFromArray<float>("Filter", {3, 3, 2, 1},
+  AddInputFromArray<float>("Filter", {1, 2, 3, 3},
                            {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
                             1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
                             1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
@@ -113,16 +113,11 @@ TEST_F(Conv2dOpTest, Combined) {
                      1, 1, 1, 1, 1,
                      1, 1, 1, 1, 1,
                      1, 1, 1, 1, 1});
-  AddInputFromArray<float>("Filter", {3, 3, 2, 2},
-                           {1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f,
-                            1.0f, 0.5f, 1.0f, 0.5f});
+  AddInputFromArray<float>("Filter", {2, 2, 3, 3},
+                           {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                            1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                            0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
+                            0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f});
   AddInputFromArray<float>("Bias", {2}, {0.1f, 0.2f});
 
   // Run
