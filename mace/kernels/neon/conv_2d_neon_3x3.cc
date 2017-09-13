@@ -18,5 +18,5 @@ void Conv2dNeon<3, 3, 1, 1>(const float* input, // NCHW
 
 }
 
-} // namespace kernels
+} //  namespace kernels
 } //  namespace mace

@@ -18,7 +18,7 @@ inline void Conv2dNeon(const float* input, // NCHW
                            float* output, // NCHW
                            const index_t* output_shape);
 
-} // namespace kernels
+} //  namespace kernels
 } //  namespace mace
 
 #endif //  MACE_KERNELS_NEON_CONV_2D_NEON_BASE_H_

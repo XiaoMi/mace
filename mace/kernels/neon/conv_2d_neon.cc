@@ -60,5 +60,5 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // N
   );
 }
 
-} // namespace kernels
+} //  namespace kernels
 } //  namespace mace
