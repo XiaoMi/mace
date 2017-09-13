@@ -60,7 +60,6 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);
 
-BM_CONV_2D(1, 3, 256, 256, 1, 1, 1, VALID, 64, float);
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 
 } //  namespace mace
