@@ -108,14 +108,14 @@ class Conv2dFunctor {
     const int* dilations_; // [dilation_h, dilation_w]
 };
 
-template<>
-void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // NCHW
-                const index_t* input_shape,
-                const float* filter, // c_out, c_in, kernel_h, kernel_w
-                const index_t* filter_shape,
-                const float* bias, // c_out
-                float* output, // NCHW
-                const index_t* output_shape);
+template <>
+void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input,
+                                                        const index_t* input_shape,
+                                                        const float* filter,
+                                                        const index_t* filter_shape,
+                                                        const float* bias,
+                                                        float* output,
+                                                        const index_t* output_shape);
 
 } //  namespace kernels
 } //  namespace mace

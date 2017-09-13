@@ -28,6 +28,7 @@ class Benchmark {
   Benchmark* ArgPair(int x, int y);
 
   static void Run();
+  static void Run(const char* pattern);
 
  private:
   string name_;

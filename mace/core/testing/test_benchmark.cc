@@ -6,7 +6,9 @@
 #include <cstdlib>
 
 #include <algorithm>
+#include <regex>
 #include <vector>
+
 #include "mace/core/logging.h"
 #include "mace/core/testing/env_time.h"
 #include "mace/core/testing/test_benchmark.h"
@@ -52,12 +54,23 @@ Benchmark* Benchmark::ArgPair(int x, int y) {
 
 // Run all benchmarks
 void Benchmark::Run() {
+  Run("all");
+}
+
+void Benchmark::Run(const char* pattern) {
   if (!all_benchmarks) return;
+
+  if (std::string(pattern) == "all") {
+    pattern = ".*";
+  }
+  std::regex regex(pattern);
 
   // Compute name width.
   int width = 10;
   char name[100];
+  std::smatch match;
   for (auto b : *all_benchmarks) {
+    if (!std::regex_match(b->name_, match, regex)) continue;
     for (auto arg : b->args_) {
       strcpy(name, b->name_.c_str());
       if (arg.first >= 0) {
@@ -74,7 +87,7 @@ void Benchmark::Run() {
   printf("%-*s %10s %10s\n", width, "Benchmark", "Time(ns)", "Iterations");
   printf("%s\n", string(width + 22, '-').c_str());
   for (auto b : *all_benchmarks) {
-
+    if (!std::regex_match(b->name_, match, regex)) continue;
     for (auto arg : b->args_) {
       strcpy(name, b->name_.c_str());
       if (arg.first >= 0) {

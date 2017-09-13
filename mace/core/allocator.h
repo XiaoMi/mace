@@ -31,7 +31,7 @@ class Allocator {
   template <typename T>
   T* New(size_t num_elements) {
     if (num_elements > (std::numeric_limits<size_t>::max() / sizeof(T))) {
-      return NULL;
+      return nullptr;
     }
     void* p = New(sizeof(T) * num_elements);
     T* typed_p = reinterpret_cast<T*>(p);
