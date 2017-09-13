@@ -6,8 +6,8 @@
 #define MACE_OPS_POOLING_H_
 
 #include "mace/core/operator.h"
-#include "mace/ops/conv_pool_2d_base.h"
 #include "mace/kernels/pooling.h"
+#include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
 
@@ -33,8 +33,13 @@ public:
     filter_shape[1] = in_shape[0];
     filter_shape[2] = kernels_[0];
     filter_shape[3] = kernels_[1];
-    this->CalcPaddingAndOutputSize(in_shape.data(), filter_shape.data(),
-                                   &output_shape, &paddings);
+    kernels::CalcPaddingAndOutputSize(in_shape.data(),
+                                      filter_shape.data(),
+                                      this->dilations_.data(),
+                                      this->strides_.data(),
+                                      this->padding_,
+                                      &output_shape,
+                                      &paddings);
     output->Resize(output_shape);
 
     auto pooling_func = kernels::PoolingFunctor<D, T>(pooling_type_,

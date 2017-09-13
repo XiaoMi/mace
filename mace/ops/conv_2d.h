@@ -27,10 +27,13 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
 
     std::vector<index_t> output_shape;
     std::vector<int> paddings;
-    this->CalcPaddingAndOutputSize(input->shape().data(),
-                                   filter->shape().data(),
-                                   &output_shape,
-                                   &paddings);
+    kernels::CalcPaddingAndOutputSize(input->shape().data(),
+                                      filter->shape().data(),
+                                      this->dilations_.data(),
+                                      this->strides_.data(),
+                                      this->padding_,
+                                      &output_shape,
+                                      &paddings);
     output->Resize(output_shape);
 
     auto conv2d = kernels::Conv2dFunctor<D, T>(this->strides_.data(),
