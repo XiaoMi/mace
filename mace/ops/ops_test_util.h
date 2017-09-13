@@ -37,15 +37,31 @@ class OpDefBuilder {
 
 class OpsTestNet {
   public:
+    OpsTestNet() {}
+
     template <typename T>
     void AddInputFromArray(const char* name,
                            const std::vector<index_t>& shape,
                            const std::vector<T>& data) {
       Tensor* input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
       input->Resize(shape);
-      float* input_data = input->mutable_data<float>();
-      // TODO check the dims
+      T* input_data = input->mutable_data<T>();
+      MACE_CHECK(input->size() == data.size());
       memcpy(input_data, data.data(), data.size() * sizeof(T));
+    }
+
+    template <typename T>
+    void AddRandomInput(const char* name, const std::vector<index_t>& shape) {
+      Tensor* input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
+      input->Resize(shape);
+      float* input_data = input->mutable_data<T>();
+
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::normal_distribution<T> nd(0, 1);
+
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd]{ return nd(gen); });
     }
 
     void AddIntArg(const char* name, const int value) {
@@ -98,7 +114,7 @@ class OpsTestNet {
       if (!net_) {
         NetDef net_def;
         net_def.add_op()->CopyFrom(op_def_);
-        VLOG(0) << net_def.DebugString();
+        VLOG(3) << net_def.DebugString();
         net_ = CreateNet(net_def, &ws_, device);
       }
       return net_->Run();

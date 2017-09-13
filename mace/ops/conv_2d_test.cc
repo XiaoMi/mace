@@ -3,8 +3,8 @@
 //
 
 #include "mace/core/operator.h"
-#include "mace/ops/ops_test_util.h"
 #include "mace/ops/conv_2d.h"
+#include "mace/ops/ops_test_util.h"
 
 using namespace mace;
 

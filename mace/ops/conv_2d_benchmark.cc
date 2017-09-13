@@ -4,12 +4,12 @@
 
 #include <algorithm>
 
+#include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/conv_2d.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_2d.h"
+#include "mace/ops/ops_test_util.h"
 
 namespace mace {
-namespace kernels {
 
 template <DeviceType D, typename T>
 static void Conv2d(int iters, int batch, int channels, int height, int width,
@@ -17,8 +17,32 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
                    Padding padding, int output_channels) {
   mace::testing::StopTiming();
 
+  OpsTestNet net;
+  OpDefBuilder("Conv2d", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .Finalize(net.operator_def());
+
+  // Add args
+  net.AddIntsArg("strides", {stride, stride});
+  net.AddIntArg("padding", padding);
+  net.AddIntsArg("dilations", {1, 1});
+
+  // Add input data
+  net.AddRandomInput<float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<float>("Filter", {output_channels, channels, kernel_h, kernel_w});
+  net.AddRandomInput<float>("Bias", {output_channels});
+
+  // Worm-up
+  for (int i = 0; i < 5; ++i) {
+    net.RunOp(D);
+  }
+
   mace::testing::StartTiming();
   while(iters--) {
+    net.RunOp(D);
   }
 }
 
@@ -36,7 +60,7 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);
 
+BM_CONV_2D(1, 3, 256, 256, 1, 1, 1, VALID, 64, float);
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 
-} //  namespace kernels
 } //  namespace mace
