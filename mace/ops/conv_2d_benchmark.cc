@@ -2,10 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <algorithm>
+
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/ops/conv_2d.h"
+#include "mace/kernels/conv_2d.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
+namespace kernels {
 
 template <DeviceType D, typename T>
 static void Conv2d(int iters, int batch, int channels, int height, int width,
@@ -34,4 +38,5 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
 
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 
+} //  namespace kernels
 } //  namespace mace

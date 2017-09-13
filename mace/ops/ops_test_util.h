@@ -35,17 +35,12 @@ class OpDefBuilder {
     OperatorDef op_def_;
 };
 
-class OpsTestBase : public ::testing::Test {
-  protected:
-    virtual void TearDown() {
-      auto tensor_names = ws_.Tensors();
-      for (auto& name : tensor_names) {
-        ws_.RemoveTensor(name);
-      }
-    }
+class OpsTestNet {
   public:
     template <typename T>
-    void AddInputFromArray(const char* name, const std::vector<index_t>& shape, const std::vector<T>& data) {
+    void AddInputFromArray(const char* name,
+                           const std::vector<index_t>& shape,
+                           const std::vector<T>& data) {
       Tensor* input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
       input->Resize(shape);
       float* input_data = input->mutable_data<float>();
@@ -97,12 +92,16 @@ class OpsTestBase : public ::testing::Test {
 
     OperatorDef* operator_def() { return &op_def_; }
 
+    Workspace* ws() { return &ws_; }
+
     bool RunOp(DeviceType device) {
-      NetDef net_def;
-      net_def.add_op()->CopyFrom(op_def_);
-      VLOG(0) << net_def.DebugString();
-      auto net = CreateNet(net_def, &ws_, device);
-      return net->Run();
+      if (!net_) {
+        NetDef net_def;
+        net_def.add_op()->CopyFrom(op_def_);
+        VLOG(0) << net_def.DebugString();
+        net_ = CreateNet(net_def, &ws_, device);
+      }
+      return net_->Run();
     }
 
     bool RunOp() {
@@ -113,9 +112,27 @@ class OpsTestBase : public ::testing::Test {
       return ws_.GetTensor(output_name);
     }
 
-  private:
+  public:
     Workspace ws_;
     OperatorDef op_def_;
+    std::unique_ptr<NetBase> net_;
+};
+
+class OpsTestBase : public ::testing::Test {
+  public:
+    OpsTestNet* test_net() { return &test_net_; };
+
+  protected:
+    virtual void TearDown() {
+      auto ws = test_net_.ws();
+      auto tensor_names = ws->Tensors();
+      for (auto& name : tensor_names) {
+        ws->RemoveTensor(name);
+      }
+    }
+
+  private:
+    OpsTestNet test_net_;
 };
 
 template <typename T>
