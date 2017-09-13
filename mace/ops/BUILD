@@ -25,7 +25,7 @@ cc_library(
     name = "ops",
     srcs = glob(
         ["*.cc"],
-        exclude = ["*_test.cc"],
+        exclude = ["*_test.cc", "*_benchmark.cc"],
     ),
     hdrs = glob(
         ["*.h"],
@@ -46,15 +46,23 @@ cc_test(
         ["*_test.cc"],
     ),
     copts = ["-std=c++11"],
-    linkopts = if_android([
-        "-pie",
-        "-llog",
-        "-latomic",
-    ]),
     linkstatic = 1,
     deps = [
         ":ops",
         ":test",
         "@gtest//:gtest_main",
     ],
+)
+
+cc_test(
+    name = "ops_benchmark",
+    srcs = glob(["*_benchmark.cc"]),
+    deps = [
+        ":ops",
+        "//mace/core:core",
+        "//mace/core:test_benchmark_main",
+    ],
+    copts = ['-std=c++11'],
+    linkstatic = 1,
+    testonly = 1,
 )

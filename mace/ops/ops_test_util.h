@@ -9,8 +9,8 @@
 
 #include "gtest/gtest.h"
 #include "mace/core/common.h"
-#include "mace/core/tensor.h"
 #include "mace/core/net.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
 
@@ -29,7 +29,7 @@ class OpDefBuilder {
       return *this;
     }
     void Finalize(OperatorDef* op_def) const {
-      MACE_CHECK(op_def != NULL, "input should not be null.");
+      MACE_CHECK(op_def != nullptr, "input should not be null.");
       *op_def = op_def_;
     }
     OperatorDef op_def_;
@@ -49,6 +49,7 @@ class OpsTestBase : public ::testing::Test {
       Tensor* input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
       input->Resize(shape);
       float* input_data = input->mutable_data<float>();
+      // TODO check the dims
       memcpy(input_data, data.data(), data.size() * sizeof(T));
     }
 
@@ -96,12 +97,16 @@ class OpsTestBase : public ::testing::Test {
 
     OperatorDef* operator_def() { return &op_def_; }
 
-    bool RunOp() {
+    bool RunOp(DeviceType device) {
       NetDef net_def;
       net_def.add_op()->CopyFrom(op_def_);
       VLOG(0) << net_def.DebugString();
-      auto net = CreateNet(net_def, &ws_, DeviceType::CPU);
+      auto net = CreateNet(net_def, &ws_, device);
       return net->Run();
+    }
+
+    bool RunOp() {
+      return RunOp(DeviceType::CPU);
     }
 
     Tensor* GetOutput(const char* output_name) {
@@ -209,6 +214,6 @@ void ExpectTensorNear(const Tensor& x, const Tensor& y, const double abs_err) {
   Expector<T>::Near(x, y ,abs_err);
 }
 
-} //  namespace mace
+} // namespace mace
 
 #endif //  MACE_OPS_TEST_UTIL_H_

@@ -106,15 +106,26 @@ class LogMessageFatal : public LogMessage {
   if (VLOG_IS_ON(lvl)) \
   ::mace::internal::LogMessage(__FILE__, __LINE__, mace::INFO)
 
-// MACE_CHECK dies with a fatal error if condition is not true.  It is *not*
-// controlled by NDEBUG, so the check will be executed regardless of
-// compilation mode.  Therefore, it is safe to do things like:
+// MACE_CHECK/MACE_ASSERT dies with a fatal error if condition is not true.
+// MACE_ASSERT is controlled by NDEBUG ('-c opt' for bazel) while MACE_CHECK
+// will be executed regardless of compilation mode.
+// Therefore, it is safe to do things like:
 //    MACE_CHECK(fp->Write(x) == 4)
 //    MACE_CHECK(fp->Write(x) == 4, "Write failed")
+// which are not correct for MACE_ASSERT.
 #define MACE_CHECK(condition, ...)     \
   if (!(condition)) \
     LOG(FATAL) << "Check failed: " #condition " " \
     << ::mace::internal::MakeString(__VA_ARGS__)
+
+#ifndef NDEBUG
+#define MACE_ASSERT(condition, ...)     \
+  if (!(condition)) \
+    LOG(FATAL) << "Assert failed: " #condition " " \
+    << ::mace::internal::MakeString(__VA_ARGS__)
+#else
+#define MACE_ASSERT(condition, ...) ((void)0)
+#endif
 
 template <typename T>
 T&& CheckNotNull(const char* file, int line, const char* exprtext, T&& t) {

@@ -9,7 +9,12 @@
 int main(int argc, char** argv) {
   std::cout << "Running main() from test_main.cc\n";
 
-  mace::testing::Benchmark::Run();
+  // TODO Use gflags
+  if (argc == 2) {
+    mace::testing::Benchmark::Run(argv[1]);
+  } else {
+    mace::testing::Benchmark::Run("all");
+  }
   return 0;
 }
 

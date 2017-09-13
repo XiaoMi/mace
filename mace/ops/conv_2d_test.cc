@@ -136,4 +136,55 @@ TEST_F(Conv2dOpTest, Combined) {
   ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
 }
 
+TEST_F(Conv2dOpTest, Conv1x1) {
+  // Construct graph
+  OpDefBuilder("Conv2d", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .Finalize(operator_def());
+
+  // Add args
+  AddIntsArg("strides", {1, 1});
+  AddIntArg("padding", Padding::VALID);
+  AddIntsArg("dilations", {1, 1});
+
+  // Add input data
+  AddInputFromArray<float>("Input", {1, 5, 3, 10},
+                    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+  AddInputFromArray<float>("Filter", {2, 5, 1, 1},
+                           {1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                            2.0f, 2.0f, 2.0f, 2.0f, 2.0f});
+  AddInputFromArray<float>("Bias", {2}, {0.1f, 0.2f});
+
+  // Run
+  RunOp(DeviceType::NEON);
+
+  // Check
+  Tensor expected = CreateTensor<float>({1, 2, 3, 10},
+                                        {5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
+                                         5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
+                                         5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
+                                         10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f,
+                                         10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f,
+                                         10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f});
+
+  ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
+}
+
 // TODO we need more tests
