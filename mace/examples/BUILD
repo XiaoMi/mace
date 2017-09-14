@@ -6,20 +6,23 @@ cc_binary(
     srcs = [
         "helloworld.cc",
     ],
-    copts = ["-std=c++11"],
     deps = [
         "//mace/core",
         "//mace/ops",
     ],
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-ldl"]),
 )
 
 cc_test(
     name = "benchmark_example",
     srcs = ["benchmark_example.cc"],
-    copts = ["-std=c++11"],
-    linkstatic = 1,
     deps = [
         "//mace/core",
         "//mace/core:test_benchmark_main",
     ],
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-ldl"]),
+    linkstatic = 1,
+    testonly = 1,
 )

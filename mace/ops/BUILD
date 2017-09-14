@@ -31,12 +31,12 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = ["-std=c++11"],
     deps = [
         "//mace/core",
         "//mace/kernels",
         "//mace/proto:cc_proto",
     ],
+    copts = ["-std=c++11"],
     alwayslink = 1,
 )
 
@@ -45,13 +45,15 @@ cc_test(
     srcs = glob(
         ["*_test.cc"],
     ),
-    copts = ["-std=c++11"],
-    linkstatic = 1,
     deps = [
         ":ops",
         ":test",
         "@gtest//:gtest_main",
     ],
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-ldl"]),
+    linkstatic = 1,
+    testonly = 1,
 )
 
 cc_test(
@@ -64,6 +66,7 @@ cc_test(
         "//mace/core:test_benchmark_main",
     ],
     copts = ['-std=c++11'],
+    linkopts = if_android(["-ldl"]),
     linkstatic = 1,
     testonly = 1,
 )
