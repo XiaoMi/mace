@@ -240,8 +240,8 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
 
   };
 
-  for (int kernel_size : {3}) { // TODO(liu1i10) 3x3
-    for (int stride : {1}) {
+  for (int kernel_size : {1, 3}) {
+    for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);
     }
