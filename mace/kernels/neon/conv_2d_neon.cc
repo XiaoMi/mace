@@ -2,9 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include <arm_neon.h>
 #include "mace/kernels/conv_2d.h"
-#include "mace/kernels/neon/conv_2d_neon_3x3.h"
 
 namespace mace {
 namespace kernels {
@@ -50,6 +48,9 @@ extern void Conv2dNeonK1x1S1(const float* input, const index_t* input_shape,
                              const float* filter, const float* bias,
                              float* output, const index_t* output_shape);
 
+extern void Conv2dNeonK3x3S1(const float* input, const index_t* input_shape,
+                             const float* filter, const float* bias,
+                             float* output, const index_t* output_shape);
 
 template<>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // NCHW

@@ -3,7 +3,7 @@
 //
 
 #include <arm_neon.h>
-#include "mace/kernels/conv_2d.h"
+#include "mace/core/common.h"
 
 namespace mace {
 namespace kernels {
