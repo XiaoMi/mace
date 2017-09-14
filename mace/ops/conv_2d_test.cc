@@ -199,11 +199,11 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     srand(time(NULL));
 
     // generate random input
-    index_t batch = 1 + rand() % 5;
-    index_t input_channels = 3 + rand() % 50;
-    index_t height = 10 + rand() % 100;
-    index_t width = 10 + rand() % 100;
-    index_t output_channels = 3 + rand() % 50;
+    index_t batch = 1 + rand() % 10;
+    index_t input_channels = 1 + rand() % 50;
+    index_t height = 7 + rand() % 100;
+    index_t width = 7 + rand() % 100;
+    index_t output_channels = 1 + rand() % 50;
     // Construct graph
     auto& net = test_net();
     OpDefBuilder("Conv2d", "Conv2dTest")
@@ -236,11 +236,11 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     // Run NEON
     net.RunOp(DeviceType::NEON);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-5);
+    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-3);
 
   };
 
-  for (int kernel_size : {1}) { // TODO(liu1i10) 3x3
+  for (int kernel_size : {1, 3}) {
     for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);

@@ -31,9 +31,9 @@ static inline void ConstructInputWithPadding(const float* input,
 
   // Skip the padded top rows
   output_ptr += padded_top * output_width;
-  for (; batch > 0; --batch) {
-    for (; channels > 0; --channels) {
-      for(; height > 0; --height) {
+  for (int i = 0; i < batch; ++i) {
+    for (int j = 0; j < channels; ++j) {
+      for (int k = 0; k < height; ++k) {
         memcpy(output_ptr + padded_left, input, width * sizeof(float));
         input += width;
         output_ptr += output_width;
