@@ -8,7 +8,7 @@
 namespace mace {
 namespace kernels {
 
-static const int REGISTER_SIZE = 4;
+static const int kRegisterSize = 4;
 
 void Conv2dNeonK3x3S1(const float* input, // NCHW
                        const index_t* input_shape,
@@ -44,7 +44,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
         float32x4_t filter3 = vld1q_f32(filter_ptr+3);
         float32x4_t filter6 = vld1q_f32(filter_ptr+6);
 
-        const float* row[REGISTER_SIZE] = {
+        const float* row[kRegisterSize] = {
                 input_ptr, input_ptr + input_width,
                 input_ptr + 2 * input_width, input_ptr + 3 * input_width
         };
@@ -61,7 +61,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             float32x4_t sum0 = vdupq_n_f32(.0f);
             float32x4_t sum1 = vdupq_n_f32(.0f);
             float32x4_t row0_ext_0 = vld1q_f32(row[0]); //0123
-            float32x4_t row0_latter = vld1q_f32(row[0] + REGISTER_SIZE); //4567
+            float32x4_t row0_latter = vld1q_f32(row[0] + kRegisterSize); //4567
             float32x4_t row0_ext_1 = vextq_f32(row0_ext_0, row0_latter, 1); //1234
             float32x4_t row0_ext_2 = vextq_f32(row0_ext_0, row0_latter, 2); //2345
 
@@ -70,7 +70,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row0_ext_2, filter0, 2);
 
             float32x4_t row1_ext_0 = vld1q_f32(row[1]); //0123
-            float32x4_t row1_latter = vld1q_f32(row[1] + REGISTER_SIZE); //4567
+            float32x4_t row1_latter = vld1q_f32(row[1] + kRegisterSize); //4567
             float32x4_t row1_ext_1 = vextq_f32(row1_ext_0, row1_latter, 1); //1234
             float32x4_t row1_ext_2 = vextq_f32(row1_ext_0, row1_latter, 2); //2345
 
@@ -79,7 +79,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row1_ext_2, filter3, 2);
 
             row0_ext_0 = vld1q_f32(row[2]); //0123
-            row0_latter = vld1q_f32(row[2] + REGISTER_SIZE); //4567
+            row0_latter = vld1q_f32(row[2] + kRegisterSize); //4567
             row0_ext_1 = vextq_f32(row0_ext_0, row0_latter, 1); //1234
             row0_ext_2 = vextq_f32(row0_ext_0, row0_latter, 2); //2345
 
@@ -97,7 +97,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             sum1 = vfmaq_laneq_f32(sum1, row0_ext_2, filter3, 2);
 
             row1_ext_0 = vld1q_f32(row[3]); //0123
-            row1_latter = vld1q_f32(row[3] + REGISTER_SIZE); //4567
+            row1_latter = vld1q_f32(row[3] + kRegisterSize); //4567
             row1_ext_1 = vextq_f32(row1_ext_0, row1_latter, 1); //1234
             row1_ext_2 = vextq_f32(row1_ext_0, row1_latter, 2); //2345
 
@@ -112,10 +112,10 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             vst1q_f32(output_ptr1, output_row0);
             vst1q_f32(output_ptr2, output_row1);
 
-            output_ptr1 += REGISTER_SIZE;
-            output_ptr2 += REGISTER_SIZE;
-            for(int i = 0; i < REGISTER_SIZE; ++i) {
-              row[i] += REGISTER_SIZE;
+            output_ptr1 += kRegisterSize;
+            output_ptr2 += kRegisterSize;
+            for(int i = 0; i < kRegisterSize; ++i) {
+              row[i] += kRegisterSize;
             }
           }
           for (; remain_count > 0; --remain_count) {
@@ -138,13 +138,13 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
 
             ++output_ptr1;
             ++output_ptr2;
-            for(int i = 0; i < REGISTER_SIZE; ++i) {
+            for(int i = 0; i < kRegisterSize; ++i) {
               row[i] += 1;
             }
           }
           output_ptr1 += width;
           output_ptr2 += width;
-          for(int i = 0; i < REGISTER_SIZE; ++i) {
+          for(int i = 0; i < kRegisterSize; ++i) {
             row[i] += 2 + input_width;
           }
         }
@@ -155,7 +155,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
           for(; count > 0; --count) {
             float32x4_t sum0 = vdupq_n_f32(.0f);
             float32x4_t row0_ext_0 = vld1q_f32(row[0]); //0123
-            float32x4_t row0_latter = vld1q_f32(row[0] + REGISTER_SIZE); //4567
+            float32x4_t row0_latter = vld1q_f32(row[0] + kRegisterSize); //4567
             float32x4_t row0_ext_1 = vextq_f32(row0_ext_0, row0_latter, 1); //1234
             float32x4_t row0_ext_2 = vextq_f32(row0_ext_0, row0_latter, 2); //2345
 
@@ -164,7 +164,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row0_ext_2, filter0, 2);
 
             float32x4_t row1_ext_0 = vld1q_f32(row[1]); //0123
-            float32x4_t row1_latter = vld1q_f32(row[1] + REGISTER_SIZE); //4567
+            float32x4_t row1_latter = vld1q_f32(row[1] + kRegisterSize); //4567
             float32x4_t row1_ext_1 = vextq_f32(row1_ext_0, row1_latter, 1); //1234
             float32x4_t row1_ext_2 = vextq_f32(row1_ext_0, row1_latter, 2); //2345
 
@@ -173,7 +173,7 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row1_ext_2, filter3, 2);
 
             row0_ext_0 = vld1q_f32(row[2]); //0123
-            row0_latter = vld1q_f32(row[2] + REGISTER_SIZE); //4567
+            row0_latter = vld1q_f32(row[2] + kRegisterSize); //4567
             row0_ext_1 = vextq_f32(row0_ext_0, row0_latter, 1); //1234
             row0_ext_2 = vextq_f32(row0_ext_0, row0_latter, 2); //2345
 
@@ -184,9 +184,9 @@ void Conv2dNeonK3x3S1(const float* input, // NCHW
             float32x4_t output_row0 = vld1q_f32(output_ptr1);
             output_row0 = vaddq_f32(output_row0, sum0);
             vst1q_f32(output_ptr1, output_row0);
-            output_ptr1 += REGISTER_SIZE;
+            output_ptr1 += kRegisterSize;
             for(int i = 0; i < 3; ++i) {
-              row[i] += REGISTER_SIZE;
+              row[i] += kRegisterSize;
             }
           }
           for (; remain_count > 0; --remain_count) {
