@@ -192,3 +192,47 @@ TEST_F(Conv2dOpTest, Conv1x1) {
 }
 
 // TODO we need more tests
+TEST_F(Conv2dOpTest, Conv3x3R1) {
+  auto func = [&](Padding type) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 1 + rand() % 5;
+    index_t input_channels = 3 + rand() % 50;
+    index_t height = 10 + rand() % 100;
+    index_t width = 10 + rand() % 100;
+    index_t output_channels = 3 + rand() % 50;
+    // Construct graph
+    auto& net = test_net();
+    OpDefBuilder("Conv2d", "Conv2dTest")
+            .Input("Input")
+            .Input("Filter")
+            .Input("Bias")
+            .Output("Output")
+            .Finalize(net.operator_def());
+
+    // Add args
+    net.AddIntsArg("strides", {1, 1});
+    net.AddIntArg("padding", type);
+    net.AddIntsArg("dilations", {1, 1});
+
+    // Add input data
+    net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<float>("Filter", {output_channels, input_channels, 3, 3});
+    net.AddRandomInput<float>("Bias", {output_channels});
+    // run cpu
+    net.RunOp();
+
+    // Check
+    Tensor expected = *net.GetOutput("Output");
+
+    // Run NEON
+    net.RunOp(DeviceType::NEON);
+
+    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-5);
+
+  };
+
+  func(VALID);
+  func(SAME);
+}
