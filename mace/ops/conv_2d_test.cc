@@ -192,8 +192,10 @@ TEST_F(Conv2dOpTest, Conv1x1) {
 }
 
 // TODO we need more tests
-TEST_F(Conv2dOpTest, Conv3x3R1) {
-  auto func = [&](Padding type) {
+TEST_F(Conv2dOpTest, ConvNxNS12) {
+  auto func = [&](int kernel_h, int kernel_w,
+                  int stride_h, int stride_w,
+                  Padding type) {
     srand(time(NULL));
 
     // generate random input
@@ -212,13 +214,14 @@ TEST_F(Conv2dOpTest, Conv3x3R1) {
             .Finalize(net.operator_def());
 
     // Add args
-    net.AddIntsArg("strides", {1, 1});
+    net.AddIntsArg("strides", {stride_h, stride_w});
     net.AddIntArg("padding", type);
     net.AddIntsArg("dilations", {1, 1});
 
     // Add input data
     net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<float>("Filter", {output_channels, input_channels, 3, 3});
+    net.AddRandomInput<float>("Filter", {output_channels, input_channels,
+                                         kernel_h, kernel_w});
     net.AddRandomInput<float>("Bias", {output_channels});
     // run cpu
     net.RunOp();
@@ -233,6 +236,10 @@ TEST_F(Conv2dOpTest, Conv3x3R1) {
 
   };
 
-  func(VALID);
-  func(SAME);
+  for (int kernel_size : {1, 3}) {
+    for (int stride : {1, 2}) {
+      func(kernel_size, kernel_size, stride, stride, VALID);
+      func(kernel_size, kernel_size, stride, stride, SAME);
+    }
+  }
 }
