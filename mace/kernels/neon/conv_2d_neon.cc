@@ -107,6 +107,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // N
             output,
             output_shape
     );
+    return;
   }
 
   // Keep this alive during kernel execution
