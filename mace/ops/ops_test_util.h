@@ -136,7 +136,7 @@ class OpsTestNet {
 
 class OpsTestBase : public ::testing::Test {
   public:
-    OpsTestNet* test_net() { return &test_net_; };
+    OpsTestNet& test_net() { return test_net_; };
 
   protected:
     virtual void TearDown() {
