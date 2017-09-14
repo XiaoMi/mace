@@ -1,4 +1,5 @@
 bazel-*
+tags
 .idea/
 cmake-build-debug/
 *.sh
