@@ -12,6 +12,8 @@ template <>
 void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>& inputs,
                                                 float *output,
                                                 index_t size) {
+  // TODO: neon mem copy
+  memset(output, 0, size * sizeof(float));
   int n = inputs.size();
   int64_t cost = size * n;
   int64_t groups = 1;

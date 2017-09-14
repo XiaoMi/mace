@@ -43,9 +43,9 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
+  auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(Conv2dOpTest, Simple_SAME) {
@@ -81,12 +81,12 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 3, 3},
+  auto expected = CreateTensor<float>({1, 1, 3, 3},
                                         { 8.1f, 12.1f,  8.1f,
                                          12.1f, 18.1f, 12.1f,
                                           8.1f, 12.1f,  8.1f});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(Conv2dOpTest, Combined) {
@@ -127,7 +127,7 @@ TEST_F(Conv2dOpTest, Combined) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 2, 3, 3},
+  auto expected = CreateTensor<float>({1, 2, 3, 3},
                                         { 8.1f, 12.1f,  8.1f,
                                          12.1f, 18.1f, 12.1f,
                                           8.1f, 12.1f,  8.1f,
@@ -136,7 +136,7 @@ TEST_F(Conv2dOpTest, Combined) {
                                           4.2f, 6.2f, 4.2f});
 
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(Conv2dOpTest, Conv1x1) {
@@ -180,7 +180,7 @@ TEST_F(Conv2dOpTest, Conv1x1) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 2, 3, 10},
+  auto expected = CreateTensor<float>({1, 2, 3, 10},
                                         {5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
                                          5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
                                          5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f, 5.1f,
@@ -188,11 +188,12 @@ TEST_F(Conv2dOpTest, Conv1x1) {
                                          10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f,
                                          10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 // TODO we need more tests
 TEST_F(Conv2dOpTest, ConvNxNS12) {
+  testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w,
                   int stride_h, int stride_w,
                   Padding type) {
@@ -205,13 +206,13 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     index_t width = 7 + rand() % 100;
     index_t output_channels = 1 + rand() % 50;
     // Construct graph
-    auto& net = test_net();
+    auto &net = test_net();
     OpDefBuilder("Conv2d", "Conv2dTest")
-            .Input("Input")
-            .Input("Filter")
-            .Input("Bias")
-            .Output("Output")
-            .Finalize(net.operator_def());
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .Finalize(net.operator_def());
 
     // Add args
     net.AddIntsArg("strides", {stride_h, stride_w});
@@ -227,20 +228,15 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     net.RunOp();
 
     // Check
-    // TODO(liyin) Copy the tensor
-    Tensor tmp = *net.GetOutput("Output");
     Tensor expected;
-    expected.ResizeLike(tmp);
-    expected.Copy(tmp.data<float>(), tmp.size());
+    expected.Copy(*net.GetOutput("Output"));
 
     // Run NEON
     net.RunOp(DeviceType::NEON);
-
-    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-3);
-
+    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
   };
 
-  for (int kernel_size : {1, 3}) {
+  for (int kernel_size : {1, 3, 5}) {
     for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);

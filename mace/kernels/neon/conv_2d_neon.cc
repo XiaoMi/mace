@@ -44,11 +44,16 @@ static inline void ConstructInputWithPadding(const float* input,
   }
 }
 
+
 extern void Conv2dNeonK1x1S1(const float* input, const index_t* input_shape,
                              const float* filter, const float* bias,
                              float* output, const index_t* output_shape);
 
 extern void Conv2dNeonK3x3S1(const float* input, const index_t* input_shape,
+                             const float* filter, const float* bias,
+                             float* output, const index_t* output_shape);
+
+extern void Conv2dNeonK5x5S1(const float* input, const index_t* input_shape,
                              const float* filter, const float* bias,
                              float* output, const index_t* output_shape);
 
@@ -86,7 +91,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // N
                   nullptr
           },
           {
-                  nullptr,
+                  Conv2dNeonK5x5S1,
                   nullptr
           }
   };

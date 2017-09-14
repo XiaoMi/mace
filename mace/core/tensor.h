@@ -159,6 +159,20 @@ class Tensor {
     LOG(INFO) << os.str();
   }
 
+  inline size_t SizeOfType() {
+    size_t type_size = 0;
+    CASES(dtype_, type_size = sizeof(T));
+    return type_size;
+  }
+
+  inline void Copy(const Tensor& other) {
+    alloc_ = other.alloc_;
+    dtype_ = other.dtype_;
+    ResizeLike(other);
+    const void* other_data = other.raw_data();
+    memcpy(raw_mutable_data(), other_data, size_ * SizeOfType());
+  }
+
  private:
   inline int64_t NumElements() const {
     return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64_t>());
@@ -169,6 +183,8 @@ class Tensor {
   DataType dtype_;
   std::shared_ptr<void> data_;
   vector<index_t> shape_;
+
+ DISABLE_COPY_AND_ASSIGN(Tensor);
 };
 
 } // namespace tensor

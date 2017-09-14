@@ -43,10 +43,10 @@ TEST_F(PoolingOpTest, MAX_VALID) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 2, 2, 2}, 
+  auto expected = CreateTensor<float>({1, 2, 2, 2},
                                         {5, 7, 13, 15, 21, 23, 29, 31});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 
@@ -80,10 +80,10 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 2, 2, 2}, 
+  auto expected = CreateTensor<float>({1, 2, 2, 2},
                                         {2.5, 4.5, 10.5, 12.5, 18.5, 20.5, 26.5, 28.5});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(PoolingOpTest, MAX_SAME) {
@@ -111,10 +111,10 @@ TEST_F(PoolingOpTest, MAX_SAME) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 2, 2}, 
+  auto expected = CreateTensor<float>({1, 1, 2, 2},
                                         {4, 5, 7, 8});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
@@ -143,8 +143,8 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 2, 2}, 
+  auto expected = CreateTensor<float>({1, 1, 2, 2},
                                         {10, 11, 14, 15});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }

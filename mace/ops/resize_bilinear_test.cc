@@ -30,9 +30,9 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWOAlignCorners) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 3, 1, 2}, {0, 2, 8, 10, 16, 18});
+  auto expected = CreateTensor<float>({1, 3, 1, 2}, {0, 2, 8, 10, 16, 18});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
@@ -57,7 +57,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 3, 1, 2}, {0, 3, 8, 11, 16, 19});
+  auto expected = CreateTensor<float>({1, 3, 1, 2}, {0, 3, 8, 11, 16, 19});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
