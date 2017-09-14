@@ -61,8 +61,7 @@ static void Conv2d(int iters,
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                             \
     mace::testing::ItemsProcessed(tot);                                                          \
     mace::testing::BytesProcessed(tot*(sizeof(TYPE)));                                           \
-    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                    \
-                         OC);                                                                    \
+    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P, OC);               \
   }                                                                                              \
   BENCHMARK(                                                                                     \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_OC##_##TYPE##_##DEVICE)
