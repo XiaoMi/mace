@@ -35,7 +35,7 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
   net.AddRandomInput<float>("Filter", {output_channels, channels, kernel_h, kernel_w});
   net.AddRandomInput<float>("Bias", {output_channels});
 
-  // Worm-up
+  // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
   }
@@ -61,5 +61,6 @@ static void Conv2d(int iters, int batch, int channels, int height, int width,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);
 
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
 
 } //  namespace mace
