@@ -15,20 +15,21 @@ class PoolingOpTest : public OpsTestBase {};
 
 TEST_F(PoolingOpTest, MAX_VALID) {
   // Construct graph
+  auto net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
         .Input("Input")
         .Output("Output")
-        .Finalize(operator_def());
+        .Finalize(net->operator_def());
 
   // Add args
-  AddIntsArg("kernels", {2, 2});
-  AddIntsArg("strides", {2, 2});
-  AddIntArg("padding", Padding::VALID);
-  AddIntsArg("dilations", {1, 1});
-  AddIntArg("pooling_type", PoolingType::MAX);
+  net->AddIntsArg("kernels", {2, 2});
+  net->AddIntsArg("strides", {2, 2});
+  net->AddIntArg("padding", Padding::VALID);
+  net->AddIntsArg("dilations", {1, 1});
+  net->AddIntArg("pooling_type", PoolingType::MAX);
 
   // Add input data
-  AddInputFromArray<float>("Input", {1, 2, 4, 4},
+  net->AddInputFromArray<float>("Input", {1, 2, 4, 4},
                           {0, 1, 2, 3,
                            4, 5, 6, 7,
                            8, 9, 10, 11,
@@ -39,32 +40,33 @@ TEST_F(PoolingOpTest, MAX_VALID) {
                            28, 29, 30, 31});
 
   // Run
-  RunOp();
+  net->RunOp();
 
   // Check
   Tensor expected = CreateTensor<float>({1, 2, 2, 2}, 
                                         {5, 7, 13, 15, 21, 23, 29, 31});
 
-  ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(expected, *net->GetOutput("Output"), 0.001);
 }
 
 
 TEST_F(PoolingOpTest, AVG_VALID) {
   // Construct graph
+  auto net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
         .Input("Input")
         .Output("Output")
-        .Finalize(operator_def());
+        .Finalize(net->operator_def());
 
   // Add args
-  AddIntsArg("kernels", {2, 2});
-  AddIntsArg("strides", {2, 2});
-  AddIntArg("padding", Padding::VALID);
-  AddIntsArg("dilations", {1, 1});
-  AddIntArg("pooling_type", PoolingType::AVG);
+  net->AddIntsArg("kernels", {2, 2});
+  net->AddIntsArg("strides", {2, 2});
+  net->AddIntArg("padding", Padding::VALID);
+  net->AddIntsArg("dilations", {1, 1});
+  net->AddIntArg("pooling_type", PoolingType::AVG);
 
   // Add input data
-  AddInputFromArray<float>("Input", {1, 2, 4, 4},
+  net->AddInputFromArray<float>("Input", {1, 2, 4, 4},
                           {0, 1, 2, 3,
                            4, 5, 6, 7,
                            8, 9, 10, 11,
@@ -75,72 +77,74 @@ TEST_F(PoolingOpTest, AVG_VALID) {
                            28, 29, 30, 31});
 
   // Run
-  RunOp();
+  net->RunOp();
 
   // Check
   Tensor expected = CreateTensor<float>({1, 2, 2, 2}, 
                                         {2.5, 4.5, 10.5, 12.5, 18.5, 20.5, 26.5, 28.5});
 
-  ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(expected, *net->GetOutput("Output"), 0.001);
 }
 
 TEST_F(PoolingOpTest, MAX_SAME) {
   // Construct graph
+  auto net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
         .Input("Input")
         .Output("Output")
-        .Finalize(operator_def());
+        .Finalize(net->operator_def());
 
   // Add args
-  AddIntsArg("kernels", {2, 2});
-  AddIntsArg("strides", {2, 2});
-  AddIntArg("padding", Padding::SAME);
-  AddIntsArg("dilations", {1, 1});
-  AddIntArg("pooling_type", PoolingType::MAX);
+  net->AddIntsArg("kernels", {2, 2});
+  net->AddIntsArg("strides", {2, 2});
+  net->AddIntArg("padding", Padding::SAME);
+  net->AddIntsArg("dilations", {1, 1});
+  net->AddIntArg("pooling_type", PoolingType::MAX);
 
   // Add input data
-  AddInputFromArray<float>("Input", {1, 1, 3, 3},
+  net->AddInputFromArray<float>("Input", {1, 1, 3, 3},
                           {0, 1, 2, 
                            3, 4, 5, 
                            6, 7, 8});
 
   // Run
-  RunOp();
+  net->RunOp();
 
   // Check
   Tensor expected = CreateTensor<float>({1, 1, 2, 2}, 
                                         {4, 5, 7, 8});
 
-  ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(expected, *net->GetOutput("Output"), 0.001);
 }
 
 TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   // Construct graph
+  auto net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
         .Input("Input")
         .Output("Output")
-        .Finalize(operator_def());
+        .Finalize(net->operator_def());
 
   // Add args
-  AddIntsArg("kernels", {2, 2});
-  AddIntsArg("strides", {1, 1});
-  AddIntArg("padding", Padding::VALID);
-  AddIntsArg("dilations", {2, 2});
-  AddIntArg("pooling_type", PoolingType::MAX);
+  net->AddIntsArg("kernels", {2, 2});
+  net->AddIntsArg("strides", {1, 1});
+  net->AddIntArg("padding", Padding::VALID);
+  net->AddIntsArg("dilations", {2, 2});
+  net->AddIntArg("pooling_type", PoolingType::MAX);
 
   // Add input data
-  AddInputFromArray<float>("Input", {1, 1, 4, 4},
+  net->AddInputFromArray<float>("Input", {1, 1, 4, 4},
                           {0, 1, 2, 3,
                            4, 5, 6, 7,
                            8, 9, 10, 11,
                            12, 13, 14, 15});
 
   // Run
-  RunOp();
+  net->RunOp();
 
   // Check
   Tensor expected = CreateTensor<float>({1, 1, 2, 2}, 
                                         {10, 11, 14, 15});
 
-  ExpectTensorNear<float>(expected, *GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(expected, *net->GetOutput("Output"), 0.001);
 }

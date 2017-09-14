@@ -59,6 +59,7 @@ cc_test(
     srcs = glob(["*_benchmark.cc"]),
     deps = [
         ":ops",
+        ":test",
         "//mace/core:core",
         "//mace/core:test_benchmark_main",
     ],

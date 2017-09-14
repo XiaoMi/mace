@@ -22,8 +22,8 @@ void CalcPaddingAndOutputSize(const index_t* input_shape,  // NCHW
                               const int* dilations,
                               const int* strides,
                               Padding padding,
-                              std::vector<index_t>* output_shape,
-                              std::vector<int>* padding_size);
+                              index_t* output_shape,
+                              int* padding_size);
 
 } //  namespace kernels
 } //  namespace mace

@@ -26,8 +26,8 @@ public:
     Tensor* output = this->Output(OUTPUT);
     std::vector<index_t> in_shape = input->shape();
 
-    std::vector<index_t> output_shape;
-    std::vector<int> paddings;
+    std::vector<index_t> output_shape(4);
+    std::vector<int> paddings(2);
     std::vector<index_t> filter_shape = std::vector<index_t>(4);
     filter_shape[0] = in_shape[1];
     filter_shape[1] = in_shape[0];
@@ -38,8 +38,8 @@ public:
                                       this->dilations_.data(),
                                       this->strides_.data(),
                                       this->padding_,
-                                      &output_shape,
-                                      &paddings);
+                                      output_shape.data(),
+                                      paddings.data());
     output->Resize(output_shape);
 
     auto pooling_func = kernels::PoolingFunctor<D, T>(pooling_type_,
