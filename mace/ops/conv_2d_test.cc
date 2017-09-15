@@ -174,8 +174,8 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     // generate random input
     index_t batch = 1 + rand() % 10;
     index_t input_channels = 1 + rand() % 50;
-    index_t height = 7 + rand() % 100;
-    index_t width = 7 + rand() % 100;
+    index_t height = 11 + rand() % 100;
+    index_t width = 11 + rand() % 100;
     index_t output_channels = 1 + rand() % 50;
     // Construct graph
     auto& net = test_net();
