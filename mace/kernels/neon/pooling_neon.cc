@@ -9,26 +9,34 @@
 namespace mace {
 namespace kernels {
 
-extern void PoolingMaxNeonK2x2S2x2(const float *input, const index_t *in_shape,
-                                   float *output, const index_t *out_shape,
+extern void PoolingMaxNeonK2x2S2x2(const float *input,
+                                   const index_t *in_shape,
+                                   float *output,
+                                   const index_t *out_shape,
                                    const int *paddings);
 
-extern void PoolingMaxNeonK3x3S2x2(const float *input, const index_t *in_shape,
-                                   float *output, const index_t *out_shape,
+extern void PoolingMaxNeonK3x3S2x2(const float *input,
+                                   const index_t *in_shape,
+                                   float *output,
+                                   const index_t *out_shape,
                                    const int *paddings);
 
 #ifdef __COPY_MAKE_PADDING
 extern void PoolingMaxNeonK2x2S2x2Padded(const float *input,
-                                         const index_t *in_shape, float *output,
+                                         const index_t *in_shape,
+                                         float *output,
                                          const index_t *out_shape);
 extern void PoolingMaxNeonK3x3S2x2Padded(const float *input,
-                                         const index_t *in_shape, float *output,
+                                         const index_t *in_shape,
+                                         float *output,
                                          const index_t *out_shape);
 #endif
 
 template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input, const index_t *input_shape, float *output,
+    const float *input,
+    const index_t *input_shape,
+    float *output,
     const index_t *output_shape) {
   if (kernels_[0] == 2 && kernels_[1] == 2 && strides_[0] == 2 &&
       strides_[1] == 2 && pooling_type_ == MAX) {

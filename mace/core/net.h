@@ -14,7 +14,8 @@ namespace mace {
 
 class NetBase {
  public:
-  NetBase(const std::shared_ptr<const NetDef>& net_def, Workspace* ws,
+  NetBase(const std::shared_ptr<const NetDef>& net_def,
+          Workspace* ws,
           DeviceType type);
   virtual ~NetBase() noexcept {}
 
@@ -30,7 +31,8 @@ class NetBase {
 
 class SimpleNet : public NetBase {
  public:
-  SimpleNet(const std::shared_ptr<const NetDef>& net_def, Workspace* ws,
+  SimpleNet(const std::shared_ptr<const NetDef>& net_def,
+            Workspace* ws,
             DeviceType type);
 
   bool Run() override;
@@ -41,10 +43,12 @@ class SimpleNet : public NetBase {
   DISABLE_COPY_AND_ASSIGN(SimpleNet);
 };
 
-unique_ptr<NetBase> CreateNet(const NetDef& net_def, Workspace* ws,
+unique_ptr<NetBase> CreateNet(const NetDef& net_def,
+                              Workspace* ws,
                               DeviceType type);
 unique_ptr<NetBase> CreateNet(const std::shared_ptr<const NetDef>& net_def,
-                              Workspace* ws, DeviceType type);
+                              Workspace* ws,
+                              DeviceType type);
 
 }  //  namespace mace
 

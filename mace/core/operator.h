@@ -140,7 +140,9 @@ struct DeviceTypeRegisterer {
       type, &registry_function);                                   \
   }
 
-MACE_DECLARE_REGISTRY(CPUOperatorRegistry, OperatorBase, const OperatorDef &,
+MACE_DECLARE_REGISTRY(CPUOperatorRegistry,
+                      OperatorBase,
+                      const OperatorDef &,
                       Workspace *);
 
 #define REGISTER_CPU_OPERATOR_CREATOR(key, ...) \
@@ -148,7 +150,9 @@ MACE_DECLARE_REGISTRY(CPUOperatorRegistry, OperatorBase, const OperatorDef &,
 #define REGISTER_CPU_OPERATOR(name, ...) \
   MACE_REGISTER_CLASS(CPUOperatorRegistry, name, __VA_ARGS__)
 
-MACE_DECLARE_REGISTRY(NEONOperatorRegistry, OperatorBase, const OperatorDef &,
+MACE_DECLARE_REGISTRY(NEONOperatorRegistry,
+                      OperatorBase,
+                      const OperatorDef &,
                       Workspace *);
 
 #define REGISTER_NEON_OPERATOR_CREATOR(key, ...) \
@@ -157,7 +161,8 @@ MACE_DECLARE_REGISTRY(NEONOperatorRegistry, OperatorBase, const OperatorDef &,
   MACE_REGISTER_CLASS(NEONOperatorRegistry, name, __VA_ARGS__)
 
 unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
-                                        Workspace *ws, DeviceType type);
+                                        Workspace *ws,
+                                        DeviceType type);
 
 }  //  namespace mace
 

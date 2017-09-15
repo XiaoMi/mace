@@ -6,12 +6,14 @@
 
 namespace mace {
 
-NetBase::NetBase(const std::shared_ptr<const NetDef>& net_def, Workspace* ws,
+NetBase::NetBase(const std::shared_ptr<const NetDef>& net_def,
+                 Workspace* ws,
                  DeviceType type)
     : name_(net_def->name()) {}
 
 SimpleNet::SimpleNet(const std::shared_ptr<const NetDef>& net_def,
-                     Workspace* ws, DeviceType type)
+                     Workspace* ws,
+                     DeviceType type)
     : NetBase(net_def, ws, type) {
   VLOG(1) << "Constructing SimpleNet " << net_def->name();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
@@ -37,14 +39,16 @@ bool SimpleNet::Run() {
   return true;
 }
 
-unique_ptr<NetBase> CreateNet(const NetDef& net_def, Workspace* ws,
+unique_ptr<NetBase> CreateNet(const NetDef& net_def,
+                              Workspace* ws,
                               DeviceType type) {
   std::shared_ptr<NetDef> tmp_net_def(new NetDef(net_def));
   return CreateNet(tmp_net_def, ws, type);
 }
 
 unique_ptr<NetBase> CreateNet(const std::shared_ptr<const NetDef>& net_def,
-                              Workspace* ws, DeviceType type) {
+                              Workspace* ws,
+                              DeviceType type) {
   unique_ptr<NetBase> net(new SimpleNet(net_def, ws, type));
   return net;
 }

@@ -44,7 +44,8 @@ class OpsTestNet {
   OpsTestNet() {}
 
   template <typename T>
-  void AddInputFromArray(const char *name, const std::vector<index_t> &shape,
+  void AddInputFromArray(const char *name,
+                         const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
         ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
@@ -55,7 +56,8 @@ class OpsTestNet {
   }
 
   template <typename T>
-  void AddRepeatedInput(const char *name, const std::vector<index_t> &shape,
+  void AddRepeatedInput(const char *name,
+                        const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
         ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
@@ -66,7 +68,8 @@ class OpsTestNet {
   }
 
   template <typename T>
-  void AddRandomInput(const char *name, const std::vector<index_t> &shape,
+  void AddRandomInput(const char *name,
+                      const std::vector<index_t> &shape,
                       bool positive = false) {
     Tensor *input =
         ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
@@ -84,7 +87,8 @@ class OpsTestNet {
   }
 
   template <typename T>
-  void AddFixedInput(const char *name, const std::vector<index_t> &shape,
+  void AddFixedInput(const char *name,
+                     const std::vector<index_t> &shape,
                      T value) {
     Tensor *input =
         ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());

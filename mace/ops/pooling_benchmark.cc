@@ -12,8 +12,14 @@ using namespace mace;
 using namespace mace::kernels;
 
 template <DeviceType D>
-static void Pooling(int iters, int batch, int channels, int height, int width,
-                    int kernel, int stride, Padding padding,
+static void Pooling(int iters,
+                    int batch,
+                    int channels,
+                    int height,
+                    int width,
+                    int kernel,
+                    int stride,
+                    Padding padding,
                     PoolingType pooling_type) {
   mace::testing::StopTiming();
 

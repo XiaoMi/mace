@@ -11,8 +11,10 @@
 namespace mace {
 namespace kernels {
 
-void PoolingMaxNeonK2x2S2x2(const float *input, const index_t *in_shape,
-                            float *output, const index_t *out_shape,
+void PoolingMaxNeonK2x2S2x2(const float *input,
+                            const index_t *in_shape,
+                            float *output,
+                            const index_t *out_shape,
                             const int *paddings) {
   index_t batch = in_shape[0];
   index_t channels = in_shape[1];
@@ -101,8 +103,10 @@ void PoolingMaxNeonK2x2S2x2(const float *input, const index_t *in_shape,
 }
 
 // assume the input has already been padded
-void PoolingMaxNeonK2x2S2x2Padded(const float *input, const index_t *in_shape,
-                                  float *output, const index_t *out_shape) {
+void PoolingMaxNeonK2x2S2x2Padded(const float *input,
+                                  const index_t *in_shape,
+                                  float *output,
+                                  const index_t *out_shape) {
   index_t batch = in_shape[0];
   index_t channels = in_shape[1];
   index_t in_height = in_shape[2];

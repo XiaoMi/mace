@@ -11,16 +11,21 @@ std::map<int32_t, OperatorRegistry*>* gDeviceTypeRegistry() {
   return &g_device_type_registry;
 }
 
-MACE_DEFINE_REGISTRY(CPUOperatorRegistry, OperatorBase, const OperatorDef&,
+MACE_DEFINE_REGISTRY(CPUOperatorRegistry,
+                     OperatorBase,
+                     const OperatorDef&,
                      Workspace*);
 MACE_REGISTER_DEVICE_TYPE(DeviceType::CPU, CPUOperatorRegistry);
 
-MACE_DEFINE_REGISTRY(NEONOperatorRegistry, OperatorBase, const OperatorDef&,
+MACE_DEFINE_REGISTRY(NEONOperatorRegistry,
+                     OperatorBase,
+                     const OperatorDef&,
                      Workspace*);
 MACE_REGISTER_DEVICE_TYPE(DeviceType::NEON, NEONOperatorRegistry);
 
 unique_ptr<OperatorBase> CreateOperator(const OperatorDef& operator_def,
-                                        Workspace* ws, DeviceType type) {
+                                        Workspace* ws,
+                                        DeviceType type) {
   OperatorRegistry* registry = gDeviceTypeRegistry()->at(type);
   return registry->Create(operator_def.type(), operator_def, ws);
 }

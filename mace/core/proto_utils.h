@@ -107,7 +107,8 @@ inline bool ReadProtoFromFile(const string& filename, Message* proto) {
 template <class IterableInputs = std::initializer_list<string>,
           class IterableOutputs = std::initializer_list<string>,
           class IterableArgs = std::initializer_list<Argument>>
-OperatorDef CreateOperatorDef(const string& type, const string& name,
+OperatorDef CreateOperatorDef(const string& type,
+                              const string& name,
                               const IterableInputs& inputs,
                               const IterableOutputs& outputs,
                               const IterableArgs& args) {
@@ -130,7 +131,8 @@ OperatorDef CreateOperatorDef(const string& type, const string& name,
 // to specify args.
 template <class IterableInputs = std::initializer_list<string>,
           class IterableOutputs = std::initializer_list<string>>
-inline OperatorDef CreateOperatorDef(const string& type, const string& name,
+inline OperatorDef CreateOperatorDef(const string& type,
+                                     const string& name,
                                      const IterableInputs& inputs,
                                      const IterableOutputs& outputs) {
   return CreateOperatorDef(type, name, inputs, outputs,
@@ -153,7 +155,8 @@ class ArgumentHelper {
   }
 
   template <typename Def, typename T>
-  static T GetSingleArgument(const Def& def, const string& name,
+  static T GetSingleArgument(const Def& def,
+                             const string& name,
                              const T& default_value) {
     return ArgumentHelper(def).GetSingleArgument<T>(name, default_value);
   }
@@ -165,7 +168,8 @@ class ArgumentHelper {
 
   template <typename Def, typename T>
   static vector<T> GetRepeatedArgument(
-      const Def& def, const string& name,
+      const Def& def,
+      const string& name,
       const std::vector<T>& default_value = std::vector<T>()) {
     return ArgumentHelper(def).GetRepeatedArgument<T>(name, default_value);
   }
@@ -223,10 +227,12 @@ class ArgumentHelper {
 };
 
 const Argument& GetArgument(const OperatorDef& def, const string& name);
-bool GetFlagArgument(const OperatorDef& def, const string& name,
+bool GetFlagArgument(const OperatorDef& def,
+                     const string& name,
                      bool def_value = false);
 
-Argument* GetMutableArgument(const string& name, const bool create_if_missing,
+Argument* GetMutableArgument(const string& name,
+                             const bool create_if_missing,
                              OperatorDef* def);
 
 template <typename T>

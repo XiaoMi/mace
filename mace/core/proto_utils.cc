@@ -316,7 +316,8 @@ const Argument& GetArgument(const OperatorDef& def, const string& name) {
              ProtoDebugString(def));
 }
 
-bool GetFlagArgument(const OperatorDef& def, const string& name,
+bool GetFlagArgument(const OperatorDef& def,
+                     const string& name,
                      bool def_value) {
   for (const Argument& arg : def.arg()) {
     if (arg.name() == name) {
@@ -328,7 +329,8 @@ bool GetFlagArgument(const OperatorDef& def, const string& name,
   return def_value;
 }
 
-Argument* GetMutableArgument(const string& name, const bool create_if_missing,
+Argument* GetMutableArgument(const string& name,
+                             const bool create_if_missing,
                              OperatorDef* def) {
   for (int i = 0; i < def->arg_size(); ++i) {
     if (def->arg(i).name() == name) {

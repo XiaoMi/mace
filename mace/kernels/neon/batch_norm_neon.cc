@@ -10,9 +10,15 @@ namespace kernels {
 
 template <>
 void BatchNormFunctor<DeviceType::NEON, float>::operator()(
-    const float* input, const float* scale, const float* offset,
-    const float* mean, const float* var, const index_t n, const index_t channel,
-    const index_t sample_size, float* output) {
+    const float* input,
+    const float* scale,
+    const float* offset,
+    const float* mean,
+    const float* var,
+    const index_t n,
+    const index_t channel,
+    const index_t sample_size,
+    float* output) {
   // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
   // The calculation formula for inference is
   // Y = \frac{ \scale } { \sqrt{var+\variance_epsilon} } * X +

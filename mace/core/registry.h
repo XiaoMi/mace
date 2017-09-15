@@ -101,7 +101,8 @@ class Registerer {
 #define MACE_REGISTER_TYPED_CLASS(RegistryName, key, ...)                    \
   namespace {                                                                \
   static Registerer##RegistryName MACE_ANONYMOUS_VARIABLE(g_##RegistryName)( \
-      key, RegistryName(),                                                   \
+      key,                                                                   \
+      RegistryName(),                                                        \
       Registerer##RegistryName::DefaultCreator<__VA_ARGS__>);                \
   }
 

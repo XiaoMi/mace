@@ -30,7 +30,8 @@ inline void MakeStringInternal(std::stringstream& ss, const T& t) {
 }
 
 template <typename T, typename... Args>
-inline void MakeStringInternal(std::stringstream& ss, const T& t,
+inline void MakeStringInternal(std::stringstream& ss,
+                               const T& t,
                                const Args&... args) {
   MakeStringInternal(ss, t);
   MakeStringInternal(ss, args...);

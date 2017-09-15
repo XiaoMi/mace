@@ -19,7 +19,8 @@ struct CachedInterpolation {
   float lerp;
 };
 
-inline float CalculateResizeScale(index_t in_size, index_t out_size,
+inline float CalculateResizeScale(index_t in_size,
+                                  index_t out_size,
                                   bool align_corners) {
   return (align_corners && out_size > 1)
              ? (in_size - 1) / static_cast<float>(out_size - 1)
@@ -40,21 +41,28 @@ inline void ComputeInterpolationWeights(const index_t out_size,
   }
 }
 
-inline float ComputeLerp(const float top_left, const float top_right,
-                         const float bottom_left, const float bottom_right,
-                         const float x_lerp, const float y_lerp) {
+inline float ComputeLerp(const float top_left,
+                         const float top_right,
+                         const float bottom_left,
+                         const float bottom_right,
+                         const float x_lerp,
+                         const float y_lerp) {
   const float top = top_left + (top_right - top_left) * x_lerp;
   const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
   return top + (bottom - top) * y_lerp;
 }
 
 template <typename T>
-void ResizeImage(const T *images, const index_t batch_size,
-                 const index_t in_height, const index_t in_width,
-                 const index_t out_height, const index_t out_width,
+void ResizeImage(const T *images,
+                 const index_t batch_size,
+                 const index_t in_height,
+                 const index_t in_width,
+                 const index_t out_height,
+                 const index_t out_width,
                  const index_t channels,
                  const std::vector<CachedInterpolation> &xs_vec,
-                 const std::vector<CachedInterpolation> &ys, float *output) {
+                 const std::vector<CachedInterpolation> &ys,
+                 float *output) {
   const index_t in_channel_size = in_height * in_width;
   const index_t in_batch_num_values = channels * in_channel_size;
   const index_t out_channel_size = out_height * out_width;
@@ -98,8 +106,13 @@ struct ResizeBilinearFunctor {
 
   ResizeBilinearFunctor(bool align_corners) : align_corners_(align_corners) {}
 
-  void operator()(const T *input, T *output, index_t n, index_t channels,
-                  index_t in_height, index_t in_width, index_t out_height,
+  void operator()(const T *input,
+                  T *output,
+                  index_t n,
+                  index_t channels,
+                  index_t in_height,
+                  index_t in_width,
+                  index_t out_height,
                   index_t out_width) {
     if (out_height == in_height && out_width == in_width) {
       std::copy(input, input + channels * in_height * in_width, output);

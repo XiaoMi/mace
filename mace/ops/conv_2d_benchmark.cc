@@ -12,8 +12,15 @@
 namespace mace {
 
 template <DeviceType D, typename T>
-static void Conv2d(int iters, int batch, int channels, int height, int width,
-                   int kernel_h, int kernel_w, int stride, Padding padding,
+static void Conv2d(int iters,
+                   int batch,
+                   int channels,
+                   int height,
+                   int width,
+                   int kernel_h,
+                   int kernel_w,
+                   int stride,
+                   Padding padding,
                    int output_channels) {
   mace::testing::StopTiming();
 

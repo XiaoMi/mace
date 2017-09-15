@@ -20,15 +20,20 @@ namespace kernels {
 template <DeviceType D, typename T>
 class PoolingFunctor {
  public:
-  PoolingFunctor(const PoolingType pooling_type, const int *kernels,
-                 const int *strides, const int *paddings, const int *dilations)
+  PoolingFunctor(const PoolingType pooling_type,
+                 const int *kernels,
+                 const int *strides,
+                 const int *paddings,
+                 const int *dilations)
       : pooling_type_(pooling_type),
         kernels_(kernels),
         strides_(strides),
         paddings_(paddings),
         dilations_(dilations) {}
 
-  void operator()(const T *input, const index_t *input_shape, T *output,
+  void operator()(const T *input,
+                  const index_t *input_shape,
+                  T *output,
                   const index_t *output_shape) {
     index_t batch = output_shape[0];
     index_t channels = output_shape[1];
@@ -118,7 +123,9 @@ class PoolingFunctor {
 
 template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input, const index_t *input_shape, float *output,
+    const float *input,
+    const index_t *input_shape,
+    float *output,
     const index_t *output_shape);
 
 }  //  namespace kernels

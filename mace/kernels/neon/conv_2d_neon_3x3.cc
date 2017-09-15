@@ -60,7 +60,8 @@ void Conv2dNeonK3x3S1(const float* input,  // NCHW
             float32x4_t sum0 = vdupq_n_f32(.0f);
             float32x4_t sum1 = vdupq_n_f32(.0f);
             float32x4_t row0_ext_0 = vld1q_f32(row[0]);  // 0123
-            float32x4_t row0_latter = vld1q_f32(row[0] + kRegisterSize);  // 4567
+            float32x4_t row0_latter =
+                vld1q_f32(row[0] + kRegisterSize);  // 4567
             float32x4_t row0_ext_1 =
                 vextq_f32(row0_ext_0, row0_latter, 1);  // 1234
             float32x4_t row0_ext_2 =
@@ -71,7 +72,8 @@ void Conv2dNeonK3x3S1(const float* input,  // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row0_ext_2, filter0, 2);
 
             float32x4_t row1_ext_0 = vld1q_f32(row[1]);  // 0123
-            float32x4_t row1_latter = vld1q_f32(row[1] + kRegisterSize);  // 4567
+            float32x4_t row1_latter =
+                vld1q_f32(row[1] + kRegisterSize);  // 4567
             float32x4_t row1_ext_1 =
                 vextq_f32(row1_ext_0, row1_latter, 1);  // 1234
             float32x4_t row1_ext_2 =
@@ -158,7 +160,8 @@ void Conv2dNeonK3x3S1(const float* input,  // NCHW
           for (; count > 0; --count) {
             float32x4_t sum0 = vdupq_n_f32(.0f);
             float32x4_t row0_ext_0 = vld1q_f32(row[0]);  // 0123
-            float32x4_t row0_latter = vld1q_f32(row[0] + kRegisterSize);  // 4567
+            float32x4_t row0_latter =
+                vld1q_f32(row[0] + kRegisterSize);  // 4567
             float32x4_t row0_ext_1 =
                 vextq_f32(row0_ext_0, row0_latter, 1);  // 1234
             float32x4_t row0_ext_2 =
@@ -169,7 +172,8 @@ void Conv2dNeonK3x3S1(const float* input,  // NCHW
             sum0 = vfmaq_laneq_f32(sum0, row0_ext_2, filter0, 2);
 
             float32x4_t row1_ext_0 = vld1q_f32(row[1]);  // 0123
-            float32x4_t row1_latter = vld1q_f32(row[1] + kRegisterSize);  // 4567
+            float32x4_t row1_latter =
+                vld1q_f32(row[1] + kRegisterSize);  // 4567
             float32x4_t row1_ext_1 =
                 vextq_f32(row1_ext_0, row1_latter, 1);  // 1234
             float32x4_t row1_ext_2 =

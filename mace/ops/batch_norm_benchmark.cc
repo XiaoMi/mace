@@ -8,8 +8,8 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void BatchNorm(int iters, int batch, int channels, int height,
-                      int width) {
+static void BatchNorm(
+    int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
