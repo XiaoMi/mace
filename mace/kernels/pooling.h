@@ -11,29 +11,24 @@
 namespace mace {
 
 enum PoolingType {
-  AVG = 1, // avg_pool
-  MAX = 2, // max_pool
+  AVG = 1,  // avg_pool
+  MAX = 2,  // max_pool
 };
 
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class PoolingFunctor {
  public:
-  PoolingFunctor(const PoolingType pooling_type,
-                 const int *kernels,
-                 const int *strides,
-                 const int *paddings,
-                 const int *dilations)
+  PoolingFunctor(const PoolingType pooling_type, const int *kernels,
+                 const int *strides, const int *paddings, const int *dilations)
       : pooling_type_(pooling_type),
         kernels_(kernels),
         strides_(strides),
         paddings_(paddings),
         dilations_(dilations) {}
 
-  void operator()(const T *input,
-                  const index_t *input_shape,
-                  T *output,
+  void operator()(const T *input, const index_t *input_shape, T *output,
                   const index_t *output_shape) {
     index_t batch = output_shape[0];
     index_t channels = output_shape[1];
@@ -60,32 +55,31 @@ class PoolingFunctor {
 #pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n) {
       for (int c = 0; c < channels; ++c) {
-        index_t out_offset = n * channels * height * width +
-            c * height * width;
+        index_t out_offset = n * channels * height * width + c * height * width;
         index_t in_offset = n * input_channels * input_height * input_width +
-            c * input_height * input_width;
+                            c * input_height * input_width;
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             T sum_or_max = 0;
             switch (pooling_type_) {
-              case AVG:break;
-              case MAX:sum_or_max = std::numeric_limits<T>::lowest();
+              case AVG:
+                break;
+              case MAX:
+                sum_or_max = std::numeric_limits<T>::lowest();
                 break;
               default:
-                MACE_CHECK(false,
-                           "Unsupported pooling type: ",
-                           pooling_type_);
+                MACE_CHECK(false, "Unsupported pooling type: ", pooling_type_);
             }
             for (int kh = 0; kh < kernel_h; ++kh) {
               for (int kw = 0; kw < kernel_w; ++kw) {
                 int inh = padded_h_start + h * stride_h + dilation_h * kh;
                 int inw = padded_w_start + w * stride_w + dilation_w * kw;
-                if (inh >= 0 && inh < input_height &&
-                    inw >= 0 && inw < input_width) {
-                  index_t input_offset = in_offset +
-                      inh * input_width + inw;
+                if (inh >= 0 && inh < input_height && inw >= 0 &&
+                    inw < input_width) {
+                  index_t input_offset = in_offset + inh * input_width + inw;
                   switch (pooling_type_) {
-                    case AVG:sum_or_max += input[input_offset];
+                    case AVG:
+                      sum_or_max += input[input_offset];
                       break;
                     case MAX:
                       sum_or_max = std::max(sum_or_max, input[input_offset]);
@@ -98,14 +92,14 @@ class PoolingFunctor {
               }
             }
             switch (pooling_type_) {
-              case AVG:output[out_offset] = sum_or_max / (kernel_h * kernel_w);
+              case AVG:
+                output[out_offset] = sum_or_max / (kernel_h * kernel_w);
                 break;
-              case MAX:output[out_offset] = sum_or_max;
+              case MAX:
+                output[out_offset] = sum_or_max;
                 break;
               default:
-                MACE_CHECK(false,
-                           "Unsupported pooling type: ",
-                           pooling_type_);
+                MACE_CHECK(false, "Unsupported pooling type: ", pooling_type_);
             }
             out_offset += 1;
           }
@@ -122,14 +116,12 @@ class PoolingFunctor {
   const int *dilations_;
 };
 
-template<>
+template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input,
-    const index_t *input_shape,
-    float *output,
+    const float *input, const index_t *input_shape, float *output,
     const index_t *output_shape);
 
-} //  namespace kernels
-} //  namespace mace
+}  //  namespace kernels
+}  //  namespace mace
 
-#endif //MACE_KERNELS_POOLING_H
+#endif  // MACE_KERNELS_POOLING_H

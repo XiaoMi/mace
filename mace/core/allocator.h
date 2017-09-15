@@ -39,7 +39,7 @@ class Allocator {
   }
 };
 
-class CPUAllocator: public Allocator {
+class CPUAllocator : public Allocator {
  public:
   ~CPUAllocator() override {}
   void* New(size_t nbytes) override {
@@ -55,9 +55,7 @@ class CPUAllocator: public Allocator {
     return data;
   }
 
-  void Delete(void* data) override {
-    free(data);
-  }
+  void Delete(void* data) override { free(data); }
 
   void CopyBytes(void* dst, const void* src, size_t size) override {
     memcpy(dst, src, size);
@@ -85,6 +83,6 @@ struct DeviceContext<DeviceType::NEON> {
 
 Allocator* GetDeviceAllocator(DeviceType type);
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_ALLOCATOR_H_
+#endif  // MACE_CORE_ALLOCATOR_H_

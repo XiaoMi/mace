@@ -8,25 +8,24 @@
 namespace mace {
 namespace kernels {
 
-void Conv2dNeonK1x1S1(const float* input, // NCHW
+void Conv2dNeonK1x1S1(const float* input,  // NCHW
                       const index_t* input_shape,
-                      const float* filter, // c_out, c_in, kernel_h, kernel_w
-                      const float* bias, // c_out
-                      float* output, // NCHW
+                      const float* filter,  // c_out, c_in, kernel_h, kernel_w
+                      const float* bias,    // c_out
+                      float* output,        // NCHW
                       const index_t* output_shape) {
-  const index_t batch    = output_shape[0];
+  const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
-  const index_t height   = output_shape[2];
-  const index_t width    = output_shape[3];
+  const index_t height = output_shape[2];
+  const index_t width = output_shape[3];
 
-  const index_t input_batch    = input_shape[0];
+  const index_t input_batch = input_shape[0];
   const index_t input_channels = input_shape[1];
-  const index_t input_height   = input_shape[2];
-  const index_t input_width    = input_shape[3];
+  const index_t input_height = input_shape[2];
+  const index_t input_width = input_shape[3];
 
-  MACE_CHECK(input_batch  == batch &&
-             input_height == height &&
-             input_width  == width);
+  MACE_CHECK(input_batch == batch && input_height == height &&
+             input_width == width);
 
   const index_t total_pixels = height * width;
   // Process 4 * 2 = 8 pixels for each innermost loop
@@ -37,17 +36,18 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
   // benchmark omp collapsed(2)
   for (index_t n = 0; n < batch; ++n) {
     const float* filter_ptr = filter;
-    #pragma omp parallel for
+#pragma omp parallel for
     for (index_t c = 0; c < channels; ++c) {
       // TODO Will GCC opt these out?
       float* channel_output_start =
-        output + n * channels * height * width + c * height * width;
-      const float* input_ptr = input + n * input_channels * input_height * input_width;
+          output + n * channels * height * width + c * height * width;
+      const float* input_ptr =
+          input + n * input_channels * input_height * input_width;
 
       // Fill with bias
       float* output_ptr = channel_output_start;
       for (index_t ptr = 0; ptr < total_pixels; ++ptr) {
-        output_ptr[ptr] = bias[c]; // TODO can we avoid this?
+        output_ptr[ptr] = bias[c];  // TODO can we avoid this?
       }
 
       index_t inc = 0;
@@ -55,14 +55,13 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
       for (; inc + 3 < input_channels; inc += 4) {
         float* output_ptr = channel_output_start;
         // The begining of each input feature map channel
-        MACE_ASSERT(input_ptr == input + n * input_channels *
-                                         input_height * input_width +
-                                 inc * input_height * input_width);
+        MACE_ASSERT(input_ptr ==
+                    input + n * input_channels * input_height * input_width +
+                        inc * input_height * input_width);
 
-        const float* input_ptr1 = input_ptr  + total_pixels;
+        const float* input_ptr1 = input_ptr + total_pixels;
         const float* input_ptr2 = input_ptr1 + total_pixels;
         const float* input_ptr3 = input_ptr2 + total_pixels;
-
 
         // filter is in c_out, c_in, 1, 1 order
         MACE_ASSERT(filter_ptr == filter + c * input_channels + inc);
@@ -113,7 +112,7 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
           vst1q_f32(output_ptr + 4, out4);
 
           output_ptr += 8;
-          input_ptr  += 8;
+          input_ptr += 8;
           input_ptr1 += 8;
           input_ptr2 += 8;
           input_ptr3 += 8;
@@ -121,7 +120,7 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
         // Process the remaining pixels
         index_t remaining_pixels = loop_remaining;
         for (; remaining_pixels > 0; --remaining_pixels) {
-          const float mul  = *input_ptr  * k0;
+          const float mul = *input_ptr * k0;
           const float mul1 = *input_ptr1 * k1;
           const float mul2 = *input_ptr2 * k2;
           const float mul3 = *input_ptr3 * k3;
@@ -141,9 +140,9 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
       // Process the remaining channels
       for (; inc < input_channels; ++inc) {
         float* output_ptr = channel_output_start;
-        MACE_ASSERT(input_ptr == input + n * input_channels *
-                                         input_height * input_width +
-                                 inc * input_height * input_width);
+        MACE_ASSERT(input_ptr ==
+                    input + n * input_channels * input_height * input_width +
+                        inc * input_height * input_width);
         MACE_ASSERT(filter_ptr == filter + c * input_channels + inc);
 
         const float k0 = filter_ptr[0];
@@ -166,13 +165,13 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
           vst1q_f32(output_ptr + 4, out4);
 
           output_ptr += 8;
-          input_ptr  += 8;
+          input_ptr += 8;
         }
         // Process the remaining pixels
         index_t remaining_pixels = loop_remaining;
         for (; remaining_pixels > 0; --remaining_pixels) {
           const float mul = *input_ptr * k0;
-          
+
           *output_ptr += mul;
 
           ++output_ptr;
@@ -183,5 +182,5 @@ void Conv2dNeonK1x1S1(const float* input, // NCHW
   }
 };
 
-} // namespace kernels
-} // namespace mace
+}  // namespace kernels
+}  // namespace mace

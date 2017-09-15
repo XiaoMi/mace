@@ -8,19 +8,19 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void BatchNorm(int iters, int batch, int channels, int height, int width) {
-
+static void BatchNorm(int iters, int batch, int channels, int height,
+                      int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormBM")
-          .Input("Input")
-          .Input("Scale")
-          .Input("Offset")
-          .Input("Mean")
-          .Input("Var")
-          .Output("Output")
-          .Finalize(net.operator_def());
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Input("Mean")
+      .Input("Var")
+      .Output("Output")
+      .Finalize(net.operator_def());
 
   // Add input data
   net.AddRandomInput<T>("Input", {batch, channels, height, width});
@@ -35,23 +35,23 @@ static void BatchNorm(int iters, int batch, int channels, int height, int width)
   }
 
   mace::testing::StartTiming();
-  while(iters--) {
+  while (iters--) {
     net.RunOp(D);
   }
 }
 
-#define BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                   \
-  static void BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
-        int iters) {                                                    \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;    \
-    mace::testing::ItemsProcessed(tot);                                 \
-    mace::testing::BytesProcessed(tot * (sizeof(TYPE)));                \
-    BatchNorm<DEVICE, TYPE>(iters, N, C, H, W);                         \
-  }                                                                     \
+#define BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                  \
+  static void BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \
+      int iters) {                                                     \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
+    mace::testing::ItemsProcessed(tot);                                \
+    mace::testing::BytesProcessed(tot*(sizeof(TYPE)));                 \
+    BatchNorm<DEVICE, TYPE>(iters, N, C, H, W);                        \
+  }                                                                    \
   BENCHMARK(BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_BATCH_NORM(N, C, H, W, TYPE)        \
-  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, CPU);  \
+#define BM_BATCH_NORM(N, C, H, W, TYPE)       \
+  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, CPU); \
   BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, NEON);
 
 BM_BATCH_NORM(1, 1, 512, 512, float);
@@ -65,4 +65,4 @@ BM_BATCH_NORM(1, 128, 256, 256, float);
 BM_BATCH_NORM(1, 128, 512, 512, float);
 BM_BATCH_NORM(32, 1, 256, 256, float);
 BM_BATCH_NORM(32, 3, 256, 256, float);
-} //  namespace mace
+}  //  namespace mace

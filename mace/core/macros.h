@@ -17,5 +17,4 @@
 #define MACE_PREDICT_TRUE(x) (x)
 #endif
 
-
-#endif //MACE_CORE_MACROS_H_
+#endif  // MACE_CORE_MACROS_H_

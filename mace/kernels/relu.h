@@ -10,7 +10,7 @@
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct ReluFunctor {
   void operator()(const T *input, T *output, index_t size) {
     for (index_t i = 0; i < size; ++i) {
@@ -24,7 +24,7 @@ void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
                                                       float *output,
                                                       index_t size);
 
-} //  namespace kernels
-} //  namespace mace
+}  //  namespace kernels
+}  //  namespace mace
 
-#endif // MACE_KERNELS_RELU_H_
+#endif  // MACE_KERNELS_RELU_H_

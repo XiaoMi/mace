@@ -7,12 +7,10 @@
 namespace mace {
 namespace kernels {
 
-void CalcPaddingAndOutputSize(const index_t *input_shape,  // NCHW
+void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
                               const index_t *filter_shape,  // OIHW
-                              const int *dilations,
-                              const int *strides,
-                              Padding padding,
-                              index_t *output_shape,
+                              const int *dilations, const int *strides,
+                              Padding padding, index_t *output_shape,
                               int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
@@ -43,14 +41,16 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,  // NCHW
       output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
       output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:output_height = (input_shape[2] - 1) / strides[0] + 1;
+    case SAME:
+      output_height = (input_shape[2] - 1) / strides[0] + 1;
       output_width = (input_shape[3] - 1) / strides[1] + 1;
       break;
     case FULL:
       output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:
+      MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
@@ -58,10 +58,10 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,  // NCHW
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
 
-  padding_size[0] = (output_height - 1) * strides[0] +
-      k_extent_height - input_shape[2];
-  padding_size[1] = (output_width - 1) * strides[1] +
-      k_extent_width - input_shape[3];
+  padding_size[0] =
+      (output_height - 1) * strides[0] + k_extent_height - input_shape[2];
+  padding_size[1] =
+      (output_width - 1) * strides[1] + k_extent_width - input_shape[3];
 
   output_shape[0] = input_shape[0];
   output_shape[1] = output_channels;
@@ -69,19 +69,15 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,  // NCHW
   output_shape[3] = output_width;
 }
 
-void ConstructInputWithPadding(const float *input,
-                               const index_t *input_shape,
-                               const int *paddings,
-                               Tensor *output_tensor) {
+void ConstructInputWithPadding(const float *input, const index_t *input_shape,
+                               const int *paddings, Tensor *output_tensor) {
   index_t batch = input_shape[0];
   index_t channels = input_shape[1];
   index_t height = input_shape[2];
   index_t width = input_shape[3];
 
-  std::vector<index_t> output_shape({batch,
-                                     channels,
-                                     paddings[0] + height,
-                                     paddings[1] + width});
+  std::vector<index_t> output_shape(
+      {batch, channels, paddings[0] + height, paddings[1] + width});
 
   const index_t output_width = output_shape[3];
   const int padded_top = paddings[0] / 2;
@@ -105,5 +101,5 @@ void ConstructInputWithPadding(const float *input,
     }
   }
 }
-} //  namespace kernels
-} //  namespace mace
+}  //  namespace kernels
+}  //  namespace mace

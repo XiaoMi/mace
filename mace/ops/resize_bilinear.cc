@@ -9,7 +9,8 @@ namespace mace {
 REGISTER_CPU_OPERATOR(ResizeBilinear, ResizeBilinearOp<DeviceType::CPU, float>);
 
 #if __ARM_NEON
-REGISTER_NEON_OPERATOR(ResizeBilinear, ResizeBilinearOp<DeviceType::NEON, float>);
-#endif // __ARM_NEON
+REGISTER_NEON_OPERATOR(ResizeBilinear,
+                       ResizeBilinearOp<DeviceType::NEON, float>);
+#endif  // __ARM_NEON
 
-} //  namespace mace
+}  //  namespace mace

@@ -5,11 +5,11 @@
 #ifndef MACE_CORE_TENSOR_H_
 #define MACE_CORE_TENSOR_H_
 
-#include "mace/core/common.h"
-#include "mace/proto/mace.pb.h"
 #include "mace/core/allocator.h"
-#include "mace/core/types.h"
+#include "mace/core/common.h"
 #include "mace/core/logging.h"
+#include "mace/core/types.h"
+#include "mace/proto/mace.pb.h"
 
 namespace mace {
 
@@ -25,13 +25,13 @@ namespace mace {
   switch (TYPE_ENUM) {                                         \
     CASE(float, SINGLE_ARG(STMTS))                             \
     CASE(double, SINGLE_ARG(STMTS))                            \
-    CASE(int32_t, SINGLE_ARG(STMTS))                             \
-    CASE(uint8_t, SINGLE_ARG(STMTS))                             \
-    CASE(uint16_t, SINGLE_ARG(STMTS))                            \
-    CASE(int16_t, SINGLE_ARG(STMTS))                             \
-    CASE(int8_t, SINGLE_ARG(STMTS))                              \
+    CASE(int32_t, SINGLE_ARG(STMTS))                           \
+    CASE(uint8_t, SINGLE_ARG(STMTS))                           \
+    CASE(uint16_t, SINGLE_ARG(STMTS))                          \
+    CASE(int16_t, SINGLE_ARG(STMTS))                           \
+    CASE(int8_t, SINGLE_ARG(STMTS))                            \
     CASE(string, SINGLE_ARG(STMTS))                            \
-    CASE(int64_t, SINGLE_ARG(STMTS))                             \
+    CASE(int64_t, SINGLE_ARG(STMTS))                           \
     CASE(bool, SINGLE_ARG(STMTS))                              \
     case DT_INVALID:                                           \
       INVALID;                                                 \
@@ -41,20 +41,17 @@ namespace mace {
       break;                                                   \
   }
 
-
 #define CASES(TYPE_ENUM, STMTS)                                      \
   CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, LOG(FATAL) << "Type not set"; \
                      , LOG(FATAL) << "Unexpected type: " << TYPE_ENUM;)
 
-
 class Tensor {
  public:
   Tensor()
-      : alloc_(cpu_allocator()),
-        size_(0), dtype_(DT_FLOAT), data_(nullptr) {};
+      : alloc_(cpu_allocator()), size_(0), dtype_(DT_FLOAT), data_(nullptr){};
 
   Tensor(Allocator* a, DataType type)
-      : alloc_(a), size_(0), dtype_(type), data_(nullptr) {};
+      : alloc_(a), size_(0), dtype_(type), data_(nullptr){};
 
   ~Tensor() {
     if (alloc_ && data_.get()) {
@@ -92,9 +89,8 @@ class Tensor {
     if (data_.get() || size_ == 0) {
       return data_.get();
     } else {
-      CASES(dtype_, data_.reset(alloc_->New(size_ * sizeof(T)), [this](void* ptr) {
-        alloc_->Delete(ptr);
-      }));
+      CASES(dtype_, data_.reset(alloc_->New(size_ * sizeof(T)),
+                                [this](void* ptr) { alloc_->Delete(ptr); }));
       return data_.get();
     }
   }
@@ -116,13 +112,9 @@ class Tensor {
     }
   }
 
-  inline void ResizeLike(const Tensor& other) {
-    Resize(other.shape());
-  }
+  inline void ResizeLike(const Tensor& other) { Resize(other.shape()); }
 
-  inline void ResizeLike(const Tensor* other) {
-    Resize(other->shape());
-  }
+  inline void ResizeLike(const Tensor* other) { Resize(other->shape()); }
 
   template <typename T>
   inline void Copy(const T* src, index_t size) {
@@ -132,7 +124,8 @@ class Tensor {
 
   template <typename SrcType, typename DstType>
   inline void CopyWithCast(const SrcType* src, size_t size) {
-    MACE_CHECK(static_cast<index_t>(size) == size_, "copy src and dst with different size.");
+    MACE_CHECK(static_cast<index_t>(size) == size_,
+               "copy src and dst with different size.");
     unique_ptr<DstType[]> buffer(new DstType[size]);
     for (size_t i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
@@ -146,10 +139,11 @@ class Tensor {
 
   inline void DebugPrint() {
     std::stringstream os;
-    for (int i: shape_) {
+    for (int i : shape_) {
       os << i << ", ";
     }
-    LOG(INFO) << "Tensor shape: " << os.str() << " type: " << DataType_Name(dtype_);
+    LOG(INFO) << "Tensor shape: " << os.str()
+              << " type: " << DataType_Name(dtype_);
 
     os.str("");
     os.clear();
@@ -175,7 +169,8 @@ class Tensor {
 
  private:
   inline int64_t NumElements() const {
-    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<int64_t>());
+    return std::accumulate(shape_.begin(), shape_.end(), 1,
+                           std::multiplies<int64_t>());
   }
 
   Allocator* alloc_;
@@ -184,9 +179,9 @@ class Tensor {
   std::shared_ptr<void> data_;
   vector<index_t> shape_;
 
- DISABLE_COPY_AND_ASSIGN(Tensor);
+  DISABLE_COPY_AND_ASSIGN(Tensor);
 };
 
-} // namespace tensor
+}  // namespace tensor
 
-#endif //MACE_CORE_TENSOR_H_
+#endif  // MACE_CORE_TENSOR_H_

@@ -5,9 +5,9 @@
 #ifndef MACE_CORE_SERIALIZER_H_
 #define MACE_CORE_SERIALIZER_H_
 
-#include "mace/proto/mace.pb.h"
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
+#include "mace/proto/mace.pb.h"
 
 namespace mace {
 
@@ -20,9 +20,9 @@ class Serializer {
 
   unique_ptr<Tensor> Deserialize(const TensorProto& proto, DeviceType type);
 
- DISABLE_COPY_AND_ASSIGN(Serializer);
+  DISABLE_COPY_AND_ASSIGN(Serializer);
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_SERIALIZER_H_
+#endif  // MACE_CORE_SERIALIZER_H_

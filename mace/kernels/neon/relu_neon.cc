@@ -2,17 +2,17 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include <arm_neon.h>
 #include "mace/kernels/relu.h"
+#include <arm_neon.h>
 
 namespace mace {
 namespace kernels {
 
 template <>
 void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
-                                                float *output,
-                                                index_t size) {
-#pragma omp parallel for num_threads(1) // no significant performance improve
+                                                      float *output,
+                                                      index_t size) {
+#pragma omp parallel for num_threads(1)  // no significant performance improve
   for (int64_t i = 0; i < size; i += kCostPerGroup) {
     int64_t count = std::min(static_cast<int64_t>(kCostPerGroup), size - i);
     int nn = count >> 2;
@@ -36,6 +36,5 @@ void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
   }
 };
 
-
-} // namespace kernels
-} // namespace mace
+}  // namespace kernels
+}  // namespace mace

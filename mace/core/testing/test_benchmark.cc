@@ -51,11 +51,8 @@ Benchmark* Benchmark::ArgPair(int x, int y) {
   return this;
 }
 
-
 // Run all benchmarks
-void Benchmark::Run() {
-  Run("all");
-}
+void Benchmark::Run() { Run("all"); }
 
 void Benchmark::Run(const char* pattern) {
   if (!all_benchmarks) return;
@@ -113,8 +110,8 @@ void Benchmark::Run(const char* pattern) {
                  (items_processed * 1e-6) / seconds);
         full_label += buf;
       }
-      printf("%-*s %10.0f %10d\t%s\n", width, name,
-             seconds * 1e9 / iters, iters, full_label.c_str());
+      printf("%-*s %10.0f %10d\t%s\n", width, name, seconds * 1e9 / iters,
+             iters, full_label.c_str());
     }
   }
 }

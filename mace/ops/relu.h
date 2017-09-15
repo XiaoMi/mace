@@ -10,10 +10,10 @@
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class ReluOp : public Operator<D, T> {
  public:
-  ReluOp(const OperatorDef &operator_def, Workspace *ws)
+  ReluOp(const OperatorDef& operator_def, Workspace* ws)
       : Operator<D, T>(operator_def, ws) {}
   bool Run() override {
     const Tensor* input_tensor = this->inputs_[0];
@@ -31,6 +31,6 @@ class ReluOp : public Operator<D, T> {
   kernels::ReluFunctor<D, T> functor_;
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_OPS_RELU_H_
+#endif  // MACE_OPS_RELU_H_

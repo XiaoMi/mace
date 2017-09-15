@@ -36,4 +36,4 @@ TEST_F(AddnOpTest, AddnOp) {
   ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.01);
 }
 
-} // namespace mace
+}  // namespace mace

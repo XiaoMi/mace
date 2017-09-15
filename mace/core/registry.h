@@ -12,7 +12,7 @@ namespace mace {
 template <class SrcType, class ObjectType, class... Args>
 class Registry {
  public:
-  typedef std::function<std::unique_ptr<ObjectType> (Args ...)> Creator;
+  typedef std::function<std::unique_ptr<ObjectType>(Args...)> Creator;
 
   Registry() : registry_() {}
 
@@ -24,7 +24,7 @@ class Registry {
 
   inline bool Has(const SrcType& key) { return registry_.count(key) != 0; }
 
-  unique_ptr<ObjectType> Create(const SrcType& key, Args ... args) {
+  unique_ptr<ObjectType> Create(const SrcType& key, Args... args) {
     if (registry_.count(key) == 0) {
       VLOG(2) << "Key not registered: " << key;
       return nullptr;
@@ -60,7 +60,7 @@ class Registerer {
   }
 
   template <class DerivedType>
-  static unique_ptr<ObjectType> DefaultCreator(Args ... args) {
+  static unique_ptr<ObjectType> DefaultCreator(Args... args) {
     return std::unique_ptr<ObjectType>(new DerivedType(args...));
   }
 };
@@ -74,36 +74,35 @@ class Registerer {
 #endif
 
 #define MACE_DECLARE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName();              \
-  typedef Registerer<SrcType, ObjectType, ##__VA_ARGS__>                     \
+  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName();             \
+  typedef Registerer<SrcType, ObjectType, ##__VA_ARGS__>                    \
       Registerer##RegistryName;
 
 #define MACE_DEFINE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName() {            \
-    static Registry<SrcType, ObjectType, ##__VA_ARGS__>* registry =         \
-        new Registry<SrcType, ObjectType, ##__VA_ARGS__>();                 \
-    return registry;                                                        \
+  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName() {           \
+    static Registry<SrcType, ObjectType, ##__VA_ARGS__>* registry =        \
+        new Registry<SrcType, ObjectType, ##__VA_ARGS__>();                \
+    return registry;                                                       \
   }
 
-#define MACE_DECLARE_REGISTRY(RegistryName, ObjectType, ...) \
-  MACE_DECLARE_TYPED_REGISTRY(                               \
-      RegistryName, std::string, ObjectType, ##__VA_ARGS__)
+#define MACE_DECLARE_REGISTRY(RegistryName, ObjectType, ...)         \
+  MACE_DECLARE_TYPED_REGISTRY(RegistryName, std::string, ObjectType, \
+                              ##__VA_ARGS__)
 
-#define MACE_DEFINE_REGISTRY(RegistryName, ObjectType, ...) \
-  MACE_DEFINE_TYPED_REGISTRY(                               \
-      RegistryName, std::string, ObjectType, ##__VA_ARGS__)
+#define MACE_DEFINE_REGISTRY(RegistryName, ObjectType, ...)         \
+  MACE_DEFINE_TYPED_REGISTRY(RegistryName, std::string, ObjectType, \
+                             ##__VA_ARGS__)
 
 #define MACE_REGISTER_TYPED_CREATOR(RegistryName, key, ...)                  \
-  namespace {                                                                 \
+  namespace {                                                                \
   static Registerer##RegistryName MACE_ANONYMOUS_VARIABLE(g_##RegistryName)( \
       key, RegistryName(), __VA_ARGS__);
 
 #define MACE_REGISTER_TYPED_CLASS(RegistryName, key, ...)                    \
-  namespace {                                                                 \
+  namespace {                                                                \
   static Registerer##RegistryName MACE_ANONYMOUS_VARIABLE(g_##RegistryName)( \
-      key,                                                                    \
-      RegistryName(),                                                         \
-      Registerer##RegistryName::DefaultCreator<__VA_ARGS__>);                 \
+      key, RegistryName(),                                                   \
+      Registerer##RegistryName::DefaultCreator<__VA_ARGS__>);                \
   }
 
 #define MACE_REGISTER_CREATOR(RegistryName, key, ...) \
@@ -112,6 +111,6 @@ class Registerer {
 #define MACE_REGISTER_CLASS(RegistryName, key, ...) \
   MACE_REGISTER_TYPED_CLASS(RegistryName, #key, __VA_ARGS__)
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_REGISTRY_H_
+#endif  // MACE_CORE_REGISTRY_H_

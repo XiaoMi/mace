@@ -2,7 +2,6 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-
 #include "mace/core/logging.h"
 
 #include <stdlib.h>
@@ -62,10 +61,10 @@ void LogMessage::GenerateLogMessage() {
 #else
 
 void LogMessage::GenerateLogMessage() {
-  fprintf(stderr, "%c %s:%d] %s\n", "IWEF"[severity_], fname_, line_, str().c_str());
+  fprintf(stderr, "%c %s:%d] %s\n", "IWEF"[severity_], fname_, line_,
+          str().c_str());
 }
 #endif
-
 
 namespace {
 

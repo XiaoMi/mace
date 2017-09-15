@@ -7,13 +7,9 @@
 namespace mace {
 
 static std::unique_ptr<CPUAllocator> g_cpu_allocator(new CPUAllocator());
-CPUAllocator* cpu_allocator() {
-  return g_cpu_allocator.get();
-}
+CPUAllocator* cpu_allocator() { return g_cpu_allocator.get(); }
 
-void SetCPUAllocator(CPUAllocator* alloc) {
-  g_cpu_allocator.reset(alloc);
-}
+void SetCPUAllocator(CPUAllocator* alloc) { g_cpu_allocator.reset(alloc); }
 
 Allocator* GetDeviceAllocator(DeviceType type) {
   switch (type) {
@@ -26,4 +22,4 @@ Allocator* GetDeviceAllocator(DeviceType type) {
   return nullptr;
 }
 
-} // namespace mace
+}  // namespace mace
