@@ -10,7 +10,6 @@
 namespace mace {
 template <DeviceType D, typename T>
 static void ReluBenchmark(int iters, int size) {
-
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -28,26 +27,25 @@ static void ReluBenchmark(int iters, int size) {
   }
 
   mace::testing::StartTiming();
-  while(iters--) {
+  while (iters--) {
     net.RunOp(D);
   }
 }
 
-#define BM_RELU_MACRO(SIZE, TYPE, DEVICE)                        \
-  static void BM_RELU_##SIZE##_##TYPE##_##DEVICE(                \
-        int iters) {                                             \
-    const int64_t tot = static_cast<int64_t>(iters) * SIZE;      \
-    mace::testing::ItemsProcessed(tot);                          \
-    mace::testing::BytesProcessed(tot * (sizeof(TYPE)));         \
-    ReluBenchmark<DEVICE, TYPE>(iters, SIZE);                    \
-  }                                                              \
+#define BM_RELU_MACRO(SIZE, TYPE, DEVICE)                     \
+  static void BM_RELU_##SIZE##_##TYPE##_##DEVICE(int iters) { \
+    const int64_t tot = static_cast<int64_t>(iters) * SIZE;   \
+    mace::testing::ItemsProcessed(tot);                       \
+    mace::testing::BytesProcessed(tot*(sizeof(TYPE)));        \
+    ReluBenchmark<DEVICE, TYPE>(iters, SIZE);                 \
+  }                                                           \
   BENCHMARK(BM_RELU_##SIZE##_##TYPE##_##DEVICE)
 
-#define BM_RELU(SIZE, TYPE)        \
-  BM_RELU_MACRO(SIZE, TYPE, CPU);  \
+#define BM_RELU(SIZE, TYPE)       \
+  BM_RELU_MACRO(SIZE, TYPE, CPU); \
   BM_RELU_MACRO(SIZE, TYPE, NEON);
 
 BM_RELU(1000, float);
 BM_RELU(100000, float);
 BM_RELU(10000000, float);
-} //  namespace mace
+}  //  namespace mace

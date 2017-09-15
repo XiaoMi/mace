@@ -2,16 +2,15 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include <arm_neon.h>
 #include "mace/kernels/addn.h"
+#include <arm_neon.h>
 
 namespace mace {
 namespace kernels {
 
 template <>
-void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>& inputs,
-                                                float *output,
-                                                index_t size) {
+void AddNFunctor<DeviceType::NEON, float>::operator()(
+    const vector<const float *> &inputs, float *output, index_t size) {
   // TODO: neon mem copy
   memset(output, 0, size * sizeof(float));
   int n = inputs.size();
@@ -22,7 +21,7 @@ void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>
   }
   int64_t element_per_group = size / groups;
 
-#pragma omp parallel for num_threads(1) // no significant performance improve
+#pragma omp parallel for num_threads(1)  // no significant performance improve
   for (int64_t i = 0; i < size; i += element_per_group) {
     int64_t count = std::min(element_per_group, size - i);
     int nn = count >> 2;
@@ -48,5 +47,5 @@ void AddNFunctor<DeviceType::NEON, float>::operator()(const vector<const float*>
   }
 };
 
-} // namespace kernels
-} // namespace mace
+}  // namespace kernels
+}  // namespace mace

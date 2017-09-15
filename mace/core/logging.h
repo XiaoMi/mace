@@ -5,8 +5,8 @@
 #ifndef MACE_CORE_LOGGING_H_
 #define MACE_CORE_LOGGING_H_
 
-#include <sstream>
 #include <limits>
+#include <sstream>
 #include <string>
 
 #undef ERROR
@@ -30,8 +30,8 @@ inline void MakeStringInternal(std::stringstream& ss, const T& t) {
 }
 
 template <typename T, typename... Args>
-inline void
-MakeStringInternal(std::stringstream& ss, const T& t, const Args&... args) {
+inline void MakeStringInternal(std::stringstream& ss, const T& t,
+                               const Args&... args) {
   MakeStringInternal(ss, t);
   MakeStringInternal(ss, args...);
 }
@@ -48,9 +48,7 @@ template <>
 inline string MakeString(const string& str) {
   return str;
 }
-inline string MakeString(const char* c_str) {
-  return string(c_str);
-}
+inline string MakeString(const char* c_str) { return string(c_str); }
 
 class LogMessage : public std::basic_ostringstream<char> {
  public:
@@ -85,8 +83,7 @@ class LogMessageFatal : public LogMessage {
   ::mace::internal::LogMessage(__FILE__, __LINE__, mace::WARNING)
 #define _MACE_LOG_ERROR \
   ::mace::internal::LogMessage(__FILE__, __LINE__, mace::ERROR)
-#define _MACE_LOG_FATAL \
-  ::mace::internal::LogMessageFatal(__FILE__, __LINE__)
+#define _MACE_LOG_FATAL ::mace::internal::LogMessageFatal(__FILE__, __LINE__)
 
 #define _MACE_LOG_QFATAL _MACE_LOG_FATAL
 
@@ -96,10 +93,10 @@ class LogMessageFatal : public LogMessage {
 // Turn VLOG off when under mobile devices for considerations of binary size.
 #define VLOG_IS_ON(lvl) ((lvl) <= 0)
 #else
-// Otherwise, Set MACE_CPP_MIN_VLOG_LEVEL environment to update minimum log level
+// Otherwise, Set MACE_CPP_MIN_VLOG_LEVEL environment to update minimum log
+// level
 // of VLOG
-#define VLOG_IS_ON(lvl) \
-  ((lvl) <= ::mace::internal::LogMessage::MinVLogLevel())
+#define VLOG_IS_ON(lvl) ((lvl) <= ::mace::internal::LogMessage::MinVLogLevel())
 #endif
 
 #define VLOG(lvl)      \
@@ -113,16 +110,16 @@ class LogMessageFatal : public LogMessage {
 //    MACE_CHECK(fp->Write(x) == 4)
 //    MACE_CHECK(fp->Write(x) == 4, "Write failed")
 // which are not correct for MACE_ASSERT.
-#define MACE_CHECK(condition, ...)     \
-  if (!(condition)) \
-    LOG(FATAL) << "Check failed: " #condition " " \
-    << ::mace::internal::MakeString(__VA_ARGS__)
+#define MACE_CHECK(condition, ...)              \
+  if (!(condition))                             \
+  LOG(FATAL) << "Check failed: " #condition " " \
+             << ::mace::internal::MakeString(__VA_ARGS__)
 
 #ifndef NDEBUG
-#define MACE_ASSERT(condition, ...)     \
-  if (!(condition)) \
-    LOG(FATAL) << "Assert failed: " #condition " " \
-    << ::mace::internal::MakeString(__VA_ARGS__)
+#define MACE_ASSERT(condition, ...)              \
+  if (!(condition))                              \
+  LOG(FATAL) << "Assert failed: " #condition " " \
+             << ::mace::internal::MakeString(__VA_ARGS__)
 #else
 #define MACE_ASSERT(condition, ...) ((void)0)
 #endif
@@ -135,9 +132,9 @@ T&& CheckNotNull(const char* file, int line, const char* exprtext, T&& t) {
   return std::forward<T>(t);
 }
 
-#define MACE_CHECK_NOTNULL(val)                                 \
+#define MACE_CHECK_NOTNULL(val)                      \
   ::mace::internal::CheckNotNull(__FILE__, __LINE__, \
-                                       "'" #val "' Must be non NULL", (val))
+                                 "'" #val "' Must be non NULL", (val))
 
 }  // namespace internal
 }  // namespace mace

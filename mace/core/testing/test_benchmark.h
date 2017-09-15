@@ -12,9 +12,9 @@
 #include "mace/core/types.h"
 
 #define MACE_BENCHMARK_CONCAT(a, b, c) a##b##c
-#define BENCHMARK(n)                                            \
-  static ::mace::testing::Benchmark* MACE_BENCHMARK_CONCAT(__benchmark_, n, __LINE__) = \
-      (new ::mace::testing::Benchmark(#n, (n)))
+#define BENCHMARK(n)                                        \
+  static ::mace::testing::Benchmark* MACE_BENCHMARK_CONCAT( \
+      __benchmark_, n, __LINE__) = (new ::mace::testing::Benchmark(#n, (n)))
 
 namespace mace {
 namespace testing {

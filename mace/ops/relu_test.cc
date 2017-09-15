@@ -32,4 +32,4 @@ TEST_F(ReluOpTest, ReluOp) {
   ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.01);
 }
 
-} // namespace mace
+}  // namespace mace

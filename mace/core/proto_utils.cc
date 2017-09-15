@@ -5,9 +5,9 @@
 #include "mace/core/proto_utils.h"
 
 #include <fcntl.h>
+#include <unistd.h>
 #include <cerrno>
 #include <fstream>
-#include <unistd.h>
 
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
@@ -82,13 +82,12 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
   return proto->ParseFromCodedStream(&coded_stream);
 }
 
-void WriteProtoToBinaryFile(
-    const MessageLite& /*proto*/,
-    const char* /*filename*/) {
+void WriteProtoToBinaryFile(const MessageLite& /*proto*/,
+                            const char* /*filename*/) {
   LOG(FATAL) << "Not implemented yet.";
 }
 
-#else  // MACE_USE_LITE_PROTO
+#else                  // MACE_USE_LITE_PROTO
 
 // Full protocol buffer.
 
@@ -118,7 +117,7 @@ void WriteProtoToTextFile(const Message& proto, const char* filename) {
 }
 
 bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
-#if defined (_MSC_VER)  // for MSC compiler binary flag needs to be specified
+#if defined(_MSC_VER)  // for MSC compiler binary flag needs to be specified
   int fd = open(filename, O_RDONLY | O_BINARY);
 #else
   int fd = open(filename, O_RDONLY);
@@ -138,8 +137,8 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
 
 void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  MACE_CHECK(
-      fd != -1, "File cannot be created: ", filename, " error number: ", errno);
+  MACE_CHECK(fd != -1, "File cannot be created: ", filename, " error number: ",
+             errno);
   std::unique_ptr<ZeroCopyOutputStream> raw_output(new FileOutputStream(fd));
   std::unique_ptr<CodedOutputStream> coded_output(
       new CodedOutputStream(raw_output.get()));
@@ -151,18 +150,17 @@ void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
 
 #endif  // MACE_USE_LITE_PROTO
 
-ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
-  for (auto &arg : def.arg()) {
+ArgumentHelper::ArgumentHelper(const OperatorDef& def) {
+  for (auto& arg : def.arg()) {
     if (arg_map_.find(arg.name()) != arg_map_.end()) {
       MACE_CHECK(
           arg.SerializeAsString() == arg_map_[arg.name()].SerializeAsString(),
-          "Found argument of the same name '",
-          arg.name(),
-          "' but with different contents: ",
-          ProtoDebugString(def));
+          "Found argument of the same name '", arg.name(),
+          "' but with different contents: ", ProtoDebugString(def));
 
       LOG(WARNING) << "Duplicated argument name found in operator def: "
-        << ProtoDebugString(def) << ", arg: " << ProtoDebugString(arg);
+                   << ProtoDebugString(def)
+                   << ", arg: " << ProtoDebugString(arg);
     }
 
     arg_map_[arg.name()] = arg;
@@ -171,10 +169,9 @@ ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
 
 ArgumentHelper::ArgumentHelper(const NetDef& netdef) {
   for (auto& arg : netdef.arg()) {
-    MACE_CHECK(
-        arg_map_.count(arg.name()) == 0,
-        "Duplicated argument name found in net def: ",
-        ProtoDebugString(netdef));
+    MACE_CHECK(arg_map_.count(arg.name()) == 0,
+               "Duplicated argument name found in net def: ",
+               ProtoDebugString(netdef));
     arg_map_[arg.name()] = arg;
   }
 }
@@ -192,32 +189,24 @@ bool SupportsLosslessConversion(const InputType& value) {
 }
 }
 
-#define INSTANTIATE_GET_SINGLE_ARGUMENT(                                      \
-    T, fieldname, enforce_lossless_conversion)                                \
+#define INSTANTIATE_GET_SINGLE_ARGUMENT(T, fieldname,                         \
+                                        enforce_lossless_conversion)          \
   template <>                                                                 \
-  T ArgumentHelper::GetSingleArgument<T>(                                     \
-      const string& name, const T& default_value) const {                     \
+  T ArgumentHelper::GetSingleArgument<T>(const string& name,                  \
+                                         const T& default_value) const {      \
     if (arg_map_.count(name) == 0) {                                          \
       VLOG(1) << "Using default parameter value " << default_value            \
               << " for parameter " << name;                                   \
       return default_value;                                                   \
     }                                                                         \
-    MACE_CHECK(                                                            \
-        arg_map_.at(name).has_##fieldname(),                                  \
-        "Argument ",                                                          \
-        name,                                                                 \
-        " does not have the right field: expected field " #fieldname);        \
+    MACE_CHECK(arg_map_.at(name).has_##fieldname(), "Argument ", name,        \
+               " does not have the right field: expected field " #fieldname); \
     auto value = arg_map_.at(name).fieldname();                               \
     if (enforce_lossless_conversion) {                                        \
       auto supportsConversion =                                               \
           SupportsLosslessConversion<decltype(value), T>(value);              \
-      MACE_CHECK(                                                          \
-          supportsConversion,                                                 \
-          "Value",                                                            \
-          value,                                                              \
-          " of argument ",                                                    \
-          name,                                                               \
-          "cannot be represented correctly in a target type");                \
+      MACE_CHECK(supportsConversion, "Value", value, " of argument ", name,   \
+                 "cannot be represented correctly in a target type");         \
     }                                                                         \
     return value;                                                             \
   }                                                                           \
@@ -242,30 +231,25 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(size_t, i, true)
 INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
 #undef INSTANTIATE_GET_SINGLE_ARGUMENT
 
-#define INSTANTIATE_GET_REPEATED_ARGUMENT(                             \
-    T, fieldname, enforce_lossless_conversion)                         \
-  template <>                                                          \
-  vector<T> ArgumentHelper::GetRepeatedArgument<T>(                    \
-      const string& name, const std::vector<T>& default_value) const { \
-    if (arg_map_.count(name) == 0) {                                   \
-      return default_value;                                            \
-    }                                                                  \
-    vector<T> values;                                                  \
-    for (const auto& v : arg_map_.at(name).fieldname()) {              \
-      if (enforce_lossless_conversion) {                               \
-        auto supportsConversion =                                      \
-            SupportsLosslessConversion<decltype(v), T>(v);             \
-        MACE_CHECK(                                                 \
-            supportsConversion,                                        \
-            "Value",                                                   \
-            v,                                                         \
-            " of argument ",                                           \
-            name,                                                      \
-            "cannot be represented correctly in a target type");       \
-      }                                                                \
-      values.push_back(v);                                             \
-    }                                                                  \
-    return values;                                                     \
+#define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                   \
+                                          enforce_lossless_conversion)    \
+  template <>                                                             \
+  vector<T> ArgumentHelper::GetRepeatedArgument<T>(                       \
+      const string& name, const std::vector<T>& default_value) const {    \
+    if (arg_map_.count(name) == 0) {                                      \
+      return default_value;                                               \
+    }                                                                     \
+    vector<T> values;                                                     \
+    for (const auto& v : arg_map_.at(name).fieldname()) {                 \
+      if (enforce_lossless_conversion) {                                  \
+        auto supportsConversion =                                         \
+            SupportsLosslessConversion<decltype(v), T>(v);                \
+        MACE_CHECK(supportsConversion, "Value", v, " of argument ", name, \
+                   "cannot be represented correctly in a target type");   \
+      }                                                                   \
+      values.push_back(v);                                                \
+    }                                                                     \
+    return values;                                                        \
   }
 
 INSTANTIATE_GET_REPEATED_ARGUMENT(float, floats, false)
@@ -281,14 +265,14 @@ INSTANTIATE_GET_REPEATED_ARGUMENT(size_t, ints, true)
 INSTANTIATE_GET_REPEATED_ARGUMENT(string, strings, false)
 #undef INSTANTIATE_GET_REPEATED_ARGUMENT
 
-#define MACE_MAKE_SINGULAR_ARGUMENT(T, fieldname)                            \
-template <>                                                                    \
-Argument MakeArgument(const string& name, const T& value) {                    \
-  Argument arg;                                                                \
-  arg.set_name(name);                                                          \
-  arg.set_##fieldname(value);                                                  \
-  return arg;                                                                  \
-}
+#define MACE_MAKE_SINGULAR_ARGUMENT(T, fieldname)             \
+  template <>                                                 \
+  Argument MakeArgument(const string& name, const T& value) { \
+    Argument arg;                                             \
+    arg.set_name(name);                                       \
+    arg.set_##fieldname(value);                               \
+    return arg;                                               \
+  }
 
 MACE_MAKE_SINGULAR_ARGUMENT(bool, i)
 MACE_MAKE_SINGULAR_ARGUMENT(float, f)
@@ -305,16 +289,16 @@ Argument MakeArgument(const string& name, const MessageLite& value) {
   return arg;
 }
 
-#define MACE_MAKE_REPEATED_ARGUMENT(T, fieldname)                            \
-template <>                                                                    \
-Argument MakeArgument(const string& name, const vector<T>& value) {            \
-  Argument arg;                                                                \
-  arg.set_name(name);                                                          \
-  for (const auto& v : value) {                                                \
-    arg.add_##fieldname(v);                                                    \
-  }                                                                            \
-  return arg;                                                                  \
-}
+#define MACE_MAKE_REPEATED_ARGUMENT(T, fieldname)                     \
+  template <>                                                         \
+  Argument MakeArgument(const string& name, const vector<T>& value) { \
+    Argument arg;                                                     \
+    arg.set_name(name);                                               \
+    for (const auto& v : value) {                                     \
+      arg.add_##fieldname(v);                                         \
+    }                                                                 \
+    return arg;                                                       \
+  }
 
 MACE_MAKE_REPEATED_ARGUMENT(float, floats)
 MACE_MAKE_REPEATED_ARGUMENT(int, ints)
@@ -328,31 +312,24 @@ const Argument& GetArgument(const OperatorDef& def, const string& name) {
       return arg;
     }
   }
-  MACE_CHECK(false,
-      "Argument named ",
-      name,
-      "does not exist in operator ",
-      ProtoDebugString(def));
+  MACE_CHECK(false, "Argument named ", name, "does not exist in operator ",
+             ProtoDebugString(def));
 }
 
-bool GetFlagArgument(
-    const OperatorDef& def,
-    const string& name,
-    bool def_value) {
+bool GetFlagArgument(const OperatorDef& def, const string& name,
+                     bool def_value) {
   for (const Argument& arg : def.arg()) {
     if (arg.name() == name) {
-      MACE_CHECK(
-          arg.has_i(), "Can't parse argument as bool: ", ProtoDebugString(arg));
+      MACE_CHECK(arg.has_i(), "Can't parse argument as bool: ",
+                 ProtoDebugString(arg));
       return arg.i();
     }
   }
   return def_value;
 }
 
-Argument* GetMutableArgument(
-    const string& name,
-    const bool create_if_missing,
-    OperatorDef* def) {
+Argument* GetMutableArgument(const string& name, const bool create_if_missing,
+                             OperatorDef* def) {
   for (int i = 0; i < def->arg_size(); ++i) {
     if (def->arg(i).name() == name) {
       return def->mutable_arg(i);

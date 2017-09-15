@@ -2,9 +2,9 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/ops/resize_bilinear.h"
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/resize_bilinear.h"
 
 using namespace mace;
 

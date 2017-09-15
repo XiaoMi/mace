@@ -10,11 +10,11 @@
 namespace mace {
 namespace kernels {
 
-void Conv2dNeonK5x5S1(const float* input, // NCHW
+void Conv2dNeonK5x5S1(const float* input,  // NCHW
                       const index_t* input_shape,
-                      const float* filter, // c_out, c_in, kernel_h, kernel_w
-                      const float* bias, // c_out
-                      float* output, // NCHW
+                      const float* filter,  // c_out, c_in, kernel_h, kernel_w
+                      const float* bias,    // c_out
+                      float* output,        // NCHW
                       const index_t* output_shape) {
   const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
@@ -30,17 +30,17 @@ void Conv2dNeonK5x5S1(const float* input, // NCHW
 
   const index_t input_total_pixels_per_channel = input_height * input_width;
   const index_t output_total_pixels_per_channel = height * width;
-  const index_t input_total_pixels_per_batch = input_total_pixels_per_channel
-      * input_channels;
-  const index_t output_total_pixels_per_batch = output_total_pixels_per_channel
-      * channels;
+  const index_t input_total_pixels_per_batch =
+      input_total_pixels_per_channel * input_channels;
+  const index_t output_total_pixels_per_batch =
+      output_total_pixels_per_channel * channels;
   const index_t patch_size = input_channels * 25;
 
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {
-      float* output_ptr = output + n * output_total_pixels_per_batch
-          + c * output_total_pixels_per_channel;
+      float* output_ptr = output + n * output_total_pixels_per_batch +
+                          c * output_total_pixels_per_channel;
       const float* input_ptr = input + n * input_total_pixels_per_batch;
 
       // Fill with bias
@@ -53,7 +53,7 @@ void Conv2dNeonK5x5S1(const float* input, // NCHW
         float* outptr2 = outptr + width;
 
         const float* inptr = input_ptr + inc * input_total_pixels_per_channel;
-        const float* filter_ptr = filter + c * patch_size  + inc * 25;
+        const float* filter_ptr = filter + c * patch_size + inc * 25;
 
         const float* r0 = inptr;
         const float* r1 = inptr + input_width;
@@ -246,8 +246,8 @@ void Conv2dNeonK5x5S1(const float* input, // NCHW
             sum2 = r5[4] * k4[4];
 
             float32x2_t _ss = vadd_f32(vget_low_f32(_sum), vget_high_f32(_sum));
-            float32x2_t
-                _ss2 = vadd_f32(vget_low_f32(_sum2), vget_high_f32(_sum2));
+            float32x2_t _ss2 =
+                vadd_f32(vget_low_f32(_sum2), vget_high_f32(_sum2));
             float32x2_t _ss_ss2 = vpadd_f32(_ss, _ss2);
 
             sum += vget_lane_f32(_ss_ss2, 0);
@@ -414,7 +414,7 @@ void Conv2dNeonK5x5S1(const float* input, // NCHW
   }
 }
 
-} //  namespace kernels
-} //  namespace mace
+}  //  namespace kernels
+}  //  namespace mace
 
-#endif //  MACE_KERNELS_NEON_CONV_2D_NEON_5X5_H_
+#endif  //  MACE_KERNELS_NEON_CONV_2D_NEON_5X5_H_

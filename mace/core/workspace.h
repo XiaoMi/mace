@@ -5,7 +5,6 @@
 #ifndef MACE_CORE_WORKSPACE_H_
 #define MACE_CORE_WORKSPACE_H_
 
-
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
 #include "mace/proto/mace.pb.h"
@@ -37,10 +36,9 @@ class Workspace {
  private:
   TensorMap tensor_map_;
 
- DISABLE_COPY_AND_ASSIGN(Workspace);
+  DISABLE_COPY_AND_ASSIGN(Workspace);
 };
 
-} // namespace mace
+}  // namespace mace
 
-
-#endif // MACE_CORE_WORKSPACE_H_
+#endif  // MACE_CORE_WORKSPACE_H_

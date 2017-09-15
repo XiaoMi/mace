@@ -10,10 +10,10 @@
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class AddNOp : public Operator<D, T> {
  public:
-  AddNOp(const OperatorDef &operator_def, Workspace *ws)
+  AddNOp(const OperatorDef& operator_def, Workspace* ws)
       : Operator<D, T>(operator_def, ws) {}
 
   bool Run() override {
@@ -36,6 +36,6 @@ class AddNOp : public Operator<D, T> {
   kernels::AddNFunctor<D, T> functor_;
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_OPS_ADDN_H_
+#endif  // MACE_OPS_ADDN_H_

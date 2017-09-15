@@ -18,26 +18,25 @@ struct DataTypeToEnum {
   static_assert(IsValidDataType<T>::value, "Specified Data Type not supported");
 };
 
-
 // EnumToDataType<VALUE>::Type is the type for DataType constant VALUE, e.g.
 // EnumToDataType<DT_FLOAT>::Type is float.
 template <DataType VALUE>
 struct EnumToDataType {};  // Specializations below
 
 // Template specialization for both DataTypeToEnum and EnumToDataType.
-#define MATCH_TYPE_AND_ENUM(TYPE, ENUM)                 \
-  template <>                                           \
-  struct DataTypeToEnum<TYPE> {                         \
-    static DataType v() { return ENUM; }                \
-    static constexpr DataType value = ENUM;             \
-  };                                                    \
-  template <>                                           \
-  struct IsValidDataType<TYPE> {                        \
-    static constexpr bool value = true;                 \
-  };                                                    \
-  template <>                                           \
-  struct EnumToDataType<ENUM> {                         \
-    typedef TYPE Type;                                  \
+#define MATCH_TYPE_AND_ENUM(TYPE, ENUM)     \
+  template <>                               \
+  struct DataTypeToEnum<TYPE> {             \
+    static DataType v() { return ENUM; }    \
+    static constexpr DataType value = ENUM; \
+  };                                        \
+  template <>                               \
+  struct IsValidDataType<TYPE> {            \
+    static constexpr bool value = true;     \
+  };                                        \
+  template <>                               \
+  struct EnumToDataType<ENUM> {             \
+    typedef TYPE Type;                      \
   }
 
 MATCH_TYPE_AND_ENUM(float, DT_FLOAT);
@@ -53,6 +52,6 @@ MATCH_TYPE_AND_ENUM(bool, DT_BOOL);
 
 static const int32_t kint32_tmax = ((int32_t)0x7FFFFFFF);
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_TYPES_H_
+#endif  // MACE_CORE_TYPES_H_

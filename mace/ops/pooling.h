@@ -11,17 +11,17 @@
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class PoolingOp : public ConvPool2dOpBase<D, T> {
-public:
+ public:
   PoolingOp(const OperatorDef& op_def, Workspace* ws)
-  : ConvPool2dOpBase<D, T>(op_def, ws),
-    kernels_(OperatorBase::GetRepeatedArgument<int>("kernels")),
-    pooling_type_(static_cast<PoolingType>(
-                  OperatorBase::GetSingleArgument<int>(
-                  "pooling_type", static_cast<int>(AVG)))) {};
+      : ConvPool2dOpBase<D, T>(op_def, ws),
+        kernels_(OperatorBase::GetRepeatedArgument<int>("kernels")),
+        pooling_type_(
+            static_cast<PoolingType>(OperatorBase::GetSingleArgument<int>(
+                "pooling_type", static_cast<int>(AVG)))){};
 
-  bool Run() override{
+  bool Run() override {
     const Tensor* input = this->Input(INPUT);
     Tensor* output = this->Output(OUTPUT);
     std::vector<index_t> in_shape = input->shape();
@@ -33,28 +33,21 @@ public:
     filter_shape[1] = in_shape[0];
     filter_shape[2] = kernels_[0];
     filter_shape[3] = kernels_[1];
-    kernels::CalcPaddingAndOutputSize(in_shape.data(),
-                                      filter_shape.data(),
+    kernels::CalcPaddingAndOutputSize(in_shape.data(), filter_shape.data(),
                                       this->dilations_.data(),
-                                      this->strides_.data(),
-                                      this->padding_,
-                                      output_shape.data(),
-                                      paddings.data());
+                                      this->strides_.data(), this->padding_,
+                                      output_shape.data(), paddings.data());
     output->Resize(output_shape);
 
-    auto pooling_func = kernels::PoolingFunctor<D, T>(pooling_type_,
-                                                      kernels_.data(),
-                                                      this->strides_.data(),
-                                                      paddings.data(),
-                                                      this->dilations_.data());
-    pooling_func(input->data<float>(),
-                 in_shape.data(),
-                 output->mutable_data<float>(),
-                 output->shape().data());
+    auto pooling_func = kernels::PoolingFunctor<D, T>(
+        pooling_type_, kernels_.data(), this->strides_.data(), paddings.data(),
+        this->dilations_.data());
+    pooling_func(input->data<float>(), in_shape.data(),
+                 output->mutable_data<float>(), output->shape().data());
     return true;
   };
 
-protected:
+ protected:
   std::vector<int> kernels_;
   PoolingType pooling_type_;
 
@@ -62,6 +55,6 @@ protected:
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif //MACE_OPS_POOLING_H_
+#endif  // MACE_OPS_POOLING_H_

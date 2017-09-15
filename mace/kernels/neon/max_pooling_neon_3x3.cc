@@ -2,19 +2,17 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <arm_neon.h>
 #include <float.h>
 #include <limits>
-#include <arm_neon.h>
 
 #include "mace/core/common.h"
 
 namespace mace {
 namespace kernels {
 
-void PoolingMaxNeonK3x3S2x2(const float *input,
-                            const index_t *in_shape,
-                            float *output,
-                            const index_t *out_shape,
+void PoolingMaxNeonK3x3S2x2(const float *input, const index_t *in_shape,
+                            float *output, const index_t *out_shape,
                             const int *paddings) {
   index_t batch = in_shape[0];
   index_t channels = in_shape[1];
@@ -44,7 +42,7 @@ void PoolingMaxNeonK3x3S2x2(const float *input,
         int num_vectors = 0;
         const float *r0, *r1, *r2;
         if (!((h == 0 && padding_top > 0) ||
-            (h == out_height - 1 && padding_bottom > 0))) {
+              (h == out_height - 1 && padding_bottom > 0))) {
           r0 = input + input_offset + (h * 2 - padding_top) * in_width;
           r1 = r0 + in_width;
           r2 = r1 + in_width;
@@ -112,8 +110,7 @@ void PoolingMaxNeonK3x3S2x2(const float *input,
             for (int kw = 0; kw < 3; ++kw) {
               int inh = h * 2 - padding_top + kh;
               int inw = w * 2 - padding_left + kw;
-              if (inh >= 0 && inh < in_height &&
-                  inw >= 0 && inw < in_width) {
+              if (inh >= 0 && inh < in_height && inw >= 0 && inw < in_width) {
                 max = std::max(max, input[input_offset + inh * in_width + inw]);
               }
             }
@@ -130,10 +127,8 @@ void PoolingMaxNeonK3x3S2x2(const float *input,
 }
 
 // assume the input has already been padded
-void PoolingMaxNeonK3x3S2x2Padded(const float *input,
-                                  const index_t *in_shape,
-                                  float *output,
-                                  const index_t *out_shape) {
+void PoolingMaxNeonK3x3S2x2Padded(const float *input, const index_t *in_shape,
+                                  float *output, const index_t *out_shape) {
   index_t batch = in_shape[0];
   index_t channels = in_shape[1];
   index_t in_height = in_shape[2];
@@ -218,5 +213,5 @@ void PoolingMaxNeonK3x3S2x2Padded(const float *input,
   }
 }
 
-} // namespace kernels
-} // namespace mace
+}  // namespace kernels
+}  // namespace mace

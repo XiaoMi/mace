@@ -14,7 +14,7 @@ static void foo(int iters) {
   float* out = new float[N];
 
   while (iters--) {
-    for (int i=0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
       out[i] = inp[i] * 2.0;
     }
   }
@@ -23,7 +23,6 @@ static void foo(int iters) {
 }
 
 BENCHMARK(foo);
-
 
 static void bar(int iters, int n) {
   const int64_t tot = static_cast<int64_t>(iters) * n;
@@ -34,7 +33,7 @@ static void bar(int iters, int n) {
   float* out = new float[n];
 
   while (iters--) {
-    for (int i=0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
       out[i] = inp[i] * 2.0;
     }
   }

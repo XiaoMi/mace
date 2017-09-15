@@ -10,6 +10,6 @@ REGISTER_CPU_OPERATOR(Relu, ReluOp<DeviceType::CPU, float>);
 
 #if __ARM_NEON
 REGISTER_NEON_OPERATOR(Relu, ReluOp<DeviceType::NEON, float>);
-#endif // __ARM_NEON
+#endif  // __ARM_NEON
 
-} //  namespace mace
+}  //  namespace mace
