@@ -148,3 +148,67 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+
+TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
+  // Construct graph
+  auto& net = test_net();
+  OpDefBuilder("Pooling", "PoolingTest")
+        .Input("Input")
+        .Output("Output")
+        .Finalize(net.operator_def());
+
+  // Add args
+  net.AddIntArg("pooling_type", PoolingType::MAX);
+  net.AddIntsArg("kernels", {2, 2});
+  net.AddIntsArg("strides", {2, 2});
+  net.AddIntArg("padding", Padding::SAME);
+  net.AddIntsArg("dilations", {1, 1});
+
+  // Add input data
+  net.AddInputFromArray<float>("Input", {1, 1, 4, 5},
+                                {0, 1, 2, 3, 4,
+                                 5, 6, 7, 8, 9,
+                                 10, 11, 12, 13, 14,
+                                 15, 16, 17, 18, 19});
+  // Run
+  net.RunOp(DeviceType::NEON);
+
+  // Check
+  Tensor expected = CreateTensor<float>({1, 1, 2, 3},
+                                        {6, 8, 9,
+                                         16, 18, 19});
+
+  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+}
+
+TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
+  // Construct graph
+  auto& net = test_net();
+  OpDefBuilder("Pooling", "PoolingTest")
+        .Input("Input")
+        .Output("Output")
+        .Finalize(net.operator_def());
+
+  // Add args
+  net.AddIntArg("pooling_type", PoolingType::MAX);
+  net.AddIntsArg("kernels", {3, 3});
+  net.AddIntsArg("strides", {2, 2});
+  net.AddIntArg("padding", Padding::SAME);
+  net.AddIntsArg("dilations", {1, 1});
+
+  // Add input data
+  net.AddInputFromArray<float>("Input", {1, 1, 4, 5},
+                                {0, 1, 2, 3, 4,
+                                 5, 6, 7, 8, 9,
+                                 10, 11, 12, 13, 14,
+                                 15, 16, 17, 18, 19});
+  // Run
+  net.RunOp(DeviceType::NEON);
+
+  // Check
+  Tensor expected = CreateTensor<float>({1, 1, 2, 3},
+                                        {11, 13, 14,
+                                         16, 18, 19});
+
+  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+}
