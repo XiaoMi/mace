@@ -33,11 +33,11 @@ TEST_F(BatchNormOpTest, SimpleCPU) {
   net.RunOp();
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 6, 2},
+  auto expected = CreateTensor<float>({1, 1, 6, 2},
                                         {-3.86, -3.86, -1.51, -1.51, 0.83, 0.83,
                                          3.17, 3.17, 5.51, 5.51, 7.86, 7.86});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.01);
 }
 
 TEST_F(BatchNormOpTest, SimpleNeon) {
@@ -70,12 +70,12 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
   net.RunOp();
 
   // Check
-  Tensor expected = *net.GetOutput("Output");
+  Tensor* expected = net.GetOutput("Output");
 
   // Run NEON
   net.RunOp(DeviceType::NEON);
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-5);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 }

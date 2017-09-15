@@ -79,6 +79,15 @@ class OpsTestNet {
                   [&gen, &nd, positive] { return positive ? std::abs(nd(gen)) : nd(gen); });
   }
 
+  template<typename T>
+  void AddFixedInput(const char *name, const std::vector<index_t> &shape, T value) {
+    Tensor *input = ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
+    input->Resize(shape);
+    float *input_data = input->mutable_data<T>();
+
+    std::fill(input_data, input_data + input->size(), value);
+  }
+
   void AddIntArg(const char *name, const int value) {
     auto arg = op_def_.add_arg();
     arg->set_name(name);
@@ -169,10 +178,10 @@ class OpsTestBase : public ::testing::Test {
 };
 
 template<typename T>
-Tensor CreateTensor(const std::vector<index_t> &shape, const std::vector<T> &data) {
-  Tensor res(cpu_allocator(), DataTypeToEnum<T>::v());
-  res.Resize(shape);
-  float *input_data = res.mutable_data<float>();
+unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape, const std::vector<T> &data) {
+  unique_ptr<Tensor> res(new Tensor(cpu_allocator(), DataTypeToEnum<T>::v()));
+  res->Resize(shape);
+  T *input_data = res->mutable_data<T>();
   memcpy(input_data, data.data(), data.size() * sizeof(T));
   return res;
 }

@@ -32,6 +32,7 @@ private:                                                                       \
 
 #define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")
 
-#define kCostPerGroup 8192
+// TODO: need to fine tune this
+#define kCostPerGroup 1024000000
 
 #endif // MACE_CORE_COMMON_H_

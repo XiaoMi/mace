@@ -14,7 +14,8 @@ template<DeviceType D, typename T>
 struct AddNFunctor {
   void operator()(const vector<const T*>& inputs,
                   T *output, index_t size) {
-      int n = inputs.size();
+    memset(output, 0, size * sizeof(T));
+    int n = inputs.size();
     for (int i = 0; i < n; ++i) {
       for (index_t j = 0; j < size; ++j) {
         output[j] += inputs[i][j];

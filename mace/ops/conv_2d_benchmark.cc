@@ -66,5 +66,9 @@ BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128, float);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128, float);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128, float);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128, float);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, SAME, 128, float);
 
 } //  namespace mace
