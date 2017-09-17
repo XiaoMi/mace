@@ -71,6 +71,7 @@ void PoolingMaxNeonK3x3S2x2(const float *input,
           }
         }
 
+        w += num_vectors << 2;
         float32x4x2_t row0 = vld2q_f32(r0);
         float32x4x2_t row1 = vld2q_f32(r1);
         float32x4x2_t row2 = vld2q_f32(r2);
@@ -105,7 +106,6 @@ void PoolingMaxNeonK3x3S2x2(const float *input,
           outptr += 4;
         }
 
-        w += num_vectors << 2;
         for (; w < out_width; ++w) {
           float max = std::numeric_limits<float>::lowest();
           for (int kh = 0; kh < 3; ++kh) {
