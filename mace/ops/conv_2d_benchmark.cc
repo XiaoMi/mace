@@ -61,8 +61,7 @@ static void Conv2d(int iters,
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                             \
     mace::testing::ItemsProcessed(tot);                                                          \
     mace::testing::BytesProcessed(tot*(sizeof(TYPE)));                                           \
-    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                    \
-                         OC);                                                                    \
+    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P, OC);               \
   }                                                                                              \
   BENCHMARK(                                                                                     \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_OC##_##TYPE##_##DEVICE)
@@ -77,6 +76,10 @@ BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128, float);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 128, float);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 128, float);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 128, float);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 128, float);
 BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128, float);
