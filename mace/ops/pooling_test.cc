@@ -148,14 +148,14 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>(
-      "Input", {1, 1, 4, 5},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19});
+  net.AddInputFromArray<float>("Input", {1, 1, 2, 9},
+                               {0, 1, 2, 3, 4, 5, 6, 7, 8,
+                                9, 10, 11, 12, 13, 14, 15, 16, 17});
   // Run
   net.RunOp(DeviceType::NEON);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {6, 8, 9, 16, 18, 19});
+  auto expected = CreateTensor<float>({1, 1, 1, 5}, {10, 12, 14, 16, 17});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
@@ -172,18 +172,50 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
   net.AddIntArg("pooling_type", PoolingType::MAX);
   net.AddIntsArg("kernels", {3, 3});
   net.AddIntsArg("strides", {2, 2});
+  net.AddIntArg("padding", Padding::VALID);
+  net.AddIntsArg("dilations", {1, 1});
+
+  // Add input data
+  net.AddInputFromArray<float>("Input", {1, 1, 3, 9},
+                               {0, 1, 2, 3, 4, 5, 6, 7, 8,
+                                9, 10, 11, 12, 13, 14, 15, 16, 17,
+                                18, 19, 20, 21, 22, 23, 24, 25, 26});
+  // Run
+  net.RunOp(DeviceType::NEON);
+
+  // Check
+  auto expected = CreateTensor<float>({1, 1, 1, 4}, {20, 22, 24, 26});
+
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+}
+
+TEST_F(PoolingOpTest, AVG_k2x2s2x2) {
+  // Construct graph
+  auto& net = test_net();
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("Input")
+      .Output("Output")
+      .Finalize(net.operator_def());
+
+  // Add args
+  net.AddIntArg("pooling_type", PoolingType::AVG);
+  net.AddIntsArg("kernels", {2, 2});
+  net.AddIntsArg("strides", {2, 2});
   net.AddIntArg("padding", Padding::SAME);
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
   net.AddInputFromArray<float>(
-      "Input", {1, 1, 4, 5},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19});
+      "Input", {1, 1, 2, 8},
+      {0, 1, 2, 3, 4, 5, 6, 7,
+       8, 9, 10, 11, 12, 13, 14, 15});
   // Run
   net.RunOp(DeviceType::NEON);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {11, 13, 14, 16, 18, 19});
+  auto expected = CreateTensor<float>({1, 1, 1, 4},
+                                      {4.5, 6.5, 8.5, 10.5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+
