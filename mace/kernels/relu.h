@@ -12,9 +12,17 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct ReluFunctor {
+  T max_limit_;
+
   void operator()(const T *input, T *output, index_t size) {
-    for (index_t i = 0; i < size; ++i) {
-      output[i] = std::max(input[i], static_cast<T>(0));
+    if (max_limit_ < 0) {
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::max(input[i], static_cast<T>(0));
+      }
+    } else {
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::min(std::max(input[i], static_cast<T>(0)), max_limit_);
+      }
     }
   }
 };

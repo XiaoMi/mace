@@ -155,9 +155,9 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   net.RunOp(DeviceType::NEON);
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 2, 3}, {6, 8, 9, 16, 18, 19});
+  auto expected = CreateTensor<float>({1, 1, 2, 3}, {6, 8, 9, 16, 18, 19});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
@@ -183,7 +183,7 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
   net.RunOp(DeviceType::NEON);
 
   // Check
-  Tensor expected = CreateTensor<float>({1, 1, 2, 3}, {11, 13, 14, 16, 18, 19});
+  auto expected = CreateTensor<float>({1, 1, 2, 3}, {11, 13, 14, 16, 18, 19});
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
