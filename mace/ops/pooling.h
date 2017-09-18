@@ -24,16 +24,17 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
   bool Run() override {
     const Tensor* input = this->Input(INPUT);
     Tensor* output = this->Output(OUTPUT);
-    std::vector<index_t> in_shape = input->shape();
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
-    std::vector<index_t> filter_shape = std::vector<index_t>(4);
-    filter_shape[0] = in_shape[1];
-    filter_shape[1] = in_shape[0];
+    std::vector<index_t> filter_shape(4);
+    filter_shape[0] = input->shape()[1];
+    filter_shape[1] = input->shape()[0];
     filter_shape[2] = kernels_[0];
     filter_shape[3] = kernels_[1];
-    kernels::CalcPaddingAndOutputSize(in_shape.data(), filter_shape.data(),
+
+    kernels::CalcPaddingAndOutputSize(input->shape().data(),
+                                      filter_shape.data(),
                                       this->dilations_.data(),
                                       this->strides_.data(), this->padding_,
                                       output_shape.data(), paddings.data());
@@ -42,7 +43,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
     auto pooling_func = kernels::PoolingFunctor<D, T>(
         pooling_type_, kernels_.data(), this->strides_.data(), paddings.data(),
         this->dilations_.data());
-    pooling_func(input->data<float>(), in_shape.data(),
+    pooling_func(input->data<float>(), input->shape().data(),
                  output->mutable_data<float>(), output->shape().data());
     return true;
   };
