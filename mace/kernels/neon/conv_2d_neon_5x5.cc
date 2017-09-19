@@ -13,6 +13,7 @@ namespace kernels {
 void Conv2dNeonK5x5S1(const float* input,  // NCHW
                       const index_t* input_shape,
                       const float* filter,  // c_out, c_in, kernel_h, kernel_w
+                      const index_t* filter_shape,
                       const float* bias,    // c_out
                       float* output,        // NCHW
                       const index_t* output_shape) {

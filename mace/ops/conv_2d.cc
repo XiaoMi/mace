@@ -3,7 +3,6 @@
 //
 
 #include "mace/ops/conv_2d.h"
-#include "mace/proto/mace.pb.h"
 
 namespace mace {
 
