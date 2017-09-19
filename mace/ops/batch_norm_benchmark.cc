@@ -19,6 +19,7 @@ static void BatchNorm(
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
+      .Input("Epsilon")
       .Output("Output")
       .Finalize(net.operator_def());
 
@@ -28,6 +29,7 @@ static void BatchNorm(
   net.AddRandomInput<T>("Offset", {channels});
   net.AddRandomInput<T>("Mean", {channels});
   net.AddRandomInput<T>("Var", {channels}, true);
+  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

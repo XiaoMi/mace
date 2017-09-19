@@ -13,16 +13,13 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct BatchNormFunctor {
-  float variance_epsilon_;
-
-  BatchNormFunctor(const float variance_epsilon)
-      : variance_epsilon_(variance_epsilon) {}
 
   void operator()(const T* input,
                   const T* scale,
                   const T* offset,
                   const T* mean,
                   const T* var,
+                  const float variance_epsilon,
                   const index_t n,
                   const index_t channel,
                   const index_t sample_size,
@@ -37,7 +34,7 @@ struct BatchNormFunctor {
     // Y = new_scale * X + new_offset;
     T new_scale, new_offset;
     for (index_t c = 0; c < channel; ++c) {
-      new_scale = scale[c] / std::sqrt(var[c] + this->variance_epsilon_);
+      new_scale = scale[c] / std::sqrt(var[c] + variance_epsilon);
       new_offset = offset[c] - mean[c] * new_scale;
       index_t pos = c * sample_size;
 
@@ -60,6 +57,7 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const float* offset,
     const float* mean,
     const float* var,
+    const float variance_epsilon,
     const index_t n,
     const index_t channel,
     const index_t sample_size,

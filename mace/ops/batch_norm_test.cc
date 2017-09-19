@@ -18,6 +18,7 @@ TEST_F(BatchNormOpTest, SimpleCPU) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
+      .Input("Epsilon")
       .Output("Output")
       .Finalize(net.operator_def());
 
@@ -28,6 +29,7 @@ TEST_F(BatchNormOpTest, SimpleCPU) {
   net.AddInputFromArray<float>("Offset", {1}, {2.0});
   net.AddInputFromArray<float>("Mean", {1}, {10});
   net.AddInputFromArray<float>("Var", {1}, {11.67f});
+  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
 
   // Run
   net.RunOp();
@@ -46,8 +48,8 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
   // generate random input
   index_t batch = 1 + rand() % 10;
   index_t channels = 3 + rand() % 50;
-  index_t height = 10 + rand() % 50;
-  index_t width = 10 + rand() % 50;
+  index_t height = 103;
+  index_t width = 113;
   // Construct graph
   auto& net = test_net();
   OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -56,6 +58,7 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
+      .Input("Epsilon")
       .Output("Output")
       .Finalize(net.operator_def());
 
@@ -65,6 +68,7 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
   net.AddRandomInput<float>("Offset", {channels});
   net.AddRandomInput<float>("Mean", {channels});
   net.AddRandomInput<float>("Var", {channels}, true);
+  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();

@@ -3,7 +3,6 @@
 //
 
 #include <arm_neon.h>
-#include <float.h>
 #include <limits>
 
 #include "mace/core/common.h"
