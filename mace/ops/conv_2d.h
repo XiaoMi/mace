@@ -13,17 +13,17 @@
 
 namespace mace {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
-  Conv2dOp(const OperatorDef& op_def, Workspace* ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws){};
+  Conv2dOp(const OperatorDef &op_def, Workspace *ws)
+      : ConvPool2dOpBase<D, T>(op_def, ws) {};
 
   bool Run() override {
-    const Tensor* input = this->Input(INPUT);
-    const Tensor* filter = this->Input(FILTER);
-    const Tensor* bias = this->Input(BIAS);
-    Tensor* output = this->Output(OUTPUT);
+    const Tensor *input = this->Input(INPUT);
+    const Tensor *filter = this->Input(FILTER);
+    const Tensor *bias = this->Input(BIAS);
+    Tensor *output = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);

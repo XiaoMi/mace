@@ -25,6 +25,13 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
                               index_t *output_shape,
                               int *padding_size);
 
+void CalPaddingSize(const index_t *input_shape,   // NCHW
+                     const index_t *filter_shape,  // OIHW
+                     const int *dilations,
+                     const int *strides,
+                     Padding padding,
+                     int *padding_size);
+
 void ConstructInputWithPadding(const float *input,
                                const index_t *input_shape,
                                const int *paddings,

@@ -17,30 +17,35 @@ namespace kernels {
   int input_channels = input_shape[1];                                                      \
   int input_height   = input_shape[2];                                                      \
   int input_width    = input_shape[3];                                                      \
-  int kernel_h = 3;                                                                         \
-  int kernel_w  = 3;                                                                        \
+  int multiplier     = filter_shape == nullptr ? 0 : (filter_shape[0] / input_channels);    \
+  int filter_in_channels = filter_shape == nullptr ? input_channels : filter_shape[1];      \
   for (int b = 0; b < output_batch; ++b) {                                                  \
-    float* output_ptr_base = output + b * output_channels * output_height * output_width;   \
+    float *output_ptr_base = output + b * output_channels * output_height * output_width;   \
     for (int oc = 0; oc < output_channels; ++oc) {                                          \
-        const float* filter_ptr = filter + oc * input_channels * kernel_h * kernel_w;       \
-        const float* input_ptr = input + b * input_channels * input_height * input_width;   \
-        float* output_ptr = output_ptr_base + oc * output_height * output_width;            \
+        const float *filter_ptr = filter + oc * filter_in_channels * kFilterSize;           \
+        const float *input_ptr = input + b * input_channels * input_height * input_width;   \
+        if (filter_shape != nullptr) {                                                      \
+          input_ptr += (oc / multiplier) * input_height * input_width;                      \
+        }                                                                                   \
+        float *output_ptr = output_ptr_base + oc * output_height * output_width;            \
         std::fill(output_ptr, output_ptr + output_height * output_width, bias[oc]);         \
-        for (int ic = 0; ic < input_channels; ++ic) {                                       \
+        for (int ic = 0; ic < filter_in_channels; ++ic) {                                   \
           float32x4_t n_filter_v[3] = {vld1q_f32(filter_ptr), vld1q_f32(filter_ptr+3), vld1q_f32(filter_ptr+6)};
 
 #define KERNEL_TAIL_CODE                         \
-        filter_ptr += 9;                         \
+        filter_ptr += kFilterSize;               \
         input_ptr += input_height * input_width; \
       }                                          \
     }                                            \
   }
 
 static const int kRegisterSize = 4;
+static const int kFilterSize = 9;
 
 void Conv2dNeonK3x3S1(const float *input, // NCHW
                       const index_t *input_shape,
                       const float *filter, // c_out, c_in, kernel_h, kernel_w
+                      const index_t *filter_shape,
                       const float *bias, // c_out
                       float *output, // NCHW
                       const index_t *output_shape) {
@@ -213,6 +218,7 @@ void Conv2dNeonK3x3S1(const float *input, // NCHW
 void Conv2dNeonK3x3S2(const float *input, // NCHW
                       const index_t *input_shape,
                       const float *filter, // c_out, c_in, kernel_h, kernel_w
+                      const index_t *filter_shape,
                       const float *bias, // c_out
                       float *output, // NCHW
                       const index_t *output_shape) {
@@ -287,7 +293,6 @@ void Conv2dNeonK3x3S2(const float *input, // NCHW
 
   KERNEL_TAIL_CODE
 }
-
 #undef KERNEL_HEAD_CODE
 #undef KERNEL_TAIL_CODE
 

@@ -10,12 +10,13 @@
 namespace mace {
 namespace kernels {
 
-void Conv2dNeonK5x5S1(const float* input,  // NCHW
-                      const index_t* input_shape,
-                      const float* filter,  // c_out, c_in, kernel_h, kernel_w
-                      const float* bias,    // c_out
-                      float* output,        // NCHW
-                      const index_t* output_shape) {
+void Conv2dNeonK5x5S1(const float *input,  // NCHW
+                      const index_t *input_shape,
+                      const float *filter,  // c_out, c_in, kernel_h, kernel_w
+                      const index_t *filter_shape,
+                      const float *bias,    // c_out
+                      float *output,        // NCHW
+                      const index_t *output_shape) {
   const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
   const index_t height = output_shape[2];
@@ -39,9 +40,9 @@ void Conv2dNeonK5x5S1(const float* input,  // NCHW
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {
-      float* output_ptr = output + n * output_total_pixels_per_batch +
-                          c * output_total_pixels_per_channel;
-      const float* input_ptr = input + n * input_total_pixels_per_batch;
+      float *output_ptr = output + n * output_total_pixels_per_batch +
+          c * output_total_pixels_per_channel;
+      const float *input_ptr = input + n * input_total_pixels_per_batch;
 
       // Fill with bias
       for (index_t i = 0; i < output_total_pixels_per_channel; ++i) {
@@ -49,24 +50,24 @@ void Conv2dNeonK5x5S1(const float* input,  // NCHW
       }
 
       for (index_t inc = 0; inc < input_channels; ++inc) {
-        float* outptr = output_ptr;
-        float* outptr2 = outptr + width;
+        float *outptr = output_ptr;
+        float *outptr2 = outptr + width;
 
-        const float* inptr = input_ptr + inc * input_total_pixels_per_channel;
-        const float* filter_ptr = filter + c * patch_size + inc * 25;
+        const float *inptr = input_ptr + inc * input_total_pixels_per_channel;
+        const float *filter_ptr = filter + c * patch_size + inc * 25;
 
-        const float* r0 = inptr;
-        const float* r1 = inptr + input_width;
-        const float* r2 = inptr + input_width * 2;
-        const float* r3 = inptr + input_width * 3;
-        const float* r4 = inptr + input_width * 4;
-        const float* r5 = inptr + input_width * 5;
+        const float *r0 = inptr;
+        const float *r1 = inptr + input_width;
+        const float *r2 = inptr + input_width * 2;
+        const float *r3 = inptr + input_width * 3;
+        const float *r4 = inptr + input_width * 4;
+        const float *r5 = inptr + input_width * 5;
 
-        const float* k0 = filter_ptr;
-        const float* k1 = filter_ptr + 5;
-        const float* k2 = filter_ptr + 10;
-        const float* k3 = filter_ptr + 15;
-        const float* k4 = filter_ptr + 20;
+        const float *k0 = filter_ptr;
+        const float *k1 = filter_ptr + 5;
+        const float *k2 = filter_ptr + 10;
+        const float *k3 = filter_ptr + 15;
+        const float *k4 = filter_ptr + 20;
 
         float32x4_t _k0123 = vld1q_f32(filter_ptr);
         float32x4_t _k4567 = vld1q_f32(filter_ptr + 4);
