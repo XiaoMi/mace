@@ -44,8 +44,7 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
 
       for (index_t j = 0; j < count; ++j) {
         float32x4_t input_f = vld1q_f32(input_sample_ptr);
-        float32x4_t output_f = new_offset_f;
-        output_f = vfmaq_f32(output_f, input_f, new_scale_f);
+        float32x4_t output_f = vfmaq_f32(new_offset_f, input_f, new_scale_f);
         vst1q_f32(output_sample_ptr, output_f);
         input_sample_ptr += 4;
         output_sample_ptr += 4;

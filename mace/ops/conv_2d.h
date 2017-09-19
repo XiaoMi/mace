@@ -17,7 +17,12 @@ template<DeviceType D, typename T>
 class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
   Conv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws) {};
+      : ConvPool2dOpBase<D, T>(op_def, ws),
+        functor_(this->Input(INPUT)->shape().data(),
+                 this->Input(FILTER)->shape().data(),
+                 this->strides_.data(),
+                 this->padding_,
+                 this->dilations_.data()) {}
 
   bool Run() override {
     const Tensor *input = this->Input(INPUT);
@@ -27,20 +32,18 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
-    kernels::CalcPaddingAndOutputSize(
-        input->shape().data(), filter->shape().data(), this->dilations_.data(),
-        this->strides_.data(), this->padding_, output_shape.data(),
-        paddings.data());
+    this->CalOutputSize(input->shape().data(), filter->shape().data(), output_shape.data());
     output->Resize(output_shape);
 
-    auto conv2d = kernels::Conv2dFunctor<D, T>(
-        this->strides_.data(), paddings.data(), this->dilations_.data());
-    conv2d(input->data<T>(), input->shape().data(), filter->data<T>(),
-           filter->shape().data(), bias->data<T>(), output->mutable_data<T>(),
-           output->shape().data());
+    functor_(input->data<T>(), input->shape().data(), filter->data<T>(),
+             filter->shape().data(), bias->data<T>(), output->mutable_data<T>(),
+             output->shape().data());
 
     return true;
   }
+
+ private:
+  kernels::Conv2dFunctor<D, T> functor_;
 
  protected:
   OP_INPUT_TAGS(INPUT, FILTER, BIAS);
