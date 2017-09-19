@@ -15,8 +15,7 @@ class BatchNormOp : public Operator<D, T> {
  public:
   BatchNormOp(const OperatorDef& operator_def, Workspace* ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(
-            OperatorBase::GetSingleArgument<float>("variance_epsilon", 1e-4)) {}
+        functor_() {}
 
   bool Run() override {
     const Tensor* input = this->Input(0);
@@ -24,6 +23,7 @@ class BatchNormOp : public Operator<D, T> {
     const Tensor* offset = this->Input(2);
     const Tensor* mean = this->Input(3);
     const Tensor* var = this->Input(4);
+    const Tensor* epsilon = this->Input(5);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
@@ -35,6 +35,8 @@ class BatchNormOp : public Operator<D, T> {
                mean->dim_size());
     MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ",
                var->dim_size());
+    MACE_CHECK(epsilon->dim_size() == 0, "epsilon must be 0-dimensional. ",
+               epsilon->dim_size());
 
     Tensor* output = this->Output(0);
     output->ResizeLike(input);
@@ -48,9 +50,10 @@ class BatchNormOp : public Operator<D, T> {
     const T* offset_ptr = offset->data<T>();
     const T* mean_ptr = mean->data<T>();
     const T* var_ptr = var->data<T>();
+    const T* epsilon_ptr = epsilon->data<T>();
     T* output_ptr = output->mutable_data<T>();
 
-    functor_(input_ptr, scale_ptr, offset_ptr, mean_ptr, var_ptr, n, channel,
+    functor_(input_ptr, scale_ptr, offset_ptr, mean_ptr, var_ptr, *epsilon_ptr, n, channel,
              sample_size, output_ptr);
     return true;
   }
