@@ -15,30 +15,30 @@ namespace kernels {
 template<DeviceType D, typename T>
 class DepthwiseConv2dFunctor {
  public:
-  DepthwiseConv2dFunctor(const index_t* input_shape,
-                         const index_t* filter_shape,
-                         const int* strides,
+  DepthwiseConv2dFunctor(const index_t *input_shape,
+                         const index_t *filter_shape,
+                         const int *strides,
                          const Padding padding,
-                         const int* dilations) :
+                         const int *dilations) :
       strides_(strides),
       paddings_(2, 0),
       dilations_(dilations) {
     CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding, paddings_.data());
   }
-  DepthwiseConv2dFunctor(const int* strides,
-                         const std::vector<int>& paddings,
-                         const int* dilations) :
+  DepthwiseConv2dFunctor(const int *strides,
+                         const std::vector<int> &paddings,
+                         const int *dilations) :
       strides_(strides),
       paddings_(paddings),
       dilations_(dilations) {}
 
-  void operator()(const T* input, // NCHW
-                  const index_t* input_shape,
-                  const T* filter, // c_out, c_in, kernel_h, kernel_w
-                  const index_t* filter_shape,
-                  const T* bias, // c_out
-                  T* output, // NCHW
-                  const index_t* output_shape) {
+  void operator()(const T *input, // NCHW
+                  const index_t *input_shape,
+                  const T *filter, // c_out, c_in, kernel_h, kernel_w
+                  const index_t *filter_shape,
+                  const T *bias, // c_out
+                  T *output, // NCHW
+                  const index_t *output_shape) {
 
     MACE_CHECK_NOTNULL(output);
 
@@ -80,7 +80,7 @@ class DepthwiseConv2dFunctor {
             index_t offset = n * channels * height * width +
                 c * height * width + h * width + w;
             T sum = 0;
-            const T* filter_ptr = filter + c * kernel_size;
+            const T *filter_ptr = filter + c * kernel_size;
             for (int kh = 0; kh < kernel_h; ++kh) {
               for (int kw = 0; kw < kernel_w; ++kw) {
                 int inh = padded_h_start + h * stride_h + dilation_h * kh;
@@ -110,19 +110,19 @@ class DepthwiseConv2dFunctor {
     }
   }
  private:
-  const int* strides_; // [stride_h, stride_w]
+  const int *strides_; // [stride_h, stride_w]
   std::vector<int> paddings_;   // [padding_h, padding_w]
-  const int* dilations_; // [dilation_h, dilation_w]
+  const int *dilations_; // [dilation_h, dilation_w]
 };
 
-template <>
-void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float* input,
-                                                        const index_t* input_shape,
-                                                        const float* filter,
-                                                        const index_t* filter_shape,
-                                                        const float* bias,
-                                                        float* output,
-                                                        const index_t* output_shape);
+template<>
+void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *input,
+                                                                 const index_t *input_shape,
+                                                                 const float *filter,
+                                                                 const index_t *filter_shape,
+                                                                 const float *bias,
+                                                                 float *output,
+                                                                 const index_t *output_shape);
 } //  namespace kernels
 } //  namespace mace
 

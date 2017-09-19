@@ -20,18 +20,17 @@ namespace kernels {
   int multiplier     = filter_shape == nullptr ? 0 : (filter_shape[0] / input_channels);    \
   int filter_in_channels = filter_shape == nullptr ? input_channels : filter_shape[1];      \
   for (int b = 0; b < output_batch; ++b) {                                                  \
-    float* output_ptr_base = output + b * output_channels * output_height * output_width;   \
+    float *output_ptr_base = output + b * output_channels * output_height * output_width;   \
     for (int oc = 0; oc < output_channels; ++oc) {                                          \
-        const float* filter_ptr = filter + oc * filter_in_channels * kFilterSize;           \
-        const float* input_ptr = input + b * input_channels * input_height * input_width;   \
+        const float *filter_ptr = filter + oc * filter_in_channels * kFilterSize;           \
+        const float *input_ptr = input + b * input_channels * input_height * input_width;   \
         if (filter_shape != nullptr) {                                                      \
           input_ptr += (oc / multiplier) * input_height * input_width;                      \
         }                                                                                   \
-        float* output_ptr = output_ptr_base + oc * output_height * output_width;            \
+        float *output_ptr = output_ptr_base + oc * output_height * output_width;            \
         std::fill(output_ptr, output_ptr + output_height * output_width, bias[oc]);         \
         for (int ic = 0; ic < filter_in_channels; ++ic) {                                   \
           float32x4_t n_filter_v[3] = {vld1q_f32(filter_ptr), vld1q_f32(filter_ptr+3), vld1q_f32(filter_ptr+6)};
-
 
 #define KERNEL_TAIL_CODE                         \
         filter_ptr += kFilterSize;               \

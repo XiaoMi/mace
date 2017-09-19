@@ -25,13 +25,13 @@ extern void Conv2dNeonK3x3S2(const float *input,
                              const index_t *output_shape);
 
 template<>
-void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float* input, // NCHW
-                                                        const index_t* input_shape,
-                                                        const float* filter, // c_out, c_in, kernel_h, kernel_w
-                                                        const index_t* filter_shape,
-                                                        const float* bias, // c_out
-                                                        float* output, // NCHW
-                                                        const index_t* output_shape) {
+void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *input, // NCHW
+                                                                 const index_t *input_shape,
+                                                                 const float *filter, // c_out, c_in, kernel_h, kernel_w
+                                                                 const index_t *filter_shape,
+                                                                 const float *bias, // c_out
+                                                                 float *output, // NCHW
+                                                                 const index_t *output_shape) {
   typedef void (*Conv2dNeonFunction)(
       const float *input,
       const index_t *input_shape,
