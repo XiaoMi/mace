@@ -57,17 +57,15 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float* in
                  << "filter" << kernel_h << "x" << kernel_w << ","
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
-    DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, padding_, dilations_)(
+    DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, paddings_, dilations_)(
         input, input_shape, filter, filter_shape, bias, output, output_shape);
     return;
   }
 
   // Keep this alive during kernel execution
-  vector<int> paddings_size(2, 0);
-  CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding_, paddings_size.data());
   Tensor padded_input;
-  if (paddings_size[0] > 0 || paddings_size[1] > 0) {
-    ConstructInputWithPadding(input, input_shape, paddings_size.data(), &padded_input);
+  if (paddings_[0] > 0 || paddings_[1] > 0) {
+    ConstructInputWithPadding(input, input_shape, paddings_.data(), &padded_input);
     input = padded_input.data<float>();
     input_shape = padded_input.shape().data();
   }

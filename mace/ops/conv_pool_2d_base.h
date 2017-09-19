@@ -22,15 +22,12 @@ class ConvPool2dOpBase : public Operator<D, T> {
 
   void CalOutputSize(const index_t *input_shape,   // NCHW
                      const index_t *filter_shape,  // OIHW
-                     const int *dilations,
-                     const int *strides,
-                     Padding padding,
                      index_t *output_shape) {
 
-    MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
+    MACE_CHECK(dilations_[0] > 0 && dilations_[1] > 0,
                "Invalid dilations, must >= 1");
-    MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-        (dilations[1] == 1 || strides[1] == 1),
+    MACE_CHECK((dilations_[0] == 1 || strides_[0] == 1) &&
+        (dilations_[1] == 1 || strides_[1] == 1),
                "If dilations > 1, strides should be 1");
     MACE_CHECK_NOTNULL(output_shape);
     /*
@@ -42,21 +39,21 @@ class ConvPool2dOpBase : public Operator<D, T> {
 
     index_t output_height, output_width;
 
-    switch (padding) {
+    switch (padding_) {
       case VALID:
-        output_height = (input_shape[2] - (filter_shape[2] - 1) * dilations[0] - 1) / strides[0] + 1;
-        output_width = (input_shape[3] - (filter_shape[3] - 1) * dilations[1] - 1) / strides[1] + 1;
+        output_height = (input_shape[2] - (filter_shape[2] - 1) * dilations_[0] - 1) / strides_[0] + 1;
+        output_width = (input_shape[3] - (filter_shape[3] - 1) * dilations_[1] - 1) / strides_[1] + 1;
         break;
       case SAME:
-        output_height = (input_shape[2] - 1) / strides[0] + 1;
-        output_width = (input_shape[3] - 1) / strides[1] + 1;
+        output_height = (input_shape[2] - 1) / strides_[0] + 1;
+        output_width = (input_shape[3] - 1) / strides_[1] + 1;
         break;
       case FULL:
-        output_height = (input_shape[2] + (filter_shape[2] - 1) * dilations[0] - 1) / strides[0] + 1;
-        output_width = (input_shape[3] + (filter_shape[3] - 1) * dilations[1] - 1) / strides[1] + 1;
+        output_height = (input_shape[2] + (filter_shape[2] - 1) * dilations_[0] - 1) / strides_[0] + 1;
+        output_width = (input_shape[3] + (filter_shape[3] - 1) * dilations_[1] - 1) / strides_[1] + 1;
         break;
       default:
-        MACE_CHECK(false, "Unsupported padding type: ", padding);
+        MACE_CHECK(false, "Unsupported padding type: ", padding_);
     }
 
     output_shape[0] = input_shape[0];

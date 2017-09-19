@@ -15,11 +15,21 @@ namespace kernels {
 template<DeviceType D, typename T>
 class DepthwiseConv2dFunctor {
  public:
-  DepthwiseConv2dFunctor(const int* strides,
-                       Padding paddings,
-                       const int* dilations) :
+  DepthwiseConv2dFunctor(const index_t* input_shape,
+                         const index_t* filter_shape,
+                         const int* strides,
+                         const Padding padding,
+                         const int* dilations) :
       strides_(strides),
-      padding_(paddings),
+      paddings_(2, 0),
+      dilations_(dilations) {
+    CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding, paddings_.data());
+  }
+  DepthwiseConv2dFunctor(const int* strides,
+                         const std::vector<int>& paddings,
+                         const int* dilations) :
+      strides_(strides),
+      paddings_(paddings),
       dilations_(dilations) {}
 
   void operator()(const T* input, // NCHW
@@ -53,13 +63,11 @@ class DepthwiseConv2dFunctor {
 
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
-    vector<int> paddings_size(2, 0);
-    CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding_, paddings_size.data());
     // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings_size[0] / 2;
-    int padded_w_start = 0 - paddings_size[1] / 2;
-    index_t padded_h_stop = input_height + paddings_size[0] - paddings_size[0] / 2;
-    index_t padded_w_stop = input_width + paddings_size[1] - paddings_size[1] / 2;
+    int padded_h_start = 0 - paddings_[0] / 2;
+    int padded_w_start = 0 - paddings_[1] / 2;
+    index_t padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
+    index_t padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
 
     index_t kernel_size = filter_shape[1] * kernel_h * kernel_w;
     index_t multiplier = channels / input_channels;
@@ -103,7 +111,7 @@ class DepthwiseConv2dFunctor {
   }
  private:
   const int* strides_; // [stride_h, stride_w]
-  Padding padding_ ;
+  std::vector<int> paddings_;   // [padding_h, padding_w]
   const int* dilations_; // [dilation_h, dilation_w]
 };
 
