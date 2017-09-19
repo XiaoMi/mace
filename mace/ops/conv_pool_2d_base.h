@@ -18,7 +18,7 @@ class ConvPool2dOpBase : public Operator<D, T> {
         strides_(OperatorBase::GetRepeatedArgument<int>("strides")),
         padding_(static_cast<Padding>(OperatorBase::GetSingleArgument<int>(
             "padding", static_cast<int>(SAME)))),
-        dilations_(OperatorBase::GetRepeatedArgument<int>("dilations")) {}
+        dilations_(OperatorBase::GetRepeatedArgument<int>("dilations", {1, 1})) {}
 
   void CalOutputSize(const index_t *input_shape,   // NCHW
                      const index_t *filter_shape,  // OIHW
