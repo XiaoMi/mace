@@ -27,6 +27,21 @@ new_http_archive(
     build_file = "mace/third_party/gtest.BUILD",
 )
 
+new_http_archive(
+    name = "six_archive",
+    urls = [
+        "http://mirror.bazel.build/pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
+        "https://pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
+    ],
+    sha256 = "105f8d68616f8248e24bf0e9372ef04d3cc10104f1980f54d57b2ce73a5ad56a",
+    strip_prefix = "six-1.10.0",
+    build_file = "mace/third_party/six.BUILD",
+)
+bind(
+      name = "six",
+      actual = "@six_archive//:six",
+)
+
 # Set up Android NDK
 android_ndk_repository(
     name = "androidndk",

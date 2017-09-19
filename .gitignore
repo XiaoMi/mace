@@ -3,3 +3,4 @@ tags
 .idea/
 cmake-build-debug/
 *.sh
+*.pyc
