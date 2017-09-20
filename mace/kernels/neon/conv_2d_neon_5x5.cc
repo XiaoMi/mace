@@ -45,9 +45,8 @@ void Conv2dNeonK5x5S1(const float *input,  // NCHW
       const float *input_ptr = input + n * input_total_pixels_per_batch;
 
       // Fill with bias
-      for (index_t i = 0; i < output_total_pixels_per_channel; ++i) {
-        output_ptr[i] = bias[c];
-      }
+      std::fill(output_ptr, output_ptr + output_total_pixels_per_channel,
+                bias ? bias[c] : 0);
 
       for (index_t inc = 0; inc < input_channels; ++inc) {
         float *outptr = output_ptr;

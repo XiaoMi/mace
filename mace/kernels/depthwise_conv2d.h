@@ -75,10 +75,12 @@ class DepthwiseConv2dFunctor {
 #pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n) {
       for (int c = 0; c < channels; ++c) {
+        T bias_channel = bias ? bias[c] : 0;
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
                 c * height * width + h * width + w;
+            output[offset] = bias_channel;
             T sum = 0;
             const T *filter_ptr = filter + c * kernel_size;
             for (int kh = 0; kh < kernel_h; ++kh) {
@@ -103,7 +105,7 @@ class DepthwiseConv2dFunctor {
                 ++filter_ptr;
               }
             }
-            output[offset] = sum + bias[c];
+            output[offset] += sum;
           }
         }
       }

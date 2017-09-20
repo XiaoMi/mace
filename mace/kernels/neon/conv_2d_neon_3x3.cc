@@ -28,7 +28,7 @@ namespace kernels {
           input_ptr += (oc / multiplier) * input_height * input_width;                      \
         }                                                                                   \
         float *output_ptr = output_ptr_base + oc * output_height * output_width;            \
-        std::fill(output_ptr, output_ptr + output_height * output_width, bias[oc]);         \
+        std::fill(output_ptr, output_ptr + output_height * output_width, bias ? bias[oc] : 0); \
         for (int ic = 0; ic < filter_in_channels; ++ic) {                                   \
           float32x4_t n_filter_v[3] = {vld1q_f32(filter_ptr), vld1q_f32(filter_ptr+3), vld1q_f32(filter_ptr+6)};
 

@@ -47,9 +47,7 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
 
       // Fill with bias
       float *output_ptr = channel_output_start;
-      for (index_t ptr = 0; ptr < total_pixels; ++ptr) {
-        output_ptr[ptr] = bias[c];  // TODO can we avoid this?
-      }
+      std::fill(output_ptr, output_ptr + total_pixels, bias ? bias[c] : 0);
 
       index_t inc = 0;
       // Process 4 input channels in batch
