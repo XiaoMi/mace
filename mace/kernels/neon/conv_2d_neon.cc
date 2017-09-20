@@ -81,7 +81,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float *input,
   // Keep this alive during kernel execution
   Tensor padded_input;
   if (paddings_[0] > 0 || paddings_[1] > 0) {
-    ConstructInputWithPadding(input, input_shape, paddings_, &padded_input);
+    ConstructInputWithPadding(input, input_shape, paddings_.data(), &padded_input);
     input = padded_input.data<float>();
     input_shape = padded_input.shape().data();
   }

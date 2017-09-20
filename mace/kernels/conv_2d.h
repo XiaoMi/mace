@@ -6,23 +6,39 @@
 #define MACE_KERNELS_CONV_2D_H_
 
 #include "mace/core/tensor.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class Conv2dFunctor {
  public:
-  Conv2dFunctor(const int* strides, const int* paddings, const int* dilations)
-      : strides_(strides), paddings_(paddings), dilations_(dilations) {}
+  Conv2dFunctor(const index_t *input_shape,
+                const index_t *filter_shape,
+                const int *strides,
+                const Padding padding,
+                const int *dilations) :
+      strides_(strides),
+      paddings_(2, 0),
+      dilations_(dilations) {
+    CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding, paddings_.data());
+  }
 
-  void operator()(const T* input,  // NCHW
-                  const index_t* input_shape,
-                  const T* filter,  // c_out, c_in, kernel_h, kernel_w
-                  const index_t* filter_shape,
-                  const T* bias,  // c_out
-                  T* output,      // NCHW
-                  const index_t* output_shape) {
+  Conv2dFunctor(const int *strides,
+                const std::vector<int> &paddings,
+                const int *dilations) :
+      strides_(strides),
+      paddings_(paddings),
+      dilations_(dilations) {}
+
+  void operator()(const T *input,  // NCHW
+                  const index_t *input_shape,
+                  const T *filter,  // c_out, c_in, kernel_h, kernel_w
+                  const index_t *filter_shape,
+                  const T *bias,  // c_out
+                  T *output,      // NCHW
+                  const index_t *output_shape) {
     MACE_CHECK_NOTNULL(output);
 
     index_t batch = output_shape[0];
@@ -60,9 +76,9 @@ class Conv2dFunctor {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
-                             c * height * width + h * width + w;
+                c * height * width + h * width + w;
             T sum = 0;
-            const T* filter_ptr = filter + c * kernel_size;
+            const T *filter_ptr = filter + c * kernel_size;
             for (int inc = 0; inc < input_channels; ++inc) {
               for (int kh = 0; kh < kernel_h; ++kh) {
                 for (int kw = 0; kw < kernel_w; ++kw) {
@@ -71,7 +87,7 @@ class Conv2dFunctor {
                   if (inh < 0 || inh >= input_height || inw < 0 ||
                       inw >= input_width) {
                     MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
-                                   inw >= padded_w_start && inw < padded_w_stop,
+                        inw >= padded_w_start && inw < padded_w_stop,
                                "Out of range read from input: ", inh, ", ",
                                inw);
                     // else padding with 0:
@@ -79,8 +95,8 @@ class Conv2dFunctor {
                   } else {
                     index_t input_offset =
                         n * input_channels * input_height * input_width +
-                        inc * input_height * input_width + inh * input_width +
-                        inw;
+                            inc * input_height * input_width + inh * input_width +
+                            inw;
                     sum += input[input_offset] * *filter_ptr;
                   }
                   ++filter_ptr;
@@ -95,20 +111,20 @@ class Conv2dFunctor {
   }
 
  private:
-  const int* strides_;    // [stride_h, stride_w]
-  const int* paddings_;   // [padding_h, padding_w]
-  const int* dilations_;  // [dilation_h, dilation_w]
+  const int *strides_;    // [stride_h, stride_w]
+  std::vector<int> paddings_;   // [padding_h, padding_w]
+  const int *dilations_;  // [dilation_h, dilation_w]
 };
 
-template <>
+template<>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(
-    const float* input,
-    const index_t* input_shape,
-    const float* filter,
-    const index_t* filter_shape,
-    const float* bias,
-    float* output,
-    const index_t* output_shape);
+    const float *input,
+    const index_t *input_shape,
+    const float *filter,
+    const index_t *filter_shape,
+    const float *bias,
+    float *output,
+    const index_t *output_shape);
 
 }  //  namespace kernels
 }  //  namespace mace
