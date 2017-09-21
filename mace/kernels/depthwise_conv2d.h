@@ -13,18 +13,8 @@ namespace mace {
 namespace kernels {
 
 template<DeviceType D, typename T>
-class DepthwiseConv2dFunctor {
- public:
-  DepthwiseConv2dFunctor(const index_t *input_shape,
-                         const index_t *filter_shape,
-                         const int *strides,
-                         const Padding padding,
-                         const int *dilations) :
-      strides_(strides),
-      paddings_(2, 0),
-      dilations_(dilations) {
-    CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding, paddings_.data());
-  }
+struct DepthwiseConv2dFunctor {
+  DepthwiseConv2dFunctor() {}
   DepthwiseConv2dFunctor(const int *strides,
                          const std::vector<int> &paddings,
                          const int *dilations) :
@@ -39,7 +29,6 @@ class DepthwiseConv2dFunctor {
                   const T *bias, // c_out
                   T *output, // NCHW
                   const index_t *output_shape) {
-
     MACE_CHECK_NOTNULL(output);
 
     index_t batch = output_shape[0];
@@ -111,7 +100,7 @@ class DepthwiseConv2dFunctor {
       }
     }
   }
- private:
+
   const int *strides_; // [stride_h, stride_w]
   std::vector<int> paddings_;   // [padding_h, padding_w]
   const int *dilations_; // [dilation_h, dilation_w]

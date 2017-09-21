@@ -28,6 +28,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
     std::vector<index_t> filter_shape(4);
+    // TODO(chenghui): is it kind of a hack?
     filter_shape[0] = input->shape()[1];
     filter_shape[1] = input->shape()[0];
     filter_shape[2] = kernels_[0];

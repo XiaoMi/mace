@@ -13,7 +13,7 @@ class Conv2dOpTest : public OpsTestBase {};
 TEST_F(Conv2dOpTest, Simple_VALID) {
   // Construct graph
   auto& net = test_net();
-  OpDefBuilder("Conv2d", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -47,7 +47,7 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
 TEST_F(Conv2dOpTest, Simple_SAME) {
   // Construct graph
   auto& net = test_net();
-  OpDefBuilder("Conv2d", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -83,7 +83,7 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
 TEST_F(Conv2dOpTest, Combined) {
   // Construct graph
   auto& net = test_net();
-  OpDefBuilder("Conv2d", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -121,7 +121,7 @@ TEST_F(Conv2dOpTest, Combined) {
 TEST_F(Conv2dOpTest, Conv1x1) {
   // Construct graph
   auto& net = test_net();
-  OpDefBuilder("Conv2d", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -179,7 +179,7 @@ TEST_F(Conv2dOpTest, ConvNxNS12) {
     index_t output_channels = 1 + rand() % 10;
     // Construct graph
     auto& net = test_net();
-    OpDefBuilder("Conv2d", "Conv2dTest")
+    OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
         .Input("Bias")

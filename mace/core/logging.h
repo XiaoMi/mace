@@ -8,6 +8,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #undef ERROR
 
@@ -41,7 +42,16 @@ template <typename... Args>
 string MakeString(const Args&... args) {
   std::stringstream ss;
   MakeStringInternal(ss, args...);
-  return string(ss.str());
+  return ss.str();
+}
+
+template <typename T>
+string MakeString(const std::vector<T> &args) {
+  std::stringstream ss;
+  for (const T& arg: args) {
+    ss << arg << ", ";
+  }
+  return ss.str();
 }
 
 // Specializations for already-a-string types.

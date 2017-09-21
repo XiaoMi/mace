@@ -53,6 +53,10 @@ Tensor* Workspace::GetTensor(const string& name) {
 void Workspace::LoadModelTensor(const NetDef& net_def, DeviceType type) {
   Serializer serializer;
   for (auto& tensor_proto : net_def.tensors()) {
+
+    VLOG(1) << "Load tensor: " << tensor_proto.name()
+            << " has shape: " << internal::MakeString(vector<index_t>(
+          tensor_proto.dims().begin(), tensor_proto.dims().end()));
     tensor_map_[tensor_proto.name()] =
         serializer.Deserialize(tensor_proto, type);
   }

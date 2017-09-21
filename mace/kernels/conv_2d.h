@@ -12,19 +12,8 @@ namespace mace {
 namespace kernels {
 
 template<DeviceType D, typename T>
-class Conv2dFunctor {
- public:
-  Conv2dFunctor(const index_t *input_shape,
-                const index_t *filter_shape,
-                const int *strides,
-                const Padding padding,
-                const int *dilations) :
-      strides_(strides),
-      paddings_(2, 0),
-      dilations_(dilations) {
-    CalPaddingSize(input_shape, filter_shape, dilations_, strides_, padding, paddings_.data());
-  }
-
+struct Conv2dFunctor {
+  Conv2dFunctor() {}
   Conv2dFunctor(const int *strides,
                 const std::vector<int> &paddings,
                 const int *dilations) :
@@ -112,7 +101,6 @@ class Conv2dFunctor {
     }
   }
 
- private:
   const int *strides_;    // [stride_h, stride_w]
   std::vector<int> paddings_;   // [padding_h, padding_w]
   const int *dilations_;  // [dilation_h, dilation_w]

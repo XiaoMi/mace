@@ -1,5 +1,6 @@
 from mace.proto import mace_pb2
 import tensorflow as tf
+import numpy as np
 
 padding_mode = {
   'VALID': 0,
@@ -24,11 +25,20 @@ def convert_ops(unresolved_ops, net_def):
     tf_tensor = first_op.outputs[0].eval()
     tensor = net_def.tensors.add()
     tensor.name = first_op.outputs[0].name
-    tensor.dims.extend(tf_tensor.shape)
     # TODO: support other type than float
     tensor.data_type = mace_pb2.DT_FLOAT
+
+    shape = list(tf_tensor.shape)
+    if (first_op.name.find('pointwise_kernel') != -1 or
+        first_op.name.find('depthwise_kernel') != -1 or
+        first_op.name.endswith('weights') or
+        first_op.name.endswith('kernel')) \
+        and first_op.outputs[0].consumers()[0].type.find('Conv') != -1:
+      tf_tensor = np.transpose(tf_tensor, axes=(3, 2, 0, 1))
+      shape = [shape[3], shape[2], shape[0], shape[1]]
+      # print (tensor.name, shape)
+    tensor.dims.extend(shape)
     tensor.float_data.extend(tf_tensor.astype(float).flat)
-  # net_def.tensors.extend([tensor])
   elif first_op.type == 'Conv2D' or first_op.type == 'DepthwiseConv2dNative':
     op_def = net_def.op.add()
     op_def.name = first_op.name
@@ -43,10 +53,12 @@ def convert_ops(unresolved_ops, net_def):
     padding_arg.i = padding_mode[first_op.get_attr('padding')]
     strides_arg = op_def.arg.add()
     strides_arg.name = 'strides'
-    strides_arg.ints.extend(first_op.get_attr('strides'))
+    strides_arg.ints.extend(first_op.get_attr('strides')[2:])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = first_op.get_attr('data_format')
+    if first_op.get_attr('data_format') != 'NCHW':
+      raise Exception('only support NCHW now')
 
     if ops_count >= 2 and unresolved_ops[1].type == 'BiasAdd':
       bias_add_op = unresolved_ops[1]
@@ -93,7 +105,7 @@ def convert_ops(unresolved_ops, net_def):
     op_def.type = first_op.type
     op_def.input.extend([input.name for input in first_op.inputs])
     op_def.output.extend([output.name for output in first_op.outputs])
-  elif first_op.type == 'AvgPool':
+  elif first_op.type == 'AvgPool' or first_op.type == 'MaxPool':
     op_def = net_def.op.add()
     op_def.name = first_op.name
     op_def.type = 'Pooling'
@@ -107,12 +119,15 @@ def convert_ops(unresolved_ops, net_def):
     padding_arg.i = padding_mode[first_op.get_attr('padding')]
     strides_arg = op_def.arg.add()
     strides_arg.name = 'strides'
-    strides_arg.ints.extend(first_op.get_attr('strides')[1:-1])
-    strides_arg.name = 'kernels'
-    strides_arg.ints.extend(first_op.get_attr('ksize')[1:-1])
+    strides_arg.ints.extend(first_op.get_attr('strides')[2:])
+    kernels_arg = op_def.arg.add()
+    kernels_arg.name = 'kernels'
+    kernels_arg.ints.extend(first_op.get_attr('ksize')[2:])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = first_op.get_attr('data_format')
+    if first_op.get_attr('data_format') != 'NCHW':
+      raise Exception('only support NCHW now')
   else:
     raise Exception('Unknown Op: ' + first_op.name)
     pass

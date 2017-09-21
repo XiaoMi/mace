@@ -10,9 +10,10 @@ using namespace mace;
 class DepthwiseConv2dOpTest : public OpsTestBase {};
 
 TEST_F(DepthwiseConv2dOpTest, Simple_VALID) {
+  testing::internal::LogToStderr();
   // Construct graph
   auto& net = test_net();
-  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -35,7 +36,6 @@ TEST_F(DepthwiseConv2dOpTest, Simple_VALID) {
        3.0f, 7.0f, 11.0f, 15.0f,
        4.0f, 8.0f, 12.0f, 16.0f});
   net.AddInputFromArray<float>("Bias", {4}, {.1f, .2f, .3f, .4f});
-
   // Run
   net.RunOp();
 
@@ -61,7 +61,7 @@ TEST_F(DepthwiseConv2dOpTest, ConvNxNS12) {
     index_t multiplier = 3 + rand() % 10;
     // Construct graph
     auto& net = test_net();
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("Input")
         .Input("Filter")
         .Input("Bias")

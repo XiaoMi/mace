@@ -18,8 +18,7 @@ enum PoolingType {
 namespace kernels {
 
 template <DeviceType D, typename T>
-class PoolingFunctor {
- public:
+struct PoolingFunctor {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
@@ -114,7 +113,6 @@ class PoolingFunctor {
     }
   }
 
- private:
   const PoolingType pooling_type_;
   const int *kernels_;
   const int *strides_;

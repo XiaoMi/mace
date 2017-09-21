@@ -137,7 +137,7 @@ class Tensor {
     alloc_->CopyBytes(raw_mutable_data(), src, size);
   }
 
-  inline void DebugPrint() {
+  inline void DebugPrint() const {
     std::stringstream os;
     for (int i : shape_) {
       os << i << ", ";
