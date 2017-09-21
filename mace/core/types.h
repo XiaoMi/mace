@@ -10,6 +10,8 @@
 
 namespace mace {
 
+bool DataTypeCanUseMemcpy(DataType dt);
+
 template <class T>
 struct IsValidDataType;
 
@@ -51,7 +53,6 @@ MATCH_TYPE_AND_ENUM(int64_t, DT_INT64);
 MATCH_TYPE_AND_ENUM(bool, DT_BOOL);
 
 static const int32_t kint32_tmax = ((int32_t)0x7FFFFFFF);
-
 }  // namespace mace
 
 #endif  // MACE_CORE_TYPES_H_

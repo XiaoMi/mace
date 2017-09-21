@@ -37,7 +37,7 @@ class ConvPool2dOpBase : public Operator<D, T> {
     * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
     */
 
-    index_t output_height, output_width;
+    index_t output_height = 0, output_width = 0;
 
     switch (padding_) {
       case VALID:
