@@ -30,7 +30,7 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   padding_size[0] = 0;
   padding_size[1] = 0;
 
-  index_t output_height, output_width;
+  index_t output_height = 0, output_width = 0;
   index_t kernel_height = filter_shape[2];
   index_t kernel_width = filter_shape[3];
   index_t output_channels = filter_shape[0];
@@ -85,7 +85,7 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(padding_size);
 
-  index_t output_height, output_width;
+  index_t output_height = 0, output_width = 0;
   index_t k_extent_height = (filter_shape[2] - 1) * dilations[0] + 1;
   index_t k_extent_width = (filter_shape[3] - 1) * dilations[1] + 1;
 

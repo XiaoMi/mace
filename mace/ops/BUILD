@@ -25,48 +25,51 @@ cc_library(
     name = "ops",
     srcs = glob(
         ["*.cc"],
-        exclude = ["*_test.cc", "*_benchmark.cc"],
+        exclude = [
+            "*_test.cc",
+            "*_benchmark.cc",
+        ],
     ),
     hdrs = glob(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
+    copts = ["-std=c++11"],
     deps = [
         "//mace/core",
         "//mace/kernels",
         "//mace/proto:cc_proto",
     ],
-    copts = ["-std=c++11"],
     alwayslink = 1,
 )
 
 cc_test(
     name = "ops_test",
+    testonly = 1,
     srcs = glob(
         ["*_test.cc"],
     ),
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-ldl"]),
+    linkstatic = 1,
     deps = [
         ":ops",
         ":test",
         "@gtest//:gtest_main",
     ],
-    copts = ["-std=c++11"],
-    linkopts = if_android(["-ldl"]),
-    linkstatic = 1,
-    testonly = 1,
 )
 
 cc_test(
     name = "ops_benchmark",
+    testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-ldl"]),
+    linkstatic = 1,
     deps = [
         ":ops",
         ":test",
-        "//mace/core:core",
+        "//mace/core",
         "//mace/core:test_benchmark_main",
     ],
-    copts = ['-std=c++11'],
-    linkopts = if_android(["-ldl"]),
-    linkstatic = 1,
-    testonly = 1,
 )
