@@ -302,6 +302,13 @@ void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   Expector<T>::Near(x, y, abs_err);
 }
 
+template<typename T>
+std::string ToString(const T& input) {
+  std::stringstream ss;
+  ss<<input;
+  return ss.str();
+}
+
 }  // namespace mace
 
 #endif  //  MACE_OPS_TEST_UTIL_H_

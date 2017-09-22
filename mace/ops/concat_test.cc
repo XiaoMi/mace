@@ -97,7 +97,7 @@ TEST_F(ConcatOpTest, Random) {
   auto &net = test_net();
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
-    builder = builder.Input(("Input" + std::to_string(i)).c_str());
+    builder = builder.Input(("Input" + ToString(i)).c_str());
   }
   builder.Input("Axis")
       .Output("Output")
@@ -114,7 +114,7 @@ TEST_F(ConcatOpTest, Random) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<float>(("Input" + std::to_string(i)).c_str(), input_shapes[i], inputs[i]);
+    net.AddInputFromArray<float>(("Input" + ToString(i)).c_str(), input_shapes[i], inputs[i]);
   }
   net.AddInputFromArray<int>("Axis", {}, {axis});
 
