@@ -35,6 +35,8 @@ bool SimpleNet::Run() {
       LOG(ERROR) << "Operator failed: " << ProtoDebugString(op->debug_def());
       return false;
     }
+    VLOG(1) << "Op " << op->debug_def().name()
+            << " has shape: " << internal::MakeString(op->Output(0)->shape());
   }
   return true;
 }

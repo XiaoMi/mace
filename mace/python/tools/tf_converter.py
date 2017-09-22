@@ -23,6 +23,7 @@ def main(unused_args):
   with gfile.GFile(FLAGS.output, "wb") as f:
     f.write(output_graph_def.SerializeToString())
   with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
+    output_graph_def.ClearField('tensors')
     f.write(str(output_graph_def))
 
 

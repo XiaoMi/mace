@@ -11,10 +11,7 @@ namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-class GlobalAvgPoolingFunctor {
- public:
-  GlobalAvgPoolingFunctor() {}
-
+struct GlobalAvgPoolingFunctor {
   void operator()(const T *input, const index_t *input_shape, T *output) {
     index_t batch = input_shape[0];
     index_t channels = input_shape[1];

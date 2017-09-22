@@ -25,7 +25,7 @@ static void Conv2d(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("Conv2d", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
