@@ -63,7 +63,6 @@ class OpsTestNet {
         ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
     input->Resize(shape);
     T *input_data = input->mutable_data<T>();
-    MACE_CHECK(input->size() == data.size());
     std::fill(input_data, input_data + input->size(), data);
   }
 
