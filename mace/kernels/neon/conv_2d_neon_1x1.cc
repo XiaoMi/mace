@@ -35,10 +35,10 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
   const index_t loop_remaining = total_pixels & 7;
 
   // benchmark omp collapsed(2)
+#pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
-    const float *filter_ptr = filter;
-#pragma omp parallel for
     for (index_t c = 0; c < channels; ++c) {
+      const float *filter_ptr = filter;
       // TODO Will GCC opt these out?
       float *channel_output_start =
           output + n * channels * height * width + c * height * width;
