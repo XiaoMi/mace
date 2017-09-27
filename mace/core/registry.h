@@ -26,8 +26,7 @@ class Registry {
 
   unique_ptr<ObjectType> Create(const SrcType& key, Args... args) {
     if (registry_.count(key) == 0) {
-      VLOG(2) << "Key not registered: " << key;
-      return nullptr;
+      LOG(FATAL) << "Key not registered: " << key;
     }
     return registry_[key](args...);
   }
