@@ -12,7 +12,7 @@ cc_binary(
         "@org_tensorflow//tensorflow/core:android_tensorflow_lib",
     ],
     copts = ["-std=c++11"],
-    linkopts = if_android(["-ldl"]),
+    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
 )
 
 cc_test(
@@ -23,7 +23,22 @@ cc_test(
         "//mace/core:test_benchmark_main",
     ],
     copts = ["-std=c++11"],
-    linkopts = if_android(["-ldl"]),
+    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
     linkstatic = 1,
     testonly = 1,
+)
+
+cc_binary(
+    name = "mace_run",
+    srcs = [
+        "mace_run.cc",
+    ],
+    deps = [
+        "//mace/core",
+        "//mace/utils",
+        "//mace/ops",
+    ],
+    copts = ["-std=c++11",],
+    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
+    linkstatic = 1,
 )
