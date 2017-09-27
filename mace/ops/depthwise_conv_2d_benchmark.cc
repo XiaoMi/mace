@@ -25,7 +25,7 @@ static void DepthwiseConv2d(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("DepthwiseConv2D", "DepthwiseConv2DTest")
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
