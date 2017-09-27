@@ -314,6 +314,8 @@ const Argument& GetArgument(const OperatorDef& def, const string& name) {
   }
   MACE_CHECK(false, "Argument named ", name, "does not exist in operator ",
              ProtoDebugString(def));
+  // should not reach here, just make compiler happy
+  return std::move(Argument());
 }
 
 bool GetFlagArgument(const OperatorDef& def,

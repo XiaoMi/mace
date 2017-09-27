@@ -17,8 +17,8 @@ cc_library(
     deps = [
         "//mace/core:core",
     ],
-    copts = ['-std=c++11'],
-    linkopts = ["-fopenmp"] + if_android(["-lm"]),
+    copts = ['-std=c++11', "-fopenmp",],
+    linkopts = if_android(["-lm"]),
 )
 
 cc_test(
