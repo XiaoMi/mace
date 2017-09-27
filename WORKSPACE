@@ -19,6 +19,14 @@ http_archive(
     ],
 )
 
+new_http_archive(
+    name = "gtest",
+    url = "http://v9.git.n.xiaomi.com/deep-learning/googletest/repository/archive.zip?ref=release-1.8.0",
+    strip_prefix = "googletest-release-1.8.0-ec44c6c1675c25b9827aacd08c02433cccde7780",
+    sha256 = "a0b43a0a43cda0cc401a46d75519d961ef27f6674d4126366e47d9c946c4bbcd",
+    build_file = "mace/third_party/gtest.BUILD",
+)
+
 # Import all of the tensorflow dependencies.
 load('@org_tensorflow//tensorflow:workspace.bzl', 'tf_workspace')
 tf_workspace(tf_repo_name = "org_tensorflow")
