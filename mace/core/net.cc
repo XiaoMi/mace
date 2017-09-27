@@ -23,7 +23,9 @@ SimpleNet::SimpleNet(const std::shared_ptr<const NetDef>& net_def,
     std::unique_ptr<OperatorBase> op{nullptr};
     OperatorDef temp_def(operator_def);
     op = CreateOperator(temp_def, ws, type);
-    operators_.emplace_back(std::move(op));
+    if (!op) {
+      operators_.emplace_back(std::move(op));
+    }
   }
 }
 bool SimpleNet::Run() {
