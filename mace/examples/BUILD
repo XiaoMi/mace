@@ -9,6 +9,7 @@ cc_binary(
     deps = [
         "//mace/core",
         "//mace/ops",
+        "@org_tensorflow//tensorflow/core:android_tensorflow_lib",
     ],
     copts = ["-std=c++11"],
     linkopts = if_android(["-ldl"]),

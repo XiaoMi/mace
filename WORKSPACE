@@ -1,50 +1,39 @@
 workspace(name = "mace")
 
-# proto_library rules implicitly depend on @com_google_protobuf//:protoc,
-# which is the proto-compiler.
-# This statement defines the @com_google_protobuf repo.
 http_archive(
-    name = "com_google_protobuf",
-    urls = ["http://v9.git.n.xiaomi.com/deep-learning/protobuf/repository/archive.zip?ref=c7457ef65a7a8584b1e3bd396c401ccf8e275ffa"],
-    strip_prefix = "protobuf-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa",
-    sha256 = "0a54cae83b77f4b54b7db4eaebadd81fbe91655e84a1ef3f6d29116d75f3a45f",
+    name = "org_tensorflow",
+    urls = ["http://v9.git.n.xiaomi.com/deep-learning/tensorflow/repository/archive.zip?ref=v1.3.0"],
+    strip_prefix = "tensorflow-v1.3.0-9e76bf324f6bac63137a02bb6e6ec9120703ea9b",
+    sha256 = "97049d3a59a77858e12c55422bd129261b14e869a91aebcdcc39439393c00dc7",
 )
 
-# cc_proto_library rules implicitly depend on @com_google_protobuf_cc//:cc_toolchain,
-# which is the C++ proto runtime (base classes and common utilities).
+# TensorFlow depends on "io_bazel_rules_closure" so we need this here.
+# Needs to be kept in sync with the same target in TensorFlow's WORKSPACE file.
 http_archive(
-    name = "com_google_protobuf_cc",
-    urls = ["http://v9.git.n.xiaomi.com/deep-learning/protobuf/repository/archive.zip?ref=c7457ef65a7a8584b1e3bd396c401ccf8e275ffa"],
-    strip_prefix = "protobuf-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa",
-    sha256 = "0a54cae83b77f4b54b7db4eaebadd81fbe91655e84a1ef3f6d29116d75f3a45f",
-)
-
-new_http_archive(
-    name = "gtest",
-    url = "http://v9.git.n.xiaomi.com/deep-learning/googletest/repository/archive.zip?ref=release-1.8.0",
-    strip_prefix = "googletest-release-1.8.0-ec44c6c1675c25b9827aacd08c02433cccde7780",
-    sha256 = "a0b43a0a43cda0cc401a46d75519d961ef27f6674d4126366e47d9c946c4bbcd",
-    build_file = "mace/third_party/gtest.BUILD",
-)
-
-new_http_archive(
-    name = "six_archive",
+    name = "io_bazel_rules_closure",
+    sha256 = "60fc6977908f999b23ca65698c2bb70213403824a84f7904310b6000d78be9ce",
+    strip_prefix = "rules_closure-5ca1dab6df9ad02050f7ba4e816407f88690cf7d",
     urls = [
-        "http://mirror.bazel.build/pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
-        "https://pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
+        "http://bazel-mirror.storage.googleapis.com/github.com/bazelbuild/rules_closure/archive/5ca1dab6df9ad02050f7ba4e816407f88690cf7d.tar.gz",  # 2017-02-03
+        "https://github.com/bazelbuild/rules_closure/archive/5ca1dab6df9ad02050f7ba4e816407f88690cf7d.tar.gz",
     ],
-    sha256 = "105f8d68616f8248e24bf0e9372ef04d3cc10104f1980f54d57b2ce73a5ad56a",
-    strip_prefix = "six-1.10.0",
-    build_file = "mace/third_party/six.BUILD",
 )
-bind(
-      name = "six",
-      actual = "@six_archive//:six",
+
+# Import all of the tensorflow dependencies.
+load('@org_tensorflow//tensorflow:workspace.bzl', 'tf_workspace')
+tf_workspace(tf_repo_name = "org_tensorflow")
+
+new_http_archive(
+    name = "ncnn",
+    urls = ["http://v9.git.n.xiaomi.com/deep-learning/ncnn/repository/archive.zip?ref=bazel-fix"],
+    strip_prefix = "ncnn-bazel-fix-ce5e416164545e1ab37fe3544502624f605ca234/src",
+    sha256 = "e6d76356179bcdbb988279f0b42ab050c8af55970e1ad767787ad21d5b7aad51",
+    build_file = "mace/third_party/ncnn.BUILD",
 )
 
 # Set up Android NDK
 android_ndk_repository(
     name = "androidndk",
-    # Android 5.0
-    api_level = 21
+    # Android 4.0
+    api_level = 14
 )
