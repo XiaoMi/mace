@@ -13,7 +13,7 @@ void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
                                                       float *output,
                                                       index_t size) {
   if (max_limit_ < 0) {
-#pragma omp parallel for num_threads(1)  // no significant perf improve
+#pragma omp parallel for
     for (int64_t i = 0; i < size; i += kCostPerGroup) {
       int64_t count = std::min(static_cast<int64_t>(kCostPerGroup), size - i);
       int block = count >> 2;
@@ -36,7 +36,7 @@ void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
       }
     }
   } else {
-#pragma omp parallel for num_threads(1)  // no significant perf improve
+#pragma omp parallel for
     for (int64_t i = 0; i < size; i += kCostPerGroup) {
       int64_t count = std::min(static_cast<int64_t>(kCostPerGroup), size - i);
       int block = count >> 2;
