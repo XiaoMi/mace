@@ -41,6 +41,8 @@ bool Workspace::RemoveTensor(const string& name) {
 const Tensor* Workspace::GetTensor(const string& name) const {
   if (tensor_map_.count(name)) {
     return tensor_map_.at(name).get();
+  } else {
+    LOG(WARNING) << "Tensor " << name << " does not exist.";
   }
   return nullptr;
 }

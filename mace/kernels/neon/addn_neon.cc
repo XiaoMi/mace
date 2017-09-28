@@ -21,7 +21,7 @@ void AddNFunctor<DeviceType::NEON, float>::operator()(
   }
   int64_t element_per_group = size / groups;
 
-#pragma omp parallel for num_threads(1)  // no significant performance improve
+#pragma omp parallel for
   for (int64_t i = 0; i < size; i += element_per_group) {
     int64_t count = std::min(element_per_group, size - i);
     int nn = count >> 2;
