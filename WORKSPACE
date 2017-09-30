@@ -39,6 +39,14 @@ new_http_archive(
     build_file = "mace/third_party/ncnn.BUILD",
 )
 
+new_http_archive(
+    name = "opencl_headers",
+    urls = ["http://v9.git.n.xiaomi.com/deep-learning/OpenCL-Headers/repository/archive.zip?ref=master"],
+    strip_prefix = "OpenCL-Headers-master-f039db6764d52388658ef15c30b2237bbda49803",
+    sha256 = "439dbdb4e7a02a218dd90d82170c9f7671487cd0e626a20e136690a91f173ad2",
+    build_file = "mace/third_party/opencl-headers.BUILD",
+)
+
 # Set up Android NDK
 android_ndk_repository(
     name = "androidndk",
