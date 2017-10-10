@@ -10,6 +10,21 @@ licenses(["notice"])  # Apache 2.0
 load("//mace:mace.bzl", "if_android")
 
 cc_library(
+    name = "opencl_runtime",
+    srcs = glob([
+        "platform/opencl/cl.hpp",
+        "platform/opencl/cl2.hpp",
+        "platform/opencl/opencl_wrapper.h",
+        "platform/opencl/opencl_wrapper.cc",
+    ]),
+    copts = ["-std=c++11"],
+    deps = [
+        "@opencl_headers//:opencl12_headers",
+        "core",
+    ],
+)
+
+cc_library(
     name = "core",
     srcs = glob([
         "*.cc",
