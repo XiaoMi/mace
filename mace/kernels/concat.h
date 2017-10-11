@@ -19,7 +19,7 @@ struct ConcatFunctor {
                   T *output) {
     const size_t input_count = input_list.size();
     for (int inner_idx = 0; inner_idx < inner_dim; ++inner_idx) {
-      for (int i = 0; i < input_count; ++i) {
+      for (size_t i = 0; i < input_count; ++i) {
         if (DataTypeCanUseMemcpy(DataTypeToEnum<T>::v())) {
           memcpy(output, input_list[i], outer_dims[i] * sizeof(T));
           output += outer_dims[i];

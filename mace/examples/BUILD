@@ -6,26 +6,26 @@ cc_binary(
     srcs = [
         "helloworld.cc",
     ],
+    copts = ["-std=c++11"],
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
     deps = [
         "//mace/core",
         "//mace/ops",
         "@org_tensorflow//tensorflow/core:android_tensorflow_lib",
     ],
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
 )
 
 cc_test(
     name = "benchmark_example",
+    testonly = 1,
     srcs = ["benchmark_example.cc"],
+    copts = ["-std=c++11"],
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    linkstatic = 1,
     deps = [
         "//mace/core",
         "//mace/core:test_benchmark_main",
     ],
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
-    linkstatic = 1,
-    testonly = 1,
 )
 
 cc_binary(
@@ -33,12 +33,12 @@ cc_binary(
     srcs = [
         "mace_run.cc",
     ],
+    copts = ["-std=c++11"],
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    linkstatic = 1,
     deps = [
         "//mace/core",
-        "//mace/utils",
         "//mace/ops",
+        "//mace/utils:command_line_flags",
     ],
-    copts = ["-std=c++11",],
-    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
-    linkstatic = 1,
 )

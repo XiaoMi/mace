@@ -34,7 +34,10 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = ["-std=c++11", "-fopenmp",],
+    copts = [
+        "-std=c++11",
+        "-fopenmp",
+    ],
     deps = [
         "//mace/core",
         "//mace/kernels",
@@ -50,7 +53,7 @@ cc_test(
         ["*_test.cc"],
     ),
     copts = ["-std=c++11"],
-    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
     linkstatic = 1,
     deps = [
         ":ops",
@@ -64,7 +67,7 @@ cc_test(
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
     copts = ["-std=c++11"],
-    linkopts = ["-fopenmp",] + if_android(["-ldl"]),
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
     linkstatic = 1,
     deps = [
         ":ops",
