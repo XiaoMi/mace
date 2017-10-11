@@ -165,18 +165,69 @@ TEST_F(Conv2dOpTest, Conv1x1) {
 }
 
 // TODO we need more tests
-TEST_F(Conv2dOpTest, ConvNxNS12) {
+TEST_F(Conv2dOpTest, IdleConvNxNS12) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
     srand(time(NULL));
 
     // generate random input
-    index_t batch = 1 + rand() % 10;
-    index_t input_channels = 1 + rand() % 10;
+    index_t batch = 3 ;
+    index_t input_channels = 64;
+    index_t height = 32;
+    index_t width = 32;
+    index_t output_channels = 128;
+    // Construct graph
+    auto& net = test_net();
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .Finalize(net.operator_def());
+
+    // Add args
+    net.AddIntsArg("strides", {stride_h, stride_w});
+    net.AddIntArg("padding", type);
+    net.AddIntsArg("dilations", {1, 1});
+
+    // Add input data
+    net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<float>(
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w});
+    net.AddRandomInput<float>("Bias", {output_channels});
+    // run cpu
+    net.RunOp();
+
+    // Check
+    Tensor expected;
+    expected.Copy(*net.GetOutput("Output"));
+
+    // Run NEON
+    net.RunOp(DeviceType::NEON);
+    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
+  };
+
+  for (int kernel_size : {1}) {
+    for (int stride : {1}) {
+      func(kernel_size, kernel_size, stride, stride, VALID);
+      func(kernel_size, kernel_size, stride, stride, SAME);
+    }
+  }
+}
+
+TEST_F(Conv2dOpTest, DisgustConvNxNS12) {
+  testing::internal::LogToStderr();
+  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
+                  Padding type) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 3 + rand() % 10;
+    index_t input_channels = 3 + rand() % 10;
     index_t height = 107;
     index_t width = 113;
-    index_t output_channels = 1 + rand() % 10;
+    index_t output_channels = 3 + rand() % 10;
     // Construct graph
     auto& net = test_net();
     OpDefBuilder("Conv2D", "Conv2dTest")

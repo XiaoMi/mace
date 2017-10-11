@@ -8,15 +8,23 @@ package(
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
-    name = "utils",
-    srcs = glob([
-        "*.cc",
-    ]),
-    hdrs = glob([
-        "*.h",
-    ]),
+    name = "command_line_flags",
+    srcs = [
+        "command_line_flags.cc",
+    ],
+    hdrs = [
+        "command_line_flags.h",
+    ],
     copts = ["-std=c++11"],
     deps = [
-        "//mace/core:core",
+        "//mace/core",
     ],
+)
+
+cc_library(
+    name = "utils",
+    hdrs = [
+        "utils.h",
+    ],
+    copts = ["-std=c++11"],
 )
