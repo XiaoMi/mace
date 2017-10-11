@@ -11,7 +11,7 @@
 #include <mutex>
 
 /**
- * Wrapper of OpenCL 1.2
+ * Wrapper of OpenCL 2.0 (based on 1.2)
  */
 namespace mace {
 class OpenCLStub final {
@@ -19,6 +19,9 @@ class OpenCLStub final {
   static OpenCLStub &Get();
   bool loaded() { return loaded_; }
 
+  using clGetPlatformIDsFunc = cl_int (*)(cl_uint, cl_platform_id *, cl_uint *);
+  using clGetPlatformInfoFunc =
+      cl_int (*)(cl_platform_id, cl_platform_info, size_t, void *, size_t *);
   using clBuildProgramFunc = cl_int (*)(cl_program,
                                         cl_uint,
                                         const cl_device_id *,
@@ -43,7 +46,21 @@ class OpenCLStub final {
   using clEnqueueUnmapMemObjectFunc = cl_int (*)(
       cl_command_queue, cl_mem, void *, cl_uint, const cl_event *, cl_event *);
   using clRetainCommandQueueFunc = cl_int (*)(cl_command_queue command_queue);
+  using clCreateContextFunc = cl_context (*)(
+      const cl_context_properties *,
+      cl_uint,
+      const cl_device_id *,
+      void(CL_CALLBACK *)(const char *, const void *, size_t, void *),
+      void *,
+      cl_int *);
+  using clCreateContextFromTypeFunc = cl_context (*)(
+      const cl_context_properties *,
+      cl_device_type,
+      void(CL_CALLBACK *)(const char *, const void *, size_t, void *),
+      void *,
+      cl_int *);
   using clReleaseContextFunc = cl_int (*)(cl_context);
+  using clWaitForEventsFunc = cl_int (*)(cl_uint, const cl_event *);
   using clReleaseEventFunc = cl_int (*)(cl_event);
   using clEnqueueWriteBufferFunc = cl_int (*)(cl_command_queue,
                                               cl_mem,
@@ -80,6 +97,11 @@ class OpenCLStub final {
                                            const cl_event *,
                                            cl_event *,
                                            cl_int *);
+  using clCreateCommandQueueWithPropertiesFunc =
+      cl_command_queue (*)(cl_context /* context */,
+                           cl_device_id /* device */,
+                           const cl_queue_properties * /* properties */,
+                           cl_int * /* errcode_ret */);
   using clReleaseCommandQueueFunc = cl_int (*)(cl_command_queue);
   using clCreateProgramWithBinaryFunc = cl_program (*)(cl_context,
                                                        cl_uint,
@@ -89,6 +111,8 @@ class OpenCLStub final {
                                                        cl_int *,
                                                        cl_int *);
   using clRetainContextFunc = cl_int (*)(cl_context context);
+  using clGetContextInfoFunc =
+      cl_int (*)(cl_context, cl_context_info, size_t, void *, size_t *);
   using clReleaseProgramFunc = cl_int (*)(cl_program program);
   using clFlushFunc = cl_int (*)(cl_command_queue command_queue);
   using clFinishFunc = cl_int (*)(cl_command_queue command_queue);
@@ -105,10 +129,14 @@ class OpenCLStub final {
       cl_int (*)(cl_device_id, cl_device_info, size_t, void *, size_t *);
   using clGetDeviceIDsFunc = cl_int (*)(
       cl_platform_id, cl_device_type, cl_uint, cl_device_id *, cl_uint *);
+  using clRetainDeviceFunc = cl_int (*)(cl_device_id);
+  using clReleaseDeviceFunc = cl_int (*)(cl_device_id);
   using clRetainEventFunc = cl_int (*)(cl_event);
 
 #define DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
+  DEFINE_FUNC_PTR(clGetPlatformIDs);
+  DEFINE_FUNC_PTR(clGetPlatformInfo);
   DEFINE_FUNC_PTR(clBuildProgram);
   DEFINE_FUNC_PTR(clEnqueueNDRangeKernel);
   DEFINE_FUNC_PTR(clSetKernelArg);
@@ -122,14 +150,19 @@ class OpenCLStub final {
   DEFINE_FUNC_PTR(clFinish);
   DEFINE_FUNC_PTR(clReleaseProgram);
   DEFINE_FUNC_PTR(clRetainContext);
+  DEFINE_FUNC_PTR(clGetContextInfo);
   DEFINE_FUNC_PTR(clCreateProgramWithBinary);
+  DEFINE_FUNC_PTR(clCreateCommandQueueWithProperties);
   DEFINE_FUNC_PTR(clReleaseCommandQueue);
   DEFINE_FUNC_PTR(clEnqueueMapBuffer);
   DEFINE_FUNC_PTR(clRetainProgram);
   DEFINE_FUNC_PTR(clGetProgramBuildInfo);
   DEFINE_FUNC_PTR(clEnqueueReadBuffer);
   DEFINE_FUNC_PTR(clEnqueueWriteBuffer);
+  DEFINE_FUNC_PTR(clWaitForEvents);
   DEFINE_FUNC_PTR(clReleaseEvent);
+  DEFINE_FUNC_PTR(clCreateContext);
+  DEFINE_FUNC_PTR(clCreateContextFromType);
   DEFINE_FUNC_PTR(clReleaseContext);
   DEFINE_FUNC_PTR(clRetainCommandQueue);
   DEFINE_FUNC_PTR(clEnqueueUnmapMemObject);
@@ -137,6 +170,8 @@ class OpenCLStub final {
   DEFINE_FUNC_PTR(clReleaseMemObject);
   DEFINE_FUNC_PTR(clGetDeviceInfo);
   DEFINE_FUNC_PTR(clGetDeviceIDs);
+  DEFINE_FUNC_PTR(clRetainDevice);
+  DEFINE_FUNC_PTR(clReleaseDevice);
   DEFINE_FUNC_PTR(clRetainEvent);
 
 #undef DEFINE_FUNC_PTR
@@ -199,7 +234,7 @@ bool OpenCLStub::Load(const std::string &path) {
     void *ptr = dlsym(handle, #func);                               \
     if (ptr == nullptr) {                                           \
       LOG(ERROR) << "Failed to load " << #func << " from " << path; \
-      loaded_ = false;                                        \
+      loaded_ = false;                                              \
       dlclose(handle);                                              \
       return false;                                                 \
     }                                                               \
@@ -207,6 +242,8 @@ bool OpenCLStub::Load(const std::string &path) {
     VLOG(2) << "Loaded " << #func << " from " << path;              \
   } while (false)
 
+  ASSIGN_FROM_DLSYM(clGetPlatformIDs);
+  ASSIGN_FROM_DLSYM(clGetPlatformInfo);
   ASSIGN_FROM_DLSYM(clBuildProgram);
   ASSIGN_FROM_DLSYM(clEnqueueNDRangeKernel);
   ASSIGN_FROM_DLSYM(clSetKernelArg);
@@ -220,14 +257,19 @@ bool OpenCLStub::Load(const std::string &path) {
   ASSIGN_FROM_DLSYM(clFinish);
   ASSIGN_FROM_DLSYM(clReleaseProgram);
   ASSIGN_FROM_DLSYM(clRetainContext);
+  ASSIGN_FROM_DLSYM(clGetContextInfo);
   ASSIGN_FROM_DLSYM(clCreateProgramWithBinary);
+  ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
   ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
   ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
   ASSIGN_FROM_DLSYM(clRetainProgram);
   ASSIGN_FROM_DLSYM(clGetProgramBuildInfo);
   ASSIGN_FROM_DLSYM(clEnqueueReadBuffer);
   ASSIGN_FROM_DLSYM(clEnqueueWriteBuffer);
+  ASSIGN_FROM_DLSYM(clWaitForEvents);
   ASSIGN_FROM_DLSYM(clReleaseEvent);
+  ASSIGN_FROM_DLSYM(clCreateContext);
+  ASSIGN_FROM_DLSYM(clCreateContextFromType);
   ASSIGN_FROM_DLSYM(clReleaseContext);
   ASSIGN_FROM_DLSYM(clRetainCommandQueue);
   ASSIGN_FROM_DLSYM(clEnqueueUnmapMemObject);
@@ -235,18 +277,44 @@ bool OpenCLStub::Load(const std::string &path) {
   ASSIGN_FROM_DLSYM(clReleaseMemObject);
   ASSIGN_FROM_DLSYM(clGetDeviceInfo);
   ASSIGN_FROM_DLSYM(clGetDeviceIDs);
+  ASSIGN_FROM_DLSYM(clRetainDevice);
+  ASSIGN_FROM_DLSYM(clReleaseDevice);
   ASSIGN_FROM_DLSYM(clRetainEvent);
 
 #undef ASSIGN_FROM_DLSYM
 
   loaded_ = true;
-  dlclose(handle);
+  // TODO (heliangliang) Call dlclose if we are dlclosed
   return true;
 }
 
 bool OpenCLSupported() { return OpenCLStub::Get().loaded(); }
 
 }  // namespace mace
+
+cl_int clGetPlatformIDs(cl_uint num_entries,
+                        cl_platform_id *platforms,
+                        cl_uint *num_platforms) {
+  auto func = mace::OpenCLStub::Get().clGetPlatformIDs;
+  if (func != nullptr) {
+    return func(num_entries, platforms, num_platforms);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+cl_int clGetPlatformInfo(cl_platform_id platform,
+                         cl_platform_info param_name,
+                         size_t param_value_size,
+                         void *param_value,
+                         size_t *param_value_size_ret) {
+  auto func = mace::OpenCLStub::Get().clGetPlatformInfo;
+  if (func != nullptr) {
+    return func(platform, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
 
 cl_int clBuildProgram(cl_program program,
                       cl_uint num_devices,
@@ -336,6 +404,34 @@ cl_int clRetainCommandQueue(cl_command_queue command_queue) {
     return CL_OUT_OF_RESOURCES;
   }
 }
+cl_context clCreateContext(
+    const cl_context_properties *properties,
+    cl_uint num_devices,
+    const cl_device_id *devices,
+    void(CL_CALLBACK *pfn_notify)(const char *, const void *, size_t, void *),
+    void *user_data,
+    cl_int *errcode_ret) {
+  auto func = mace::OpenCLStub::Get().clCreateContext;
+  if (func != nullptr) {
+    return func(properties, num_devices, devices, pfn_notify, user_data,
+                errcode_ret);
+  } else {
+    return nullptr;
+  }
+}
+cl_context clCreateContextFromType(
+    const cl_context_properties *properties,
+    cl_device_type device_type,
+    void(CL_CALLBACK *pfn_notify)(const char *, const void *, size_t, void *),
+    void *user_data,
+    cl_int *errcode_ret) {
+  auto func = mace::OpenCLStub::Get().clCreateContextFromType;
+  if (func != nullptr) {
+    return func(properties, device_type, pfn_notify, user_data, errcode_ret);
+  } else {
+    return nullptr;
+  }
+}
 
 cl_int clReleaseContext(cl_context context) {
   auto func = mace::OpenCLStub::Get().clReleaseContext;
@@ -345,6 +441,16 @@ cl_int clReleaseContext(cl_context context) {
     return CL_OUT_OF_RESOURCES;
   }
 }
+
+cl_int clWaitForEvents(cl_uint num_events, const cl_event *event_list) {
+  auto func = mace::OpenCLStub::Get().clWaitForEvents;
+  if (func != nullptr) {
+    return func(num_events, event_list);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
 cl_int clReleaseEvent(cl_event event) {
   auto func = mace::OpenCLStub::Get().clReleaseEvent;
   if (func != nullptr) {
@@ -435,6 +541,18 @@ void *clEnqueueMapBuffer(cl_command_queue command_queue,
     return nullptr;
   }
 }
+cl_command_queue clCreateCommandQueueWithProperties(
+    cl_context context,
+    cl_device_id device,
+    const cl_queue_properties *properties,
+    cl_int *errcode_ret) {
+  auto func = mace::OpenCLStub::Get().clCreateCommandQueueWithProperties;
+  if (func != nullptr) {
+    return func(context, device, properties, errcode_ret);
+  } else {
+    return nullptr;
+  }
+}
 
 cl_int clReleaseCommandQueue(cl_command_queue command_queue) {
   auto func = mace::OpenCLStub::Get().clReleaseCommandQueue;
@@ -468,6 +586,20 @@ cl_int clRetainContext(cl_context context) {
   auto func = mace::OpenCLStub::Get().clRetainContext;
   if (func != nullptr) {
     return func(context);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
+cl_int clGetContextInfo(cl_context context,
+                        cl_context_info param_name,
+                        size_t param_value_size,
+                        void *param_value,
+                        size_t *param_value_size_ret) {
+  auto func = mace::OpenCLStub::Get().clGetContextInfo;
+  if (func != nullptr) {
+    return func(context, param_name, param_value_size, param_value,
+                param_value_size_ret);
   } else {
     return CL_OUT_OF_RESOURCES;
   }
@@ -600,6 +732,24 @@ cl_int clGetDeviceInfo(cl_device_id device,
   if (func != nullptr) {
     return func(device, param_name, param_value_size, param_value,
                 param_value_size_ret);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
+cl_int clRetainDevice(cl_device_id device) {
+  auto func = mace::OpenCLStub::Get().clRetainDevice;
+  if (func != nullptr) {
+    return func(device);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
+cl_int clReleaseDevice(cl_device_id device) {
+  auto func = mace::OpenCLStub::Get().clReleaseDevice;
+  if (func != nullptr) {
+    return func(device);
   } else {
     return CL_OUT_OF_RESOURCES;
   }

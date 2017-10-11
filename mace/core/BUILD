@@ -19,8 +19,19 @@ cc_library(
     ]),
     copts = ["-std=c++11"],
     deps = [
-        "@opencl_headers//:opencl12_headers",
+        "@opencl_headers//:opencl20_headers",
         "core",
+    ],
+)
+
+cc_binary(
+    name = "opencl_smoketest",
+    srcs = glob([
+        "platform/opencl/opencl_smoketest.cc",
+    ]),
+    copts = ["-std=c++11"],
+    deps = [
+        "opencl_runtime",
     ],
 )
 
