@@ -33,6 +33,7 @@ struct BatchNormFunctor {
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
     T new_scale, new_offset;
+#pragma omp parallel for
     for (index_t c = 0; c < channel; ++c) {
       new_scale = scale[c] / std::sqrt(var[c] + variance_epsilon);
       new_offset = offset[c] - mean[c] * new_scale;

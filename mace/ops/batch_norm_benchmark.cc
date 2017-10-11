@@ -57,14 +57,16 @@ static void BatchNorm(
   BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, NEON);
 
 BM_BATCH_NORM(1, 1, 512, 512, float);
-BM_BATCH_NORM(1, 1, 1024, 1024, float);
 BM_BATCH_NORM(1, 3, 128, 128, float);
 BM_BATCH_NORM(1, 3, 512, 512, float);
-BM_BATCH_NORM(1, 3, 1024, 1024, float);
+BM_BATCH_NORM(1, 32, 112, 112, float);
 BM_BATCH_NORM(1, 64, 256, 256, float);
 BM_BATCH_NORM(1, 64, 512, 512, float);
+BM_BATCH_NORM(1, 128, 56, 56, float);
 BM_BATCH_NORM(1, 128, 256, 256, float);
-BM_BATCH_NORM(1, 128, 512, 512, float);
+BM_BATCH_NORM(1, 256, 14, 14, float);
+BM_BATCH_NORM(1, 512, 14, 14, float);
+BM_BATCH_NORM(1, 1024, 7, 7, float);
 BM_BATCH_NORM(32, 1, 256, 256, float);
 BM_BATCH_NORM(32, 3, 256, 256, float);
 }  //  namespace mace
