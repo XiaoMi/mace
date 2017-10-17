@@ -46,6 +46,8 @@ cc_library(
     copts = ["-std=c++11"],
     deps = [
         "//mace/proto:cc_proto",
+        "//mace/proto:stats_proto",
+        "//mace/utils:utils",
     ],
     linkopts = if_android([
         "-llog",

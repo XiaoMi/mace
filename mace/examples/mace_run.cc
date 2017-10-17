@@ -101,6 +101,11 @@ int main(int argc, char **argv) {
   VLOG(0) << device_type;
   auto net = CreateNet(net_def, &ws, device_type);
 
+  // warm up
+  for (int i = 0; i < 2; ++i) {
+    net->Run();
+  }
+
   timeval tv1, tv2;
   gettimeofday(&tv1, NULL);
   for (int i = 0; i < round; ++i) {

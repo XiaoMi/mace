@@ -3,6 +3,7 @@
 //
 
 #include "mace/core/net.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 
@@ -28,14 +29,26 @@ SimpleNet::SimpleNet(const std::shared_ptr<const NetDef>& net_def,
     }
   }
 }
-bool SimpleNet::Run() {
+bool SimpleNet::Run(RunMetadata* run_metadata) {
   VLOG(1) << "Running net " << name_;
   for (auto& op : operators_) {
     VLOG(1) << "Running operator " << op->debug_def().name() << "("
             << op->debug_def().type() << ").";
+    OperatorStats* op_stats = nullptr;
+    if (run_metadata) {
+      op_stats = run_metadata->add_op_stats();
+      op_stats->set_operator_name(op->debug_def().name());
+      op_stats->set_type(op->debug_def().type());
+      op_stats->set_all_start_micros(NowInMicroSec());
+      op_stats->set_op_start_rel_micros(NowInMicroSec() - op_stats->all_start_micros());
+    }
     if (!op->Run()) {
       LOG(ERROR) << "Operator failed: " << ProtoDebugString(op->debug_def());
       return false;
+    }
+    if (op_stats) {
+      op_stats->set_op_end_rel_micros(NowInMicroSec() - op_stats->all_start_micros());
+      op_stats->set_all_end_rel_micros(NowInMicroSec() - op_stats->all_start_micros());
     }
     VLOG(1) << "Op " << op->debug_def().name()
             << " has shape: " << internal::MakeString(op->Output(0)->shape());
