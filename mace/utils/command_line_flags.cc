@@ -10,19 +10,21 @@ namespace mace {
 namespace {
 
 bool StringConsume(string &arg, const string &x) {
-  if ((arg.size() >= x.size())
-      && (memcmp(arg.data(), x.data(), x.size()) == 0)) {
+  if ((arg.size() >= x.size()) &&
+      (memcmp(arg.data(), x.data(), x.size()) == 0)) {
     arg = arg.substr(x.size());
     return true;
   }
   return false;
 }
 
-bool ParseStringFlag(string arg, string flag,
-                     string *dst, bool *value_parsing_ok) {
+bool ParseStringFlag(string arg,
+                     string flag,
+                     string *dst,
+                     bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag)
-      && StringConsume(arg, "=")) {
+  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
+      StringConsume(arg, "=")) {
     *dst = arg;
     return true;
   }
@@ -30,11 +32,13 @@ bool ParseStringFlag(string arg, string flag,
   return false;
 }
 
-bool ParseInt32Flag(string arg, string flag,
-                    int32_t *dst, bool *value_parsing_ok) {
+bool ParseInt32Flag(string arg,
+                    string flag,
+                    int32_t *dst,
+                    bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag)
-      && StringConsume(arg, "=")) {
+  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
+      StringConsume(arg, "=")) {
     char extra;
     if (sscanf(arg.data(), "%d%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -47,11 +51,13 @@ bool ParseInt32Flag(string arg, string flag,
   return false;
 }
 
-bool ParseInt64Flag(string arg, string flag,
-                    long long *dst, bool *value_parsing_ok) {
+bool ParseInt64Flag(string arg,
+                    string flag,
+                    long long *dst,
+                    bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag)
-      && StringConsume(arg, "=")) {
+  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
+      StringConsume(arg, "=")) {
     char extra;
     if (sscanf(arg.data(), "%lld%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -64,8 +70,7 @@ bool ParseInt64Flag(string arg, string flag,
   return false;
 }
 
-bool ParseBoolFlag(string arg, string flag,
-                   bool *dst, bool *value_parsing_ok) {
+bool ParseBoolFlag(string arg, string flag, bool *dst, bool *value_parsing_ok) {
   *value_parsing_ok = true;
   if (StringConsume(arg, "--") && StringConsume(arg, flag)) {
     if (arg.empty()) {
@@ -90,11 +95,13 @@ bool ParseBoolFlag(string arg, string flag,
   return false;
 }
 
-bool ParseFloatFlag(string arg, string flag,
-                    float *dst, bool *value_parsing_ok) {
+bool ParseFloatFlag(string arg,
+                    string flag,
+                    float *dst,
+                    bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag)
-      && StringConsume(arg, "=")) {
+  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
+      StringConsume(arg, "=")) {
     char extra;
     if (sscanf(arg.data(), "%f%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -152,7 +159,8 @@ bool Flag::Parse(string arg, bool *value_parsing_ok) const {
   return result;
 }
 
-/*static*/ bool Flags::Parse(int *argc, char **argv,
+/*static*/ bool Flags::Parse(int *argc,
+                             char **argv,
                              const std::vector<Flag> &flag_list) {
   bool result = true;
   std::vector<char *> unknown_flags;

@@ -16,36 +16,36 @@
 namespace mace {
 namespace testing {
 
-static std::vector<Benchmark*>* all_benchmarks = nullptr;
+static std::vector<Benchmark *> *all_benchmarks = nullptr;
 static std::string label;
 static int64_t bytes_processed;
 static int64_t items_processed;
 static int64_t accum_time = 0;
 static int64_t start_time = 0;
 
-Benchmark::Benchmark(const char* name, void (*fn)(int))
+Benchmark::Benchmark(const char *name, void (*fn)(int))
     : name_(name), num_args_(0), fn0_(fn) {
   args_.push_back(std::make_pair(-1, -1));
   Register();
 }
 
-Benchmark::Benchmark(const char* name, void (*fn)(int, int))
+Benchmark::Benchmark(const char *name, void (*fn)(int, int))
     : name_(name), num_args_(1), fn1_(fn) {
   Register();
 }
 
-Benchmark::Benchmark(const char* name, void (*fn)(int, int, int))
+Benchmark::Benchmark(const char *name, void (*fn)(int, int, int))
     : name_(name), num_args_(2), fn2_(fn) {
   Register();
 }
 
-Benchmark* Benchmark::Arg(int x) {
+Benchmark *Benchmark::Arg(int x) {
   MACE_CHECK(num_args_ == 1);
   args_.push_back(std::make_pair(x, -1));
   return this;
 }
 
-Benchmark* Benchmark::ArgPair(int x, int y) {
+Benchmark *Benchmark::ArgPair(int x, int y) {
   MACE_CHECK(num_args_ == 2);
   args_.push_back(std::make_pair(x, y));
   return this;
@@ -54,7 +54,7 @@ Benchmark* Benchmark::ArgPair(int x, int y) {
 // Run all benchmarks
 void Benchmark::Run() { Run("all"); }
 
-void Benchmark::Run(const char* pattern) {
+void Benchmark::Run(const char *pattern) {
   if (!all_benchmarks) return;
 
   if (std::string(pattern) == "all") {
@@ -117,11 +117,11 @@ void Benchmark::Run(const char* pattern) {
 }
 
 void Benchmark::Register() {
-  if (!all_benchmarks) all_benchmarks = new std::vector<Benchmark*>;
+  if (!all_benchmarks) all_benchmarks = new std::vector<Benchmark *>;
   all_benchmarks->push_back(this);
 }
 
-void Benchmark::Run(int arg1, int arg2, int* run_count, double* run_seconds) {
+void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
   static const int64_t kMinIters = 10;
   static const int64_t kMaxIters = 1000000000;
   static const double kMinTime = 0.5;

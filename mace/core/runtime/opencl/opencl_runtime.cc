@@ -30,7 +30,9 @@ bool ReadSourceFile(const char *filename, std::string *content) {
   return true;
 }
 
-bool BuildProgram(OpenCLRuntime *runtime, const char *filename, cl::Program *program) {
+bool BuildProgram(OpenCLRuntime *runtime,
+                  const char *filename,
+                  cl::Program *program) {
   MACE_CHECK_NOTNULL(filename);
   MACE_CHECK_NOTNULL(program);
 

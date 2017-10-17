@@ -14,8 +14,8 @@ void Conv2dNeonK5x5S1(const float *input,  // NCHW
                       const index_t *input_shape,
                       const float *filter,  // c_out, c_in, kernel_h, kernel_w
                       const index_t *filter_shape,
-                      const float *bias,    // c_out
-                      float *output,        // NCHW
+                      const float *bias,  // c_out
+                      float *output,      // NCHW
                       const index_t *output_shape) {
   const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
@@ -41,7 +41,7 @@ void Conv2dNeonK5x5S1(const float *input,  // NCHW
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {
       float *output_ptr = output + n * output_total_pixels_per_batch +
-          c * output_total_pixels_per_channel;
+                          c * output_total_pixels_per_channel;
       const float *input_ptr = input + n * input_total_pixels_per_batch;
 
       // Fill with bias

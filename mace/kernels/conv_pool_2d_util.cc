@@ -72,16 +72,15 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
 }
 
 void CalPaddingSize(const index_t *input_shape,   // NCHW
-                     const index_t *filter_shape,  // OIHW
-                     const int *dilations,
-                     const int *strides,
-                     Padding padding,
-                     int *padding_size) {
-
+                    const index_t *filter_shape,  // OIHW
+                    const int *dilations,
+                    const int *strides,
+                    Padding padding,
+                    int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-      (dilations[1] == 1 || strides[1] == 1),
+                 (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(padding_size);
 

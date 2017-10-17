@@ -24,5 +24,5 @@ inline int64_t NowInMicroSec() {
   return static_cast<int64_t>(tv.tv_sec * 1000000 + tv.tv_usec);
 }
 
-} //  namespace mace
-#endif //  MACE_UTILS_UTILS_H_
+}  //  namespace mace
+#endif  //  MACE_UTILS_UTILS_H_

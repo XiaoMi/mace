@@ -12,7 +12,7 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct AddNFunctor {
-  void operator()(const vector<const T*>& inputs, T* output, index_t size) {
+  void operator()(const vector<const T *> &inputs, T *output, index_t size) {
     memset(output, 0, size * sizeof(T));
     int n = inputs.size();
     for (int i = 0; i < n; ++i) {
@@ -25,7 +25,7 @@ struct AddNFunctor {
 
 template <>
 void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const vector<const float*>& inputs, float* output, index_t size);
+    const vector<const float *> &inputs, float *output, index_t size);
 
 }  //  namespace kernels
 }  //  namespace mace

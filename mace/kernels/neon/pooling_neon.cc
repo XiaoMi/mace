@@ -55,7 +55,7 @@ extern void PoolingAvgNeonK3x3S2x2Padded(const float *input,
                                          const index_t *out_shape);
 #endif
 
-template<>
+template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
     const float *input,
     const index_t *input_shape,
@@ -71,14 +71,14 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
   if (kernels_[0] == 2 && kernels_[1] == 2 && strides_[0] == 2 &&
       strides_[1] == 2) {
     // kernel_size: 2x2, strides: 2x2
-    if (pooling_type_ == MAX) { // MAX_POOL_2x2s2x2
+    if (pooling_type_ == MAX) {  // MAX_POOL_2x2s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingMaxNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingMaxNeonK2x2S2x2(input, input_shape, output, output_shape,
                              paddings_);
 #endif
-    } else { // AVG_POOL_2x2s2x2
+    } else {  // AVG_POOL_2x2s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingAvgNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
 #else
@@ -87,16 +87,16 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
 #endif
     }
   } else if (kernels_[0] == 3 && kernels_[1] == 3 && strides_[0] == 2 &&
-      strides_[1] == 2) {
+             strides_[1] == 2) {
     // kernel_size: 3x3, strides: 2x2
-    if (pooling_type_ == MAX) { // MAX_POOL_3x3s2x2
+    if (pooling_type_ == MAX) {  // MAX_POOL_3x3s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingMaxNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingMaxNeonK3x3S2x2(input, input_shape, output, output_shape,
                              paddings_);
 #endif
-    } else { // AVG_POOL_3x3s2x2
+    } else {  // AVG_POOL_3x3s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingAvgNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
 #else

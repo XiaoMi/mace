@@ -43,7 +43,7 @@ class OpsTestNet {
  public:
   OpsTestNet() {}
 
-  template<typename T>
+  template <typename T>
   void AddInputFromArray(const char *name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
@@ -55,7 +55,7 @@ class OpsTestNet {
     memcpy(input_data, data.data(), data.size() * sizeof(T));
   }
 
-  template<typename T>
+  template <typename T>
   void AddRepeatedInput(const char *name,
                         const std::vector<index_t> &shape,
                         const T data) {
@@ -66,7 +66,7 @@ class OpsTestNet {
     std::fill(input_data, input_data + input->size(), data);
   }
 
-  template<typename T>
+  template <typename T>
   void AddRandomInput(const char *name,
                       const std::vector<index_t> &shape,
                       bool positive = false) {
@@ -173,38 +173,37 @@ class OpsTestBase : public ::testing::Test {
   OpsTestNet test_net_;
 };
 
-template<typename T>
-void GenerateRandomRealTypeData(const std::vector<index_t> &shape, std::vector<T> &res) {
+template <typename T>
+void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
+                                std::vector<T> &res) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<T> nd(0, 1);
 
-  index_t size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<index_t>());
+  index_t size = std::accumulate(shape.begin(), shape.end(), 1,
+                                 std::multiplies<index_t>());
   res.resize(size);
 
-  std::generate(res.begin(), res.end(),
-                [&gen, &nd] {
-                  return nd(gen);
-                });
+  std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
 }
 
-template<typename T>
-void GenerateRandomIntTypeData(const std::vector<index_t> &shape, std::vector<T> &res,
-                               const T a = 0, const T b = std::numeric_limits<T>::max()) {
+template <typename T>
+void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
+                               std::vector<T> &res,
+                               const T a = 0,
+                               const T b = std::numeric_limits<T>::max()) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> nd(a, b);
 
-  index_t size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<index_t>());
+  index_t size = std::accumulate(shape.begin(), shape.end(), 1,
+                                 std::multiplies<index_t>());
   res.resize(size);
 
-  std::generate(res.begin(), res.end(),
-                [&gen, &nd] {
-                  return nd(gen);
-                });
+  std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
 }
 
-template<typename T>
+template <typename T>
 unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                 const std::vector<T> &data) {
   unique_ptr<Tensor> res(new Tensor(cpu_allocator(), DataTypeToEnum<T>::v()));
@@ -237,23 +236,23 @@ inline std::string ShapeToString(const Tensor &x) {
   return std::string(stream.str());
 }
 
-template<typename T>
+template <typename T>
 struct is_floating_point_type {
   static const bool value =
       std::is_same<T, float>::value || std::is_same<T, double>::value;
 };
 
-template<typename T>
+template <typename T>
 inline void ExpectEqual(const T &a, const T &b) {
   EXPECT_EQ(a, b);
 }
 
-template<>
+template <>
 inline void ExpectEqual<float>(const float &a, const float &b) {
   EXPECT_FLOAT_EQ(a, b);
 }
 
-template<>
+template <>
 inline void ExpectEqual<double>(const double &a, const double &b) {
   EXPECT_DOUBLE_EQ(a, b);
 }
@@ -264,11 +263,11 @@ inline void AssertSameTypeDims(const Tensor &x, const Tensor &y) {
                                 << "y.shape [ " << ShapeToString(y) << "]";
 }
 
-template<typename T, bool is_fp = is_floating_point_type<T>::value>
+template <typename T, bool is_fp = is_floating_point_type<T>::value>
 struct Expector;
 
 // Partial specialization for float and double.
-template<typename T>
+template <typename T>
 struct Expector<T, true> {
   static void Equal(const T &a, const T &b) { ExpectEqual(a, b); }
 
@@ -294,17 +293,17 @@ struct Expector<T, true> {
   }
 };
 
-template<typename T>
+template <typename T>
 void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   static_assert(is_floating_point_type<T>::value,
                 "T is not a floating point type");
   Expector<T>::Near(x, y, abs_err);
 }
 
-template<typename T>
-std::string ToString(const T& input) {
+template <typename T>
+std::string ToString(const T &input) {
   std::stringstream ss;
-  ss<<input;
+  ss << input;
   return ss.str();
 }
 

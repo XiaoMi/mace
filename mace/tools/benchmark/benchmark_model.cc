@@ -3,13 +3,12 @@
 //
 
 #include "mace/core/net.h"
-#include "mace/utils/command_line_flags.h"
 #include "mace/tools/benchmark/stat_summarizer.h"
+#include "mace/utils/command_line_flags.h"
 #include "mace/utils/utils.h"
 
 #include <fstream>
 #include <thread>
-
 
 namespace mace {
 namespace str_util {
@@ -29,8 +28,9 @@ std::vector<std::string> Split(const string &str, char delims) {
   return result;
 }
 
-
-bool SplitAndParseToInts(const string &str, char delims, std::vector<index_t>* result) {
+bool SplitAndParseToInts(const string &str,
+                         char delims,
+                         std::vector<index_t> *result) {
   string tmp = str;
   while (!tmp.empty()) {
     index_t dim = atoi(tmp.data());
@@ -44,13 +44,15 @@ bool SplitAndParseToInts(const string &str, char delims, std::vector<index_t>* r
   }
 }
 
-} //  namespace str_util
+}  //  namespace str_util
 
 namespace benchmark {
 
-bool RunInference(NetBase* net, StatSummarizer* summarizer, int64_t* inference_time_us) {
+bool RunInference(NetBase *net,
+                  StatSummarizer *summarizer,
+                  int64_t *inference_time_us) {
   RunMetadata run_metadata;
-  RunMetadata* run_metadata_ptr = nullptr;
+  RunMetadata *run_metadata_ptr = nullptr;
   if (summarizer) {
     run_metadata_ptr = &run_metadata;
   }
@@ -71,9 +73,13 @@ bool RunInference(NetBase* net, StatSummarizer* summarizer, int64_t* inference_t
   return true;
 }
 
-bool Run(NetBase* net, StatSummarizer* summarizer,
-         int num_runs, double max_time_sec, int64_t sleep_sec,
-         int64_t* total_time_us, int64_t* actual_num_runs) {
+bool Run(NetBase *net,
+         StatSummarizer *summarizer,
+         int num_runs,
+         double max_time_sec,
+         int64_t sleep_sec,
+         int64_t *total_time_us,
+         int64_t *actual_num_runs) {
   *total_time_us = 0;
 
   LOG(INFO) << "Running benchmark for max " << num_runs << " iterators, max "
@@ -85,7 +91,7 @@ bool Run(NetBase* net, StatSummarizer* summarizer,
   Stat<int64_t> stat;
 
   bool util_max_time = (num_runs <= 0);
-  for (int i = 0; util_max_time || i < num_runs ; ++i) {
+  for (int i = 0; util_max_time || i < num_runs; ++i) {
     int64_t inference_time_us = 0;
     bool s = RunInference(net, summarizer, &inference_time_us);
     stat.UpdateStat(inference_time_us);
@@ -113,7 +119,7 @@ bool Run(NetBase* net, StatSummarizer* summarizer,
   return true;
 }
 
-int Main(int argc, char** argv) {
+int Main(int argc, char **argv) {
   std::string model_file = "/data/local/tmp/mobi_mace.pb";
   std::string device = "CPU";
   std::string input_layer_string = "input:0";
@@ -182,8 +188,10 @@ int Main(int argc, char** argv) {
     return -1;
   }
 
-  std::vector<std::string> input_layers = str_util::Split(input_layer_string, ',');
-  std::vector<std::string> input_layer_shapes = str_util::Split(input_layer_shape_string, ':');
+  std::vector<std::string> input_layers =
+      str_util::Split(input_layer_string, ',');
+  std::vector<std::string> input_layer_shapes =
+      str_util::Split(input_layer_shape_string, ':');
   std::vector<string> input_layer_types =
       str_util::Split(input_layer_type_string, ',');
   std::vector<string> input_layer_files =
@@ -260,17 +268,17 @@ int Main(int argc, char** argv) {
   ws.LoadModelTensor(net_def, DeviceType::CPU);
   // Load inputs
   for (size_t i = 0; i < inputs_count; ++i) {
-    Tensor *input_tensor = ws.CreateTensor(input_layers[i],
-                                           cpu_allocator(), DT_FLOAT);
+    Tensor *input_tensor =
+        ws.CreateTensor(input_layers[i], cpu_allocator(), DT_FLOAT);
     vector<index_t> shapes;
     str_util::SplitAndParseToInts(input_layer_shapes[i], ',', &shapes);
     input_tensor->Resize(shapes);
     float *input_data = input_tensor->mutable_data<float>();
 
-
     // load input
     if (i < input_layer_files.size()) {
-      std::ifstream in_file(input_layer_files[i], std::ios::in | std::ios::binary);
+      std::ifstream in_file(input_layer_files[i],
+                            std::ios::in | std::ios::binary);
       in_file.read(reinterpret_cast<char *>(input_data),
                    input_tensor->size() * sizeof(float));
       in_file.close();
@@ -285,31 +293,31 @@ int Main(int argc, char** argv) {
   int64_t warmup_time_us = 0;
   int64_t num_warmup_runs = 0;
   if (warmup_runs > 0) {
-    bool status = Run(net.get(), nullptr,
-                      warmup_runs, -1.0, inter_inference_sleep_seconds,
-                      &warmup_time_us, &num_warmup_runs);
+    bool status =
+        Run(net.get(), nullptr, warmup_runs, -1.0,
+            inter_inference_sleep_seconds, &warmup_time_us, &num_warmup_runs);
     if (!status) {
       LOG(ERROR) << "Failed at warm up run";
     }
   }
 
   if (inter_benchmark_sleep_seconds > 0) {
-    std::this_thread::sleep_for(std::chrono::seconds(inter_benchmark_sleep_seconds));
+    std::this_thread::sleep_for(
+        std::chrono::seconds(inter_benchmark_sleep_seconds));
   }
   int64_t no_stat_time_us = 0;
   int64_t no_stat_runs = 0;
-  bool status = Run(net.get(), nullptr,
-                    max_num_runs, max_benchmark_time_seconds, inter_inference_sleep_seconds,
-                    &no_stat_time_us, &no_stat_runs);
+  bool status =
+      Run(net.get(), nullptr, max_num_runs, max_benchmark_time_seconds,
+          inter_inference_sleep_seconds, &no_stat_time_us, &no_stat_runs);
   if (!status) {
     LOG(ERROR) << "Failed at normal no-stat run";
   }
 
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
-  status = Run(net.get(), stats.get(),
-               max_num_runs, max_benchmark_time_seconds, inter_inference_sleep_seconds,
-               &stat_time_us, &stat_runs);
+  status = Run(net.get(), stats.get(), max_num_runs, max_benchmark_time_seconds,
+               inter_inference_sleep_seconds, &stat_time_us, &stat_runs);
   if (!status) {
     LOG(ERROR) << "Failed at normal stat run";
   }
@@ -325,9 +333,7 @@ int Main(int argc, char** argv) {
   return 0;
 }
 
-} //  namespace benchmark
-} //  namespace mace
+}  //  namespace benchmark
+}  //  namespace mace
 
-int main (int argc, char** argv) {
-  mace::benchmark::Main(argc, argv);
-}
+int main(int argc, char **argv) { mace::benchmark::Main(argc, argv); }

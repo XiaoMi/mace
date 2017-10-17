@@ -7,9 +7,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
-template<DeviceType D, typename T>
-static void ConcatHelper(
-    int iters, int concat_dim, int dim1) {
+template <DeviceType D, typename T>
+static void ConcatHelper(int iters, int concat_dim, int dim1) {
   mace::testing::StopTiming();
 
   OpsTestNet net;

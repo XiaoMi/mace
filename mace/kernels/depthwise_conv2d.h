@@ -5,29 +5,27 @@
 #ifndef MACE_KERNELS_DEPTHWISE_CONV_H_
 #define MACE_KERNELS_DEPTHWISE_CONV_H_
 
-#include "mace/proto/mace.pb.h"
 #include "mace/core/common.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/proto/mace.pb.h"
 
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct DepthwiseConv2dFunctor {
   DepthwiseConv2dFunctor() {}
   DepthwiseConv2dFunctor(const int *strides,
                          const std::vector<int> &paddings,
-                         const int *dilations) :
-      strides_(strides),
-      paddings_(paddings),
-      dilations_(dilations) {}
+                         const int *dilations)
+      : strides_(strides), paddings_(paddings), dilations_(dilations) {}
 
-  void operator()(const T *input, // NCHW
+  void operator()(const T *input,  // NCHW
                   const index_t *input_shape,
-                  const T *filter, // c_out, c_in, kernel_h, kernel_w
+                  const T *filter,  // c_out, c_in, kernel_h, kernel_w
                   const index_t *filter_shape,
-                  const T *bias, // c_out
-                  T *output, // NCHW
+                  const T *bias,  // c_out
+                  T *output,      // NCHW
                   const index_t *output_shape) {
     MACE_CHECK_NOTNULL(output);
 
@@ -68,7 +66,7 @@ struct DepthwiseConv2dFunctor {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
-                c * height * width + h * width + w;
+                             c * height * width + h * width + w;
             output[offset] = bias_channel;
             T sum = 0;
             const T *filter_ptr = filter + c * kernel_size;
@@ -79,16 +77,15 @@ struct DepthwiseConv2dFunctor {
                 if (inh < 0 || inh >= input_height || inw < 0 ||
                     inw >= input_width) {
                   MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
-                      inw >= padded_w_start && inw < padded_w_stop,
-                             "Out of range read from input: ", inh, ", ",
-                             inw);
+                                 inw >= padded_w_start && inw < padded_w_stop,
+                             "Out of range read from input: ", inh, ", ", inw);
                   // else padding with 0:
                   // sum += 0;
                 } else {
                   index_t input_offset =
                       n * input_channels * input_height * input_width +
-                          (c / multiplier) * input_height * input_width + inh * input_width +
-                          inw;
+                      (c / multiplier) * input_height * input_width +
+                      inh * input_width + inw;
                   sum += input[input_offset] * *filter_ptr;
                 }
                 ++filter_ptr;
@@ -101,20 +98,21 @@ struct DepthwiseConv2dFunctor {
     }
   }
 
-  const int *strides_; // [stride_h, stride_w]
-  std::vector<int> paddings_;   // [padding_h, padding_w]
-  const int *dilations_; // [dilation_h, dilation_w]
+  const int *strides_;         // [stride_h, stride_w]
+  std::vector<int> paddings_;  // [padding_h, padding_w]
+  const int *dilations_;       // [dilation_h, dilation_w]
 };
 
-template<>
-void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *input,
-                                                                 const index_t *input_shape,
-                                                                 const float *filter,
-                                                                 const index_t *filter_shape,
-                                                                 const float *bias,
-                                                                 float *output,
-                                                                 const index_t *output_shape);
-} //  namespace kernels
-} //  namespace mace
+template <>
+void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
+    const float *input,
+    const index_t *input_shape,
+    const float *filter,
+    const index_t *filter_shape,
+    const float *bias,
+    float *output,
+    const index_t *output_shape);
+}  //  namespace kernels
+}  //  namespace mace
 
-#endif //  MACE_KERNELS_DEPTHWISE_CONV_H_
+#endif  //  MACE_KERNELS_DEPTHWISE_CONV_H_

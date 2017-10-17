@@ -8,11 +8,9 @@
 namespace mace {
 namespace kernels {
 
-template<>
+template <>
 void GlobalAvgPoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input,
-    const index_t *input_shape,
-    float *output) {
+    const float *input, const index_t *input_shape, float *output) {
   index_t batch = input_shape[0];
   index_t channels = input_shape[1];
   index_t height = input_shape[2];

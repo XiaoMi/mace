@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/kernels/depthwise_conv2d.h"
 #include "mace/kernels/conv_2d.h"
+#include "mace/kernels/depthwise_conv2d.h"
 
 namespace mace {
 namespace kernels {
@@ -24,21 +24,18 @@ extern void Conv2dNeonK3x3S2(const float *input,
                              float *output,
                              const index_t *output_shape);
 
-template<>
-void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *input, // NCHW
-                                                                 const index_t *input_shape,
-                                                                 const float *filter, // c_out, c_in, kernel_h, kernel_w
-                                                                 const index_t *filter_shape,
-                                                                 const float *bias, // c_out
-                                                                 float *output, // NCHW
-                                                                 const index_t *output_shape) {
+template <>
+void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
+    const float *input,  // NCHW
+    const index_t *input_shape,
+    const float *filter,  // c_out, c_in, kernel_h, kernel_w
+    const index_t *filter_shape,
+    const float *bias,  // c_out
+    float *output,      // NCHW
+    const index_t *output_shape) {
   typedef void (*Conv2dNeonFunction)(
-      const float *input,
-      const index_t *input_shape,
-      const float *filter,
-      const index_t *filter_shape,
-      const float *bias,
-      float *output,
+      const float *input, const index_t *input_shape, const float *filter,
+      const index_t *filter_shape, const float *bias, float *output,
       const index_t *output_shape);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dNeonFunction selector[5][2] = {
@@ -57,7 +54,8 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *in
                  << "filter" << kernel_h << "x" << kernel_w << ","
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
-    DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, paddings_, dilations_)(
+    DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, paddings_,
+                                                   dilations_)(
         input, input_shape, filter, filter_shape, bias, output, output_shape);
     return;
   }
@@ -65,13 +63,15 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(const float *in
   // Keep this alive during kernel execution
   Tensor padded_input;
   if (paddings_[0] > 0 || paddings_[1] > 0) {
-    ConstructInputWithPadding(input, input_shape, paddings_.data(), &padded_input);
+    ConstructInputWithPadding(input, input_shape, paddings_.data(),
+                              &padded_input);
     input = padded_input.data<float>();
     input_shape = padded_input.shape().data();
   }
   auto conv2d_neon_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_neon_func(input, input_shape, filter, filter_shape, bias, output, output_shape);
+  conv2d_neon_func(input, input_shape, filter, filter_shape, bias, output,
+                   output_shape);
 }
 
-} //  namespace kernels
-} //  namespace mace
+}  //  namespace kernels
+}  //  namespace mace

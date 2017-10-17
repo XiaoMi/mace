@@ -39,7 +39,7 @@ static void AddNBenchmark(int iters, int n, int size) {
   static void BM_ADDN_##N##_##SIZE##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * N * SIZE;     \
     mace::testing::ItemsProcessed(tot);                             \
-    mace::testing::BytesProcessed(tot*(sizeof(TYPE)));              \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));             \
     AddNBenchmark<DEVICE, TYPE>(iters, N, SIZE);                    \
   }                                                                 \
   BENCHMARK(BM_ADDN_##N##_##SIZE##_##TYPE##_##DEVICE)

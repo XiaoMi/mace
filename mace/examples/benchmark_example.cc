@@ -10,8 +10,8 @@ static void foo(int iters) {
   mace::testing::ItemsProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
-  float* inp = new float[N];
-  float* out = new float[N];
+  float *inp = new float[N];
+  float *out = new float[N];
 
   while (iters--) {
     for (int i = 0; i < N; i++) {
@@ -29,8 +29,8 @@ static void bar(int iters, int n) {
   mace::testing::ItemsProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
-  float* inp = new float[n];
-  float* out = new float[n];
+  float *inp = new float[n];
+  float *out = new float[n];
 
   while (iters--) {
     for (int i = 0; i < n; i++) {

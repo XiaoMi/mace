@@ -39,16 +39,14 @@ class Flags {
   // with matching flags, and remove the matching arguments from (*argc, argv).
   // Return true iff all recognized flag values were parsed correctly, and the
   // first remaining argument is not "--help".
-  static bool Parse(int *argc,
-                    char **argv,
-                    const std::vector<Flag> &flag_list);
+  static bool Parse(int *argc, char **argv, const std::vector<Flag> &flag_list);
 
   // Return a usage message with command line cmdline, and the
   // usage_text strings in flag_list[].
   static string Usage(const string &cmdline,
-                      const std::vector <Flag> &flag_list);
+                      const std::vector<Flag> &flag_list);
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_COMMAND_LINE_FLAGS_H
+#endif  // MACE_CORE_COMMAND_LINE_FLAGS_H

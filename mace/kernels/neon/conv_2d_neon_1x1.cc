@@ -10,9 +10,8 @@ namespace mace {
 namespace kernels {
 static constexpr index_t kInputChannelBlockSize = 2;
 static constexpr index_t kOutputChannelBlockSize = 4;
-static __attribute__((__aligned__(64))) int32_t mask_array[8] = {
-    0, 0, 0, 0, -1, -1, -1, -1
-};
+static __attribute__((__aligned__(64)))
+int32_t mask_array[8] = {0, 0, 0, 0, -1, -1, -1, -1};
 
 static inline void NeonConv2x4Kernel(index_t input_channels,
                                      index_t pixel_size,
@@ -77,15 +76,15 @@ static inline void NeonConv2x4Kernel(index_t input_channels,
     output3 = output3 + pixel_size - 4;
     float32x4_t voutput3 = vld1q_f32(output3);
 
-    const float32x4_t vinput0 = vreinterpretq_f32_s32(
-        vandq_s32(vmask, vreinterpretq_s32_f32(vld1q_f32(&input0[pixel_size - 4]))));
+    const float32x4_t vinput0 = vreinterpretq_f32_s32(vandq_s32(
+        vmask, vreinterpretq_s32_f32(vld1q_f32(&input0[pixel_size - 4]))));
     voutput0 = vfmaq_lane_f32(voutput0, vinput0, vfilter0x, 0);
     voutput1 = vfmaq_lane_f32(voutput1, vinput0, vfilter1x, 0);
     voutput2 = vfmaq_lane_f32(voutput2, vinput0, vfilter2x, 0);
     voutput3 = vfmaq_lane_f32(voutput3, vinput0, vfilter3x, 0);
 
-    const float32x4_t vinput1 = vreinterpretq_f32_s32(
-        vandq_s32(vmask, vreinterpretq_s32_f32(vld1q_f32(&input1[pixel_size - 4]))));
+    const float32x4_t vinput1 = vreinterpretq_f32_s32(vandq_s32(
+        vmask, vreinterpretq_s32_f32(vld1q_f32(&input1[pixel_size - 4]))));
     voutput0 = vfmaq_lane_f32(voutput0, vinput1, vfilter0x, 1);
     voutput1 = vfmaq_lane_f32(voutput1, vinput1, vfilter1x, 1);
     voutput2 = vfmaq_lane_f32(voutput2, vinput1, vfilter2x, 1);
@@ -98,13 +97,14 @@ static inline void NeonConv2x4Kernel(index_t input_channels,
   }
 }
 
-static inline void NeonConv2x4SubBlockKernel(index_t input_channels_subblock_size,
-                                             index_t output_channels_subblock_size,
-                                             index_t input_channels,
-                                             index_t pixel_size,
-                                             const float *input,
-                                             const float *filter,
-                                             float *output) {
+static inline void NeonConv2x4SubBlockKernel(
+    index_t input_channels_subblock_size,
+    index_t output_channels_subblock_size,
+    index_t input_channels,
+    index_t pixel_size,
+    const float *input,
+    const float *filter,
+    float *output) {
   const float *input0 = input;
   const float *input1 = input + pixel_size;
 
@@ -204,16 +204,16 @@ static inline void NeonConv2x4SubBlockKernel(index_t input_channels_subblock_siz
       }
     }
 
-    const float32x4_t vinput0 = vreinterpretq_f32_s32(
-        vandq_s32(vmask, vreinterpretq_s32_f32(vld1q_f32(&input0[pixel_size - 4]))));
+    const float32x4_t vinput0 = vreinterpretq_f32_s32(vandq_s32(
+        vmask, vreinterpretq_s32_f32(vld1q_f32(&input0[pixel_size - 4]))));
     voutput0 = vfmaq_lane_f32(voutput0, vinput0, vfilter0x, 0);
     voutput1 = vfmaq_lane_f32(voutput1, vinput0, vfilter1x, 0);
     voutput2 = vfmaq_lane_f32(voutput2, vinput0, vfilter2x, 0);
     voutput3 = vfmaq_lane_f32(voutput3, vinput0, vfilter3x, 0);
 
     if (input_channels_subblock_size > 1) {
-      const float32x4_t vinput1 = vreinterpretq_f32_s32(
-          vandq_s32(vmask, vreinterpretq_s32_f32(vld1q_f32(&input1[pixel_size - 4]))));
+      const float32x4_t vinput1 = vreinterpretq_f32_s32(vandq_s32(
+          vmask, vreinterpretq_s32_f32(vld1q_f32(&input1[pixel_size - 4]))));
       voutput0 = vfmaq_lane_f32(voutput0, vinput1, vfilter0x, 1);
       voutput1 = vfmaq_lane_f32(voutput1, vinput1, vfilter1x, 1);
       voutput2 = vfmaq_lane_f32(voutput2, vinput1, vfilter2x, 1);
@@ -237,8 +237,8 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
                       const index_t *input_shape,
                       const float *filter,  // c_out, c_in, filter_h, filter_w
                       const index_t *filter_shape,
-                      const float *bias,    // c_out
-                      float *output,        // NCHW
+                      const float *bias,  // c_out
+                      float *output,      // NCHW
                       const index_t *output_shape) {
   const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
@@ -251,7 +251,7 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
   const index_t input_width = input_shape[3];
 
   MACE_CHECK(input_batch == batch && input_height == height &&
-      input_width == width);
+             input_width == width);
 
   const index_t total_pixels = height * width;
   const index_t round_up_channels = RoundUp(channels, kOutputChannelBlockSize);
@@ -259,22 +259,27 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (int i = 0; i < channels; ++i) {
-      float *output_ptr_base = output + n * channels * total_pixels + i * total_pixels;
-      std::fill(output_ptr_base, output_ptr_base + total_pixels, bias ? bias[i] : 0);
+      float *output_ptr_base =
+          output + n * channels * total_pixels + i * total_pixels;
+      std::fill(output_ptr_base, output_ptr_base + total_pixels,
+                bias ? bias[i] : 0);
     }
   }
-  // benchmark omp collapsed(2)
+// benchmark omp collapsed(2)
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < round_up_channels; c += kOutputChannelBlockSize) {
       const float *input_ptr = input + n * input_channels * total_pixels;
       const float *filter_ptr = filter + c * input_channels;
-      float *output_ptr = output + n * channels * total_pixels + c * total_pixels;
-      const index_t output_channel_block_size = std::min(channels - c, kOutputChannelBlockSize);
+      float *output_ptr =
+          output + n * channels * total_pixels + c * total_pixels;
+      const index_t output_channel_block_size =
+          std::min(channels - c, kOutputChannelBlockSize);
       index_t remain_input_channels = input_channels;
       if (c + kOutputChannelBlockSize <= channels) {
         while (remain_input_channels >= kInputChannelBlockSize) {
-          NeonConv2x4Kernel(input_channels, total_pixels, input_ptr, filter_ptr, output_ptr);
+          NeonConv2x4Kernel(input_channels, total_pixels, input_ptr, filter_ptr,
+                            output_ptr);
 
           input_ptr += kInputChannelBlockSize * total_pixels;
           filter_ptr += kInputChannelBlockSize;
@@ -282,25 +287,27 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
         }
       }
       while (remain_input_channels != 0) {
-        const index_t input_channel_block_size = std::min(remain_input_channels, kInputChannelBlockSize);
-        NeonConv2x4SubBlockKernel(input_channel_block_size, output_channel_block_size,
-                                  input_channels, total_pixels, input_ptr, filter_ptr, output_ptr);
+        const index_t input_channel_block_size =
+            std::min(remain_input_channels, kInputChannelBlockSize);
+        NeonConv2x4SubBlockKernel(
+            input_channel_block_size, output_channel_block_size, input_channels,
+            total_pixels, input_ptr, filter_ptr, output_ptr);
         input_ptr += kInputChannelBlockSize * total_pixels;
         filter_ptr += kInputChannelBlockSize;
         remain_input_channels -= input_channel_block_size;
       }
-
     }
   }
 };
 
-void Conv2dNeonPixelK1x1S1(const float *input,  // NCHW
-                      const index_t *input_shape,
-                      const float *filter,  // c_out, c_in, kernel_h, kernel_w
-                      const index_t *filter_shape,
-                      const float *bias,    // c_out
-                      float *output,        // NCHW
-                      const index_t *output_shape) {
+void Conv2dNeonPixelK1x1S1(
+    const float *input,  // NCHW
+    const index_t *input_shape,
+    const float *filter,  // c_out, c_in, kernel_h, kernel_w
+    const index_t *filter_shape,
+    const float *bias,  // c_out
+    float *output,      // NCHW
+    const index_t *output_shape) {
   const index_t batch = output_shape[0];
   const index_t channels = output_shape[1];
   const index_t height = output_shape[2];
@@ -312,7 +319,7 @@ void Conv2dNeonPixelK1x1S1(const float *input,  // NCHW
   const index_t input_width = input_shape[3];
 
   MACE_CHECK(input_batch == batch && input_height == height &&
-      input_width == width);
+             input_width == width);
 
   const index_t total_pixels = height * width;
   // Process 4 * 2 = 8 pixels for each innermost loop
@@ -320,7 +327,7 @@ void Conv2dNeonPixelK1x1S1(const float *input,  // NCHW
   const index_t total_loops = total_pixels >> 3;
   const index_t loop_remaining = total_pixels & 7;
 
-  // benchmark omp collapsed(2)
+// benchmark omp collapsed(2)
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {
@@ -341,8 +348,8 @@ void Conv2dNeonPixelK1x1S1(const float *input,  // NCHW
         float *output_ptr = channel_output_start;
         // The begining of each input feature map channel
         MACE_ASSERT(input_ptr ==
-            input + n * input_channels * input_height * input_width +
-                inc * input_height * input_width);
+                    input + n * input_channels * input_height * input_width +
+                        inc * input_height * input_width);
 
         const float *input_ptr1 = input_ptr + total_pixels;
         const float *input_ptr2 = input_ptr1 + total_pixels;
@@ -426,8 +433,8 @@ void Conv2dNeonPixelK1x1S1(const float *input,  // NCHW
       for (; inc < input_channels; ++inc) {
         float *output_ptr = channel_output_start;
         MACE_ASSERT(input_ptr ==
-            input + n * input_channels * input_height * input_width +
-                inc * input_height * input_width);
+                    input + n * input_channels * input_height * input_width +
+                        inc * input_height * input_width);
         MACE_ASSERT(filter_ptr == filter + c * input_channels + inc);
 
         const float k0 = filter_ptr[0];

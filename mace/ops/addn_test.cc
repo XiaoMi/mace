@@ -11,7 +11,7 @@ class AddnOpTest : public OpsTestBase {};
 
 TEST_F(AddnOpTest, AddnOp) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("AddN", "AddNTest")
       .Input("Input1")
       .Input("Input2")

@@ -14,7 +14,7 @@ namespace mace {
 template <DeviceType D, class T>
 class PoolingOp : public ConvPool2dOpBase<D, T> {
  public:
-  PoolingOp(const OperatorDef& op_def, Workspace* ws)
+  PoolingOp(const OperatorDef &op_def, Workspace *ws)
       : ConvPool2dOpBase<D, T>(op_def, ws),
         kernels_(OperatorBase::GetRepeatedArgument<int>("kernels")),
         pooling_type_(
@@ -22,8 +22,8 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
                 "pooling_type", static_cast<int>(AVG)))){};
 
   bool Run() override {
-    const Tensor* input = this->Input(INPUT);
-    Tensor* output = this->Output(OUTPUT);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
@@ -34,11 +34,10 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
     filter_shape[2] = kernels_[0];
     filter_shape[3] = kernels_[1];
 
-    kernels::CalcPaddingAndOutputSize(input->shape().data(),
-                                      filter_shape.data(),
-                                      this->dilations_.data(),
-                                      this->strides_.data(), this->padding_,
-                                      output_shape.data(), paddings.data());
+    kernels::CalcPaddingAndOutputSize(
+        input->shape().data(), filter_shape.data(), this->dilations_.data(),
+        this->strides_.data(), this->padding_, output_shape.data(),
+        paddings.data());
     output->Resize(output_shape);
 
     auto pooling_func = kernels::PoolingFunctor<D, T>(

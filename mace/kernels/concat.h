@@ -5,13 +5,13 @@
 #ifndef MACE_KERNELS_CONCAT_H_
 #define MACE_KERNELS_CONCAT_H_
 
-#include "mace/proto/mace.pb.h"
 #include "mace/core/common.h"
 #include "mace/core/types.h"
+#include "mace/proto/mace.pb.h"
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct ConcatFunctor {
   void operator()(std::vector<const T *> &input_list,
                   const index_t inner_dim,
@@ -35,6 +35,6 @@ struct ConcatFunctor {
 };
 
 }  //  namepsace kernels
-} //  namespace mace
+}  //  namespace mace
 
-#endif //  MACE_KERNELS_CONCAT_H_
+#endif  //  MACE_KERNELS_CONCAT_H_

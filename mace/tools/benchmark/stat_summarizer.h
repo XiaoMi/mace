@@ -12,7 +12,6 @@
 #include <sstream>
 #include <string>
 
-
 namespace mace {
 
 class RunMetadata;
@@ -62,7 +61,7 @@ class Stat {
     return all_same() ? 0 : std::sqrt(squared_sum_ / count_ - avg() * avg());
   }
 
-  void OutputToStream(std::ostream* stream) const {
+  void OutputToStream(std::ostream *stream) const {
     if (empty()) {
       *stream << "count=0";
     } else if (all_same()) {
@@ -75,8 +74,8 @@ class Stat {
     }
   }
 
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  const Stat<ValueType>& stat) {
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const Stat<ValueType> &stat) {
     stat.OutputToStream(&stream);
     return stream;
   }
@@ -131,12 +130,12 @@ class StatSummarizer {
     BY_TYPE,
   };
 
-  explicit StatSummarizer(const StatSummarizerOptions& options);
+  explicit StatSummarizer(const StatSummarizerOptions &options);
 
   ~StatSummarizer();
 
   // Adds another run's StepStats output to the aggregate counts.
-  void ProcessMetadata(const RunMetadata& run_metadata);
+  void ProcessMetadata(const RunMetadata &run_metadata);
 
   // Returns a string detailing the accumulated runtime stats in a tab-separated
   // format which can be pasted into a spreadsheet for further analysis.
@@ -147,15 +146,16 @@ class StatSummarizer {
   // Prints the string returned by GetOutputString().
   void PrintOperatorStats() const;
 
-  void ComputeStatsByType(std::map<std::string, int64_t>* node_type_map_count,
-                          std::map<std::string, int64_t>* node_type_map_time,
-                          std::map<std::string, int64_t>* node_type_map_memory,
-                          std::map<std::string, int64_t>* node_type_map_times_called,
-                          int64_t* accumulated_us) const;
+  void ComputeStatsByType(
+      std::map<std::string, int64_t> *node_type_map_count,
+      std::map<std::string, int64_t> *node_type_map_time,
+      std::map<std::string, int64_t> *node_type_map_memory,
+      std::map<std::string, int64_t> *node_type_map_times_called,
+      int64_t *accumulated_us) const;
 
   std::string GetStatsByNodeType() const;
 
-  std::string GetStatsByMetric(const std::string& title,
+  std::string GetStatsByMetric(const std::string &title,
                                SortingMetric sorting_metric,
                                int num_stats) const;
 
@@ -165,7 +165,7 @@ class StatSummarizer {
   int num_runs() const { return run_total_us_.count(); }
 
   // Returns stats of total microseconds spent by all nodes in each run.
-  const Stat<int64_t>& run_total_us() const { return run_total_us_; }
+  const Stat<int64_t> &run_total_us() const { return run_total_us_; }
 
  private:
   struct Detail {
@@ -179,12 +179,12 @@ class StatSummarizer {
   };
 
   void OrderNodesByMetric(SortingMetric sorting_metric,
-                          std::vector<const Detail*>* details) const;
+                          std::vector<const Detail *> *details) const;
 
-  std::string HeaderString(const std::string& title) const;
-  std::string ColumnString(const Detail& detail,
+  std::string HeaderString(const std::string &title) const;
+  std::string ColumnString(const Detail &detail,
                            const int64_t cumulative_stat_on_node,
-                           const Stat<int64_t>& stat) const;
+                           const Stat<int64_t> &stat) const;
 
   Stat<int64_t> run_total_us_;
   Stat<int64_t> memory_;
@@ -193,6 +193,6 @@ class StatSummarizer {
   StatSummarizerOptions options_;
 };
 
-} //  namespace mace
+}  //  namespace mace
 
 #endif  // MACE_TOOLS_BENCHMARK_STAT_SUMMARIZER_H_

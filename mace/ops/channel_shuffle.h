@@ -12,10 +12,10 @@
 
 namespace mace {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class ChannelShuffleOp : public Operator<D, T> {
  public:
-  ChannelShuffleOp(const OperatorDef& operator_def, Workspace* ws)
+  ChannelShuffleOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
         group_(OperatorBase::GetSingleArgument<int>("group", 1)),
         functor_(this->group_) {}

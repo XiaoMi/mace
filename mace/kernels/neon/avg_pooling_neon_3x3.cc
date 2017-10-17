@@ -33,7 +33,7 @@ void PoolingAvgNeonK3x3S2x2(const float *input,
   int out_image_size = out_height * out_width;
   index_t input_offset = 0;
   index_t output_offset = 0;
-  float avg_factors[4] = {1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0};
+  float avg_factors[4] = {1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0};
 
 #pragma omp parallel for collapse(2)
   for (int b = 0; b < batch; ++b) {
@@ -45,7 +45,7 @@ void PoolingAvgNeonK3x3S2x2(const float *input,
         int num_vectors = 0;
         const float *r0, *r1, *r2;
         if (!((h == 0 && padding_top > 0) ||
-            (h == out_height - 1 && padding_bottom > 0))) {
+              (h == out_height - 1 && padding_bottom > 0))) {
           r0 = input + input_offset + (h * 2 - padding_top) * in_width;
           r1 = r0 + in_width;
           r2 = r1 + in_width;
@@ -147,7 +147,7 @@ void PoolingAvgNeonK3x3S2x2Padded(const float *input,
   int out_image_size = out_height * out_width;
   index_t input_offset = 0;
   index_t output_offset = 0;
-  float avg_factors[4] = {1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0/9.0};
+  float avg_factors[4] = {1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0};
 
 #pragma omp parallel for collapse(2)
   for (int b = 0; b < batch; ++b) {
@@ -200,8 +200,9 @@ void PoolingAvgNeonK3x3S2x2Padded(const float *input,
         }
 
         for (; remain > 0; remain--) {
-          *outptr = (r0[0] + r0[1] + r0[2] + r1[0] + r1[1] + r1[2] +
-                     r2[0] + r2[1] + r2[2]) / 9.0;
+          *outptr = (r0[0] + r0[1] + r0[2] + r1[0] + r1[1] + r1[2] + r2[0] +
+                     r2[1] + r2[2]) /
+                    9.0;
 
           r0 += 2;
           r1 += 2;

@@ -10,11 +10,10 @@
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class ChannelShuffleFunctor {
  public:
-  ChannelShuffleFunctor(const int group)
-      : group_(group) {}
+  ChannelShuffleFunctor(const int group) : group_(group) {}
 
   void operator()(const T *input, const index_t *input_shape, T *output) {
     index_t batch = input_shape[0];
@@ -28,8 +27,8 @@ class ChannelShuffleFunctor {
     for (int b = 0; b < batch; ++b) {
       for (int c = 0; c < channels_of_group; ++c) {
         for (int g = 0; g < group_; ++g) {
-          index_t input_offset = (b * channels + g * channels_of_group + c) *
-                                 image_size;
+          index_t input_offset =
+              (b * channels + g * channels_of_group + c) * image_size;
           index_t output_offset = (b * channels + c * group_ + g) * image_size;
           memcpy(output + output_offset, input + input_offset,
                  image_size * sizeof(T));

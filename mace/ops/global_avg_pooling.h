@@ -10,7 +10,7 @@
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class GlobalAvgPoolingOp : public Operator<D, T> {
  public:
   GlobalAvgPoolingOp(const OperatorDef &operator_def, Workspace *ws)

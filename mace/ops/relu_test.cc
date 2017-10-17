@@ -11,7 +11,7 @@ class ReluOpTest : public OpsTestBase {};
 
 TEST_F(ReluOpTest, ReluOp) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Relu", "ReluTest")
       .Input("Input")
       .Output("Output")
@@ -34,7 +34,7 @@ TEST_F(ReluOpTest, ReluOp) {
 
 TEST_F(ReluOpTest, ReluOpWithMax) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Relu", "ReluTestWithMax")
       .Input("Input")
       .Output("Output")
@@ -55,6 +55,5 @@ TEST_F(ReluOpTest, ReluOpWithMax) {
 
   ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.01);
 }
-
 
 }  // namespace mace

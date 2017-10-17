@@ -13,17 +13,17 @@ namespace mace {
 template <DeviceType D, class T>
 class ReluOp : public Operator<D, T> {
  public:
-  ReluOp(const OperatorDef& operator_def, Workspace* ws)
+  ReluOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {
-      functor_.max_limit_ =
-          OperatorBase::GetSingleArgument<T>("max_limit", static_cast<T>(-1));
+    functor_.max_limit_ =
+        OperatorBase::GetSingleArgument<T>("max_limit", static_cast<T>(-1));
   }
   bool Run() override {
-    const Tensor* input_tensor = this->inputs_[0];
-    Tensor* output_tensor = this->outputs_[0];
+    const Tensor *input_tensor = this->inputs_[0];
+    Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(input_tensor);
-    const T* input = input_tensor->data<T>();
-    T* output = output_tensor->mutable_data<T>();
+    const T *input = input_tensor->data<T>();
+    T *output = output_tensor->mutable_data<T>();
     index_t size = input_tensor->size();
 
     functor_(input, output, size);

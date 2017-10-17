@@ -36,7 +36,7 @@ static void ReluBenchmark(int iters, int size) {
   static void BM_RELU_##SIZE##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * SIZE;   \
     mace::testing::ItemsProcessed(tot);                       \
-    mace::testing::BytesProcessed(tot*(sizeof(TYPE)));        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));       \
     ReluBenchmark<DEVICE, TYPE>(iters, SIZE);                 \
   }                                                           \
   BENCHMARK(BM_RELU_##SIZE##_##TYPE##_##DEVICE)

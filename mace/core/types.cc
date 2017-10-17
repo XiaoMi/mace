@@ -23,4 +23,4 @@ bool DataTypeCanUseMemcpy(DataType dt) {
   }
 }
 
-} //  namespace mace
+}  //  namespace mace

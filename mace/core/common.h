@@ -26,8 +26,8 @@ typedef int64_t index_t;
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname) \
  private:                                  \
-  classname(const classname&) = delete;    \
-  classname& operator=(const classname&) = delete
+  classname(const classname &) = delete;   \
+  classname &operator=(const classname &) = delete
 #endif
 
 #define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")

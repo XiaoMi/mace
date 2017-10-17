@@ -2,17 +2,16 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/common.h"
 #include "mace/tools/benchmark/stat_summarizer.h"
+#include "mace/core/common.h"
 #include "mace/proto/stats.pb.h"
 
 #include <iomanip>
 #include <queue>
 
-
 namespace mace {
 
-StatSummarizer::StatSummarizer(const StatSummarizerOptions& options)
+StatSummarizer::StatSummarizer(const StatSummarizerOptions &options)
     : options_(options) {}
 
 StatSummarizer::~StatSummarizer() {}
@@ -23,17 +22,14 @@ void StatSummarizer::Reset() {
   details_.clear();
 }
 
-
 void StatSummarizer::ProcessMetadata(const RunMetadata &run_metadata) {
   int64_t curr_total_us = 0;
   int64_t mem_total = 0;
 
-  int64_t first_node_start_us =
-      run_metadata.op_stats(0).all_start_micros();
+  int64_t first_node_start_us = run_metadata.op_stats(0).all_start_micros();
 
   int node_num = 0;
-  for (const auto& ops : run_metadata.op_stats()) {
-
+  for (const auto &ops : run_metadata.op_stats()) {
     std::string name = ops.operator_name();
     std::string op_type = ops.type();
 
@@ -41,7 +37,7 @@ void StatSummarizer::ProcessMetadata(const RunMetadata &run_metadata) {
     const int64_t curr_time = ops.all_end_rel_micros();
     curr_total_us += curr_time;
     auto result = details_.emplace(name, Detail());
-    Detail* detail = &(result.first->second);
+    Detail *detail = &(result.first->second);
 
     detail->start_us.UpdateStat(ops.all_start_micros() - first_node_start_us);
     detail->rel_end_us.UpdateStat(curr_time);
@@ -77,13 +73,13 @@ std::string StatSummarizer::ShortSummary() const {
   return stream.str();
 }
 
-std::ostream& InitField(std::ostream& stream, int width) {
+std::ostream &InitField(std::ostream &stream, int width) {
   stream << "\t" << std::right << std::setw(width) << std::fixed
          << std::setprecision(3);
   return stream;
 }
 
-std::string StatSummarizer::HeaderString(const std::string& title) const {
+std::string StatSummarizer::HeaderString(const std::string &title) const {
   std::stringstream stream;
 
   stream << "============================== " << title
@@ -102,9 +98,9 @@ std::string StatSummarizer::HeaderString(const std::string& title) const {
   return stream.str();
 }
 
-std::string StatSummarizer::ColumnString(const StatSummarizer::Detail& detail,
+std::string StatSummarizer::ColumnString(const StatSummarizer::Detail &detail,
                                          const int64_t cumulative_stat_on_node,
-                                         const Stat<int64_t>& stat) const {
+                                         const Stat<int64_t> &stat) const {
   const double start_ms = detail.start_us.avg() / 1000.0;
   const double first_time_ms = detail.rel_end_us.first() / 1000.0;
   const double avg_time_ms = detail.rel_end_us.avg() / 1000.0;
@@ -127,12 +123,12 @@ std::string StatSummarizer::ColumnString(const StatSummarizer::Detail& detail,
 }
 
 void StatSummarizer::OrderNodesByMetric(
-    SortingMetric metric, std::vector<const Detail*>* details) const {
-  std::priority_queue<std::pair<std::string, const Detail*>> sorted_list;
+    SortingMetric metric, std::vector<const Detail *> *details) const {
+  std::priority_queue<std::pair<std::string, const Detail *>> sorted_list;
   const int num_nodes = details_.size();
 
-  for (const auto& det : details_) {
-    const Detail* detail = &(det.second);
+  for (const auto &det : details_) {
+    const Detail *detail = &(det.second);
     std::stringstream stream;
     stream << std::setw(20) << std::right << std::setprecision(10)
            << std::fixed;
@@ -169,16 +165,16 @@ void StatSummarizer::OrderNodesByMetric(
 }
 
 void StatSummarizer::ComputeStatsByType(
-    std::map<std::string, int64_t>* node_type_map_count,
-    std::map<std::string, int64_t>* node_type_map_time,
-    std::map<std::string, int64_t>* node_type_map_memory,
-    std::map<std::string, int64_t>* node_type_map_times_called,
-    int64_t* accumulated_us) const {
+    std::map<std::string, int64_t> *node_type_map_count,
+    std::map<std::string, int64_t> *node_type_map_time,
+    std::map<std::string, int64_t> *node_type_map_memory,
+    std::map<std::string, int64_t> *node_type_map_times_called,
+    int64_t *accumulated_us) const {
   int64_t run_count = run_total_us_.count();
 
-  for (const auto& det : details_) {
+  for (const auto &det : details_) {
     const std::string node_name = det.first;
-    const Detail& detail = det.second;
+    const Detail &detail = det.second;
 
     int64_t curr_time_val =
         static_cast<int64_t>(detail.rel_end_us.sum() / run_count);
@@ -186,7 +182,7 @@ void StatSummarizer::ComputeStatsByType(
 
     int64_t curr_memory_val = detail.mem_used.newest();
 
-    const std::string& node_type = detail.type;
+    const std::string &node_type = detail.type;
 
     (*node_type_map_count)[node_type] += 1;
     (*node_type_map_time)[node_type] += curr_time_val;
@@ -215,8 +211,9 @@ std::string StatSummarizer::GetStatsByNodeType() const {
                      &accumulated_us);
 
   // Sort them.
-  std::priority_queue<std::pair<int64_t, std::pair<std::string, int64_t>>> timings;
-  for (const auto& node_type : node_type_map_time) {
+  std::priority_queue<std::pair<int64_t, std::pair<std::string, int64_t>>>
+      timings;
+  for (const auto &node_type : node_type_map_time) {
     const int64_t mem_used = node_type_map_memory[node_type.first];
     timings.emplace(node_type.second,
                     std::pair<std::string, int64_t>(node_type.first, mem_used));
@@ -259,10 +256,10 @@ std::string StatSummarizer::GetStatsByNodeType() const {
   return stream.str();
 }
 
-std::string StatSummarizer::GetStatsByMetric(const std::string& title,
+std::string StatSummarizer::GetStatsByMetric(const std::string &title,
                                              SortingMetric sorting_metric,
                                              int num_stats) const {
-  std::vector<const Detail*> details;
+  std::vector<const Detail *> details;
   OrderNodesByMetric(sorting_metric, &details);
 
   double cumulative_stat_on_node = 0;

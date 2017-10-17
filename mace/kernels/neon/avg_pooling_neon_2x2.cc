@@ -45,7 +45,7 @@ void PoolingAvgNeonK2x2S2x2(const float *input,
         int w = 0;
         int num_vectors = 0;
         if (!((h == 0 && padding_top > 0) ||
-            (h == out_height - 1 && padding_bottom > 0))) {
+              (h == out_height - 1 && padding_bottom > 0))) {
           r0 = input + input_offset + (h * 2 - padding_top) * in_width;
           r1 = r0 + in_width;
           if (padding_left > 0) {

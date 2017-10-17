@@ -13,13 +13,14 @@ namespace mace {
 template <DeviceType D, class T>
 class ConvPool2dOpBase : public Operator<D, T> {
  public:
-  ConvPool2dOpBase(const OperatorDef& op_def, Workspace* ws)
+  ConvPool2dOpBase(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         strides_(OperatorBase::GetRepeatedArgument<int>("strides")),
         padding_(static_cast<Padding>(OperatorBase::GetSingleArgument<int>(
             "padding", static_cast<int>(SAME)))),
-        dilations_(OperatorBase::GetRepeatedArgument<int>("dilations", {1, 1})) {}
-  
+        dilations_(
+            OperatorBase::GetRepeatedArgument<int>("dilations", {1, 1})) {}
+
  protected:
   std::vector<int> strides_;
   Padding padding_;

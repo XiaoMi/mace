@@ -12,7 +12,7 @@ class Conv2dOpTest : public OpsTestBase {};
 
 TEST_F(Conv2dOpTest, Simple_VALID) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
@@ -46,7 +46,7 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
 
 TEST_F(Conv2dOpTest, Simple_SAME) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
@@ -82,7 +82,7 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
 
 TEST_F(Conv2dOpTest, Combined) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
@@ -120,7 +120,7 @@ TEST_F(Conv2dOpTest, Combined) {
 
 TEST_F(Conv2dOpTest, Conv1x1) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
@@ -172,13 +172,13 @@ TEST_F(Conv2dOpTest, IdleConvNxNS12) {
     srand(time(NULL));
 
     // generate random input
-    index_t batch = 3 ;
+    index_t batch = 3;
     index_t input_channels = 64;
     index_t height = 32;
     index_t width = 32;
     index_t output_channels = 128;
     // Construct graph
-    auto& net = test_net();
+    auto &net = test_net();
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -229,7 +229,7 @@ TEST_F(Conv2dOpTest, DisgustConvNxNS12) {
     index_t width = 113;
     index_t output_channels = 3 + rand() % 10;
     // Construct graph
-    auto& net = test_net();
+    auto &net = test_net();
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")

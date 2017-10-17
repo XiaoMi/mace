@@ -18,7 +18,7 @@
 
 namespace mace {
 
-bool ReadStringFromFile(const char* filename, string* str) {
+bool ReadStringFromFile(const char *filename, string *str) {
   std::ifstream ifs(filename, std::ios::in);
   if (!ifs) {
     VLOG(1) << "File cannot be opened: " << filename
@@ -33,7 +33,7 @@ bool ReadStringFromFile(const char* filename, string* str) {
   return true;
 }
 
-bool WriteStringToFile(const string& str, const char* filename) {
+bool WriteStringToFile(const string &str, const char *filename) {
   std::ofstream ofs(filename, std::ios::out | std::ios::trunc);
   if (!ofs.is_open()) {
     VLOG(1) << "File cannot be created: " << filename
@@ -54,15 +54,15 @@ bool WriteStringToFile(const string& str, const char* filename) {
 namespace {
 class IfstreamInputStream : public ::google::protobuf::io::CopyingInputStream {
  public:
-  explicit IfstreamInputStream(const string& filename)
+  explicit IfstreamInputStream(const string &filename)
       : ifs_(filename.c_str(), std::ios::in | std::ios::binary) {}
   ~IfstreamInputStream() { ifs_.close(); }
 
-  int Read(void* buffer, int size) {
+  int Read(void *buffer, int size) {
     if (!ifs_) {
       return -1;
     }
-    ifs_.read(static_cast<char*>(buffer), size);
+    ifs_.read(static_cast<char *>(buffer), size);
     return ifs_.gcount();
   }
 
@@ -71,7 +71,7 @@ class IfstreamInputStream : public ::google::protobuf::io::CopyingInputStream {
 };
 }  // namespace
 
-bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
+bool ReadProtoFromBinaryFile(const char *filename, MessageLite *proto) {
   ::google::protobuf::io::CopyingInputStreamAdaptor stream(
       new IfstreamInputStream(filename));
   stream.SetOwnsCopyingStream(true);
@@ -82,8 +82,8 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
   return proto->ParseFromCodedStream(&coded_stream);
 }
 
-void WriteProtoToBinaryFile(const MessageLite& /*proto*/,
-                            const char* /*filename*/) {
+void WriteProtoToBinaryFile(const MessageLite & /*proto*/,
+                            const char * /*filename*/) {
   LOG(FATAL) << "Not implemented yet.";
 }
 
@@ -98,25 +98,25 @@ using ::google::protobuf::io::CodedInputStream;
 using ::google::protobuf::io::ZeroCopyOutputStream;
 using ::google::protobuf::io::CodedOutputStream;
 
-bool ReadProtoFromTextFile(const char* filename, Message* proto) {
+bool ReadProtoFromTextFile(const char *filename, Message *proto) {
   int fd = open(filename, O_RDONLY);
   MACE_CHECK(fd != -1, "File not found: ", filename);
-  FileInputStream* input = new FileInputStream(fd);
+  FileInputStream *input = new FileInputStream(fd);
   bool success = google::protobuf::TextFormat::Parse(input, proto);
   delete input;
   close(fd);
   return success;
 }
 
-void WriteProtoToTextFile(const Message& proto, const char* filename) {
+void WriteProtoToTextFile(const Message &proto, const char *filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-  FileOutputStream* output = new FileOutputStream(fd);
+  FileOutputStream *output = new FileOutputStream(fd);
   MACE_CHECK(google::protobuf::TextFormat::Print(proto, output));
   delete output;
   close(fd);
 }
 
-bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
+bool ReadProtoFromBinaryFile(const char *filename, MessageLite *proto) {
 #if defined(_MSC_VER)  // for MSC compiler binary flag needs to be specified
   int fd = open(filename, O_RDONLY | O_BINARY);
 #else
@@ -135,7 +135,7 @@ bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto) {
   return success;
 }
 
-void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
+void WriteProtoToBinaryFile(const MessageLite &proto, const char *filename) {
   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   MACE_CHECK(fd != -1, "File cannot be created: ", filename, " error number: ",
              errno);
@@ -150,8 +150,8 @@ void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename) {
 
 #endif  // MACE_USE_LITE_PROTO
 
-ArgumentHelper::ArgumentHelper(const OperatorDef& def) {
-  for (auto& arg : def.arg()) {
+ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
+  for (auto &arg : def.arg()) {
     if (arg_map_.find(arg.name()) != arg_map_.end()) {
       MACE_CHECK(
           arg.SerializeAsString() == arg_map_[arg.name()].SerializeAsString(),
@@ -167,8 +167,8 @@ ArgumentHelper::ArgumentHelper(const OperatorDef& def) {
   }
 }
 
-ArgumentHelper::ArgumentHelper(const NetDef& netdef) {
-  for (auto& arg : netdef.arg()) {
+ArgumentHelper::ArgumentHelper(const NetDef &netdef) {
+  for (auto &arg : netdef.arg()) {
     MACE_CHECK(arg_map_.count(arg.name()) == 0,
                "Duplicated argument name found in net def: ",
                ProtoDebugString(netdef));
@@ -176,7 +176,7 @@ ArgumentHelper::ArgumentHelper(const NetDef& netdef) {
   }
 }
 
-bool ArgumentHelper::HasArgument(const string& name) const {
+bool ArgumentHelper::HasArgument(const string &name) const {
   return arg_map_.count(name);
 }
 
@@ -184,7 +184,7 @@ namespace {
 // Helper function to verify that conversion between types won't loose any
 // significant bit.
 template <typename InputType, typename TargetType>
-bool SupportsLosslessConversion(const InputType& value) {
+bool SupportsLosslessConversion(const InputType &value) {
   return static_cast<InputType>(static_cast<TargetType>(value)) == value;
 }
 }
@@ -192,8 +192,8 @@ bool SupportsLosslessConversion(const InputType& value) {
 #define INSTANTIATE_GET_SINGLE_ARGUMENT(T, fieldname,                         \
                                         enforce_lossless_conversion)          \
   template <>                                                                 \
-  T ArgumentHelper::GetSingleArgument<T>(const string& name,                  \
-                                         const T& default_value) const {      \
+  T ArgumentHelper::GetSingleArgument<T>(const string &name,                  \
+                                         const T &default_value) const {      \
     if (arg_map_.count(name) == 0) {                                          \
       VLOG(1) << "Using default parameter value " << default_value            \
               << " for parameter " << name;                                   \
@@ -211,7 +211,7 @@ bool SupportsLosslessConversion(const InputType& value) {
     return value;                                                             \
   }                                                                           \
   template <>                                                                 \
-  bool ArgumentHelper::HasSingleArgumentOfType<T>(const string& name) const { \
+  bool ArgumentHelper::HasSingleArgumentOfType<T>(const string &name) const { \
     if (arg_map_.count(name) == 0) {                                          \
       return false;                                                           \
     }                                                                         \
@@ -235,12 +235,12 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
                                           enforce_lossless_conversion)    \
   template <>                                                             \
   vector<T> ArgumentHelper::GetRepeatedArgument<T>(                       \
-      const string& name, const std::vector<T>& default_value) const {    \
+      const string &name, const std::vector<T> &default_value) const {    \
     if (arg_map_.count(name) == 0) {                                      \
       return default_value;                                               \
     }                                                                     \
     vector<T> values;                                                     \
-    for (const auto& v : arg_map_.at(name).fieldname()) {                 \
+    for (const auto &v : arg_map_.at(name).fieldname()) {                 \
       if (enforce_lossless_conversion) {                                  \
         auto supportsConversion =                                         \
             SupportsLosslessConversion<decltype(v), T>(v);                \
@@ -267,7 +267,7 @@ INSTANTIATE_GET_REPEATED_ARGUMENT(string, strings, false)
 
 #define MACE_MAKE_SINGULAR_ARGUMENT(T, fieldname)             \
   template <>                                                 \
-  Argument MakeArgument(const string& name, const T& value) { \
+  Argument MakeArgument(const string &name, const T &value) { \
     Argument arg;                                             \
     arg.set_name(name);                                       \
     arg.set_##fieldname(value);                               \
@@ -282,7 +282,7 @@ MACE_MAKE_SINGULAR_ARGUMENT(string, s)
 #undef MACE_MAKE_SINGULAR_ARGUMENT
 
 template <>
-Argument MakeArgument(const string& name, const MessageLite& value) {
+Argument MakeArgument(const string &name, const MessageLite &value) {
   Argument arg;
   arg.set_name(name);
   arg.set_s(value.SerializeAsString());
@@ -291,10 +291,10 @@ Argument MakeArgument(const string& name, const MessageLite& value) {
 
 #define MACE_MAKE_REPEATED_ARGUMENT(T, fieldname)                     \
   template <>                                                         \
-  Argument MakeArgument(const string& name, const vector<T>& value) { \
+  Argument MakeArgument(const string &name, const vector<T> &value) { \
     Argument arg;                                                     \
     arg.set_name(name);                                               \
-    for (const auto& v : value) {                                     \
+    for (const auto &v : value) {                                     \
       arg.add_##fieldname(v);                                         \
     }                                                                 \
     return arg;                                                       \
@@ -306,8 +306,8 @@ MACE_MAKE_REPEATED_ARGUMENT(int64_t, ints)
 MACE_MAKE_REPEATED_ARGUMENT(string, strings)
 #undef MACE_MAKE_REPEATED_ARGUMENT
 
-const Argument& GetArgument(const OperatorDef& def, const string& name) {
-  for (const Argument& arg : def.arg()) {
+const Argument &GetArgument(const OperatorDef &def, const string &name) {
+  for (const Argument &arg : def.arg()) {
     if (arg.name() == name) {
       return arg;
     }
@@ -318,10 +318,10 @@ const Argument& GetArgument(const OperatorDef& def, const string& name) {
   return std::move(Argument());
 }
 
-bool GetFlagArgument(const OperatorDef& def,
-                     const string& name,
+bool GetFlagArgument(const OperatorDef &def,
+                     const string &name,
                      bool def_value) {
-  for (const Argument& arg : def.arg()) {
+  for (const Argument &arg : def.arg()) {
     if (arg.name() == name) {
       MACE_CHECK(arg.has_i(), "Can't parse argument as bool: ",
                  ProtoDebugString(arg));
@@ -331,9 +331,9 @@ bool GetFlagArgument(const OperatorDef& def,
   return def_value;
 }
 
-Argument* GetMutableArgument(const string& name,
+Argument *GetMutableArgument(const string &name,
                              const bool create_if_missing,
-                             OperatorDef* def) {
+                             OperatorDef *def) {
   for (int i = 0; i < def->arg_size(); ++i) {
     if (def->arg(i).name() == name) {
       return def->mutable_arg(i);
@@ -341,7 +341,7 @@ Argument* GetMutableArgument(const string& name,
   }
   // If no argument of the right name is found...
   if (create_if_missing) {
-    Argument* arg = def->add_arg();
+    Argument *arg = def->add_arg();
     arg->set_name(name);
     return arg;
   } else {

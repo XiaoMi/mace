@@ -19,19 +19,19 @@ class Workspace {
 
   vector<string> Tensors() const;
 
-  Tensor* CreateTensor(const string& name, Allocator* alloc, DataType type);
+  Tensor *CreateTensor(const string &name, Allocator *alloc, DataType type);
 
-  bool RemoveTensor(const string& name);
+  bool RemoveTensor(const string &name);
 
-  inline bool HasTensor(const string& name) const {
+  inline bool HasTensor(const string &name) const {
     return tensor_map_.count(name);
   }
 
-  const Tensor* GetTensor(const string& name) const;
+  const Tensor *GetTensor(const string &name) const;
 
-  Tensor* GetTensor(const string& name);
+  Tensor *GetTensor(const string &name);
 
-  void LoadModelTensor(const NetDef& net_def, DeviceType type);
+  void LoadModelTensor(const NetDef &net_def, DeviceType type);
 
  private:
   TensorMap tensor_map_;

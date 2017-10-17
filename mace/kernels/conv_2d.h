@@ -11,15 +11,13 @@
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct Conv2dFunctor {
   Conv2dFunctor() {}
   Conv2dFunctor(const int *strides,
                 const std::vector<int> &paddings,
-                const int *dilations) :
-      strides_(strides),
-      paddings_(paddings),
-      dilations_(dilations) {}
+                const int *dilations)
+      : strides_(strides), paddings_(paddings), dilations_(dilations) {}
 
   void operator()(const T *input,  // NCHW
                   const index_t *input_shape,
@@ -66,7 +64,7 @@ struct Conv2dFunctor {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
-                c * height * width + h * width + w;
+                             c * height * width + h * width + w;
             output[offset] = bias_channel;
             T sum = 0;
             const T *filter_ptr = filter + c * kernel_size;
@@ -78,7 +76,7 @@ struct Conv2dFunctor {
                   if (inh < 0 || inh >= input_height || inw < 0 ||
                       inw >= input_width) {
                     MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
-                        inw >= padded_w_start && inw < padded_w_stop,
+                                   inw >= padded_w_start && inw < padded_w_stop,
                                "Out of range read from input: ", inh, ", ",
                                inw);
                     // else padding with 0:
@@ -86,8 +84,8 @@ struct Conv2dFunctor {
                   } else {
                     index_t input_offset =
                         n * input_channels * input_height * input_width +
-                            inc * input_height * input_width + inh * input_width +
-                            inw;
+                        inc * input_height * input_width + inh * input_width +
+                        inw;
                     sum += input[input_offset] * *filter_ptr;
                   }
                   ++filter_ptr;
@@ -101,12 +99,12 @@ struct Conv2dFunctor {
     }
   }
 
-  const int *strides_;    // [stride_h, stride_w]
-  std::vector<int> paddings_;   // [padding_h, padding_w]
-  const int *dilations_;  // [dilation_h, dilation_w]
+  const int *strides_;         // [stride_h, stride_w]
+  std::vector<int> paddings_;  // [padding_h, padding_w]
+  const int *dilations_;       // [dilation_h, dilation_w]
 };
 
-template<>
+template <>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(
     const float *input,
     const index_t *input_shape,

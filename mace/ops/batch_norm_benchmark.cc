@@ -47,7 +47,7 @@ static void BatchNorm(
       int iters) {                                                     \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
     mace::testing::ItemsProcessed(tot);                                \
-    mace::testing::BytesProcessed(tot*(sizeof(TYPE)));                 \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
     BatchNorm<DEVICE, TYPE>(iters, N, C, H, W);                        \
   }                                                                    \
   BENCHMARK(BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)

@@ -11,11 +11,8 @@ using namespace mace;
 using namespace mace::kernels;
 
 template <DeviceType D>
-static void GlobalAvgPooling(int iters,
-                             int batch,
-                             int channels,
-                             int height,
-                             int width) {
+static void GlobalAvgPooling(
+    int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -38,15 +35,14 @@ static void GlobalAvgPooling(int iters,
   }
 }
 
-#define BM_GLOBAL_AVG_POOLING_MACRO(N, C, H, W, DEVICE)                    \
-  static void                                                                       \
-      BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE( \
-          int iters) {                                                              \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                \
-    mace::testing::ItemsProcessed(tot);                                             \
-    mace::testing::BytesProcessed(tot*(sizeof(float)));                             \
-    GlobalAvgPooling<DEVICE>(iters, N, C, H, W);                                               \
-  }                                                                                 \
+#define BM_GLOBAL_AVG_POOLING_MACRO(N, C, H, W, DEVICE)               \
+  static void BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE( \
+      int iters) {                                                    \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;  \
+    mace::testing::ItemsProcessed(tot);                               \
+    mace::testing::BytesProcessed(tot *(sizeof(float)));              \
+    GlobalAvgPooling<DEVICE>(iters, N, C, H, W);                      \
+  }                                                                   \
   BENCHMARK(BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE)
 
 #define BM_GLOBAL_AVG_POOLING(N, C, H, W)       \

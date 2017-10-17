@@ -15,7 +15,7 @@ class PoolingOpTest : public OpsTestBase {};
 
 TEST_F(PoolingOpTest, MAX_VALID) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -46,7 +46,7 @@ TEST_F(PoolingOpTest, MAX_VALID) {
 
 TEST_F(PoolingOpTest, AVG_VALID) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -77,7 +77,7 @@ TEST_F(PoolingOpTest, AVG_VALID) {
 
 TEST_F(PoolingOpTest, MAX_SAME) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -105,7 +105,7 @@ TEST_F(PoolingOpTest, MAX_SAME) {
 
 TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -134,7 +134,7 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
 
 TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -148,9 +148,9 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>("Input", {1, 1, 2, 9},
-                               {0, 1, 2, 3, 4, 5, 6, 7, 8,
-                                9, 10, 11, 12, 13, 14, 15, 16, 17});
+  net.AddInputFromArray<float>(
+      "Input", {1, 1, 2, 9},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
   // Run
   net.RunOp(DeviceType::NEON);
 
@@ -162,7 +162,7 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
 
 TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -176,10 +176,10 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>("Input", {1, 1, 3, 9},
-                               {0, 1, 2, 3, 4, 5, 6, 7, 8,
-                                9, 10, 11, 12, 13, 14, 15, 16, 17,
-                                18, 19, 20, 21, 22, 23, 24, 25, 26});
+  net.AddInputFromArray<float>(
+      "Input", {1, 1, 3, 9},
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+       14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
   // Run
   net.RunOp(DeviceType::NEON);
 
@@ -191,7 +191,7 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
 
 TEST_F(PoolingOpTest, AVG_k2x2s2x2) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -207,15 +207,12 @@ TEST_F(PoolingOpTest, AVG_k2x2s2x2) {
   // Add input data
   net.AddInputFromArray<float>(
       "Input", {1, 1, 2, 8},
-      {0, 1, 2, 3, 4, 5, 6, 7,
-       8, 9, 10, 11, 12, 13, 14, 15});
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
   // Run
   net.RunOp(DeviceType::NEON);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 1, 4},
-                                      {4.5, 6.5, 8.5, 10.5});
+  auto expected = CreateTensor<float>({1, 1, 1, 4}, {4.5, 6.5, 8.5, 10.5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
-

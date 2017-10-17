@@ -3,8 +3,8 @@
 //
 
 #include "mace/core/runtime/opencl/opencl_allocator.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/runtime/opencl/cl2.hpp"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 

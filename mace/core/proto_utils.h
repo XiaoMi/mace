@@ -21,56 +21,56 @@ using std::string;
 using ::google::protobuf::MessageLite;
 
 // Common interfaces that reads file contents into a string.
-bool ReadStringFromFile(const char* filename, string* str);
-bool WriteStringToFile(const string& str, const char* filename);
+bool ReadStringFromFile(const char *filename, string *str);
+bool WriteStringToFile(const string &str, const char *filename);
 
 // Common interfaces that are supported by both lite and full protobuf.
-bool ReadProtoFromBinaryFile(const char* filename, MessageLite* proto);
-inline bool ReadProtoFromBinaryFile(const string filename, MessageLite* proto) {
+bool ReadProtoFromBinaryFile(const char *filename, MessageLite *proto);
+inline bool ReadProtoFromBinaryFile(const string filename, MessageLite *proto) {
   return ReadProtoFromBinaryFile(filename.c_str(), proto);
 }
 
-void WriteProtoToBinaryFile(const MessageLite& proto, const char* filename);
-inline void WriteProtoToBinaryFile(const MessageLite& proto,
-                                   const string& filename) {
+void WriteProtoToBinaryFile(const MessageLite &proto, const char *filename);
+inline void WriteProtoToBinaryFile(const MessageLite &proto,
+                                   const string &filename) {
   return WriteProtoToBinaryFile(proto, filename.c_str());
 }
 
 #ifdef MACE_USE_LITE_PROTO
 
-inline string ProtoDebugString(const MessageLite& proto) {
+inline string ProtoDebugString(const MessageLite &proto) {
   return proto.SerializeAsString();
 }
 
 // Text format MessageLite wrappers: these functions do nothing but just
 // allowing things to compile. It will produce a runtime error if you are using
 // MessageLite but still want text support.
-inline bool ReadProtoFromTextFile(const char* /*filename*/,
-                                  MessageLite* /*proto*/) {
+inline bool ReadProtoFromTextFile(const char * /*filename*/,
+                                  MessageLite * /*proto*/) {
   LOG(FATAL) << "If you are running lite version, you should not be "
              << "calling any text-format protobuffers.";
   return false;  // Just to suppress compiler warning.
 }
-inline bool ReadProtoFromTextFile(const string filename, MessageLite* proto) {
+inline bool ReadProtoFromTextFile(const string filename, MessageLite *proto) {
   return ReadProtoFromTextFile(filename.c_str(), proto);
 }
 
-inline void WriteProtoToTextFile(const MessageLite& /*proto*/,
-                                 const char* /*filename*/) {
+inline void WriteProtoToTextFile(const MessageLite & /*proto*/,
+                                 const char * /*filename*/) {
   LOG(FATAL) << "If you are running lite version, you should not be "
              << "calling any text-format protobuffers.";
 }
-inline void WriteProtoToTextFile(const MessageLite& proto,
-                                 const string& filename) {
+inline void WriteProtoToTextFile(const MessageLite &proto,
+                                 const string &filename) {
   return WriteProtoToTextFile(proto, filename.c_str());
 }
 
-inline bool ReadProtoFromFile(const char* filename, MessageLite* proto) {
+inline bool ReadProtoFromFile(const char *filename, MessageLite *proto) {
   return (ReadProtoFromBinaryFile(filename, proto) ||
           ReadProtoFromTextFile(filename, proto));
 }
 
-inline bool ReadProtoFromFile(const string& filename, MessageLite* proto) {
+inline bool ReadProtoFromFile(const string &filename, MessageLite *proto) {
   return ReadProtoFromFile(filename.c_str(), proto);
 }
 
@@ -78,27 +78,27 @@ inline bool ReadProtoFromFile(const string& filename, MessageLite* proto) {
 
 using ::google::protobuf::Message;
 
-inline string ProtoDebugString(const Message& proto) {
+inline string ProtoDebugString(const Message &proto) {
   return proto.ShortDebugString();
 }
 
-bool ReadProtoFromTextFile(const char* filename, Message* proto);
-inline bool ReadProtoFromTextFile(const string filename, Message* proto) {
+bool ReadProtoFromTextFile(const char *filename, Message *proto);
+inline bool ReadProtoFromTextFile(const string filename, Message *proto) {
   return ReadProtoFromTextFile(filename.c_str(), proto);
 }
 
-void WriteProtoToTextFile(const Message& proto, const char* filename);
-inline void WriteProtoToTextFile(const Message& proto, const string& filename) {
+void WriteProtoToTextFile(const Message &proto, const char *filename);
+inline void WriteProtoToTextFile(const Message &proto, const string &filename) {
   return WriteProtoToTextFile(proto, filename.c_str());
 }
 
 // Read Proto from a file, letting the code figure out if it is text or binary.
-inline bool ReadProtoFromFile(const char* filename, Message* proto) {
+inline bool ReadProtoFromFile(const char *filename, Message *proto) {
   return (ReadProtoFromBinaryFile(filename, proto) ||
           ReadProtoFromTextFile(filename, proto));
 }
 
-inline bool ReadProtoFromFile(const string& filename, Message* proto) {
+inline bool ReadProtoFromFile(const string &filename, Message *proto) {
   return ReadProtoFromFile(filename.c_str(), proto);
 }
 
@@ -107,21 +107,21 @@ inline bool ReadProtoFromFile(const string& filename, Message* proto) {
 template <class IterableInputs = std::initializer_list<string>,
           class IterableOutputs = std::initializer_list<string>,
           class IterableArgs = std::initializer_list<Argument>>
-OperatorDef CreateOperatorDef(const string& type,
-                              const string& name,
-                              const IterableInputs& inputs,
-                              const IterableOutputs& outputs,
-                              const IterableArgs& args) {
+OperatorDef CreateOperatorDef(const string &type,
+                              const string &name,
+                              const IterableInputs &inputs,
+                              const IterableOutputs &outputs,
+                              const IterableArgs &args) {
   OperatorDef def;
   def.set_type(type);
   def.set_name(name);
-  for (const string& in : inputs) {
+  for (const string &in : inputs) {
     def.add_input(in);
   }
-  for (const string& out : outputs) {
+  for (const string &out : outputs) {
     def.add_output(out);
   }
-  for (const Argument& arg : args) {
+  for (const Argument &arg : args) {
     def.add_arg()->CopyFrom(arg);
   }
   return def;
@@ -131,10 +131,10 @@ OperatorDef CreateOperatorDef(const string& type,
 // to specify args.
 template <class IterableInputs = std::initializer_list<string>,
           class IterableOutputs = std::initializer_list<string>>
-inline OperatorDef CreateOperatorDef(const string& type,
-                                     const string& name,
-                                     const IterableInputs& inputs,
-                                     const IterableOutputs& outputs) {
+inline OperatorDef CreateOperatorDef(const string &type,
+                                     const string &name,
+                                     const IterableInputs &inputs,
+                                     const IterableOutputs &outputs) {
   return CreateOperatorDef(type, name, inputs, outputs,
                            std::vector<Argument>());
 }
@@ -150,56 +150,56 @@ inline OperatorDef CreateOperatorDef(const string& type,
 class ArgumentHelper {
  public:
   template <typename Def>
-  static bool HasArgument(const Def& def, const string& name) {
+  static bool HasArgument(const Def &def, const string &name) {
     return ArgumentHelper(def).HasArgument(name);
   }
 
   template <typename Def, typename T>
-  static T GetSingleArgument(const Def& def,
-                             const string& name,
-                             const T& default_value) {
+  static T GetSingleArgument(const Def &def,
+                             const string &name,
+                             const T &default_value) {
     return ArgumentHelper(def).GetSingleArgument<T>(name, default_value);
   }
 
   template <typename Def, typename T>
-  static bool HasSingleArgumentOfType(const Def& def, const string& name) {
+  static bool HasSingleArgumentOfType(const Def &def, const string &name) {
     return ArgumentHelper(def).HasSingleArgumentOfType<T>(name);
   }
 
   template <typename Def, typename T>
   static vector<T> GetRepeatedArgument(
-      const Def& def,
-      const string& name,
-      const std::vector<T>& default_value = std::vector<T>()) {
+      const Def &def,
+      const string &name,
+      const std::vector<T> &default_value = std::vector<T>()) {
     return ArgumentHelper(def).GetRepeatedArgument<T>(name, default_value);
   }
 
   template <typename Def, typename MessageType>
-  static MessageType GetMessageArgument(const Def& def, const string& name) {
+  static MessageType GetMessageArgument(const Def &def, const string &name) {
     return ArgumentHelper(def).GetMessageArgument<MessageType>(name);
   }
 
   template <typename Def, typename MessageType>
-  static vector<MessageType> GetRepeatedMessageArgument(const Def& def,
-                                                        const string& name) {
+  static vector<MessageType> GetRepeatedMessageArgument(const Def &def,
+                                                        const string &name) {
     return ArgumentHelper(def).GetRepeatedMessageArgument<MessageType>(name);
   }
 
-  explicit ArgumentHelper(const OperatorDef& def);
-  explicit ArgumentHelper(const NetDef& netdef);
-  bool HasArgument(const string& name) const;
+  explicit ArgumentHelper(const OperatorDef &def);
+  explicit ArgumentHelper(const NetDef &netdef);
+  bool HasArgument(const string &name) const;
 
   template <typename T>
-  T GetSingleArgument(const string& name, const T& default_value) const;
+  T GetSingleArgument(const string &name, const T &default_value) const;
   template <typename T>
-  bool HasSingleArgumentOfType(const string& name) const;
+  bool HasSingleArgumentOfType(const string &name) const;
   template <typename T>
   vector<T> GetRepeatedArgument(
-      const string& name,
-      const std::vector<T>& default_value = std::vector<T>()) const;
+      const string &name,
+      const std::vector<T> &default_value = std::vector<T>()) const;
 
   template <typename MessageType>
-  MessageType GetMessageArgument(const string& name) const {
+  MessageType GetMessageArgument(const string &name) const {
     MACE_CHECK(arg_map_.count(name), "Cannot find parameter named " + name);
     MessageType message;
     if (arg_map_.at(name).has_s()) {
@@ -212,7 +212,7 @@ class ArgumentHelper {
   }
 
   template <typename MessageType>
-  vector<MessageType> GetRepeatedMessageArgument(const string& name) const {
+  vector<MessageType> GetRepeatedMessageArgument(const string &name) const {
     MACE_CHECK(arg_map_.count(name), "Cannot find parameter named " + name);
     vector<MessageType> messages(arg_map_.at(name).strings_size());
     for (int i = 0; i < messages.size(); ++i) {
@@ -226,20 +226,20 @@ class ArgumentHelper {
   std::map<string, Argument> arg_map_;
 };
 
-const Argument& GetArgument(const OperatorDef& def, const string& name);
-bool GetFlagArgument(const OperatorDef& def,
-                     const string& name,
+const Argument &GetArgument(const OperatorDef &def, const string &name);
+bool GetFlagArgument(const OperatorDef &def,
+                     const string &name,
                      bool def_value = false);
 
-Argument* GetMutableArgument(const string& name,
+Argument *GetMutableArgument(const string &name,
                              const bool create_if_missing,
-                             OperatorDef* def);
+                             OperatorDef *def);
 
 template <typename T>
-Argument MakeArgument(const string& name, const T& value);
+Argument MakeArgument(const string &name, const T &value);
 
 template <typename T>
-inline void AddArgument(const string& name, const T& value, OperatorDef* def) {
+inline void AddArgument(const string &name, const T &value, OperatorDef *def) {
   GetMutableArgument(name, true, def)->CopyFrom(MakeArgument(name, value));
 }
 

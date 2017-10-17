@@ -41,20 +41,17 @@ extern void Conv2dNeonK5x5S1(const float *input,
                              const index_t *output_shape);
 
 template <>
-void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float *input,
-                                                        const index_t *input_shape,
-                                                        const float *filter,
-                                                        const index_t *filter_shape,
-                                                        const float *bias,
-                                                        float *output,
-                                                        const index_t *output_shape) {
+void Conv2dFunctor<DeviceType::NEON, float>::operator()(
+    const float *input,
+    const index_t *input_shape,
+    const float *filter,
+    const index_t *filter_shape,
+    const float *bias,
+    float *output,
+    const index_t *output_shape) {
   typedef void (*Conv2dNeonFunction)(
-      const float *input,
-      const index_t *input_shape,
-      const float *filter,
-      const index_t *filter_shape,
-      const float *bias,
-      float *output,
+      const float *input, const index_t *input_shape, const float *filter,
+      const index_t *filter_shape, const float *bias, float *output,
       const index_t *output_shape);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dNeonFunction selector[5][2] = {
@@ -81,12 +78,14 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const float *input,
   // Keep this alive during kernel execution
   Tensor padded_input;
   if (paddings_[0] > 0 || paddings_[1] > 0) {
-    ConstructInputWithPadding(input, input_shape, paddings_.data(), &padded_input);
+    ConstructInputWithPadding(input, input_shape, paddings_.data(),
+                              &padded_input);
     input = padded_input.data<float>();
     input_shape = padded_input.shape().data();
   }
   auto conv2d_neon_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_neon_func(input, input_shape, filter, nullptr, bias, output, output_shape);
+  conv2d_neon_func(input, input_shape, filter, nullptr, bias, output,
+                   output_shape);
 }
 
 }  //  namespace kernels

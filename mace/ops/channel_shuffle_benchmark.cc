@@ -11,12 +11,8 @@ using namespace mace;
 using namespace mace::kernels;
 
 template <DeviceType D>
-static void ChannelShuffle(int iters,
-                           int batch,
-                           int channels,
-                           int height,
-                           int width,
-                           int group) {
+static void ChannelShuffle(
+    int iters, int batch, int channels, int height, int width, int group) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -40,18 +36,17 @@ static void ChannelShuffle(int iters,
   }
 }
 
-#define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, DEVICE)                    \
-  static void                                                                       \
-      BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##DEVICE( \
-          int iters) {                                                              \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                \
-    mace::testing::ItemsProcessed(tot);                                             \
-    mace::testing::BytesProcessed(tot*(sizeof(float)));                             \
-    ChannelShuffle<DEVICE>(iters, N, C, H, W, G);                                               \
-  }                                                                                 \
+#define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, DEVICE)                  \
+  static void BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##DEVICE( \
+      int iters) {                                                       \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;     \
+    mace::testing::ItemsProcessed(tot);                                  \
+    mace::testing::BytesProcessed(tot *(sizeof(float)));                 \
+    ChannelShuffle<DEVICE>(iters, N, C, H, W, G);                        \
+  }                                                                      \
   BENCHMARK(BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##DEVICE)
 
-#define BM_CHANNEL_SHUFFLE(N, C, H, W, G)       \
+#define BM_CHANNEL_SHUFFLE(N, C, H, W, G) \
   BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, CPU);
 
 BM_CHANNEL_SHUFFLE(1, 64, 64, 64, 8);

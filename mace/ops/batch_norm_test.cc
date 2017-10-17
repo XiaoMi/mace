@@ -11,7 +11,7 @@ class BatchNormOpTest : public OpsTestBase {};
 
 TEST_F(BatchNormOpTest, SimpleCPU) {
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -51,7 +51,7 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
   index_t height = 103;
   index_t width = 113;
   // Construct graph
-  auto& net = test_net();
+  auto &net = test_net();
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -74,7 +74,7 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
   net.RunOp();
 
   // Check
-  Tensor* expected = net.GetOutput("Output");
+  Tensor *expected = net.GetOutput("Output");
 
   // Run NEON
   net.RunOp(DeviceType::NEON);

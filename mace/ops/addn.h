@@ -13,18 +13,18 @@ namespace mace {
 template <DeviceType D, class T>
 class AddNOp : public Operator<D, T> {
  public:
-  AddNOp(const OperatorDef& operator_def, Workspace* ws)
+  AddNOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
   bool Run() override {
-    Tensor* output_tensor = this->outputs_[0];
+    Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(this->inputs_[0]);
-    T* output = output_tensor->mutable_data<T>();
+    T *output = output_tensor->mutable_data<T>();
     index_t size = this->inputs_[0]->size();
     int n = this->inputs_.size();
-    vector<const T*> inputs(n);
+    vector<const T *> inputs(n);
     for (int i = 0; i < n; ++i) {
-      const Tensor* input_tensor = this->inputs_[i];
+      const Tensor *input_tensor = this->inputs_[i];
       inputs[i] = input_tensor->data<T>();
     }
 

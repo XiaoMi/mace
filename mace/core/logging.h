@@ -23,23 +23,23 @@ namespace internal {
 
 using std::string;
 
-inline void MakeStringInternal(std::stringstream& /*ss*/) {}
+inline void MakeStringInternal(std::stringstream & /*ss*/) {}
 
 template <typename T>
-inline void MakeStringInternal(std::stringstream& ss, const T& t) {
+inline void MakeStringInternal(std::stringstream &ss, const T &t) {
   ss << t;
 }
 
 template <typename T, typename... Args>
-inline void MakeStringInternal(std::stringstream& ss,
-                               const T& t,
-                               const Args&... args) {
+inline void MakeStringInternal(std::stringstream &ss,
+                               const T &t,
+                               const Args &... args) {
   MakeStringInternal(ss, t);
   MakeStringInternal(ss, args...);
 }
 
 template <typename... Args>
-string MakeString(const Args&... args) {
+string MakeString(const Args &... args) {
   std::stringstream ss;
   MakeStringInternal(ss, args...);
   return ss.str();
@@ -48,7 +48,7 @@ string MakeString(const Args&... args) {
 template <typename T>
 string MakeString(const std::vector<T> &args) {
   std::stringstream ss;
-  for (const T& arg: args) {
+  for (const T &arg : args) {
     ss << arg << ", ";
   }
   return ss.str();
@@ -56,14 +56,14 @@ string MakeString(const std::vector<T> &args) {
 
 // Specializations for already-a-string types.
 template <>
-inline string MakeString(const string& str) {
+inline string MakeString(const string &str) {
   return str;
 }
-inline string MakeString(const char* c_str) { return string(c_str); }
+inline string MakeString(const char *c_str) { return string(c_str); }
 
 class LogMessage : public std::basic_ostringstream<char> {
  public:
-  LogMessage(const char* fname, int line, int severity);
+  LogMessage(const char *fname, int line, int severity);
   ~LogMessage();
 
   // Returns the minimum log level for VLOG statements.
@@ -75,7 +75,7 @@ class LogMessage : public std::basic_ostringstream<char> {
   void GenerateLogMessage();
 
  private:
-  const char* fname_;
+  const char *fname_;
   int line_;
   int severity_;
 };
@@ -84,7 +84,7 @@ class LogMessage : public std::basic_ostringstream<char> {
 // logging this message.
 class LogMessageFatal : public LogMessage {
  public:
-  LogMessageFatal(const char* file, int line);
+  LogMessageFatal(const char *file, int line);
   ~LogMessageFatal();
 };
 
@@ -136,7 +136,7 @@ class LogMessageFatal : public LogMessage {
 #endif
 
 template <typename T>
-T&& CheckNotNull(const char* file, int line, const char* exprtext, T&& t) {
+T &&CheckNotNull(const char *file, int line, const char *exprtext, T &&t) {
   if (t == nullptr) {
     LogMessageFatal(file, line) << string(exprtext);
   }

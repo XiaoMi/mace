@@ -10,14 +10,14 @@ namespace mace {
 
 vector<string> Workspace::Tensors() const {
   vector<string> names;
-  for (auto& entry : tensor_map_) {
+  for (auto &entry : tensor_map_) {
     names.push_back(entry.first);
   }
   return names;
 }
 
-Tensor* Workspace::CreateTensor(const string& name,
-                                Allocator* alloc,
+Tensor *Workspace::CreateTensor(const string &name,
+                                Allocator *alloc,
                                 DataType type) {
   if (HasTensor(name)) {
     VLOG(1) << "Tensor " << name << " already exists. Skipping.";
@@ -28,7 +28,7 @@ Tensor* Workspace::CreateTensor(const string& name,
   return GetTensor(name);
 }
 
-bool Workspace::RemoveTensor(const string& name) {
+bool Workspace::RemoveTensor(const string &name) {
   auto it = tensor_map_.find(name);
   if (it != tensor_map_.end()) {
     VLOG(1) << "Removing blob " << name << " from this workspace.";
@@ -38,7 +38,7 @@ bool Workspace::RemoveTensor(const string& name) {
   return false;
 }
 
-const Tensor* Workspace::GetTensor(const string& name) const {
+const Tensor *Workspace::GetTensor(const string &name) const {
   if (tensor_map_.count(name)) {
     return tensor_map_.at(name).get();
   } else {
@@ -47,18 +47,17 @@ const Tensor* Workspace::GetTensor(const string& name) const {
   return nullptr;
 }
 
-Tensor* Workspace::GetTensor(const string& name) {
-  return const_cast<Tensor*>(
-      static_cast<const Workspace*>(this)->GetTensor(name));
+Tensor *Workspace::GetTensor(const string &name) {
+  return const_cast<Tensor *>(
+      static_cast<const Workspace *>(this)->GetTensor(name));
 }
 
-void Workspace::LoadModelTensor(const NetDef& net_def, DeviceType type) {
+void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   Serializer serializer;
-  for (auto& tensor_proto : net_def.tensors()) {
-
-    VLOG(1) << "Load tensor: " << tensor_proto.name()
-            << " has shape: " << internal::MakeString(vector<index_t>(
-          tensor_proto.dims().begin(), tensor_proto.dims().end()));
+  for (auto &tensor_proto : net_def.tensors()) {
+    VLOG(1) << "Load tensor: " << tensor_proto.name() << " has shape: "
+            << internal::MakeString(vector<index_t>(tensor_proto.dims().begin(),
+                                                    tensor_proto.dims().end()));
     tensor_map_[tensor_proto.name()] =
         serializer.Deserialize(tensor_proto, type);
   }

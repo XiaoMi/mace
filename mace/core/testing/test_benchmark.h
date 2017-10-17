@@ -13,7 +13,7 @@
 
 #define MACE_BENCHMARK_CONCAT(a, b, c) a##b##c
 #define BENCHMARK(n)                                        \
-  static ::mace::testing::Benchmark* MACE_BENCHMARK_CONCAT( \
+  static ::mace::testing::Benchmark *MACE_BENCHMARK_CONCAT( \
       __benchmark_, n, __LINE__) = (new ::mace::testing::Benchmark(#n, (n)))
 
 namespace mace {
@@ -21,14 +21,14 @@ namespace testing {
 
 class Benchmark {
  public:
-  Benchmark(const char* name, void (*fn)(int));
-  Benchmark(const char* name, void (*fn)(int, int));
-  Benchmark(const char* name, void (*fn)(int, int, int));
-  Benchmark* Arg(int x);
-  Benchmark* ArgPair(int x, int y);
+  Benchmark(const char *name, void (*fn)(int));
+  Benchmark(const char *name, void (*fn)(int, int));
+  Benchmark(const char *name, void (*fn)(int, int, int));
+  Benchmark *Arg(int x);
+  Benchmark *ArgPair(int x, int y);
 
   static void Run();
-  static void Run(const char* pattern);
+  static void Run(const char *pattern);
 
  private:
   string name_;
@@ -39,7 +39,7 @@ class Benchmark {
   void (*fn2_)(int, int, int) = nullptr;
 
   void Register();
-  void Run(int arg1, int arg2, int* run_count, double* run_seconds);
+  void Run(int arg1, int arg2, int *run_count, double *run_seconds);
 };
 
 void RunBenchmarks();

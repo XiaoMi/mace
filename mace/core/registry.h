@@ -16,15 +16,15 @@ class Registry {
 
   Registry() : registry_() {}
 
-  void Register(const SrcType& key, Creator creator) {
+  void Register(const SrcType &key, Creator creator) {
     std::lock_guard<std::mutex> lock(register_mutex_);
     MACE_CHECK(registry_.count(key) == 0, "Key already registered.");
     registry_[key] = creator;
   }
 
-  inline bool Has(const SrcType& key) { return registry_.count(key) != 0; }
+  inline bool Has(const SrcType &key) { return registry_.count(key) != 0; }
 
-  unique_ptr<ObjectType> Create(const SrcType& key, Args... args) {
+  unique_ptr<ObjectType> Create(const SrcType &key, Args... args) {
     if (registry_.count(key) == 0) {
       LOG(FATAL) << "Key not registered: " << key;
     }
@@ -36,7 +36,7 @@ class Registry {
    */
   vector<SrcType> Keys() {
     vector<SrcType> keys;
-    for (const auto& it : registry_) {
+    for (const auto &it : registry_) {
       keys.push_back(it.first);
     }
     return keys;
@@ -52,8 +52,8 @@ class Registry {
 template <class SrcType, class ObjectType, class... Args>
 class Registerer {
  public:
-  Registerer(const SrcType& key,
-             Registry<SrcType, ObjectType, Args...>* registry,
+  Registerer(const SrcType &key,
+             Registry<SrcType, ObjectType, Args...> *registry,
              typename Registry<SrcType, ObjectType, Args...>::Creator creator) {
     registry->Register(key, creator);
   }
@@ -73,13 +73,13 @@ class Registerer {
 #endif
 
 #define MACE_DECLARE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName();             \
+  Registry<SrcType, ObjectType, ##__VA_ARGS__> *RegistryName();             \
   typedef Registerer<SrcType, ObjectType, ##__VA_ARGS__>                    \
       Registerer##RegistryName;
 
 #define MACE_DEFINE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__>* RegistryName() {           \
-    static Registry<SrcType, ObjectType, ##__VA_ARGS__>* registry =        \
+  Registry<SrcType, ObjectType, ##__VA_ARGS__> *RegistryName() {           \
+    static Registry<SrcType, ObjectType, ##__VA_ARGS__> *registry =        \
         new Registry<SrcType, ObjectType, ##__VA_ARGS__>();                \
     return registry;                                                       \
   }

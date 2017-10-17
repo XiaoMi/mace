@@ -33,8 +33,8 @@ cc_proto_library(
 py_proto_library(
     name = "mace_py",
     srcs = ["mace.proto"],
+    default_runtime = "@com_google_protobuf//:protobuf_python",
+    protoc = "@com_google_protobuf//:protoc",
     srcs_version = "PY2AND3",
     deps = ["@com_google_protobuf//:protobuf_python"],
-    protoc = "@com_google_protobuf//:protoc",
-    default_runtime = "@com_google_protobuf//:protobuf_python",
 )

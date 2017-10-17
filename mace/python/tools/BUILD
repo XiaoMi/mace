@@ -16,4 +16,3 @@ py_binary(
         "@six_archive//:six",
     ],
 )
-

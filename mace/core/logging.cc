@@ -14,7 +14,7 @@
 namespace mace {
 namespace internal {
 
-LogMessage::LogMessage(const char* fname, int line, int severity)
+LogMessage::LogMessage(const char *fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
 
 #if defined(PLATFORM_POSIX_ANDROID)
@@ -43,7 +43,7 @@ void LogMessage::GenerateLogMessage() {
   }
 
   std::stringstream ss;
-  const char* const partial_name = strrchr(fname_, '/');
+  const char *const partial_name = strrchr(fname_, '/');
   ss << (partial_name != nullptr ? partial_name + 1 : fname_) << ":" << line_
      << " " << str();
   __android_log_write(android_log_level, "native", ss.str().c_str());
@@ -69,7 +69,7 @@ void LogMessage::GenerateLogMessage() {
 namespace {
 
 // Parse log level (int64_t) from environment variable (char*)
-int64_t LogLevelStrToInt(const char* mace_env_var_val) {
+int64_t LogLevelStrToInt(const char *mace_env_var_val) {
   if (mace_env_var_val == nullptr) {
     return 0;
   }
@@ -89,12 +89,12 @@ int64_t LogLevelStrToInt(const char* mace_env_var_val) {
 }
 
 int64_t MinLogLevelFromEnv() {
-  const char* mace_env_var_val = getenv("MACE_CPP_MIN_LOG_LEVEL");
+  const char *mace_env_var_val = getenv("MACE_CPP_MIN_LOG_LEVEL");
   return LogLevelStrToInt(mace_env_var_val);
 }
 
 int64_t MinVLogLevelFromEnv() {
-  const char* mace_env_var_val = getenv("MACE_CPP_MIN_VLOG_LEVEL");
+  const char *mace_env_var_val = getenv("MACE_CPP_MIN_VLOG_LEVEL");
   return LogLevelStrToInt(mace_env_var_val);
 }
 
@@ -111,7 +111,7 @@ int64_t LogMessage::MinVLogLevel() {
   return min_vlog_level;
 }
 
-LogMessageFatal::LogMessageFatal(const char* file, int line)
+LogMessageFatal::LogMessageFatal(const char *file, int line)
     : LogMessage(file, line, FATAL) {}
 LogMessageFatal::~LogMessageFatal() {
   // abort() ensures we don't return (we promised we would not via

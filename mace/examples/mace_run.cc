@@ -12,8 +12,8 @@
  *          --output_file=mace.out  \
  *          --device=NEON
  */
-#include <fstream>
 #include <sys/time.h>
+#include <fstream>
 #include "mace/core/net.h"
 #include "mace/utils/command_line_flags.h"
 
@@ -83,11 +83,10 @@ int main(int argc, char **argv) {
 
   Workspace ws;
   ws.LoadModelTensor(net_def, DeviceType::CPU);
-  Tensor *input_tensor = ws.CreateTensor(input_node + ":0",
-                                         cpu_allocator(), DT_FLOAT);
+  Tensor *input_tensor =
+      ws.CreateTensor(input_node + ":0", cpu_allocator(), DT_FLOAT);
   input_tensor->Resize(shape);
   float *input_data = input_tensor->mutable_data<float>();
-
 
   // load input
   ifstream in_file(input_file, ios::in | ios::binary);
@@ -112,14 +111,17 @@ int main(int argc, char **argv) {
     net->Run();
   }
   gettimeofday(&tv2, NULL);
-  cout << "avg duration: " << ((tv2.tv_sec - tv1.tv_sec) * 1000
-      + (tv2.tv_usec - tv1.tv_usec) / 1000) / round << endl;
+  cout << "avg duration: "
+       << ((tv2.tv_sec - tv1.tv_sec) * 1000 +
+           (tv2.tv_usec - tv1.tv_usec) / 1000) /
+              round
+       << endl;
 
   // save output
   const Tensor *output = ws.GetTensor(output_node + ":0");
 
   ofstream out_file(output_file, ios::binary);
-  out_file.write((const char *) (output->data<float>()),
+  out_file.write((const char *)(output->data<float>()),
                  output->size() * sizeof(float));
   out_file.flush();
   out_file.close();

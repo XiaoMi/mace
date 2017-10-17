@@ -202,15 +202,15 @@ class Tensor {
   }
 
   class MappingGuard {
-    public:
-      MappingGuard(Tensor *tensor) : tensor_(tensor) {
-        MACE_ASSERT(tensor_ != nullptr);
-        tensor_->Map();
-      }
-      ~MappingGuard() { tensor_->Unmap(); }
+   public:
+    MappingGuard(Tensor *tensor) : tensor_(tensor) {
+      MACE_ASSERT(tensor_ != nullptr);
+      tensor_->Map();
+    }
+    ~MappingGuard() { tensor_->Unmap(); }
 
-    private:
-      Tensor *tensor_;
+   private:
+    Tensor *tensor_;
   };
 
  private:
