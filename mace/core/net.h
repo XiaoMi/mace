@@ -9,6 +9,7 @@
 #include "mace/core/operator.h"
 #include "mace/core/workspace.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/proto/stats.pb.h"
 
 namespace mace {
 
@@ -19,7 +20,7 @@ class NetBase {
           DeviceType type);
   virtual ~NetBase() noexcept {}
 
-  virtual bool Run() = 0;
+  virtual bool Run(RunMetadata* run_metadata = nullptr) = 0;
 
   const string& Name() const { return name_; }
 
@@ -35,7 +36,7 @@ class SimpleNet : public NetBase {
             Workspace* ws,
             DeviceType type);
 
-  bool Run() override;
+  bool Run(RunMetadata* run_metadata = nullptr) override;
 
  protected:
   vector<unique_ptr<OperatorBase> > operators_;

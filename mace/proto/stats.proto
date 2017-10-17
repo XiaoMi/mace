@@ -1,0 +1,16 @@
+syntax = "proto2";
+
+package mace;
+
+message OperatorStats {
+  optional string operator_name      = 1;
+  optional string type               = 2;
+  optional int64 all_start_micros    = 3;
+  optional int64 op_start_rel_micros = 4;
+  optional int64 op_end_rel_micros   = 5;
+  optional int64 all_end_rel_micros  = 6;
+};
+
+message RunMetadata {
+  repeated OperatorStats op_stats = 1;
+}

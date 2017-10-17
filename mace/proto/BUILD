@@ -20,6 +20,16 @@ cc_proto_library(
     deps = [":proto"],
 )
 
+proto_library(
+    name = "stats",
+    srcs = ["stats.proto"],
+)
+
+cc_proto_library(
+    name = "stats_proto",
+    deps = [":stats"],
+)
+
 py_proto_library(
     name = "mace_py",
     srcs = ["mace.proto"],
