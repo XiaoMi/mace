@@ -12,22 +12,29 @@ load("//mace:mace.bzl", "if_android")
 cc_library(
     name = "opencl_runtime",
     srcs = glob([
-        "platform/opencl/cl.hpp",
-        "platform/opencl/cl2.hpp",
-        "platform/opencl/opencl_wrapper.h",
-        "platform/opencl/opencl_wrapper.cc",
+        "runtime/opencl/cl.hpp",
+        "runtime/opencl/cl2.hpp",
+        "runtime/opencl/opencl_allocator.cc",
+        "runtime/opencl/opencl_wrapper.cc",
+        "runtime/opencl/opencl_runtime.cc",
     ]),
+    hdrs = [
+        "runtime/opencl/opencl_allocator.h",
+        "runtime/opencl/opencl_runtime.h",
+        "runtime/opencl/opencl_wrapper.h",
+    ],
     copts = ["-std=c++11"],
     deps = [
-        "@opencl_headers//:opencl20_headers",
         "core",
+        "@opencl_headers//:opencl20_headers",
     ],
+    alwayslink = 1,
 )
 
 cc_binary(
     name = "opencl_smoketest",
     srcs = glob([
-        "platform/opencl/opencl_smoketest.cc",
+        "runtime/opencl/opencl_smoketest.cc",
     ]),
     copts = ["-std=c++11"],
     deps = [
@@ -44,15 +51,15 @@ cc_library(
         "*.h",
     ]),
     copts = ["-std=c++11"],
-    deps = [
-        "//mace/proto:cc_proto",
-        "//mace/proto:stats_proto",
-        "//mace/utils:utils",
-    ],
     linkopts = if_android([
         "-llog",
         "-pie",
     ]),
+    deps = [
+        "//mace/proto:cc_proto",
+        "//mace/proto:stats_proto",
+        "//mace/utils",
+    ],
 )
 
 # Main program for tests

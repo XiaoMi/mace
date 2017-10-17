@@ -6,20 +6,21 @@
 
 namespace mace {
 
-static std::unique_ptr<CPUAllocator> g_cpu_allocator(new CPUAllocator());
-CPUAllocator* cpu_allocator() { return g_cpu_allocator.get(); }
-
-void SetCPUAllocator(CPUAllocator* alloc) { g_cpu_allocator.reset(alloc); }
-
-Allocator* GetDeviceAllocator(DeviceType type) {
-  switch (type) {
-    case DeviceType::CPU:
-    case DeviceType::NEON:
-      return cpu_allocator();
-    default:
-      MACE_CHECK(false, "device type ", type, " is not supported.");
-  }
-  return nullptr;
+std::map<int32_t, Allocator *> *gAllocatorRegistry() {
+  static std::map<int32_t, Allocator *> g_allocator_registry;
+  return &g_allocator_registry;
 }
+
+Allocator *GetDeviceAllocator(DeviceType type) {
+  auto iter = gAllocatorRegistry()->find(type);
+  if (iter == gAllocatorRegistry()->end()) {
+    LOG(ERROR) << "Allocator not found for device " << type;
+    return nullptr;
+  }
+  return iter->second;
+}
+
+MACE_REGISTER_ALLOCATOR(DeviceType::CPU, new CPUAllocator());
+MACE_REGISTER_ALLOCATOR(DeviceType::NEON, new CPUAllocator());
 
 }  // namespace mace

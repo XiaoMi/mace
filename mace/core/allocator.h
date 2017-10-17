@@ -8,6 +8,7 @@
 
 #include <malloc.h>
 #include "mace/core/common.h"
+#include "mace/core/registry.h"
 #include "mace/proto/mace.pb.h"
 
 namespace mace {
@@ -24,17 +25,19 @@ class Allocator {
  public:
   Allocator() {}
   virtual ~Allocator() noexcept {}
-  virtual void* New(size_t nbytes) = 0;
-  virtual void Delete(void* data) = 0;
-  virtual void CopyBytes(void* dst, const void* src, size_t size) = 0;
+  virtual void *New(size_t nbytes) = 0;
+  virtual void Delete(void *data) = 0;
+  virtual void *Map(void *buffer, size_t nbytes) = 0;
+  virtual void Unmap(void *buffer, void *mapper_ptr) = 0;
+  virtual bool OnHost() = 0;
 
   template <typename T>
-  T* New(size_t num_elements) {
+  T *New(size_t num_elements) {
     if (num_elements > (std::numeric_limits<size_t>::max() / sizeof(T))) {
       return nullptr;
     }
-    void* p = New(sizeof(T) * num_elements);
-    T* typed_p = reinterpret_cast<T*>(p);
+    void *p = New(sizeof(T) * num_elements);
+    T *typed_p = reinterpret_cast<T *>(p);
     return typed_p;
   }
 };
@@ -42,8 +45,8 @@ class Allocator {
 class CPUAllocator : public Allocator {
  public:
   ~CPUAllocator() override {}
-  void* New(size_t nbytes) override {
-    void* data = nullptr;
+  void *New(size_t nbytes) override {
+    void *data = nullptr;
 #ifdef __ANDROID__
     data = memalign(kMaceAlignment, nbytes);
 #else
@@ -55,33 +58,32 @@ class CPUAllocator : public Allocator {
     return data;
   }
 
-  void Delete(void* data) override { free(data); }
+  void Delete(void *data) override { free(data); }
+  void *Map(void *buffer, size_t nbytes) { return buffer; }
+  void Unmap(void *buffer, void *mapper_ptr) {}
+  bool OnHost() { return true; }
+};
 
-  void CopyBytes(void* dst, const void* src, size_t size) override {
-    memcpy(dst, src, size);
+std::map<int32_t, Allocator *> *gAllocatorRegistry();
+
+Allocator *GetDeviceAllocator(DeviceType type);
+
+struct AllocatorRegisterer {
+  explicit AllocatorRegisterer(DeviceType type, Allocator *alloc) {
+    if (gAllocatorRegistry()->count(type)) {
+      LOG(ERROR) << "Allocator for device type " << type
+                 << " registered twice. This should not happen."
+                 << gAllocatorRegistry()->count(type);
+      std::exit(1);
+    }
+    gAllocatorRegistry()->emplace(type, alloc);
   }
 };
 
-// Get the CPU Alloctor.
-CPUAllocator* cpu_allocator();
-// Sets the CPU allocator to the given allocator: the caller gives away the
-// ownership of the pointer.
-void SetCPUAllocator(CPUAllocator* alloc);
-
-template <DeviceType D>
-struct DeviceContext {};
-
-template <>
-struct DeviceContext<DeviceType::CPU> {
-  static Allocator* allocator() { return cpu_allocator(); }
-};
-
-template <>
-struct DeviceContext<DeviceType::NEON> {
-  static Allocator* allocator() { return cpu_allocator(); }
-};
-
-Allocator* GetDeviceAllocator(DeviceType type);
+#define MACE_REGISTER_ALLOCATOR(type, alloc)                                  \
+  namespace {                                                                 \
+  static AllocatorRegisterer MACE_ANONYMOUS_VARIABLE(Allocator)(type, alloc); \
+  }
 
 }  // namespace mace
 
