@@ -92,7 +92,7 @@ class Operator : public OperatorBase {
 
     for (const string &output_str : operator_def.output()) {
       outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-          output_str, DeviceContext<D>::allocator(), DataTypeToEnum<T>::v())));
+          output_str, GetDeviceAllocator(D), DataTypeToEnum<T>::v())));
     }
   }
   virtual bool Run() override = 0;
@@ -159,6 +159,16 @@ MACE_DECLARE_REGISTRY(NEONOperatorRegistry,
   MACE_REGISTER_CREATOR(NEONOperatorRegistry, key, __VA_ARGS__)
 #define REGISTER_NEON_OPERATOR(name, ...) \
   MACE_REGISTER_CLASS(NEONOperatorRegistry, name, __VA_ARGS__)
+
+MACE_DECLARE_REGISTRY(OPENCLOperatorRegistry,
+                      OperatorBase,
+                      const OperatorDef &,
+                      Workspace *);
+
+#define REGISTER_OPENCL_OPERATOR_CREATOR(key, ...) \
+  MACE_REGISTER_CREATOR(OPENCLOperatorRegistry, key, __VA_ARGS__)
+#define REGISTER_OPENCL_OPERATOR(name, ...) \
+  MACE_REGISTER_CLASS(OPENCLOperatorRegistry, name, __VA_ARGS__)
 
 unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
                                         Workspace *ws,

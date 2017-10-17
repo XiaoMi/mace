@@ -5,7 +5,7 @@
 #include "CL/opencl.h"
 
 #include "mace/core/logging.h"
-#include "mace/core/platform/opencl/opencl_wrapper.h"
+#include "mace/core/runtime/opencl/opencl_wrapper.h"
 
 #include <dlfcn.h>
 #include <mutex>
@@ -14,10 +14,14 @@
  * Wrapper of OpenCL 2.0 (based on 1.2)
  */
 namespace mace {
-class OpenCLStub final {
+
+namespace {
+class OpenCLLibraryImpl final {
  public:
-  static OpenCLStub &Get();
-  bool loaded() { return loaded_; }
+  static OpenCLLibraryImpl &Get();
+  bool Load();
+  void Unload();
+  bool loaded() { return handle_ != nullptr; }
 
   using clGetPlatformIDsFunc = cl_int (*)(cl_uint, cl_platform_id *, cl_uint *);
   using clGetPlatformInfoFunc =
@@ -177,21 +181,23 @@ class OpenCLStub final {
 #undef DEFINE_FUNC_PTR
 
  private:
-  bool TryLoadAll();
-  bool Load(const std::string &library);
-  bool loaded_ = false;
+  void *LoadFromPath(const std::string &path);
+  void *handle_ = nullptr;
 };
 
-OpenCLStub &OpenCLStub::Get() {
+OpenCLLibraryImpl &OpenCLLibraryImpl::Get() {
   static std::once_flag load_once;
-  static OpenCLStub instance;
-  std::call_once(load_once, []() { instance.TryLoadAll(); });
+  static OpenCLLibraryImpl instance;
+  std::call_once(load_once, []() { instance.Load(); });
   return instance;
 }
 
-bool OpenCLStub::TryLoadAll() {
+bool OpenCLLibraryImpl::Load() {
+  if (loaded()) return true;
+
   // TODO (heliangliang) Make this configurable
-  static const std::vector<std::string> pathes = {
+  // TODO (heliangliang) Benchmark 64 bit overhead
+  static const std::vector<std::string> paths = {
 #if defined(__aarch64__)
     // Qualcomm Adreno
     "/system/vendor/lib64/libOpenCL.so",
@@ -209,9 +215,11 @@ bool OpenCLStub::TryLoadAll() {
 #endif
   };
 
-  for (const auto &path : pathes) {
+  for (const auto &path : paths) {
     VLOG(2) << "Loading OpenCL from " << path;
-    if (Load(path)) {
+    void *handle = LoadFromPath(path);
+    if (handle != nullptr) {
+      handle_ = handle;
       return true;
     }
   }
@@ -220,13 +228,22 @@ bool OpenCLStub::TryLoadAll() {
   return false;
 }
 
-bool OpenCLStub::Load(const std::string &path) {
+void OpenCLLibraryImpl::Unload() {
+  if (handle_ != nullptr) {
+    if (dlclose(handle_) != 0) {
+      LOG(ERROR) << "dlclose failed for OpenCL library";
+    }
+    handle_ = nullptr;
+  }
+}
+
+void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   void *handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_LOCAL);
 
   if (handle == nullptr) {
     VLOG(2) << "Failed to load OpenCL library from path " << path
             << " error code: " << dlerror();
-    return false;
+    return nullptr;
   }
 
 #define ASSIGN_FROM_DLSYM(func)                                     \
@@ -234,9 +251,8 @@ bool OpenCLStub::Load(const std::string &path) {
     void *ptr = dlsym(handle, #func);                               \
     if (ptr == nullptr) {                                           \
       LOG(ERROR) << "Failed to load " << #func << " from " << path; \
-      loaded_ = false;                                              \
       dlclose(handle);                                              \
-      return false;                                                 \
+      return nullptr;                                               \
     }                                                               \
     func = reinterpret_cast<func##Func>(ptr);                       \
     VLOG(2) << "Loaded " << #func << " from " << path;              \
@@ -283,19 +299,22 @@ bool OpenCLStub::Load(const std::string &path) {
 
 #undef ASSIGN_FROM_DLSYM
 
-  loaded_ = true;
-  // TODO (heliangliang) Call dlclose if we are dlclosed
-  return true;
+  return handle;
 }
+}  // namespace
 
-bool OpenCLSupported() { return OpenCLStub::Get().loaded(); }
+bool OpenCLLibrary::Supported() { return OpenCLLibraryImpl::Get().loaded(); }
+
+void OpenCLLibrary::Load() { OpenCLLibraryImpl::Get().Load(); }
+
+void OpenCLLibrary::Unload() { OpenCLLibraryImpl::Get().Unload(); }
 
 }  // namespace mace
 
 cl_int clGetPlatformIDs(cl_uint num_entries,
                         cl_platform_id *platforms,
                         cl_uint *num_platforms) {
-  auto func = mace::OpenCLStub::Get().clGetPlatformIDs;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetPlatformIDs;
   if (func != nullptr) {
     return func(num_entries, platforms, num_platforms);
   } else {
@@ -307,7 +326,7 @@ cl_int clGetPlatformInfo(cl_platform_id platform,
                          size_t param_value_size,
                          void *param_value,
                          size_t *param_value_size_ret) {
-  auto func = mace::OpenCLStub::Get().clGetPlatformInfo;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetPlatformInfo;
   if (func != nullptr) {
     return func(platform, param_name, param_value_size, param_value,
                 param_value_size_ret);
@@ -323,7 +342,7 @@ cl_int clBuildProgram(cl_program program,
                       void(CL_CALLBACK *pfn_notify)(cl_program program,
                                                     void *user_data),
                       void *user_data) {
-  auto func = mace::OpenCLStub::Get().clBuildProgram;
+  auto func = mace::OpenCLLibraryImpl::Get().clBuildProgram;
   if (func != nullptr) {
     return func(program, num_devices, device_list, options, pfn_notify,
                 user_data);
@@ -341,7 +360,7 @@ cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
                               cl_uint num_events_in_wait_list,
                               const cl_event *event_wait_list,
                               cl_event *event) {
-  auto func = mace::OpenCLStub::Get().clEnqueueNDRangeKernel;
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueNDRangeKernel;
   if (func != nullptr) {
     return func(command_queue, kernel, work_dim, global_work_offset,
                 global_work_size, local_work_size, num_events_in_wait_list,
@@ -355,7 +374,7 @@ cl_int clSetKernelArg(cl_kernel kernel,
                       cl_uint arg_index,
                       size_t arg_size,
                       const void *arg_value) {
-  auto func = mace::OpenCLStub::Get().clSetKernelArg;
+  auto func = mace::OpenCLLibraryImpl::Get().clSetKernelArg;
   if (func != nullptr) {
     return func(kernel, arg_index, arg_size, arg_value);
   } else {
@@ -364,7 +383,7 @@ cl_int clSetKernelArg(cl_kernel kernel,
 }
 
 cl_int clRetainMemObject(cl_mem memobj) {
-  auto func = mace::OpenCLStub::Get().clRetainMemObject;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainMemObject;
   if (func != nullptr) {
     return func(memobj);
   } else {
@@ -373,7 +392,7 @@ cl_int clRetainMemObject(cl_mem memobj) {
 }
 
 cl_int clReleaseMemObject(cl_mem memobj) {
-  auto func = mace::OpenCLStub::Get().clReleaseMemObject;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseMemObject;
   if (func != nullptr) {
     return func(memobj);
   } else {
@@ -387,7 +406,7 @@ cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
                                cl_uint num_events_in_wait_list,
                                const cl_event *event_wait_list,
                                cl_event *event) {
-  auto func = mace::OpenCLStub::Get().clEnqueueUnmapMemObject;
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueUnmapMemObject;
   if (func != nullptr) {
     return func(command_queue, memobj, mapped_ptr, num_events_in_wait_list,
                 event_wait_list, event);
@@ -397,7 +416,7 @@ cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
 }
 
 cl_int clRetainCommandQueue(cl_command_queue command_queue) {
-  auto func = mace::OpenCLStub::Get().clRetainCommandQueue;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainCommandQueue;
   if (func != nullptr) {
     return func(command_queue);
   } else {
@@ -411,7 +430,7 @@ cl_context clCreateContext(
     void(CL_CALLBACK *pfn_notify)(const char *, const void *, size_t, void *),
     void *user_data,
     cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateContext;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateContext;
   if (func != nullptr) {
     return func(properties, num_devices, devices, pfn_notify, user_data,
                 errcode_ret);
@@ -425,7 +444,7 @@ cl_context clCreateContextFromType(
     void(CL_CALLBACK *pfn_notify)(const char *, const void *, size_t, void *),
     void *user_data,
     cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateContextFromType;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateContextFromType;
   if (func != nullptr) {
     return func(properties, device_type, pfn_notify, user_data, errcode_ret);
   } else {
@@ -434,7 +453,7 @@ cl_context clCreateContextFromType(
 }
 
 cl_int clReleaseContext(cl_context context) {
-  auto func = mace::OpenCLStub::Get().clReleaseContext;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseContext;
   if (func != nullptr) {
     return func(context);
   } else {
@@ -443,7 +462,7 @@ cl_int clReleaseContext(cl_context context) {
 }
 
 cl_int clWaitForEvents(cl_uint num_events, const cl_event *event_list) {
-  auto func = mace::OpenCLStub::Get().clWaitForEvents;
+  auto func = mace::OpenCLLibraryImpl::Get().clWaitForEvents;
   if (func != nullptr) {
     return func(num_events, event_list);
   } else {
@@ -452,7 +471,7 @@ cl_int clWaitForEvents(cl_uint num_events, const cl_event *event_list) {
 }
 
 cl_int clReleaseEvent(cl_event event) {
-  auto func = mace::OpenCLStub::Get().clReleaseEvent;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseEvent;
   if (func != nullptr) {
     return func(event);
   } else {
@@ -469,7 +488,7 @@ cl_int clEnqueueWriteBuffer(cl_command_queue command_queue,
                             cl_uint num_events_in_wait_list,
                             const cl_event *event_wait_list,
                             cl_event *event) {
-  auto func = mace::OpenCLStub::Get().clEnqueueWriteBuffer;
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueWriteBuffer;
   if (func != nullptr) {
     return func(command_queue, buffer, blocking_write, offset, size, ptr,
                 num_events_in_wait_list, event_wait_list, event);
@@ -487,7 +506,7 @@ cl_int clEnqueueReadBuffer(cl_command_queue command_queue,
                            cl_uint num_events_in_wait_list,
                            const cl_event *event_wait_list,
                            cl_event *event) {
-  auto func = mace::OpenCLStub::Get().clEnqueueReadBuffer;
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueReadBuffer;
   if (func != nullptr) {
     return func(command_queue, buffer, blocking_read, offset, size, ptr,
                 num_events_in_wait_list, event_wait_list, event);
@@ -502,7 +521,7 @@ cl_int clGetProgramBuildInfo(cl_program program,
                              size_t param_value_size,
                              void *param_value,
                              size_t *param_value_size_ret) {
-  auto func = mace::OpenCLStub::Get().clGetProgramBuildInfo;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetProgramBuildInfo;
   if (func != nullptr) {
     return func(program, device, param_name, param_value_size, param_value,
                 param_value_size_ret);
@@ -512,7 +531,7 @@ cl_int clGetProgramBuildInfo(cl_program program,
 }
 
 cl_int clRetainProgram(cl_program program) {
-  auto func = mace::OpenCLStub::Get().clRetainProgram;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainProgram;
   if (func != nullptr) {
     return func(program);
   } else {
@@ -530,7 +549,7 @@ void *clEnqueueMapBuffer(cl_command_queue command_queue,
                          const cl_event *event_wait_list,
                          cl_event *event,
                          cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clEnqueueMapBuffer;
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueMapBuffer;
   if (func != nullptr) {
     return func(command_queue, buffer, blocking_map, map_flags, offset, size,
                 num_events_in_wait_list, event_wait_list, event, errcode_ret);
@@ -546,7 +565,7 @@ cl_command_queue clCreateCommandQueueWithProperties(
     cl_device_id device,
     const cl_queue_properties *properties,
     cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateCommandQueueWithProperties;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateCommandQueueWithProperties;
   if (func != nullptr) {
     return func(context, device, properties, errcode_ret);
   } else {
@@ -555,7 +574,7 @@ cl_command_queue clCreateCommandQueueWithProperties(
 }
 
 cl_int clReleaseCommandQueue(cl_command_queue command_queue) {
-  auto func = mace::OpenCLStub::Get().clReleaseCommandQueue;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseCommandQueue;
   if (func != nullptr) {
     return func(command_queue);
   } else {
@@ -570,7 +589,7 @@ cl_program clCreateProgramWithBinary(cl_context context,
                                      const unsigned char **binaries,
                                      cl_int *binary_status,
                                      cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateProgramWithBinary;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateProgramWithBinary;
   if (func != nullptr) {
     return func(context, num_devices, device_list, lengths, binaries,
                 binary_status, errcode_ret);
@@ -583,7 +602,7 @@ cl_program clCreateProgramWithBinary(cl_context context,
 }
 
 cl_int clRetainContext(cl_context context) {
-  auto func = mace::OpenCLStub::Get().clRetainContext;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainContext;
   if (func != nullptr) {
     return func(context);
   } else {
@@ -596,7 +615,7 @@ cl_int clGetContextInfo(cl_context context,
                         size_t param_value_size,
                         void *param_value,
                         size_t *param_value_size_ret) {
-  auto func = mace::OpenCLStub::Get().clGetContextInfo;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetContextInfo;
   if (func != nullptr) {
     return func(context, param_name, param_value_size, param_value,
                 param_value_size_ret);
@@ -606,7 +625,7 @@ cl_int clGetContextInfo(cl_context context,
 }
 
 cl_int clReleaseProgram(cl_program program) {
-  auto func = mace::OpenCLStub::Get().clReleaseProgram;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseProgram;
   if (func != nullptr) {
     return func(program);
   } else {
@@ -615,7 +634,7 @@ cl_int clReleaseProgram(cl_program program) {
 }
 
 cl_int clFlush(cl_command_queue command_queue) {
-  auto func = mace::OpenCLStub::Get().clFlush;
+  auto func = mace::OpenCLLibraryImpl::Get().clFlush;
   if (func != nullptr) {
     return func(command_queue);
   } else {
@@ -624,7 +643,7 @@ cl_int clFlush(cl_command_queue command_queue) {
 }
 
 cl_int clFinish(cl_command_queue command_queue) {
-  auto func = mace::OpenCLStub::Get().clFinish;
+  auto func = mace::OpenCLLibraryImpl::Get().clFinish;
   if (func != nullptr) {
     return func(command_queue);
   } else {
@@ -637,7 +656,7 @@ cl_int clGetProgramInfo(cl_program program,
                         size_t param_value_size,
                         void *param_value,
                         size_t *param_value_size_ret) {
-  auto func = mace::OpenCLStub::Get().clGetProgramInfo;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetProgramInfo;
   if (func != nullptr) {
     return func(program, param_name, param_value_size, param_value,
                 param_value_size_ret);
@@ -649,7 +668,7 @@ cl_int clGetProgramInfo(cl_program program,
 cl_kernel clCreateKernel(cl_program program,
                          const char *kernel_name,
                          cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateKernel;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateKernel;
   if (func != nullptr) {
     return func(program, kernel_name, errcode_ret);
   } else {
@@ -661,7 +680,7 @@ cl_kernel clCreateKernel(cl_program program,
 }
 
 cl_int clRetainKernel(cl_kernel kernel) {
-  auto func = mace::OpenCLStub::Get().clRetainKernel;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainKernel;
   if (func != nullptr) {
     return func(kernel);
   } else {
@@ -674,7 +693,7 @@ cl_mem clCreateBuffer(cl_context context,
                       size_t size,
                       void *host_ptr,
                       cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateBuffer;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateBuffer;
   if (func != nullptr) {
     return func(context, flags, size, host_ptr, errcode_ret);
   } else {
@@ -690,7 +709,7 @@ cl_program clCreateProgramWithSource(cl_context context,
                                      const char **strings,
                                      const size_t *lengths,
                                      cl_int *errcode_ret) {
-  auto func = mace::OpenCLStub::Get().clCreateProgramWithSource;
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateProgramWithSource;
   if (func != nullptr) {
     return func(context, count, strings, lengths, errcode_ret);
   } else {
@@ -702,7 +721,7 @@ cl_program clCreateProgramWithSource(cl_context context,
 }
 
 cl_int clReleaseKernel(cl_kernel kernel) {
-  auto func = mace::OpenCLStub::Get().clReleaseKernel;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseKernel;
   if (func != nullptr) {
     return func(kernel);
   } else {
@@ -715,7 +734,7 @@ cl_int clGetDeviceIDs(cl_platform_id platform,
                       cl_uint num_entries,
                       cl_device_id *devices,
                       cl_uint *num_devices) {
-  auto func = mace::OpenCLStub::Get().clGetDeviceIDs;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetDeviceIDs;
   if (func != nullptr) {
     return func(platform, device_type, num_entries, devices, num_devices);
   } else {
@@ -728,7 +747,7 @@ cl_int clGetDeviceInfo(cl_device_id device,
                        size_t param_value_size,
                        void *param_value,
                        size_t *param_value_size_ret) {
-  auto func = mace::OpenCLStub::Get().clGetDeviceInfo;
+  auto func = mace::OpenCLLibraryImpl::Get().clGetDeviceInfo;
   if (func != nullptr) {
     return func(device, param_name, param_value_size, param_value,
                 param_value_size_ret);
@@ -738,7 +757,7 @@ cl_int clGetDeviceInfo(cl_device_id device,
 }
 
 cl_int clRetainDevice(cl_device_id device) {
-  auto func = mace::OpenCLStub::Get().clRetainDevice;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainDevice;
   if (func != nullptr) {
     return func(device);
   } else {
@@ -747,7 +766,7 @@ cl_int clRetainDevice(cl_device_id device) {
 }
 
 cl_int clReleaseDevice(cl_device_id device) {
-  auto func = mace::OpenCLStub::Get().clReleaseDevice;
+  auto func = mace::OpenCLLibraryImpl::Get().clReleaseDevice;
   if (func != nullptr) {
     return func(device);
   } else {
@@ -756,7 +775,7 @@ cl_int clReleaseDevice(cl_device_id device) {
 }
 
 cl_int clRetainEvent(cl_event event) {
-  auto func = mace::OpenCLStub::Get().clRetainEvent;
+  auto func = mace::OpenCLLibraryImpl::Get().clRetainEvent;
   if (func != nullptr) {
     return func(event);
   } else {

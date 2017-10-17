@@ -48,20 +48,30 @@ namespace mace {
 class Tensor {
  public:
   Tensor()
-      : alloc_(cpu_allocator()), size_(0), dtype_(DT_FLOAT), data_(nullptr){};
+      : alloc_(GetDeviceAllocator(DeviceType::CPU)),
+        size_(0),
+        dtype_(DT_FLOAT),
+        buffer_(nullptr),
+        data_(nullptr){};
 
-  Tensor(Allocator* a, DataType type)
-      : alloc_(a), size_(0), dtype_(type), data_(nullptr){};
+  Tensor(Allocator *alloc, DataType type)
+      : alloc_(alloc),
+        size_(0),
+        dtype_(type),
+        buffer_(nullptr),
+        data_(nullptr){};
 
   ~Tensor() {
-    if (alloc_ && data_.get()) {
-      data_.reset();
+    MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before destroy");
+    if (buffer_ != nullptr) {
+      MACE_CHECK_NOTNULL(alloc_);
+      alloc_->Delete(buffer_);
     }
   }
 
   inline DataType dtype() const { return dtype_; }
 
-  inline const vector<index_t>& shape() const { return shape_; }
+  inline const vector<index_t> &shape() const { return shape_; }
 
   inline index_t dim_size() const { return shape_.size(); }
 
@@ -72,69 +82,93 @@ class Tensor {
 
   inline index_t size() const { return size_; }
 
-  inline const void* raw_data() const {
-    MACE_CHECK(data_.get() || size_ == 0);
-    return data_.get();
-  }
+  inline const bool OnHost() const { return alloc_->OnHost(); }
 
-  template <typename T>
-  inline const T* data() const {
-    MACE_CHECK(
-        data_.get() || size_ == 0,
-        "The tensor is of non-zero shape, but its data is not allocated yet. ");
-    return static_cast<T*>(data_.get());
-  }
-
-  inline void* raw_mutable_data() {
-    if (data_.get() || size_ == 0) {
-      return data_.get();
-    } else {
-      CASES(dtype_, data_.reset(alloc_->New(size_ * sizeof(T)),
-                                [this](void* ptr) { alloc_->Delete(ptr); }));
-      return data_.get();
+  /*
+   * Map the device buffer as CPU buffer to access the data, unmap must be
+   * called later
+   */
+  inline void Map() {
+    if (!OnHost()) {
+      MACE_CHECK(buffer_ != nullptr && data_ == nullptr);
+      data_ = alloc_->Map(buffer_, size_ * SizeOfType());
     }
   }
 
-  template <typename T>
-  inline T* mutable_data() {
-    if (size_ == 0 || data_.get()) {
-      return static_cast<T*>(data_.get());
+  /*
+   *  Unmap the device buffer
+   */
+  inline void Unmap() {
+    if (!OnHost()) {
+      MACE_CHECK(buffer_ != nullptr && data_ != nullptr);
+      alloc_->Unmap(buffer_, data_);
+      data_ = nullptr;
     }
-    return static_cast<T*>(raw_mutable_data());
   }
 
-  inline void Resize(const vector<index_t>& shape) {
+  void *buffer() const { return buffer_; }
+
+  inline const void *raw_data() const {
+    void *data = MappedBuffer();
+    MACE_CHECK(data != nullptr || size_ == 0,
+               "The tensor is of non-zero shape, but its data is not allocated "
+               "or mapped yet.");
+    return data;
+  }
+
+  template <typename T>
+  inline const T *data() const {
+    return static_cast<const T *>(raw_data());
+  }
+
+  inline void *raw_mutable_data() {
+    void *data = MappedBuffer();
+    MACE_CHECK(data != nullptr || size_ == 0,
+               "The tensor is of non-zero shape, but its data is not allocated "
+               "or mapped yet.");
+    return data;
+  }
+
+  template <typename T>
+  inline T *mutable_data() {
+    return static_cast<T *>(raw_mutable_data());
+  }
+
+  inline void Resize(const vector<index_t> &shape) {
     shape_ = shape;
     index_t size = NumElements();
     if (size_ != size) {
       size_ = size;
-      data_.reset();
+      MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
+      alloc_->Delete(buffer_);
+      CASES(dtype_, buffer_ = alloc_->New(size_ * sizeof(T)));
     }
   }
 
-  inline void ResizeLike(const Tensor& other) { Resize(other.shape()); }
+  inline void ResizeLike(const Tensor &other) { Resize(other.shape()); }
 
-  inline void ResizeLike(const Tensor* other) { Resize(other->shape()); }
+  inline void ResizeLike(const Tensor *other) { Resize(other->shape()); }
 
   template <typename T>
-  inline void Copy(const T* src, index_t size) {
+  inline void Copy(const T *src, index_t size) {
     MACE_CHECK(size == size_, "copy src and dst with different size.");
-    CopyBytes(static_cast<const void*>(src), sizeof(T) * size);
+    CopyBytes(static_cast<const void *>(src), sizeof(T) * size);
   }
 
   template <typename SrcType, typename DstType>
-  inline void CopyWithCast(const SrcType* src, size_t size) {
+  inline void CopyWithCast(const SrcType *src, size_t size) {
     MACE_CHECK(static_cast<index_t>(size) == size_,
                "copy src and dst with different size.");
     unique_ptr<DstType[]> buffer(new DstType[size]);
     for (size_t i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
     }
-    CopyBytes(static_cast<const void*>(buffer.get()), sizeof(DstType) * size);
+    CopyBytes(static_cast<const void *>(buffer.get()), sizeof(DstType) * size);
   }
 
-  inline void CopyBytes(const void* src, size_t size) {
-    alloc_->CopyBytes(raw_mutable_data(), src, size);
+  inline void CopyBytes(const void *src, size_t size) {
+    MappingGuard map_this(this);
+    memcpy(raw_mutable_data(), src, size);
   }
 
   inline void DebugPrint() const {
@@ -159,13 +193,25 @@ class Tensor {
     return type_size;
   }
 
-  inline void Copy(const Tensor& other) {
+  inline void Copy(Tensor &other) {
     alloc_ = other.alloc_;
     dtype_ = other.dtype_;
     ResizeLike(other);
-    const void* other_data = other.raw_data();
-    memcpy(raw_mutable_data(), other_data, size_ * SizeOfType());
+    MappingGuard map_other(&other);
+    CopyBytes(other.raw_data(), size_ * SizeOfType());
   }
+
+  class MappingGuard {
+    public:
+      MappingGuard(Tensor *tensor) : tensor_(tensor) {
+        MACE_ASSERT(tensor_ != nullptr);
+        tensor_->Map();
+      }
+      ~MappingGuard() { tensor_->Unmap(); }
+
+    private:
+      Tensor *tensor_;
+  };
 
  private:
   inline int64_t NumElements() const {
@@ -173,10 +219,21 @@ class Tensor {
                            std::multiplies<int64_t>());
   }
 
-  Allocator* alloc_;
+  inline void *MappedBuffer() const {
+    if (OnHost()) {
+      return buffer_;
+    }
+    return data_;
+  }
+
+  Allocator *alloc_;
   index_t size_;
   DataType dtype_;
-  std::shared_ptr<void> data_;
+  // Raw buffer, must be mapped as host accessable data before
+  // read or write
+  void *buffer_;
+  // Mapped buffer
+  void *data_;
   vector<index_t> shape_;
 
   DISABLE_COPY_AND_ASSIGN(Tensor);
