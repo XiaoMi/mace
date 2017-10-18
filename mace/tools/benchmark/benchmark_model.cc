@@ -269,7 +269,7 @@ int Main(int argc, char **argv) {
   // Load inputs
   for (size_t i = 0; i < inputs_count; ++i) {
     Tensor *input_tensor =
-        ws.CreateTensor(input_layers[i], cpu_allocator(), DT_FLOAT);
+        ws.CreateTensor(input_layers[i], GetDeviceAllocator(DeviceType::CPU), DT_FLOAT);
     vector<index_t> shapes;
     str_util::SplitAndParseToInts(input_layer_shapes[i], ',', &shapes);
     input_tensor->Resize(shapes);

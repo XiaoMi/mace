@@ -28,14 +28,14 @@ class OpenCLRuntime {
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
-  cl::Program GetProgram(const std::string &name);
+  cl::Program &program();
 
  private:
   cl::Context context_;
   cl::CommandQueue command_queue_;
   cl::Device device_;
-  std::map<std::string, cl::Program> programs_;
-  std::mutex program_lock_;
+  cl::Program program_;
+  std::once_flag build_flag_;
 };
 
 }  // namespace mace

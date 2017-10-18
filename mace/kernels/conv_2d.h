@@ -19,27 +19,26 @@ struct Conv2dFunctor {
                 const int *dilations)
       : strides_(strides), paddings_(paddings), dilations_(dilations) {}
 
-  void operator()(const T *input,  // NCHW
-                  const index_t *input_shape,
-                  const T *filter,  // c_out, c_in, kernel_h, kernel_w
-                  const index_t *filter_shape,
-                  const T *bias,  // c_out
-                  T *output,      // NCHW
-                  const index_t *output_shape) {
+  void operator()(const Tensor *input,
+                  const Tensor *filter,
+                  const Tensor *bias,
+                  Tensor *output) {
+    MACE_CHECK_NOTNULL(input);
+    MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-    index_t batch = output_shape[0];
-    index_t channels = output_shape[1];
-    index_t height = output_shape[2];
-    index_t width = output_shape[3];
+    index_t batch = output->shape()[0];
+    index_t channels = output->shape()[1];
+    index_t height = output->shape()[2];
+    index_t width = output->shape()[3];
 
-    index_t input_batch = input_shape[0];
-    index_t input_channels = input_shape[1];
-    index_t input_height = input_shape[2];
-    index_t input_width = input_shape[3];
+    index_t input_batch = input->shape()[0];
+    index_t input_channels = input->shape()[1];
+    index_t input_height = input->shape()[2];
+    index_t input_width = input->shape()[3];
 
-    index_t kernel_h = filter_shape[2];
-    index_t kernel_w = filter_shape[3];
+    index_t kernel_h = filter->shape()[2];
+    index_t kernel_w = filter->shape()[3];
 
     int stride_h = strides_[0];
     int stride_w = strides_[1];
@@ -57,17 +56,26 @@ struct Conv2dFunctor {
 
     index_t kernel_size = input_channels * kernel_h * kernel_w;
 
+    Tensor::MappingGuard input_mapper(input);
+    Tensor::MappingGuard filter_mapper(filter);
+    Tensor::MappingGuard bias_mapper(bias);
+    Tensor::MappingGuard output_mapper(output);
+    auto input_data = input->data<T>();
+    auto filter_data = filter->data<T>();
+    auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
+    auto output_data = output->mutable_data<T>();
+
 #pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n) {
       for (int c = 0; c < channels; ++c) {
-        T bias_channel = bias ? bias[c] : 0;
+        T bias_channel = bias_data ? bias_data[c] : 0;
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
                              c * height * width + h * width + w;
-            output[offset] = bias_channel;
+            output_data[offset] = bias_channel;
             T sum = 0;
-            const T *filter_ptr = filter + c * kernel_size;
+            const T *filter_ptr = filter_data + c * kernel_size;
             for (int inc = 0; inc < input_channels; ++inc) {
               for (int kh = 0; kh < kernel_h; ++kh) {
                 for (int kw = 0; kw < kernel_w; ++kw) {
@@ -86,13 +94,13 @@ struct Conv2dFunctor {
                         n * input_channels * input_height * input_width +
                         inc * input_height * input_width + inh * input_width +
                         inw;
-                    sum += input[input_offset] * *filter_ptr;
+                    sum += input_data[input_offset] * *filter_ptr;
                   }
                   ++filter_ptr;
                 }
               }
             }
-            output[offset] += sum;
+            output_data[offset] += sum;
           }
         }
       }
@@ -105,16 +113,12 @@ struct Conv2dFunctor {
 };
 
 template <>
-void Conv2dFunctor<DeviceType::NEON, float>::operator()(
-    const float *input,
-    const index_t *input_shape,
-    const float *filter,
-    const index_t *filter_shape,
-    const float *bias,
-    float *output,
-    const index_t *output_shape);
+void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
+                                                        const Tensor *filter,
+                                                        const Tensor *bias,
+                                                        Tensor *output);
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_CONV_2D_H_

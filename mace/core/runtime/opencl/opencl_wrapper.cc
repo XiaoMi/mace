@@ -195,8 +195,8 @@ OpenCLLibraryImpl &OpenCLLibraryImpl::Get() {
 bool OpenCLLibraryImpl::Load() {
   if (loaded()) return true;
 
-  // TODO (heliangliang) Make this configurable
-  // TODO (heliangliang) Benchmark 64 bit overhead
+  // TODO(heliangliang) Make this configurable
+  // TODO(heliangliang) Benchmark 64 bit overhead
   static const std::vector<std::string> paths = {
 #if defined(__aarch64__)
     // Qualcomm Adreno

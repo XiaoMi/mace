@@ -48,7 +48,7 @@ class OpsTestNet {
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
-        ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
     input->Resize(shape);
     T *input_data = input->mutable_data<T>();
     MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
@@ -60,7 +60,7 @@ class OpsTestNet {
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
-        ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
     input->Resize(shape);
     T *input_data = input->mutable_data<T>();
     std::fill(input_data, input_data + input->size(), data);
@@ -71,7 +71,7 @@ class OpsTestNet {
                       const std::vector<index_t> &shape,
                       bool positive = false) {
     Tensor *input =
-        ws_.CreateTensor(name, cpu_allocator(), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
     input->Resize(shape);
     float *input_data = input->mutable_data<T>();
 
@@ -206,7 +206,7 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
 template <typename T>
 unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                 const std::vector<T> &data) {
-  unique_ptr<Tensor> res(new Tensor(cpu_allocator(), DataTypeToEnum<T>::v()));
+  unique_ptr<Tensor> res(new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
   T *input_data = res->mutable_data<T>();
   memcpy(input_data, data.data(), data.size() * sizeof(T));

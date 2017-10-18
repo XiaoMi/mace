@@ -11,8 +11,8 @@ load("//mace:mace.bzl", "if_android")
 
 cc_library(
     name = "kernels",
-    srcs = glob(["*.cc"]) + if_android(glob(["neon/*.cc"])),
-    hdrs = glob(["*.h"]) + if_android(glob(["neon/*.h"])),
+    srcs = glob(["*.cc"]) + if_android(glob(["neon/*.cc", "opencl/*.cc"])),
+    hdrs = glob(["*.h"]) + if_android(glob(["neon/*.h", "opencl/*.h"])),
     copts = [
         "-std=c++11",
         "-fopenmp",
@@ -20,6 +20,7 @@ cc_library(
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
+        "//mace/core:opencl_runtime",
         "//mace/utils",
     ],
 )

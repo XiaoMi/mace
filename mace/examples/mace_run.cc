@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
   Workspace ws;
   ws.LoadModelTensor(net_def, DeviceType::CPU);
   Tensor *input_tensor =
-      ws.CreateTensor(input_node + ":0", cpu_allocator(), DT_FLOAT);
+      ws.CreateTensor(input_node + ":0", GetDeviceAllocator(DeviceType::CPU), DT_FLOAT);
   input_tensor->Resize(shape);
   float *input_data = input_tensor->mutable_data<float>();
 
