@@ -31,7 +31,7 @@ void OpenCLAllocator::Delete(void *buffer) {
 void *OpenCLAllocator::Map(void *buffer, size_t nbytes) {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = OpenCLRuntime::Get()->command_queue();
-  // TODO (heliangliang) Non-blocking call
+  // TODO(heliangliang) Non-blocking call
   cl_int error;
   void *mapped_ptr =
       queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0,

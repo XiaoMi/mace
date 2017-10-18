@@ -40,7 +40,7 @@ int main() {
     step[0] = step_size;
   }
 
-  auto program = runtime->GetProgram("simple_add.cl");
+  auto program = runtime->program();
 
   auto simple_add =
       cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>(

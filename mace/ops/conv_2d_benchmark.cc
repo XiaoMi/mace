@@ -67,9 +67,10 @@ static void Conv2d(int iters,
   BENCHMARK(                                                                                       \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)       \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU); \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);
+#define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON); \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128, float);  // Test bad alignments

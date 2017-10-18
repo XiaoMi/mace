@@ -4,7 +4,11 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <memory>
 #include <mutex>
+
+#include <dirent.h>
+#include <errno.h>
 
 #include "mace/core/logging.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -13,8 +17,7 @@
 namespace mace {
 namespace {
 
-bool ReadSourceFile(const char *filename, std::string *content) {
-  MACE_CHECK_NOTNULL(filename);
+bool ReadSourceFile(const std::string &filename, std::string *content) {
   MACE_CHECK_NOTNULL(content);
   *content = "";
   std::ifstream ifs(filename, std::ifstream::in);
@@ -31,26 +34,50 @@ bool ReadSourceFile(const char *filename, std::string *content) {
 }
 
 bool BuildProgram(OpenCLRuntime *runtime,
-                  const char *filename,
+                  const std::string &path,
                   cl::Program *program) {
-  MACE_CHECK_NOTNULL(filename);
   MACE_CHECK_NOTNULL(program);
 
-  std::string kernel_code;
-  if (!ReadSourceFile(filename, &kernel_code)) {
-    LOG(ERROR) << "Failed to read kernel source " << filename;
-    return false;
-  }
+  auto closer = [](DIR *d) {
+    if (d != nullptr) closedir(d);
+  };
+  std::unique_ptr<DIR, decltype(closer)> dir(opendir(path.c_str()), closer);
+  MACE_CHECK_NOTNULL(dir.get());
 
+  const std::string kSourceSuffix = ".cl";
   cl::Program::Sources sources;
-  sources.push_back({kernel_code.c_str(), kernel_code.length()});
+  errno = 0;
+  dirent *entry = readdir(dir.get());
+  MACE_CHECK(errno == 0);
+  while (entry != nullptr) {
+    if (entry->d_type == DT_REG) {
+      std::string d_name(entry->d_name);
+      if (d_name.size() > kSourceSuffix.size() &&
+          d_name.compare(d_name.size() - kSourceSuffix.size(),
+                         kSourceSuffix.size(), kSourceSuffix) == 0) {
+        std::string filename = path + d_name;
+        std::string kernel_source;
+        MACE_CHECK(ReadSourceFile(filename, &kernel_source));
+        sources.push_back({kernel_source.c_str(), kernel_source.length()});
+      }
+    }
+    entry = readdir(dir.get());
+    MACE_CHECK(errno == 0);
+  };
 
   *program = cl::Program(runtime->context(), sources);
-  if (program->build({runtime->device()}) != CL_SUCCESS) {
-    LOG(INFO) << "Error building: "
-              << program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
-    return false;
+  std::string build_options = "-Werror -cl-mad-enable -I" + path;
+  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+  if (program->build({runtime->device()}, build_options.c_str()) != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(FATAL) << "Build program failed";
   }
+
   return true;
 }
 
@@ -123,24 +150,16 @@ cl::Device &OpenCLRuntime::device() { return device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return command_queue_; }
 
-cl::Program OpenCLRuntime::GetProgram(const std::string &name) {
-  static const char *kernel_source_path = getenv("MACE_KERNEL_SOURCE_PATH");
-  std::string filename = name;
-  if (kernel_source_path != nullptr) {
-    filename = kernel_source_path + name;
-  }
+cl::Program &OpenCLRuntime::program() {
+  // TODO(heliangliang) Support binary format
+  static const char *kernel_path = getenv("MACE_KERNEL_PATH");
+  std::string path(kernel_path == nullptr ? "" : kernel_path);
 
-  std::lock_guard<std::mutex> lock(program_lock_);
-  // TODO (heliangliang) Support binary format
-  auto iter = programs_.find(name);
-  if (iter != programs_.end()) {
-    return iter->second;
-  } else {
-    cl::Program program;
-    MACE_CHECK(BuildProgram(this, filename.c_str(), &program));
-    programs_.emplace(name, program);
-    return program;
-  }
+  std::call_once(build_flag_, [this, &path]() {
+    MACE_CHECK(BuildProgram(this, path, &program_));
+  });
+
+  return program_;
 }
 
 }  // namespace mace

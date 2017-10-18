@@ -88,7 +88,7 @@ class Tensor {
    * Map the device buffer as CPU buffer to access the data, unmap must be
    * called later
    */
-  inline void Map() {
+  inline void Map() const {
     if (!OnHost()) {
       MACE_CHECK(buffer_ != nullptr && data_ == nullptr);
       data_ = alloc_->Map(buffer_, size_ * SizeOfType());
@@ -98,7 +98,7 @@ class Tensor {
   /*
    *  Unmap the device buffer
    */
-  inline void Unmap() {
+  inline void Unmap() const {
     if (!OnHost()) {
       MACE_CHECK(buffer_ != nullptr && data_ != nullptr);
       alloc_->Unmap(buffer_, data_);
@@ -187,7 +187,7 @@ class Tensor {
     LOG(INFO) << os.str();
   }
 
-  inline size_t SizeOfType() {
+  inline size_t SizeOfType() const {
     size_t type_size = 0;
     CASES(dtype_, type_size = sizeof(T));
     return type_size;
@@ -203,14 +203,15 @@ class Tensor {
 
   class MappingGuard {
    public:
-    MappingGuard(Tensor *tensor) : tensor_(tensor) {
-      MACE_ASSERT(tensor_ != nullptr);
-      tensor_->Map();
+    MappingGuard(const Tensor *tensor) : tensor_(tensor) {
+      if (tensor_ != nullptr) tensor_->Map();
     }
-    ~MappingGuard() { tensor_->Unmap(); }
+    ~MappingGuard() {
+      if (tensor_ != nullptr) tensor_->Unmap();
+    }
 
    private:
-    Tensor *tensor_;
+    const Tensor *tensor_;
   };
 
  private:
@@ -233,7 +234,7 @@ class Tensor {
   // read or write
   void *buffer_;
   // Mapped buffer
-  void *data_;
+  mutable void *data_;
   vector<index_t> shape_;
 
   DISABLE_COPY_AND_ASSIGN(Tensor);

@@ -12,4 +12,6 @@ REGISTER_CPU_OPERATOR(Conv2D, Conv2dOp<DeviceType::CPU, float>);
 REGISTER_NEON_OPERATOR(Conv2D, Conv2dOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(Conv2D, Conv2dOp<DeviceType::OPENCL, float>);
+
 }  // namespace mace
