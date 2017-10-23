@@ -24,12 +24,12 @@ static void BatchNorm(
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<T>("Input", {batch, channels, height, width});
-  net.AddRandomInput<T>("Scale", {channels});
-  net.AddRandomInput<T>("Offset", {channels});
-  net.AddRandomInput<T>("Mean", {channels});
-  net.AddRandomInput<T>("Var", {channels}, true);
-  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
+  net.AddRandomInput<DeviceType::CPU, T>("Input", {batch, channels, height, width});
+  net.AddRandomInput<DeviceType::CPU, T>("Scale", {channels});
+  net.AddRandomInput<DeviceType::CPU, T>("Offset", {channels});
+  net.AddRandomInput<DeviceType::CPU, T>("Mean", {channels});
+  net.AddRandomInput<DeviceType::CPU, T>("Var", {channels}, true);
+  net.AddInputFromArray<DeviceType::CPU, float>("Epsilon", {}, {1e-3});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

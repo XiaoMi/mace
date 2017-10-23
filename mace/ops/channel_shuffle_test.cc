@@ -19,7 +19,7 @@ TEST_F(ChannelShuffleOpTest, C8G4) {
   net.AddIntArg("group", 4);
 
   // Add input data
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 8, 1, 2},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 

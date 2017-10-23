@@ -18,7 +18,7 @@ TEST_F(ReluOpTest, ReluOp) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<float>("Input", {1, 2, 3, 5});
+  net.AddRandomInput<DeviceType::CPU, float>("Input", {1, 2, 3, 5});
 
   // Run
   net.RunOp();
@@ -41,7 +41,7 @@ TEST_F(ReluOpTest, ReluOpWithMax) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<float>("Input", {1, 2, 3, 5});
+  net.AddRandomInput<DeviceType::CPU, float>("Input", {1, 2, 3, 5});
   net.AddFloatArg("max_limit", 0.5);
 
   // Run

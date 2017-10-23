@@ -37,7 +37,7 @@ static void Pooling(int iters,
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddRandomInput<float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

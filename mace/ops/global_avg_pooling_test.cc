@@ -21,7 +21,7 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
   for (int i = 0; i < 147; ++i) {
     input[i] = i / 49 + 1;
   }
-  net.AddInputFromArray<float>("Input", {1, 3, 7, 7}, input);
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 7, 7}, input);
 
   // Run
   net.RunOp();
@@ -45,7 +45,7 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_NEON) {
   for (int i = 0; i < 147; ++i) {
     input[i] = i / 49 + 1;
   }
-  net.AddInputFromArray<float>("Input", {1, 3, 7, 7}, input);
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 7, 7}, input);
 
   // Run
   net.RunOp(DeviceType::NEON);

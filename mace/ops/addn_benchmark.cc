@@ -21,7 +21,7 @@ static void AddNBenchmark(int iters, int n, int size) {
 
   // Add input data
   for (int i = 0; i < n; ++i) {
-    net.AddRandomInput<float>(internal::MakeString("Input", i).c_str(), {size});
+    net.AddRandomInput<DeviceType::CPU, float>(internal::MakeString("Input", i).c_str(), {size});
   }
 
   // Warm-up

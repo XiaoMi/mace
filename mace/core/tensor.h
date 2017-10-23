@@ -82,6 +82,11 @@ class Tensor {
 
   inline index_t size() const { return size_; }
 
+  inline int64_t NumElements() const {
+    return std::accumulate(shape_.begin(), shape_.end(), 1,
+                           std::multiplies<int64_t>());
+  }
+
   inline const bool OnHost() const { return alloc_->OnHost(); }
 
   /*
@@ -215,11 +220,6 @@ class Tensor {
   };
 
  private:
-  inline int64_t NumElements() const {
-    return std::accumulate(shape_.begin(), shape_.end(), 1,
-                           std::multiplies<int64_t>());
-  }
-
   inline void *MappedBuffer() const {
     if (OnHost()) {
       return buffer_;

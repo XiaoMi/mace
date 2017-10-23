@@ -23,8 +23,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWOAlignCorners) {
   // Add input data
   vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<float>("Input", {1, 3, 2, 4}, input);
-  net.AddInputFromArray<index_t>("OutSize", {2}, {1, 2});
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 2, 4}, input);
+  net.AddInputFromArray<DeviceType::CPU, index_t>("OutSize", {2}, {1, 2});
 
   // Run
   net.RunOp();
@@ -50,8 +50,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   // Add input data
   vector<float> input(24);
   std::iota(begin(input), end(input), 0);
-  net.AddInputFromArray<float>("Input", {1, 3, 2, 4}, input);
-  net.AddInputFromArray<index_t>("OutSize", {2}, {1, 2});
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 2, 4}, input);
+  net.AddInputFromArray<DeviceType::CPU, index_t>("OutSize", {2}, {1, 2});
 
   // Run
   net.RunOp();

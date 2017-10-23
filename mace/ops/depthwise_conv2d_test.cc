@@ -26,13 +26,13 @@ TEST_F(DepthwiseConv2dOpTest, Simple_VALID) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>("Input", {1, 2, 2, 3},
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 2, 3},
                                {1, 3, 5, 7, 9, 11, 2, 4, 6, 8, 10, 12});
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Filter", {2, 2, 2, 2},
       {1.0f, 5.0f, 9.0f, 13.0f, 2.0f, 6.0f, 10.0f, 14.0f, 3.0f, 7.0f, 11.0f,
        15.0f, 4.0f, 8.0f, 12.0f, 16.0f});
-  net.AddInputFromArray<float>("Bias", {4}, {.1f, .2f, .3f, .4f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {4}, {.1f, .2f, .3f, .4f});
   // Run
   net.RunOp();
 
@@ -71,10 +71,10 @@ TEST_F(DepthwiseConv2dOpTest, ConvNxNS12) {
     net.AddIntsArg("dilations", {1, 1});
 
     // Add input data
-    net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<float>("Filter",
+    net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<DeviceType::CPU, float>("Filter",
                               {multiplier, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<float>("Bias", {multiplier * input_channels});
+    net.AddRandomInput<DeviceType::CPU, float>("Bias", {multiplier * input_channels});
     // run cpu
     net.RunOp();
 

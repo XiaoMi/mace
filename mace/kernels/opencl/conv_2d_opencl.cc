@@ -41,7 +41,7 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
     return;
   }
 
-  MACE_CHECK(paddings_[0] == 1 && paddings_[1] == 1, "Padding not supported");
+  MACE_CHECK(paddings_[0] == 0 && paddings_[1] == 0, "Padding not supported");
 
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
   conv2d_func(input, filter, bias, output);

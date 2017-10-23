@@ -23,13 +23,13 @@ TEST_F(BatchNormOpTest, SimpleCPU) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddInputFromArray<float>("Input", {1, 1, 6, 2},
+  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 1, 6, 2},
                                {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
-  net.AddInputFromArray<float>("Scale", {1}, {4.0f});
-  net.AddInputFromArray<float>("Offset", {1}, {2.0});
-  net.AddInputFromArray<float>("Mean", {1}, {10});
-  net.AddInputFromArray<float>("Var", {1}, {11.67f});
-  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
+  net.AddInputFromArray<DeviceType::CPU, float>("Scale", {1}, {4.0f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Offset", {1}, {2.0});
+  net.AddInputFromArray<DeviceType::CPU, float>("Mean", {1}, {10});
+  net.AddInputFromArray<DeviceType::CPU, float>("Var", {1}, {11.67f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Epsilon", {}, {1e-3});
 
   // Run
   net.RunOp();
@@ -63,12 +63,12 @@ TEST_F(BatchNormOpTest, SimpleNeon) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<float>("Input", {batch, channels, height, width});
-  net.AddRandomInput<float>("Scale", {channels});
-  net.AddRandomInput<float>("Offset", {channels});
-  net.AddRandomInput<float>("Mean", {channels});
-  net.AddRandomInput<float>("Var", {channels}, true);
-  net.AddInputFromArray<float>("Epsilon", {}, {1e-3});
+  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<DeviceType::CPU, float>("Scale", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Mean", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Var", {channels}, true);
+  net.AddInputFromArray<DeviceType::CPU, float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();
