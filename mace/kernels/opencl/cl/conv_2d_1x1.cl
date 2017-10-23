@@ -28,20 +28,11 @@ void kernel conv_2d_1x1_naive(global const float *input, /* n, c, h, w */
       for (int out_chan = out_chan_begin; out_chan < out_chan_end; ++out_chan) {
         float weights = filter[out_chan * in_chan_num + in_chan];
         float *output_ptr = output_base + out_chan * pixel_num;
-        /* TODO fix vload/vstore */
-        /*
         for (int p = 0; p < 2; ++p) {
-          float4 in = vload4(p * 4, input_ptr);
-          float4 out = vload4(p * 4, output_ptr);
+          float4 in = vload4(p, input_ptr);
+          float4 out = vload4(p, output_ptr);
           out += in * weights;
-          vstore4(out, p * 4, output_ptr);
-        }
-        */
-        for (int p = 0; p < 8; ++p) {
-          float in = input_ptr[p];
-          float out = output_ptr[p];
-          out += in * weights;
-          output_ptr[p] = out;
+          vstore4(out, p, output_ptr);
         }
       }
     } else {

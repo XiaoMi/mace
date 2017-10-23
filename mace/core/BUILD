@@ -14,32 +14,17 @@ cc_library(
     srcs = glob([
         "runtime/opencl/cl.hpp",
         "runtime/opencl/cl2.hpp",
-        "runtime/opencl/opencl_allocator.cc",
-        "runtime/opencl/opencl_wrapper.cc",
-        "runtime/opencl/opencl_runtime.cc",
+        "runtime/opencl/*.cc",
     ]),
-    hdrs = [
-        "runtime/opencl/opencl_allocator.h",
-        "runtime/opencl/opencl_runtime.h",
-        "runtime/opencl/opencl_wrapper.h",
-    ],
+    hdrs = glob([
+        "runtime/opencl/*.h",
+    ]),
     copts = ["-std=c++11"],
     deps = [
         "core",
         "@opencl_headers//:opencl20_headers",
     ],
     alwayslink = 1,
-)
-
-cc_binary(
-    name = "opencl_smoketest",
-    srcs = glob([
-        "runtime/opencl/opencl_smoketest.cc",
-    ]),
-    copts = ["-std=c++11"],
-    deps = [
-        "opencl_runtime",
-    ],
 )
 
 cc_library(

@@ -81,7 +81,7 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input, const Tensor *filter,
     cl_int error;
     conv_2d(cl::EnqueueArgs(runtime->command_queue(),
                             cl::NDRange(chan_blk_num, pixel_blk_num),
-                            cl::NullRange),
+                            cl::NDRange(1, 64)),
             *(static_cast<cl::Buffer *>(input->buffer())),
             *(static_cast<cl::Buffer *>(filter->buffer())),
             *(static_cast<cl::Buffer *>(output->buffer())),
