@@ -13,35 +13,35 @@ namespace kernels {
 static constexpr index_t kInputChannelBlockSize = 2;
 static constexpr index_t kOutputChannelBlockSize = 4;
 
-// TODO(heliangliang) fix bad performance
 void AssignBias(Tensor *output, const Tensor *bias) {
-
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
   if (bias == nullptr) {
     auto assign_bias =
-      cl::KernelFunctor<cl::Buffer, float>(program, "assign_f32");
-    int global_size = output->NumElements();
+      cl::KernelFunctor<cl::Buffer, float, int>(program, "assign_v16_f32");
+    index_t pixels = output->NumElements();
+    index_t blocks = (pixels + 15) / 16;
     cl_int error;
     assign_bias(cl::EnqueueArgs(runtime->command_queue(),
-                                cl::NDRange(global_size),
+                                cl::NDRange(blocks),
                                 cl::NullRange),
                 *(static_cast<cl::Buffer *>(output->buffer())),
-                0.0f, error);
+                0.0f, static_cast<int>(pixels), error);
     MACE_CHECK(error == CL_SUCCESS);
   } else {
     auto output_shape = output->shape();
     index_t batch = output_shape[0];
     index_t channels = output_shape[1];
     index_t pixels = output_shape[2] * output_shape[3];
+    index_t blocks = (pixels + 15) / 16;
     MACE_CHECK(channels == bias->shape()[0], "Channels mismatch");
 
     auto assign_bias =
-      cl::KernelFunctor<cl::Buffer, cl::Buffer, int>(program, "assign_vec_f32");
+      cl::KernelFunctor<cl::Buffer, cl::Buffer, int>(program, "assign_3d_v16_f32");
     cl_int error;
     assign_bias(cl::EnqueueArgs(runtime->command_queue(),
-                                cl::NDRange(batch, channels),
-                                cl::NullRange),
+                                cl::NDRange(batch, channels, blocks),
+                                cl::NDRange(1, 8, 128)),
                 *(static_cast<cl::Buffer *>(output->buffer())),
                 *(static_cast<cl::Buffer *>(bias->buffer())),
                 static_cast<int>(pixels),
