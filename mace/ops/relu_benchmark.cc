@@ -19,7 +19,7 @@ static void ReluBenchmark(int iters, int size) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<float>("Input", {size});
+  net.AddRandomInput<DeviceType::CPU, float>("Input", {size});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

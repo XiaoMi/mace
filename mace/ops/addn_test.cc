@@ -20,9 +20,9 @@ TEST_F(AddnOpTest, AddnOp) {
       .Finalize(net.operator_def());
 
   // Add input data
-  net.AddRandomInput<float>("Input1", {1, 2, 3, 4});
-  net.AddRandomInput<float>("Input2", {1, 2, 3, 4});
-  net.AddRandomInput<float>("Input3", {1, 2, 3, 4});
+  net.AddRandomInput<DeviceType::CPU, float>("Input1", {1, 2, 3, 4});
+  net.AddRandomInput<DeviceType::CPU, float>("Input2", {1, 2, 3, 4});
+  net.AddRandomInput<DeviceType::CPU, float>("Input3", {1, 2, 3, 4});
 
   // Run
   net.RunOp();

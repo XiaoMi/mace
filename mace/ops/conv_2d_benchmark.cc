@@ -38,10 +38,10 @@ static void Conv2d(int iters,
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddRandomInput<float>("Input", {batch, channels, height, width});
-  net.AddRandomInput<float>("Filter",
+  net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<D, float>("Filter",
                             {output_channels, channels, kernel_h, kernel_w});
-  net.AddRandomInput<float>("Bias", {output_channels});
+  net.AddRandomInput<D, float>("Bias", {output_channels});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

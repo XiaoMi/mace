@@ -43,36 +43,39 @@ class OpsTestNet {
  public:
   OpsTestNet() {}
 
-  template <typename T>
+  template <DeviceType D, typename T>
   void AddInputFromArray(const char *name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
+    Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
     MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
     memcpy(input_data, data.data(), data.size() * sizeof(T));
   }
 
-  template <typename T>
+  template <DeviceType D, typename T>
   void AddRepeatedInput(const char *name,
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
+    Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
     std::fill(input_data, input_data + input->size(), data);
   }
 
-  template <typename T>
+  template <DeviceType D, typename T>
   void AddRandomInput(const char *name,
                       const std::vector<index_t> &shape,
                       bool positive = false) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
+    Tensor::MappingGuard input_mapper(input);
     float *input_data = input->mutable_data<T>();
 
     std::random_device rd;
@@ -274,6 +277,8 @@ struct Expector<T, true> {
   static void Equal(const Tensor &x, const Tensor &y) {
     ASSERT_EQ(x.dtype(), DataTypeToEnum<T>::v());
     AssertSameTypeDims(x, y);
+    Tensor::MappingGuard x_mapper(&x);
+    Tensor::MappingGuard y_mapper(&y);
     auto a = x.data<T>();
     auto b = y.data<T>();
     for (int i = 0; i < x.size(); ++i) {
@@ -284,6 +289,8 @@ struct Expector<T, true> {
   static void Near(const Tensor &x, const Tensor &y, const double abs_err) {
     ASSERT_EQ(x.dtype(), DataTypeToEnum<T>::v());
     AssertSameTypeDims(x, y);
+    Tensor::MappingGuard x_mapper(&x);
+    Tensor::MappingGuard y_mapper(&y);
     auto a = x.data<T>();
     auto b = y.data<T>();
     for (int i = 0; i < x.size(); ++i) {

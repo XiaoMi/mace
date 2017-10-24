@@ -26,9 +26,9 @@ TEST_F(ConcatOpTest, Simple_Horizon) {
   std::vector<float> input1;
   GenerateRandomRealTypeData(input_shape, input1);
   // Add inputs
-  net.AddInputFromArray<float>("Input0", input_shape, input0);
-  net.AddInputFromArray<float>("Input1", input_shape, input1);
-  net.AddInputFromArray<int>("Axis", {}, {0});
+  net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
+  net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
+  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {0});
 
   // Run
   net.RunOp();
@@ -64,9 +64,9 @@ TEST_F(ConcatOpTest, Simple_Vertical) {
   std::vector<float> input1;
   GenerateRandomRealTypeData(input_shape, input1);
   // Add inputs
-  net.AddInputFromArray<float>("Input0", input_shape, input0);
-  net.AddInputFromArray<float>("Input1", input_shape, input1);
-  net.AddInputFromArray<int>("Axis", {}, {1});
+  net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
+  net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
+  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {1});
 
   // Run
   net.RunOp();
@@ -112,10 +112,10 @@ TEST_F(ConcatOpTest, Random) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<float>(("Input" + ToString(i)).c_str(),
+    net.AddInputFromArray<DeviceType::CPU, float>(("Input" + ToString(i)).c_str(),
                                  input_shapes[i], inputs[i]);
   }
-  net.AddInputFromArray<int>("Axis", {}, {axis});
+  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {axis});
 
   // Run
   net.RunOp();

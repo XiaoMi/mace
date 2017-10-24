@@ -117,6 +117,11 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
                                                         Tensor *output);
+template <>
+void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
+                                                          const Tensor *filter,
+                                                          const Tensor *bias,
+                                                          Tensor *output);
 
 }  // namespace kernels
 }  // namespace mace

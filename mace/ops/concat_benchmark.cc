@@ -21,9 +21,9 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
 
   // Add input data
   const int kDim0 = 100;
-  net.AddRandomInput<T>("Input0", {kDim0, dim1});
-  net.AddRandomInput<T>("Input1", {kDim0, dim1});
-  net.AddInputFromArray<int32_t>("Axis", {}, {concat_dim});
+  net.AddRandomInput<DeviceType::CPU, T>("Input0", {kDim0, dim1});
+  net.AddRandomInput<DeviceType::CPU, T>("Input1", {kDim0, dim1});
+  net.AddInputFromArray<DeviceType::CPU, int32_t>("Axis", {}, {concat_dim});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

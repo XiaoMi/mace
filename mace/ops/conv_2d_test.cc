@@ -26,14 +26,14 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 2, 3, 3},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {1}, {0.1f});
 
   // Run
   net.RunOp();
@@ -60,14 +60,14 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 2, 3, 3},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {1}, {0.1f});
 
   // Run
   net.RunOp();
@@ -96,16 +96,16 @@ TEST_F(Conv2dOpTest, Combined) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 2, 5, 5}, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<DeviceType::CPU, float>(
       "Filter", {2, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
        0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f});
-  net.AddInputFromArray<float>("Bias", {2}, {0.1f, 0.2f});
+  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {2}, {0.1f, 0.2f});
 
   // Run
   net.RunOp();
@@ -118,9 +118,10 @@ TEST_F(Conv2dOpTest, Combined) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-TEST_F(Conv2dOpTest, Conv1x1) {
+template <DeviceType D>
+void TestConv1x1() {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
@@ -134,7 +135,7 @@ TEST_F(Conv2dOpTest, Conv1x1) {
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 5, 3, 10},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -143,13 +144,13 @@ TEST_F(Conv2dOpTest, Conv1x1) {
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<float>(
+  net.AddInputFromArray<D, float>(
       "Filter", {2, 5, 1, 1},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f});
-  net.AddInputFromArray<float>("Bias", {2}, {0.1f, 0.2f});
+  net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
   // Run
-  net.RunOp();
+  net.RunOp(D);
 
   // Check
   auto expected = CreateTensor<float>(
@@ -162,6 +163,11 @@ TEST_F(Conv2dOpTest, Conv1x1) {
        10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f, 10.2f});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+}
+
+TEST_F(Conv2dOpTest, Conv1x1) {
+  TestConv1x1<DeviceType::CPU>();
+  TestConv1x1<DeviceType::OPENCL>();
 }
 
 // TODO we need more tests
@@ -192,10 +198,10 @@ TEST_F(Conv2dOpTest, IdleConvNxNS12) {
     net.AddIntsArg("dilations", {1, 1});
 
     // Add input data
-    net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<float>(
+    net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<DeviceType::CPU, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<float>("Bias", {output_channels});
+    net.AddRandomInput<DeviceType::CPU, float>("Bias", {output_channels});
     // run cpu
     net.RunOp();
 
@@ -208,8 +214,8 @@ TEST_F(Conv2dOpTest, IdleConvNxNS12) {
     ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
   };
 
-  for (int kernel_size : {1}) {
-    for (int stride : {1}) {
+  for (int kernel_size : {1, 3, 5}) {
+    for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);
     }
@@ -243,10 +249,10 @@ TEST_F(Conv2dOpTest, DisgustConvNxNS12) {
     net.AddIntsArg("dilations", {1, 1});
 
     // Add input data
-    net.AddRandomInput<float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<float>(
+    net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<DeviceType::CPU, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<float>("Bias", {output_channels});
+    net.AddRandomInput<DeviceType::CPU, float>("Bias", {output_channels});
     // run cpu
     net.RunOp();
 
