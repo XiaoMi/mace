@@ -45,6 +45,22 @@ namespace mace {
   CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, LOG(FATAL) << "Type not set"; \
                      , LOG(FATAL) << "Unexpected type: " << TYPE_ENUM;)
 
+
+namespace numerical_chars {
+inline std::ostream &operator<<(std::ostream &os, char c) {
+  return std::is_signed<char>::value ? os << static_cast<int>(c)
+                                     : os << static_cast<unsigned int>(c);
+}
+
+inline std::ostream &operator<<(std::ostream &os, signed char c) {
+  return os << static_cast<int>(c);
+}
+
+inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
+  return os << static_cast<unsigned int>(c);
+}
+}
+
 class Tensor {
  public:
   Tensor()
@@ -71,6 +87,8 @@ class Tensor {
 
   inline DataType dtype() const { return dtype_; }
 
+  inline void SetDtype(DataType dtype) { dtype_ = dtype; }
+
   inline const vector<index_t> &shape() const { return shape_; }
 
   inline index_t dim_size() const { return shape_.size(); }
@@ -81,6 +99,8 @@ class Tensor {
   }
 
   inline index_t size() const { return size_; }
+
+  inline index_t raw_size() const { return size_ * SizeOfType(); }
 
   inline int64_t NumElements() const {
     return std::accumulate(shape_.begin(), shape_.end(), 1,
@@ -177,6 +197,7 @@ class Tensor {
   }
 
   inline void DebugPrint() const {
+    using namespace numerical_chars;
     std::stringstream os;
     for (int i : shape_) {
       os << i << ", ";

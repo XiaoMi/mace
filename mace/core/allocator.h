@@ -59,9 +59,9 @@ class CPUAllocator : public Allocator {
   }
 
   void Delete(void *data) override { free(data); }
-  void *Map(void *buffer, size_t nbytes) { return buffer; }
-  void Unmap(void *buffer, void *mapper_ptr) {}
-  bool OnHost() { return true; }
+  void *Map(void *buffer, size_t nbytes) override { return buffer; }
+  void Unmap(void *buffer, void *mapper_ptr) override {}
+  bool OnHost() override { return true; }
 };
 
 std::map<int32_t, Allocator *> *gAllocatorRegistry();
