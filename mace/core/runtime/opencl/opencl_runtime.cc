@@ -8,11 +8,9 @@
 #include <mutex>
 
 #include <dirent.h>
-#include <errno.h>
 
 #include "mace/core/logging.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/core/runtime/opencl/opencl_wrapper.h"
 
 namespace mace {
 namespace {
@@ -66,7 +64,7 @@ bool BuildProgram(OpenCLRuntime *runtime,
   };
 
   *program = cl::Program(runtime->context(), sources);
-  std::string build_options = "-Werror -cl-mad-enable -I" + path;
+  std::string build_options = "-Werror -cl-mad-enable -cl-fast-relaxed-math -I" + path;
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
   if (program->build({runtime->device()}, build_options.c_str()) != CL_SUCCESS) {
     if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
