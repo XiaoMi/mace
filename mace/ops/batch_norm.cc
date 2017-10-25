@@ -12,4 +12,6 @@ REGISTER_CPU_OPERATOR(BatchNorm, BatchNormOp<DeviceType::CPU, float>);
 REGISTER_NEON_OPERATOR(BatchNorm, BatchNormOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(BatchNorm, BatchNormOp<DeviceType::OPENCL, float>);
+
 }  //  namespace mace
