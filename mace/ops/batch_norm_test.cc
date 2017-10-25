@@ -208,6 +208,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 
   // Run NEON
   net.RunOp(DeviceType::OPENCL);
+  net.Sync();
 
   // Check
   Tensor expected;

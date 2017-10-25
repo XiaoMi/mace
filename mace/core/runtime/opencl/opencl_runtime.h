@@ -20,15 +20,18 @@ namespace mace {
 class OpenCLRuntime {
  public:
   static OpenCLRuntime *Get();
-  OpenCLRuntime(cl::Context context,
-                cl::Device device,
-                cl::CommandQueue command_queue);
-  ~OpenCLRuntime();
 
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
   cl::Program &program();
+ private:
+  OpenCLRuntime(cl::Context context,
+                cl::Device device,
+                cl::CommandQueue command_queue);
+  ~OpenCLRuntime();
+  OpenCLRuntime(const OpenCLRuntime&) = delete;
+  OpenCLRuntime &operator=(const OpenCLRuntime&) = delete;
 
  private:
   cl::Context context_;

@@ -17,6 +17,7 @@ cc_library(
     ],
     deps = [
         "//mace/core",
+        "//mace/core:opencl_runtime",
         "@gtest//:gtest",
     ],
 )
@@ -39,7 +40,6 @@ cc_library(
         "-fopenmp",
     ],
     deps = [
-        "//mace/core",
         "//mace/kernels",
         "//mace/proto:cc_proto",
     ],
@@ -72,7 +72,6 @@ cc_test(
     deps = [
         ":ops",
         ":test",
-        "//mace/core",
         "//mace/core:test_benchmark_main",
     ],
 )

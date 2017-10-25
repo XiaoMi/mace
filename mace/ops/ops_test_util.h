@@ -11,6 +11,7 @@
 #include "mace/core/common.h"
 #include "mace/core/net.h"
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 
@@ -150,6 +151,12 @@ class OpsTestNet {
 
   Tensor *GetOutput(const char *output_name) {
     return ws_.GetTensor(output_name);
+  }
+
+  void Sync() {
+    if (net_) {
+      OpenCLRuntime::Get()->command_queue().finish();
+    }
   }
 
  public:

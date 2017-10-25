@@ -24,25 +24,21 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
-  auto batch_norm_kernel =
-      cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer,
-                        cl::Buffer, cl::Buffer, cl::Buffer,
-                        int, int, cl::Buffer>(program, "batch_norm");
-  cl_int error;
-  auto res_event = batch_norm_kernel(cl::EnqueueArgs(runtime->command_queue(),
-                              cl::NDRange(n * channel * sample_size),
-                              cl::NDRange(128)),
-                    *(static_cast<const cl::Buffer *>(input->buffer())),
-                    *(static_cast<cl::Buffer *>(scale->buffer())),
-                    *(static_cast<cl::Buffer *>(offset->buffer())),
-                    *(static_cast<cl::Buffer *>(mean->buffer())),
-                    *(static_cast<cl::Buffer *>(var->buffer())),
-                    *(static_cast<cl::Buffer *>(epsilon->buffer())),
-                    static_cast<int>(channel),
-                    static_cast<int>(sample_size),
-                    *(static_cast<cl::Buffer *>(output->buffer())),
-                    error);
-  res_event.wait();
+  auto _kernel = cl::Kernel(program, "batch_norm");
+  _kernel.setArg(0, *(static_cast<const cl::Buffer *>(input->buffer())));
+  _kernel.setArg(1, *(static_cast<cl::Buffer *>(scale->buffer())));
+  _kernel.setArg(2, *(static_cast<cl::Buffer *>(offset->buffer())));
+  _kernel.setArg(3, *(static_cast<cl::Buffer *>(mean->buffer())));
+  _kernel.setArg(4, *(static_cast<cl::Buffer *>(var->buffer())));
+  _kernel.setArg(5, *(static_cast<cl::Buffer *>(epsilon->buffer())));
+  _kernel.setArg(6, static_cast<int>(sample_size));
+  _kernel.setArg(7, *(static_cast<cl::Buffer *>(output->buffer())));
+  _kernel.setArg(8, 32u, nullptr);
+  _kernel.setArg(9, 32u, nullptr);
+  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+      _kernel, cl::NullRange,
+      cl::NDRange(n, channel, sample_size),
+      cl::NDRange(1, 1, 128));
   MACE_CHECK(error == CL_SUCCESS);
 }
 
