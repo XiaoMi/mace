@@ -3,9 +3,11 @@ import sys
 import tensorflow as tf
 from tensorflow import gfile
 from mace.python.tools import tf_converter_lib
+from mace.python.tools import tf_dsp_converter_lib
+
+# ./bazel-bin/mace/python/tools/tf_converter --input quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
 
 FLAGS = None
-
 
 def main(unused_args):
   if not gfile.Exists(FLAGS.input):
@@ -17,13 +19,17 @@ def main(unused_args):
     data = f.read()
     input_graph_def.ParseFromString(data)
 
-  output_graph_def = tf_converter_lib.convert_to_mace_pb(
-    input_graph_def)
+  if FLAGS.runtime == 'dsp':
+    output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
+      input_graph_def, FLAGS.input_dim, FLAGS.output_node)
+  else:
+    output_graph_def = tf_converter_lib.convert_to_mace_pb(
+      input_graph_def)
 
   with gfile.GFile(FLAGS.output, "wb") as f:
     f.write(output_graph_def.SerializeToString())
   with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
-    output_graph_def.ClearField('tensors')
+    # output_graph_def.ClearField('tensors')
     f.write(str(output_graph_def))
 
 
@@ -41,6 +47,21 @@ def parse_args():
     type=str,
     default="",
     help="File to save the output graph to.")
+  parser.add_argument(
+    "--runtime",
+    type=str,
+    default="cpu",
+    help="Runtime: cpu/gpu/dsp.")
+  parser.add_argument(
+    "--input_dim",
+    type=str,
+    default="input_node,1,28,28,3",
+    help="e.g., input_node,1,28,28,3")
+  parser.add_argument(
+    "--output_node",
+    type=str,
+    default="softmax",
+    help="e.g., softmax")
   return parser.parse_known_args()
 
 

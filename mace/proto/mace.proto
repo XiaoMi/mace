@@ -45,6 +45,8 @@ message TensorProto {
   repeated int64 int64_data = 10 [packed = true];
   // Optionally, a name for the tensor.
   optional string name = 7;
+
+  optional uint32 node_id = 100;
 }
 
 message Argument {
@@ -57,12 +59,41 @@ message Argument {
   repeated bytes strings = 7;
 }
 
+// for hexagon mace-nnlib
+message NodeInput {
+  optional int32 node_id = 1;
+  optional int32 output_port = 2;
+}
+
 message OperatorDef {
   repeated string input = 1;
   repeated string output = 2;
   optional string name = 3;
   optional string type = 4;
   repeated Argument arg = 5;
+
+  // for hexagon mace-nnlib
+  optional uint32 node_id = 100;
+  optional uint32 op_id = 101;
+  optional uint32 padding = 102;
+  repeated NodeInput node_input = 103;
+  repeated int32 out_max_byte_size = 104; // only support 32-bit len
+}
+
+// for hexagon mace-nnlib
+message InputInfo {
+  optional string name = 1;
+  optional int32 node_id = 2;
+  repeated int32 dims = 3;
+  optional int32 max_byte_size = 4; // only support 32-bit len
+  optional DataType data_type = 5 [default = DT_FLOAT];
+}
+message OutputInfo {
+  optional string name = 1;
+  optional int32 node_id = 2;
+  repeated int32 dims = 3;
+  optional int32 max_byte_size = 4; // only support 32-bit len
+  optional DataType data_type = 5 [default = DT_FLOAT];
 }
 
 message NetDef {
@@ -71,4 +102,8 @@ message NetDef {
   optional string version = 3;
   repeated Argument arg = 4;
   repeated TensorProto tensors = 5;
+
+  // for hexagon mace-nnlib
+  repeated InputInfo input_info = 100;
+  repeated OutputInfo output_info = 101;
 }
