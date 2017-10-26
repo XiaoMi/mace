@@ -22,12 +22,14 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   const uint32_t gws[3] = {static_cast<uint32_t>(input->dim(0)),
                            static_cast<uint32_t>(input->dim(1)),
                            static_cast<uint32_t>(input->dim(2) * input->dim(3))};
-  const uint32_t lws[3] = {1, 2, 128};
 
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
   auto bm_kernel = cl::Kernel(program, "batch_norm");
+
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
+  const uint32_t lws[3] = {1, kwg_size/128, 128};
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
@@ -40,9 +42,6 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
-
-  MACE_CHECK(std::accumulate(lws, lws+3, 1, std::multiplies<uint32_t>())
-                 < runtime->GetKernelMaxWorkGroupSize(bm_kernel));
 
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       bm_kernel, cl::NullRange,
