@@ -47,13 +47,14 @@ class DspOps(object):
       'Split': 'Split_f',
       'Transpose': 'Transpose_f',
       'Concat': 'Concat_f',
+      'AddN': 'AddN_f',
     }
   def has_op(self, tf_op):
     return tf_op in self.dsp_ops
 
   def map_nn_op(self, tf_op):
     if tf_op not in self.dsp_ops:
-      raise Exception('Could not map nn op')
+      raise Exception('Could not map nn op for: ', tf_op)
     return self.dsp_ops[tf_op]
 
 
