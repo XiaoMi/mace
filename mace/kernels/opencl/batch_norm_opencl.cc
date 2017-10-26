@@ -18,27 +18,36 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
     const Tensor *var,
     const Tensor *epsilon,
     Tensor *output) {
-  const index_t n = input->dim(0);
-  const index_t channel = input->dim(1);
-  const index_t sample_size = input->dim(2) * input->dim(3);
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(input->dim(0)),
+                           static_cast<uint32_t>(input->dim(1)),
+                           static_cast<uint32_t>(input->dim(2) * input->dim(3))};
+  const uint32_t lws[3] = {1, 2, 128};
+
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
-  auto _kernel = cl::Kernel(program, "batch_norm");
-  _kernel.setArg(0, *(static_cast<const cl::Buffer *>(input->buffer())));
-  _kernel.setArg(1, *(static_cast<cl::Buffer *>(scale->buffer())));
-  _kernel.setArg(2, *(static_cast<cl::Buffer *>(offset->buffer())));
-  _kernel.setArg(3, *(static_cast<cl::Buffer *>(mean->buffer())));
-  _kernel.setArg(4, *(static_cast<cl::Buffer *>(var->buffer())));
-  _kernel.setArg(5, *(static_cast<cl::Buffer *>(epsilon->buffer())));
-  _kernel.setArg(6, static_cast<int>(sample_size));
-  _kernel.setArg(7, *(static_cast<cl::Buffer *>(output->buffer())));
-  _kernel.setArg(8, 32u, nullptr);
-  _kernel.setArg(9, 32u, nullptr);
+  auto bm_kernel = cl::Kernel(program, "batch_norm");
+
+  uint32_t idx = 0;
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(scale->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(offset->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(mean->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(var->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(epsilon->buffer())));
+  bm_kernel.setArg(idx++, gws[2]);
+  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
+  bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
+  bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
+
+  MACE_CHECK(std::accumulate(lws, lws+3, 1, std::multiplies<uint32_t>())
+                 < runtime->GetKernelMaxWorkGroupSize(bm_kernel));
+
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      _kernel, cl::NullRange,
-      cl::NDRange(n, channel, sample_size),
-      cl::NDRange(1, 1, 128));
+      bm_kernel, cl::NullRange,
+      cl::NDRange(gws[0], gws[1], gws[2]),
+      cl::NDRange(lws[0], lws[1], lws[2]));
   MACE_CHECK(error == CL_SUCCESS);
 }
 

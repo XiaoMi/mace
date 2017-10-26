@@ -160,4 +160,16 @@ cl::Program &OpenCLRuntime::program() {
   return program_;
 }
 
+int OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
+  unsigned long long size = 0;
+  device_.getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  return static_cast<int>(size);
+}
+
+int OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel& kernel) {
+  unsigned long long size = 0;
+  kernel.getWorkGroupInfo(device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
+  return static_cast<int>(size);
+}
+
 }  // namespace mace

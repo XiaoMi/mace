@@ -17,12 +17,12 @@ class BatchNormOp : public Operator<D, T> {
       : Operator<D, T>(operator_def, ws), functor_() {}
 
   bool Run() override {
-    const Tensor *input = this->Input(0);
-    const Tensor *scale = this->Input(1);
-    const Tensor *offset = this->Input(2);
-    const Tensor *mean = this->Input(3);
-    const Tensor *var = this->Input(4);
-    const Tensor *epsilon = this->Input(5);
+    const Tensor *input = this->Input(INPUT);
+    const Tensor *scale = this->Input(SCALE);
+    const Tensor *offset = this->Input(OFFSET);
+    const Tensor *mean = this->Input(MEAN);
+    const Tensor *var = this->Input(VAR);
+    const Tensor *epsilon = this->Input(EPSILON);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
@@ -37,7 +37,7 @@ class BatchNormOp : public Operator<D, T> {
     MACE_CHECK(epsilon->dim_size() == 0, "epsilon must be 0-dimensional. ",
                epsilon->dim_size());
 
-    Tensor *output = this->Output(0);
+    Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
     functor_(input, scale, offset, mean, var, epsilon, output);
@@ -46,6 +46,10 @@ class BatchNormOp : public Operator<D, T> {
 
  private:
   kernels::BatchNormFunctor<D, T> functor_;
+
+ protected:
+  OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR, EPSILON);
+  OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  //  namespace mace

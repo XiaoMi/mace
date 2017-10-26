@@ -21,6 +21,8 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Get();
 
+  int GetDeviceMaxWorkGroupSize();
+  int GetKernelMaxWorkGroupSize(const cl::Kernel& kernel);
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();

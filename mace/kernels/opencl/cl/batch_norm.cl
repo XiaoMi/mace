@@ -4,7 +4,7 @@ void kernel batch_norm(global const float *input,
                        global const float *mean,
                        global const float *var,
                        global const float *epsilon,
-                       private const int pixels,
+                       private const uint pixels,
                        global float *output,
                        __local float *new_scale,
                        __local float *new_offset) {
@@ -23,7 +23,6 @@ void kernel batch_norm(global const float *input,
   barrier(CLK_LOCAL_MEM_FENCE);
 
   const int sample_offset = (batch * channels + channel) * pixels + pixel_offset;
-
   const float *input_ptr = input + sample_offset;
   float *output_ptr = output + sample_offset;
   *output_ptr = new_scale[local_channel] * *input_ptr + new_offset[local_channel];

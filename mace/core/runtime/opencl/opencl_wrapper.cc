@@ -136,6 +136,8 @@ class OpenCLLibraryImpl final {
   using clRetainDeviceFunc = cl_int (*)(cl_device_id);
   using clReleaseDeviceFunc = cl_int (*)(cl_device_id);
   using clRetainEventFunc = cl_int (*)(cl_event);
+  using clGetKernelWorkGroupInfoFunc =
+  cl_int (*)(cl_kernel, cl_device_id, cl_kernel_work_group_info, size_t, void *, size_t *);
 
 #define DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
@@ -177,6 +179,7 @@ class OpenCLLibraryImpl final {
   DEFINE_FUNC_PTR(clRetainDevice);
   DEFINE_FUNC_PTR(clReleaseDevice);
   DEFINE_FUNC_PTR(clRetainEvent);
+  DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
 
 #undef DEFINE_FUNC_PTR
 
@@ -296,6 +299,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   ASSIGN_FROM_DLSYM(clRetainDevice);
   ASSIGN_FROM_DLSYM(clReleaseDevice);
   ASSIGN_FROM_DLSYM(clRetainEvent);
+  ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
 
 #undef ASSIGN_FROM_DLSYM
 
@@ -778,6 +782,21 @@ cl_int clRetainEvent(cl_event event) {
   auto func = mace::OpenCLLibraryImpl::Get().clRetainEvent;
   if (func != nullptr) {
     return func(event);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
+cl_int clGetKernelWorkGroupInfo(cl_kernel kernel,
+                                cl_device_id device,
+                                cl_kernel_work_group_info param_name,
+                                size_t param_value_size,
+                                void *param_value,
+                                size_t *param_value_size_ret) {
+  auto func = mace::OpenCLLibraryImpl::Get().clGetKernelWorkGroupInfo;
+  if (func != nullptr) {
+    return func(kernel, device, param_name, param_value_size,
+                param_value, param_value_size_ret);
   } else {
     return CL_OUT_OF_RESOURCES;
   }
