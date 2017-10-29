@@ -28,3 +28,14 @@ cc_library(
     ],
     copts = ["-std=c++11"],
 )
+
+cc_library(
+    name = "tuner",
+    hdrs = [
+        "tuner.h",
+    ],
+    copts = ["-std=c++11"],
+    deps = [
+        "//mace/core",
+    ],
+)

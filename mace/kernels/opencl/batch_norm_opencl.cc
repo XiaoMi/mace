@@ -29,7 +29,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   auto bm_kernel = cl::Kernel(program, "batch_norm");
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
-  const uint32_t lws[3] = {1, kwg_size/128, 128};
+  const uint32_t lws[3] = {1, 1, kwg_size};
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
@@ -43,6 +43,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
 
+  //TODO need to design the new way to tune.
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       bm_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),

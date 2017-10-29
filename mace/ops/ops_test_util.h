@@ -137,13 +137,10 @@ class OpsTestNet {
   Workspace *ws() { return &ws_; }
 
   bool RunOp(DeviceType device) {
-    if (!net_ || device_ != device) {
-      NetDef net_def;
-      net_def.add_op()->CopyFrom(op_def_);
-      VLOG(3) << net_def.DebugString();
-      net_ = CreateNet(net_def, &ws_, device);
-      device_ = device;
-    }
+    NetDef net_def;
+    net_def.add_op()->CopyFrom(op_def_);
+    VLOG(3) << net_def.DebugString();
+    net_ = CreateNet(net_def, &ws_, device);
     return net_->Run();
   }
 
@@ -163,7 +160,6 @@ class OpsTestNet {
   Workspace ws_;
   OperatorDef op_def_;
   std::unique_ptr<NetBase> net_;
-  DeviceType device_;
 };
 
 class OpsTestBase : public ::testing::Test {
