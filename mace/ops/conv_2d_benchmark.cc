@@ -46,11 +46,13 @@ static void Conv2d(int iters,
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
+    net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
+    net.Sync();
   }
 }
 
