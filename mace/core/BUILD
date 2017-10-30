@@ -12,11 +12,11 @@ load("//mace:mace.bzl", "if_android")
 cc_library(
     name = "opencl_runtime",
     srcs = glob([
-        "runtime/opencl/cl.hpp",
-        "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.cc",
     ]),
     hdrs = glob([
+        "runtime/opencl/cl.hpp",
+        "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
     copts = ["-std=c++11"],
