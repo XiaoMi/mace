@@ -1,26 +1,59 @@
-/*
- * Split work item along output channels and pixels
- */
-void kernel conv_2d_1x1_nchw(global const float *input, /* n, c, h, w */
-                             global const float *filter, /* o, i, kh, kw */
-                             global float *output, /* n, c, h, w */
-                             private const int in_offset,
-                             private const int out_offset,
-                             private const int pixel_num,
-                             private const int in_chan_num,
-                             private const int out_chan_num) {
-  int out_chan_blk = get_global_id(0);
-  int out_pixel_blk = get_global_id(1);
+void kernel conv_2d_1x1_naive(global const float *input, /* n, c, h, w */
+                              global const float *filter, /* o, i, kh, kw */
+                              global const float *bias, /* o */
+                              global float *output, /* n, c, h, w */
+                              private const int input_channels) {
+  const int batch = get_global_id(0);
+  const int channel = get_global_id(1);
+  const int channels = get_global_size(1);
+  const int pixel = get_global_id(2);
+  const int pixels = get_global_size(2);
+
+
+  float *output_ptr = output + (batch * channels + channel) * pixels;
+  output_ptr[pixel] = bias[channel];
+
+  for (int inc = 0; inc < input_channels; ++inc) {
+    const float *input_ptr = input + (batch * input_channels + inc) * pixels + pixel;
+    const float weights = filter[channel * input_channels + inc];
+    float in = input_ptr[0];
+    float out = output_ptr[0];
+    out += in * weights;
+    output_ptr[0] = out;
+  }
+}
+
+void kernel conv_2d_1x1_v2(global const float *input, /* n, c, h, w */
+                           global const float *filter, /* o, i, kh, kw */
+                           global const float *bias, /* o */
+                           global float *output, /* n, c, h, w */
+                           private const int in_chan_num,
+                           private const int out_chan_num,
+                           private const int pixel_num) {
+  int batch = get_global_id(0);
+  int out_chan_blk = get_global_id(1);
+  int out_pixel_blk = get_global_id(2);
 
   const int out_chan_begin = out_chan_blk * 4;
   const int out_chan_end = min(out_chan_begin + 4, out_chan_num);
   const int out_pixel_begin = out_pixel_blk * 4;
   const int out_pixel_end = min(out_pixel_begin + 4, pixel_num);
 
+  const int in_offset = batch * in_chan_num * pixel_num;
+  const int out_offset = batch * out_chan_num * pixel_num;
   const float *input_base = input + in_offset + out_pixel_begin;
   float *output_base = output + out_offset + out_pixel_begin;
 
   int pixels = out_pixel_end - out_pixel_begin;
+
+  for (int out_chan = out_chan_begin; out_chan < out_chan_end; ++out_chan) {
+    float bias_value = bias[out_chan];
+    float *output_ptr = output_base + out_chan * pixel_num;
+    for (int p = 0; p < pixels; ++p) {
+      output_ptr[p] = bias_value;
+    }
+  }
+
   int in_chan = 0;
   if (pixels == 4) {
     for (; in_chan + 3 < in_chan_num; in_chan += 4) {
