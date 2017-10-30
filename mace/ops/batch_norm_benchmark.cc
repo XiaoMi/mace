@@ -60,6 +60,8 @@ static void BatchNorm(
   BENCHMARK(BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define BM_BATCH_NORM(N, C, H, W, TYPE)       \
+  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, CPU); \
+  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, NEON);\
   BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, OPENCL);
 
 BM_BATCH_NORM(1, 1, 512, 512, float);
