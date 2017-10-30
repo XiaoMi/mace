@@ -21,7 +21,7 @@ void Simple() {
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 1, 6, 2},
@@ -73,7 +73,7 @@ TEST_F(BatchNormOpTest, SimpleRandomNeon) {
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
@@ -114,7 +114,7 @@ TEST_F(BatchNormOpTest, ComplexRandomNeon) {
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
@@ -155,7 +155,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>("Input", {batch, channels, height, width});
@@ -201,7 +201,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>("Input", {batch, channels, height, width});

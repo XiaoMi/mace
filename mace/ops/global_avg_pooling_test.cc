@@ -14,7 +14,7 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   std::vector<float> input(147);
@@ -38,7 +38,7 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_NEON) {
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   std::vector<float> input(147);

@@ -19,14 +19,12 @@ TEST_F(PoolingOpTest, MAX_VALID) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
-  net.AddIntArg("pooling_type", PoolingType::MAX);
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -50,14 +48,12 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
-  net.AddIntArg("pooling_type", PoolingType::AVG);
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::AVG)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -81,14 +77,12 @@ TEST_F(PoolingOpTest, MAX_SAME) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::SAME);
-  net.AddIntsArg("dilations", {1, 1});
-  net.AddIntArg("pooling_type", PoolingType::MAX);
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 1, 3, 3},
@@ -109,14 +103,12 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {1, 1});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {2, 2});
-  net.AddIntArg("pooling_type", PoolingType::MAX);
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {2, 2})
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -138,14 +130,12 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntArg("pooling_type", PoolingType::MAX);
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::SAME);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -166,14 +156,12 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntArg("pooling_type", PoolingType::MAX);
-  net.AddIntsArg("kernels", {3, 3});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntsArg("kernels", {3, 3})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -195,14 +183,12 @@ TEST_F(PoolingOpTest, AVG_k2x2s2x2) {
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntArg("pooling_type", PoolingType::AVG);
-  net.AddIntsArg("kernels", {2, 2});
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::SAME);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntArg("pooling_type", PoolingType::AVG)
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(

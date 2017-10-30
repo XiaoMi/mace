@@ -15,7 +15,7 @@ TEST_F(ReluOpTest, ReluOp) {
   OpDefBuilder("Relu", "ReluTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {1, 2, 3, 5});
@@ -38,11 +38,11 @@ TEST_F(ReluOpTest, ReluOpWithMax) {
   OpDefBuilder("Relu", "ReluTestWithMax")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .AddFloatArg("max_limit", 0.5)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {1, 2, 3, 5});
-  net.AddFloatArg("max_limit", 0.5);
 
   // Run
   net.RunOp();

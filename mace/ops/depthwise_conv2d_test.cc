@@ -19,12 +19,10 @@ void SimpleValidTest() {
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {1, 1});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 2, 2, 3},
@@ -68,12 +66,10 @@ void TestNxNS12(const index_t height, const index_t width) {
         .Input("Filter")
         .Input("Bias")
         .Output("Output")
-        .Finalize(net.operator_def());
-
-    // Add args
-    net.AddIntsArg("strides", {stride_h, stride_w});
-    net.AddIntArg("padding", type);
-    net.AddIntsArg("dilations", {1, 1});
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.new_operator_def());
 
     // Add input data
     net.AddRandomInput<D, float>("Input", {batch, input_channels, height, width});

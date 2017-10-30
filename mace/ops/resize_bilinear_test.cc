@@ -18,7 +18,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWOAlignCorners) {
       .Input("Input")
       .Input("OutSize")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   vector<float> input(24);
@@ -43,9 +43,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
       .Input("Input")
       .Input("OutSize")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  net.AddIntArg("align_corners", 1);
+      .AddIntArg("align_corners", 1)
+      .Finalize(net.new_operator_def());
 
   // Add input data
   vector<float> input(24);

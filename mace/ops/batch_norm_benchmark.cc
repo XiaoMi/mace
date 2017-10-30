@@ -21,7 +21,7 @@ static void BatchNorm(
       .Input("Var")
       .Input("Epsilon")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<D, T>("Input", {batch, channels, height, width});

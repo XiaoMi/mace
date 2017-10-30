@@ -27,14 +27,12 @@ static void Pooling(int iters,
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntArg("pooling_type", pooling_type);
-  net.AddIntsArg("kernels", {kernel, kernel});
-  net.AddIntsArg("strides", {stride, stride});
-  net.AddIntArg("padding", padding);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntArg("pooling_type", pooling_type)
+      .AddIntsArg("kernels", {kernel, kernel})
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.new_operator_def());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});

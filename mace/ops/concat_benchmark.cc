@@ -17,7 +17,7 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
       .Input("Input1")
       .Input("Axis")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.new_operator_def());
 
   // Add input data
   const int kDim0 = 100;

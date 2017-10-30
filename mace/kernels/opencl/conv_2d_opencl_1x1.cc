@@ -89,7 +89,6 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input, const Tensor *filter,
   MACE_CHECK(input_batch == batch && input_height == height &&
              input_width == width);
 
-  // Conv1x1Naive(input, filter, bias, output);
   Conv1x1V2(input, filter, bias, output);
 };
 

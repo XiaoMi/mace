@@ -17,18 +17,67 @@ namespace mace {
 
 class OpDefBuilder {
  public:
-  OpDefBuilder(const char *type, const char *name) {
+  OpDefBuilder(const char *type, const std::string &name) {
     op_def_.set_type(type);
     op_def_.set_name(name);
   }
 
-  OpDefBuilder &Input(const char *input_name) {
+  OpDefBuilder &Input(const std::string &input_name) {
     op_def_.add_input(input_name);
     return *this;
   }
 
-  OpDefBuilder &Output(const char *output_name) {
+  OpDefBuilder &Output(const std::string &output_name) {
     op_def_.add_output(output_name);
+    return *this;
+  }
+
+  OpDefBuilder AddIntArg(const std::string &name, const int value) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    arg->set_i(value);
+    return *this;
+  }
+
+  OpDefBuilder AddFloatArg(const std::string &name, const float value) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    arg->set_f(value);
+    return *this;
+  }
+
+  OpDefBuilder AddStringArg(const std::string &name, const char *value) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    arg->set_s(value);
+    return *this;
+  }
+
+  OpDefBuilder AddIntsArg(const std::string &name, const std::vector<int> &values) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    for (auto value : values) {
+      arg->add_ints(value);
+    }
+    return *this;
+  }
+
+  OpDefBuilder AddFloatsArg(const std::string &name, const std::vector<float> &values) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    for (auto value : values) {
+      arg->add_floats(value);
+    }
+    return *this;
+  }
+
+  OpDefBuilder AddStringsArg(const std::string &name,
+                     const std::vector<const char *> &values) {
+    auto arg = op_def_.add_arg();
+    arg->set_name(name);
+    for (auto value : values) {
+      arg->add_strings(value);
+    }
     return *this;
   }
 
@@ -45,7 +94,7 @@ class OpsTestNet {
   OpsTestNet() {}
 
   template <DeviceType D, typename T>
-  void AddInputFromArray(const char *name,
+  void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
@@ -58,7 +107,7 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
-  void AddRepeatedInput(const char *name,
+  void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
@@ -70,7 +119,7 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
-  void AddRandomInput(const char *name,
+  void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
                       bool positive = false) {
     Tensor *input =
@@ -89,56 +138,18 @@ class OpsTestNet {
                   });
   }
 
-  void AddIntArg(const char *name, const int value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_i(value);
+  OperatorDef *new_operator_def() {
+    op_defs_.emplace_back(OperatorDef());
+    return &op_defs_[op_defs_.size() - 1];
   }
-
-  void AddFloatArg(const char *name, const float value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_f(value);
-  }
-
-  void AddStringArg(const char *name, const char *value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_s(value);
-  }
-
-  void AddIntsArg(const char *name, const std::vector<int> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_ints(value);
-    }
-  }
-
-  void AddFloatsArg(const char *name, const std::vector<float> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_floats(value);
-    }
-  }
-
-  void AddStringsArg(const char *name,
-                     const std::vector<const char *> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_strings(value);
-    }
-  }
-
-  OperatorDef *operator_def() { return &op_def_; }
 
   Workspace *ws() { return &ws_; }
 
   bool RunOp(DeviceType device) {
     NetDef net_def;
-    net_def.add_op()->CopyFrom(op_def_);
+    for (auto &op_def_ : op_defs_) {
+      net_def.add_op()->CopyFrom(op_def_);
+    }
     VLOG(3) << net_def.DebugString();
     net_ = CreateNet(net_def, &ws_, device);
     device_ = device;
@@ -159,7 +170,7 @@ class OpsTestNet {
 
  public:
   Workspace ws_;
-  OperatorDef op_def_;
+  std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;
   DeviceType device_;
 };

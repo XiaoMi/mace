@@ -17,7 +17,7 @@ static void AddNBenchmark(int iters, int n, int size) {
   for (int i = 0; i < n; ++i) {
     op_def_builder.Input(internal::MakeString("Input", i).c_str());
   }
-  op_def_builder.Output("Output").Finalize(net.operator_def());
+  op_def_builder.Output("Output").Finalize(net.new_operator_def());
 
   // Add input data
   for (int i = 0; i < n; ++i) {
