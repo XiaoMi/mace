@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 from operator import mul
 from dsp_ops import DspOps
+from mace.python.tools import tf_graph_util
 
 padding_mode = {
   'NA': 0,
@@ -162,6 +163,12 @@ def add_output_node(net_def, output_node):
   node_input.output_port = 0
 
 def convert_to_mace_pb(input_graph_def, input_dim, output_node):
+  """
+    nnlib does not have batch norm, so use tensorflow optimizer to fold
+     batch norm with convolution. The fold optimization reorders ops, so
+     we sort ops first by topology.
+  """
+  input_graph_def = tf_graph_util.sort_graph(input_graph_def)
   inputs = input_dim.split(';')
   input_shape = {}
   for input in inputs:
