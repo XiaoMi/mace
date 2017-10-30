@@ -1,6 +1,7 @@
 //
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
+#include <thread>
 
 #include "gtest/gtest.h"
 

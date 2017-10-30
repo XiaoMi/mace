@@ -10,18 +10,14 @@
 #include <string>
 #include <unordered_map>
 #include <fstream>
-#include <thread>
 #include <limits>
 
 #include "mace/core/logging.h"
 #include "mace/utils/utils.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 
-bool Tuning() {
-  const char *tuning = getenv("MACE_TUNING");
-  return tuning != nullptr && tuning[0] == '1';
-}
 
 template<typename param_type>
 class Tuner {
@@ -34,22 +30,22 @@ class Tuner {
   template <typename RetType>
   RetType TuneOrRun(const std::string param_key,
               const std::vector<param_type> &default_param,
-              const std::function<std::vector<std::vector<param_type>>()> param_generator,
-              const std::function<RetType(const std::vector<param_type> &)>& func) {
+              const std::function<std::vector<std::vector<param_type>>()> &param_generator,
+              const std::function<RetType(const std::vector<param_type> &)> &func) {
 
-    if (param_generator == nullptr) {
+    if (IsTuning()) {
+      // tune
+      std::vector<param_type> opt_param = default_param;
+      RetType res = Tune<RetType>(param_generator, func, opt_param);
+      param_table_[param_key] = opt_param;
+      return res;
+    } else {
       // run
       if (param_table_.find(param_key) != param_table_.end()) {
         return func(param_table_[param_key]);
       } else {
         return func(default_param);
       }
-    } else {
-      // tune
-      std::vector<param_type> opt_param = default_param;
-      RetType res = Tune<RetType>(param_generator, func, opt_param);
-      param_table_[param_key] = opt_param;
-      return res;
     }
   }
 
@@ -65,6 +61,11 @@ class Tuner {
 
   Tuner(const Tuner&) = delete;
   Tuner& operator=(const Tuner&) = delete;
+
+  inline bool IsTuning() {
+    const char *tuning = getenv("MACE_TUNING");
+    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
+  }
 
   inline void WriteRunParameters() {
     VLOG(0) << path_;
@@ -127,24 +128,18 @@ class Tuner {
   inline RetType Run(const std::function<RetType(const std::vector<param_type> &)> &func,
                      const std::vector<param_type> &params,
                      int num_runs,
-                     int64_t sleep_millisecond,
                      double &time_us) {
     RetType res;
     int64_t total_time_us = 0;
-    int64_t actual_num_runs = 0;
-    bool util_max_time = (num_runs <= 0);
-    for (int i = 0; util_max_time || i < num_runs; ++i) {
-      const int64_t start_time = NowInMicroSec();
+    const int64_t start_time = NowInMicroSec();
+    for (int i = 0; i < num_runs; ++i) {
       res = func(params);
-      const int64_t end_time = NowInMicroSec();
-      total_time_us += end_time - start_time;
-      ++(actual_num_runs);
-
-      if (sleep_millisecond > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_millisecond));
-      }
     }
-    time_us = total_time_us * 1.0 / actual_num_runs;
+    OpenCLRuntime::Get()->command_queue().finish();
+    const int64_t end_time = NowInMicroSec();
+    total_time_us += end_time - start_time;
+
+    time_us = total_time_us * 1.0 / num_runs;
     return res;
   }
 
@@ -158,10 +153,10 @@ class Tuner {
     for (const auto &param: params) {
       double tmp_time = 0.0;
       // warm up
-      Run<RetType>(func, param, 2, 10, tmp_time);
+      Run<RetType>(func, param, 2, tmp_time);
 
       // run
-      RetType tmp_res = Run<RetType>(func, param, 10, 10, tmp_time);
+      RetType tmp_res = Run<RetType>(func, param, 10, tmp_time);
 
       // Check the execution time
       if (tmp_time < opt_time) {

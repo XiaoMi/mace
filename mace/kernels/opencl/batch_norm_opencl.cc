@@ -44,42 +44,25 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
   bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
 
-  std::function<std::vector<std::vector<uint32_t>>()> params_generator = nullptr;
-  std::function<cl_int(const std::vector<uint32_t>& params)> func;
-  if (Tuning()) {
-    params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
-      return {{1, 1, 64},
-              {1, 1, 128},
-              {1, kwg_size/32, 32},
-              {1, kwg_size/64, 64},
-              {1, kwg_size/128, 128},
-              {1, 1, kwg_size},
-              {1, kwg_size, 1}};
-    };
-    func = [&](const std::vector<uint32_t>& params)->cl_int {
-      cl::Event event;
-      cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-          bm_kernel, cl::NullRange,
-          cl::NDRange(gws[0], gws[1], gws[2]),
-          cl::NDRange(params[0], params[1], params[2]),
-          nullptr,
-          &event);
+  auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
+    return {{1, 1, 64},
+            {1, 1, 128},
+            {1, kwg_size/16, 16},
+            {1, kwg_size/32, 32},
+            {1, kwg_size/64, 64},
+            {1, kwg_size/128, 128},
+            {1, 1, kwg_size},
+            {1, kwg_size, 1}};
+  };
+  auto func = [&](const std::vector<uint32_t>& params)->cl_int {
+    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+        bm_kernel, cl::NullRange,
+        cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(params[0], params[1], params[2]));
 
-      MACE_CHECK(error == CL_SUCCESS);
-      event.wait();
-      return error;
-    };
-  } else {
-    func = [&](const std::vector<uint32_t>& params)->cl_int {
-      cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-          bm_kernel, cl::NullRange,
-          cl::NDRange(gws[0], gws[1], gws[2]),
-          cl::NDRange(params[0], params[1], params[2]));
-
-      MACE_CHECK(error == CL_SUCCESS);
-      return error;
-    };
-  }
+    MACE_CHECK(error == CL_SUCCESS);
+    return error;
+  };
   std::stringstream ss;
   ss << "batch_norm_opencl_kernel_"
       << input->dim(0) << "_"
