@@ -138,7 +138,7 @@ class OpsTestNet {
                   });
   }
 
-  OperatorDef *new_operator_def() {
+  OperatorDef *NewOperatorDef() {
     op_defs_.emplace_back(OperatorDef());
     return &op_defs_[op_defs_.size() - 1];
   }

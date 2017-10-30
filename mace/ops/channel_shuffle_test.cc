@@ -15,7 +15,7 @@ TEST_F(ChannelShuffleOpTest, C8G4) {
       .Input("Input")
       .Output("Output")
       .AddIntArg("group", 4)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
 
   // Add input data

@@ -20,7 +20,7 @@ static void ChannelShuffle(
       .Input("Input")
       .Output("Output")
       .AddIntArg("group", group)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});

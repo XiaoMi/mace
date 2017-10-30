@@ -17,7 +17,7 @@ TEST_F(AddnOpTest, AddnOp) {
       .Input("Input2")
       .Input("Input3")
       .Output("Output")
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input1", {1, 2, 3, 4});

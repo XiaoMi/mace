@@ -24,7 +24,7 @@ TEST_F(PoolingOpTest, MAX_VALID) {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -53,7 +53,7 @@ TEST_F(PoolingOpTest, AVG_VALID) {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("pooling_type", PoolingType::AVG)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -82,7 +82,7 @@ TEST_F(PoolingOpTest, MAX_SAME) {
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 1, 3, 3},
@@ -108,7 +108,7 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {2, 2})
       .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -135,7 +135,7 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
       .AddIntsArg("strides", {2, 2})
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -161,7 +161,7 @@ TEST_F(PoolingOpTest, MAX_k3x3s2x2) {
       .AddIntsArg("strides", {2, 2})
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -188,7 +188,7 @@ TEST_F(PoolingOpTest, AVG_k2x2s2x2) {
       .AddIntsArg("strides", {2, 2})
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(

@@ -21,7 +21,7 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add args
 
@@ -55,7 +55,7 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -89,7 +89,7 @@ TEST_F(Conv2dOpTest, Combined) {
       .AddIntsArg("strides", {2, 2})
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -126,7 +126,7 @@ void TestConv1x1() {
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<D, float>(
@@ -187,7 +187,7 @@ TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
-        .Finalize(net.new_operator_def());
+        .Finalize(net.NewOperatorDef());
 
     // Add input data
     net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
@@ -236,7 +236,7 @@ TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
-        .Finalize(net.new_operator_def());
+        .Finalize(net.NewOperatorDef());
 
     // Add input data
     net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});

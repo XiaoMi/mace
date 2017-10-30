@@ -32,7 +32,7 @@ static void Pooling(int iters,
       .AddIntsArg("strides", {stride, stride})
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});

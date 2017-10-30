@@ -22,7 +22,7 @@ void SimpleValidTest() {
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.new_operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 2, 2, 3},
@@ -69,7 +69,7 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
-        .Finalize(net.new_operator_def());
+        .Finalize(net.NewOperatorDef());
 
     // Add input data
     net.AddRandomInput<D, float>("Input", {batch, input_channels, height, width});
