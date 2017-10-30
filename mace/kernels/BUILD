@@ -22,6 +22,7 @@ cc_library(
         "//mace/core",
         "//mace/core:opencl_runtime",
         "//mace/utils",
+        "//mace/utils:tuner",
     ],
 )
 
