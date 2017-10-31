@@ -39,14 +39,14 @@ static void BatchNorm(
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
-    net.Sync();
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
-    net.Sync();
   }
+  net.Sync();
 }
 
 #define BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                  \

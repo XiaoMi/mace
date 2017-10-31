@@ -141,6 +141,7 @@ class OpsTestNet {
     net_def.add_op()->CopyFrom(op_def_);
     VLOG(3) << net_def.DebugString();
     net_ = CreateNet(net_def, &ws_, device);
+    device_ = device;
     return net_->Run();
   }
 
@@ -151,7 +152,7 @@ class OpsTestNet {
   }
 
   void Sync() {
-    if (net_) {
+    if (net_ && device_ == DeviceType::OPENCL) {
       OpenCLRuntime::Get()->command_queue().finish();
     }
   }
@@ -160,6 +161,7 @@ class OpsTestNet {
   Workspace ws_;
   OperatorDef op_def_;
   std::unique_ptr<NetBase> net_;
+  DeviceType device_;
 };
 
 class OpsTestBase : public ::testing::Test {
