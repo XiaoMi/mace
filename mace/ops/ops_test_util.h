@@ -137,13 +137,11 @@ class OpsTestNet {
   Workspace *ws() { return &ws_; }
 
   bool RunOp(DeviceType device) {
-    if (!net_ || device_ != device) {
-      NetDef net_def;
-      net_def.add_op()->CopyFrom(op_def_);
-      VLOG(3) << net_def.DebugString();
-      net_ = CreateNet(net_def, &ws_, device);
-      device_ = device;
-    }
+    NetDef net_def;
+    net_def.add_op()->CopyFrom(op_def_);
+    VLOG(3) << net_def.DebugString();
+    net_ = CreateNet(net_def, &ws_, device);
+    device_ = device;
     return net_->Run();
   }
 
@@ -154,7 +152,7 @@ class OpsTestNet {
   }
 
   void Sync() {
-    if (net_) {
+    if (net_ && device_ == DeviceType::OPENCL) {
       OpenCLRuntime::Get()->command_queue().finish();
     }
   }
