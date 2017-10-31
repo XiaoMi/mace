@@ -20,9 +20,12 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
     const Tensor *epsilon,
     Tensor *output) {
 
+  index_t pixel_size = input->dim(2) * input->dim(3);
+  index_t blocks = (pixel_size + 3) / 4;
+
   const uint32_t gws[3] = {static_cast<uint32_t>(input->dim(0)),
                            static_cast<uint32_t>(input->dim(1)),
-                           static_cast<uint32_t>(input->dim(2) * input->dim(3))};
+                           static_cast<uint32_t>(blocks)};
 
 
   auto runtime = OpenCLRuntime::Get();
@@ -39,10 +42,10 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(mean->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(var->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(epsilon->buffer())));
-  bm_kernel.setArg(idx++, gws[2]);
+  bm_kernel.setArg(idx++, static_cast<uint32_t>(pixel_size));
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
-  bm_kernel.setArg(idx++, lws[1] * sizeof(float), nullptr);
+  bm_kernel.setArg(idx++, lws[1] * sizeof(float) * 4, nullptr);
+  bm_kernel.setArg(idx++, lws[1] * sizeof(float) * 4, nullptr);
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
     return {{1, 1, 64},

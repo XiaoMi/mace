@@ -33,7 +33,7 @@ class Tuner {
               const std::function<std::vector<std::vector<param_type>>()> &param_generator,
               const std::function<RetType(const std::vector<param_type> &)> &func) {
 
-    if (IsTuning()) {
+    if (IsTuning() && param_generator != nullptr) {
       // tune
       std::vector<param_type> opt_param = default_param;
       RetType res = Tune<RetType>(param_generator, func, opt_param);
@@ -68,7 +68,7 @@ class Tuner {
   }
 
   inline void WriteRunParameters() {
-    VLOG(0) << path_;
+    VLOG(1) << path_;
     if (path_ != nullptr) {
       std::ofstream ofs(path_, std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
@@ -78,14 +78,14 @@ class Tuner {
           int32_t key_size = kp.first.size();
           ofs.write(reinterpret_cast<char *>(&key_size), sizeof(key_size));
           ofs.write(kp.first.c_str(), key_size);
-          VLOG(0) << kp.first.c_str();
+          VLOG(1) << kp.first.c_str();
 
           auto &params = kp.second;
           int32_t params_size = params.size() * sizeof(param_type);
           ofs.write(reinterpret_cast<char*>(&params_size), sizeof(params_size));
           for (auto &param : params) {
             ofs.write(reinterpret_cast<char *>(&param), sizeof(params_size));
-            VLOG(0) << param;
+            VLOG(1) << param;
           }
         }
         ofs.close();
@@ -144,7 +144,7 @@ class Tuner {
   }
 
   template <typename RetType>
-  inline RetType Tune(std::function<std::vector<std::vector<param_type>>()> param_generator,
+  inline RetType Tune(const std::function<std::vector<std::vector<param_type>>()> &param_generator,
                    const std::function<RetType(const std::vector<param_type> &)> &func,
                    std::vector<param_type> &opt_params) {
     RetType res;
