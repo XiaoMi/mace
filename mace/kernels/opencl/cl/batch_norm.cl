@@ -22,12 +22,12 @@ void kernel batch_norm(global const float *input,
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  const int sample_offset = (batch * channels + channel) * pixels + pixel_offset*4;
-  const float *input_ptr = input + sample_offset;
-  float *output_ptr = output + sample_offset;
+  const int image_offset = (batch * channels + channel) * pixels + pixel_offset*4;
+  const float *input_ptr = input + image_offset;
+  float *output_ptr = output + image_offset;
   const int end = (batch * channels + channel + 1) * pixels;
-  if ((sample_offset+4) > end) {
-    for (int i = sample_offset; i < end; ++i) {
+  if ((image_offset+4) > end) {
+    for (int i = image_offset; i < end; ++i) {
       *output_ptr = new_scale[local_channel].x * *input_ptr + new_offset[local_channel].x;
       ++input_ptr;
       ++output_ptr;

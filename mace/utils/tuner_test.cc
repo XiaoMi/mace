@@ -13,7 +13,8 @@ class TunerTest: public ::testing::Test {
  protected:
   virtual void SetUp() {
     remove( "/data/local/tmp/mace.config" );
-    setenv("MACE_RUN_PARAMTER_PATH", "/data/local/tmp/mace.config", 1);
+    setenv("MACE_RUN_PARAMETER_PATH", "/data/local/tmp/mace.config", 1);
+    setenv("MACE_TUNING", "1", 1);
   }
 };
 

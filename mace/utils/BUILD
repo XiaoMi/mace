@@ -39,6 +39,7 @@ cc_library(
     copts = ["-std=c++11"],
     deps = [
         "//mace/core",
+        "//mace/core:opencl_runtime",
     ],
 )
 
