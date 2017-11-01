@@ -30,49 +30,51 @@ extern "C" {
 #define __QAIC_STRING1_OBJECT_DEFINED__
 #define __STRING1_OBJECT__
 typedef struct _cstring1_s {
-   char* data;
-   int dataLen;
+  char* data;
+  int dataLen;
 } _cstring1_t;
 
 #endif /* __QAIC_STRING1_OBJECT_DEFINED__ */
 typedef struct hexagon_nn_input hexagon_nn_input;
 struct hexagon_nn_input {
-   unsigned int src_id;
-   unsigned int output_idx;
+  unsigned int src_id;
+  unsigned int output_idx;
 };
 typedef struct hexagon_nn_output hexagon_nn_output;
 struct hexagon_nn_output {
-   unsigned int max_size;
-   unsigned int unused;
+  unsigned int max_size;
+  unsigned int unused;
 };
 typedef struct hexagon_nn_perfinfo hexagon_nn_perfinfo;
 struct hexagon_nn_perfinfo {
-   unsigned int node_id;
-   unsigned int executions;
-   unsigned int counter_lo;
-   unsigned int counter_hi;
+  unsigned int node_id;
+  unsigned int node_type;
+  unsigned int executions;
+  unsigned int unused;
+  unsigned int counter_lo;
+  unsigned int counter_hi;
 };
 typedef int hexagon_nn_nn_id;
 enum hexagon_nn_padding_type {
-   NN_PAD_NA,
-   NN_PAD_SAME,
-   NN_PAD_VALID,
-   NN_PAD_MIRROR_REFLECT,
-   NN_PAD_MIRROR_SYMMETRIC,
-   NN_PAD_SAME_CAFFE,
-   _32BIT_PLACEHOLDER_hexagon_nn_padding_type = 0x7fffffff
+  NN_PAD_NA,
+  NN_PAD_SAME,
+  NN_PAD_VALID,
+  NN_PAD_MIRROR_REFLECT,
+  NN_PAD_MIRROR_SYMMETRIC,
+  NN_PAD_SAME_CAFFE,
+  _32BIT_PLACEHOLDER_hexagon_nn_padding_type = 0x7fffffff
 };
 typedef enum hexagon_nn_padding_type hexagon_nn_padding_type;
 typedef struct hexagon_nn_tensordef hexagon_nn_tensordef;
 struct hexagon_nn_tensordef {
-   unsigned int batches;
-   unsigned int height;
-   unsigned int width;
-   unsigned int depth;
-   unsigned char* data;
-   int dataLen;
-   unsigned int data_valid_len;
-   unsigned int unused;
+  unsigned int batches;
+  unsigned int height;
+  unsigned int width;
+  unsigned int depth;
+  unsigned char* data;
+  int dataLen;
+  unsigned int data_valid_len;
+  unsigned int unused;
 };
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config)(void) __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(void) __QAIC_HEADER_ATTRIBUTE;
