@@ -38,20 +38,22 @@ static void DepthwiseConv2d(int iters,
   net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
-  net.AddRandomInput<DeviceType::CPU, float>("Filter",
+  net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<D, float>("Filter",
                             {output_channels, channels, kernel_h, kernel_w});
-  net.AddRandomInput<DeviceType::CPU, float>("Bias", {output_channels});
+  net.AddRandomInput<D, float>("Bias", {output_channels});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
   }
+  net.Sync();
 }
 
 #define BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE,                                  \
@@ -70,7 +72,8 @@ static void DepthwiseConv2d(int iters,
 
 #define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)       \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU); \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);\
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
 BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128, float);

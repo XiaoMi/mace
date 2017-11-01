@@ -132,6 +132,8 @@ void ConstructInputWithPadding(const float *input,
   const int padded_left = paddings[1] / 2;
 
   output_tensor->Resize(output_shape);
+
+  Tensor::MappingGuard padded_input_mapper(output_tensor);
   float *output_ptr = output_tensor->mutable_data<float>();
   memset(output_ptr, 0, output_tensor->size() * sizeof(float));
 

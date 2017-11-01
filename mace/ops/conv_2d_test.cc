@@ -171,7 +171,7 @@ TEST_F(Conv2dOpTest, Conv1x1) {
 }
 
 // TODO we need more tests
-TEST_F(Conv2dOpTest, IdleConvNxNS12) {
+TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -222,7 +222,7 @@ TEST_F(Conv2dOpTest, IdleConvNxNS12) {
   }
 }
 
-TEST_F(Conv2dOpTest, DisgustConvNxNS12) {
+TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {

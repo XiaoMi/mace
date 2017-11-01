@@ -20,27 +20,27 @@ struct DepthwiseConv2dFunctor {
                          const int *dilations)
       : strides_(strides), paddings_(paddings), dilations_(dilations) {}
 
-  void operator()(const T *input,  // NCHW
-                  const index_t *input_shape,
-                  const T *filter,  // c_out, c_in, kernel_h, kernel_w
-                  const index_t *filter_shape,
-                  const T *bias,  // c_out
-                  T *output,      // NCHW
-                  const index_t *output_shape) {
+  void operator()(const Tensor *input,  // NCHW
+                  const Tensor *filter,  // c_out, c_in, kernel_h, kernel_w
+                  const Tensor *bias,  // c_out
+                  Tensor *output) {
+    MACE_CHECK_NOTNULL(input);
+    MACE_CHECK_NOTNULL(filter);
+    MACE_CHECK_NOTNULL(bias);
     MACE_CHECK_NOTNULL(output);
 
-    index_t batch = output_shape[0];
-    index_t channels = output_shape[1];
-    index_t height = output_shape[2];
-    index_t width = output_shape[3];
+    index_t batch = output->dim(0);
+    index_t channels = output->dim(1);
+    index_t height = output->dim(2);
+    index_t width = output->dim(3);
 
-    index_t input_batch = input_shape[0];
-    index_t input_channels = input_shape[1];
-    index_t input_height = input_shape[2];
-    index_t input_width = input_shape[3];
+    index_t input_batch = input->dim(0);
+    index_t input_channels = input->dim(1);
+    index_t input_height = input->dim(2);
+    index_t input_width = input->dim(3);
 
-    index_t kernel_h = filter_shape[2];
-    index_t kernel_w = filter_shape[3];
+    index_t kernel_h = filter->dim(2);
+    index_t kernel_w = filter->dim(3);
 
     int stride_h = strides_[0];
     int stride_w = strides_[1];
@@ -56,20 +56,29 @@ struct DepthwiseConv2dFunctor {
     index_t padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
     index_t padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
 
-    index_t kernel_size = filter_shape[1] * kernel_h * kernel_w;
-    index_t multiplier = channels / input_channels;
+    index_t kernel_size = kernel_h * kernel_w;
+    index_t multiplier = filter->dim(0);
+
+    Tensor::MappingGuard input_mapper(input);
+    Tensor::MappingGuard filter_mapper(filter);
+    Tensor::MappingGuard bias_mapper(bias);
+    Tensor::MappingGuard output_mapper(output);
+    const T *input_ptr = input->data<T>();
+    const T *filter_ptr = filter->data<T>();
+    const T *bias_ptr   = bias->data<T>();
+    T *output_ptr = output->mutable_data<T>();
 
 #pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n) {
       for (int c = 0; c < channels; ++c) {
-        T bias_channel = bias ? bias[c] : 0;
+        T bias_channel = bias_ptr ? bias_ptr[c] : 0;
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             index_t offset = n * channels * height * width +
                              c * height * width + h * width + w;
-            output[offset] = bias_channel;
+            output_ptr[offset] = bias_channel;
             T sum = 0;
-            const T *filter_ptr = filter + c * kernel_size;
+            const T *filter_base = filter_ptr + c * kernel_size;
             for (int kh = 0; kh < kernel_h; ++kh) {
               for (int kw = 0; kw < kernel_w; ++kw) {
                 int inh = padded_h_start + h * stride_h + dilation_h * kh;
@@ -79,19 +88,17 @@ struct DepthwiseConv2dFunctor {
                   MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
                                  inw >= padded_w_start && inw < padded_w_stop,
                              "Out of range read from input: ", inh, ", ", inw);
-                  // else padding with 0:
-                  // sum += 0;
                 } else {
                   index_t input_offset =
                       n * input_channels * input_height * input_width +
                       (c / multiplier) * input_height * input_width +
                       inh * input_width + inw;
-                  sum += input[input_offset] * *filter_ptr;
+                  sum += input_ptr[input_offset] * *filter_base;
                 }
-                ++filter_ptr;
+                ++filter_base;
               }
             }
-            output[offset] += sum;
+            output_ptr[offset] += sum;
           }
         }
       }
@@ -105,13 +112,18 @@ struct DepthwiseConv2dFunctor {
 
 template <>
 void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
-    const float *input,
-    const index_t *input_shape,
-    const float *filter,
-    const index_t *filter_shape,
-    const float *bias,
-    float *output,
-    const index_t *output_shape);
+    const Tensor *input,
+    const Tensor *filter,
+    const Tensor *bias,
+    Tensor *output);
+
+template <>
+void DepthwiseConv2dFunctor<DeviceType::OPENCL, float>::operator()(
+    const Tensor *input,
+    const Tensor *filter,
+    const Tensor *bias,
+    Tensor *output);
+
 }  //  namespace kernels
 }  //  namespace mace
 
