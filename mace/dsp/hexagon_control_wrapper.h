@@ -5,7 +5,7 @@
 #ifndef MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 #define MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 
-#include "mace/dsp/hexagon/hexagon_nn.h"
+#include "mace/dsp/hexagon/hexagon_controller.h"
 #include "mace/dsp/hexagon_nn_ops.h"
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
@@ -57,18 +57,18 @@ class HexagonControlWrapper {
   void PrintLog();
   void PrintGraph();
   void GetPerfInfo();
+  void ResetPerfInfo();
   void SetDebugLevel(int level);
 
  private:
   // CAVEAT: Need offset as HVX library reserves some ids
   static constexpr int NODE_ID_OFFSET = 10000;
 
-  uint32_t node_id(uint32_t nodeid) {
+  inline uint32_t node_id(uint32_t nodeid) {
     return NODE_ID_OFFSET + nodeid;
   }
 
   int nn_id_;
-  OpMap op_map_;
   Serializer serializer_;
 
   vector<index_t> input_shape_;

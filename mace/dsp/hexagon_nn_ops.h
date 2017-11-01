@@ -12,6 +12,9 @@ namespace mace {
 
 #define OP_INVALID -1
 
+// The following macros are deprecated unless we found cache op meta in stub
+// is necessary for performance or other causes.
+
 typedef enum op_type_enum {
 #define DEF_OP(NAME, ...) OP_##NAME,
 
@@ -20,6 +23,14 @@ typedef enum op_type_enum {
 
 #undef DEF_OP
 } op_type;
+
+
+#define DEF_OP(NAME,...) #NAME,
+static const char *hexagon_nn_op_names[NN_OPS_MAX] = {
+#include "mace/dsp/ops.h"
+};
+#undef DEF_OP
+
 
 class OpMap {
  public:
