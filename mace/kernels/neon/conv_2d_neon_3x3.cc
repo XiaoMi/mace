@@ -29,9 +29,9 @@ void Conv2dNeonK3x3S1(const float *input,  // NCHW
   int input_height = input_shape[2];
   int input_width = input_shape[3];
   int multiplier =
-      filter_shape == nullptr ? 0 : (filter_shape[0] / input_channels);
+      filter_shape == nullptr ? 0 : filter_shape[0];
   int filter_in_channels =
-      filter_shape == nullptr ? input_channels : filter_shape[1];
+      filter_shape == nullptr ? input_channels : 1;
 #pragma omp parallel for collapse(2)
   for (int b = 0; b < output_batch; ++b) {
     for (int oc = 0; oc < output_channels; ++oc) {
@@ -232,9 +232,9 @@ void Conv2dNeonK3x3S2(const float *input,  // NCHW
   int input_height = input_shape[2];
   int input_width = input_shape[3];
   int multiplier =
-      filter_shape == nullptr ? 0 : (filter_shape[0] / input_channels);
+      filter_shape == nullptr ? 0 : filter_shape[0];
   int filter_in_channels =
-      filter_shape == nullptr ? input_channels : filter_shape[1];
+      filter_shape == nullptr ? input_channels : 1;
 
 #pragma omp parallel for collapse(2)
   for (int b = 0; b < output_batch; ++b) {

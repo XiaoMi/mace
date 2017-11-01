@@ -14,4 +14,7 @@ REGISTER_NEON_OPERATOR(DepthwiseConv2d,
                        DepthwiseConv2dOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(DepthwiseConv2d,
+                         DepthwiseConv2dOp<DeviceType::OPENCL, float>);
+
 }  // namespace mace
