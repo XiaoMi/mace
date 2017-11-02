@@ -5,14 +5,10 @@
 #ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_
 #define MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_
 
-#ifndef CL_HPP_TARGET_OPENCL_VERSION
-#define CL_HPP_TARGET_OPENCL_VERSION 200
-#endif
-
 #include <map>
 #include <mutex>
 
-#include "mace/core/runtime/opencl/cl2.hpp"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_wrapper.h"
 
 namespace mace {

@@ -14,9 +14,9 @@ TEST_F(ChannelShuffleOpTest, C8G4) {
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .AddIntArg("group", 4)
+      .Finalize(net.NewOperatorDef());
 
-  net.AddIntArg("group", 4);
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(

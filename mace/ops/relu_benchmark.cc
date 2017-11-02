@@ -16,7 +16,7 @@ static void ReluBenchmark(int iters, int size) {
   OpDefBuilder("Relu", "ReluBM")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {size});

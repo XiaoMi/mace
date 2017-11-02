@@ -18,12 +18,12 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add args
-  net.AddIntsArg("strides", {1, 1});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -52,12 +52,10 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {1, 1});
-  net.AddIntArg("padding", Padding::SAME);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -88,12 +86,10 @@ TEST_F(Conv2dOpTest, Combined) {
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {2, 2});
-  net.AddIntArg("padding", Padding::SAME);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
@@ -127,12 +123,10 @@ void TestConv1x1() {
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {1, 1});
-  net.AddIntArg("padding", Padding::VALID);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<D, float>(
@@ -190,12 +184,10 @@ TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
         .Input("Filter")
         .Input("Bias")
         .Output("Output")
-        .Finalize(net.operator_def());
-
-    // Add args
-    net.AddIntsArg("strides", {stride_h, stride_w});
-    net.AddIntArg("padding", type);
-    net.AddIntsArg("dilations", {1, 1});
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
 
     // Add input data
     net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
@@ -241,12 +233,10 @@ TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
         .Input("Filter")
         .Input("Bias")
         .Output("Output")
-        .Finalize(net.operator_def());
-
-    // Add args
-    net.AddIntsArg("strides", {stride_h, stride_w});
-    net.AddIntArg("padding", type);
-    net.AddIntsArg("dilations", {1, 1});
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
 
     // Add input data
     net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});

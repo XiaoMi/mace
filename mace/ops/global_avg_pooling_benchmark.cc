@@ -19,7 +19,7 @@ static void GlobalAvgPooling(
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});

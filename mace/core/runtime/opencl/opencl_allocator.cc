@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_allocator.h"
-#include "mace/core/runtime/opencl/cl2.hpp"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {

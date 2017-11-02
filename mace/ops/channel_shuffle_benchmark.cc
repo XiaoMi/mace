@@ -19,10 +19,10 @@ static void ChannelShuffle(
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .AddIntArg("group", group)
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddIntArg("group", group);
   net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
 
   // Warm-up

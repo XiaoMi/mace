@@ -30,12 +30,10 @@ static void DepthwiseConv2d(int iters,
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {stride, stride});
-  net.AddIntArg("padding", padding);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, channels, height, width});

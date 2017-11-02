@@ -3,6 +3,7 @@
 //
 
 #include <algorithm>
+#include <sstream>
 
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
@@ -13,6 +14,7 @@ namespace mace {
 
 template <DeviceType D, typename T>
 static void Conv2d(int iters,
+                   int iters_to_sync,
                    int batch,
                    int channels,
                    int height,
@@ -30,17 +32,15 @@ static void Conv2d(int iters,
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .Finalize(net.operator_def());
-
-  // Add args
-  net.AddIntsArg("strides", {stride, stride});
-  net.AddIntArg("padding", padding);
-  net.AddIntsArg("dilations", {1, 1});
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
   net.AddRandomInput<D, float>("Filter",
-                            {output_channels, channels, kernel_h, kernel_w});
+                               {output_channels, channels, kernel_h, kernel_w});
   net.AddRandomInput<D, float>("Bias", {output_channels});
 
   // Warm-up
@@ -52,9 +52,16 @@ static void Conv2d(int iters,
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
-    net.Sync();
+    if (iters % iters_to_sync == 0) {
+      net.Sync();
+    }
   }
 }
+
+// In common network, there are usually more than 1 layers, this is used to
+// approximate the amortized latency. The OpenCL runtime for Mali/Adreno is
+// in-order.
+constexpr int kItersToSync = 10;
 
 #define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE, DEVICE)                          \
   static void                                                                                      \
@@ -63,8 +70,8 @@ static void Conv2d(int iters,
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                               \
     mace::testing::ItemsProcessed(tot);                                                            \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                            \
-    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                      \
-                         OC);                                                                      \
+    Conv2d<DEVICE, TYPE>(iters, kItersToSync, N, C, H, W, KH, KW, STRIDE,                          \
+                         mace::Padding::P, OC);                                                    \
   }                                                                                                \
   BENCHMARK(                                                                                       \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)

@@ -3,7 +3,7 @@
 //
 
 #include "mace/kernels/batch_norm.h"
-#include "mace/core/runtime/opencl/cl2.hpp"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/utils/tuner.h"
 
@@ -79,4 +79,4 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
 }
 
 }  // namespace kernels
-}  //  namespace mace
+}  // namespace mace

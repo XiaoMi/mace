@@ -26,6 +26,7 @@ bool ReadSourceFile(const std::string &filename, std::string *content) {
   std::string line;
   while (std::getline(ifs, line)) {
     *content += line;
+    *content += "\n";
   }
   ifs.close();
   return true;
@@ -66,14 +67,15 @@ bool BuildProgram(OpenCLRuntime *runtime,
   *program = cl::Program(runtime->context(), sources);
   std::string build_options = "-Werror -cl-mad-enable -cl-fast-relaxed-math -I" + path;
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-  if (program->build({runtime->device()}, build_options.c_str()) != CL_SUCCESS) {
+  cl_int ret = program->build({runtime->device()}, build_options.c_str());
+  if (ret != CL_SUCCESS) {
     if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
         CL_BUILD_ERROR) {
       std::string build_log =
           program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
       LOG(INFO) << "Program build log: " << build_log;
     }
-    LOG(FATAL) << "Build program failed";
+    LOG(FATAL) << "Build program failed: " << ret;
   }
 
   return true;

@@ -18,7 +18,7 @@ TEST_F(ConcatOpTest, Simple_Horizon) {
       .Input("Input1")
       .Input("Axis")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.NewOperatorDef());
 
   std::vector<index_t> input_shape = {4, 4};
   std::vector<float> input0;
@@ -56,7 +56,7 @@ TEST_F(ConcatOpTest, Simple_Vertical) {
       .Input("Input1")
       .Input("Axis")
       .Output("Output")
-      .Finalize(net.operator_def());
+      .Finalize(net.NewOperatorDef());
 
   std::vector<index_t> input_shape = {4, 4};
   std::vector<float> input0;
@@ -99,7 +99,7 @@ TEST_F(ConcatOpTest, Random) {
   for (int i = 0; i < num_inputs; ++i) {
     builder = builder.Input(("Input" + ToString(i)).c_str());
   }
-  builder.Input("Axis").Output("Output").Finalize(net.operator_def());
+  builder.Input("Axis").Output("Output").Finalize(net.NewOperatorDef());
 
   std::vector<index_t> shape_data;
   GenerateRandomIntTypeData<index_t>({dim}, shape_data, 1, dim);
