@@ -1,37 +1,8 @@
-inline float4 conv1x3(const float *input_ptr,
-                      const float *filter_ptr) {
-  float8 input = vload8(0, input_ptr);
-  float4 row0 = convert_float4(input.s0123);
-  float4 row1 = convert_float4(input.s1234);
-  float4 row2 = convert_float4(input.s2345);
-  return (float4)filter_ptr[0] * row0 + (float4)filter_ptr[1] * row1
-            + (float4)filter_ptr[2] * row2;
-}
-
-inline float4 conv3x3x4(const float *input_ptr,
-                        const float *filter_ptr,
-                        const int row_width) {
-  float4 res;
-  res = conv1x3(input_ptr + 0 * row_width, filter_ptr + 0 * 3);
-  res += conv1x3(input_ptr + 1 * row_width, filter_ptr + 1 * 3);
-  res += conv1x3(input_ptr + 2 * row_width, filter_ptr + 2 * 3);
-
-  return res;
-}
-
-inline float conv3x3(const float *input_ptr,
+float4 conv1x3_s1(const float *input_ptr,
+                  const float *filter_ptr);
+float conv3x3(const float *input_ptr,
                      const float *filter_ptr,
-                     const int row_width) {
-  float res = input_ptr[0] * filter_ptr[0] + input_ptr[1] * filter_ptr[1] + input_ptr[2] * filter_ptr[2];
-  input_ptr += row_width;
-  filter_ptr += 3;
-  res += input_ptr[0] * filter_ptr[0] + input_ptr[1] * filter_ptr[1] + input_ptr[2] * filter_ptr[2];
-  input_ptr += row_width;
-  filter_ptr += 3;
-  res += input_ptr[0] * filter_ptr[0] + input_ptr[1] * filter_ptr[1] + input_ptr[2] * filter_ptr[2];
-
-  return res;
-}
+                     const int row_width);
 
 void kernel depthwise_conv_3x3_s1(global const float *input, /* n, c, h, w */
                                   global const float *filter, /* m, i, kh, kw */
@@ -80,8 +51,10 @@ void kernel depthwise_conv_3x3_s1(global const float *input, /* n, c, h, w */
         input_ptr += 1;
       }
     } else {
-      float4 res = conv3x3x4(input_ptr, filter_ptr, in_width);
-      res += (float4)bias_value;
+      float4 res = (float4)bias_value;
+      res += conv1x3_s1(input_ptr + 0 * in_width, filter_ptr + 0 * 3);
+      res += conv1x3_s1(input_ptr + 1 * in_width, filter_ptr + 1 * 3);
+      res += conv1x3_s1(input_ptr + 2 * in_width, filter_ptr + 2 * 3);
       vstore4(res, 0, output_ptr);
     }
   }

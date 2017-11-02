@@ -3,16 +3,15 @@
 //
 
 #include "mace/ops/conv_2d.h"
-#include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
 using namespace mace;
 
 class Conv2dOpTest : public OpsTestBase {};
 
-TEST_F(Conv2dOpTest, Simple_VALID) {
-  // Construct graph
-  auto &net = test_net();
+template <DeviceType D>
+void TestSimple3x3VALID() {
+  OpsTestNet net;
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
@@ -26,27 +25,28 @@ TEST_F(Conv2dOpTest, Simple_VALID) {
   // Add args
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 2, 3, 3},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
 
   // Run
-  net.RunOp();
+  net.RunOp(D);
 
   // Check
   auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+
 }
 
-TEST_F(Conv2dOpTest, Simple_SAME) {
-  // Construct graph
-  auto &net = test_net();
+template <DeviceType D>
+void TestSimple3x3SAME() {
+  OpsTestNet net;
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
@@ -58,17 +58,17 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 2, 3, 3},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
 
   // Run
-  net.RunOp();
+  net.RunOp(D);
 
   // Check
   auto expected = CreateTensor<float>(
@@ -78,9 +78,25 @@ TEST_F(Conv2dOpTest, Simple_SAME) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-TEST_F(Conv2dOpTest, Combined) {
+TEST_F(Conv2dOpTest, CPUSimple) {
+  TestSimple3x3VALID<DeviceType::CPU>();
+  TestSimple3x3SAME<DeviceType::CPU>();
+}
+
+TEST_F(Conv2dOpTest, NEONSimple) {
+  TestSimple3x3VALID<DeviceType::NEON>();
+  TestSimple3x3SAME<DeviceType::NEON>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLSimple) {
+  TestSimple3x3VALID<DeviceType::OPENCL>();
+  TestSimple3x3SAME<DeviceType::OPENCL>();
+}
+
+template <DeviceType D>
+static void TestCombined3x3() {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("Input")
       .Input("Filter")
@@ -92,19 +108,19 @@ TEST_F(Conv2dOpTest, Combined) {
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 2, 5, 5}, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<DeviceType::CPU, float>(
+  net.AddInputFromArray<D, float>(
       "Filter", {2, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
        0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f});
-  net.AddInputFromArray<DeviceType::CPU, float>("Bias", {2}, {0.1f, 0.2f});
+  net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
   // Run
-  net.RunOp();
+  net.RunOp(D);
 
   // Check
   auto expected = CreateTensor<float>(
@@ -112,6 +128,19 @@ TEST_F(Conv2dOpTest, Combined) {
                      4.2f, 6.2f, 4.2f, 6.2f, 9.2f, 6.2f, 4.2f, 6.2f, 4.2f});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+
+}
+
+TEST_F(Conv2dOpTest, CPUCombined) {
+  TestCombined3x3<DeviceType::CPU>();
+}
+
+TEST_F(Conv2dOpTest, NEONCombined) {
+  TestCombined3x3<DeviceType::NEON>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLCombined) {
+  TestCombined3x3<DeviceType::OPENCL>();
 }
 
 template <DeviceType D>
@@ -159,13 +188,16 @@ void TestConv1x1() {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-TEST_F(Conv2dOpTest, Conv1x1) {
+TEST_F(Conv2dOpTest, CPUConv1x1) {
   TestConv1x1<DeviceType::CPU>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLConv1x1) {
   TestConv1x1<DeviceType::OPENCL>();
 }
 
-// TODO we need more tests
-TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
+template <DeviceType D>
+static void TestAlignedConvNxNS12() {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -178,7 +210,7 @@ TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
     index_t width = 32;
     index_t output_channels = 128;
     // Construct graph
-    auto &net = test_net();
+    OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -190,19 +222,19 @@ TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
         .Finalize(net.NewOperatorDef());
 
     // Add input data
-    net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<DeviceType::CPU, float>(
+    net.AddRandomInput<D, float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<D, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<DeviceType::CPU, float>("Bias", {output_channels});
-    // run cpu
-    net.RunOp();
+    net.AddRandomInput<D, float>("Bias", {output_channels});
+    // Run on device
+    net.RunOp(D);
 
     // Check
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-    // Run NEON
-    net.RunOp(DeviceType::NEON);
+    // run cpu
+    net.RunOp();
     ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
   };
 
@@ -214,7 +246,16 @@ TEST_F(Conv2dOpTest, AlignedConvNxNS12) {
   }
 }
 
-TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
+TEST_F(Conv2dOpTest, NEONAlignedConvNxNS12) {
+  TestAlignedConvNxNS12<DeviceType::NEON>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
+  TestAlignedConvNxNS12<DeviceType::OPENCL>();
+}
+
+template <DeviceType D>
+static void TestUnalignedConvNxNS12() {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -227,7 +268,7 @@ TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
     index_t width = 113;
     index_t output_channels = 3 + rand() % 10;
     // Construct graph
-    auto &net = test_net();
+    OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("Input")
         .Input("Filter")
@@ -239,19 +280,19 @@ TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
         .Finalize(net.NewOperatorDef());
 
     // Add input data
-    net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<DeviceType::CPU, float>(
+    net.AddRandomInput<D, float>("Input", {batch, input_channels, height, width});
+    net.AddRandomInput<D, float>(
         "Filter", {output_channels, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<DeviceType::CPU, float>("Bias", {output_channels});
-    // run cpu
-    net.RunOp();
+    net.AddRandomInput<D, float>("Bias", {output_channels});
+    // Run on device
+    net.RunOp(D);
 
     // Check
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-    // Run NEON
-    net.RunOp(DeviceType::NEON);
+    // run cpu
+    net.RunOp();
     ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
   };
 
@@ -261,4 +302,12 @@ TEST_F(Conv2dOpTest, UnalignedConvNxNS12) {
       func(kernel_size, kernel_size, stride, stride, SAME);
     }
   }
+}
+
+TEST_F(Conv2dOpTest, NEONUnalignedConvNxNS12) {
+  TestUnalignedConvNxNS12<DeviceType::NEON>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
+  TestUnalignedConvNxNS12<DeviceType::OPENCL>();
 }
