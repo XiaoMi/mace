@@ -126,6 +126,12 @@ class OpenCLLibraryImpl final {
   using clRetainKernelFunc = cl_int (*)(cl_kernel kernel);
   using clCreateBufferFunc =
       cl_mem (*)(cl_context, cl_mem_flags, size_t, void *, cl_int *);
+  using clCreateImageFunc = cl_mem (*)(cl_context,
+                                       cl_mem_flags,
+                                       const cl_image_format *,
+                                       const cl_image_desc *,
+                                       void *,
+                                       cl_int *);
   using clCreateProgramWithSourceFunc = cl_program (*)(
       cl_context, cl_uint, const char **, const size_t *, cl_int *);
   using clReleaseKernelFunc = cl_int (*)(cl_kernel kernel);
@@ -136,8 +142,12 @@ class OpenCLLibraryImpl final {
   using clRetainDeviceFunc = cl_int (*)(cl_device_id);
   using clReleaseDeviceFunc = cl_int (*)(cl_device_id);
   using clRetainEventFunc = cl_int (*)(cl_event);
-  using clGetKernelWorkGroupInfoFunc =
-  cl_int (*)(cl_kernel, cl_device_id, cl_kernel_work_group_info, size_t, void *, size_t *);
+  using clGetKernelWorkGroupInfoFunc = cl_int (*)(cl_kernel,
+                                                  cl_device_id,
+                                                  cl_kernel_work_group_info,
+                                                  size_t,
+                                                  void *,
+                                                  size_t *);
 
 #define DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
@@ -149,6 +159,7 @@ class OpenCLLibraryImpl final {
   DEFINE_FUNC_PTR(clReleaseKernel);
   DEFINE_FUNC_PTR(clCreateProgramWithSource);
   DEFINE_FUNC_PTR(clCreateBuffer);
+  DEFINE_FUNC_PTR(clCreateImage);
   DEFINE_FUNC_PTR(clRetainKernel);
   DEFINE_FUNC_PTR(clCreateKernel);
   DEFINE_FUNC_PTR(clGetProgramInfo);
@@ -269,6 +280,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   ASSIGN_FROM_DLSYM(clReleaseKernel);
   ASSIGN_FROM_DLSYM(clCreateProgramWithSource);
   ASSIGN_FROM_DLSYM(clCreateBuffer);
+  ASSIGN_FROM_DLSYM(clCreateImage);
   ASSIGN_FROM_DLSYM(clRetainKernel);
   ASSIGN_FROM_DLSYM(clCreateKernel);
   ASSIGN_FROM_DLSYM(clGetProgramInfo);
@@ -708,6 +720,24 @@ cl_mem clCreateBuffer(cl_context context,
   }
 }
 
+cl_mem clCreateImage(cl_context context,
+                     cl_mem_flags flags,
+                     const cl_image_format *image_format,
+                     const cl_image_desc *image_desc,
+                     void *host_ptr,
+                     cl_int *errcode_ret) {
+  auto func = mace::OpenCLLibraryImpl::Get().clCreateImage;
+  if (func != nullptr) {
+    return func(context, flags, image_format, image_desc, host_ptr,
+                errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) {
+      *errcode_ret = CL_OUT_OF_RESOURCES;
+    }
+    return nullptr;
+  }
+}
+
 cl_program clCreateProgramWithSource(cl_context context,
                                      cl_uint count,
                                      const char **strings,
@@ -795,8 +825,8 @@ cl_int clGetKernelWorkGroupInfo(cl_kernel kernel,
                                 size_t *param_value_size_ret) {
   auto func = mace::OpenCLLibraryImpl::Get().clGetKernelWorkGroupInfo;
   if (func != nullptr) {
-    return func(kernel, device, param_name, param_value_size,
-                param_value, param_value_size_ret);
+    return func(kernel, device, param_name, param_value_size, param_value,
+                param_value_size_ret);
   } else {
     return CL_OUT_OF_RESOURCES;
   }
