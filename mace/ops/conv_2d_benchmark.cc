@@ -3,7 +3,6 @@
 //
 
 #include <algorithm>
-#include <sstream>
 
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
