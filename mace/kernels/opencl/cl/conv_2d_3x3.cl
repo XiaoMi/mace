@@ -33,7 +33,7 @@ void kernel conv_2d_3x3(global const float *input,
   const float *input_base = input + in_offset + in_pixel_begin;
   float *output_base = output + out_offset + out_pixel_begin;
 
-  uint pixels = out_pixel_end - out_pixel_begin;
+  const int pixels = out_pixel_end - out_pixel_begin;
 
   for (int i = out_chan_begin; i < out_chan_end; ++i) {
     float *output_ptr = output_base + i * out_pixel;
