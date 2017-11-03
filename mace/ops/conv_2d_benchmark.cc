@@ -80,6 +80,8 @@ constexpr int kItersToSync = 10;
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON); \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
+BM_CONV_2D(1, 3, 4032, 3016, 1, 1, 1, VALID, 3, float);  // Test RGB <-> YUV
+BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3, float);  // Test RGB <-> YUV
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128, float);  // Test bad alignments
 BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3, float);
