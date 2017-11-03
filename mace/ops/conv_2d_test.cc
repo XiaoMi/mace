@@ -296,7 +296,7 @@ static void TestUnalignedConvNxNS12() {
     ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 0.001);
   };
 
-  for (int kernel_size : {1, 3, 5}) {
+  for (int kernel_size : {3}) {
     for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);

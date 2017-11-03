@@ -4,7 +4,7 @@ void kernel batch_norm(global const float *input,
                        global const float *mean,
                        global const float *var,
                        global const float *epsilon,
-                       private const uint pixels,
+                       private const int pixels,
                        global float *output,
                        __local float4 *new_scale,
                        __local float4 *new_offset) {
@@ -12,7 +12,7 @@ void kernel batch_norm(global const float *input,
   const int channel = get_global_id(1);
   const int channels = get_global_size(1);
   const int pixel_offset = get_global_id(2);
-  const unsigned int local_channel = get_local_id(1);
+  const int local_channel = get_local_id(1);
   const int local_pixel_idx = get_local_id(2);
 
   if(local_pixel_idx == 0) {

@@ -38,12 +38,12 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(filter->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(1)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(channels));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(2)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(3)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(height));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(width));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(1)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(channels));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(height));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(width));
   conv_kernel.setArg(idx++, stride);
   conv_kernel.setArg(idx++, stride);
 

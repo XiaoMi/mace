@@ -29,20 +29,20 @@ static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(filter->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(1)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(channels));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(2)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(input->dim(3)));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(height));
-  conv_kernel.setArg(idx++, static_cast<uint32_t>(width));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(1)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(channels));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(height));
+  conv_kernel.setArg(idx++, static_cast<int32_t>(width));
   conv_kernel.setArg(idx++, stride);
   conv_kernel.setArg(idx++, stride);
   const uint32_t gws[3] = {static_cast<uint32_t>(output->dim(0)),
                            static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(pixel_blocks)};
   const uint32_t lws[3] = {static_cast<uint32_t>(1),
-                           static_cast<uint32_t>(1),
-                           static_cast<uint32_t>(256)};
+                           static_cast<uint32_t>(8),
+                           static_cast<uint32_t>(128)};
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       conv_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
