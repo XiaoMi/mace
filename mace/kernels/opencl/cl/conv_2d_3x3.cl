@@ -1,11 +1,4 @@
-float4 conv1x3_s1(const float *input_ptr,
-                  const float *filter_ptr);
-float4 conv1x3_s2(const float *input_ptr,
-                  const float *filter_ptr);
-float conv3x3(const float *input_ptr,
-              const float *filter_ptr,
-              const int row_width);
-
+#include <conv_helper.h>
 void kernel conv_2d_3x3(global const float *input,
                         global const float *filter,
                         global const float *bias,
@@ -18,9 +11,9 @@ void kernel conv_2d_3x3(global const float *input,
                         private const uint out_width,
                         private const uint stride_h,
                         private const uint stride_w) {
-  int batch = get_global_id(0);
-  int out_chan_blk = get_global_id(1);
-  int out_pixel_blk = get_global_id(2);
+  const int batch = get_global_id(0);
+  const int out_chan_blk = get_global_id(1);
+  const int out_pixel_blk = get_global_id(2);
 
   const uint in_pixel = in_height * in_width;
   const uint out_pixel = out_height * out_width;
@@ -43,10 +36,10 @@ void kernel conv_2d_3x3(global const float *input,
   uint pixels = out_pixel_end - out_pixel_begin;
 
   for (uint i = out_chan_begin; i < out_chan_end; ++i) {
-    float4 res = (float4)bias[i];
     float *output_ptr = output_base + i * out_pixel;
     const float *filter_base = filter + i * in_chan_num * 9;
     if (pixels == 4) {
+      float4 res = (float4)bias[i];
       for (uint in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
         const float* input_ptr = input_base + in_chan_idx * in_pixel;
         const float* filter_ptr = filter_base + in_chan_idx * 9;

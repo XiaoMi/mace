@@ -10,6 +10,8 @@ namespace kernels {
 extern void DepthwiseConvOpenclK3x3S1(const Tensor *input, const Tensor *filter,
                                       const Tensor *bias, Tensor *output);
 
+extern void DepthwiseConvOpenclK3x3S2(const Tensor *input, const Tensor *filter,
+                                      const Tensor *bias, Tensor *output);
 template <>
 void DepthwiseConv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
                                                                    const Tensor *filter,
@@ -21,7 +23,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor 
   static const Conv2dOpenclFunction selector[5][2] = {
       {nullptr, nullptr},
       {nullptr, nullptr},
-      {DepthwiseConvOpenclK3x3S1, nullptr},
+      {DepthwiseConvOpenclK3x3S1, DepthwiseConvOpenclK3x3S2},
       {nullptr, nullptr},
       {nullptr, nullptr}};
 
