@@ -80,7 +80,7 @@ bool HexagonControlWrapper::SetupGraph(NetDef net_def) {
   for (const OperatorDef& op: net_def.op()) {
     unsigned int op_id;
     MACE_CHECK(hexagon_nn_op_name_to_id(op.type().data(), &op_id) == 0,
-               "invalid op: ", op.name());
+               "invalid op: ", op.name(), ", type: ", op.type());
     vector<hexagon_nn_input> inputs(op.node_input_size());
     for (size_t i = 0; i < op.node_input_size(); ++i) {
       inputs[i].src_id = node_id(op.node_input(i).node_id());
