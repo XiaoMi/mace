@@ -17,6 +17,7 @@ padding_mode = {
 
 node_count = 0
 node_ids = {}
+resolved_ops = set()
 
 def max_elem_size(tensor):
   if len(tensor.shape.as_list()) == 0:
@@ -72,7 +73,10 @@ def convert_ops(unresolved_ops, net_def, output_node, dsp_ops):
 
   print ('Op: ', first_op.name, first_op.type, first_op.outputs[0].shape)
 
-  if first_op.type == 'Const':
+  if first_op.name in resolved_ops:
+    pass
+
+  elif first_op.type == 'Const':
     print ('Add const node: ', first_op.name)
     tf_tensor = first_op.outputs[0].eval()
     tensor = net_def.tensors.add()
@@ -99,10 +103,34 @@ def convert_ops(unresolved_ops, net_def, output_node, dsp_ops):
     op_def.type = dsp_ops.map_nn_op(first_op.type)
     op_def.node_id = node_count
     node_count += 1
-    register_node_id(op_def.name, op_def.node_id)
-
     op_def.padding = padding_mode['NA']
-    if has_padding_and_strides(first_op):
+
+    if len(first_op.outputs) > 0 and first_op.type == 'Dequantize' \
+        and len(first_op.outputs[0].consumers()) > 0 \
+        and (first_op.outputs[0].consumers()[0].type == 'SpaceToBatchND' \
+        or first_op.outputs[0].consumers()[0].type == 'BatchToSpaceND'):
+      input_tensor = first_op.inputs[0]
+      min_tensor = first_op.inputs[1]
+      max_tensor = first_op.inputs[2]
+      s2b_op = first_op.outputs[0].consumers()[0]
+      reshape_op = s2b_op.outputs[0].consumers()[0]
+      min_op = reshape_op.outputs[0].consumers()[0]
+      max_op = reshape_op.outputs[0].consumers()[1]
+      quantize_op = min_op.outputs[0].consumers()[0]
+      resolved_ops.add(s2b_op.name)
+      resolved_ops.add(reshape_op.name)
+      resolved_ops.add(min_op.name)
+      resolved_ops.add(max_op.name)
+      resolved_ops.add(quantize_op.name)
+
+      op_def.name = quantize_op.name
+      op_def.type = dsp_ops.map_nn_op('Quantized' + s2b_op.type)
+      op_def.input.append(input_tensor.name)
+      op_def.input.extend([t.name for t in s2b_op.inputs[1:]])
+      op_def.input.extend([min_tensor.name, max_tensor.name])
+      op_def.out_max_byte_size.extend([max_elem_size(out) for out in quantize_op.outputs])
+
+    elif has_padding_and_strides(first_op):
       op_def.padding = padding_mode[first_op.get_attr('padding')]
       op_def.input.extend([t.name for t in first_op.inputs])
       if 'ksize' in first_op.node_def.attr:
@@ -138,6 +166,8 @@ def convert_ops(unresolved_ops, net_def, output_node, dsp_ops):
     else:
       raise Exception('Unsupported op: ', first_op)
 
+    register_node_id(op_def.name, op_def.node_id)
+
     print ('Add op node: ', first_op.name)
     for t in op_def.input:
       node, port = t.split(':')
@@ -145,6 +175,8 @@ def convert_ops(unresolved_ops, net_def, output_node, dsp_ops):
       node_input = op_def.node_input.add()
       node_input.node_id = node_id
       node_input.output_port = int(port)
+
+    resolved_ops.add(first_op.name)
 
   for i in range(resolved_count):
     del unresolved_ops[0]
@@ -190,8 +222,14 @@ def convert_to_mace_pb(input_graph_def, input_dim, output_node):
     with session.graph.as_default() as graph:
       tf.import_graph_def(input_graph_def, name="")
       ops = graph.get_operations()
-      unresolved_ops = ops
       dsp_ops = DspOps()
+      # convert const node
+      unresolved_ops = [op for op in ops if op.type == 'Const']
+      while len(unresolved_ops) > 0:
+        convert_ops(unresolved_ops, net_def, output_node, dsp_ops)
+
+      # convert op node
+      unresolved_ops = [op for op in ops if op.type != 'Const']
       while len(unresolved_ops) > 0:
         convert_ops(unresolved_ops, net_def, output_node, dsp_ops)
 
