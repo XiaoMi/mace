@@ -106,16 +106,33 @@ struct ResizeBilinearFunctor {
 
   ResizeBilinearFunctor(bool align_corners) : align_corners_(align_corners) {}
 
-  void operator()(const T *input,
-                  T *output,
-                  index_t n,
-                  index_t channels,
-                  index_t in_height,
-                  index_t in_width,
-                  index_t out_height,
-                  index_t out_width) {
+  void operator()(const Tensor *input,
+                  const Tensor *resize_dims,
+                  Tensor *output) {
+    index_t n = input->dim(0);
+    index_t channels = input->dim(1);
+    index_t in_height = input->dim(2);
+    index_t in_width = input->dim(3);
+
+    index_t out_height;
+    index_t out_width;
+    {
+      MACE_CHECK(resize_dims->dim_size() == 1);
+      Tensor::MappingGuard resize_dims_mapper(resize_dims);
+      auto dims_data = resize_dims->data<index_t>();
+      out_height = dims_data[0];
+      out_width = dims_data[1];
+    }
+
+    vector<index_t> out_shape{n, channels, out_height, out_width};
+    output->Resize(out_shape);
+
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
+
     if (out_height == in_height && out_width == in_width) {
-      std::copy(input, input + channels * in_height * in_width, output);
+      std::copy(input_data, input_data + channels * in_height * in_width,
+                output_data);
       return;
     }
 
@@ -131,12 +148,16 @@ struct ResizeBilinearFunctor {
     ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
 
-    ResizeImage(input, n, in_height, in_width, out_height, out_width, channels,
-                xs, ys, output);
+    ResizeImage(input_data, n, in_height, in_width, out_height, out_width,
+                channels, xs, ys, output_data);
   }
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+template <>
+void ResizeBilinearFunctor<DeviceType::OPENCL, float>::operator()(
+    const Tensor *input, const Tensor *resize_dims, Tensor *output);
+
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_RESIZE_BILINEAR_H_

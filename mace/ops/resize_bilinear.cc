@@ -13,4 +13,7 @@ REGISTER_NEON_OPERATOR(ResizeBilinear,
                        ResizeBilinearOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(ResizeBilinear,
+                         ResizeBilinearOp<DeviceType::OPENCL, float>);
+
 }  //  namespace mace
