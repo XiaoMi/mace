@@ -28,7 +28,6 @@ class ResizeBilinearOp : public Operator<D, T> {
     MACE_CHECK(resize_dims->dim_size() == 1,
                "resize dim must be 2-dimensional.", resize_dims->dim_size());
 
-
     functor_(input, resize_dims, output);
     return true;
   }

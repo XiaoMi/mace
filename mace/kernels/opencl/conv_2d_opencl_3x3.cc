@@ -11,9 +11,9 @@ namespace kernels {
 
 static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const uint32_t stride, Tensor *output) {
-  const index_t channels = output->shape()[1];
-  const index_t height = output->shape()[2];
-  const index_t width = output->shape()[3];
+  const index_t channels = output->dim(1);
+  const index_t height = output->dim(2);
+  const index_t width = output->dim(3);
 
   MACE_CHECK(input->dim(0) == output->dim(0));
 

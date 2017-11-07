@@ -127,6 +127,8 @@ struct ResizeBilinearFunctor {
     vector<index_t> out_shape{n, channels, out_height, out_width};
     output->Resize(out_shape);
 
+    Tensor::MappingGuard input_mapper(input);
+    Tensor::MappingGuard output_mapper(output);
     const T *input_data = input->data<T>();
     T *output_data = output->mutable_data<T>();
 
