@@ -86,12 +86,6 @@ void TestRandomResizeBilinear() {
     net.AddRandomInput<D, float>("Input",
                                  {batch, channels, in_height, in_width});
     net.AddInputFromArray<D, index_t>("OutSize", {2}, {height, width});
-    /*
-    vector<float> input(24);
-    std::iota(begin(input), end(input), 0);
-    net.AddInputFromArray<DeviceType::OPENCL, float>("Input", {1, 3, 2, 4}, input);
-    net.AddInputFromArray<DeviceType::OPENCL, index_t>("OutSize", {2}, {1, 2});
-    */
 
     // Run
     net.RunOp(D);

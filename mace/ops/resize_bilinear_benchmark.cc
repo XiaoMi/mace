@@ -40,6 +40,7 @@ static void ResizeBilinearBenchmark(int iters,
   while (iters--) {
     net.RunOp(D);
   }
+  net.Sync();
 }
 
 #define BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)                \
