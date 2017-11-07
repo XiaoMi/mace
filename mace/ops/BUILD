@@ -63,6 +63,35 @@ cc_test(
 )
 
 cc_test(
+    name = "space_to_batch_test",
+    testonly = 1,
+    srcs = glob(["space_to_batch_test.cc"]),
+    copts = ["-std=c++11"],
+    linkopts = if_android(["-pie"]),
+    linkstatic = 1,
+    deps = [
+        "//mace/kernels",
+        "//mace/core",
+        "//mace/ops:test",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "conv_atrous_2d_test",
+    testonly = 1,
+    srcs = glob(["conv_atrous_2d_test.cc"]),
+    copts = ["-std=c++11"],
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    linkstatic = 1,
+    deps = [
+        ":ops",
+        ":test",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
