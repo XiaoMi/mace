@@ -19,10 +19,7 @@ struct SpaceToBatchFunctor {
                   const Tensor *block_shape_tensor,
                   const Tensor *paddings_tensor,
                   Tensor *output_tensor) {
-    MACE_CHECK_NOTNULL(input_tensor);
-    MACE_CHECK_NOTNULL(block_shape_tensor);
-    MACE_CHECK_NOTNULL(paddings_tensor);
-    MACE_CHECK_NOTNULL(output_tensor);
+    MACE_NOT_IMPLEMENTED;
   }
 
   bool b2s_;

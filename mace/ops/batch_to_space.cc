@@ -6,8 +6,6 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(BatchToSpaceND, BatchToSpaceNDOp<DeviceType::CPU, float>);
-
 REGISTER_OPENCL_OPERATOR(BatchToSpaceND, BatchToSpaceNDOp<DeviceType::OPENCL, float>);
 
 }  //  namespace mace
