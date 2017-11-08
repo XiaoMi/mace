@@ -16,6 +16,7 @@ class ResizeBilinearOp : public Operator<D, T> {
   ResizeBilinearOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
         functor_(
+            OperatorBase::GetRepeatedArgument<index_t>("size", {-1, -1}),
             OperatorBase::GetSingleArgument<bool>("align_corners", false)) {}
 
   bool Run() override {

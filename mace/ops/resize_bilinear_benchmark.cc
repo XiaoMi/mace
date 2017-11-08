@@ -23,6 +23,7 @@ static void ResizeBilinearBenchmark(int iters,
       .Input("Input")
       .Input("OutSize")
       .Output("Output")
+      .AddIntsArg("size", {output_height, output_width})
       .Finalize(net.NewOperatorDef());
 
   // Add input data

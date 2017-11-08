@@ -1,7 +1,6 @@
 //
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
-
 #ifndef MACE_KERNELS_RESIZE_BILINEAR_H_
 #define MACE_KERNELS_RESIZE_BILINEAR_H_
 
@@ -101,30 +100,24 @@ void ResizeImage(const T *images,
 }
 
 template <DeviceType D, typename T>
-struct ResizeBilinearFunctor {
-  bool align_corners_;
-
-  ResizeBilinearFunctor(bool align_corners) : align_corners_(align_corners) {}
+class ResizeBilinearFunctor {
+ public:
+  ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
+      : align_corners_(align_corners), size_(size) {}
 
   void operator()(const Tensor *input,
                   const Tensor *resize_dims,
                   Tensor *output) {
-    index_t n = input->dim(0);
-    index_t channels = input->dim(1);
-    index_t in_height = input->dim(2);
-    index_t in_width = input->dim(3);
+    const index_t batch = input->dim(0);
+    const index_t channels = input->dim(1);
+    const index_t in_height = input->dim(2);
+    const index_t in_width = input->dim(3);
 
     index_t out_height;
     index_t out_width;
-    {
-      MACE_CHECK(resize_dims->dim_size() == 1);
-      Tensor::MappingGuard resize_dims_mapper(resize_dims);
-      auto dims_data = resize_dims->data<index_t>();
-      out_height = dims_data[0];
-      out_width = dims_data[1];
-    }
-
-    vector<index_t> out_shape{n, channels, out_height, out_width};
+    GetOutputSize(resize_dims, &out_height, &out_width);
+    MACE_CHECK(out_height > 0 && out_width > 0);
+    std::vector<index_t> out_shape{batch, channels, out_height, out_width};
     output->Resize(out_shape);
 
     Tensor::MappingGuard input_mapper(input);
@@ -150,9 +143,29 @@ struct ResizeBilinearFunctor {
     ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
 
-    ResizeImage(input_data, n, in_height, in_width, out_height, out_width,
+    ResizeImage(input_data, batch, in_height, in_width, out_height, out_width,
                 channels, xs, ys, output_data);
   }
+
+ protected:
+  void GetOutputSize(const Tensor *resize_dims,
+                     index_t *out_height,
+                     index_t *out_width) {
+    if (size_[0] < 0 || size_[1] < 0) {
+      MACE_CHECK(resize_dims != nullptr && resize_dims->dim_size() == 1);
+      Tensor::MappingGuard resize_dims_mapper(resize_dims);
+      auto dims_data = resize_dims->data<index_t>();
+      *out_height = dims_data[0];
+      *out_width = dims_data[1];
+    } else {
+      *out_height = size_[0];
+      *out_width = size_[1];
+    }
+  }
+
+ private:
+  bool align_corners_;
+  std::vector<index_t> size_;
 };
 
 template <>
