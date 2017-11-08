@@ -61,8 +61,8 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
       {nullptr, nullptr},
       {Conv2dNeonK5x5S1, nullptr}};
   // not implement yet
-  index_t kernel_h = filter->shape()[2];
-  index_t kernel_w = filter->shape()[3];
+  index_t kernel_h = filter->dim(2);
+  index_t kernel_w = filter->dim(3);
   if (kernel_h != kernel_w || kernel_h > 5 || strides_[0] != strides_[1] ||
       strides_[0] > 2 || dilations_[0] != 1 || dilations_[1] != 1 ||
       selector[kernel_h - 1][strides_[0] - 1] == nullptr) {

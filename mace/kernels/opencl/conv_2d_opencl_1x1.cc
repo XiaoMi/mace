@@ -15,11 +15,11 @@ void Conv1x1Naive(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output) {
-  const index_t batch = output->shape()[0];
-  const index_t channels = output->shape()[1];
-  const index_t height = output->shape()[2];
-  const index_t width = output->shape()[3];
-  const index_t input_channels = input->shape()[1];
+  const index_t batch = output->dim(0);
+  const index_t channels = output->dim(1);
+  const index_t height = output->dim(2);
+  const index_t width = output->dim(3);
+  const index_t input_channels = input->dim(1);
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
@@ -46,11 +46,11 @@ void Conv1x1V2(const Tensor *input,
                const Tensor *filter,
                const Tensor *bias,
                Tensor *output) {
-  const index_t batch = output->shape()[0];
-  const index_t channels = output->shape()[1];
-  const index_t height = output->shape()[2];
-  const index_t width = output->shape()[3];
-  const index_t input_channels = input->shape()[1];
+  const index_t batch = output->dim(0);
+  const index_t channels = output->dim(1);
+  const index_t height = output->dim(2);
+  const index_t width = output->dim(3);
+  const index_t input_channels = input->dim(1);
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
@@ -88,11 +88,11 @@ void Conv1x1V3(const Tensor *input,
                const Tensor *filter,
                const Tensor *bias,
                Tensor *output) {
-  const index_t batch = output->shape()[0];
-  const index_t channels = output->shape()[1];
-  const index_t height = output->shape()[2];
-  const index_t width = output->shape()[3];
-  const index_t input_channels = input->shape()[1];
+  const index_t batch = output->dim(0);
+  const index_t channels = output->dim(1);
+  const index_t height = output->dim(2);
+  const index_t width = output->dim(3);
+  const index_t input_channels = input->dim(1);
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
@@ -174,13 +174,13 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
                                Tensor *output) {
-  const index_t batch = output->shape()[0];
-  const index_t height = output->shape()[2];
-  const index_t width = output->shape()[3];
+  const index_t batch = output->dim(0);
+  const index_t height = output->dim(2);
+  const index_t width = output->dim(3);
 
-  const index_t input_batch = input->shape()[0];
-  const index_t input_height = input->shape()[2];
-  const index_t input_width = input->shape()[3];
+  const index_t input_batch = input->dim(0);
+  const index_t input_height = input->dim(2);
+  const index_t input_width = input->dim(3);
 
   MACE_CHECK(input_batch == batch && input_height == height &&
              input_width == width);

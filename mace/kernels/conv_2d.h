@@ -27,18 +27,18 @@ struct Conv2dFunctor {
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-    index_t batch = output->shape()[0];
-    index_t channels = output->shape()[1];
-    index_t height = output->shape()[2];
-    index_t width = output->shape()[3];
+    index_t batch = output->dim(0);
+    index_t channels = output->dim(1);
+    index_t height = output->dim(2);
+    index_t width = output->dim(3);
 
-    index_t input_batch = input->shape()[0];
-    index_t input_channels = input->shape()[1];
-    index_t input_height = input->shape()[2];
-    index_t input_width = input->shape()[3];
+    index_t input_batch = input->dim(0);
+    index_t input_channels = input->dim(1);
+    index_t input_height = input->dim(2);
+    index_t input_width = input->dim(3);
 
-    index_t kernel_h = filter->shape()[2];
-    index_t kernel_w = filter->shape()[3];
+    index_t kernel_h = filter->dim(2);
+    index_t kernel_w = filter->dim(3);
 
     int stride_h = strides_[0];
     int stride_w = strides_[1];

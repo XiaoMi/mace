@@ -26,10 +26,10 @@ static void ResizeBilinearBenchmark(int iters,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>(
-      "Input", {batch, channels, input_height, input_width});
-  net.AddInputFromArray<DeviceType::CPU, index_t>(
-      "OutSize", {2}, {output_height, output_width});
+  net.AddRandomInput<D, float>("Input",
+                               {batch, channels, input_height, input_width});
+  net.AddInputFromArray<D, index_t>("OutSize", {2},
+                                    {output_height, output_width});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -40,6 +40,7 @@ static void ResizeBilinearBenchmark(int iters,
   while (iters--) {
     net.RunOp(D);
   }
+  net.Sync();
 }
 
 #define BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)                \
