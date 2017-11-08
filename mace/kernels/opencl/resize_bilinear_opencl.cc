@@ -19,15 +19,9 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, float>::operator()(
 
   index_t out_height;
   index_t out_width;
-  {
-    MACE_CHECK(resize_dims->dim_size() == 1);
-    Tensor::MappingGuard resize_dims_mapper(resize_dims);
-    auto dims_data = resize_dims->data<index_t>();
-    out_height = dims_data[0];
-    out_width = dims_data[1];
-  }
-
-  std::vector<index_t> out_shape{batch, channels, out_height, out_width};
+  GetOutputSize(resize_dims, &out_height, &out_width);
+  MACE_CHECK(out_height > 0 && out_width > 0);
+  std::vector<index_t> out_shape {batch, channels, out_height, out_width};
   output->Resize(out_shape);
 
   float height_scale =

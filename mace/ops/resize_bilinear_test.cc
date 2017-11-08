@@ -66,12 +66,12 @@ void TestRandomResizeBilinear() {
   srand(time(nullptr));
   testing::internal::LogToStderr();
   for (int round = 0; round < 10; ++round) {
-    index_t batch = 1 + rand() % 5;
-    index_t channels = 1 + rand() % 100;
-    index_t height = 1 + rand() % 100;
-    index_t width = 1 + rand() % 100;
-    index_t in_height = 1 + rand() % 100;
-    index_t in_width = 1 + rand() % 100;
+    int batch = 1 + rand() % 5;
+    int channels = 1 + rand() % 100;
+    int height = 1 + rand() % 100;
+    int width = 1 + rand() % 100;
+    int in_height = 1 + rand() % 100;
+    int in_width = 1 + rand() % 100;
 
     // Construct graph
     OpsTestNet net;
@@ -80,6 +80,7 @@ void TestRandomResizeBilinear() {
         .Input("OutSize")
         .Output("Output")
         .AddIntArg("align_corners", 1)
+        .AddIntsArg("size", {height, width})
         .Finalize(net.NewOperatorDef());
 
     // Add input data
