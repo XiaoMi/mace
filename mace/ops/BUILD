@@ -67,12 +67,11 @@ cc_test(
     testonly = 1,
     srcs = glob(["space_to_batch_test.cc"]),
     copts = ["-std=c++11"],
-    linkopts = if_android(["-pie"]),
+    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
     linkstatic = 1,
     deps = [
-        "//mace/kernels",
-        "//mace/core",
-        "//mace/ops:test",
+        ":ops",
+        ":test",
         "@gtest//:gtest_main",
     ],
 )

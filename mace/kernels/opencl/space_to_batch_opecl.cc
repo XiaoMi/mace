@@ -7,32 +7,33 @@
 
 #include "mace/core/common.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/core/tensor.h"
+#include "mace/kernels/space_to_batch.h"
 
 namespace mace {
 namespace kernels {
 
-template <bool B2S = false>
-void SpaceToBatch(Tensor *space_tensor,
-                  const int block_height,
-                  const int block_width,
-                  Tensor *batch_tensor,
-                  const std::vector<cl::Event> *waiting_events,
-                  cl::Event *event) {
+template <>
+void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *space_tensor,
+                                                                const Tensor *block_shape_tensor,
+                                                                const Tensor *paddings_tensor,
+                                                                Tensor *batch_tensor) {
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
   auto s2b_kernel = cl::Kernel(program, "space_to_batch");
 
+
   uint32_t idx = 0;
-  s2b_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(space_tensor->buffer())));
+  s2b_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(space_tensor->buffer())));
+  s2b_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(block_shape_tensor->buffer())));
+  s2b_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(paddings_tensor->buffer())));
   s2b_kernel.setArg(idx++, static_cast<int32_t>(space_tensor->dim(0)));
   s2b_kernel.setArg(idx++, static_cast<int32_t>(space_tensor->dim(1)));
   s2b_kernel.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
   s2b_kernel.setArg(idx++, static_cast<int32_t>(space_tensor->dim(3)));
-  s2b_kernel.setArg(idx++, block_height);
-  s2b_kernel.setArg(idx++, block_width);
-  s2b_kernel.setArg(idx++, static_cast<int32_t>(B2S));
-  s2b_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(batch_tensor->buffer())));
+  s2b_kernel.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
+  s2b_kernel.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(3)));
+  s2b_kernel.setArg(idx++, static_cast<int32_t>(b2s_));
+  s2b_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(batch_tensor->buffer())));
 
   const uint32_t gws[3] = {static_cast<uint32_t>(batch_tensor->dim(0)),
                            static_cast<uint32_t>(batch_tensor->dim(1)),
@@ -43,9 +44,7 @@ void SpaceToBatch(Tensor *space_tensor,
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       s2b_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]),
-      waiting_events,
-      event);
+      cl::NDRange(lws[0], lws[1], lws[2]));
   MACE_CHECK(error == CL_SUCCESS);
 }
 

@@ -7,7 +7,6 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/utils/utils.h"
-#include "mace/core/macros.h"
 
 namespace mace {
 namespace kernels {
@@ -174,11 +173,7 @@ void Conv1x1V3(const Tensor *input,
 extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
-                               const int dilation_height,
-                               const int dilation_width,
                                Tensor *output) {
-  MACE_UNUSED(dilation_height);
-  MACE_UNUSED(dilation_width);
   const index_t batch = output->shape()[0];
   const index_t height = output->shape()[2];
   const index_t width = output->shape()[3];
