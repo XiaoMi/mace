@@ -22,6 +22,7 @@ static void BatchToSpaceHelper(const Tensor *input_tensor,
 
   const index_t block_dims = block_shape_tensor->dim(0);
   MACE_CHECK(block_dims == cropped_tensor->dim(0) && 2 == cropped_tensor->dim(1));
+  // TODO change tensor to attribute if needed based on the benchmark
   Tensor::MappingGuard block_shape_tensor_mapper(block_shape_tensor);
   Tensor::MappingGuard cropped_tensor_mapper(cropped_tensor);
   const int *block_shape_ptr = block_shape_tensor->data<int>();

@@ -1,6 +1,6 @@
-void kernel space_to_batch(global float* space_data_ptr,
-                           global const int* block_shape_ptr,
-                           global const int* paddings_ptr,
+void kernel space_to_batch(global float *space_data_ptr,
+                           global const int *block_shape_ptr,
+                           global const int *paddings_ptr,
                            private const int space_batch,
                            private const int space_channel,
                            private const int space_height,
@@ -28,10 +28,12 @@ void kernel space_to_batch(global float* space_data_ptr,
                                batch_pixel_height_idx * block_height;
   int space_pixel_width_idx = (remaining_batch_idx % block_width) +
                               batch_pixel_width_idx * block_width;
+
   const int batch_data_offset = batch_idx * (space_channel * batch_height * batch_width) +
                                 (batch_channel_idx * batch_height * batch_width) +
                                 batch_pixel_height_idx * batch_width +
                                 batch_pixel_width_idx;
+
   space_pixel_height_idx -= padding_height_start;
   space_pixel_width_idx -= padding_width_start;
   const int space_data_offset = space_idx * (space_channel * space_height * space_width) +
