@@ -14,23 +14,28 @@ template <DeviceType D, typename T>
 struct ReluFunctor {
   T max_limit_;
 
-  void operator()(const T *input, T *output, index_t size) {
+  void operator()(const Tensor *input, Tensor *output) {
+    const T *input_ptr = input->data<T>();
+    T *output_ptr = output->mutable_data<T>();
+    index_t size = input->size();
     if (max_limit_ < 0) {
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::max(input[i], static_cast<T>(0));
+        output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0));
       }
     } else {
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::min(std::max(input[i], static_cast<T>(0)), max_limit_);
+        output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)), max_limit_);
       }
     }
   }
 };
 
 template <>
-void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
-                                                      float *output,
-                                                      index_t size);
+void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
+                                                      Tensor *output);
+template <>
+void ReluFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
+                                                        Tensor *output);
 
 }  //  namespace kernels
 }  //  namespace mace

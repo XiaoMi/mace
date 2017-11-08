@@ -22,11 +22,8 @@ class ReluOp : public Operator<D, T> {
     const Tensor *input_tensor = this->inputs_[0];
     Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(input_tensor);
-    const T *input = input_tensor->data<T>();
-    T *output = output_tensor->mutable_data<T>();
-    index_t size = input_tensor->size();
 
-    functor_(input, output, size);
+    functor_(input_tensor, output_tensor);
     return true;
   }
 

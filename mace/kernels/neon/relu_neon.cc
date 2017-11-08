@@ -9,9 +9,11 @@ namespace mace {
 namespace kernels {
 
 template <>
-void ReluFunctor<DeviceType::NEON, float>::operator()(const float *input,
-                                                      float *output,
-                                                      index_t size) {
+void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input_tensor,
+                                                      Tensor *output_tensor) {
+  const float *input = input_tensor->data<float>();
+  float *output = output_tensor->mutable_data<float>();
+  index_t size = input_tensor->size();
   if (max_limit_ < 0) {
 #pragma omp parallel for
     for (int64_t i = 0; i < size; i += kCostPerGroup) {

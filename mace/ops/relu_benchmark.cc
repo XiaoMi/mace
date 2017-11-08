@@ -19,17 +19,19 @@ static void ReluBenchmark(int iters, int size) {
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", {size});
+  net.AddRandomInput<D, float>("Input", {size});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
   }
+  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
   }
+  net.Sync();
 }
 
 #define BM_RELU_MACRO(SIZE, TYPE, DEVICE)                     \
@@ -43,7 +45,8 @@ static void ReluBenchmark(int iters, int size) {
 
 #define BM_RELU(SIZE, TYPE)       \
   BM_RELU_MACRO(SIZE, TYPE, CPU); \
-  BM_RELU_MACRO(SIZE, TYPE, NEON);
+  BM_RELU_MACRO(SIZE, TYPE, NEON);\
+  BM_RELU_MACRO(SIZE, TYPE, OPENCL);
 
 BM_RELU(1000, float);
 BM_RELU(100000, float);
