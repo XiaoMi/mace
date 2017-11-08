@@ -17,4 +17,6 @@
 #define MACE_PREDICT_TRUE(x) (x)
 #endif
 
+#define MACE_UNUSED(var) (void)(var)
+
 #endif  // MACE_CORE_MACROS_H_
