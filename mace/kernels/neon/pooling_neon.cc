@@ -3,8 +3,6 @@
 //
 
 #include "mace/kernels/pooling.h"
-#include <arm_neon.h>
-#include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
 namespace kernels {
@@ -61,9 +59,15 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
     const index_t *input_shape,
     float *output,
     const index_t *output_shape) {
+
+  int paddings[2];
+  std::vector<index_t> filter_shape = {input_shape[1], input_shape[0],
+                                       kernels_[0], kernels_[1]};
+  kernels::CalPaddingSize(input_shape, filter_shape.data(), this->dilations_,
+                          strides_, this->padding_, paddings);
 #ifdef __COPY_MAKE_PADDING
   Tensor padded_input;
-  ConstructInputWithPadding(input, input_shape, paddings_, &padded_input);
+  ConstructInputWithPadding(input, input_shape, paddings, &padded_input);
   input = padded_input.data<float>();
   input_shape = padded_input.shape().data();
 #endif
@@ -76,14 +80,14 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
       PoolingMaxNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingMaxNeonK2x2S2x2(input, input_shape, output, output_shape,
-                             paddings_);
+                             paddings);
 #endif
     } else {  // AVG_POOL_2x2s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingAvgNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingAvgNeonK2x2S2x2(input, input_shape, output, output_shape,
-                             paddings_);
+                             paddings);
 #endif
     }
   } else if (kernels_[0] == 3 && kernels_[1] == 3 && strides_[0] == 2 &&
@@ -94,19 +98,19 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
       PoolingMaxNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingMaxNeonK3x3S2x2(input, input_shape, output, output_shape,
-                             paddings_);
+                             paddings);
 #endif
     } else {  // AVG_POOL_3x3s2x2
 #ifdef __COPY_MAKE_PADDING
       PoolingAvgNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
 #else
       PoolingAvgNeonK3x3S2x2(input, input_shape, output, output_shape,
-                             paddings_);
+                             paddings);
 #endif
     }
   } else {  // not implement yet
     PoolingFunctor<DeviceType::CPU, float>(pooling_type_, kernels_, strides_,
-                                           paddings_, dilations_)(
+                                           padding_, dilations_)(
         input, input_shape, output, output_shape);
   }
 }

@@ -7,6 +7,7 @@
 
 #include <limits>
 #include "mace/core/tensor.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
 
@@ -22,12 +23,12 @@ struct PoolingFunctor {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
-                 const int *paddings,
+                 const Padding padding,
                  const int *dilations)
       : pooling_type_(pooling_type),
         kernels_(kernels),
         strides_(strides),
-        paddings_(paddings),
+        padding_(padding),
         dilations_(dilations) {}
 
   void operator()(const T *input,
@@ -54,9 +55,14 @@ struct PoolingFunctor {
     int dilation_h = dilations_[0];
     int dilation_w = dilations_[1];
 
+    int paddings[2];
+    std::vector<index_t> filter_shape = {input_shape[1], input_shape[0],
+                                         kernels_[0], kernels_[1]};
+    kernels::CalPaddingSize(input_shape, filter_shape.data(), this->dilations_,
+                            strides_, this->padding_, paddings);
     // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings_[0] / 2;
-    int padded_w_start = 0 - paddings_[1] / 2;
+    int padded_h_start = 0 - paddings[0] / 2;
+    int padded_w_start = 0 - paddings[1] / 2;
 
     if (pooling_type_ == MAX) {
 #pragma omp parallel for collapse(2)
@@ -116,12 +122,19 @@ struct PoolingFunctor {
   const PoolingType pooling_type_;
   const int *kernels_;
   const int *strides_;
-  const int *paddings_;
+  const Padding padding_;
   const int *dilations_;
 };
 
 template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
+    const float *input,
+    const index_t *input_shape,
+    float *output,
+    const index_t *output_shape);
+
+template <>
+void PoolingFunctor<DeviceType::OPENCL, float>::operator()(
     const float *input,
     const index_t *input_shape,
     float *output,
