@@ -45,9 +45,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor 
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
   if (paddings_[0] > 0 || paddings_[1] > 0) {
     Tensor padded_input(GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<float>::v());
-    Tensor::MappingGuard input_mapper(input);
-    ConstructInputWithPadding(input->data<float>(), input->shape().data(), paddings_.data(),
-                              &padded_input);
+    ConstructInputWithPadding(input, paddings_.data(), &padded_input);
     conv2d_func(&padded_input, filter, bias, output);
   }else {
     conv2d_func(input, filter, bias, output);

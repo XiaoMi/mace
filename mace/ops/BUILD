@@ -63,22 +63,6 @@ cc_test(
 )
 
 cc_test(
-    name = "pooling_test",
-    testonly = 1,
-    srcs = glob(
-        ["pooling_test.cc"],
-    ),
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
-    linkstatic = 1,
-    deps = [
-        ":ops",
-        ":test",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),

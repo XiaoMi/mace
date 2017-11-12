@@ -55,10 +55,13 @@ extern void PoolingAvgNeonK3x3S2x2Padded(const float *input,
 
 template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input,
-    const index_t *input_shape,
-    float *output,
-    const index_t *output_shape) {
+    const Tensor *input_tensor,
+    Tensor *output_tensor) {
+
+  const float *input = input_tensor->data<float>();
+  float *output = output_tensor->mutable_data<float>();
+  const index_t *input_shape = input_tensor->shape().data();
+  const index_t *output_shape = output_tensor->shape().data();
 
   int paddings[2];
   std::vector<index_t> filter_shape = {input_shape[1], input_shape[0],
@@ -67,7 +70,7 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
                           strides_, this->padding_, paddings);
 #ifdef __COPY_MAKE_PADDING
   Tensor padded_input;
-  ConstructInputWithPadding(input, input_shape, paddings, &padded_input);
+  ConstructInputWithPadding(input_tensor, paddings, &padded_input);
   input = padded_input.data<float>();
   input_shape = padded_input.shape().data();
 #endif
@@ -111,7 +114,7 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
   } else {  // not implement yet
     PoolingFunctor<DeviceType::CPU, float>(pooling_type_, kernels_, strides_,
                                            padding_, dilations_)(
-        input, input_shape, output, output_shape);
+        input_tensor, output_tensor);
   }
 }
 

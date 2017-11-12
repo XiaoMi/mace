@@ -32,10 +32,10 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
                     Padding padding,
                     int *padding_size);
 
-void ConstructInputWithPadding(const float *input,
-                               const index_t *input_shape,
+void ConstructInputWithPadding(const Tensor *input,
                                const int *paddings,
-                               Tensor *output_tensor);
+                               Tensor *output_tensor,
+                               bool padding_same_value = false);
 }  //  namespace kernels
 }  //  namespace mace
 

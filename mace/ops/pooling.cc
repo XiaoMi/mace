@@ -12,4 +12,5 @@ REGISTER_CPU_OPERATOR(Pooling, PoolingOp<DeviceType::CPU, float>);
 REGISTER_NEON_OPERATOR(Pooling, PoolingOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(Pooling, PoolingOp<DeviceType::OPENCL, float>);
 }  //  namespace mace

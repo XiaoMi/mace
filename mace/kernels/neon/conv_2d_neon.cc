@@ -75,6 +75,12 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     return;
   }
 
+  Tensor padded_input;
+  // Keep this alive during kernel execution
+  if (paddings_[0] > 0 || paddings_[1] > 0) {
+    ConstructInputWithPadding(input, paddings_.data(), &padded_input);
+    input = &padded_input;
+  }
   Tensor::MappingGuard input_mapper(input);
   Tensor::MappingGuard filter_mapper(filter);
   Tensor::MappingGuard bias_mapper(bias);
@@ -86,14 +92,6 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   auto output_data = output->mutable_data<float>();
   auto output_shape = output->shape().data();
 
-  // Keep this alive during kernel execution
-  Tensor padded_input;
-  if (paddings_[0] > 0 || paddings_[1] > 0) {
-    ConstructInputWithPadding(input_data, input->shape().data(),
-                              paddings_.data(), &padded_input);
-    input_data = padded_input.data<float>();
-    input_shape = padded_input.shape().data();
-  }
   auto conv2d_neon_func = selector[kernel_h - 1][strides_[0] - 1];
   conv2d_neon_func(input_data, input_shape, filter_data, nullptr,
                    bias_data, output_data, output_shape);

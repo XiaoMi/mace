@@ -20,8 +20,8 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
         pooling_type_(
             static_cast<PoolingType>(OperatorBase::GetSingleArgument<int>(
                 "pooling_type", static_cast<int>(AVG)))),
-        functor_(pooling_type_, kernels_.data(), ConvPool2dOpBase::strides_.data(),
-                 ConvPool2dOpBase::padding_, ConvPool2dOpBase::dilations_.data()){};
+        functor_(pooling_type_, kernels_.data(), this->strides_.data(),
+                 this->padding_, this->dilations_.data()){};
 
   bool Run() override {
     const Tensor *input = this->Input(INPUT);
@@ -42,8 +42,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
         paddings.data());
     output->Resize(output_shape);
 
-    functor_(input->data<float>(), input->shape().data(),
-                 output->mutable_data<float>(), output->shape().data());
+    functor_(input, output);
     return true;
   };
 

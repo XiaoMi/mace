@@ -207,7 +207,11 @@ class Tensor {
 
     os.str("");
     os.clear();
+    MappingGuard guard(this);
     for (int i = 0; i < size_; ++i) {
+      if ( i != 0 && i % shape_[3] == 0) {
+        os << "\n";
+      }
       CASES(dtype_, (os << this->data<T>()[i]) << ", ");
     }
     LOG(INFO) << os.str();
