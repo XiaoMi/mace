@@ -61,9 +61,11 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   // based on the model accuracy.
 
   padding_size[0] =
-      (output_height - 1) * strides[0] + k_extent_height - input_shape[2];
+      std::max<int>(0, (output_height - 1) * strides[0] 
+          + k_extent_height - input_shape[2]);
   padding_size[1] =
-      (output_width - 1) * strides[1] + k_extent_width - input_shape[3];
+      std::max<int>(0, (output_width - 1) * strides[1] 
+          + k_extent_width - input_shape[3]);
 
   output_shape[0] = input_shape[0];
   output_shape[1] = output_channels;
@@ -110,15 +112,21 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
   padding_size[0] =
-      (output_height - 1) * strides[0] + k_extent_height - input_shape[2];
+      std::max<int>(0, (output_height - 1) * strides[0] 
+          + k_extent_height - input_shape[2]);
   padding_size[1] =
-      (output_width - 1) * strides[1] + k_extent_width - input_shape[3];
+      std::max<int>(0, (output_width - 1) * strides[1] 
+          + k_extent_width - input_shape[3]);
 }
 
-void ConstructInputWithPadding(const float *input,
-                               const index_t *input_shape,
+void ConstructInputWithPadding(const Tensor *input_tensor,
                                const int *paddings,
-                               Tensor *output_tensor) {
+                               Tensor *output_tensor,
+                               bool padding_same_value) {
+  Tensor::MappingGuard input_mapper(input_tensor);
+  const float *input = input_tensor->data<float>();
+  const index_t *input_shape = input_tensor->shape().data();
+
   index_t batch = input_shape[0];
   index_t channels = input_shape[1];
   index_t height = input_shape[2];
@@ -133,21 +141,51 @@ void ConstructInputWithPadding(const float *input,
 
   output_tensor->Resize(output_shape);
 
-  Tensor::MappingGuard padded_input_mapper(output_tensor);
+  Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_ptr = output_tensor->mutable_data<float>();
   memset(output_ptr, 0, output_tensor->size() * sizeof(float));
 
   // Skip the padded top rows
-  output_ptr += padded_top * output_width;
-  for (int i = 0; i < batch; ++i) {
-    for (int j = 0; j < channels; ++j) {
-      for (int k = 0; k < height; ++k) {
-        memcpy(output_ptr + padded_left, input, width * sizeof(float));
+  if (padding_same_value) {
+#define COPY_INPUT            \
+    std::fill(output_ptr, output_ptr+padded_left, input[0]);           \
+    output_ptr += padded_left;                                         \
+    memcpy(output_ptr, input, width * sizeof(float));                  \
+    output_ptr += width;                                               \
+    std::fill(output_ptr , output_ptr + padded_right, input[width-1]); \
+    output_ptr += padded_right;
+
+    const int padded_bottom = paddings[0] - padded_top;
+    const int padded_right = paddings[1] - padded_left;
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < channels; ++j) {
+        for (int k = 0; k < padded_top; ++k) {
+          COPY_INPUT;
+        }
+        for (int k = 0; k < height; ++k) {
+          COPY_INPUT;
+          input += width;
+        }
+        input -= width;
+        for (int k = 0; k < padded_bottom; ++k) {
+          COPY_INPUT;
+        }
         input += width;
-        output_ptr += output_width;
       }
-      // Skip the padded bottom in this channel and top in the next channel
-      output_ptr += paddings[0] * output_width;
+    }
+#undef COPY_INPUT
+  } else {
+    output_ptr += padded_top * output_width;
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < channels; ++j) {
+        for (int k = 0; k < height; ++k) {
+          memcpy(output_ptr + padded_left, input, width * sizeof(float));
+          input += width;
+          output_ptr += output_width;
+        }
+        // Skip the padded bottom in this channel and top in the next channel
+        output_ptr += paddings[0] * output_width;
+      }
     }
   }
 }

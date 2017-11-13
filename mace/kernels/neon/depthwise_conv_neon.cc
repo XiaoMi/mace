@@ -67,8 +67,7 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
   // Keep this alive during kernel execution
   Tensor padded_input;
   if (paddings_[0] > 0 || paddings_[1] > 0) {
-    ConstructInputWithPadding(input_ptr, input_shape, paddings_.data(),
-                              &padded_input);
+    ConstructInputWithPadding(input, paddings_.data(), &padded_input);
     input_ptr = padded_input.data<float>();
     input_shape = padded_input.shape().data();
   }
