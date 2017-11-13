@@ -10,22 +10,31 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct AddNFunctor {
-  void operator()(const vector<const T *> &inputs, T *output, index_t size) {
-    memset(output, 0, size * sizeof(T));
-    int n = inputs.size();
+  void operator()(std::vector<const Tensor *> &input_tensors, Tensor *output_tensor) {
+    Tensor::MappingGuard output_map(output_tensor);
+    index_t size = input_tensors[0]->size();
+    T *output_ptr = output_tensor->mutable_data<T>();
+    memset(output_ptr, 0, size * sizeof(T));
+    int n = input_tensors.size();
     for (int i = 0; i < n; ++i) {
+      Tensor::MappingGuard input_map(input_tensors[i]);
+      const T *input_ptr = input_tensors[i]->data<T>();
       for (index_t j = 0; j < size; ++j) {
-        output[j] += inputs[i][j];
+        output_ptr[j] += input_ptr[j];
       }
     }
   }
 };
 
-template <>
+template<>
 void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const vector<const float *> &inputs, float *output, index_t size);
+    std::vector<const Tensor *> &input_tensors, Tensor *output_tensor);
+
+template<>
+void AddNFunctor<DeviceType::OPENCL, float>::operator()(
+    std::vector<const Tensor *> &inputs, Tensor *output);
 
 }  //  namespace kernels
 }  //  namespace mace

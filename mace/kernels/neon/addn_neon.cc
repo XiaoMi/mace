@@ -10,10 +10,12 @@ namespace kernels {
 
 template <>
 void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const vector<const float *> &inputs, float *output, index_t size) {
+    std::vector<const Tensor *> &input_tensors, Tensor *output_tensor) {
   // TODO: neon mem copy
-  memset(output, 0, size * sizeof(float));
-  int n = inputs.size();
+  index_t size = output_tensor->size();
+  float *output_ptr = output_tensor->mutable_data<float>();
+  memset(output_ptr, 0, size * sizeof(float));
+  int n = input_tensors.size();
   int64_t cost = size * n;
   int64_t groups = 1;
   if (cost > kCostPerGroup) {
@@ -27,8 +29,9 @@ void AddNFunctor<DeviceType::NEON, float>::operator()(
     int nn = count >> 2;
     int remain = count - (nn << 2);
     for (int64_t j = 0; j < n; ++j) {
-      const float *inptr = inputs[j] + i;
-      float *outptr = output + i;
+      const float *input_base = input_tensors[j]->data<float>();
+      const float *inptr = input_base + i;
+      float *outptr = output_ptr + i;
       for (int k = 0; k < nn; ++k) {
         float32x4_t _inptr = vld1q_f32(inptr);
         float32x4_t _outptr = vld1q_f32(outptr);

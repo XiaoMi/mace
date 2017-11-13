@@ -12,4 +12,6 @@ REGISTER_CPU_OPERATOR(AddN, AddNOp<DeviceType::CPU, float>);
 REGISTER_NEON_OPERATOR(AddN, AddNOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
+REGISTER_OPENCL_OPERATOR(AddN, AddNOp<DeviceType::OPENCL, float>);
+
 }  //  namespace mace
