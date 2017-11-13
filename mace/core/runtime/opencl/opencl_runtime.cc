@@ -83,6 +83,7 @@ bool BuildProgram(OpenCLRuntime *runtime,
 
 }  // namespace
 
+
 OpenCLRuntime *OpenCLRuntime::Get() {
   static std::once_flag init_once;
   static OpenCLRuntime *instance = nullptr;
@@ -140,7 +141,10 @@ OpenCLRuntime *OpenCLRuntime::Get() {
 OpenCLRuntime::OpenCLRuntime(cl::Context context,
                              cl::Device device,
                              cl::CommandQueue command_queue)
-    : context_(context), device_(device), command_queue_(command_queue) {}
+    : context_(context), device_(device), command_queue_(command_queue) {
+  const char *kernel_path = getenv("MACE_KERNEL_PATH");
+  kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+}
 
 OpenCLRuntime::~OpenCLRuntime() {}
 
@@ -160,6 +164,65 @@ cl::Program &OpenCLRuntime::program() {
   });
 
   return program_;
+}
+
+const std::unodered_map<std::string, std::string>
+    OpenCLRuntime::kernel_program_map_ = {
+  {"BatchNorm", "batch_norm.cl"}
+};
+
+bool OpenCLRuntime::BuildProgram(const std::string &kernel_name,
+                                 const std::string &build_options,
+                                 cl::Program *program) {
+  MACE_CHECK_NOTNULL(program);
+
+
+  cl::Program::Sources sources;
+  std::string filename = kernel_path_ + kernel_name;
+  std::string kernel_source;
+  MACE_CHECK(ReadSourceFile(filename, &kernel_source));
+  sources.push_back({kernel_source.c_str(), kernel_source.length()});
+
+  *program = cl::Program(this->context(), sources);
+  build_options += " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + path;
+  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+  cl_int ret = program->build({runtime->device()}, build_options.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(FATAL) << "Build program failed: " << ret;
+  }
+
+  return true;
+}
+
+cl::Kernel OpenCLRuntime::BuildKernel(const std::string &kernel_name,
+                        const std::set<std::string> &build_options) {
+  auto kernel_program_it = kernel_program_map_.find(kernel_name);
+  if (kernel_program_it == kernel_program_map_.end()) {
+    MACE_CHECK(false, kernel_name, " opencl kernel doesn't exist.");
+  }
+
+  std::string program_name = kernel_program_it->second;
+  std::string build_options_str;
+  for(auto &option : build_options) {
+    build_options_str += " " + option;
+  }
+  std::string built_program_key = program_name + build_options_str;
+
+  auto built_program_it = built_program_map_.find(built_program_key);
+  cl::Program program;
+  if (built_program_it != built_program_map_.end()) {
+    program = built_program_it->second;
+  } else {
+    this->BuildProgram(kernel_name, build_options_str, &program);
+    built_program_map_.emplace(built_program_key, std::move(program));
+  }
+  return cl::Kernel(kernel_name, program);
 }
 
 uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
