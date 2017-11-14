@@ -33,8 +33,8 @@ class OpenCLRuntime {
 
  private:
   cl::Context context_;
-  cl::CommandQueue command_queue_;
   cl::Device device_;
+  cl::CommandQueue command_queue_;
   cl::Program program_;
   std::once_flag build_flag_;
 };
