@@ -39,13 +39,16 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
 
   switch (padding) {
-    case VALID:output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
+    case VALID:
+      output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
       output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:output_height = (input_shape[2] - 1) / strides[0] + 1;
+    case SAME:
+      output_height = (input_shape[2] - 1) / strides[0] + 1;
       output_width = (input_shape[3] - 1) / strides[1] + 1;
       break;
-    case FULL:output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
+    case FULL:
+      output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
     default:MACE_CHECK(false, "Unsupported padding type: ", padding);
@@ -87,13 +90,16 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   index_t k_extent_width = (filter_shape[3] - 1) * dilations[1] + 1;
 
   switch (padding) {
-    case VALID:output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
+    case VALID:
+      output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
       output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:output_height = (input_shape[2] - 1) / strides[0] + 1;
+    case SAME:
+      output_height = (input_shape[2] - 1) / strides[0] + 1;
       output_width = (input_shape[3] - 1) / strides[1] + 1;
       break;
-    case FULL:output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
+    case FULL:
+      output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
     default:MACE_CHECK(false, "Unsupported padding type: ", padding);
