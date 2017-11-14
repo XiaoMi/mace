@@ -51,7 +51,7 @@ __kernel void conv_2d_1x1_v2(__global const float *input, /* n, c, h, w */
 
   for (int out_chan = out_chan_begin; out_chan < out_chan_end; ++out_chan) {
     float *output_ptr = output_base + out_chan * pixel_num;
-    float bias_value = bias[out_chan];
+    float bias_value = bias == NULL ? 0 : bias[out_chan];
     for (int p = 0; p < pixel_len; ++p) {
       output_ptr[p] = bias_value;
     }

@@ -2,6 +2,7 @@ from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
 
+# TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
   'VALID': 0,
   'SAME': 1,
@@ -22,7 +23,7 @@ def convert_tensor(op, tensor):
         op.name.endswith('weights') or
         op.name.endswith('kernel')) \
           and op.outputs[0].consumers()[0].type.find('Conv') != -1:
-    if op.outputs[0].consumers()[0].get_attr('data_format') == 'NCHW':
+    if op.outputs[0].consumers()[0].get_attr('data_format') == 'NHWC':
       tf_tensor = np.transpose(tf_tensor, axes=(3, 2, 0, 1))
       shape = [shape[3], shape[2], shape[0], shape[1]]
       # print (tensor.name, shape)
@@ -70,7 +71,7 @@ def convert_ops(unresolved_ops, net_def):
     padding_arg.i = padding_mode[first_op.get_attr('padding')]
     strides_arg = op_def.arg.add()
     strides_arg.name = 'strides'
-    strides_arg.ints.extend(first_op.get_attr('strides')[2:])
+    strides_arg.ints.extend(first_op.get_attr('strides')[1:3])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = 'NCHW'
@@ -129,10 +130,10 @@ def convert_ops(unresolved_ops, net_def):
     padding_arg.i = padding_mode[first_op.get_attr('padding')]
     strides_arg = op_def.arg.add()
     strides_arg.name = 'strides'
-    strides_arg.ints.extend(first_op.get_attr('strides')[2:])
+    strides_arg.ints.extend(first_op.get_attr('strides')[1:3])
     kernels_arg = op_def.arg.add()
     kernels_arg.name = 'kernels'
-    kernels_arg.ints.extend(first_op.get_attr('ksize')[2:])
+    kernels_arg.ints.extend(first_op.get_attr('ksize')[1:3])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = 'NCHW'

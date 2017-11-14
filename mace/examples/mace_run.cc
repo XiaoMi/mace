@@ -81,30 +81,36 @@ int main(int argc, char **argv) {
   net_def.ParseFromIstream(&file_stream);
   file_stream.close();
 
-  Workspace ws;
-  ws.LoadModelTensor(net_def, DeviceType::CPU);
-  Tensor *input_tensor =
-      ws.CreateTensor(input_node + ":0", GetDeviceAllocator(DeviceType::CPU), DT_FLOAT);
-  input_tensor->Resize(shape);
-  float *input_data = input_tensor->mutable_data<float>();
-
-  // load input
-  ifstream in_file(input_file, ios::in | ios::binary);
-  in_file.read(reinterpret_cast<char *>(input_data),
-               input_tensor->size() * sizeof(float));
-  in_file.close();
-
-  // run model
   DeviceType device_type;
   DeviceType_Parse(device, &device_type);
   VLOG(0) << device_type;
+  Workspace ws;
+  ws.LoadModelTensor(net_def, device_type);
+  Tensor *input_tensor =
+      ws.CreateTensor(input_node + ":0", GetDeviceAllocator(device_type), DT_FLOAT);
+  input_tensor->Resize(shape);
+  {
+    Tensor::MappingGuard input_guard(input_tensor);
+    float *input_data = input_tensor->mutable_data<float>();
+
+    // load input
+    ifstream in_file(input_file, ios::in | ios::binary);
+    in_file.read(reinterpret_cast<char *>(input_data),
+                 input_tensor->size() * sizeof(float));
+    in_file.close();
+  }
+
+
+  // run model
   auto net = CreateNet(net_def, &ws, device_type);
 
+  VLOG(0) << "warm up";
   // warm up
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 1; ++i) {
     net->Run();
   }
 
+  VLOG(0) << "run";
   timeval tv1, tv2;
   gettimeofday(&tv1, NULL);
   for (int i = 0; i < round; ++i) {
@@ -120,9 +126,15 @@ int main(int argc, char **argv) {
   // save output
   const Tensor *output = ws.GetTensor(output_node + ":0");
 
+  Tensor::MappingGuard output_guard(output);
   ofstream out_file(output_file, ios::binary);
   out_file.write((const char *)(output->data<float>()),
                  output->size() * sizeof(float));
   out_file.flush();
   out_file.close();
+  VLOG(0) << "Output shape: ["
+          << output->dim(0) << ", "
+          << output->dim(1) << ", "
+          << output->dim(2) << ", "
+          << output->dim(3) << "]";
 }
