@@ -12,6 +12,33 @@ pooling_type_mode = {
   'MaxPool': 2
 }
 
+def convert_tensor(op, tensor):
+  tf_tensor = op.outputs[0].eval()
+  tensor.name = op.outputs[0].name
+
+  shape = list(tf_tensor.shape)
+  if (op.name.find('pointwise_kernel') != -1 or
+          op.name.find('depthwise_kernel') != -1 or
+        op.name.endswith('weights') or
+        op.name.endswith('kernel')) \
+          and op.outputs[0].consumers()[0].type.find('Conv') != -1:
+    if op.outputs[0].consumers()[0].get_attr('data_format') == 'NCHW':
+      tf_tensor = np.transpose(tf_tensor, axes=(3, 2, 0, 1))
+      shape = [shape[3], shape[2], shape[0], shape[1]]
+      # print (tensor.name, shape)
+  tensor.dims.extend(shape)
+
+  tf_dt = op.get_attr('dtype')
+  if tf_dt == tf.float32:
+    tensor.data_type = mace_pb2.DT_FLOAT
+    tensor.float_data.extend(tf_tensor.astype(float).flat)
+  elif tf_dt == tf.int32:
+    tensor.data_type = mace_pb2.DT_INT32
+    tensor.int32_data.extend(tf_tensor.astype(np.int32).flat)
+  else:
+    raise Exception("Not supported tensor type: " + tf_dt.name)
+
+
 def get_input_tensor(op, index):
   input_tensor = op.inputs[index]
   if input_tensor.op.type == 'Reshape':
@@ -24,26 +51,11 @@ def convert_ops(unresolved_ops, net_def):
 
   first_op = unresolved_ops[0]
 
-  if first_op.type == 'Placeholder' or first_op.type == 'Reshape':
+  if first_op.type in ['Placeholder', 'Reshape', 'Identity']:
     pass
   elif first_op.type == 'Const':
-    tf_tensor = first_op.outputs[0].eval()
     tensor = net_def.tensors.add()
-    tensor.name = first_op.outputs[0].name
-    # TODO: support other type than float
-    tensor.data_type = mace_pb2.DT_FLOAT
-
-    shape = list(tf_tensor.shape)
-    if (first_op.name.find('pointwise_kernel') != -1 or
-        first_op.name.find('depthwise_kernel') != -1 or
-        first_op.name.endswith('weights') or
-        first_op.name.endswith('kernel')) \
-        and first_op.outputs[0].consumers()[0].type.find('Conv') != -1:
-      tf_tensor = np.transpose(tf_tensor, axes=(3, 2, 0, 1))
-      shape = [shape[3], shape[2], shape[0], shape[1]]
-      # print (tensor.name, shape)
-    tensor.dims.extend(shape)
-    tensor.float_data.extend(tf_tensor.astype(float).flat)
+    convert_tensor(first_op, tensor)
   elif first_op.type == 'Conv2D' or first_op.type == 'DepthwiseConv2dNative':
     op_def = net_def.op.add()
     op_def.name = first_op.name
@@ -61,9 +73,7 @@ def convert_ops(unresolved_ops, net_def):
     strides_arg.ints.extend(first_op.get_attr('strides')[2:])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = first_op.get_attr('data_format')
-    if first_op.get_attr('data_format') != 'NCHW':
-      raise Exception('only support NCHW now')
+    data_format_arg.s = 'NCHW'
 
     if ops_count >= 2 and unresolved_ops[1].type == 'BiasAdd':
       bias_add_op = unresolved_ops[1]
@@ -78,7 +88,8 @@ def convert_ops(unresolved_ops, net_def):
     sub_op = unresolved_ops[5]
     add_1_op = unresolved_ops[6]
     # print (mul_op.type, mul_2_op.type, mul_1_op.type, sub_op.type)
-    if mul_op.type != 'Mul' or mul_2_op.type != 'Mul' or mul_1_op.type != 'Mul' or sub_op.type != 'Sub' or add_1_op.type != 'Add':
+    if mul_op.type != 'Mul' or mul_2_op.type != 'Mul' or \
+                    mul_1_op.type != 'Mul' or sub_op.type != 'Sub' or add_1_op.type != 'Add':
       raise Exception('Invalid BatchNorm Op')
 
     input_name = get_input_tensor(mul_1_op, 0).name
@@ -104,12 +115,6 @@ def convert_ops(unresolved_ops, net_def):
     max_limit_arg = op_def.arg.add()
     max_limit_arg.name = 'max_limit'
     max_limit_arg.f = 6
-  elif first_op.type == 'Relu':
-    op_def = net_def.op.add()
-    op_def.name = first_op.name
-    op_def.type = first_op.type
-    op_def.input.extend([input.name for input in first_op.inputs])
-    op_def.output.extend([output.name for output in first_op.outputs])
   elif first_op.type == 'AvgPool' or first_op.type == 'MaxPool':
     op_def = net_def.op.add()
     op_def.name = first_op.name
@@ -130,9 +135,19 @@ def convert_ops(unresolved_ops, net_def):
     kernels_arg.ints.extend(first_op.get_attr('ksize')[2:])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = first_op.get_attr('data_format')
-    if first_op.get_attr('data_format') != 'NCHW':
-      raise Exception('only support NCHW now')
+    data_format_arg.s = 'NCHW'
+  elif first_op.type == 'Add':
+    op_def = net_def.op.add()
+    op_def.name = first_op.name
+    op_def.type = "AddN"
+    op_def.input.extend([input.name for input in first_op.inputs])
+    op_def.output.extend([output.name for output in first_op.outputs])
+  elif first_op.type in ['Relu', 'ResizeBilinear', 'SpaceToBatchND', 'BatchToSpaceND']:
+    op_def = net_def.op.add()
+    op_def.name = first_op.name
+    op_def.type = first_op.type
+    op_def.input.extend([input.name for input in first_op.inputs])
+    op_def.output.extend([output.name for output in first_op.outputs])
   else:
     raise Exception('Unknown Op: ' + first_op.name)
     pass
@@ -151,5 +166,7 @@ def convert_to_mace_pb(input_graph_def):
       unresolved_ops = ops
       while len(unresolved_ops) > 0:
         convert_ops(unresolved_ops, net_def)
+
+  print "Done."
 
   return net_def
