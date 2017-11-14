@@ -36,12 +36,13 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, float>::operator()(
   uint32_t idx = 0;
   rb_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
   rb_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  rb_kernel.setArg(idx++, static_cast<float>(height_scale));
-  rb_kernel.setArg(idx++, static_cast<float>(width_scale));
+  rb_kernel.setArg(idx++, height_scale);
+  rb_kernel.setArg(idx++, width_scale);
   rb_kernel.setArg(idx++, static_cast<int>(in_height));
   rb_kernel.setArg(idx++, static_cast<int>(in_width));
 
   auto command_queue = runtime->command_queue();
+
   cl_int error = command_queue.enqueueNDRangeKernel(
       rb_kernel, cl::NullRange,
       cl::NDRange(static_cast<int>(batch * channels),

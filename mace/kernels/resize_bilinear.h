@@ -154,7 +154,7 @@ class ResizeBilinearFunctor {
     if (size_[0] < 0 || size_[1] < 0) {
       MACE_CHECK(resize_dims != nullptr && resize_dims->dim_size() == 1);
       Tensor::MappingGuard resize_dims_mapper(resize_dims);
-      auto dims_data = resize_dims->data<index_t>();
+      auto dims_data = resize_dims->data<int32_t>();
       *out_height = dims_data[0];
       *out_width = dims_data[1];
     } else {

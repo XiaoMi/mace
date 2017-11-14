@@ -68,8 +68,12 @@ void Conv1x1V2(const Tensor *input,
                         *(static_cast<const cl::Buffer *>(input->buffer())));
   conv_2d_kernel.setArg(idx++,
                         *(static_cast<const cl::Buffer *>(filter->buffer())));
-  conv_2d_kernel.setArg(idx++,
-                        *(static_cast<const cl::Buffer *>(bias->buffer())));
+  if (bias == NULL) {
+    conv_2d_kernel.setArg(idx++, NULL);
+  } else {
+    conv_2d_kernel.setArg(idx++,
+                          *(static_cast<const cl::Buffer *>(bias->buffer())));
+  }
   conv_2d_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
   conv_2d_kernel.setArg(idx++, static_cast<int>(input_channels));
   conv_2d_kernel.setArg(idx++, static_cast<int>(channels));

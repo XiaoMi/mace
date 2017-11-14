@@ -27,7 +27,11 @@ static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
   uint32_t idx = 0;
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(filter->buffer())));
-  conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
+  if (bias == nullptr) {
+    conv_kernel.setArg(idx++, NULL);
+  } else {
+    conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
+  }
   conv_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
   conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(1)));
   conv_kernel.setArg(idx++, static_cast<int32_t>(channels));

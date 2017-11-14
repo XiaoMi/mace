@@ -39,7 +39,8 @@ void kernel conv_2d_3x3(global const float *input,
     float *output_ptr = output_base + i * out_pixel;
     const float *filter_base = filter + i * in_chan_num * 9;
     if (pixels == 4) {
-      float4 res = (float4)bias[i];
+
+      float4 res = bias == NULL ? 0 : (float4)bias[i];
       for (int in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
         const float* input_ptr = input_base + in_chan_idx * in_pixel;
         const float* filter_ptr = filter_base + in_chan_idx * 9;
@@ -56,7 +57,7 @@ void kernel conv_2d_3x3(global const float *input,
       vstore4(res, 0, output_ptr);
     } else {
       for (int p = 0; p < pixels; ++p) {
-        float res = bias[i];
+        float res = bias == NULL ? 0 : bias[i];
         for (uint in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
           const float* input_ptr = input_base + in_chan_idx * in_pixel + p * stride_w;
           const float* filter_ptr = filter_base + in_chan_idx * 9;

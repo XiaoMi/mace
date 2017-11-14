@@ -17,7 +17,7 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-                 (dilations[1] == 1 || strides[1] == 1),
+      (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
@@ -39,20 +39,16 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
 
   switch (padding) {
-    case VALID:
-      output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
+    case VALID:output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
       output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:
-      output_height = (input_shape[2] - 1) / strides[0] + 1;
+    case SAME:output_height = (input_shape[2] - 1) / strides[0] + 1;
       output_width = (input_shape[3] - 1) / strides[1] + 1;
       break;
-    case FULL:
-      output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
+    case FULL:output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:
-      MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
@@ -61,10 +57,10 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   // based on the model accuracy.
 
   padding_size[0] =
-      std::max<int>(0, (output_height - 1) * strides[0] 
+      std::max<int>(0, (output_height - 1) * strides[0]
           + k_extent_height - input_shape[2]);
   padding_size[1] =
-      std::max<int>(0, (output_width - 1) * strides[1] 
+      std::max<int>(0, (output_width - 1) * strides[1]
           + k_extent_width - input_shape[3]);
 
   output_shape[0] = input_shape[0];
@@ -82,7 +78,7 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-                 (dilations[1] == 1 || strides[1] == 1),
+      (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(padding_size);
 
@@ -91,20 +87,16 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   index_t k_extent_width = (filter_shape[3] - 1) * dilations[1] + 1;
 
   switch (padding) {
-    case VALID:
-      output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
+    case VALID:output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
       output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
       break;
-    case SAME:
-      output_height = (input_shape[2] - 1) / strides[0] + 1;
+    case SAME:output_height = (input_shape[2] - 1) / strides[0] + 1;
       output_width = (input_shape[3] - 1) / strides[1] + 1;
       break;
-    case FULL:
-      output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
+    case FULL:output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:
-      MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
@@ -112,10 +104,10 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
   padding_size[0] =
-      std::max<int>(0, (output_height - 1) * strides[0] 
+      std::max<int>(0, (output_height - 1) * strides[0]
           + k_extent_height - input_shape[2]);
   padding_size[1] =
-      std::max<int>(0, (output_width - 1) * strides[1] 
+      std::max<int>(0, (output_width - 1) * strides[1]
           + k_extent_width - input_shape[3]);
 }
 
@@ -123,6 +115,7 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
                                const int *paddings,
                                Tensor *output_tensor,
                                bool padding_same_value) {
+  VLOG(1) << "input: " << input_tensor->NumElements();
   Tensor::MappingGuard input_mapper(input_tensor);
   const float *input = input_tensor->data<float>();
   const index_t *input_shape = input_tensor->shape().data();
