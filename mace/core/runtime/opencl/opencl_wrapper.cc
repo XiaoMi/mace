@@ -212,6 +212,7 @@ bool OpenCLLibraryImpl::Load() {
   // TODO(heliangliang) Make this configurable
   // TODO(heliangliang) Benchmark 64 bit overhead
   static const std::vector<std::string> paths = {
+    "libOpenCL.so",
 #if defined(__aarch64__)
     // Qualcomm Adreno
     "/system/vendor/lib64/libOpenCL.so",
