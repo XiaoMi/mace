@@ -3,7 +3,7 @@
 //
 
 #include "mace/core/runtime/opencl/cl2_header.h"
-#include "mace/core/runtime/opencl/opencl_allocator.h"
+#include "mace/core/opencl_allocator.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
@@ -49,6 +49,5 @@ void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) {
 
 bool OpenCLAllocator::OnHost() { return false; }
 
-MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
 
 }  // namespace mace

@@ -41,14 +41,19 @@ void kernel conv_2d_3x3(global const float *input,
     if (pixels == 4) {
 
       float4 res = bias == NULL ? 0 : (float4)bias[i];
-      for (int in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
-        const float* input_ptr = input_base + in_chan_idx * in_pixel;
-        const float* filter_ptr = filter_base + in_chan_idx * 9;
-        if (stride_w == 1) {
+
+      if (stride_w == 1) {
+        for (int in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
+          const float* input_ptr = input_base + in_chan_idx * in_pixel;
+          const float* filter_ptr = filter_base + in_chan_idx * 9;
           res += conv1x3_s1(input_ptr + 0 * in_width, filter_ptr + 0 * 3);
           res += conv1x3_s1(input_ptr + 1 * in_width, filter_ptr + 1 * 3);
           res += conv1x3_s1(input_ptr + 2 * in_width, filter_ptr + 2 * 3);
-        } else {
+        }
+      } else {
+        for (int in_chan_idx = 0; in_chan_idx < in_chan_num; ++in_chan_idx) {
+          const float* input_ptr = input_base + in_chan_idx * in_pixel;
+          const float* filter_ptr = filter_base + in_chan_idx * 9;
           res += conv1x3_s2(input_ptr + 0 * in_width, filter_ptr + 0 * 3);
           res += conv1x3_s2(input_ptr + 1 * in_width, filter_ptr + 1 * 3);
           res += conv1x3_s2(input_ptr + 2 * in_width, filter_ptr + 2 * 3);

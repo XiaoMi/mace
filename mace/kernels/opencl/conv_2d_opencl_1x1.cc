@@ -45,6 +45,7 @@ void Conv1x1Naive(const Tensor *input,
 void Conv1x1V2(const Tensor *input,
                const Tensor *filter,
                const Tensor *bias,
+               const int stride,
                Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t channels = output->dim(1);
@@ -54,9 +55,8 @@ void Conv1x1V2(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
-  const index_t pixels = height * width;
   const index_t channel_blocks = (channels + 3) / 4;
-  const index_t pixel_blocks = (pixels + 3) / 4;
+  const index_t pixel_blocks = (width + 3) / 4 * height;
 
   // TODO KernelFunctor has an extra clReleaseCommandQueue due to a copy
   // TODO check wired clReleaseCommandQueue latency
@@ -77,7 +77,11 @@ void Conv1x1V2(const Tensor *input,
   conv_2d_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
   conv_2d_kernel.setArg(idx++, static_cast<int>(input_channels));
   conv_2d_kernel.setArg(idx++, static_cast<int>(channels));
-  conv_2d_kernel.setArg(idx++, static_cast<int>(pixels));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(2)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(3)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(height));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(width));
+  conv_2d_kernel.setArg(idx++, stride);
 
   auto command_queue = runtime->command_queue();
   cl_int error = command_queue.enqueueNDRangeKernel(
@@ -189,7 +193,16 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
   MACE_CHECK(input_batch == batch && input_height == height &&
              input_width == width);
 
-  Conv1x1V2(input, filter, bias, output);
+  Conv1x1V2(input, filter, bias, 1, output);
+};
+
+extern void Conv2dOpenclK1x1S2(const Tensor *input,
+                               const Tensor *filter,
+                               const Tensor *bias,
+                               Tensor *output) {
+  MACE_CHECK(input->dim(0) == output->dim(0));
+
+  Conv1x1V2(input, filter, bias, 2, output);
 };
 
 }  // namespace kernels

@@ -20,7 +20,6 @@ cc_library(
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
-        "//mace/core:opencl_runtime",
         "//mace/utils",
         "//mace/utils:tuner",
     ],
