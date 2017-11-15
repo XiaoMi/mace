@@ -21,7 +21,7 @@ def main(unused_args):
 
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_dim, FLAGS.output_node)
+      input_graph_def, FLAGS.input_node, FLAGS.output_node)
   else:
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
       input_graph_def)
@@ -53,10 +53,10 @@ def parse_args():
     default="cpu",
     help="Runtime: cpu/gpu/dsp.")
   parser.add_argument(
-    "--input_dim",
+    "--input_node",
     type=str,
-    default="input_node,1,28,28,3",
-    help="e.g., input_node,1,28,28,3")
+    default="input_node",
+    help="e.g., input_node")
   parser.add_argument(
     "--output_node",
     type=str,
