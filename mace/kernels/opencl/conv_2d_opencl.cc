@@ -10,6 +10,9 @@ namespace kernels {
 extern void Conv2dOpenclK1x1S1(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, Tensor *output);
 
+extern void Conv2dOpenclK1x1S2(const Tensor *input, const Tensor *filter,
+                               const Tensor *bias, Tensor *output);
+
 extern void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, Tensor *output);
 
@@ -24,7 +27,7 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
                                        const Tensor *bias, Tensor *output);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[5][2] = {
-      {Conv2dOpenclK1x1S1, nullptr},
+      {Conv2dOpenclK1x1S1, Conv2dOpenclK1x1S2},
       {nullptr, nullptr},
       {Conv2dOpenclK3x3S1, Conv2dOpenclK3x3S2},
       {nullptr, nullptr},
