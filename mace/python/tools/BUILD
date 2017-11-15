@@ -3,7 +3,7 @@ py_library(
     srcs = [
         "tf_converter_lib.py",
         "tf_dsp_converter_lib.py",
-        "tf_graph_util.py"],
+        "graph_util.py"],
     srcs_version = "PY2AND3",
     deps = [
         "//mace/proto:mace_py",
