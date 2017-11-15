@@ -42,6 +42,7 @@ bool SplitAndParseToInts(const string &str,
       tmp = tmp.substr(next_offset + 1);
     }
   }
+  return true;
 }
 
 }  //  namespace str_util
@@ -254,6 +255,10 @@ int Main(int argc, char **argv) {
   stats_options.show_summary = show_summary;
   stats.reset(new StatSummarizer(stats_options));
 
+  DeviceType device_type;
+  DeviceType_Parse(device, &device_type);
+  VLOG(0) << device_type;
+
   // load model
   std::ifstream model_file_stream(model_file, std::ios::in | std::ios::binary);
   if (!model_file_stream.is_open()) {
@@ -265,29 +270,30 @@ int Main(int argc, char **argv) {
   model_file_stream.close();
 
   Workspace ws;
-  ws.LoadModelTensor(net_def, DeviceType::CPU);
+  ws.LoadModelTensor(net_def, device_type);
   // Load inputs
   for (size_t i = 0; i < inputs_count; ++i) {
     Tensor *input_tensor =
-        ws.CreateTensor(input_layers[i], GetDeviceAllocator(DeviceType::CPU), DT_FLOAT);
+        ws.CreateTensor(input_layers[i], GetDeviceAllocator(device_type), DT_FLOAT);
     vector<index_t> shapes;
     str_util::SplitAndParseToInts(input_layer_shapes[i], ',', &shapes);
     input_tensor->Resize(shapes);
-    float *input_data = input_tensor->mutable_data<float>();
+    {
+      Tensor::MappingGuard input_guard(input_tensor);
+      float *input_data = input_tensor->mutable_data<float>();
 
-    // load input
-    if (i < input_layer_files.size()) {
-      std::ifstream in_file(input_layer_files[i],
-                            std::ios::in | std::ios::binary);
-      in_file.read(reinterpret_cast<char *>(input_data),
-                   input_tensor->size() * sizeof(float));
-      in_file.close();
+      // load input
+      if (i < input_layer_files.size()) {
+        std::ifstream in_file(input_layer_files[i],
+                              std::ios::in | std::ios::binary);
+        in_file.read(reinterpret_cast<char *>(input_data),
+                     input_tensor->size() * sizeof(float));
+        in_file.close();
+      }
     }
   }
 
   // create net
-  DeviceType device_type;
-  DeviceType_Parse(device, &device_type);
   auto net = CreateNet(net_def, &ws, device_type);
 
   int64_t warmup_time_us = 0;

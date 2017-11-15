@@ -21,26 +21,46 @@ cc_library(
     ]),
     copts = ["-std=c++11"],
     deps = [
-        "core",
+        ":logging",
         "@opencl_headers//:opencl20_headers",
     ],
     alwayslink = 1,
 )
 
+
 cc_library(
-    name = "core",
-    srcs = glob([
-        "*.cc",
-    ]),
-    hdrs = glob([
-        "*.h",
-    ]),
+    name = "logging",
+    srcs = [
+        "logging.cc",
+    ],
+    hdrs = [
+        "logging.h",
+    ],
     copts = ["-std=c++11"],
     linkopts = if_android([
         "-llog",
+    ]),
+)
+
+cc_library(
+    name = "core",
+    srcs = glob(
+        ["*.cc",],
+        exclude=[
+            "logging.cc"
+        ]),
+    hdrs = glob(
+        ["*.h"],
+        exclude=[
+            "logging.h"
+        ]),
+    copts = ["-std=c++11"],
+    linkopts = if_android([
         "-pie",
     ]),
     deps = [
+        ":logging",
+        ":opencl_runtime",
         "//mace/proto:cc_proto",
         "//mace/proto:stats_proto",
         "//mace/utils",

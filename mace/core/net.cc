@@ -4,6 +4,7 @@
 
 #include "mace/core/net.h"
 #include "mace/utils/utils.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 
@@ -15,7 +16,7 @@ NetBase::NetBase(const std::shared_ptr<const NetDef> &net_def,
 SimpleNet::SimpleNet(const std::shared_ptr<const NetDef> &net_def,
                      Workspace *ws,
                      DeviceType type)
-    : NetBase(net_def, ws, type) {
+    : NetBase(net_def, ws, type), device_type_(type){
   VLOG(1) << "Constructing SimpleNet " << net_def->name();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
@@ -47,6 +48,8 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
       LOG(ERROR) << "Operator failed: " << ProtoDebugString(op->debug_def());
       return false;
     }
+    if (device_type_ == DeviceType::OPENCL)
+      OpenCLRuntime::Get()->command_queue().finish();
     if (op_stats) {
       op_stats->set_op_end_rel_micros(NowInMicroSec() -
                                       op_stats->all_start_micros());

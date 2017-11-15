@@ -17,7 +17,6 @@ cc_library(
     ],
     deps = [
         "//mace/core",
-        "//mace/core:opencl_runtime",
         "@gtest//:gtest",
     ],
 )

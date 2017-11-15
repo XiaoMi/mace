@@ -40,6 +40,7 @@ class SimpleNet : public NetBase {
 
  protected:
   vector<unique_ptr<OperatorBase> > operators_;
+  DeviceType device_type_;
 
   DISABLE_COPY_AND_ASSIGN(SimpleNet);
 };
