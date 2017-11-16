@@ -18,9 +18,9 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *space_te
                                                                 const Tensor *paddings_tensor,
                                                                 Tensor *batch_tensor) {
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
-  auto s2b_kernel = cl::Kernel(program, "space_to_batch");
-
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(space_tensor->dtype()));
+  auto s2b_kernel = runtime->BuildKernel("space_to_batch", "space_to_batch", built_options);
 
   uint32_t idx = 0;
   s2b_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(space_tensor->buffer())));

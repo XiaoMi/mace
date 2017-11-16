@@ -25,31 +25,31 @@ __kernel void conv_2d_1x1_naive(__global const float *input, /* n, c, h, w */
 }
 
 #define vec_conv_2d_1x1_s1                    \
-  float4 in0 = vload4(0, input_ptr);                   \
-  float4 in1 = vload4(0, input_ptr + in_pixel);        \
-  float4 in2 = vload4(0, input_ptr + 2 * in_pixel);    \
-  float4 in3 = vload4(0, input_ptr + 3 * in_pixel);
+  VEC_DATA_TYPE(DATA_TYPE,4) in0 = vload4(0, input_ptr);                   \
+  VEC_DATA_TYPE(DATA_TYPE,4) in1 = vload4(0, input_ptr + in_pixel);        \
+  VEC_DATA_TYPE(DATA_TYPE,4) in2 = vload4(0, input_ptr + 2 * in_pixel);    \
+  VEC_DATA_TYPE(DATA_TYPE,4) in3 = vload4(0, input_ptr + 3 * in_pixel);
 
 
 #define vec_conv_2d_1x1_s2                    \
-  float4 in00 = vload4(0, input_ptr);                   \
-  float3 in01 = vload3(0, input_ptr + 4);               \
-  float4 in10 = vload4(0, input_ptr + in_pixel);        \
-  float3 in11 = vload3(0, input_ptr + in_pixel + 4);    \
-  float4 in20 = vload4(0, input_ptr + 2 * in_pixel);    \
-  float3 in21 = vload3(0, input_ptr + 2 * in_pixel + 4);\
-  float4 in30 = vload4(0, input_ptr + 3 * in_pixel);    \
-  float3 in31 = vload3(0, input_ptr + 3 * in_pixel + 4); \
-  float4 in0 = (float4)(in00.s02, in01.s02);            \
-  float4 in1 = (float4)(in10.s02, in11.s02);            \
-  float4 in2 = (float4)(in20.s02, in21.s02);            \
-  float4 in3 = (float4)(in30.s02, in31.s02);
+  VEC_DATA_TYPE(DATA_TYPE,4) in00 = vload4(0, input_ptr);                   \
+  VEC_DATA_TYPE(DATA_TYPE,3) in01 = vload3(0, input_ptr + 4);               \
+  VEC_DATA_TYPE(DATA_TYPE,4) in10 = vload4(0, input_ptr + in_pixel);        \
+  VEC_DATA_TYPE(DATA_TYPE,3) in11 = vload3(0, input_ptr + in_pixel + 4);    \
+  VEC_DATA_TYPE(DATA_TYPE,4) in20 = vload4(0, input_ptr + 2 * in_pixel);    \
+  VEC_DATA_TYPE(DATA_TYPE,3) in21 = vload3(0, input_ptr + 2 * in_pixel + 4);\
+  VEC_DATA_TYPE(DATA_TYPE,4) in30 = vload4(0, input_ptr + 3 * in_pixel);    \
+  VEC_DATA_TYPE(DATA_TYPE,3) in31 = vload3(0, input_ptr + 3 * in_pixel + 4); \
+  VEC_DATA_TYPE(DATA_TYPE,4) in0 = (VEC_DATA_TYPE(DATA_TYPE,4))(in00.s02, in01.s02);            \
+  VEC_DATA_TYPE(DATA_TYPE,4) in1 = (VEC_DATA_TYPE(DATA_TYPE,4))(in10.s02, in11.s02);            \
+  VEC_DATA_TYPE(DATA_TYPE,4) in2 = (VEC_DATA_TYPE(DATA_TYPE,4))(in20.s02, in21.s02);            \
+  VEC_DATA_TYPE(DATA_TYPE,4) in3 = (VEC_DATA_TYPE(DATA_TYPE,4))(in30.s02, in31.s02);
 
 
 #define vec_conv_2d_1x1_compute_loop  \
   for (int oc = 0; oc < 4; ++oc) {                             \
-    float4 weights = vload4(0, filter_ptr + oc * in_chan_num); \
-    float4 out = vload4(0, output_ptr + oc * out_pixel);       \
+    VEC_DATA_TYPE(DATA_TYPE,4) weights = vload4(0, filter_ptr + oc * in_chan_num); \
+    VEC_DATA_TYPE(DATA_TYPE,4) out = vload4(0, output_ptr + oc * out_pixel);       \
     out += in0 * weights.x;                                    \
     out += in1 * weights.y;                                     \
     out += in2 * weights.z;                                     \
@@ -58,25 +58,27 @@ __kernel void conv_2d_1x1_naive(__global const float *input, /* n, c, h, w */
   }
 
 #define vec_conv_2d_1x1_compute  \
-    float4 weights = vload4(0, filter_ptr); \
-    float4 out = vload4(0, output_ptr);       \
+    VEC_DATA_TYPE(DATA_TYPE,4) weights = vload4(0, filter_ptr); \
+    VEC_DATA_TYPE(DATA_TYPE,4) out = vload4(0, output_ptr);       \
     out += in0 * weights.x;                                    \
     out += in1 * weights.y;                                     \
     out += in2 * weights.z;                                     \
     out += in3 * weights.w;                                     \
     vstore4(out, 0, output_ptr);
 
-__kernel void conv_2d_1x1_v2(__global const float *input, /* n, c, h, w */
-                             __global const float *filter, /* o, i, kh, kw */
-                             __global const float *bias, /* o */
-                             __global float *output, /* n, c, h, w */
+// Supported data type: half/float
+__kernel void conv_2d_1x1_v2(__global const DATA_TYPE *input, /* n, c, h, w */
+                             __global const DATA_TYPE *filter, /* o, i, kh, kw */
+#ifdef BIAS
+                             __global const DATA_TYPE *bias, /* o */
+#endif /* defined(BIAS) */
+                             __global DATA_TYPE *output, /* n, c, h, w */
                              __private const int in_chan_num,
                              __private const int out_chan_num,
                              __private const int in_height,
                              __private const int in_width,
                              __private const int out_height,
-                             __private const int out_width,
-                             __private const int stride) {
+                             __private const int out_width) {
   int batch = get_global_id(0);
   int out_chan_blk = get_global_id(1);
   int out_pixel_blk = get_global_id(2);
@@ -92,20 +94,30 @@ __kernel void conv_2d_1x1_v2(__global const float *input, /* n, c, h, w */
   const int out_chan_end = min(out_chan_begin + 4, out_chan_num);
   const int out_pixel_begin = out_pixel_height * out_width + out_pixel_width * 4;
   const int out_pixel_end = min(out_pixel_begin + 4, (out_pixel_height + 1) * out_width);
+
+#ifdef STRIDE_1
+  const int stride = 1;
+#else
+  const int stride = 2;
+#endif
   const int in_pixel_begin = out_pixel_height * stride * in_width + out_pixel_width * stride * 4;
 
   const int in_offset = batch * in_chan_num * in_pixel;
   const int out_offset = batch * out_chan_num * out_pixel;
 
-  const float *input_base = input + in_offset + in_pixel_begin;
-  float *output_base = output + out_offset + out_pixel_begin;
+  const DATA_TYPE *input_base = input + in_offset + in_pixel_begin;
+  DATA_TYPE *output_base = output + out_offset + out_pixel_begin;
 
   int out_chan_len = out_chan_end - out_chan_begin;
   int pixel_len = out_pixel_end - out_pixel_begin;
 
   for (int out_chan = out_chan_begin; out_chan < out_chan_end; ++out_chan) {
-    float *output_ptr = output_base + out_chan * out_pixel;
-    float bias_value = bias == NULL ? 0 : bias[out_chan];
+    DATA_TYPE *output_ptr = output_base + out_chan * out_pixel;
+#ifdef BIAS
+    DATA_TYPE bias_value = bias[out_chan];
+#else
+    DATA_TYPE bias_value = 0;
+#endif
     for (int p = 0; p < pixel_len; ++p) {
       output_ptr[p] = bias_value;
     }
@@ -113,48 +125,37 @@ __kernel void conv_2d_1x1_v2(__global const float *input, /* n, c, h, w */
 
   int in_chan = 0;
   if (pixel_len == 4) {
-    if (stride == 1) {
-      for (; in_chan + 3 < in_chan_num; in_chan += 4) {
-        const float *input_ptr = input_base + in_chan * in_pixel;
-        int out_chan = out_chan_begin;
-        for (; out_chan + 3 < out_chan_end; out_chan += 4) {
-          const float* filter_ptr = filter + out_chan * in_chan_num + in_chan;
-          float *output_ptr = output_base + out_chan * out_pixel;
-          vec_conv_2d_1x1_s1;
-          vec_conv_2d_1x1_compute_loop;
-        }
-        for (; out_chan < out_chan_end; ++out_chan) {
-          const float* filter_ptr = filter + out_chan * in_chan_num + in_chan;
-          float *output_ptr = output_base + out_chan * out_pixel;
-          vec_conv_2d_1x1_s1;
-          vec_conv_2d_1x1_compute;
-        }
+    for (; in_chan + 3 < in_chan_num; in_chan += 4) {
+      const DATA_TYPE *input_ptr = input_base + in_chan * in_pixel;
+      int out_chan = out_chan_begin;
+      for (; out_chan + 3 < out_chan_end; out_chan += 4) {
+        const DATA_TYPE* filter_ptr = filter + out_chan * in_chan_num + in_chan;
+        DATA_TYPE *output_ptr = output_base + out_chan * out_pixel;
+#ifdef STRIDE_1
+        vec_conv_2d_1x1_s1;
+#else
+        vec_conv_2d_1x1_s2;
+#endif
+        vec_conv_2d_1x1_compute_loop;
       }
-    } else if (stride == 2) {
-      for (; in_chan + 3 < in_chan_num; in_chan += 4) {
-        const float *input_ptr = input_base + in_chan * in_pixel;
-        int out_chan = out_chan_begin;
-        for (; out_chan + 3 < out_chan_end; out_chan += 4) {
-          const float* filter_ptr = filter + out_chan * in_chan_num + in_chan;
-          float *output_ptr = output_base + out_chan * out_pixel;
-          vec_conv_2d_1x1_s2;
-          vec_conv_2d_1x1_compute_loop;
-        }
-        for (; out_chan < out_chan_end; ++out_chan) {
-          const float* filter_ptr = filter + out_chan * in_chan_num + in_chan;
-          float *output_ptr = output_base + out_chan * out_pixel;
-          vec_conv_2d_1x1_s2;
-          vec_conv_2d_1x1_compute;
-        }
+      for (; out_chan < out_chan_end; ++out_chan) {
+        const DATA_TYPE* filter_ptr = filter + out_chan * in_chan_num + in_chan;
+        DATA_TYPE *output_ptr = output_base + out_chan * out_pixel;
+#ifdef STRIDE_1
+        vec_conv_2d_1x1_s1;
+#else
+        vec_conv_2d_1x1_s2;
+#endif
+        vec_conv_2d_1x1_compute;
       }
     }
   }
 
   for (; in_chan < in_chan_num; ++in_chan) {
-    const float *input_ptr = input_base + in_chan * in_pixel;
+    const DATA_TYPE *input_ptr = input_base + in_chan * in_pixel;
     for (int out_chan = out_chan_begin; out_chan < out_chan_end; ++out_chan) {
-      float weights = filter[out_chan * in_chan_num + in_chan];
-      float *output_ptr = output_base + out_chan * out_pixel;
+      DATA_TYPE weights = filter[out_chan * in_chan_num + in_chan];
+      DATA_TYPE *output_ptr = output_base + out_chan * out_pixel;
 
       for (int p = 0; p < pixel_len; ++p) {
         float in = input_ptr[p*stride];

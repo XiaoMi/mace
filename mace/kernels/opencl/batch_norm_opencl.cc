@@ -10,8 +10,8 @@
 namespace mace {
 namespace kernels {
 
-template <typename T>
-void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
+template <>
+void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
     const Tensor *input,
     const Tensor *scale,
     const Tensor *offset,
@@ -29,8 +29,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDataType=" + GetDataTypeFromEnum(input->dtype()));
-  auto bm_kernel = runtime->CreateKernel("batch_norm");
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
   const std::vector<uint32_t> lws = {1, 1, kwg_size};
@@ -63,7 +63,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]));
 
-    MACE_CHECK(error == CL_SUCCESS);
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
   };
   std::stringstream ss;

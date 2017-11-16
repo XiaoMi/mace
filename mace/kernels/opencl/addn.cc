@@ -15,9 +15,9 @@ static void Add2(const Tensor *input0, const Tensor *input1, Tensor *output) {
   const uint32_t gws = blocks;
 
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
-
-  auto addn_kernel = cl::Kernel(program, "add2");
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(output->dtype()));
+  auto addn_kernel = runtime->BuildKernel("addn", "add2", built_options);
 
   const uint32_t lws = runtime->GetKernelMaxWorkGroupSize(addn_kernel);
 

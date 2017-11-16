@@ -29,9 +29,10 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, float>::operator()(
   float width_scale = CalculateResizeScale(in_width, out_width, align_corners_);
 
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  auto rb_kernel  = runtime->BuildKernel("resize_bilinear", "resize_bilinear_nocache", built_options);
 
-  auto rb_kernel = cl::Kernel(program, "resize_bilinear_nocache");
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(rb_kernel);
   uint32_t idx = 0;
   rb_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));

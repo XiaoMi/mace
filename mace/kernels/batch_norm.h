@@ -76,9 +76,8 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *epsilon,
     Tensor *output);
 
-template <typename T>
-struct BatchNormFunctor<DeviceType::OPENCL, T> {
-  void operator()(
+template <>
+void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
       const Tensor *input,
       const Tensor *scale,
       const Tensor *offset,
@@ -86,7 +85,6 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> {
       const Tensor *var,
       const Tensor *epsilon,
       Tensor *output);
-};
 
 }  //  namepsace kernels
 }  //  namespace mace

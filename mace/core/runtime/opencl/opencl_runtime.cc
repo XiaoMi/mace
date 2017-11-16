@@ -7,8 +7,6 @@
 #include <memory>
 #include <mutex>
 
-#include <dirent.h>
-
 #include "mace/core/logging.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
@@ -29,55 +27,6 @@ bool ReadSourceFile(const std::string &filename, std::string *content) {
     *content += "\n";
   }
   ifs.close();
-  return true;
-}
-
-bool BuildProgram(OpenCLRuntime *runtime,
-                  const std::string &path,
-                  cl::Program *program) {
-  MACE_CHECK_NOTNULL(program);
-
-  auto closer = [](DIR *d) {
-    if (d != nullptr) closedir(d);
-  };
-  std::unique_ptr<DIR, decltype(closer)> dir(opendir(path.c_str()), closer);
-  MACE_CHECK_NOTNULL(dir.get());
-
-  const std::string kSourceSuffix = ".cl";
-  cl::Program::Sources sources;
-  errno = 0;
-  dirent *entry = readdir(dir.get());
-  MACE_CHECK(errno == 0);
-  while (entry != nullptr) {
-    if (entry->d_type == DT_REG) {
-      std::string d_name(entry->d_name);
-      if (d_name.size() > kSourceSuffix.size() &&
-          d_name.compare(d_name.size() - kSourceSuffix.size(),
-                         kSourceSuffix.size(), kSourceSuffix) == 0) {
-        std::string filename = path + d_name;
-        std::string kernel_source;
-        MACE_CHECK(ReadSourceFile(filename, &kernel_source));
-        sources.push_back({kernel_source.c_str(), kernel_source.length()});
-      }
-    }
-    entry = readdir(dir.get());
-    MACE_CHECK(errno == 0);
-  };
-
-  *program = cl::Program(runtime->context(), sources);
-  std::string build_options = "-Werror -cl-mad-enable -cl-fast-relaxed-math -I" + path;
-  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-  cl_int ret = program->build({runtime->device()}, build_options.c_str());
-  if (ret != CL_SUCCESS) {
-    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
-        CL_BUILD_ERROR) {
-      std::string build_log =
-          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
-      LOG(INFO) << "Program build log: " << build_log;
-    }
-    LOG(FATAL) << "Build program failed: " << ret;
-  }
-
   return true;
 }
 
@@ -156,58 +105,57 @@ cl::CommandQueue &OpenCLRuntime::command_queue() { return command_queue_; }
 
 cl::Program &OpenCLRuntime::program() {
   // TODO(heliangliang) Support binary format
-  static const char *kernel_path = getenv("MACE_KERNEL_PATH");
-  std::string path(kernel_path == nullptr ? "" : kernel_path);
-
-  std::call_once(build_flag_, [this, &path]() {
-    MACE_CHECK(BuildProgram(this, path, &program_));
-  });
-
   return program_;
 }
-
-const std::unodered_map<std::string, std::string>
-    OpenCLRuntime::kernel_program_map_ = {
-  {"BatchNorm", "batch_norm.cl"}
+const std::map<std::string, std::string>
+    OpenCLRuntime::program_map_ = {
+  {"addn", "addn.cl"},
+  {"batch_norm", "batch_norm.cl"},
+  {"conv_2d_1x1", "conv_2d_1x1.cl"},
+  {"conv_2d_3x3", "conv_2d_3x3.cl"},
+  {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},
+  {"pooling", "pooling.cl"},
+  {"relu", "relu.cl"},
+  {"resize_bilinear", "resize_bilinear.cl"},
+  {"space_to_batch", "space_to_batch.cl"},
 };
 
-bool OpenCLRuntime::BuildProgram(const std::string &kernel_name,
+void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                                  const std::string &build_options,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
-
   cl::Program::Sources sources;
-  std::string filename = kernel_path_ + kernel_name;
+  std::string filename = kernel_path_ + program_file_name;
   std::string kernel_source;
   MACE_CHECK(ReadSourceFile(filename, &kernel_source));
   sources.push_back({kernel_source.c_str(), kernel_source.length()});
 
   *program = cl::Program(this->context(), sources);
-  build_options += " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + path;
+  std::string build_options_str = build_options +
+      " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-  cl_int ret = program->build({runtime->device()}, build_options.c_str());
+  cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
-    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(runtime->device()) ==
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
         CL_BUILD_ERROR) {
       std::string build_log =
-          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(runtime->device());
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
       LOG(INFO) << "Program build log: " << build_log;
     }
     LOG(FATAL) << "Build program failed: " << ret;
   }
-
-  return true;
 }
 
-cl::Kernel OpenCLRuntime::BuildKernel(const std::string &kernel_name,
-                        const std::set<std::string> &build_options) {
-  auto kernel_program_it = kernel_program_map_.find(kernel_name);
-  if (kernel_program_it == kernel_program_map_.end()) {
-    MACE_CHECK(false, kernel_name, " opencl kernel doesn't exist.");
+cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
+                                      const std::string &kernel_name,
+                                      const std::set<std::string> &build_options) {
+  auto kernel_program_it = program_map_.find(program_name);
+  if (kernel_program_it == program_map_.end()) {
+    MACE_CHECK(false, program_name, " opencl kernel doesn't exist.");
   }
 
-  std::string program_name = kernel_program_it->second;
+  std::string program_file_name = kernel_program_it->second;
   std::string build_options_str;
   for(auto &option : build_options) {
     build_options_str += " " + option;
@@ -219,10 +167,10 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &kernel_name,
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    this->BuildProgram(kernel_name, build_options_str, &program);
-    built_program_map_.emplace(built_program_key, std::move(program));
+    this->BuildProgram(program_file_name, build_options_str, &program);
+    built_program_map_.emplace(built_program_key, program);
   }
-  return cl::Kernel(kernel_name, program);
+  return cl::Kernel(program, kernel_name.c_str());
 }
 
 uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {

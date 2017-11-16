@@ -7,7 +7,7 @@
 
 #include <map>
 #include <mutex>
-#include <unordered_map>
+#include <set>
 
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_wrapper.h"
@@ -25,7 +25,8 @@ class OpenCLRuntime {
 
   uint32_t GetDeviceMaxWorkGroupSize();
   uint32_t GetKernelMaxWorkGroupSize(const cl::Kernel& kernel);
-  cl::Kernel BuildKernel(const std::string &kernel_name,
+  cl::Kernel BuildKernel(const std::string &program_name,
+                         const std::string &kernel_name,
                          const std::set<std::string> &build_options);
  private:
   OpenCLRuntime(cl::Context context,
@@ -35,7 +36,7 @@ class OpenCLRuntime {
   OpenCLRuntime(const OpenCLRuntime&) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime&) = delete;
 
-  bool BuildProgram(const std::string &kernel_name,
+  void BuildProgram(const std::string &kernel_name,
                     const std::string &build_options,
                     cl::Program *program);
 
@@ -44,11 +45,10 @@ class OpenCLRuntime {
   cl::Device device_;
   cl::CommandQueue command_queue_;
   cl::Program program_;
-  std::once_flag build_flag_;
   std::string kernel_path_;
-  static const std::unordered_map<std::string,
-               std::string> kernel_program_map_;
-  mutable std::unordered_map<std::string,
+  static const std::map<std::string,
+               std::string> program_map_;
+  mutable std::map<std::string,
           cl::Program> built_program_map_;
 };
 

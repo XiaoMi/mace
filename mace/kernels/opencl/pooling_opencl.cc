@@ -30,24 +30,26 @@ static void Pooling3(const Tensor *input,
   };
 
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace(stride[0] == 1 ? "-DSTRIDE_1" : "");
+  auto pooling_kernel  = runtime->BuildKernel("pooling", "pooling3", built_options);
 
-  auto max_pooling_kernel = cl::Kernel(program, "pooling3");
 
   const uint32_t lws[3] = {1, 8, 128};
 
   uint32_t idx = 0;
-  max_pooling_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
-  max_pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
-  max_pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
-  max_pooling_kernel.setArg(idx++, static_cast<int32_t>(channels));
-  max_pooling_kernel.setArg(idx++, static_cast<int32_t>(out_height));
-  max_pooling_kernel.setArg(idx++, static_cast<int32_t>(out_width));
-  max_pooling_kernel.setArg(idx++, stride[0]);
-  max_pooling_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
+  pooling_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
+  pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
+  pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
+  pooling_kernel.setArg(idx++, static_cast<int32_t>(channels));
+  pooling_kernel.setArg(idx++, static_cast<int32_t>(out_height));
+  pooling_kernel.setArg(idx++, static_cast<int32_t>(out_width));
+  pooling_kernel.setArg(idx++, stride[0]);
+  pooling_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
 
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      max_pooling_kernel, cl::NullRange,
+      pooling_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]));
   MACE_CHECK(error == CL_SUCCESS);
@@ -75,9 +77,9 @@ static void PoolingN(const Tensor *input,
   };
 
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
-
-  auto pooling_kernel = cl::Kernel(program, "poolingn");
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  auto pooling_kernel  = runtime->BuildKernel("pooling", "poolingn", built_options);
 
   const uint32_t lws[3] = {1, 8, 128};
 

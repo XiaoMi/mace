@@ -1,6 +1,9 @@
-__kernel void relu(__global const float *input,
+#include <common.h>
+
+// Supported data type: half/float
+__kernel void relu(__global const DATA_TYPE *input,
                    __private const int size,
-                   __global float *output) {
+                   __global DATA_TYPE *output) {
   int idx = get_global_id(0);
 
   if (idx + 4 > size) {
@@ -8,16 +11,16 @@ __kernel void relu(__global const float *input,
       *(output+idx) = fmax(*(input+idx), 0);
     }
   } else {
-    float4 data = vload4(idx, input);
-    data = fmax(data, (float4)0);
+    VEC_DATA_TYPE(DATA_TYPE,4) data = vload4(idx, input);
+    data = fmax(data, (VEC_DATA_TYPE(DATA_TYPE,4))0);
     vstore4(data, idx, output);
   }
 }
 
-__kernel void relux(__global const float *input,
-                    __private const float max_limit,
+__kernel void relux(__global const DATA_TYPE *input,
+                    __private const DATA_TYPE max_limit,
                     __private const int size,
-                    __global float *output) {
+                    __global DATA_TYPE *output) {
   int idx = get_global_id(0);
 
   if (idx + 4 > size) {
@@ -25,8 +28,8 @@ __kernel void relux(__global const float *input,
       *(output+idx) = clamp(*(input+idx), 0.0f, max_limit);
     }
   } else {
-    float4 data = vload4(idx, input);
-    data = clamp(data, (float4)0, (float4)max_limit);
+    VEC_DATA_TYPE(DATA_TYPE,4) data = vload4(idx, input);
+    data = clamp(data, (VEC_DATA_TYPE(DATA_TYPE,4))0, (VEC_DATA_TYPE(DATA_TYPE,4))max_limit);
     vstore4(data, idx, output);
   }
 }

@@ -1,5 +1,8 @@
-__kernel void resize_bilinear_nocache(__global const float *input, /* n * c, h, w */
-                                      __global float *output /* n * c, h, w */,
+#include <common.h>
+
+// Supported data type: half/float
+__kernel void resize_bilinear_nocache(__global const DATA_TYPE *input, /* n * c, h, w */
+                                      __global DATA_TYPE *output /* n * c, h, w */,
                                       __private const float height_scale,
                                       __private const float width_scale,
                                       __private const int in_height,
@@ -21,16 +24,16 @@ __kernel void resize_bilinear_nocache(__global const float *input, /* n * c, h, 
   const float h_lerp = h_in - h_lower;
   const float w_lerp = w_in - w_lower;
 
-  const float *input_base = input + c * in_height * in_width;
-  float *output_base = output + c * height * width;
+  const DATA_TYPE *input_base = input + c * in_height * in_width;
+  DATA_TYPE *output_base = output + c * height * width;
 
-  float top_left = input_base[h_lower * in_width + w_lower];
-  float top_right = input_base[h_lower * in_width + w_upper];
-  float bottom_left = input_base[h_upper * in_width + w_lower];
-  float bottom_right = input_base[h_upper * in_width + w_upper];
+  DATA_TYPE top_left = input_base[h_lower * in_width + w_lower];
+  DATA_TYPE top_right = input_base[h_lower * in_width + w_upper];
+  DATA_TYPE bottom_left = input_base[h_upper * in_width + w_lower];
+  DATA_TYPE bottom_right = input_base[h_upper * in_width + w_upper];
 
-  const float top = top_left + (top_right - top_left) * w_lerp;
-  const float bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
+  const DATA_TYPE top = top_left + (top_right - top_left) * w_lerp;
+  const DATA_TYPE bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
   output_base[h * width + w] = top + (bottom - top) * h_lerp;
 }
 
