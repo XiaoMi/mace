@@ -104,9 +104,11 @@ cl::Device &OpenCLRuntime::device() { return device_; }
 cl::CommandQueue &OpenCLRuntime::command_queue() { return command_queue_; }
 
 cl::Program &OpenCLRuntime::program() {
-  // TODO(heliangliang) Support binary format
+  // TODO(liuqi) : useless, leave it for old code.
   return program_;
 }
+
+// TODO(heliangliang) Support binary format
 const std::map<std::string, std::string>
     OpenCLRuntime::program_map_ = {
   {"addn", "addn.cl"},
@@ -162,6 +164,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
   }
   std::string built_program_key = program_name + build_options_str;
 
+  std::lock_guard<std::mutex> lock(program_build_mutex_);
   auto built_program_it = built_program_map_.find(built_program_key);
   cl::Program program;
   if (built_program_it != built_program_map_.end()) {

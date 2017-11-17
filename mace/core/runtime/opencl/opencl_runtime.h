@@ -45,6 +45,7 @@ class OpenCLRuntime {
   cl::Device device_;
   cl::CommandQueue command_queue_;
   cl::Program program_;
+  std::mutex program_build_mutex_;
   std::string kernel_path_;
   static const std::map<std::string,
                std::string> program_map_;
