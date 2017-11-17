@@ -48,8 +48,6 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
       LOG(ERROR) << "Operator failed: " << ProtoDebugString(op->debug_def());
       return false;
     }
-    if (device_type_ == DeviceType::OPENCL)
-      OpenCLRuntime::Get()->command_queue().finish();
     if (op_stats) {
       op_stats->set_op_end_rel_micros(NowInMicroSec() -
                                       op_stats->all_start_micros());

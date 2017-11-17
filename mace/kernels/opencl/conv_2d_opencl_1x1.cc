@@ -61,16 +61,19 @@ void Conv1x1V2(const Tensor *input,
   // TODO KernelFunctor has an extra clReleaseCommandQueue due to a copy
   // TODO check wired clReleaseCommandQueue latency
   // The KernelFunctor can cause segment faults in cb_retain_event
-  auto conv_2d_kernel = cl::Kernel(program, "conv_2d_1x1_v2");
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
+  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+  auto conv_2d_kernel = runtime->BuildKernel("conv_2d_1x1", "conv_2d_1x1_v2", built_options);
+
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++,
                         *(static_cast<const cl::Buffer *>(input->buffer())));
   conv_2d_kernel.setArg(idx++,
                         *(static_cast<const cl::Buffer *>(filter->buffer())));
-  if (bias == NULL) {
-    conv_2d_kernel.setArg(idx++, NULL);
-  } else {
+  if (bias != nullptr) {
     conv_2d_kernel.setArg(idx++,
                           *(static_cast<const cl::Buffer *>(bias->buffer())));
   }
@@ -81,7 +84,6 @@ void Conv1x1V2(const Tensor *input,
   conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(3)));
   conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
-  conv_2d_kernel.setArg(idx++, stride);
 
   auto command_queue = runtime->command_queue();
   cl_int error = command_queue.enqueueNDRangeKernel(

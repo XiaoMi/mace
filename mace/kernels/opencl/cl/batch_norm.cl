@@ -1,13 +1,15 @@
-void kernel batch_norm(global const float *input,
-                       global const float *scale,
-                       global const float *offset,
-                       global const float *mean,
-                       global const float *var,
-                       global const float *epsilon,
+#include <common.h>
+// Supported data types: half/float
+void kernel batch_norm(global const DATA_TYPE *input,
+                       global const DATA_TYPE *scale,
+                       global const DATA_TYPE *offset,
+                       global const DATA_TYPE *mean,
+                       global const DATA_TYPE *var,
+                       global const DATA_TYPE *epsilon,
                        private const int pixels,
-                       global float *output,
-                       __local float4 *new_scale,
-                       __local float4 *new_offset) {
+                       global DATA_TYPE *output,
+                       __local VEC_DATA_TYPE(DATA_TYPE, 4) *new_scale,
+                       __local VEC_DATA_TYPE(DATA_TYPE, 4) *new_offset) {
   const int batch = get_global_id(0);
   const int channel = get_global_id(1);
   const int channels = get_global_size(1);
@@ -23,8 +25,8 @@ void kernel batch_norm(global const float *input,
   barrier(CLK_LOCAL_MEM_FENCE);
 
   const int image_offset = (batch * channels + channel) * pixels + pixel_offset*4;
-  const float *input_ptr = input + image_offset;
-  float *output_ptr = output + image_offset;
+  const DATA_TYPE *input_ptr = input + image_offset;
+  DATA_TYPE *output_ptr = output + image_offset;
   const int end = (batch * channels + channel + 1) * pixels;
   if ((image_offset+4) > end) {
     for (int i = image_offset; i < end; ++i) {
@@ -33,7 +35,7 @@ void kernel batch_norm(global const float *input,
       ++output_ptr;
     }
   } else {
-    float4 values = vload4(0, input_ptr);
+    VEC_DATA_TYPE(DATA_TYPE, 4) values = vload4(0, input_ptr);
     values = values * new_scale[local_channel] + new_offset[local_channel];
     vstore4(values, 0, output_ptr);
   }

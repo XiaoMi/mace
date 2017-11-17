@@ -22,14 +22,17 @@ static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
-  auto conv_kernel = cl::Kernel(program, "conv_2d_3x3");
+
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
+  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+  auto conv_kernel = runtime->BuildKernel("conv_2d_3x3", "conv_2d_3x3", built_options);
 
   uint32_t idx = 0;
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
   conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(filter->buffer())));
-  if (bias == nullptr) {
-    conv_kernel.setArg(idx++, NULL);
-  } else {
+  if (bias != nullptr) {
     conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
   }
   conv_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
@@ -39,8 +42,6 @@ static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
   conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
   conv_kernel.setArg(idx++, static_cast<int32_t>(height));
   conv_kernel.setArg(idx++, static_cast<int32_t>(width));
-  conv_kernel.setArg(idx++, stride);
-  conv_kernel.setArg(idx++, stride);
   const uint32_t gws[3] = {static_cast<uint32_t>(output->dim(0)),
                            static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(pixel_blocks)};

@@ -12,6 +12,8 @@ namespace mace {
 
 bool DataTypeCanUseMemcpy(DataType dt);
 
+std::string DataTypeToCLType(const DataType dt);
+
 template <class T>
 struct IsValidDataType;
 
@@ -50,6 +52,7 @@ MATCH_TYPE_AND_ENUM(int16_t, DT_INT16);
 MATCH_TYPE_AND_ENUM(int8_t, DT_INT8);
 MATCH_TYPE_AND_ENUM(string, DT_STRING);
 MATCH_TYPE_AND_ENUM(int64_t, DT_INT64);
+MATCH_TYPE_AND_ENUM(uint32_t, DT_UINT32);
 MATCH_TYPE_AND_ENUM(bool, DT_BOOL);
 
 static const int32_t kint32_tmax = ((int32_t)0x7FFFFFFF);

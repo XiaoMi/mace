@@ -1,14 +1,17 @@
-void kernel space_to_batch(global float *space_data_ptr,
-                           global const int *block_shape_ptr,
-                           global const int *paddings_ptr,
-                           private const int space_batch,
-                           private const int space_channel,
-                           private const int space_height,
-                           private const int space_width,
-                           private const int batch_height,
-                           private const int batch_width,
-                           private const int b2s,
-                           global float* batch_data_ptr) {
+#include <common.h>
+
+// Supported data type: all
+__kernel void space_to_batch(__global DATA_TYPE *space_data_ptr,
+                             __global const int *block_shape_ptr,
+                             __global const int *paddings_ptr,
+                             __private const int space_batch,
+                             __private const int space_channel,
+                             __private const int space_height,
+                             __private const int space_width,
+                             __private const int batch_height,
+                             __private const int batch_width,
+                             __private const int b2s,
+                             __global DATA_TYPE* batch_data_ptr) {
   int batch_idx = get_global_id(0);
   int batch_channel_idx = get_global_id(1);
   int batch_pixel_idx = get_global_id(2);

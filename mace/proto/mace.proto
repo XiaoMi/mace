@@ -23,6 +23,8 @@ enum DataType {
   DT_INT64 = 8;
   DT_UINT16 = 9;
   DT_BOOL = 10;
+  DT_HALF = 19;
+  DT_UINT32 = 22;
 }
 
 message TensorProto {

@@ -27,10 +27,10 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
                            static_cast<uint32_t>(input->dim(1)),
                            static_cast<uint32_t>(blocks)};
 
-
   auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
-  auto bm_kernel = cl::Kernel(program, "batch_norm");
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
   const std::vector<uint32_t> lws = {1, 1, kwg_size};
@@ -63,7 +63,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]));
 
-    MACE_CHECK(error == CL_SUCCESS);
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
   };
   std::stringstream ss;
