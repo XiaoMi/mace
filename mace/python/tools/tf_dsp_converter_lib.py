@@ -147,7 +147,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
 
 def add_output_node(net_def, output_node):
   op_def = net_def.op.add()
-  op_def.name = 'output'
+  op_def.name = '__output__'
   op_def.type = 'OUTPUT'
   op_def.input.extend([get_tensor_name_from_op(output_node, 0)])
 
@@ -298,8 +298,8 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node):
 
       add_output_node(net_def, output_node)
       # optimized_net_def = reverse_batch_to_space_and_biasadd(net_def)
-      # sorted_net_def = graph_util.sort_mace_graph(optimized_net_def, output_node)
-      net_def_with_node_id = add_node_id(net_def)
+      sorted_net_def = graph_util.sort_mace_graph(net_def, '__output__')
+      net_def_with_node_id = add_node_id(sorted_net_def)
 
       final_net_def = add_input_output_info(net_def_with_node_id, input_node, output_node, graph)
 
