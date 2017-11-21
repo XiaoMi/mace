@@ -42,7 +42,7 @@ bool HexagonControlWrapper::Finalize() {
   return true;
 }
 
-bool HexagonControlWrapper::SetupGraph(NetDef net_def) {
+bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
   LOG(INFO) << "Hexagon setup graph";
   // const node
   for (const TensorProto& tensor_proto: net_def.tensors()) {
@@ -181,21 +181,22 @@ void HexagonControlWrapper::GetPerfInfo() {
   std::unordered_map<uint32_t, float> node_id_counters;
   std::unordered_map<std::string, std::pair<int, float>> node_type_counters;
   float total_duration = 0.0;
+
+  VLOG(0) << "items: " << n_items;
   for (int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
     node_id_counters[node_id] = ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32)
         + perf_info[i].counter_lo) * 1.0f / perf_info[i].executions;
 
-    LOG(INFO) << "node id: " << perf_info[i].node_id
-              << ", node type: " << perf_info[i].node_type
-              << ", executions: " << perf_info[i].executions
-              << ", duration: " << node_id_counters[node_id];
-
-
     char node_type_buf[1280];
     hexagon_nn_op_id_to_name(node_type_id, node_type_buf, 1280);
     std::string node_type(node_type_buf);
+    LOG(INFO) << "node id: " << perf_info[i].node_id
+          << ", node type: " << node_type
+          << ", executions: " << perf_info[i].executions
+          << ", duration: " << node_id_counters[node_id];
+
     if (node_type_counters.find(node_type) == node_type_counters.end()) {
       node_type_counters[node_type] = {0, 0.0};
     }
