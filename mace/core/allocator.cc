@@ -3,7 +3,9 @@
 //
 
 #include "mace/core/allocator.h"
+#ifdef __USE_OPENCL
 #include "mace/core/opencl_allocator.h"
+#endif
 
 namespace mace {
 
@@ -23,6 +25,8 @@ Allocator *GetDeviceAllocator(DeviceType type) {
 
 MACE_REGISTER_ALLOCATOR(DeviceType::CPU, new CPUAllocator());
 MACE_REGISTER_ALLOCATOR(DeviceType::NEON, new CPUAllocator());
+#ifdef __USE_OPENCL
 MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
+#endif
 
 }  // namespace mace
