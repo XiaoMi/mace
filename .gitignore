@@ -1,4 +1,4 @@
-bazel-*/
+bazel-*
 tags
 .idea/
 cmake-build-debug/
