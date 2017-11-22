@@ -59,7 +59,8 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       conv_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]));
+      cl::NDRange(lws[0], lws[1], lws[2]),
+      NULL, OpenCLRuntime::GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 

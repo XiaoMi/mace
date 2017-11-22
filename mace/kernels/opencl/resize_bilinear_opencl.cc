@@ -49,7 +49,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, float>::operator()(
       cl::NDRange(static_cast<int>(batch * channels),
                   static_cast<int>(out_height), static_cast<int>(out_width)),
       // TODO (heliangliang) tuning and fix when kwg_size < devisor
-      cl::NDRange(1, 16, kwg_size / 16));
+      cl::NDRange(1, 16, kwg_size / 16),
+      NULL, OpenCLRuntime::GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS, error);
 }
 

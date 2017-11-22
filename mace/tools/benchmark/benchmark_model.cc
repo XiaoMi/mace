@@ -3,6 +3,7 @@
 //
 
 #include "mace/core/net.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/tools/benchmark/stat_summarizer.h"
 #include "mace/utils/command_line_flags.h"
 #include "mace/utils/utils.h"
@@ -149,7 +150,7 @@ int Main(int argc, char **argv) {
 
   std::vector<Flag> flag_list = {
       Flag("model_file", &model_file, "graph file name"),
-      Flag("device", &device, "CPU/NEON"),
+      Flag("device", &device, "CPU/NEON/OPENCL"),
       Flag("input_layer", &input_layer_string, "input layer names"),
       Flag("input_layer_shape", &input_layer_shape_string, "input layer shape"),
       Flag("input_layer_type", &input_layer_type_string, "input layer type"),
@@ -258,6 +259,9 @@ int Main(int argc, char **argv) {
   DeviceType device_type;
   DeviceType_Parse(device, &device_type);
   VLOG(0) << device_type;
+
+  if (device_type == DeviceType::OPENCL)
+    OpenCLRuntime::EnableProfiling();
 
   // load model
   std::ifstream model_file_stream(model_file, std::ios::in | std::ios::binary);
