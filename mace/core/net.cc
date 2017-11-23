@@ -4,7 +4,9 @@
 
 #include "mace/core/net.h"
 #include "mace/utils/utils.h"
+#ifdef __USE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#endif
 
 namespace mace {
 

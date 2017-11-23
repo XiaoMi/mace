@@ -121,10 +121,10 @@ TEST(QuantizedReluTest, QuantizedRelu) {
   VLOG(0) << wrapper.ExecuteGraph(input_tensor, &output_tensor);
   wrapper.PrintLog();
 
+  vector<uint8_t> expected {128, 128, 128, 192, 255};
   for (int i = 0; i < output_tensor.size(); ++i) {
-    std::cout << (int32_t) output_data[i] << " ";
+    EXPECT_EQ(expected[i], output_data[i]);
   }
-  std::cout << std::endl;
 
   VLOG(0) << wrapper.TeardownGraph();
   wrapper.Finalize();

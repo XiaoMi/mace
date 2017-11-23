@@ -60,5 +60,6 @@ cc_test(
     deps = [
         "@gtest//:gtest_main",
         ":dsp",
+        "//mace/kernels:kernels",
     ],
 )
