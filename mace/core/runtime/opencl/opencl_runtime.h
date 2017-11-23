@@ -19,10 +19,10 @@ class OpenCLRuntime {
   static OpenCLRuntime *Get();
 
   static void EnableProfiling();
-  static cl::Event *GetDefaultEvent();
+  cl::Event *GetDefaultEvent();
 
-  static cl_ulong GetEventProfilingStartInfo();
-  static cl_ulong GetEventProfilingEndInfo();
+  cl_ulong GetEventProfilingStartInfo();
+  cl_ulong GetEventProfilingEndInfo();
 
 
   cl::Context &context();

@@ -91,7 +91,7 @@ void Conv1x1V2(const Tensor *input,
       cl::NDRange(static_cast<int>(batch), static_cast<int>(channel_blocks),
                   static_cast<int>(pixel_blocks)),
       cl::NDRange(1, 2, kwg_size / 2),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS, error);
 }
 
@@ -178,7 +178,7 @@ void Conv1x1V3(const Tensor *input,
       cl::NDRange(static_cast<int>(channel_blocks), static_cast<int>(height),
                   static_cast<int>(width)),
       cl::NDRange(1, 2, kwg_size / 2),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS, error);
 }
 

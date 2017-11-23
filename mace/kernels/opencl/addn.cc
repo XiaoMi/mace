@@ -31,7 +31,7 @@ static void Add2(const Tensor *input0, const Tensor *input1, Tensor *output) {
       addn_kernel, cl::NullRange,
       cl::NDRange(gws),
       cl::NDRange(lws),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 

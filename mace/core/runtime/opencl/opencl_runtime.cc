@@ -119,7 +119,10 @@ OpenCLRuntime::OpenCLRuntime(cl::Context context,
   kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
 }
 
-OpenCLRuntime::~OpenCLRuntime() { delete profiling_ev_; }
+OpenCLRuntime::~OpenCLRuntime() {
+  if (profiling_ev_)
+    delete profiling_ev_;
+}
 
 cl::Context &OpenCLRuntime::context() { return context_; }
 

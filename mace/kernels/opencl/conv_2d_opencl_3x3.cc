@@ -52,7 +52,7 @@ static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
       conv_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 

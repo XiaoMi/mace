@@ -36,7 +36,7 @@ void ReluFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
         relu_kernel, cl::NullRange,
         cl::NDRange(gws),
         cl::NDRange(lws),
-        NULL, OpenCLRuntime::GetDefaultEvent());
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
     MACE_CHECK(error == CL_SUCCESS);
   } else {
     auto relu_kernel  = runtime->BuildKernel("relu", "relux", built_options);
@@ -53,7 +53,7 @@ void ReluFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
         relu_kernel, cl::NullRange,
         cl::NDRange(gws),
         cl::NDRange(lws),
-        NULL, OpenCLRuntime::GetDefaultEvent());
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
     MACE_CHECK(error == CL_SUCCESS);
   }
 }

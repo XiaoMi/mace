@@ -52,7 +52,7 @@ static void Pooling3(const Tensor *input,
       pooling_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 
@@ -101,7 +101,7 @@ static void PoolingN(const Tensor *input,
       pooling_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::GetDefaultEvent());
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 

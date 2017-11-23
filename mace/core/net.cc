@@ -36,7 +36,7 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
     VLOG(1) << "Running operator " << op->debug_def().name() << "("
             << op->debug_def().type() << ").";
     OperatorStats *op_stats = nullptr;
-    if (device_type_ != DeviceType::OPENCL && run_metadata) {
+    if (run_metadata && device_type_ != DeviceType::OPENCL) {
       op_stats = run_metadata->add_op_stats();
       op_stats->set_operator_name(op->debug_def().name());
       op_stats->set_type(op->debug_def().type());
@@ -57,16 +57,16 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
         op_stats->set_type(op->debug_def().type());
 
         op_stats->set_all_start_micros(
-            OpenCLRuntime::GetEventProfilingStartInfo() / 1000);
+            OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000);
         op_stats->set_op_start_rel_micros(
-            OpenCLRuntime::GetEventProfilingStartInfo() / 1000 -
+            OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000 -
             op_stats->all_start_micros());
 
         op_stats->set_op_end_rel_micros(
-            OpenCLRuntime::GetEventProfilingEndInfo() / 1000 -
+            OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000 -
             op_stats->all_start_micros());
         op_stats->set_all_end_rel_micros(
-            OpenCLRuntime::GetEventProfilingEndInfo() / 1000 -
+            OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000 -
             op_stats->all_start_micros());
       } else {
         op_stats->set_op_end_rel_micros(NowInMicroSec() -

@@ -3,6 +3,7 @@
 //
 
 #include "mace/core/operator.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -11,6 +12,9 @@ template <DeviceType D, typename T>
 static void BatchNorm(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
+
+  if ( D == OPENCL )
+    OpenCLRuntime::EnableProfiling();
 
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormBM")

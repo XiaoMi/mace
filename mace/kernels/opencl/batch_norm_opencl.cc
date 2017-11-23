@@ -62,7 +62,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
         bm_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]),
-        NULL, OpenCLRuntime::GetDefaultEvent());
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
