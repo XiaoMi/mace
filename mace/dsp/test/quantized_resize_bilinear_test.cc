@@ -131,7 +131,7 @@ TEST(QuantizedResizeBilinearTest, QuantizedResizeBilinear) {
   wrapper.PrintLog();
 
   for (int i = 0; i < output_tensor.size(); ++i) {
-    std::cout << (int32_t) output_data[i] << " ";
+    EXPECT_EQ(i, output_data[i]);
   }
   std::cout << std::endl;
 
