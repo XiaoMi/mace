@@ -7,13 +7,20 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android")
-load("//mace:mace.bzl", "if_android_arm64")
+load("//mace:mace.bzl", "if_android", "if_android_arm64")
 
 cc_library(
     name = "kernels",
-    srcs = glob(["*.cc"]) + if_android(glob(["opencl/*.cc"])) + if_android_arm64(glob(["neon/*.cc"])),
-    hdrs = glob(["*.h"]) + if_android(glob(["opencl/*.h"])) + if_android_arm64(glob(["neon/*.h"])),
+    srcs = glob(["*.cc"]) + if_android(glob([
+        "opencl/*.cc",
+    ])) + if_android_arm64(glob([
+        "neon/*.cc",
+    ])),
+    hdrs = glob(["*.h"]) + if_android(glob([
+        "opencl/*.h",
+    ])) + if_android_arm64(glob([
+        "neon/*.h",
+    ])),
     copts = [
         "-std=c++11",
         "-fopenmp",

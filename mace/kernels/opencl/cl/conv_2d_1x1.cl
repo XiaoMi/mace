@@ -141,7 +141,6 @@ __kernel void conv_2d_1x1_v2(__global const DATA_TYPE *input, /* n, c, h, w */
   }
 }
 
-// TODO : validation
 __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                           __read_only image2d_t filter, /* cout%4 * cin, cout/4 */
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -155,71 +154,151 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
   const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
-  half4 bias_value = read_imageh(bias, sampler, (int2)(out_w_blk, 1));
-  half4 out0 = (half4)(bias_value.x, bias_value.x, bias_value.x, bias_value.x);
-  half4 out1 = (half4)(bias_value.y, bias_value.y, bias_value.y, bias_value.y);
-  half4 out2 = (half4)(bias_value.z, bias_value.z, bias_value.z, bias_value.z);
-  half4 out3 = (half4)(bias_value.w, bias_value.w, bias_value.w, bias_value.w);
+  half4 bias_value = read_imageh(bias, sampler, (int2)(out_ch_blk, 0));
+  half4 out[4];
+  out[0] = (half4)(bias_value.x);
+  out[1] = (half4)(bias_value.y);
+  out[2] = (half4)(bias_value.z);
+  out[3] = (half4)(bias_value.w);
+
+  int w[4];
+  w[0] = out_w_blk;
+  w[1] = w[0] + out_w_blks;
+  w[2] = w[1] + out_w_blks;
+  w[3] = w[2] + out_w_blks;
 
   // Unrolling this loop hurt perfmance
   int in_x_base = 0;
   for (int in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
-    const int in_x0 = in_x_base + out_w_blk;;
-    const int in_x1 = in_x0 + out_w_blks;
-    const int in_x2 = in_x1 + out_w_blks;
-    const int in_x3 = in_x2 + out_w_blks;
-    in_x_base += width;
-
-    const half4 in0 = read_imageh(input, sampler, (int2)(in_x0, out_hb));
-    const half4 in1 = read_imageh(input, sampler, (int2)(in_x1, out_hb));
-    const half4 in2 = read_imageh(input, sampler, (int2)(in_x2, out_hb));
-    const half4 in3 = read_imageh(input, sampler, (int2)(in_x3, out_hb));
+    half4 in[4];
+    in[0] = read_imageh(input, sampler, (int2)(in_x_base + w[0], out_hb));
+    if (w[1] < width) {
+      // conditional load hurt perf, this branching helps sometimes
+      in[1] = read_imageh(input, sampler, (int2)(in_x_base + w[1], out_hb));
+      in[2] = read_imageh(input, sampler, (int2)(in_x_base + w[2], out_hb));
+      in[3] = read_imageh(input, sampler, (int2)(in_x_base + w[3], out_hb));
+    }
 
     // The order matters, load input first then load filter, why?
     const int filter_x0 = in_ch_blk << 2;
-    const half4 weights0 = read_imageh(filter, sampler, (int2)(filter_x0, out_ch_blk));
-    const half4 weights1 = read_imageh(filter, sampler, (int2)(filter_x0 + 1, out_ch_blk));
-    const half4 weights2 = read_imageh(filter, sampler, (int2)(filter_x0 + 2, out_ch_blk));
-    const half4 weights3 = read_imageh(filter, sampler, (int2)(filter_x0 + 3, out_ch_blk));
+    half4 weights[4];
+    #pragma unroll
+    for (int c = 0; c < 4; ++c) {
+      weights[c] = read_imageh(filter, sampler, (int2)(filter_x0 + c, out_ch_blk));
+    }
     // Will prefetch L2 improve performance? How to pretch image data?
 
     // Interleaving load and mul does not improve performance as expected
-    out0 += in0.x * weights0;
-    out1 += in1.x * weights0;
-    out2 += in2.x * weights0;
-    out3 += in3.x * weights0;
+    #pragma unroll
+    for (int c = 0; c < 4; ++c) {
+      out[c] += in[c].x * weights[0];
+      out[c] += in[c].y * weights[1];
+      out[c] += in[c].z * weights[2];
+      out[c] += in[c].w * weights[3];
+    }
 
-    out0 += in0.y * weights1;
-    out1 += in1.y * weights1;
-    out2 += in2.y * weights1;
-    out3 += in3.y * weights1;
-
-    out0 += in0.z * weights2;
-    out1 += in1.z * weights2;
-    out2 += in2.z * weights2;
-    out3 += in3.z * weights2;
-
-    out0 += in0.w * weights3;
-    out1 += in1.w * weights3;
-    out2 += in2.w * weights3;
-    out3 += in3.w * weights3;
+    in_x_base += width;
   }
 
-  const int out_x_offset = out_ch_blk * width;
-  const int w0 = out_w_blk;
-  write_imageh(output, (int2)(out_x_offset + w0, out_hb), out0);
+  const int out_x_base = out_ch_blk * width;
+  write_imageh(output, (int2)(out_x_base + w[0], out_hb), out[0]);
 
-  const int w1 = w0 + out_w_blks;
-  if (w1 >= width) return;
-  write_imageh(output, (int2)(out_x_offset + w1, out_hb), out1);
+  if (w[1] >= width) return;
+  write_imageh(output, (int2)(out_x_base + w[1], out_hb), out[1]);
 
-  const int w2 = w1 + out_w_blks;
-  if (w2 >= width) return;
-  write_imageh(output, (int2)(out_x_offset + w2, out_hb), out2);
+  if (w[2] >= width) return;
+  write_imageh(output, (int2)(out_x_base + w[2], out_hb), out[2]);
 
-  const int w3 = w2 + out_w_blks;
-  if (w3 >= width) return;
-  write_imageh(output, (int2)(out_x_offset + w3, out_hb), out3);
+  if (w[3] >= width) return;
+  write_imageh(output, (int2)(out_x_base + w[3], out_hb), out[3]);
 }
 
+__kernel void conv_2d_1x1_h8(__read_only image2d_t input, /* [c%8 * w * c/8, h * b] */
+                             __read_only image2d_t filter, /* cout%8 * cin, cout/8 */
+                             __read_only image2d_t bias, /* cout%8 * cout/8 */
+                             __write_only image2d_t output,
+                             __private const int in_ch_blks,
+                             __private const int width) {
+  const int out_ch_blk = get_global_id(0);
+  const int out_w_blk = get_global_id(1);
+  const int out_w_blks = get_global_size(1);
+  const int out_hb = get_global_id(2);
 
+  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+
+  float4 bias_value = read_imagef(bias, sampler, (int2)(out_ch_blk, 0));
+  half4 bias_value03 = as_half4(bias_value.xy);
+  half4 bias_value47 = as_half4(bias_value.zw);
+  half4 out[8];
+  out[0] = (half4)(bias_value03.x);
+  out[1] = (half4)(bias_value03.y);
+  out[2] = (half4)(bias_value03.z);
+  out[3] = (half4)(bias_value03.w);
+  out[4] = (half4)(bias_value47.x);
+  out[5] = (half4)(bias_value47.y);
+  out[6] = (half4)(bias_value47.z);
+  out[7] = (half4)(bias_value47.w);
+
+  int w[4];
+  w[0] = out_w_blk;
+  w[1] = w[0] + out_w_blks;
+  w[2] = w[1] + out_w_blks;
+  w[3] = w[2] + out_w_blks;
+
+  // Unrolling this loop hurt perfmance
+  int in_x_base = 0;
+  for (int in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
+    half4 in[8];
+    #pragma unroll
+    for (int wi = 0; wi < 4; ++wi) {
+      float4 in_value = read_imagef(input, sampler, (int2)(in_x_base + w[0], out_hb));
+      in[wi << 1] = as_half4(in_value.xy);
+      in[wi << 1 + 1] = as_half4(in_value.zw);
+    }
+
+    // The order matters, load input first then load filter, why?
+    const int filter_x0 = in_ch_blk << 2;
+    half4 weights[8];
+    #pragma unroll
+    for (int wi = 0; wi < 4; ++wi) {
+      float4 weights_value = read_imagef(filter, sampler, (int2)(filter_x0 + wi, out_ch_blk));
+      weights[wi << 1] = as_half4(weights_value.xy);
+      weights[wi << 1 + 1] = as_half4(weights_value.zw);
+    }
+    // Will prefetch L2 improve performance? How to pretch image data?
+
+    // Interleaving load and mul does not improve performance as expected
+    #pragma unroll
+    for (int wi = 0; wi < 4; ++wi) {
+      int idx = wi << 1;
+      out[idx] += in[idx].x * weights[0];
+      out[idx] += in[idx].y * weights[1];
+      out[idx] += in[idx].z * weights[2];
+      out[idx] += in[idx].w * weights[3];
+
+      ++idx;
+      out[idx] += in[idx].x * weights[4];
+      out[idx] += in[idx].y * weights[5];
+      out[idx] += in[idx].z * weights[6];
+      out[idx] += in[idx].w * weights[7];
+    }
+
+    in_x_base += width;
+  }
+
+  const int out_x_base = out_ch_blk * width;
+  float4 out_value = (float4)(as_float2(out[0]), as_float2(out[1]));
+  write_imagef(output, (int2)(out_x_base + w[0], out_hb), out_value);
+
+  if (w[1] >= width) return;
+  out_value = (float4)(as_float2(out[2]), as_float2(out[3]));
+  write_imagef(output, (int2)(out_x_base + w[0], out_hb), out_value);
+
+  if (w[2] >= width) return;
+  out_value = (float4)(as_float2(out[4]), as_float2(out[5]));
+  write_imagef(output, (int2)(out_x_base + w[0], out_hb), out_value);
+
+  if (w[3] >= width) return;
+  out_value = (float4)(as_float2(out[6]), as_float2(out[7]));
+  write_imagef(output, (int2)(out_x_base + w[0], out_hb), out_value);
+}
