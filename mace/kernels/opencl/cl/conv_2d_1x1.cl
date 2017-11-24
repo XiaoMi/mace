@@ -1,29 +1,5 @@
 #include <common.h>
 
-__kernel void conv_2d_1x1_naive(__global const float *input, /* n, c, h, w */
-                                __global const float *filter, /* o, i, kh, kw */
-                                __global const float *bias, /* o */
-                                __global float *output, /* n, c, h, w */
-                                __private const int in_chan_num) {
-  const int batch = get_global_id(0);
-  const int channel = get_global_id(1);
-  const int channels = get_global_size(1);
-  const int pixel = get_global_id(2);
-  const int pixels = get_global_size(2);
-
-  float *output_ptr = output + (batch * channels + channel) * pixels;
-  output_ptr[pixel] = bias[channel];
-
-  for (int inc = 0; inc < in_chan_num; ++inc) {
-    const float *input_ptr = input + (batch * in_chan_num + inc) * pixels + pixel;
-    const float weights = filter[channel * in_chan_num + inc];
-    float in = input_ptr[0];
-    float out = output_ptr[0];
-    out += in * weights;
-    output_ptr[0] = out;
-  }
-}
-
 #define vec_conv_2d_1x1_s1                    \
   VEC_DATA_TYPE(DATA_TYPE,4) in0 = vload4(0, input_ptr);                   \
   VEC_DATA_TYPE(DATA_TYPE,4) in1 = vload4(0, input_ptr + in_pixel);        \

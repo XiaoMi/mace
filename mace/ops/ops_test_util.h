@@ -108,32 +108,6 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
-  void AddInputImageFromArray(const std::string &name,
-                              const std::vector<index_t> &shape,
-                              const std::vector<T> &data) {
-    Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
-    std::vector<size_t> image_shape;
-    input->ResizeImage(shape, image_shape);
-    Tensor::MappingGuard input_mapper(input);
-    T *input_data = input->mutable_data<T>();
-    MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
-    const T *data_ptr = data.data();
-    const int type_size = sizeof(T);
-    const int row_pitch = shape[3];
-    auto mapped_image_pitch = input_mapper.mapped_image_pitch();
-    const size_t slice_size = mapped_image_pitch[1] / sizeof(T);
-    for (int c = 0; c < shape[0] * shape[1]; ++c) {
-      T *input_ptr = input_data + c * slice_size;
-      for (int h = 0; h < shape[2]; ++h) {
-        memcpy(input_ptr, data_ptr, row_pitch * type_size);
-        input_ptr += mapped_image_pitch[0] / sizeof(T);
-        data_ptr += row_pitch;
-      }
-    }
-  }
-
-  template <DeviceType D, typename T>
   void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
                         const T data) {
