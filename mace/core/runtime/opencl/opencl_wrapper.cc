@@ -160,6 +160,11 @@ class OpenCLLibraryImpl final {
                                                   size_t,
                                                   void *,
                                                   size_t *);
+  using clGetEventProfilingInfoFunc = cl_int (*)(cl_event event,
+                                                  cl_profiling_info param_name,
+                                                  size_t param_value_size,
+                                                  void *param_value,
+                                                  size_t *param_value_size_ret);
   using clGetImageInfoFunc = cl_int (*)(cl_mem,
                                     cl_image_info,
                                     size_t,
@@ -209,6 +214,7 @@ class OpenCLLibraryImpl final {
   DEFINE_FUNC_PTR(clReleaseDevice);
   DEFINE_FUNC_PTR(clRetainEvent);
   DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
+  DEFINE_FUNC_PTR(clGetEventProfilingInfo);
   DEFINE_FUNC_PTR(clGetImageInfo);
 
 #undef DEFINE_FUNC_PTR
@@ -333,6 +339,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   ASSIGN_FROM_DLSYM(clReleaseDevice);
   ASSIGN_FROM_DLSYM(clRetainEvent);
   ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
+  ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
   ASSIGN_FROM_DLSYM(clGetImageInfo);
 
 #undef ASSIGN_FROM_DLSYM
@@ -879,6 +886,20 @@ cl_int clGetKernelWorkGroupInfo(cl_kernel kernel,
   }
 }
 
+cl_int clGetEventProfilingInfo(cl_event event,
+                               cl_profiling_info param_name,
+                               size_t param_value_size,
+                               void *param_value,
+                               size_t *param_value_size_ret) {
+  auto func = mace::OpenCLLibraryImpl::Get().clGetEventProfilingInfo;
+  if (func != nullptr) {
+    return func(event, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+
 cl_int clGetImageInfo(cl_mem image,
                       cl_image_info param_name,
                       size_t param_value_size,
@@ -892,3 +913,4 @@ cl_int clGetImageInfo(cl_mem image,
     return CL_OUT_OF_RESOURCES;
   }
 }
+

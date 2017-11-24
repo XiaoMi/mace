@@ -18,6 +18,13 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Get();
 
+  static void EnableProfiling();
+  cl::Event *GetDefaultEvent();
+
+  cl_ulong GetEventProfilingStartInfo();
+  cl_ulong GetEventProfilingEndInfo();
+
+
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
@@ -41,6 +48,9 @@ class OpenCLRuntime {
                     cl::Program *program);
 
  private:
+  static bool enable_profiling_;
+  static cl::Event* profiling_ev_;
+
   cl::Context context_;
   cl::Device device_;
   cl::CommandQueue command_queue_;

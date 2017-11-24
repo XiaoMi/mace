@@ -31,7 +31,8 @@ static void Add2(const Tensor *input0, const Tensor *input1, Tensor *output) {
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       addn_kernel, cl::NullRange,
       cl::NDRange(gws),
-      cl::NDRange(lws));
+      cl::NDRange(lws),
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS);
 }
 

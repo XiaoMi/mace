@@ -131,13 +131,14 @@ class Tuner {
                      double &time_us) {
     RetType res;
     int64_t total_time_us = 0;
-    const int64_t start_time = NowInMicroSec();
     for (int i = 0; i < num_runs; ++i) {
       res = func(params);
+      OpenCLRuntime::Get()->command_queue().finish();
+
+      double start_time = OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000.0;
+      double end_time = OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000.0;
+      total_time_us += end_time - start_time;
     }
-    OpenCLRuntime::Get()->command_queue().finish();
-    const int64_t end_time = NowInMicroSec();
-    total_time_us += end_time - start_time;
 
     time_us = total_time_us * 1.0 / num_runs;
     return res;
