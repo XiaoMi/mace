@@ -16,6 +16,9 @@ class Quantizer {
   ~Quantizer() {}
 
   void Quantize(const Tensor &in_tensor,
+                Tensor *out_tensor,
+                float *min_out, float *max_out);
+  void Quantize(const Tensor &in_tensor,
                 const float min_in, const float max_in,
                 Tensor *out_tensor,
                 float *min_out, float *max_out);
@@ -30,6 +33,8 @@ class Quantizer {
                            float *max_out,
                            float *stepsize,
                            float *recip_stepsize);
+
+ DISABLE_COPY_AND_ASSIGN(Quantizer);
 };
 
 } // mace
