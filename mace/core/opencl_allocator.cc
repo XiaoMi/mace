@@ -70,7 +70,7 @@ void OpenCLAllocator::Delete(void *buffer) {
 
 void OpenCLAllocator::DeleteImage(void *buffer) {
   if (buffer != nullptr) {
-    cl::Image3D *cl_image = static_cast<cl::Image3D *>(buffer);
+    cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
     delete cl_image;
   }
 }

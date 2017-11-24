@@ -18,8 +18,7 @@ class OpenCLAllocator : public Allocator {
   void *New(size_t nbytes) override;
 
   /*
-   * Only support shape.size() > 1 and collapse first n-2 dimensions to depth.
-   * Use Image3D with RGBA (128-bit) format to represent the image.
+   * Use Image2D with RGBA (128-bit) format to represent the image.
    *
    * @ shape : [depth, ..., height, width ].
    */

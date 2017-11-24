@@ -39,13 +39,12 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       kernel_name = i2b_ ? "arg_image_to_buffer" : "arg_buffer_to_image";
       break;
   }
-  VLOG(0) << kernel_name;
   auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
                                          kernel_name,
                                          built_options);
 
   uint32_t idx = 0;
-  b2f_kernel.setArg(idx++, *(static_cast<const cl::Image3D *>(buffer->buffer())));
+  b2f_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(buffer->buffer())));
   if (type == ARGUMENT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
   } else {
@@ -53,7 +52,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
   }
-  b2f_kernel.setArg(idx++, *(static_cast<cl::Image3D *>(image->buffer())));
+  b2f_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(image->buffer())));
 
   const size_t gws[3] = {image_shape[0],
                          image_shape[1],
