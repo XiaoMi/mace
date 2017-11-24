@@ -66,8 +66,8 @@ void Conv1x1V2(const Tensor *input,
 void Conv1x1V3(const Tensor *input,
                const Tensor *filter,
                const Tensor *bias,
+               const int stride,
                Tensor *output) {
-  
   const index_t batch = output->dim(0);
   const index_t channels = output->dim(1);
   const index_t height = output->dim(2);

@@ -13,7 +13,6 @@ namespace mace {
 
 template <DeviceType D, typename T>
 static void Conv2d(int iters,
-                   int iters_to_sync,
                    int batch,
                    int channels,
                    int height,
@@ -51,10 +50,8 @@ static void Conv2d(int iters,
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
-    if (iters % iters_to_sync == 0) {
-      net.Sync();
-    }
   }
+  net.Sync();
 }
 
 // In common network, there are usually more than 1 layers, this is used to
@@ -69,8 +66,8 @@ constexpr int kItersToSync = 10;
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                               \
     mace::testing::ItemsProcessed(tot);                                                            \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                            \
-    Conv2d<DEVICE, TYPE>(iters, kItersToSync, N, C, H, W, KH, KW, STRIDE,                          \
-                         mace::Padding::P, OC);                                                    \
+    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                      \
+                         OC);                                                                      \
   }                                                                                                \
   BENCHMARK(                                                                                       \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
@@ -80,8 +77,18 @@ constexpr int kItersToSync = 10;
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON); \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
-BM_CONV_2D(1, 3, 4032, 3016, 1, 1, 1, VALID, 3, float);  // Test RGB <-> YUV
-BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3, float);  // Test RGB <-> YUV
+// ICNet
+BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, float);
+BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, float);
+// SNPE GPU ExecutionDuration = 448us, % ALU Utilization = 105
+BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, float);
+// SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
+BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, float);
+
+// Test RGB <-> YUV
+BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
+BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3, float);
+
 BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128, float);  // Test bad alignments
 BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3, float);
