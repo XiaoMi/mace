@@ -17,9 +17,23 @@ class OpenCLAllocator : public Allocator {
 
   void *New(size_t nbytes) override;
 
+  /*
+   * Use Image2D with RGBA (128-bit) format to represent the image.
+   *
+   * @ shape : [depth, ..., height, width ].
+   */
+  void *NewImage(const std::vector<size_t> &image_shape,
+                 const DataType dt) override;
+
   void Delete(void *buffer) override;
 
+  void DeleteImage(void *buffer) override;
+
   void *Map(void *buffer, size_t nbytes) override;
+
+  void *MapImage(void *buffer,
+                 const std::vector<size_t> &image_shape,
+                 std::vector<size_t> &mapped_image_pitch) override;
 
   void Unmap(void *buffer, void *mapped_ptr) override;
 

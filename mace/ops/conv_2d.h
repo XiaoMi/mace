@@ -17,9 +17,9 @@ template <DeviceType D, typename T>
 class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
   Conv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws) {
-    functor_.strides_ = this->strides_.data();
-    functor_.dilations_ = this->dilations_.data();
+      : ConvPool2dOpBase<D, T>(op_def, ws),
+        functor_(this->strides_.data(), this->padding_,
+                 this->dilations_.data()) {
   }
 
   bool Run() override {
@@ -27,15 +27,6 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
-
-    std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
-    kernels::CalcPaddingAndOutputSize(
-        input->shape().data(), filter->shape().data(), this->dilations_.data(),
-        this->strides_.data(), this->padding_, output_shape.data(),
-        paddings.data());
-    output->Resize(output_shape);
-    functor_.paddings_ = paddings;
 
     functor_(input, filter, bias, output);
 

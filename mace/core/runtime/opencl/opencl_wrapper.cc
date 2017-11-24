@@ -101,6 +101,18 @@ class OpenCLLibraryImpl final {
                                            const cl_event *,
                                            cl_event *,
                                            cl_int *);
+  using clEnqueueMapImageFunc = void *(*)(cl_command_queue,
+                                          cl_mem,
+                                          cl_bool,
+                                          cl_map_flags,
+                                          const size_t *,
+                                          const size_t *,
+                                          size_t *,
+                                          size_t *,
+                                          cl_uint,
+                                          const cl_event *,
+                                          cl_event *,
+                                          cl_int *);
   using clCreateCommandQueueWithPropertiesFunc =
       cl_command_queue (*)(cl_context /* context */,
                            cl_device_id /* device */,
@@ -153,6 +165,11 @@ class OpenCLLibraryImpl final {
                                                   size_t param_value_size,
                                                   void *param_value,
                                                   size_t *param_value_size_ret);
+  using clGetImageInfoFunc = cl_int (*)(cl_mem,
+                                    cl_image_info,
+                                    size_t,
+                                    void *,
+                                    size_t *);
 
 #define DEFINE_FUNC_PTR(func) func##Func func = nullptr
 
@@ -177,6 +194,7 @@ class OpenCLLibraryImpl final {
   DEFINE_FUNC_PTR(clCreateCommandQueueWithProperties);
   DEFINE_FUNC_PTR(clReleaseCommandQueue);
   DEFINE_FUNC_PTR(clEnqueueMapBuffer);
+  DEFINE_FUNC_PTR(clEnqueueMapImage);
   DEFINE_FUNC_PTR(clRetainProgram);
   DEFINE_FUNC_PTR(clGetProgramBuildInfo);
   DEFINE_FUNC_PTR(clEnqueueReadBuffer);
@@ -197,6 +215,7 @@ class OpenCLLibraryImpl final {
   DEFINE_FUNC_PTR(clRetainEvent);
   DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
   DEFINE_FUNC_PTR(clGetEventProfilingInfo);
+  DEFINE_FUNC_PTR(clGetImageInfo);
 
 #undef DEFINE_FUNC_PTR
 
@@ -300,6 +319,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   ASSIGN_FROM_DLSYM(clCreateCommandQueueWithProperties);
   ASSIGN_FROM_DLSYM(clReleaseCommandQueue);
   ASSIGN_FROM_DLSYM(clEnqueueMapBuffer);
+  ASSIGN_FROM_DLSYM(clEnqueueMapImage);
   ASSIGN_FROM_DLSYM(clRetainProgram);
   ASSIGN_FROM_DLSYM(clGetProgramBuildInfo);
   ASSIGN_FROM_DLSYM(clEnqueueReadBuffer);
@@ -320,6 +340,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   ASSIGN_FROM_DLSYM(clRetainEvent);
   ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
   ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
+  ASSIGN_FROM_DLSYM(clGetImageInfo);
 
 #undef ASSIGN_FROM_DLSYM
 
@@ -576,6 +597,31 @@ void *clEnqueueMapBuffer(cl_command_queue command_queue,
   auto func = mace::OpenCLLibraryImpl::Get().clEnqueueMapBuffer;
   if (func != nullptr) {
     return func(command_queue, buffer, blocking_map, map_flags, offset, size,
+                num_events_in_wait_list, event_wait_list, event, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) {
+      *errcode_ret = CL_OUT_OF_RESOURCES;
+    }
+    return nullptr;
+  }
+}
+
+void *clEnqueueMapImage(cl_command_queue command_queue,
+                        cl_mem image,
+                        cl_bool blocking_map,
+                        cl_map_flags map_flags,
+                        const size_t origin[3],
+                        const size_t region[3],
+                        size_t *image_row_pitch,
+                        size_t *image_slice_pitch,
+                        cl_uint num_events_in_wait_list,
+                        const cl_event *event_wait_list,
+                        cl_event *event,
+                        cl_int *errcode_ret) {
+  auto func = mace::OpenCLLibraryImpl::Get().clEnqueueMapImage;
+  if (func != nullptr) {
+    return func(command_queue, image, blocking_map, map_flags, origin, region,
+                image_row_pitch, image_slice_pitch,
                 num_events_in_wait_list, event_wait_list, event, errcode_ret);
   } else {
     if (errcode_ret != nullptr) {
@@ -853,3 +899,18 @@ cl_int clGetEventProfilingInfo(cl_event event,
     return CL_OUT_OF_RESOURCES;
   }
 }
+
+cl_int clGetImageInfo(cl_mem image,
+                      cl_image_info param_name,
+                      size_t param_value_size,
+                      void *param_value,
+                      size_t *param_value_size_ret) {
+  auto func = mace::OpenCLLibraryImpl::Get().clGetImageInfo;
+  if (func != nullptr) {
+    return func(image, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_OUT_OF_RESOURCES;
+  }
+}
+

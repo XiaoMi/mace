@@ -23,6 +23,7 @@ namespace mace {
 
 #define CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, INVALID, DEFAULT) \
   switch (TYPE_ENUM) {                                         \
+    CASE(half, SINGLE_ARG(STMTS))                              \
     CASE(float, SINGLE_ARG(STMTS))                             \
     CASE(double, SINGLE_ARG(STMTS))                            \
     CASE(int32_t, SINGLE_ARG(STMTS))                           \
@@ -68,20 +69,26 @@ class Tensor {
         size_(0),
         dtype_(DT_FLOAT),
         buffer_(nullptr),
-        data_(nullptr){};
+        data_(nullptr),
+        is_image_(false){};
 
   Tensor(Allocator *alloc, DataType type)
       : alloc_(alloc),
         size_(0),
         dtype_(type),
         buffer_(nullptr),
-        data_(nullptr){};
+        data_(nullptr),
+        is_image_(false){};
 
   ~Tensor() {
     MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before destroy");
     if (buffer_ != nullptr) {
       MACE_CHECK_NOTNULL(alloc_);
-      alloc_->Delete(buffer_);
+      if (is_image_) {
+        alloc_->DeleteImage(buffer_);
+      } else {
+        alloc_->Delete(buffer_);
+      }
     }
   }
 
@@ -90,6 +97,10 @@ class Tensor {
   inline void SetDtype(DataType dtype) { dtype_ = dtype; }
 
   inline const vector<index_t> &shape() const { return shape_; }
+
+  inline const vector<size_t> &image_shape() const { return image_shape_; }
+
+  inline const bool is_image() const { return is_image_; }
 
   inline index_t dim_size() const { return shape_.size(); }
 
@@ -118,6 +129,11 @@ class Tensor {
       MACE_CHECK(buffer_ != nullptr && data_ == nullptr);
       data_ = alloc_->Map(buffer_, size_ * SizeOfType());
     }
+  }
+
+  inline void MapImage(std::vector<size_t> &mapped_image_pitch) const {
+    MACE_CHECK(!OnHost() && buffer_ != nullptr && data_ == nullptr);
+    data_ = alloc_->MapImage(buffer_, image_shape_, mapped_image_pitch);
   }
 
   /*
@@ -162,17 +178,53 @@ class Tensor {
   inline void Resize(const vector<index_t> &shape) {
     shape_ = shape;
     index_t size = NumElements();
-    if (size_ != size) {
+    if (size_ != size || is_image_) {
       size_ = size;
       MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
-      alloc_->Delete(buffer_);
+      if (is_image_) {
+        alloc_->DeleteImage(buffer_);
+      } else {
+        alloc_->Delete(buffer_);
+      }
+      is_image_ = false;
       CASES(dtype_, buffer_ = alloc_->New(size_ * sizeof(T)));
     }
   }
 
-  inline void ResizeLike(const Tensor &other) { Resize(other.shape()); }
+  inline void ResizeImage(const vector<index_t> &shape,
+                          const std::vector<size_t> &image_shape) {
+    shape_ = shape;
+    index_t size = NumElements();
+    if (size_ != size || !is_image_) {
+      size_ = size;
+      MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
 
-  inline void ResizeLike(const Tensor *other) { Resize(other->shape()); }
+      if (is_image_) {
+        alloc_->DeleteImage(buffer_);
+      } else {
+        alloc_->Delete(buffer_);
+      }
+      is_image_ = true;
+      image_shape_ = image_shape;
+      buffer_ = alloc_->NewImage(image_shape, dtype_);
+    }
+  }
+
+  inline void ResizeLike(const Tensor &other) {
+    if (other.is_image()) {
+      ResizeImage(other.shape(), other.image_shape());
+    } else {
+      Resize(other.shape());
+    }
+  }
+
+  inline void ResizeLike(const Tensor *other) {
+    if (other->is_image()) {
+      ResizeImage(other->shape(), other->image_shape());
+    } else {
+      Resize(other->shape());
+    }
+  }
 
   template <typename T>
   inline void Copy(const T *src, index_t size) {
@@ -202,8 +254,6 @@ class Tensor {
     for (int i : shape_) {
       os << i << ", ";
     }
-    LOG(INFO) << "Tensor shape: " << os.str()
-              << " type: " << DataType_Name(dtype_);
 
     os.str("");
     os.clear();
@@ -212,7 +262,7 @@ class Tensor {
       if ( i != 0 && i % shape_[3] == 0) {
         os << "\n";
       }
-      CASES(dtype_, (os << this->data<T>()[i]) << ", ");
+      CASES(dtype_, (os << (this->data<T>()[i]) << ", "));
     }
     LOG(INFO) << os.str();
   }
@@ -228,20 +278,33 @@ class Tensor {
     dtype_ = other.dtype_;
     ResizeLike(other);
     MappingGuard map_other(&other);
-    CopyBytes(other.raw_data(), size_ * SizeOfType());
+    if (is_image_) {
+      LOG(FATAL) << "Not support copy image tensor, please use Copy API.";
+    } else {
+      CopyBytes(other.raw_data(), size_ * SizeOfType());
+    }
   }
 
   class MappingGuard {
    public:
     MappingGuard(const Tensor *tensor) : tensor_(tensor) {
-      if (tensor_ != nullptr) tensor_->Map();
+      if (tensor_ != nullptr) {
+        if (tensor_->is_image()) {
+          tensor_->MapImage(mapped_image_pitch_);
+        } else {
+          tensor_->Map();
+        }
+      }
     }
     ~MappingGuard() {
       if (tensor_ != nullptr) tensor_->Unmap();
     }
 
+    inline const vector<size_t> &mapped_image_pitch() const { return mapped_image_pitch_; }
+
    private:
     const Tensor *tensor_;
+    std::vector<size_t> mapped_image_pitch_;
   };
 
  private:
@@ -261,6 +324,9 @@ class Tensor {
   // Mapped buffer
   mutable void *data_;
   vector<index_t> shape_;
+  // Image for opencl
+  bool is_image_;
+  std::vector<size_t> image_shape_;
 
   DISABLE_COPY_AND_ASSIGN(Tensor);
 };

@@ -8,6 +8,29 @@
 
 namespace mace {
 
+namespace {
+
+static cl_channel_type DataTypeToCLChannelType(const DataType t) {
+  switch (t) {
+    case DT_HALF:
+    case DT_FLOAT:
+      return CL_FLOAT;
+    case DT_INT8:
+    case DT_INT16:
+    case DT_INT32:
+      return CL_SIGNED_INT32;
+    case DT_UINT8:
+    case DT_UINT16:
+    case DT_UINT32:
+      return CL_UNSIGNED_INT32;
+    default:
+      LOG(FATAL) << "Image doesn't support the data type: " << t;
+      return 0;
+  }
+}
+
+}
+
 OpenCLAllocator::OpenCLAllocator() {}
 
 OpenCLAllocator::~OpenCLAllocator() {}
@@ -21,10 +44,34 @@ void *OpenCLAllocator::New(size_t nbytes) {
   return static_cast<void *>(buffer);
 }
 
+void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
+                                const DataType dt) {
+  MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
+
+  cl::ImageFormat img_format(CL_RGBA, DataTypeToCLChannelType(dt));
+
+  cl_int error;
+  cl::Image2D *cl_image =
+      new cl::Image2D(OpenCLRuntime::Get()->context(),
+                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR ,
+                      img_format,
+                      image_shape[0], image_shape[1],
+                      0, nullptr, &error);
+
+  return cl_image;
+}
+
 void OpenCLAllocator::Delete(void *buffer) {
   if (buffer != nullptr) {
     cl::Buffer *cl_buffer = static_cast<cl::Buffer *>(buffer);
     delete cl_buffer;
+  }
+}
+
+void OpenCLAllocator::DeleteImage(void *buffer) {
+  if (buffer != nullptr) {
+    cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
+    delete cl_image;
   }
 }
 
@@ -37,6 +84,29 @@ void *OpenCLAllocator::Map(void *buffer, size_t nbytes) {
       queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0,
                              nbytes, nullptr, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS);
+  return mapped_ptr;
+}
+
+// TODO : there is something wrong with half type.
+void *OpenCLAllocator::MapImage(void *buffer,
+                                const std::vector<size_t> &image_shape,
+                                std::vector<size_t> &mapped_image_pitch) {
+  MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
+  auto cl_image = static_cast<cl::Image2D *>(buffer);
+  std::array<size_t, 3> origin = {0, 0, 0};
+  std::array<size_t, 3> region = {image_shape[0], image_shape[1], 1};
+
+  mapped_image_pitch.resize(2);
+  cl_int error;
+  void *mapped_ptr =
+      OpenCLRuntime::Get()->command_queue().enqueueMapImage(*cl_image,
+                                                            CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                                                            origin, region,
+                                                            &mapped_image_pitch[0],
+                                                            &mapped_image_pitch[1],
+                                                            nullptr, nullptr, &error);
+  MACE_CHECK(error == CL_SUCCESS) << error;
+
   return mapped_ptr;
 }
 
