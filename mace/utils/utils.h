@@ -13,6 +13,17 @@ Integer RoundUp(Integer i, Integer factor) {
   return (i + factor - 1) / factor * factor;
 }
 
+template <typename Integer, uint32_t factor>
+Integer RoundUpDiv(Integer i) {
+  return (i + factor - 1) / factor;
+}
+
+// Partial specialization of function templates is not allowed
+template <typename Integer>
+Integer RoundUpDiv4(Integer i) {
+  return (i + 3) >> 2;
+}
+
 template <typename Integer>
 Integer CeilQuotient(Integer a, Integer b) {
   return (a + b - 1) / b;

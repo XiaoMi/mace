@@ -3,6 +3,7 @@
 //
 
 #include "mace/kernels/conv_2d.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {
@@ -47,10 +48,25 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
         input, filter, bias, output);
     return;
   }
+
+  std::vector<index_t> output_shape(4);
+  std::vector<int> paddings(2);
+  kernels::CalcPaddingAndOutputSize(
+      input->shape().data(), filter->shape().data(), dilations_,
+      strides_, paddings_, output_shape.data(), paddings.data());
+
+  if (input->is_image()) {
+    std::vector<size_t> output_image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
+    output->ResizeImage(output_shape, output_image_shape);
+  } else {
+    output->Resize(output_shape);
+  }
+
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
-  if (paddings_[0] > 0 || paddings_[1] > 0) {
+  if (paddings[0] > 0 || paddings[1] > 0) {
     Tensor padded_input(GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<float>::v());
-    ConstructInputWithPadding(input, paddings_.data(), &padded_input);
+    ConstructInputWithPadding(input, paddings.data(), &padded_input);
     conv2d_func(&padded_input, filter, bias, output);
   }else {
     conv2d_func(input, filter, bias, output);

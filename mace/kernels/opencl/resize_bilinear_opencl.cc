@@ -5,6 +5,7 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/resize_bilinear.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {

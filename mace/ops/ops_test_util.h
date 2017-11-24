@@ -12,6 +12,7 @@
 #include "mace/core/net.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 
@@ -107,6 +108,32 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
+  void AddInputImageFromArray(const std::string &name,
+                              const std::vector<index_t> &shape,
+                              const std::vector<T> &data) {
+    Tensor *input =
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+    std::vector<size_t> image_shape;
+    input->ResizeImage(shape, image_shape);
+    Tensor::MappingGuard input_mapper(input);
+    T *input_data = input->mutable_data<T>();
+    MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
+    const T *data_ptr = data.data();
+    const int type_size = sizeof(T);
+    const int row_pitch = shape[3];
+    auto mapped_image_pitch = input_mapper.mapped_image_pitch();
+    const size_t slice_size = mapped_image_pitch[1] / sizeof(T);
+    for (int c = 0; c < shape[0] * shape[1]; ++c) {
+      T *input_ptr = input_data + c * slice_size;
+      for (int h = 0; h < shape[2]; ++h) {
+        memcpy(input_ptr, data_ptr, row_pitch * type_size);
+        input_ptr += mapped_image_pitch[0] / sizeof(T);
+        data_ptr += row_pitch;
+      }
+    }
+  }
+
+  template <DeviceType D, typename T>
   void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
                         const T data) {
@@ -126,19 +153,26 @@ class OpsTestNet {
         ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
-    float *input_data = input->mutable_data<T>();
+    T *input_data = input->mutable_data<T>();
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<T> nd(0, 1);
-
-    std::generate(input_data, input_data + input->size(),
-                  [&gen, &nd, positive] {
-                    return positive ? std::abs(nd(gen)) : nd(gen);
-                  });
+    std::normal_distribution<float> nd(0, 1);
+    if (DataTypeToEnum<T>::value == DT_HALF) {
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd, positive] {
+                      return half_float::half_cast<half>(positive ? std::abs(nd(gen)) : nd(gen));
+                    });
+    } else {
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd, positive] {
+                      return positive ? std::abs(nd(gen)) : nd(gen);
+                    });
+    }
   }
 
   OperatorDef *NewOperatorDef() {
+    op_defs_.clear();
     op_defs_.emplace_back(OperatorDef());
     return &op_defs_[op_defs_.size() - 1];
   }
@@ -258,7 +292,8 @@ inline std::string ShapeToString(const Tensor &x) {
 template <typename T>
 struct is_floating_point_type {
   static const bool value =
-      std::is_same<T, float>::value || std::is_same<T, double>::value;
+      std::is_same<T, float>::value || std::is_same<T, double>::value
+          || std::is_same<T, half>::value;
 };
 
 template <typename T>
@@ -314,6 +349,7 @@ struct Expector<T, true> {
                                        << " index = " << i;
     }
   }
+
 };
 
 template <typename T>
@@ -329,6 +365,7 @@ std::string ToString(const T &input) {
   ss << input;
   return ss.str();
 }
+
 
 }  // namespace mace
 

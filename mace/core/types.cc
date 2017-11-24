@@ -24,31 +24,32 @@ bool DataTypeCanUseMemcpy(DataType dt) {
   }
 }
 
-std::string DataTypeToCLType(const DataType dt) {
+
+size_t GetEnumTypeSize(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
-      return "float";
+      return sizeof(float);
     case DT_HALF:
-      return "half";
+      return sizeof(half);
     case DT_UINT8:
-      return "uchar";
+      return sizeof(uint8_t);
     case DT_INT8:
-      return "char";
+      return sizeof(int8_t);
     case DT_DOUBLE:
-      return "double";
+      return sizeof(double);
     case DT_INT32:
-      return "int";
+      return sizeof(int32_t);
     case DT_UINT32:
-      return "int";
+      return sizeof(uint32_t);
     case DT_UINT16:
-      return "ushort";
+      return sizeof(uint16_t);
     case DT_INT16:
-      return "short";
+      return sizeof(int16_t);
     case DT_INT64:
-      return "long";
+      return sizeof(int64_t);
     default:
       LOG(FATAL) << "Unsupported data type";
-      return "";
+      return 0;
   }
 }
 
