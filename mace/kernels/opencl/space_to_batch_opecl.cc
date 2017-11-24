@@ -8,6 +8,7 @@
 #include "mace/core/common.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/space_to_batch.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {

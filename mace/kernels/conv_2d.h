@@ -15,9 +15,9 @@ template <DeviceType D, typename T>
 struct Conv2dFunctor {
   Conv2dFunctor() {}
   Conv2dFunctor(const int *strides,
-                const std::vector<int> &paddings,
+                const Padding &paddings,
                 const int *dilations)
-      : strides_(strides), paddings_(paddings), dilations_(dilations) {}
+      : strides_(strides), dilations_(dilations), paddings_(paddings)  {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
@@ -26,6 +26,13 @@ struct Conv2dFunctor {
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
+
+    std::vector<index_t> output_shape(4);
+    std::vector<int> paddings(2);
+    kernels::CalcPaddingAndOutputSize(
+        input->shape().data(), filter->shape().data(), dilations_,
+        strides_, paddings_, output_shape.data(), paddings.data());
+    output->Resize(output_shape);
 
     index_t batch = output->dim(0);
     index_t channels = output->dim(1);
@@ -49,10 +56,10 @@ struct Conv2dFunctor {
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
     // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings_[0] / 2;
-    int padded_w_start = 0 - paddings_[1] / 2;
-    index_t padded_h_stop = input_height + paddings_[0] - paddings_[0] / 2;
-    index_t padded_w_stop = input_width + paddings_[1] - paddings_[1] / 2;
+    int padded_h_start = 0 - paddings[0] / 2;
+    int padded_w_start = 0 - paddings[1] / 2;
+    index_t padded_h_stop = input_height + paddings[0] - paddings[0] / 2;
+    index_t padded_w_stop = input_width + paddings[1] - paddings[1] / 2;
 
     index_t kernel_size = input_channels * kernel_h * kernel_w;
 
@@ -108,8 +115,8 @@ struct Conv2dFunctor {
   }
 
   const int *strides_;         // [stride_h, stride_w]
-  std::vector<int> paddings_;  // [padding_h, padding_w]
   const int *dilations_;       // [dilation_h, dilation_w]
+  Padding paddings_;
 };
 
 template <>

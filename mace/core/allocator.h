@@ -10,6 +10,7 @@
 #include "mace/core/common.h"
 #include "mace/core/registry.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/core/types.h"
 
 namespace mace {
 
@@ -26,8 +27,14 @@ class Allocator {
   Allocator() {}
   virtual ~Allocator() noexcept {}
   virtual void *New(size_t nbytes) = 0;
+  virtual void *NewImage(const std::vector<size_t> &image_shape,
+                         const DataType dt) = 0;
   virtual void Delete(void *data) = 0;
+  virtual void DeleteImage(void *data) = 0;
   virtual void *Map(void *buffer, size_t nbytes) = 0;
+  virtual void *MapImage(void *buffer,
+                         const std::vector<size_t> &image_shape,
+                         std::vector<size_t> &mapped_image_pitch) = 0;
   virtual void Unmap(void *buffer, void *mapper_ptr) = 0;
   virtual bool OnHost() = 0;
 
@@ -58,8 +65,19 @@ class CPUAllocator : public Allocator {
     return data;
   }
 
+  void *NewImage(const std::vector<size_t> &shape,
+                 const DataType dt) override {
+    return nullptr;
+  }
+
   void Delete(void *data) override { free(data); }
+  void DeleteImage(void *data) override { free(data); };
   void *Map(void *buffer, size_t nbytes) override { return buffer; }
+  void *MapImage(void *buffer,
+                 const std::vector<size_t> &image_shape,
+                 std::vector<size_t> &mapped_image_pitch) override {
+    return buffer;
+  }
   void Unmap(void *buffer, void *mapper_ptr) override {}
   bool OnHost() override { return true; }
 };

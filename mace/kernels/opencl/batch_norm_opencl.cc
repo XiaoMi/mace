@@ -6,6 +6,7 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/utils/tuner.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {

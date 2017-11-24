@@ -7,12 +7,16 @@
 
 #include "mace/core/common.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/core/half.h"
+
 
 namespace mace {
 
+using half = half_float::half;
+
 bool DataTypeCanUseMemcpy(DataType dt);
 
-std::string DataTypeToCLType(const DataType dt);
+size_t GetEnumTypeSize(const DataType dt);
 
 template <class T>
 struct IsValidDataType;
@@ -43,6 +47,7 @@ struct EnumToDataType {};  // Specializations below
     typedef TYPE Type;                      \
   }
 
+MATCH_TYPE_AND_ENUM(half, DT_HALF);
 MATCH_TYPE_AND_ENUM(float, DT_FLOAT);
 MATCH_TYPE_AND_ENUM(double, DT_DOUBLE);
 MATCH_TYPE_AND_ENUM(int32_t, DT_INT32);

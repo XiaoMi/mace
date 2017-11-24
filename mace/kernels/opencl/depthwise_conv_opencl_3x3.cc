@@ -5,6 +5,7 @@
 #include "mace/core/common.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/conv_2d.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {

@@ -12,6 +12,7 @@
 #include "mace/core/net.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 
@@ -126,19 +127,26 @@ class OpsTestNet {
         ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
-    float *input_data = input->mutable_data<T>();
+    T *input_data = input->mutable_data<T>();
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<T> nd(0, 1);
-
-    std::generate(input_data, input_data + input->size(),
-                  [&gen, &nd, positive] {
-                    return positive ? std::abs(nd(gen)) : nd(gen);
-                  });
+    std::normal_distribution<float> nd(0, 1);
+    if (DataTypeToEnum<T>::value == DT_HALF) {
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd, positive] {
+                      return half_float::half_cast<half>(positive ? std::abs(nd(gen)) : nd(gen));
+                    });
+    } else {
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd, positive] {
+                      return positive ? std::abs(nd(gen)) : nd(gen);
+                    });
+    }
   }
 
   OperatorDef *NewOperatorDef() {
+    op_defs_.clear();
     op_defs_.emplace_back(OperatorDef());
     return &op_defs_[op_defs_.size() - 1];
   }
@@ -258,7 +266,8 @@ inline std::string ShapeToString(const Tensor &x) {
 template <typename T>
 struct is_floating_point_type {
   static const bool value =
-      std::is_same<T, float>::value || std::is_same<T, double>::value;
+      std::is_same<T, float>::value || std::is_same<T, double>::value
+          || std::is_same<T, half>::value;
 };
 
 template <typename T>
@@ -314,6 +323,7 @@ struct Expector<T, true> {
                                        << " index = " << i;
     }
   }
+
 };
 
 template <typename T>
@@ -329,6 +339,7 @@ std::string ToString(const T &input) {
   ss << input;
   return ss.str();
 }
+
 
 }  // namespace mace
 

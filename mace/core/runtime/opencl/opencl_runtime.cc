@@ -120,6 +120,7 @@ const std::map<std::string, std::string>
   {"relu", "relu.cl"},
   {"resize_bilinear", "resize_bilinear.cl"},
   {"space_to_batch", "space_to_batch.cl"},
+  {"buffer_to_image", "buffer_to_image.cl"},
 };
 
 void OpenCLRuntime::BuildProgram(const std::string &program_file_name,

@@ -11,4 +11,7 @@
 #define VEC_DATA_TYPE_STR(data_type, size) data_type##size
 #define VEC_DATA_TYPE(data_type, size) VEC_DATA_TYPE_STR(data_type, size)
 
+#define CMD_TYPE_STR(cmd, type) cmd##type
+#define CMD_TYPE(cmd, type) CMD_TYPE_STR(cmd, type)
+
 #endif  // MACE_KERNELS_OPENCL_CL_COMMON_H_
