@@ -55,7 +55,7 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
       if (device_type_ == DeviceType::OPENCL) {
 #ifndef __USE_OPENCL
         LOG(FATAL) << "OpenCL is not supported";
-#endif
+#else
         OpenCLRuntime::Get()->command_queue().finish();
         op_stats = run_metadata->add_op_stats();
         op_stats->set_operator_name(op->debug_def().name());
@@ -73,6 +73,7 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
         op_stats->set_all_end_rel_micros(
             OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000 -
             op_stats->all_start_micros());
+#endif
       } else {
         op_stats->set_op_end_rel_micros(NowInMicroSec() -
                                         op_stats->all_start_micros());
