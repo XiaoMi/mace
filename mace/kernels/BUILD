@@ -11,19 +11,16 @@ load("//mace:mace.bzl", "if_android", "if_android_arm64")
 
 cc_library(
     name = "kernels",
-    srcs = glob(["*.cc"]) + if_android(glob([
-        "opencl/*.cc",
-    ])) + if_android_arm64(glob([
+    srcs = glob(["*.cc", "opencl/*.cc"]) + if_android_arm64(glob([
         "neon/*.cc",
     ])),
-    hdrs = glob(["*.h"]) + if_android(glob([
-        "opencl/*.h",
-    ])) + if_android_arm64(glob([
+    hdrs = glob(["*.h", "opencl/*.h"]) + if_android_arm64(glob([
         "neon/*.h",
     ])),
     copts = [
         "-std=c++11",
         "-fopenmp",
+        "-D_GLIBCXX_USE_C99_MATH_TR1",
     ],
     linkopts = if_android(["-lm"]),
     deps = [

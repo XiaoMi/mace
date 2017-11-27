@@ -48,22 +48,16 @@ cc_library(
         ["*.cc",],
         exclude=[
             "logging.cc",
-            "opencl_allocator.cc",
-        ]) + if_android([
-            "opencl_allocator.cc",
         ]),
     hdrs = glob(
         ["*.h"],
         exclude=[
             "logging.h",
-            "opencl_allocator.h",
-        ]) + if_android([
-            "opencl_allocator.h",
         ]),
-    copts = ["-std=c++11"] + if_android([
-		"-D__USE_OPENCL",
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"] + if_android([
+            "-D__USE_OPENCL",
     ]),
-    linkopts = if_android([
+    linkopts = ["-ldl"] + if_android([
         "-pie",
     ]),
     deps = [
@@ -71,9 +65,8 @@ cc_library(
         "//mace/proto:cc_proto",
         "//mace/proto:stats_proto",
         "//mace/utils",
-    ] + if_android([
         ":opencl_runtime",
-    ]),
+    ],
 )
 
 # Main program for tests
@@ -86,7 +79,10 @@ cc_library(
     hdrs = glob([
         "testing/*.h",
     ]),
-    copts = ["-std=c++11"],
+    copts = [
+        "-std=c++11",
+        "-D_GLIBCXX_USE_C99_MATH_TR1",
+    ],
     linkopts = ["-lm"],
     deps = [
         ":core",
