@@ -19,7 +19,7 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape);
 
-std::string DataTypeToOpenclCMDDataType(const DataType dt);
+std::string DataTypeToOPENCLCMDDataType(const DataType dt);
 
 std::string DataTypeToCLType(const DataType dt);
 

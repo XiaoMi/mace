@@ -170,6 +170,10 @@ class OpsTestNet {
     return ws_.GetTensor(output_name);
   }
 
+  Tensor *GetTensor(const char *tensor_name) {
+    return ws_.GetTensor(tensor_name);
+  }
+
   void Sync() {
     if (net_ && device_ == DeviceType::OPENCL) {
       OpenCLRuntime::Get()->command_queue().finish();
@@ -340,6 +344,39 @@ std::string ToString(const T &input) {
   return ss.str();
 }
 
+template <DeviceType D>
+void BufferToImage(OpsTestNet &net,
+                   const std::string &input_name,
+                   const std::string &output_name,
+                   const kernels::BufferType type) {
+  OpDefBuilder("BufferToImage", "BufferToImageTest")
+      .Input(input_name)
+      .Output(output_name)
+      .AddIntArg("buffer_type", type)
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp(D);
+
+  net.Sync();
+}
+
+template <DeviceType D>
+void ImageToBuffer(OpsTestNet &net,
+                   const std::string &input_name,
+                   const std::string &output_name,
+                   const kernels::BufferType type) {
+  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+      .Input(input_name)
+      .Output(output_name)
+      .AddIntArg("buffer_type", type)
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp(D);
+
+  net.Sync();
+}
 
 }  // namespace mace
 

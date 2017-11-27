@@ -6,65 +6,68 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/conv_2d.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
 
-static void InnerConv2dK3x3S12(const Tensor *input, const Tensor *filter,
-                               const Tensor *bias, const uint32_t stride, Tensor *output) {
-  const index_t channels = output->dim(1);
-  const index_t height = output->dim(2);
-  const index_t width = output->dim(3);
+static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
+                         const Tensor *bias, const uint32_t stride,
+                         const int *padding, Tensor *output) {
+  const index_t batch = output->dim(0);
+  const index_t height = output->dim(1);
+  const index_t width = output->dim(2);
+  const index_t channels = output->dim(3);
+  const index_t input_channels = input->dim(3);
 
-  MACE_CHECK(input->dim(0) == output->dim(0));
+  const index_t channel_blocks = RoundUpDiv4(channels);
+  const index_t input_channel_blocks = RoundUpDiv4(input_channels);
+  const index_t width_blocks = RoundUpDiv4(width);
 
-  const index_t channel_blocks = (channels + 3) / 4;
-  const index_t pixel_blocks = (width + 3) / 4 * height;
+  std::set<std::string> built_options;
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
+  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
 
-  std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
-  built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
-  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-  auto conv_kernel = runtime->BuildKernel("conv_2d_3x3", "conv_2d_3x3", built_options);
+  auto conv_2d_kernel = runtime->BuildKernel("conv_2d_3x3", "conv_2d_3x3", built_options);
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
 
   uint32_t idx = 0;
-  conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
-  conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(filter->buffer())));
+  conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+  conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(filter->buffer())));
   if (bias != nullptr) {
-    conv_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(bias->buffer())));
+    conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
   }
-  conv_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(1)));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(channels));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(input->dim(3)));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(height));
-  conv_kernel.setArg(idx++, static_cast<int32_t>(width));
-  const uint32_t gws[3] = {static_cast<uint32_t>(output->dim(0)),
-                           static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(pixel_blocks)};
-  const uint32_t lws[3] = {static_cast<uint32_t>(1),
-                           static_cast<uint32_t>(8),
-                           static_cast<uint32_t>(128)};
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      conv_kernel, cl::NullRange,
-      cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
-  MACE_CHECK(error == CL_SUCCESS);
-}
+  conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(output->buffer())));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(1)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(2)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(3)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(height));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(width));
+  conv_2d_kernel.setArg(idx++, padding[0] / 2);
+  conv_2d_kernel.setArg(idx++, padding[1] / 2);
 
+  auto command_queue = runtime->command_queue();
+  cl_int error;
+  error = command_queue.enqueueNDRangeKernel(
+      conv_2d_kernel, cl::NullRange,
+      cl::NDRange(static_cast<uint32_t>(channel_blocks), static_cast<uint32_t>(width_blocks),
+                  static_cast<uint32_t>(height * batch)),
+      cl::NDRange(4, 15, 8),
+      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+  MACE_CHECK(error == CL_SUCCESS, error);
+
+}
 void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
-                        const Tensor *bias, Tensor *output) {
-  InnerConv2dK3x3S12(input, filter, bias, 1, output);
+                        const Tensor *bias, const int *padding, Tensor *output) {
+  Conv2d3x3S12(input, filter, bias, 1, padding, output);
 };
 
 void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
-                        const Tensor *bias, Tensor *output) {
-  InnerConv2dK3x3S12(input, filter, bias, 2, output);
+                        const Tensor *bias, const int *padding, Tensor *output) {
 };
 
 }  // namespace kernels

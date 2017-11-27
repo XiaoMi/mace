@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_BUFFER_TO_IMAGE_H_
-#define MACE_OPS_BUFFER_TO_IMAGE_H_
+#ifndef MACE_OPS_IMAGE_TO_BUFFER_H_
+#define MACE_OPS_IMAGE_TO_BUFFER_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/buffer_to_image.h"
@@ -35,4 +35,4 @@ class ImageToBufferOp: public Operator<D, T> {
 };
 
 } //  namespace mace
-#endif //  MACE_OPS_BUFFER_TO_IMAGE_H_
+#endif //  MACE_OPS_IMAGE_TO_BUFFER_H_
