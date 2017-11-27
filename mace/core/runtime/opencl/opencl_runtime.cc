@@ -33,7 +33,7 @@ bool ReadSourceFile(const std::string &filename, std::string *content) {
 }  // namespace
 
 bool OpenCLRuntime::enable_profiling_ = false;
-cl::Event* OpenCLRuntime::profiling_ev_ = NULL;
+std::unique_ptr<cl::Event> OpenCLRuntime::profiling_ev_ = NULL;
 
 OpenCLRuntime *OpenCLRuntime::Get() {
   static std::once_flag init_once;
@@ -82,23 +82,25 @@ OpenCLRuntime *OpenCLRuntime::Get() {
     // a context is like a "runtime link" to the device and platform;
     // i.e. communication is possible
     cl::Context context({gpu_device});
-    cl::CommandQueue command_queue(context, gpu_device,
-        enable_profiling_ ? CL_QUEUE_PROFILING_ENABLE : 0);
+    cl_command_queue_properties properties = 0;
+    if (enable_profiling_) {
+      profiling_ev_.reset(new cl::Event());
+      properties = CL_QUEUE_PROFILING_ENABLE;
+    }
+    cl::CommandQueue command_queue(context, gpu_device, properties);
     instance = new OpenCLRuntime(context, gpu_device, command_queue);
+
   });
 
   return instance;
 }
 
 void OpenCLRuntime::EnableProfiling() {
-  if (!enable_profiling_) {
-    enable_profiling_ = true;
-    profiling_ev_ = new cl::Event();
-  }
+  enable_profiling_ = true;
 }
 
 cl::Event* OpenCLRuntime::GetDefaultEvent() {
-  return profiling_ev_;
+  return profiling_ev_.get();
 }
 
 cl_ulong OpenCLRuntime::GetEventProfilingStartInfo() {
@@ -119,10 +121,7 @@ OpenCLRuntime::OpenCLRuntime(cl::Context context,
   kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
 }
 
-OpenCLRuntime::~OpenCLRuntime() {
-  if (profiling_ev_)
-    delete profiling_ev_;
-}
+OpenCLRuntime::~OpenCLRuntime() {}
 
 cl::Context &OpenCLRuntime::context() { return context_; }
 
