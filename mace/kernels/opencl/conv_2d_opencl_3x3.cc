@@ -26,7 +26,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
 
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOpenclCMDDataType(input->dtype()));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
 
   auto runtime = OpenCLRuntime::Get();

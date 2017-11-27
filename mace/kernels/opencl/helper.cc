@@ -17,7 +17,7 @@ void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
   image_shape[1] = shape[0] * shape[1];
 }
 
-// [H * W * 4, (Oc + 3) / 4]
+// [H * W * RoundUp<4>(Ic), (Oc + 3) / 4]
 void CalFilterImageShape(const std::vector<index_t> &shape, /* HWIO*/
                          std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
@@ -82,7 +82,7 @@ std::string DataTypeToCLType(const DataType dt) {
   }
 }
 
-std::string DataTypeToOpenclCMDDataType(const DataType dt) {
+std::string DataTypeToOPENCLCMDDataType(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
       return "f";
