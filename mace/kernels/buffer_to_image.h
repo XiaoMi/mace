@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_KERNELS_BATCH_NORM_H_
-#define MACE_KERNELS_BATCH_NORM_H_
+#ifndef MACE_KERNELS_BUFFER_TO_IMAGE_H_
+#define MACE_KERNELS_BUFFER_TO_IMAGE_H_
 
 #include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
@@ -40,4 +40,4 @@ struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase{
 }  //  namepsace kernels
 }  //  namespace mace
 
-#endif  //  MACE_KERNELS_BATCH_NORM_H_
+#endif  //  MACE_KERNELS_BUFFER_TO_IMAGE_H_

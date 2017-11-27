@@ -11,13 +11,13 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct Conv2dFunctor {
   Conv2dFunctor() {}
   Conv2dFunctor(const int *strides,
                 const Padding &paddings,
                 const int *dilations)
-      : strides_(strides), dilations_(dilations), paddings_(paddings)  {}
+      : strides_(strides), dilations_(dilations), paddings_(paddings) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
@@ -29,23 +29,23 @@ struct Conv2dFunctor {
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
-    kernels::CalcPaddingAndOutputSize(
+    kernels::CalcNHWCPaddingAndOutputSize(
         input->shape().data(), filter->shape().data(), dilations_,
         strides_, paddings_, output_shape.data(), paddings.data());
     output->Resize(output_shape);
 
     index_t batch = output->dim(0);
-    index_t channels = output->dim(1);
-    index_t height = output->dim(2);
-    index_t width = output->dim(3);
+    index_t height = output->dim(1);
+    index_t width = output->dim(2);
+    index_t channels = output->dim(3);
 
     index_t input_batch = input->dim(0);
-    index_t input_channels = input->dim(1);
-    index_t input_height = input->dim(2);
-    index_t input_width = input->dim(3);
+    index_t input_height = input->dim(1);
+    index_t input_width = input->dim(2);
+    index_t input_channels = input->dim(3);
 
-    index_t kernel_h = filter->dim(2);
-    index_t kernel_w = filter->dim(3);
+    index_t kernel_h = filter->dim(0);
+    index_t kernel_w = filter->dim(1);
 
     int stride_h = strides_[0];
     int stride_w = strides_[1];
@@ -72,46 +72,45 @@ struct Conv2dFunctor {
     auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
     auto output_data = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(2)
     for (int n = 0; n < batch; ++n) {
-      for (int c = 0; c < channels; ++c) {
-        T bias_channel = bias_data ? bias_data[c] : 0;
-        for (int h = 0; h < height; ++h) {
-          for (int w = 0; w < width; ++w) {
-            index_t offset = n * channels * height * width +
-                             c * height * width + h * width + w;
-            output_data[offset] = bias_channel;
+      for (int h = 0; h < height; ++h) {
+        for (int w = 0; w < width; ++w) {
+          for (int c = 0; c < channels; ++c) {
+            T bias_channel = bias_data ? bias_data[c] : 0;
+            *output_data = bias_channel;
             T sum = 0;
-            const T *filter_ptr = filter_data + c * kernel_size;
-            for (int inc = 0; inc < input_channels; ++inc) {
-              for (int kh = 0; kh < kernel_h; ++kh) {
-                for (int kw = 0; kw < kernel_w; ++kw) {
+            const T *filter_ptr = filter_data + c;
+            for (int kh = 0; kh < kernel_h; ++kh) {
+              for (int kw = 0; kw < kernel_w; ++kw) {
+                for (int inc = 0; inc < input_channels; ++inc) {
                   int inh = padded_h_start + h * stride_h + dilation_h * kh;
                   int inw = padded_w_start + w * stride_w + dilation_w * kw;
                   if (inh < 0 || inh >= input_height || inw < 0 ||
                       inw >= input_width) {
                     MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
-                                   inw >= padded_w_start && inw < padded_w_stop,
+                        inw >= padded_w_start && inw < padded_w_stop,
                                "Out of range read from input: ", inh, ", ",
                                inw);
                     // else padding with 0:
                     // sum += 0;
                   } else {
                     index_t input_offset =
-                        n * input_channels * input_height * input_width +
-                        inc * input_height * input_width + inh * input_width +
-                        inw;
+                        n * input_height * input_width * input_channels +
+                            inh * input_width * input_channels + inw * input_channels +
+                            inc;
                     sum += input_data[input_offset] * *filter_ptr;
                   }
-                  ++filter_ptr;
+                  filter_ptr += channels;
                 }
               }
             }
-            output_data[offset] += sum;
+            *output_data += sum;
+            output_data++;
           }
         }
       }
     }
+
   }
 
   const int *strides_;         // [stride_h, stride_w]
@@ -119,12 +118,12 @@ struct Conv2dFunctor {
   Padding paddings_;
 };
 
-template <>
+template<>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
                                                         Tensor *output);
-template <>
+template<>
 void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
                                                           const Tensor *filter,
                                                           const Tensor *bias,

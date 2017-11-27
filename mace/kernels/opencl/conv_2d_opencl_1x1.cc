@@ -113,6 +113,7 @@ void Conv1x1V3(const Tensor *input,
 extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
+                               const int *padding,
                                Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(2);
@@ -131,6 +132,7 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
+                               const int *padding,
                                Tensor *output) {
   MACE_CHECK(input->dim(0) == output->dim(0));
 

@@ -17,12 +17,12 @@ void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
   image_shape[1] = shape[0] * shape[1];
 }
 
-// [H * W * Ic, (Oc + 3) / 4]
+// [H * W * 4, (Oc + 3) / 4]
 void CalFilterImageShape(const std::vector<index_t> &shape, /* HWIO*/
                          std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape.resize(2);
-  image_shape[0] = shape[0] * shape[1] * shape[2];
+  image_shape[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[2], 4);
   image_shape[1] = RoundUpDiv4(shape.back());
 }
 

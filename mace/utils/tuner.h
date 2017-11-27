@@ -148,6 +148,7 @@ class Tuner {
   inline RetType Tune(const std::function<std::vector<std::vector<param_type>>()> &param_generator,
                    const std::function<RetType(const std::vector<param_type> &)> &func,
                    std::vector<param_type> &opt_params) {
+    OpenCLRuntime::EnableProfiling();
     RetType res;
     double opt_time = std::numeric_limits<double>::max();
     auto params = param_generator();
