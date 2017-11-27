@@ -6,6 +6,7 @@
 #define MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_
 
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 
@@ -49,7 +50,7 @@ class OpenCLRuntime {
 
  private:
   static bool enable_profiling_;
-  static cl::Event* profiling_ev_;
+  static std::unique_ptr<cl::Event> profiling_ev_;
 
   cl::Context context_;
   cl::Device device_;
