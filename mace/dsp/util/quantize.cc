@@ -7,6 +7,21 @@
 namespace mace {
 
 void Quantizer::Quantize(const Tensor &in_tensor,
+                         Tensor *out_tensor,
+                         float *min_out,
+                         float *max_out) {
+  if (in_tensor.size() == 0) return;
+  const float *in_data = in_tensor.data<float>();
+  float min_in = in_data[0];
+  float max_in = in_data[0];
+  for (index_t i = 0; i < in_tensor.size(); ++i) {
+    min_in = std::min(min_in, in_data[i]);
+    max_in = std::max(max_in, in_data[i]);
+  }
+  Quantize(in_tensor, min_in, max_in, out_tensor, min_out, max_out);
+}
+
+void Quantizer::Quantize(const Tensor &in_tensor,
                          const float min_in,
                          const float max_in,
                          Tensor *out_tensor,
@@ -61,7 +76,7 @@ void Quantizer::DeQuantize(const Tensor &in_tensor,
   const uint8_t *in = in_tensor.data<uint8_t>();
   float *out = out_tensor->mutable_data<float>();
 
-  for (int i = 0; i < in_tensor.size(); i++) {
+  for (int i = 0; i < out_tensor->size(); ++i) {
     out[i] = (in[i] * stepsize) + min_in;
   }
 }

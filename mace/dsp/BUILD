@@ -28,6 +28,7 @@ cc_library(
     deps = [
         "//mace/proto:cc_proto",
         "//mace/core:core",
+        "//mace/dsp/util:util",
     ],
 )
 
