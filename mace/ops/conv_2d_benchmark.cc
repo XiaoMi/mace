@@ -25,39 +25,54 @@ static void Conv2d(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2dTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {stride, stride})
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   net.AddRandomInput<D, float>("Filter",
-                               {output_channels, channels, kernel_h, kernel_w});
+                               {kernel_h, kernel_w, channels, output_channels});
   net.AddRandomInput<D, float>("Bias", {output_channels});
 
-  // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("Output")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
   }
-  net.Sync();
+
+  // Warm-up
+  for (int i = 0; i < 2; ++i) {
+    net.RunOp(D);
+    net.Sync();
+  }
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
+    net.Sync();
   }
-  net.Sync();
 }
 
 // In common network, there are usually more than 1 layers, this is used to
 // approximate the amortized latency. The OpenCL runtime for Mali/Adreno is
 // in-order.
-constexpr int kItersToSync = 10;
 
 #define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE, DEVICE)                          \
   static void                                                                                      \
@@ -73,8 +88,6 @@ constexpr int kItersToSync = 10;
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON); \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 // ICNet
@@ -84,6 +97,9 @@ BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, float);
 BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, float);
 // SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
 BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, float);
+
+// SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, VALID, 32, float);
 
 // Test RGB <-> YUV
 BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
