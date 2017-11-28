@@ -111,22 +111,32 @@ bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
   }
 
   // input info
-  const InputInfo& input_info = net_def.input_info()[0];
-  input_shape_.insert(input_shape_.begin(),
-                      input_info.dims().begin(), input_info.dims().end());
-  while (input_shape_.size() < 4) {
-    input_shape_.insert(input_shape_.begin(), 1);
+  num_inputs_ = 0;
+  for (const InputInfo &input_info: net_def.input_info()) {
+    vector<index_t> input_shape;
+    input_shape.insert(input_shape.begin(),
+                       input_info.dims().begin(), input_info.dims().end());
+    while (input_shape.size() < 4) {
+      input_shape.insert(input_shape.begin(), 1);
+    }
+    input_shapes_.push_back(input_shape);
+    input_data_types_.push_back(input_info.data_type());
+    num_inputs_ += 1;
   }
-  input_data_type_ = input_info.data_type();
 
   // output info
-  const OutputInfo& output_info = net_def.output_info()[0];
-  output_shape_.insert(output_shape_.begin(),
-                       output_info.dims().begin(), output_info.dims().end());
-  while (output_shape_.size() < 4) {
-    output_shape_.insert(output_shape_.begin(), 1);
+  num_outputs_ = 0;
+  for (const OutputInfo &output_info: net_def.output_info()) {
+    vector<index_t> output_shape;
+    output_shape.insert(output_shape.begin(),
+                        output_info.dims().begin(), output_info.dims().end());
+    while (output_shape.size() < 4) {
+      output_shape.insert(output_shape.begin(), 1);
+    }
+    output_shapes_.push_back(output_shape);
+    output_data_types_.push_back(output_info.data_type());
+    num_outputs_ += 1;
   }
-  output_data_type_ = output_info.data_type();
 
   bool res =  hexagon_nn_prepare(nn_id_) == 0;
   return res;
