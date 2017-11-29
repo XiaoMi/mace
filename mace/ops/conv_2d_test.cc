@@ -457,11 +457,11 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     srand(time(NULL));
 
     // generate random input
-    index_t batch = 1;
+    index_t batch = 3 + (rand() % 10);
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2];
-    index_t output_channels = shape[3];
+    index_t input_channels = shape[2] + (rand() % 10);
+    index_t output_channels = shape[3] + (rand() % 10);
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
