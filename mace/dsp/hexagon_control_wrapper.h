@@ -96,8 +96,8 @@ class HexagonControlWrapper {
     int res = hexagon_nn_execute_new(nn_id_, inputs, num_inputs,
                                      outputs, num_outputs);
 
-    delete(inputs);
-    delete(outputs);
+    delete [] inputs;
+    delete [] outputs;
     return res == 0;
   };
 

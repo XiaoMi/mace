@@ -24,7 +24,7 @@ cc_library(
         "*.h",
         "hexagon/*.h",
     ]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     deps = [
         "//mace/proto:cc_proto",
         "//mace/core:core",
@@ -36,7 +36,7 @@ cc_test(
     name = "dsp_test",
     testonly = 1,
     srcs = glob(["*_test.cc"]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = if_android([
         "-ldl",
         "-lm",
@@ -52,7 +52,7 @@ cc_test(
     name = "dsp_op_test",
     testonly = 1,
     srcs = glob(["test/*_test.cc"]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = if_android([
         "-ldl",
         "-lm",
