@@ -398,17 +398,7 @@ TEST_F(Conv2dOpTest, CPUCombined) {
 
 template<DeviceType D>
 void TestConv1x1() {
-  // Construct graph
   OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2DTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<D, float>(
@@ -425,8 +415,39 @@ void TestConv1x1() {
       {1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
-  // Run
-  net.RunOp(D);
+  // Construct graph
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+    OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("InputImage")
+      .Input("FilterImage")
+      .Input("BiasImage")
+      .Output("OutputImage")
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
+
+    net.RunOp(D);
+
+    // Transfer output
+    ImageToBuffer<D>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+
+  } else {
+    OpDefBuilder("Conv2D", "Conv2DTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
+
+    net.RunOp(D);
+  }
 
   // Check
   auto expected = CreateTensor<float>(
@@ -445,9 +466,9 @@ TEST_F(Conv2dOpTest, CPUConv1x1) {
   TestConv1x1<DeviceType::CPU>();
 }
 
-//TEST_F(Conv2dOpTest, OPENCLConv1x1) {
-//  TestConv1x1<DeviceType::OPENCL>();
-//}
+TEST_F(Conv2dOpTest, OPENCLConv1x1) {
+  TestConv1x1<DeviceType::OPENCL>();
+}
 
 template<DeviceType D>
 static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
@@ -457,6 +478,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     srand(time(NULL));
 
     // generate random input
+    // TODO test all sizes
     index_t batch = 3 + (rand() % 10);
     index_t height = shape[0];
     index_t width = shape[1];
@@ -507,7 +529,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
   };
 
-  for (int kernel_size : {3}) {
+  for (int kernel_size : {1, 3}) {
     for (int stride : {1}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);

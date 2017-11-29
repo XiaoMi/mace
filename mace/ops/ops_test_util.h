@@ -13,6 +13,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 
@@ -335,13 +336,6 @@ void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   static_assert(is_floating_point_type<T>::value,
                 "T is not a floating point type");
   Expector<T>::Near(x, y, abs_err);
-}
-
-template <typename T>
-std::string ToString(const T &input) {
-  std::stringstream ss;
-  ss << input;
-  return ss.str();
 }
 
 template <DeviceType D>
