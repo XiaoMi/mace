@@ -14,6 +14,6 @@ REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BufferToImage")
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BufferToImage")
                              .TypeConstraint<half>("T")
                              .Build(),
-                         BufferToImageOp<DeviceType::OPENCL, float>);
+                         BufferToImageOp<DeviceType::OPENCL, half>);
 
 }  //  namespace mace
