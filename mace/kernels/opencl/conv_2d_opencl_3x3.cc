@@ -22,7 +22,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
-  const index_t width_blocks = RoundUpDiv4(width);
+  const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
 
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
@@ -44,7 +44,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(output->buffer())));
   conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(1)));
   conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(2)));
-  conv_2d_kernel.setArg(idx++, static_cast<int>(input->dim(3)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input_channel_blocks));
   conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
   conv_2d_kernel.setArg(idx++, padding[0] / 2);
@@ -56,7 +56,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
       conv_2d_kernel, cl::NullRange,
       cl::NDRange(static_cast<uint32_t>(channel_blocks), static_cast<uint32_t>(width_blocks),
                   static_cast<uint32_t>(height * batch)),
-      cl::NDRange(4, 15, 8),
+      cl::NDRange(16, 16, 4),
       NULL, OpenCLRuntime::Get()->GetDefaultEvent());
   MACE_CHECK(error == CL_SUCCESS, error);
 

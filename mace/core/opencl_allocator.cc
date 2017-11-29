@@ -13,6 +13,7 @@ namespace {
 static cl_channel_type DataTypeToCLChannelType(const DataType t) {
   switch (t) {
     case DT_HALF:
+      return CL_HALF_FLOAT;
     case DT_FLOAT:
       return CL_FLOAT;
     case DT_INT8:
