@@ -84,18 +84,18 @@ TEST_F(Conv2dOpTest, NEONSimple) {
   TestSimple3x3SAME<DeviceType::NEON>();
 }
 
-template<DeviceType D>
+template<DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<D, float>(
+  net.AddInputFromArray<D, T>(
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
+  net.AddInputFromArray<D, T>(
       "Filter", {3, 3, 2, 1},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
@@ -130,23 +130,23 @@ void TestNHWCSimple3x3VALID() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  auto expected = CreateTensor<T>({1, 1, 1, 1}, {18.1f});
+  ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-template<DeviceType D>
+template<DeviceType D, typename T>
 void TestNHWCSimple3x3SAME() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, float>(
+  net.AddInputFromArray<D, T>(
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
+  net.AddInputFromArray<D, T>(
       "Filter", {3, 3, 2, 1},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
@@ -181,21 +181,21 @@ void TestNHWCSimple3x3SAME() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = CreateTensor<T>(
       {1, 3, 3, 1},
       {8.1f, 12.1f, 8.1f, 12.1f, 18.1f, 12.1f, 8.1f, 12.1f, 8.1f});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
 TEST_F(Conv2dOpTest, CPUSimple) {
-  TestNHWCSimple3x3VALID<DeviceType::CPU>();
-  TestNHWCSimple3x3SAME<DeviceType::CPU>();
+  TestNHWCSimple3x3VALID<DeviceType::CPU, float>();
+  TestNHWCSimple3x3SAME<DeviceType::CPU, float>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLSimple) {
-  TestNHWCSimple3x3VALID<DeviceType::OPENCL>();
-  TestNHWCSimple3x3SAME<DeviceType::OPENCL>();
+  TestNHWCSimple3x3VALID<DeviceType::OPENCL, float>();
+  TestNHWCSimple3x3SAME<DeviceType::OPENCL, float>();
 }
 
 template<DeviceType D>
@@ -457,11 +457,11 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     srand(time(NULL));
 
     // generate random input
-    index_t batch = 3 + rand() % 10;
+    index_t batch = 1;
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2] + rand() % 10;
-    index_t output_channels = shape[3] + rand() % 10;
+    index_t input_channels = shape[2];
+    index_t output_channels = shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -509,6 +509,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
 
   for (int kernel_size : {3}) {
     for (int stride : {1}) {
+      func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);
     }
   }

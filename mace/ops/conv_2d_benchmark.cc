@@ -27,10 +27,10 @@ static void Conv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
-  net.AddRandomInput<D, float>("Filter",
+  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  net.AddRandomInput<D, T>("Filter",
                                {kernel_h, kernel_w, channels, output_channels});
-  net.AddRandomInput<D, float>("Bias", {output_channels});
+  net.AddRandomInput<D, T>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
@@ -88,6 +88,7 @@ static void Conv2d(int iters,
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 // ICNet
@@ -99,7 +100,7 @@ BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, float);
 BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, float);
 
 // SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
-BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, VALID, 32, float);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, float);
 
 // Test RGB <-> YUV
 BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
