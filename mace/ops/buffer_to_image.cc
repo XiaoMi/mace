@@ -6,6 +6,14 @@
 
 namespace mace {
 
-REGISTER_OPENCL_OPERATOR(BufferToImage, BufferToImageOp<DeviceType::OPENCL, float>);
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BufferToImage")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                         BufferToImageOp<DeviceType::OPENCL, float>);
+
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BufferToImage")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         BufferToImageOp<DeviceType::OPENCL, float>);
 
 }  //  namespace mace

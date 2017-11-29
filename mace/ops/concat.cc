@@ -6,6 +6,9 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(Concat, ConcatOp<DeviceType::CPU, float>);
+REGISTER_CPU_OPERATOR(OpKeyBuilder("Concat")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                      ConcatOp<DeviceType::CPU, float>);
 
 }  // namespace mace

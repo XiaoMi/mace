@@ -6,12 +6,21 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(AddN, AddNOp<DeviceType::CPU, float>);
+REGISTER_CPU_OPERATOR(OpKeyBuilder("AddN")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                      AddNOp<DeviceType::CPU, float>);
 
 #if __ARM_NEON
-REGISTER_NEON_OPERATOR(AddN, AddNOp<DeviceType::NEON, float>);
+REGISTER_NEON_OPERATOR(OpKeyBuilder("AddN")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                       AddNOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
-REGISTER_OPENCL_OPERATOR(AddN, AddNOp<DeviceType::OPENCL, float>);
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                         AddNOp<DeviceType::OPENCL, float>);
 
 }  //  namespace mace
