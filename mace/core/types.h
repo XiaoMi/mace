@@ -18,6 +18,8 @@ bool DataTypeCanUseMemcpy(DataType dt);
 
 size_t GetEnumTypeSize(const DataType dt);
 
+std::string DataTypeToString(const DataType dt);
+
 template <class T>
 struct IsValidDataType;
 

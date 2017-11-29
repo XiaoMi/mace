@@ -106,10 +106,10 @@ class Registerer {
   }
 
 #define MACE_REGISTER_CREATOR(RegistryName, key, ...) \
-  MACE_REGISTER_TYPED_CREATOR(RegistryName, #key, __VA_ARGS__)
+  MACE_REGISTER_TYPED_CREATOR(RegistryName, key, __VA_ARGS__)
 
 #define MACE_REGISTER_CLASS(RegistryName, key, ...) \
-  MACE_REGISTER_TYPED_CLASS(RegistryName, #key, __VA_ARGS__)
+  MACE_REGISTER_TYPED_CLASS(RegistryName, key, __VA_ARGS__)
 
 }  // namespace mace
 
