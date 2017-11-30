@@ -64,3 +64,21 @@ cc_test(
         "//mace/kernels:kernels",
     ],
 )
+
+cc_binary(
+    name = "mace_dsp_run",
+    srcs = [
+        "tool/mace_dsp_run.cc",
+    ],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = if_android([
+        "-ldl",
+        "-lm",
+    ]),
+    linkstatic = 1,
+    deps = [
+        ":dsp",
+        "//mace/kernels:kernels",
+        "//mace/utils:command_line_flags",
+    ],
+)
