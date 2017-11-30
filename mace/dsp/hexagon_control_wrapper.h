@@ -7,6 +7,7 @@
 
 #include "mace/dsp/hexagon/hexagon_controller.h"
 #include "mace/dsp/hexagon_nn_ops.h"
+#include "mace/dsp/util/quantize.h"
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
 #include "mace/proto/mace.pb.h"
@@ -23,35 +24,10 @@ class HexagonControlWrapper {
   bool Finalize();
   bool SetupGraph(const NetDef& net_def);
   bool SetupGraph(const std::string &model_file);
-  bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor) {
-    LOG(INFO) << "Execute graph: " << nn_id_;
-    output_tensor->SetDtype(output_data_type_);
-    output_tensor->Resize(output_shape_);
-    vector<uint32_t> output_shape(4);
-    uint32_t output_bytes;
-    int res = hexagon_nn_execute(nn_id_,
-                                 input_tensor.shape()[0],
-                                 input_tensor.shape()[1],
-                                 input_tensor.shape()[2],
-                                 input_tensor.shape()[3],
-                                 reinterpret_cast<const unsigned char *>(
-                                     input_tensor.raw_data()),
-                                 input_tensor.raw_size(),
-                                 &output_shape[0],
-                                 &output_shape[1],
-                                 &output_shape[2],
-                                 &output_shape[3],
-                                 reinterpret_cast<unsigned char *>(
-                                     output_tensor->raw_mutable_data()),
-                                 output_tensor->raw_size(),
-                                 &output_bytes);
-
-    MACE_ASSERT(output_shape == output_shape_,
-                "wrong output shape inferred");
-    MACE_ASSERT(output_bytes == output_tensor->raw_size(),
-                "wrong output bytes inferred.");
-    return res == 0;
-  };
+  bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
+  bool ExecuteGraphNew(const vector<Tensor>& input_tensors,
+                       vector<Tensor> *output_tensors);
+  bool ExecuteGraphPreQuantize(const Tensor &input_tensor, Tensor *output_tensor);
 
   bool TeardownGraph();
   void PrintLog();
@@ -70,11 +46,14 @@ class HexagonControlWrapper {
 
   int nn_id_;
   Serializer serializer_;
+  Quantizer quantizer_;
 
-  vector<index_t> input_shape_;
-  vector<index_t> output_shape_;
-  DataType input_data_type_;
-  DataType output_data_type_;
+  vector<vector<index_t>> input_shapes_;
+  vector<vector<index_t>> output_shapes_;
+  vector<DataType> input_data_types_;
+  vector<DataType> output_data_types_;
+  uint32_t num_inputs_;
+  uint32_t num_outputs_;
 
  DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };

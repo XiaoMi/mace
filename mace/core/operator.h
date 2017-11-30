@@ -134,6 +134,29 @@ struct DeviceTypeRegisterer {
   }
 };
 
+class OpKeyBuilder {
+ public:
+  explicit OpKeyBuilder(const char *op_name);
+
+  OpKeyBuilder &TypeConstraint(const char *attr_name, const DataType allowed);
+
+  template <typename T>
+  OpKeyBuilder &TypeConstraint(const char *attr_name);
+
+  const std::string Build();
+
+ private:
+  std::string op_name_;
+  std::map<std::string, DataType> type_constraint_;
+};
+
+template <typename T>
+OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
+  return this->TypeConstraint(attr_name, DataTypeToEnum<T>::value);
+}
+
+
+
 #define MACE_REGISTER_DEVICE_TYPE(type, registry_function)         \
   namespace {                                                      \
   static DeviceTypeRegisterer MACE_ANONYMOUS_VARIABLE(DeviceType)( \

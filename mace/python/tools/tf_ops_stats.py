@@ -68,7 +68,7 @@ def main(unused_args):
           if input_name.endswith('weights:0') and input_name in tensor_shapes:
             ksize = tensor_shapes[input_name]
             break
-        print('%s(padding=%s, strides=%s, ksize=%s, format=%s) %s => %s' % (op.type, padding, strides, ksize, data_format, op.inputs[0].shape.as_list(), op.outputs[0].shape.as_list()))
+        print('%s(padding=%s, strides=%s, ksize=%s, format=%s) %s => %s' % (op.type, padding, strides, ksize, data_format, op.inputs[0].shape, op.outputs[0].shape))
         key = '%s(padding=%s, strides=%s, ksize=%s, format=%s)' % (op.type, padding, strides, ksize, data_format)
         hist_inc(stats, key)
       elif op.type in ['FusedResizeAndPadConv2D']:

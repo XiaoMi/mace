@@ -5,7 +5,7 @@ from dsp_ops import DspOps
 from mace.python.tools import graph_util
 
 # converter --input ../libcv/quantized_icnet.pb --output quantized_icnet_dsp.pb \
-# --runtime dsp --input_dim input_node,1,480,480,3 --output_node icnet/output_node
+# --runtime dsp --input_node input_node --output_node output_node
 
 padding_mode = {
   'NA': 0,
@@ -208,8 +208,8 @@ def reverse_batch_to_space_and_biasadd(net_def):
             for follow_op in follow_ops:
               new_follow_op = mace_pb2.OperatorDef()
               new_follow_op.CopyFrom(follow_op)
-              for i in range(len(follow_op.input)):
-                for k in range(3):
+              for i in xrange(len(follow_op.input)):
+                for k in xrange(3):
                   if new_follow_op.input[i] == get_tensor_name_from_op(biasadd_requantize_op.name, k):
                     new_follow_op.input[i] = get_tensor_name_from_op(b2s_op.name, k)
               new_ops.append(new_follow_op)
@@ -220,9 +220,7 @@ def reverse_batch_to_space_and_biasadd(net_def):
 
   new_net_def = mace_pb2.NetDef()
   new_net_def.tensors.extend(tensor_map.values())
-  for op in net_def.op:
-    if op.name not in skip_ops:
-      new_net_def.op.extend([op])
+  new_net_def.op.extend([op for op in net_def.op if op.name not in skip_ops])
   new_net_def.op.extend(new_ops)
 
   return new_net_def
@@ -249,29 +247,101 @@ def add_node_id(net_def):
 
   return net_def
 
-def add_input_output_info(net_def, input_node, output_node, graph):
+def add_input_output_info(net_def, input_node, output_node, graph, dtype):
   input_tensor = graph.get_tensor_by_name(get_tensor_name_from_op(input_node, 0))
   output_tensor = graph.get_tensor_by_name(get_tensor_name_from_op(output_node, 0))
 
-  for op in net_def.op:
-    if op.name == input_node:
+  input_info = net_def.input_info.add()
+  input_info.dims.extend(input_tensor.shape.as_list())
+  input_info.data_type = dtype
+  if dtype == mace_pb2.DT_UINT8:
+    for i in xrange(2):
       input_info = net_def.input_info.add()
-      input_info.name = op.name
-      input_info.node_id = op.node_id
-      input_info.dims.extend(input_tensor.shape.as_list())
-      input_info.max_byte_size = max_elem_size(input_tensor)
-      input_info.data_type = find_dtype(input_tensor.dtype)
-    elif op.name == output_node:
+      input_info.dims.extend([1,1,1,1])
+      input_info.data_type = mace_pb2.DT_FLOAT
+
+  output_info = net_def.output_info.add()
+  output_info.dims.extend(output_tensor.shape.as_list())
+  output_info.data_type = dtype
+  if dtype == mace_pb2.DT_UINT8:
+    for i in xrange(2):
       output_info = net_def.output_info.add()
-      output_info.name = op.name
-      output_info.node_id = op.node_id
-      output_info.dims.extend(output_tensor.shape.as_list())
-      output_info.max_byte_size = max_elem_size(output_tensor)
-      output_info.data_type = find_dtype(output_tensor.dtype)
+      output_info.dims.extend([1,1,1,1])
+      output_info.data_type = mace_pb2.DT_FLOAT
 
   return net_def
 
-def convert_to_mace_pb(input_graph_def, input_node, output_node):
+def strip_input_quantize_and_output_dequantize(net_def, input_node, output_node):
+  tensor_map = {}
+  for tensor in net_def.tensors:
+    tensor_map[tensor.name] = tensor
+  op_map = {}
+  for op in net_def.op:
+    op_map[op.name] = op
+  consumers = {}
+  for op in net_def.op:
+    for ipt in op.input:
+      if ipt not in consumers:
+        consumers[ipt] = []
+      consumers[ipt].append(op)
+
+  skip_ops = set()
+  new_ops = []
+  skip_tensors = set()
+
+  # INPUT->Flatten->Minf, Maxf->Quantize
+  for op in net_def.op:
+    if op.type == 'INPUT':
+      input_op = op
+      flatten_op = None
+      quantize_op = None
+      for o in consumers[get_tensor_name_from_op(input_op.name, 0)]:
+        if o.type == 'Flatten':
+          flatten_op = o
+        elif o.type == 'Quantize':
+          quantize_op = o
+      if quantize_op is not None:
+        minf_op, maxf_op = consumers[get_tensor_name_from_op(flatten_op.name, 0)]
+        skip_ops = skip_ops.union([input_op.name, flatten_op.name, minf_op.name, maxf_op.name, quantize_op.name])
+        skip_tensors = skip_tensors.union([flatten_op.input[1], minf_op.input[1], maxf_op.input[1]])
+
+        new_input_op = mace_pb2.OperatorDef()
+        new_input_op.name = input_op.name
+        new_input_op.type = input_op.type
+        new_input_op.padding = input_op.padding
+        new_input_op.out_max_byte_size.extend([input_op.out_max_byte_size[0]/4, 4, 4])
+        new_ops.append(new_input_op)
+        for follow_op in consumers[get_tensor_name_from_op(quantize_op.name, 0)]:
+          new_follow_op = mace_pb2.OperatorDef()
+          new_follow_op.CopyFrom(follow_op)
+          for i in xrange(len(follow_op.input)):
+            for k in xrange(3):
+              if new_follow_op.input[i] == get_tensor_name_from_op(quantize_op.name, k):
+                new_follow_op.input[i] = get_tensor_name_from_op(input_op.name, k)
+          new_ops.append(new_follow_op)
+          skip_ops.add(follow_op.name)
+
+    elif op.type == 'OUTPUT':
+      output_op = op
+      dequantize_op = get_node_from_map(op_map, output_op.input[0])
+      if dequantize_op.type == 'Dequantize':
+        skip_ops = skip_ops.union([dequantize_op.name, output_op.name])
+
+        new_output_op = mace_pb2.OperatorDef()
+        new_output_op.name = output_op.name
+        new_output_op.type = output_op.type
+        new_output_op.input.extend(dequantize_op.input)
+        new_ops.append(new_output_op)
+
+
+
+  new_net_def = mace_pb2.NetDef()
+  new_net_def.tensors.extend([tensor for tensor in net_def.tensors if tensor.name not in skip_tensors])
+  new_net_def.op.extend([op for op in net_def.op if op.name not in skip_ops])
+  new_net_def.op.extend(new_ops)
+  return new_net_def
+
+def convert_to_mace_pb(input_graph_def, input_node, output_node, prequantize=False):
   """
     nnlib does not have batch norm, so use tensorflow optimizer to fold
      batch norm with convolution. The fold optimization reorders ops, so
@@ -298,10 +368,18 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node):
 
       add_output_node(net_def, output_node)
       # optimized_net_def = reverse_batch_to_space_and_biasadd(net_def)
+
+      if prequantize:
+        net_def = strip_input_quantize_and_output_dequantize(net_def, input_node, output_node)
+
       sorted_net_def = graph_util.sort_mace_graph(net_def, '__output__')
       net_def_with_node_id = add_node_id(sorted_net_def)
 
-      final_net_def = add_input_output_info(net_def_with_node_id, input_node, output_node, graph)
+      if prequantize:
+        dtype = mace_pb2.DT_UINT8
+      else:
+        dtype = mace_pb2.DT_FLOAT
+      final_net_def = add_input_output_info(net_def_with_node_id, input_node, output_node, graph, dtype)
 
   return final_net_def
 
