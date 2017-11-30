@@ -33,7 +33,7 @@ void Conv1x1(const Tensor *input,
   MACE_CHECK(input_batch == batch);
 
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace(input->dtype() == DT_FLOAT ? "-DTYPE_FLOAT" : "");
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
   built_options.emplace("-DSTRIDE=" + ToString(stride));
   if (bias != nullptr) {
