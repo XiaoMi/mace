@@ -14,9 +14,7 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __private const int in_width,
                           __private const int in_ch_blks,
                           __private const int height,
-                          __private const int width,
-                          __private const int padding_top,
-                          __private const int padding_left) {
+                          __private const int width) {
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
   const int out_w_blks = get_global_size(1);
@@ -38,23 +36,23 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
   int4 w;
 #if STRIDE == 1
-  w.x = out_w_blk - padding_left;
+  w.x = out_w_blk;
   w.y = w.x + out_w_blks;
   w.z = w.y + out_w_blks;
   w.w = w.z + out_w_blks;
-  int out_hb_idx = (out_hb % height) - padding_top;
+  int out_hb_idx = (out_hb % height);
 #else
-  w.x = out_w_blk * 2 - padding_left;
-  w.y = (out_w_blk + out_w_blks) * 2 - padding_left;
-  w.z = (out_w_blk + 2 * out_w_blks) * 2 - padding_left;
-  w.w = (out_w_blk + 3 * out_w_blks) * 2 - padding_left;
-  int out_hb_idx = (out_hb % height) * 2 - padding_top;
+  w.x = out_w_blk * 2;
+  w.y = (out_w_blk + out_w_blks) * 2;
+  w.z = (out_w_blk + 2 * out_w_blks) * 2;
+  w.w = (out_w_blk + 3 * out_w_blks) * 2;
+  int out_hb_idx = (out_hb % height) * 2;
 #endif
 
-  w.x = select(w.x, INT_MIN, (w.x < 0 || w.x >= in_width));
-  w.y = select(w.y, INT_MIN, (w.y < 0 || w.y >= in_width));
-  w.z = select(w.z, INT_MIN, (w.z < 0 || w.z >= in_width));
-  w.w = select(w.w, INT_MIN, (w.w < 0 || w.w >= in_width));
+  w.x = select(w.x, INT_MIN, w.x >= in_width);
+  w.y = select(w.y, INT_MIN, w.y >= in_width);
+  w.z = select(w.z, INT_MIN, w.z >= in_width);
+  w.w = select(w.w, INT_MIN, w.w >= in_width);
 
   out_hb_idx = select(out_hb_idx + (out_hb / height) * in_height,
                       -1,

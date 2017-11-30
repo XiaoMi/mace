@@ -15,7 +15,6 @@ void Conv1x1(const Tensor *input,
              const Tensor *filter,
              const Tensor *bias,
              const int stride,
-             const int *padding,
              Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -58,8 +57,6 @@ void Conv1x1(const Tensor *input,
   conv_2d_kernel.setArg(idx++, static_cast<int>(input_channel_blocks));
   conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
-  conv_2d_kernel.setArg(idx++, padding[0] / 2);
-  conv_2d_kernel.setArg(idx++, padding[1] / 2);
 
   auto command_queue = runtime->command_queue();
   cl_int error;
@@ -78,7 +75,7 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *bias,
                                const int *padding,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 1, padding, output);
+  Conv1x1(input, filter, bias, 1, output);
 };
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
@@ -86,7 +83,7 @@ extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *bias,
                                const int *padding,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 2, padding, output);
+  Conv1x1(input, filter, bias, 2, output);
 };
 
 }  // namespace kernels
