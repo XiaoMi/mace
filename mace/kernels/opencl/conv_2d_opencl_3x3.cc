@@ -21,7 +21,6 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   const index_t input_channels = input->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv4(width);
 
   std::set<std::string> built_options;

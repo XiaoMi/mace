@@ -79,14 +79,16 @@ OpenCLRuntime *OpenCLRuntime::Get() {
       return;
     }
 
+    cl_command_queue_properties properties = 0;
+#ifdef __ENABLE_PROFILING
+    enable_profiling_ = true;
+    profiling_ev_.reset(new cl::Event());
+    properties = CL_QUEUE_PROFILING_ENABLE;
+#endif
+
     // a context is like a "runtime link" to the device and platform;
     // i.e. communication is possible
     cl::Context context({gpu_device});
-    cl_command_queue_properties properties = 0;
-    if (enable_profiling_) {
-      profiling_ev_.reset(new cl::Event());
-      properties = CL_QUEUE_PROFILING_ENABLE;
-    }
     cl::CommandQueue command_queue(context, gpu_device, properties);
     instance = new OpenCLRuntime(context, gpu_device, command_queue);
 
@@ -104,12 +106,12 @@ cl::Event* OpenCLRuntime::GetDefaultEvent() {
 }
 
 cl_ulong OpenCLRuntime::GetEventProfilingStartInfo() {
-  MACE_CHECK(enable_profiling_, "should enable profiling first.");
+  MACE_CHECK(profiling_ev_, "is NULL, should enable profiling first.");
   return profiling_ev_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
 }
 
 cl_ulong OpenCLRuntime::GetEventProfilingEndInfo() {
-  MACE_CHECK(enable_profiling_, "should enable profiling first.");
+  MACE_CHECK(profiling_ev_, "is NULL, should enable profiling first.");
   return profiling_ev_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
 }
 

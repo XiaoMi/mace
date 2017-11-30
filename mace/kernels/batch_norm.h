@@ -28,9 +28,8 @@ struct BatchNormFunctor {
     // new_scale = \frac{ \scale } { \sqrt{var+\variance_epsilon} }
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
-    const index_t n = input->dim(0);
-    const index_t channel = input->dim(1);
-    const index_t sample_size = input->dim(2) * input->dim(3);
+    const index_t ch_pixel_size = input->dim(0) * input->dim(1) * input->dim(2);
+    const index_t channel = input->dim(3);
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard scale_mapper(scale);
@@ -52,15 +51,11 @@ struct BatchNormFunctor {
     for (index_t c = 0; c < channel; ++c) {
       T new_scale = scale_ptr[c] / std::sqrt(var_ptr[c] + *epsilon_ptr);
       T new_offset = offset_ptr[c] - mean_ptr[c] * new_scale;
-      index_t pos = c * sample_size;
+      index_t pos = c;
 
-      for (index_t i = 0; i < n; ++i) {
-        const T *input_sample_ptr = input_ptr + pos;
-        T *output_sample_ptr = output_ptr + pos;
-        for (index_t j = 0; j < sample_size; ++j) {
-          output_sample_ptr[j] = new_scale * input_sample_ptr[j] + new_offset;
-        }
-        pos += channel * sample_size;
+      for (index_t i = 0; i < ch_pixel_size; ++i) {
+        output_ptr[pos] = new_scale * input_ptr[pos] + new_offset;
+        pos += channel;
       }
     }
   }

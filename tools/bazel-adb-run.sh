@@ -22,6 +22,9 @@ ANDROID_ABI=arm64-v8a
 STRIP=""
 STRIP="--strip always"
 
+# for profiling
+# bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI --define profiling=true
+
 bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI
 if [ $? -ne 0 ]; then
   exit 1

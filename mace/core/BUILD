@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android")
+load("//mace:mace.bzl", "if_android", "if_profiling")
 
 cc_library(
     name = "opencl_runtime",
@@ -19,7 +19,7 @@ cc_library(
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11"] + if_profiling(["-D__ENABLE_PROFILING"]),
     deps = [
         ":logging",
         "@opencl_headers//:opencl20_headers",
