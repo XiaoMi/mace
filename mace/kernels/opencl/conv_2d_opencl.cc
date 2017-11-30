@@ -10,19 +10,19 @@ namespace kernels {
 
 extern void Conv2dOpenclK1x1S1(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const int *padding,
-                               Tensor *output);
+                               const DataType dt, Tensor *output);
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const int *padding,
-                               Tensor *output);
+                               const DataType dt, Tensor *output);
 
 extern void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const int *padding,
-                               Tensor *output);
+                               const DataType dt, Tensor *output);
 
 extern void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const int *padding,
-                               Tensor *output);
+                               const DataType dt, Tensor *output);
 
 template<typename T>
 void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
@@ -31,7 +31,7 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                           Tensor *output) {
   typedef void (*Conv2dOpenclFunction)(const Tensor *input, const Tensor *filter,
                                        const Tensor *bias, const int *padding,
-                                       Tensor *output);
+                                       DataType dt, Tensor *output);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[5][2] = {
       {Conv2dOpenclK1x1S1, Conv2dOpenclK1x1S2},
@@ -70,7 +70,7 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_func(input, filter, bias, paddings.data(), output);
+  conv2d_func(input, filter, bias, paddings.data(), DataTypeToEnum<T>::value, output);
 }
 
 template struct Conv2dFunctor<DeviceType::OPENCL, float>;

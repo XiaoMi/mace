@@ -15,6 +15,7 @@ void Conv1x1(const Tensor *input,
              const Tensor *filter,
              const Tensor *bias,
              const int stride,
+             const DataType dt,
              Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -32,8 +33,8 @@ void Conv1x1(const Tensor *input,
   MACE_CHECK(input_batch == batch);
 
   std::set<std::string> built_options;
-  built_options.emplace(input->dtype() == DT_FLOAT ? "-DTYPE_FLOAT" : "");
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(dt));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(dt));
   built_options.emplace("-DSTRIDE=" + ToString(stride));
   if (bias != nullptr) {
     built_options.emplace("-DBIAS");
@@ -74,16 +75,18 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
                                const int *padding,
+                               const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 1, output);
+  Conv1x1(input, filter, bias, 1, dt, output);
 };
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
                                const int *padding,
+                               const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 2, output);
+  Conv1x1(input, filter, bias, 2, dt, output);
 };
 
 }  // namespace kernels

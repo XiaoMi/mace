@@ -19,21 +19,20 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int out_hb = get_global_id(2);
   const int rounded_in_ch = in_ch_blks * 4;
 
-
   const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 #ifdef BIAS
-  float4 out0 =
-     convert_float4(READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0)));
-  float4 out1 = out0;
-  float4 out2 = out0;
-  float4 out3 = out0;
-  float4 out4 = out0;
+  DATA_TYPE4 out0 =
+     READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0));
+  DATA_TYPE4 out1 = out0;
+  DATA_TYPE4 out2 = out0;
+  DATA_TYPE4 out3 = out0;
+  DATA_TYPE4 out4 = out0;
 #else
-  float4 out0 = 0;
-  float4 out1 = 0;
-  float4 out2 = 0;
-  float4 out3 = 0;
-  float4 out4 = 0;
+  DATA_TYPE4 out0 = 0;
+  DATA_TYPE4 out1 = 0;
+  DATA_TYPE4 out2 = 0;
+  DATA_TYPE4 out3 = 0;
+  DATA_TYPE4 out4 = 0;
 #endif
 
 #if STRIDE == 1
@@ -54,8 +53,8 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
   const int batch_idx = (out_hb / out_height) * in_height;
 
-  float4 in0, in1, in2, in3, in4;
-  float4 weights0, weights1, weights2, weights3;
+  DATA_TYPE4 in0, in1, in2, in3, in4;
+  DATA_TYPE4 weights0, weights1, weights2, weights3;
   int in_idx, hb_idx, width_idx, in_width_idx;
   // Unrolling this loop hurt perfmance
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
@@ -75,7 +74,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
         in_width_value = select(in_idx + in_width_value,                             \
                                 -1,                                                  \
                                 (in_width_value < 0 || in_width_value >= in_width)); \
-        in##i = convert_float4(READ_IMAGET(input, sampler, (int2)(in_width_value, in_hb_value)));
+        in##i = READ_IMAGET(input, sampler, (int2)(in_width_value, in_hb_value));
 
         READ_INPUT(0);
         READ_INPUT(1);
@@ -86,10 +85,10 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 #undef READ_INPUT
 
         int filter_idx = (in_ch_blk << 2) + (hb_idx * 3 + width_idx) * rounded_in_ch;
-        weights0 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 0, out_ch_blk)));
-        weights1 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 1, out_ch_blk)));
-        weights2 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 2, out_ch_blk)));
-        weights3 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 3, out_ch_blk)));
+        weights0 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 0, out_ch_blk));
+        weights1 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 1, out_ch_blk));
+        weights2 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 2, out_ch_blk));
+        weights3 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 3, out_ch_blk));
 
         // Will prefetch L2 improve performance? How to pretch image data?
 
@@ -122,7 +121,6 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     }
   }
 
-#ifdef TYPE_FLOAT
   const int out_x_base = out_ch_blk * out_width;
   int w = out_w_blk;
   WRITE_IMAGET(output,
@@ -152,36 +150,5 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   WRITE_IMAGET(output,
                (int2)(out_x_base + w, out_hb),
                out4);
-#else
-  const int out_x_base = out_ch_blk * out_width;
-  int w = out_w_blk;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               convert_half4(out0));
-
-  w += out_w_blks;
-  if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               convert_half4(out1));
-
-  w += out_w_blks;
-  if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               convert_half4(out2));
-
-  w += out_w_blks;
-  if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               convert_half4(out3));
-
-  w += out_w_blks;
-  if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               convert_half4(out4));
-#endif
 
 }

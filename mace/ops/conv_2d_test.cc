@@ -558,14 +558,14 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 32, 64, 128});
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 32, 32, 64});
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
   TestComplexConvNxNS12<DeviceType::OPENCL, float>({107, 113, 5, 7});
 }
 
-template<DeviceType D, typename T>
+template<DeviceType D>
 static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
@@ -612,15 +612,15 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     std::vector<half> input_data(float_input_data.begin(), float_input_data.end());
     std::vector<half> filter_data(float_filter_data.begin(), float_filter_data.end());
     std::vector<half> bias_data(float_bias_data.begin(), float_bias_data.end());
-    net.AddInputFromArray<D, T>("InputHalf", {batch, height, width, input_channels}, input_data);
-    net.AddInputFromArray<D, T>(
+    net.AddInputFromArray<D, half>("InputHalf", {batch, height, width, input_channels}, input_data);
+    net.AddInputFromArray<D, half>(
         "FilterHalf", {kernel_h, kernel_w, input_channels, output_channels}, filter_data);
-    net.AddInputFromArray<D, T>("BiasHalf", {output_channels}, bias_data);
+    net.AddInputFromArray<D, half>("BiasHalf", {output_channels}, bias_data);
 
     // run on gpu
-    BufferToImage<D, T>(net, "InputHalf", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, T>(net, "FilterHalf", "FilterImage", kernels::BufferType::FILTER);
-    BufferToImage<D, T>(net, "BiasHalf", "BiasImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, half>(net, "InputHalf", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, half>(net, "FilterHalf", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, half>(net, "BiasHalf", "BiasImage", kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")
@@ -630,24 +630,26 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, half>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
 
-    ExpectTensorNear<float, T>(expected, *net.GetOutput("OPENCLOutput"), 1.0);
+    ExpectTensorNear<float, half>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
   };
 
-  for (int kernel_size : {3}) {
-    for (int stride : {1}) {
+  for (int kernel_size : {1, 3}) {
+    for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
     }
   }
 }
 
-// TODO: support half input & float computation
-//TEST_F(Conv2dOpTest, OPENCLHalfAlignedConvNxNS12) {
-//  TestHalfComplexConvNxNS12<DeviceType::OPENCL, half>({32, 32, 64, 128});
-//}
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConvNxNS12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConvNxNS12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113, 5, 7});
+}

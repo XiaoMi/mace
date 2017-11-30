@@ -23,15 +23,15 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
 #ifdef BIAS
-  float4 out0 = convert_float4(READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0)));
-  float4 out1 = out0;
-  float4 out2 = out0;
-  float4 out3 = out0;
+  DATA_TYPE4 out0 = READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0));
+  DATA_TYPE4 out1 = out0;
+  DATA_TYPE4 out2 = out0;
+  DATA_TYPE4 out3 = out0;
 #else
-  float4 out0 = 0;
-  float4 out1 = 0;
-  float4 out2 = 0;
-  float4 out3 = 0;
+  DATA_TYPE4 out0 = 0;
+  DATA_TYPE4 out1 = 0;
+  DATA_TYPE4 out2 = 0;
+  DATA_TYPE4 out3 = 0;
 #endif
 
   int4 w;
@@ -62,16 +62,16 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   int in_x_base = 0;
   for (int in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
 
-    float4 in0 = convert_float4(READ_IMAGET(input, sampler, (int2)(in_x_base + w.x, out_hb_idx)));
-    float4 in1 = convert_float4(READ_IMAGET(input, sampler, (int2)(in_x_base + w.y, out_hb_idx)));
-    float4 in2 = convert_float4(READ_IMAGET(input, sampler, (int2)(in_x_base + w.z, out_hb_idx)));
-    float4 in3 = convert_float4(READ_IMAGET(input, sampler, (int2)(in_x_base + w.w, out_hb_idx)));
+    DATA_TYPE4 in0 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.x, out_hb_idx));
+    DATA_TYPE4 in1 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.y, out_hb_idx));
+    DATA_TYPE4 in2 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.z, out_hb_idx));
+    DATA_TYPE4 in3 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.w, out_hb_idx));
 
     const int filter_x0 = in_ch_blk << 2;
-    float4 weights0 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_x0, out_ch_blk)));
-    float4 weights1 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_x0 + 1, out_ch_blk)));
-    float4 weights2 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_x0 + 2, out_ch_blk)));
-    float4 weights3 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_x0 + 3, out_ch_blk)));
+    DATA_TYPE4 weights0 = READ_IMAGET(filter, sampler, (int2)(filter_x0, out_ch_blk));
+    DATA_TYPE4 weights1 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 1, out_ch_blk));
+    DATA_TYPE4 weights2 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 2, out_ch_blk));
+    DATA_TYPE4 weights3 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 3, out_ch_blk));
     // Will prefetch L2 improve performance? How to pretch image data?
 
     out0 += in0.x * weights0;
@@ -99,18 +99,18 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
 #ifdef FUSED_BATCH_NORM
   // batch norm
-  float4 bn_scale_value =
-      convert_float4(READ_IMAGET(bn_scale, sampler, (int2)(out_ch_blk, 0)));
-  float4 scale0 = (float4)(bn_scale_value.x);
-  float4 scale1 = (float4)(bn_scale_value.y);
-  float4 scale2 = (float4)(bn_scale_value.z);
-  float4 scale3 = (float4)(bn_scale_value.w);
-  float4 bn_offset_value =
+  DATA_TYPE4 bn_scale_value =
+      READ_IMAGET(bn_scale, sampler, (int2)(out_ch_blk, 0));
+  DATA_TYPE4 scale0 = (DATA_TYPE4)(bn_scale_value.x);
+  DATA_TYPE4 scale1 = (DATA_TYPE4)(bn_scale_value.y);
+  DATA_TYPE4 scale2 = (DATA_TYPE4)(bn_scale_value.z);
+  DATA_TYPE4 scale3 = (DATA_TYPE4)(bn_scale_value.w);
+  DATA_TYPE4 bn_offset_value =
       READ_IMAGET(bn_offset, sampler, (int2)(out_ch_blk, 0));
-  float4 offset0 = (float4)(bn_offset_value.x);
-  float4 offset1 = (float4)(bn_offset_value.y);
-  float4 offset2 = (float4)(bn_offset_value.z);
-  float4 offset3 = (float4)(bn_offset_value.w);
+  DATA_TYPE4 offset0 = (DATA_TYPE4)(bn_offset_value.x);
+  DATA_TYPE4 offset1 = (DATA_TYPE4)(bn_offset_value.y);
+  DATA_TYPE4 offset2 = (DATA_TYPE4)(bn_offset_value.z);
+  DATA_TYPE4 offset3 = (DATA_TYPE4)(bn_offset_value.w);
 
   out0 = out0 * scale0 + offset0;
   out1 = out1 * scale1 + offset1;
@@ -126,7 +126,6 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   out3 = fmax(out3, 0);
 #endif
 
-#ifdef TYPE_FLOAT
   const int out_x_base = out_ch_blk * width;
   int out_x_idx = out_w_blk;
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out0);
@@ -142,21 +141,5 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   out_x_idx += out_w_blks;
   if (out_x_idx >= width) return;
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out3);
-#else
-  const int out_x_base = out_ch_blk * width;
-  int out_x_idx = out_w_blk;
-  WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), convert_half4(out0));
 
-  out_x_idx += out_w_blks;
-  if (out_x_idx >= width) return;
-  WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), convert_half4(out1));
-
-  out_x_idx += out_w_blks;
-  if (out_x_idx >= width) return;
-  WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), convert_half4(out2));
-
-  out_x_idx += out_w_blks;
-  if (out_x_idx >= width) return;
-  WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), convert_half4(out3));
-#endif
 }
