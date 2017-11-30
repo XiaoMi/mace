@@ -5,8 +5,8 @@
 #include "mace/kernels/conv_2d.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/utils/utils.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -36,8 +36,10 @@ void Conv1x1(const Tensor *input,
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
-  built_options.emplace("-DSTRIDE_1");
-  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+  built_options.emplace("-DSTRIDE=" + ToString(stride));
+  if (bias != nullptr) {
+    built_options.emplace("-DBIAS");
+  }
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
