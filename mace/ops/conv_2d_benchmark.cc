@@ -33,9 +33,9 @@ static void Conv2d(int iters,
   net.AddRandomInput<D, T>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
-    BufferToImage<D>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")
         .Input("FilterImage")
@@ -44,6 +44,7 @@ static void Conv2d(int iters,
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("padding", padding)
         .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -88,43 +89,9 @@ static void Conv2d(int iters,
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
-// ICNet
-BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, float);
-BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, float);
-// SNPE GPU ExecutionDuration = 448us, % ALU Utilization = 105
-BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, float);
-// SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
-BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, float);
-
 // SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
-BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, float);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
 
-// Test RGB <-> YUV
-BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
-BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3, float);
-
-BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
-BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128, float);  // Test bad alignments
-BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3, float);
-BM_CONV_2D(1, 32, 112, 112, 1, 1, 1, VALID, 64, float);
-BM_CONV_2D(1, 64, 56, 56, 1, 1, 1, VALID, 128, float);
-BM_CONV_2D(1, 256, 28, 28, 1, 1, 1, VALID, 256, float);
-BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, VALID, 1024, float);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128, float);
-BM_CONV_2D(1, 3, 512, 512, 3, 3, 1, VALID, 3, float);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128, float);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128, float);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 128, float);
-BM_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 3, float);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 128, float);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 128, float);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 128, float);
-BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128, float);
-BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128, float);
-BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128, float);
-BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, SAME, 128, float);
 }  //  namespace mace

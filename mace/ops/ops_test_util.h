@@ -210,13 +210,17 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
                                 std::vector<T> &res) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::normal_distribution<T> nd(0, 1);
+  std::normal_distribution<float> nd(0, 1);
 
   index_t size = std::accumulate(shape.begin(), shape.end(), 1,
                                  std::multiplies<index_t>());
   res.resize(size);
 
-  std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
+  if (DataTypeToEnum<T>::value == DT_HALF) {
+    std::generate(res.begin(), res.end(), [&gen, &nd] { return half_float::half_cast<half>(nd(gen)); });
+  } else {
+    std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
+  }
 }
 
 template <typename T>
@@ -290,39 +294,40 @@ inline void ExpectEqual<double>(const double &a, const double &b) {
   EXPECT_DOUBLE_EQ(a, b);
 }
 
-inline void AssertSameTypeDims(const Tensor &x, const Tensor &y) {
-  ASSERT_EQ(x.dtype(), y.dtype());
+inline void AssertSameDims(const Tensor &x, const Tensor &y) {
   ASSERT_TRUE(IsSameSize(x, y)) << "x.shape [" << ShapeToString(x) << "] vs "
                                 << "y.shape [ " << ShapeToString(y) << "]";
 }
 
-template <typename T, bool is_fp = is_floating_point_type<T>::value>
+template <typename EXP_TYPE, typename RES_TYPE, bool is_fp = is_floating_point_type<EXP_TYPE>::value>
 struct Expector;
 
 // Partial specialization for float and double.
-template <typename T>
-struct Expector<T, true> {
-  static void Equal(const T &a, const T &b) { ExpectEqual(a, b); }
+template <typename EXP_TYPE, typename RES_TYPE>
+struct Expector<EXP_TYPE, RES_TYPE, true> {
+  static void Equal(const EXP_TYPE &a, const RES_TYPE &b) { ExpectEqual(a, b); }
 
   static void Equal(const Tensor &x, const Tensor &y) {
-    ASSERT_EQ(x.dtype(), DataTypeToEnum<T>::v());
-    AssertSameTypeDims(x, y);
+    ASSERT_EQ(x.dtype(), DataTypeToEnum<EXP_TYPE>::v());
+    ASSERT_EQ(y.dtype(), DataTypeToEnum<RES_TYPE>::v());
+    AssertSameDims(x, y);
     Tensor::MappingGuard x_mapper(&x);
     Tensor::MappingGuard y_mapper(&y);
-    auto a = x.data<T>();
-    auto b = y.data<T>();
+    auto a = x.data<EXP_TYPE>();
+    auto b = y.data<RES_TYPE>();
     for (int i = 0; i < x.size(); ++i) {
       ExpectEqual(a(i), b(i));
     }
   }
 
   static void Near(const Tensor &x, const Tensor &y, const double abs_err) {
-    ASSERT_EQ(x.dtype(), DataTypeToEnum<T>::v());
-    AssertSameTypeDims(x, y);
+    ASSERT_EQ(x.dtype(), DataTypeToEnum<EXP_TYPE>::v());
+    ASSERT_EQ(y.dtype(), DataTypeToEnum<RES_TYPE>::v());
+    AssertSameDims(x, y);
     Tensor::MappingGuard x_mapper(&x);
     Tensor::MappingGuard y_mapper(&y);
-    auto a = x.data<T>();
-    auto b = y.data<T>();
+    auto a = x.data<EXP_TYPE>();
+    auto b = y.data<RES_TYPE>();
     for (int i = 0; i < x.size(); ++i) {
       EXPECT_NEAR(a[i], b[i], abs_err) << "a = " << a << " b = " << b
                                        << " index = " << i;
@@ -335,10 +340,25 @@ template <typename T>
 void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   static_assert(is_floating_point_type<T>::value,
                 "T is not a floating point type");
-  Expector<T>::Near(x, y, abs_err);
+  Expector<T, T>::Near(x, y, abs_err);
 }
 
-template <DeviceType D>
+template <typename EXP_TYPE, typename RES_TYPE>
+void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
+  static_assert(is_floating_point_type<EXP_TYPE>::value
+                    && is_floating_point_type<RES_TYPE>::value,
+                "T is not a floating point type");
+  Expector<EXP_TYPE, RES_TYPE>::Near(x, y, abs_err);
+}
+
+template <typename T>
+std::string ToString(const T &input) {
+  std::stringstream ss;
+  ss << input;
+  return ss.str();
+}
+
+template <DeviceType D, typename T>
 void BufferToImage(OpsTestNet &net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -347,6 +367,7 @@ void BufferToImage(OpsTestNet &net,
       .Input(input_name)
       .Output(output_name)
       .AddIntArg("buffer_type", type)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -355,7 +376,7 @@ void BufferToImage(OpsTestNet &net,
   net.Sync();
 }
 
-template <DeviceType D>
+template <DeviceType D, typename T>
 void ImageToBuffer(OpsTestNet &net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -364,6 +385,7 @@ void ImageToBuffer(OpsTestNet &net,
       .Input(input_name)
       .Output(output_name)
       .AddIntArg("buffer_type", type)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run

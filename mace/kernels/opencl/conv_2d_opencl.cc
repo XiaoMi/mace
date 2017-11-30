@@ -24,8 +24,8 @@ extern void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
                                const Tensor *bias, const int *padding,
                                Tensor *output);
 
-template <>
-void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
+template<typename T>
+void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                           const Tensor *filter,
                                                           const Tensor *bias,
                                                           Tensor *output) {
@@ -36,7 +36,7 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
   static const Conv2dOpenclFunction selector[5][2] = {
       {Conv2dOpenclK1x1S1, Conv2dOpenclK1x1S2},
       {nullptr, nullptr},
-      {Conv2dOpenclK3x3S1, nullptr},
+      {Conv2dOpenclK3x3S1, Conv2dOpenclK3x3S2},
       {nullptr, nullptr},
       {nullptr, nullptr}};
 
@@ -50,7 +50,7 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
     // TODO(heliangliang) The CPU/NEON kernel should map the buffer
-    Conv2dFunctor<DeviceType::CPU, float>(strides_, paddings_, dilations_)(
+    Conv2dFunctor<DeviceType::CPU, T>(strides_, paddings_, dilations_)(
         input, filter, bias, output);
     return;
   }
@@ -72,6 +72,9 @@ void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
   conv2d_func(input, filter, bias, paddings.data(), output);
 }
+
+template struct Conv2dFunctor<DeviceType::OPENCL, float>;
+template struct Conv2dFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

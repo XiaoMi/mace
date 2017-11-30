@@ -25,9 +25,10 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
 
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace(input->dtype() == DT_FLOAT ? "-DTYPE_FLOAT" : "");
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+  built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
@@ -68,6 +69,7 @@ void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
 
 void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
                         const Tensor *bias, const int *padding, Tensor *output) {
+  Conv2d3x3S12(input, filter, bias, 2, padding, output);
 };
 
 }  // namespace kernels

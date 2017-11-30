@@ -19,86 +19,76 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int out_hb = get_global_id(2);
   const int rounded_in_ch = in_ch_blks * 4;
 
-  DATA_TYPE4 out0 = 0;
-  DATA_TYPE4 out1 = 0;
-  DATA_TYPE4 out2 = 0;
-  DATA_TYPE4 out3 = 0;
-  DATA_TYPE4 out4 = 0;
+  float4 out0 = 0;
+  float4 out1 = 0;
+  float4 out2 = 0;
+  float4 out3 = 0;
+  float4 out4 = 0;
 
   const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 #ifdef BIAS
   out0 =
-     READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0));
+     convert_float4(READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0)));
   out1 = out0;
   out2 = out0;
   out3 = out0;
   out4 = out0;
 #endif
 
-#define DEFINE_IN_WIDTH(i) \
-  in_width##i[1] = in_width##i[0] + 1;                                                              \
-  in_width##i[2] = in_width##i[0] + 2;                                                              \
-  in_width##i[0] = (in_width##i[0] < 0 || in_width##i[0] >= in_width) ? (INT_MIN) : in_width##i[0]; \
-  in_width##i[1] = (in_width##i[1] < 0 || in_width##i[1] >= in_width) ? (INT_MIN) : in_width##i[1]; \
-  in_width##i[2] = (in_width##i[2] < 0 || in_width##i[2] >= in_width) ? (INT_MIN) : in_width##i[2];
+#ifdef STRIDE_1
+  int in_width0 = out_w_blk - padding_left;
+  int in_width1 = in_width0 + out_w_blks;
+  int in_width2 = in_width1 + out_w_blks;
+  int in_width3 = in_width2 + out_w_blks;
+  int in_width4 = in_width3 + out_w_blks;
+  const int height_idx = (out_hb % out_height) - padding_top;
+#else
+  int in_width0 = out_w_blk * 2 - padding_left;
+  int in_width1 = (out_w_blk + out_w_blks) * 2 - padding_left;
+  int in_width2 = (out_w_blk + 2 * out_w_blks) * 2 - padding_left;
+  int in_width3 = (out_w_blk + 3 * out_w_blks) * 2 - padding_left;
+  int in_width4 = (out_w_blk + 4 * out_w_blks) * 2 - padding_left;
+  const int height_idx = (out_hb % out_height) * 2 - padding_top;
+#endif
 
-  int in_width0[3];
-  int in_width1[3];
-  int in_width2[3];
-  int in_width3[3];
-  int in_width4[3];
-  in_width0[0] = out_w_blk - padding_left;
-  in_width1[0] = in_width0[0] + out_w_blks;
-  in_width2[0] = in_width1[0] + out_w_blks;
-  in_width3[0] = in_width2[0] + out_w_blks;
-  in_width4[0] = in_width3[0] + out_w_blks;
-  DEFINE_IN_WIDTH(0);
+  const int batch_idx = (out_hb / out_height) * in_height;
 
-  DEFINE_IN_WIDTH(1);
-
-  DEFINE_IN_WIDTH(2);
-
-  DEFINE_IN_WIDTH(3);
-
-  DEFINE_IN_WIDTH(4);
-
-#undef DEFINE_IN_WIDTH
-
-  const int batch_idx = out_hb / out_height;
-  const int height_idx = out_hb % out_height;
-  int in_hb[3];
-  in_hb[0] = height_idx - padding_top;
-  in_hb[1] = in_hb[0] + 1;
-  in_hb[2] = in_hb[1] + 1;
-  // Judge the height border for padding input.
-  in_hb[0] = (in_hb[0] < 0 || in_hb[0] >= in_height) ? -1 : in_hb[0] + batch_idx * in_height;
-  in_hb[1] = (in_hb[1] < 0 || in_hb[1] >= in_height) ? -1 : in_hb[1] + batch_idx * in_height;
-  in_hb[2] = (in_hb[2] < 0 || in_hb[2] >= in_height) ? -1 : in_hb[2] + batch_idx * in_height;
-
-  const int input_image_width = in_ch_blks * in_width;
-
-  DATA_TYPE4 in0, in1, in2, in3, in4;
-  DATA_TYPE4 weights0, weights1, weights2, weights3;
+  float4 in0, in1, in2, in3, in4;
+  float4 weights0, weights1, weights2, weights3;
   int in_idx, hb_idx, width_idx, in_width_idx;
   // Unrolling this loop hurt perfmance
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
-    for (short hb_idx = 0; hb_idx < 3; ++ hb_idx) {
+    for (short hb_idx = 0; hb_idx < 3; ++hb_idx) {
       for (short width_idx = 0; width_idx < 3; ++width_idx) {
 
         in_idx = in_ch_blk * in_width;
 
-        // Judge the width border for padding input.
-        in0 = READ_IMAGET(input, sampler, (int2)(in_idx + in_width0[width_idx], in_hb[hb_idx]));
-        in1 = READ_IMAGET(input, sampler, (int2)(in_idx + in_width1[width_idx], in_hb[hb_idx]));
-        in2 = READ_IMAGET(input, sampler, (int2)(in_idx + in_width2[width_idx], in_hb[hb_idx]));
-        in3 = READ_IMAGET(input, sampler, (int2)(in_idx + in_width3[width_idx], in_hb[hb_idx]));
-        in4 = READ_IMAGET(input, sampler, (int2)(in_idx + in_width4[width_idx], in_hb[hb_idx]));
+        int in_hb_value = height_idx + hb_idx;
+        in_hb_value = select(in_hb_value + batch_idx,
+                             -1,
+                             (in_hb_value < 0 || in_hb_value >= in_height));
 
-        int filter_idx = (in_ch_blk << 2) + (hb_idx *  3 + width_idx) * rounded_in_ch;
-        weights0 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 0, out_ch_blk));
-        weights1 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 1, out_ch_blk));
-        weights2 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 2, out_ch_blk));
-        weights3 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 3, out_ch_blk));
+        int in_width_value;
+#define READ_INPUT(i)                                                                \
+        in_width_value = in_width##i + width_idx;                                    \
+        in_width_value = select(in_idx + in_width_value,                             \
+                                -1,                                                  \
+                                (in_width_value < 0 || in_width_value >= in_width)); \
+        in##i = convert_float4(READ_IMAGET(input, sampler, (int2)(in_width_value, in_hb_value)));
+
+        READ_INPUT(0);
+        READ_INPUT(1);
+        READ_INPUT(2);
+        READ_INPUT(3);
+        READ_INPUT(4);
+
+#undef READ_INPUT
+
+        int filter_idx = (in_ch_blk << 2) + (hb_idx * 3 + width_idx) * rounded_in_ch;
+        weights0 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 0, out_ch_blk)));
+        weights1 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 1, out_ch_blk)));
+        weights2 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 2, out_ch_blk)));
+        weights3 = convert_float4(READ_IMAGET(filter, sampler, (int2)(filter_idx + 3, out_ch_blk)));
 
         // Will prefetch L2 improve performance? How to pretch image data?
 
@@ -131,6 +121,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     }
   }
 
+#ifdef TYPE_FLOAT
   const int out_x_base = out_ch_blk * out_width;
   int w = out_w_blk;
   WRITE_IMAGET(output,
@@ -160,4 +151,36 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   WRITE_IMAGET(output,
                (int2)(out_x_base + w, out_hb),
                out4);
+#else
+  const int out_x_base = out_ch_blk * out_width;
+  int w = out_w_blk;
+  WRITE_IMAGET(output,
+               (int2)(out_x_base + w, out_hb),
+               convert_half4(out0));
+
+  w += out_w_blks;
+  if (w >= out_width) return;
+  WRITE_IMAGET(output,
+               (int2)(out_x_base + w, out_hb),
+               convert_half4(out1));
+
+  w += out_w_blks;
+  if (w >= out_width) return;
+  WRITE_IMAGET(output,
+               (int2)(out_x_base + w, out_hb),
+               convert_half4(out2));
+
+  w += out_w_blks;
+  if (w >= out_width) return;
+  WRITE_IMAGET(output,
+               (int2)(out_x_base + w, out_hb),
+               convert_half4(out3));
+
+  w += out_w_blks;
+  if (w >= out_width) return;
+  WRITE_IMAGET(output,
+               (int2)(out_x_base + w, out_hb),
+               convert_half4(out4));
+#endif
+
 }
