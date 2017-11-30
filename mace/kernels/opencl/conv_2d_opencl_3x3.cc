@@ -28,7 +28,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   built_options.emplace(input->dtype() == DT_FLOAT ? "-DTYPE_FLOAT" : "");
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-  built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
+  built_options.emplace("-DSTRIDE=" + ToString(stride));
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();

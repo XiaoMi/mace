@@ -19,23 +19,24 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int out_hb = get_global_id(2);
   const int rounded_in_ch = in_ch_blks * 4;
 
+
+  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+#ifdef BIAS
+  float4 out0 =
+     convert_float4(READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0)));
+  float4 out1 = out0;
+  float4 out2 = out0;
+  float4 out3 = out0;
+  float4 out4 = out0;
+#else
   float4 out0 = 0;
   float4 out1 = 0;
   float4 out2 = 0;
   float4 out3 = 0;
   float4 out4 = 0;
-
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
-#ifdef BIAS
-  out0 =
-     convert_float4(READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0)));
-  out1 = out0;
-  out2 = out0;
-  out3 = out0;
-  out4 = out0;
 #endif
 
-#ifdef STRIDE_1
+#if STRIDE == 1
   int in_width0 = out_w_blk - padding_left;
   int in_width1 = in_width0 + out_w_blks;
   int in_width2 = in_width1 + out_w_blks;

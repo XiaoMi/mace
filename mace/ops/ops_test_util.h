@@ -351,13 +351,6 @@ void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, abs_err);
 }
 
-template <typename T>
-std::string ToString(const T &input) {
-  std::stringstream ss;
-  ss << input;
-  return ss.str();
-}
-
 template <DeviceType D, typename T>
 void BufferToImage(OpsTestNet &net,
                    const std::string &input_name,

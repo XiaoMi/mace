@@ -15,6 +15,7 @@ void Conv1x1(const Tensor *input,
              const Tensor *filter,
              const Tensor *bias,
              const int stride,
+             const int *padding,
              Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -29,9 +30,7 @@ void Conv1x1(const Tensor *input,
   const index_t width_blocks = RoundUpDiv4(width);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
 
-  MACE_CHECK(stride == 1);
   MACE_CHECK(input_batch == batch);
-  MACE_CHECK(stride != 1 || (input_height == height && input_width == width));
 
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
@@ -54,8 +53,13 @@ void Conv1x1(const Tensor *input,
     conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
   }
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(output->buffer())));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input_height));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(input_width));
   conv_2d_kernel.setArg(idx++, static_cast<int>(input_channel_blocks));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
+  conv_2d_kernel.setArg(idx++, padding[0] / 2);
+  conv_2d_kernel.setArg(idx++, padding[1] / 2);
 
   auto command_queue = runtime->command_queue();
   cl_int error;
@@ -74,7 +78,7 @@ extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *bias,
                                const int *padding,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 1, output);
+  Conv1x1(input, filter, bias, 1, padding, output);
 };
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
@@ -82,7 +86,7 @@ extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *bias,
                                const int *padding,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 2, output);
+  Conv1x1(input, filter, bias, 2, padding, output);
 };
 
 }  // namespace kernels
