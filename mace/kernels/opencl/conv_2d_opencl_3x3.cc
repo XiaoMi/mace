@@ -12,9 +12,9 @@ namespace mace {
 namespace kernels {
 
 static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
-                         const Tensor *bias, const uint32_t stride,
-                         const int *padding, const DataType dt,
-                         Tensor *output) {
+                         const Tensor *bias, const bool is_relu,
+                         const uint32_t stride, const int *padding,
+                         const DataType dt, Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -30,6 +30,9 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(dt));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
   built_options.emplace("-DSTRIDE=" + ToString(stride));
+  if (is_relu) {
+    built_options.emplace("-DFUSED_RELU");
+  }
 
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
@@ -63,16 +66,24 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   MACE_CHECK(error == CL_SUCCESS, error);
 
 }
-void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
-                        const Tensor *bias, const int *padding,
-                        const DataType dt, Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, 1, padding, dt, output);
+void Conv2dOpenclK3x3S1(const Tensor *input,
+                        const Tensor *filter,
+                        const Tensor *bias,
+                        const bool is_relu,
+                        const int *padding,
+                        const DataType dt,
+                        Tensor *output) {
+  Conv2d3x3S12(input, filter, bias, is_relu, 1, padding, dt, output);
 };
 
-void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
-                        const Tensor *bias, const int *padding,
-                        const DataType dt, Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, 2, padding, dt, output);
+void Conv2dOpenclK3x3S2(const Tensor *input,
+                        const Tensor *filter,
+                        const Tensor *bias,
+                        const bool is_relu,
+                        const int *padding,
+                        const DataType dt,
+                        Tensor *output) {
+  Conv2d3x3S12(input, filter, bias, is_relu, 2, padding, dt, output);
 };
 
 }  // namespace kernels
