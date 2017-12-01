@@ -54,10 +54,11 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   cl_int error;
   cl::Image2D *cl_image =
       new cl::Image2D(OpenCLRuntime::Get()->context(),
-                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR ,
+                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                       img_format,
                       image_shape[0], image_shape[1],
                       0, nullptr, &error);
+  MACE_CHECK(error == CL_SUCCESS);
 
   return cl_image;
 }

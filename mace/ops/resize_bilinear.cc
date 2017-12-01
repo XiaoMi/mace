@@ -23,4 +23,9 @@ REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
                              .Build(),
                          ResizeBilinearOp<DeviceType::OPENCL, float>);
 
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         ResizeBilinearOp<DeviceType::OPENCL, half>);
+
 }  //  namespace mace

@@ -19,18 +19,30 @@ static void ResizeBilinearBenchmark(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
+
+  // Add input data
+  net.AddRandomInput<D, float>("Input",
+                               {batch, input_height, input_width, channels});
+  net.AddInputFromArray<D, index_t>("OutSize", {2},
+                                    {output_height, output_width});
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
+      .Input("InputImage")
+      .Input("OutSize")
+      .Output("OutputImage")
+      .AddIntsArg("size", {output_height, output_width})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
       .Input("Input")
       .Input("OutSize")
       .Output("Output")
       .AddIntsArg("size", {output_height, output_width})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddRandomInput<D, float>("Input",
-                               {batch, channels, input_height, input_width});
-  net.AddInputFromArray<D, index_t>("OutSize", {2},
-                                    {output_height, output_width});
+  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -58,8 +70,11 @@ static void ResizeBilinearBenchmark(int iters,
 
 #define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1, TYPE)        \
   BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, CPU);  \
-  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, NEON); \
   BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, OPENCL);
+
+// SNPE 835 GPU: 6870us
+BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480, half);
+BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480, float);
 
 BM_RESIZE_BILINEAR(1, 256, 7, 7, 15, 15, float);
 BM_RESIZE_BILINEAR(1, 256, 15, 15, 30, 30, float);
