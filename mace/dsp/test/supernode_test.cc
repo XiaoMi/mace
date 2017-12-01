@@ -224,7 +224,7 @@ TEST(SupernodeTest, Supernode) {
       input_data[h * 4 + w] = (uint8_t)((h == 0) ? 0 : h * 64 - 1);
   }
 
-  VLOG(0) << wrapper.ExecuteGraphNew(&input_tensor, 1, &output_tensor, 1);
+  VLOG(0) << wrapper.ExecuteGraph(input_tensor, &output_tensor);
   wrapper.PrintLog();
 
   // expect out: [[49.2095, 49.2095], [50.7905, 50.7905]]
