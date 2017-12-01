@@ -194,16 +194,12 @@ void TestNHWCSimple3x3SAME() {
 
 TEST_F(Conv2dOpTest, CPUSimple) {
   TestNHWCSimple3x3VALID<DeviceType::CPU, float>();
-  TestNHWCSimple3x3VALID<DeviceType::CPU, half>();
   TestNHWCSimple3x3SAME<DeviceType::CPU, float>();
-  TestNHWCSimple3x3SAME<DeviceType::CPU, half>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLSimple) {
   TestNHWCSimple3x3VALID<DeviceType::OPENCL, float>();
-  TestNHWCSimple3x3VALID<DeviceType::OPENCL, half>();
   TestNHWCSimple3x3SAME<DeviceType::OPENCL, float>();
-  TestNHWCSimple3x3SAME<DeviceType::OPENCL, half>();
 }
 
 template<DeviceType D>
@@ -294,12 +290,10 @@ void TestNHWCSimple3x3WithoutBias() {
 
 TEST_F(Conv2dOpTest, CPUWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::CPU, float>();
-  TestNHWCSimple3x3WithoutBias<DeviceType::CPU, half>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::OPENCL, float>();
-  TestNHWCSimple3x3WithoutBias<DeviceType::OPENCL, half>();
 }
 
 template<DeviceType D>
@@ -408,12 +402,10 @@ static void TestNHWCCombined3x3() {
 
 TEST_F(Conv2dOpTest, CPUStride2) {
   TestNHWCCombined3x3<DeviceType::CPU, float>();
-  TestNHWCCombined3x3<DeviceType::CPU, half>();
 }
 
 TEST_F(Conv2dOpTest, OPENCLStride2) {
   TestNHWCCombined3x3<DeviceType::OPENCL, float>();
-  TestNHWCCombined3x3<DeviceType::OPENCL, half>();
 }
 
 template<DeviceType D>
@@ -608,19 +600,10 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-
-    std::vector<half> input_data(float_input_data.begin(), float_input_data.end());
-    std::vector<half> filter_data(float_filter_data.begin(), float_filter_data.end());
-    std::vector<half> bias_data(float_bias_data.begin(), float_bias_data.end());
-    net.AddInputFromArray<D, half>("InputHalf", {batch, height, width, input_channels}, input_data);
-    net.AddInputFromArray<D, half>(
-        "FilterHalf", {kernel_h, kernel_w, input_channels, output_channels}, filter_data);
-    net.AddInputFromArray<D, half>("BiasHalf", {output_channels}, bias_data);
-
     // run on gpu
-    BufferToImage<D, half>(net, "InputHalf", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, half>(net, "FilterHalf", "FilterImage", kernels::BufferType::FILTER);
-    BufferToImage<D, half>(net, "BiasHalf", "BiasImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, half>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, half>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")
@@ -630,6 +613,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
         .Finalize(net.NewOperatorDef());
     // Run on device
     net.RunOp(D);
