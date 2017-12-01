@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/kernels/conv_2d.h"
+#include "mace/kernels/fused_conv_2d.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -29,10 +29,10 @@ extern void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
                                Tensor *output);
 
 template<typename T>
-void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
-                                                      const Tensor *filter,
-                                                      const Tensor *bias,
-                                                      Tensor *output) {
+void FusedConv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
+                                                           const Tensor *filter,
+                                                           const Tensor *bias,
+                                                           Tensor *output) {
   typedef void (*Conv2dOpenclFunction)(const Tensor *input, const Tensor *filter,
                                        const Tensor *bias, const bool fused_relu,
                                        const int *padding, const DataType dt,
@@ -55,7 +55,7 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
     // TODO(heliangliang) The CPU/NEON kernel should map the buffer
-    Conv2dFunctor<DeviceType::CPU, T>(strides_, paddings_, dilations_)(
+    FusedConv2dFunctor<DeviceType::CPU, T>(strides_, paddings_, dilations_)(
         input, filter, bias, output);
     return;
   }
@@ -75,13 +75,13 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_func(input, filter, bias, false, paddings.data(), DataTypeToEnum<T>::value, output);
+  conv2d_func(input, filter, bias, true, paddings.data(), DataTypeToEnum<T>::value, output);
 }
 
 template
-struct Conv2dFunctor<DeviceType::OPENCL, float>;
+struct FusedConv2dFunctor<DeviceType::OPENCL, float>;
 template
-struct Conv2dFunctor<DeviceType::OPENCL, half>;
+struct FusedConv2dFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

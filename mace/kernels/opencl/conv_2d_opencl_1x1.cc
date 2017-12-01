@@ -14,6 +14,7 @@ namespace kernels {
 void Conv1x1(const Tensor *input,
              const Tensor *filter,
              const Tensor *bias,
+             const bool fused_relu,
              const int stride,
              const DataType dt,
              Tensor *output) {
@@ -38,6 +39,9 @@ void Conv1x1(const Tensor *input,
   built_options.emplace("-DSTRIDE=" + ToString(stride));
   if (bias != nullptr) {
     built_options.emplace("-DBIAS");
+  }
+  if (fused_relu) {
+    built_options.emplace("-DFUSED_RELU");
   }
 
   auto runtime = OpenCLRuntime::Get();
@@ -74,19 +78,21 @@ void Conv1x1(const Tensor *input,
 extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
+                               const bool fused_relu,
                                const int *padding,
                                const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 1, dt, output);
+  Conv1x1(input, filter, bias, fused_relu, 1, dt, output);
 };
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
+                               const bool fused_relu,
                                const int *padding,
                                const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, 2, dt, output);
+  Conv1x1(input, filter, bias, fused_relu, 2, dt, output);
 };
 
 }  // namespace kernels
