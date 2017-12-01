@@ -634,9 +634,9 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, half>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
 
-    ExpectTensorNear<float, half>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
   };
 
   for (int kernel_size : {1, 3}) {
