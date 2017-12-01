@@ -24,8 +24,8 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
   }
 
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(image->dtype()));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(image->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(DataTypeToEnum<T>::value));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(DataTypeToEnum<T>::value));
   auto runtime = OpenCLRuntime::Get();
   string kernel_name;
   switch (type) {
