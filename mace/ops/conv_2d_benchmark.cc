@@ -27,15 +27,15 @@ static void Conv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, half>("Input", {batch, height, width, channels});
-  net.AddRandomInput<D, half>("Filter",
+  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  net.AddRandomInput<D, float>("Filter",
                                {kernel_h, kernel_w, channels, output_channels});
-  net.AddRandomInput<D, half>("Bias", {output_channels});
+  net.AddRandomInput<D, float>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, half>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
-    BufferToImage<D, half>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")
         .Input("FilterImage")
@@ -93,15 +93,15 @@ static void Conv2d(int iters,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 // ICNet
-BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, float);
+BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, half);
 // SNPE GPU ExecutionDuration = 448us, % ALU Utilization = 105
-BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, float);
+BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, half);
 // SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
-BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, float);
+BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, half);
 
-BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, float);
+BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, half);
 // SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
-BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, float);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
 
 // Test RGB <-> YUV
 //BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
