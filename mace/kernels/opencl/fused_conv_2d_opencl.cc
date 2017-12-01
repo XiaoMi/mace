@@ -9,22 +9,22 @@ namespace mace {
 namespace kernels {
 
 extern void Conv2dOpenclK1x1S1(const Tensor *input, const Tensor *filter,
-                               const Tensor *bias, const bool is_relu,
+                               const Tensor *bias, const bool fused_relu,
                                const int *padding, const DataType dt,
                                Tensor *output);
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input, const Tensor *filter,
-                               const Tensor *bias, const bool is_relu,
+                               const Tensor *bias, const bool fused_relu,
                                const int *padding, const DataType dt,
                                Tensor *output);
 
 extern void Conv2dOpenclK3x3S1(const Tensor *input, const Tensor *filter,
-                               const Tensor *bias, const bool is_relu,
+                               const Tensor *bias, const bool fused_relu,
                                const int *padding, const DataType dt,
                                Tensor *output);
 
 extern void Conv2dOpenclK3x3S2(const Tensor *input, const Tensor *filter,
-                               const Tensor *bias, const bool is_relu,
+                               const Tensor *bias, const bool fused_relu,
                                const int *padding, const DataType dt,
                                Tensor *output);
 
@@ -34,7 +34,7 @@ void FusedConv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                            const Tensor *bias,
                                                            Tensor *output) {
   typedef void (*Conv2dOpenclFunction)(const Tensor *input, const Tensor *filter,
-                                       const Tensor *bias, const bool is_relu,
+                                       const Tensor *bias, const bool fused_relu,
                                        const int *padding, const DataType dt,
                                        Tensor *output);
   // Selection matrix: kernel_size x stride_size

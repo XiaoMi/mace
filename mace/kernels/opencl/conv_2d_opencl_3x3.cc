@@ -12,7 +12,7 @@ namespace mace {
 namespace kernels {
 
 static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
-                         const Tensor *bias, const bool is_relu,
+                         const Tensor *bias, const bool fused_relu,
                          const uint32_t stride, const int *padding,
                          const DataType dt, Tensor *output) {
   const index_t batch = output->dim(0);
@@ -30,7 +30,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(dt));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
   built_options.emplace("-DSTRIDE=" + ToString(stride));
-  if (is_relu) {
+  if (fused_relu) {
     built_options.emplace("-DFUSED_RELU");
   }
 
@@ -69,21 +69,21 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
 void Conv2dOpenclK3x3S1(const Tensor *input,
                         const Tensor *filter,
                         const Tensor *bias,
-                        const bool is_relu,
+                        const bool fused_relu,
                         const int *padding,
                         const DataType dt,
                         Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, is_relu, 1, padding, dt, output);
+  Conv2d3x3S12(input, filter, bias, fused_relu, 1, padding, dt, output);
 };
 
 void Conv2dOpenclK3x3S2(const Tensor *input,
                         const Tensor *filter,
                         const Tensor *bias,
-                        const bool is_relu,
+                        const bool fused_relu,
                         const int *padding,
                         const DataType dt,
                         Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, is_relu, 2, padding, dt, output);
+  Conv2d3x3S12(input, filter, bias, fused_relu, 2, padding, dt, output);
 };
 
 }  // namespace kernels

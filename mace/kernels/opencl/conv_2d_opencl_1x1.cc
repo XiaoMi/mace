@@ -14,7 +14,7 @@ namespace kernels {
 void Conv1x1(const Tensor *input,
              const Tensor *filter,
              const Tensor *bias,
-             const bool is_relu,
+             const bool fused_relu,
              const int stride,
              const DataType dt,
              Tensor *output) {
@@ -40,7 +40,7 @@ void Conv1x1(const Tensor *input,
   if (bias != nullptr) {
     built_options.emplace("-DBIAS");
   }
-  if (is_relu) {
+  if (fused_relu) {
     built_options.emplace("-DFUSED_RELU");
   }
 
@@ -78,21 +78,21 @@ void Conv1x1(const Tensor *input,
 extern void Conv2dOpenclK1x1S1(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
-                               const bool is_relu,
+                               const bool fused_relu,
                                const int *padding,
                                const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, is_relu, 1, dt, output);
+  Conv1x1(input, filter, bias, fused_relu, 1, dt, output);
 };
 
 extern void Conv2dOpenclK1x1S2(const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
-                               const bool is_relu,
+                               const bool fused_relu,
                                const int *padding,
                                const DataType dt,
                                Tensor *output) {
-  Conv1x1(input, filter, bias, is_relu, 2, dt, output);
+  Conv1x1(input, filter, bias, fused_relu, 2, dt, output);
 };
 
 }  // namespace kernels
