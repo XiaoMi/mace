@@ -15,6 +15,7 @@ void TestBidirectionTransform(const int type, const std::vector<index_t> &input_
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", type)
+      .AddIntArg("T", DataTypeToEnum<T>::value)
       .Finalize(net.NewOperatorDef());
 
   // Add input data
@@ -27,6 +28,7 @@ void TestBidirectionTransform(const int type, const std::vector<index_t> &input_
       .Input("B2IOutput")
       .Output("I2BOutput")
       .AddIntArg("buffer_type", type)
+      .AddIntArg("T", DataTypeToEnum<T>::value)
       .Finalize(net.NewOperatorDef());
 
   // Run
@@ -38,6 +40,10 @@ void TestBidirectionTransform(const int type, const std::vector<index_t> &input_
 
 TEST(BufferToImageTest, ArgSmall) {
   TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::ARGUMENT, {1});
+}
+
+TEST(BufferToImageTest, ArgHalfSmall) {
+  TestBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT, {1});
 }
 
 TEST(BufferToImageTest, ArgMedia) {

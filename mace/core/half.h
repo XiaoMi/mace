@@ -1098,7 +1098,7 @@ namespace half_float
 
 		/// Conversion constructor.
 		/// \param rhs float to convert
-		explicit half(float rhs) : data_(detail::float2half<round_style>(rhs)) {}
+		half(float rhs) : data_(detail::float2half<round_style>(rhs)) {}
 	
 		/// Conversion to single-precision.
 		/// \return single precision value representing expression value

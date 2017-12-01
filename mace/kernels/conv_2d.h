@@ -11,13 +11,23 @@
 namespace mace {
 namespace kernels {
 
+struct Conv2dFunctorBase {
+  Conv2dFunctorBase(const int *strides,
+                    const Padding &paddings,
+                    const int *dilations)
+      : strides_(strides), dilations_(dilations), paddings_(paddings) {}
+
+  const int *strides_;         // [stride_h, stride_w]
+  const int *dilations_;       // [dilation_h, dilation_w]
+  Padding paddings_;
+};
+
 template<DeviceType D, typename T>
-struct Conv2dFunctor {
-  Conv2dFunctor() {}
+struct Conv2dFunctor : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
                 const Padding &paddings,
                 const int *dilations)
-      : strides_(strides), dilations_(dilations), paddings_(paddings) {}
+      : Conv2dFunctorBase(strides, paddings, dilations) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
@@ -76,9 +86,10 @@ struct Conv2dFunctor {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
           for (int c = 0; c < channels; ++c) {
-            T bias_channel = bias_data ? bias_data[c] : 0;
+            T bias_channel = 0.0f;
+            if (bias) bias_channel = bias_data[c];
             *output_data = bias_channel;
-            T sum = 0;
+            T sum = 0.0f;
             const T *filter_ptr = filter_data + c;
             for (int kh = 0; kh < kernel_h; ++kh) {
               for (int kw = 0; kw < kernel_w; ++kw) {
@@ -113,9 +124,6 @@ struct Conv2dFunctor {
 
   }
 
-  const int *strides_;         // [stride_h, stride_w]
-  const int *dilations_;       // [dilation_h, dilation_w]
-  Padding paddings_;
 };
 
 template<>
@@ -123,11 +131,19 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
                                                         Tensor *output);
-template<>
-void Conv2dFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
-                                                          const Tensor *filter,
-                                                          const Tensor *bias,
-                                                          Tensor *output);
+
+template<typename T>
+struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
+  Conv2dFunctor(const int *strides,
+                const Padding &paddings,
+                const int *dilations)
+      : Conv2dFunctorBase(strides, paddings, dilations) {}
+
+  void operator()(const Tensor *input,
+                  const Tensor *filter,
+                  const Tensor *bias,
+                  Tensor *output);
+};
 
 }  // namespace kernels
 }  // namespace mace
