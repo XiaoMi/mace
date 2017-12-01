@@ -121,6 +121,15 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     }
   }
 
+#ifdef FUSED_RELU
+  // TODO relux
+  out0 = fmax(out0, 0);
+  out1 = fmax(out1, 0);
+  out2 = fmax(out2, 0);
+  out3 = fmax(out3, 0);
+  out4 = fmax(out4, 0);
+#endif
+
   const int out_x_base = out_ch_blk * out_width;
   int w = out_w_blk;
   WRITE_IMAGET(output,

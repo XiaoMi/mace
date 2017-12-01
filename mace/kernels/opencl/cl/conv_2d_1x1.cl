@@ -5,10 +5,6 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 #ifdef BIAS
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
-#ifdef FUSED_BATCH_NORM
-                          __read_only image2d_t bn_scale, /* cout%4 * cout/4 */
-                          __read_only image2d_t bn_offset, /* cout%4 * cout/4 */
-#endif
                           __write_only image2d_t output,
                           __private const int in_height,
                           __private const int in_width,
@@ -96,27 +92,6 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
     in_x_base += in_width;
   }
-
-#ifdef FUSED_BATCH_NORM
-  // batch norm
-  DATA_TYPE4 bn_scale_value =
-      READ_IMAGET(bn_scale, sampler, (int2)(out_ch_blk, 0));
-  DATA_TYPE4 scale0 = (DATA_TYPE4)(bn_scale_value.x);
-  DATA_TYPE4 scale1 = (DATA_TYPE4)(bn_scale_value.y);
-  DATA_TYPE4 scale2 = (DATA_TYPE4)(bn_scale_value.z);
-  DATA_TYPE4 scale3 = (DATA_TYPE4)(bn_scale_value.w);
-  DATA_TYPE4 bn_offset_value =
-      READ_IMAGET(bn_offset, sampler, (int2)(out_ch_blk, 0));
-  DATA_TYPE4 offset0 = (DATA_TYPE4)(bn_offset_value.x);
-  DATA_TYPE4 offset1 = (DATA_TYPE4)(bn_offset_value.y);
-  DATA_TYPE4 offset2 = (DATA_TYPE4)(bn_offset_value.z);
-  DATA_TYPE4 offset3 = (DATA_TYPE4)(bn_offset_value.w);
-
-  out0 = out0 * scale0 + offset0;
-  out1 = out1 * scale1 + offset1;
-  out2 = out2 * scale2 + offset2;
-  out3 = out3 * scale3 + offset3;
-#endif
 
 #ifdef FUSED_RELU
   // TODO relux
