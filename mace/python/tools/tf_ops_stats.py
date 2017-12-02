@@ -92,6 +92,7 @@ def main(unused_args):
             size = tensor_values[input_name]
             break
         key = '%s(size=%s, align_corners=%s)' % (op.type, size, align_corners)
+        print(key)
         hist_inc(stats, key)
       elif op.type in ['AvgPool', 'MaxPool']:
         padding = op.get_attr('padding')

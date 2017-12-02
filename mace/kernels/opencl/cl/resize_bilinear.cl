@@ -1,18 +1,19 @@
 #include <common.h>
 
-// Supported data type: half/float
-__kernel void resize_bilinear_nocache(__global const DATA_TYPE *input, /* n * c, h, w */
-                                      __global DATA_TYPE *output /* n * c, h, w */,
+__kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+                                      __write_only image2d_t output,
                                       __private const float height_scale,
                                       __private const float width_scale,
                                       __private const int in_height,
-                                      __private const int in_width) {
-  const int c = get_global_id(0);
-  const int h = get_global_id(1);
-  const int w = get_global_id(2);
-  const int channels = get_global_size(0);
-  const int height = get_global_size(1);
-  const int width = get_global_size(2);
+                                      __private const int in_width,
+                                      __private const int out_height) {
+  const int ch_blk = get_global_id(0);
+  const int ch_blks = get_global_size(0);
+  const int w = get_global_id(1);
+  const int out_width = get_global_size(1);
+  const int hb = get_global_id(2);
+  const int b = hb / out_height;
+  const int h = hb % out_height;
 
   const float h_in = h * height_scale;
   const float w_in = w * width_scale;
@@ -24,16 +25,26 @@ __kernel void resize_bilinear_nocache(__global const DATA_TYPE *input, /* n * c,
   const float h_lerp = h_in - h_lower;
   const float w_lerp = w_in - w_lower;
 
-  const DATA_TYPE *input_base = input + c * in_height * in_width;
-  DATA_TYPE *output_base = output + c * height * width;
+  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+  const int in_w_offset = ch_blk * in_width;
+  const int in_h_offset = b * in_height;
 
-  DATA_TYPE top_left = input_base[h_lower * in_width + w_lower];
-  DATA_TYPE top_right = input_base[h_lower * in_width + w_upper];
-  DATA_TYPE bottom_left = input_base[h_upper * in_width + w_lower];
-  DATA_TYPE bottom_right = input_base[h_upper * in_width + w_upper];
+  DATA_TYPE4 top_left = READ_IMAGET(input, sampler,
+          (int2)(in_w_offset + w_lower, in_h_offset + h_lower));
+  DATA_TYPE4 top_right = READ_IMAGET(input, sampler,
+          (int2)(in_w_offset + w_upper, in_h_offset + h_lower));
+  DATA_TYPE4 bottom_left = READ_IMAGET(input, sampler,
+          (int2)(in_w_offset + w_lower, in_h_offset + h_upper));
+  DATA_TYPE4 bottom_right = READ_IMAGET(input, sampler,
+          (int2)(in_w_offset + w_upper, in_h_offset + h_upper));
 
-  const DATA_TYPE top = top_left + (top_right - top_left) * w_lerp;
-  const DATA_TYPE bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
-  output_base[h * width + w] = top + (bottom - top) * h_lerp;
+  DATA_TYPE4 top = top_left + (top_right - top_left) * w_lerp;
+  DATA_TYPE4 bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
+
+  DATA_TYPE4 out = top + (bottom - top) * h_lerp;
+
+  const int out_w_offset = ch_blk * out_width;
+  const int out_h_offset = b * out_height;
+  WRITE_IMAGET(output, (int2)(out_w_offset + w, out_h_offset + h), out);
 }
 
