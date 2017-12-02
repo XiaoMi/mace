@@ -118,14 +118,13 @@ void TestDiffTypeBidirectionTransform(const int type, const std::vector<index_t>
       .Input("B2IOutput")
       .Output("I2BOutput")
       .AddIntArg("buffer_type", type)
-      .AddIntArg("T", DataTypeToEnum<T>::value)
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(D);
 
   // Check
-  ExpectTensorNear<float, T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-2);
+  ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-3);
 }
 
 TEST(BufferToImageTest, ArgFloatToHalfSmall) {
