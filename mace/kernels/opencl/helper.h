@@ -19,10 +19,13 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape);
 
-std::string DataTypeToOPENCLCMDDataType(const DataType dt);
+std::string DtToCLCMDDt(const DataType dt);
 
-std::string DataTypeToCLType(const DataType dt);
+std::string DtToUpstreamCLCMDDt(const DataType dt);
 
+std::string DtToCLDt(const DataType dt);
+
+std::string DtToUpstreamCLDt(const DataType dt);
 
 }  // namespace kernels
 } //  namespace mace

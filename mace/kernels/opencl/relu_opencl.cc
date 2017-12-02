@@ -23,7 +23,7 @@ void ReluFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
   auto program = runtime->program();
 
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
   if (max_limit_ < 0) {
     auto relu_kernel  = runtime->BuildKernel("relu", "relu", built_options);
     const uint32_t lws = runtime->GetKernelMaxWorkGroupSize(relu_kernel);

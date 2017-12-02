@@ -43,7 +43,7 @@ TEST(BufferToImageTest, ArgSmall) {
 }
 
 TEST(BufferToImageTest, ArgHalfSmall) {
-  TestBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT, {1});
+  TestBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT, {11});
 }
 
 TEST(BufferToImageTest, ArgMedia) {
@@ -96,4 +96,38 @@ TEST(BufferToImageTest, Filter3x3Meida) {
 
 TEST(BufferToImageTest, Filter3x3Large) {
   TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {3, 3, 128, 256});
+}
+
+template<DeviceType D, typename T>
+void TestDiffTypeBidirectionTransform(const int type, const std::vector<index_t> &input_shape) {
+  OpsTestNet net;
+  OpDefBuilder("BufferToImage", "BufferToImageTest")
+      .Input("Input")
+      .Output("B2IOutput")
+      .AddIntArg("buffer_type", type)
+      .AddIntArg("T", DataTypeToEnum<T>::value)
+      .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<D, float>("Input", input_shape);
+
+  // Run
+  net.RunOp(D);
+
+  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+      .Input("B2IOutput")
+      .Output("I2BOutput")
+      .AddIntArg("buffer_type", type)
+      .AddIntArg("T", DataTypeToEnum<T>::value)
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp(D);
+
+  // Check
+  ExpectTensorNear<float, T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-2);
+}
+
+TEST(BufferToImageTest, ArgFloatToHalfSmall) {
+  TestDiffTypeBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT, {11});
 }
