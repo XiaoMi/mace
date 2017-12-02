@@ -32,7 +32,7 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
   built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
   auto conv_kernel  = runtime->BuildKernel("depthwise_conv_3x3", "depthwise_conv_3x3", built_options);

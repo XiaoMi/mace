@@ -32,7 +32,7 @@ static void Pooling3(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
   built_options.emplace(stride[0] == 1 ? "-DSTRIDE_1" : "");
   auto pooling_kernel  = runtime->BuildKernel("pooling", "pooling3", built_options);
 
@@ -80,7 +80,7 @@ static void PoolingN(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
   auto pooling_kernel  = runtime->BuildKernel("pooling", "poolingn", built_options);
 
   const uint32_t lws[3] = {1, 8, 128};

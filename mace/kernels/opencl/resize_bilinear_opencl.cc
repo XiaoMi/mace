@@ -41,8 +41,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(dt));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(dt));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   auto rb_kernel  = runtime->BuildKernel("resize_bilinear", "resize_bilinear_nocache", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(rb_kernel);
