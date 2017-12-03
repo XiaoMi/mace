@@ -174,7 +174,7 @@ TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) {
   SimpleMaxPooling3S2<OPENCL>();
 }
 
-template<DeviceType D>
+template<DeviceType D, typename T>
 static void MaxPooling3S2(const std::vector<index_t> &input_shape,
                           const std::vector<int> strides,
                           Padding padding) {
@@ -188,17 +188,18 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
       .AddIntsArg("strides", strides)
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", input_shape);
+  net.AddRandomInput<D, T>("Input", input_shape);
 
   // run on cpu
   net.RunOp();
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -207,11 +208,12 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
       .AddIntsArg("strides", strides)
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
-  ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+  ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+  ExpectTensorNear<T>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
 }
 
 // TODO(chenghui) : there is a bug.
@@ -221,17 +223,24 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
 //}
 
 TEST_F(PoolingOpTest, OPENCLAlignedMaxPooling3S2) {
-  MaxPooling3S2<OPENCL>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
-  MaxPooling3S2<OPENCL>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
-  MaxPooling3S2<OPENCL>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
-  MaxPooling3S2<OPENCL>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<OPENCL, float>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<OPENCL, float>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<OPENCL, float>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<OPENCL, float>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+}
+
+TEST_F(PoolingOpTest, OPENCLHalfAlignedMaxPooling3S2) {
+  MaxPooling3S2<OPENCL, half>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<OPENCL, half>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<OPENCL, half>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<OPENCL, half>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnalignedMaxPooling3S2) {
-  MaxPooling3S2<OPENCL>({3, 41, 43, 47}, {1, 1}, Padding::VALID);
-  MaxPooling3S2<OPENCL>({3, 41, 43, 47}, {2, 2}, Padding::VALID);
-  MaxPooling3S2<OPENCL>({3, 41, 43, 47}, {1, 1}, Padding::SAME);
-  MaxPooling3S2<OPENCL>({3, 41, 43, 47}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<OPENCL, half>({3, 41, 43, 47}, {1, 1}, Padding::VALID);
+  MaxPooling3S2<OPENCL, half>({3, 41, 43, 47}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<OPENCL, half>({3, 41, 43, 47}, {1, 1}, Padding::SAME);
+  MaxPooling3S2<OPENCL, half>({3, 41, 43, 47}, {2, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, AVG_VALID) {
@@ -297,7 +306,7 @@ TEST_F(PoolingOpTest, OPENCLSimpleAvgPooling) {
   SimpleAvgPoolingTest<OPENCL>();
 }
 
-template<DeviceType D>
+template<DeviceType D, typename T>
 static void AvgPoolingTest(const std::vector<index_t> &shape,
                                   const std::vector<int> &kernels,
                                   const std::vector<int> &strides,
@@ -322,7 +331,7 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -331,30 +340,41 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
       .AddIntsArg("strides", strides)
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
-  ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+  ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+  ExpectTensorNear<float, T>(expected, *net.GetOutput("OPENCLOutput"), 0.01);
 }
 
 TEST_F(PoolingOpTest, OPENCLAlignedAvgPooling) {
-  AvgPoolingTest<OPENCL>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
-  AvgPoolingTest<OPENCL>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
+  AvgPoolingTest<OPENCL, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
+  AvgPoolingTest<OPENCL, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
+}
+
+TEST_F(PoolingOpTest, OPENCLHalfAlignedAvgPooling) {
+  AvgPoolingTest<OPENCL, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
+  AvgPoolingTest<OPENCL, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLAlignedLargeKernelAvgPooling) {
-  AvgPoolingTest<OPENCL>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::VALID);
-  AvgPoolingTest<OPENCL>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::SAME);
+  AvgPoolingTest<OPENCL, float>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::VALID);
+  AvgPoolingTest<OPENCL, float>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::SAME);
+}
+
+TEST_F(PoolingOpTest, OPENCLHalfAlignedLargeKernelAvgPooling) {
+  AvgPoolingTest<OPENCL, half>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::VALID);
+  AvgPoolingTest<OPENCL, half>({3, 64, 64, 128}, {16, 16}, {16, 16}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnAlignedAvgPooling) {
-  AvgPoolingTest<OPENCL>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::VALID);
-  AvgPoolingTest<OPENCL>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::SAME);
+  AvgPoolingTest<OPENCL, float>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::VALID);
+  AvgPoolingTest<OPENCL, float>({3, 31, 37, 128}, {2, 2}, {2, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
-  AvgPoolingTest<OPENCL>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::VALID);
-  AvgPoolingTest<OPENCL>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::SAME);
+  AvgPoolingTest<OPENCL, float>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::VALID);
+  AvgPoolingTest<OPENCL, float>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::SAME);
 }
 

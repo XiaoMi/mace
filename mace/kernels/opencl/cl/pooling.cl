@@ -1,7 +1,7 @@
 #include <common.h>
 
 #ifdef FP16
-#define MIN_VALUE -HALF_MAX
+#define MIN_VALUE -USHRT_MAX
 #else
 #define MIN_VALUE -FLT_MAX
 #endif
