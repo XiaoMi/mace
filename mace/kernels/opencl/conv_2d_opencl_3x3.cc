@@ -26,8 +26,8 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
 
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(dt));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(dt));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
   built_options.emplace("-DSTRIDE=" + ToString(stride));
   if (fused_relu) {

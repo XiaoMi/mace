@@ -35,8 +35,8 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DataTypeToOPENCLCMDDataType(input->dtype()));
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(input->dtype()));
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
