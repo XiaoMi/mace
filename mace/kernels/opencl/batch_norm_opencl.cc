@@ -30,7 +30,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   const index_t width_blocks = RoundUpDiv4(width);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width_blocks),
+                           static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batchs)};
 
   auto runtime = OpenCLRuntime::Get();
@@ -49,10 +49,7 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(mean->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(var->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(epsilon->buffer())));
-  bm_kernel.setArg(idx++, static_cast<uint32_t>(width));
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
-  bm_kernel.setArg(idx++, lws[0] * sizeof(float) * 4, nullptr);
-  bm_kernel.setArg(idx++, lws[0] * sizeof(float) * 4, nullptr);
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
     return {{1, 1, 64},
