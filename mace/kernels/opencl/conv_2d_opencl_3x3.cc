@@ -38,7 +38,6 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   auto program = runtime->program();
 
   auto conv_2d_kernel = runtime->BuildKernel("conv_2d_3x3", "conv_2d_3x3", built_options);
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
 
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

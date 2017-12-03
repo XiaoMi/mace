@@ -57,15 +57,14 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   // Unrolling this loop hurt perfmance
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
     for (short hb_idx = 0; hb_idx < filter_height; ++hb_idx) {
+
+      int in_hb_value = height_idx + hb_idx;
+      in_hb_value = select(in_hb_value + batch_idx,
+                           -1,
+                           (in_hb_value < 0 || in_hb_value >= in_height));
+
       for (short width_idx = 0; width_idx < filter_width; ++width_idx) {
-
         in_idx = in_ch_blk * in_width;
-
-        int in_hb_value = height_idx + hb_idx;
-        in_hb_value = select(in_hb_value + batch_idx,
-                             -1,
-                             (in_hb_value < 0 || in_hb_value >= in_height));
-
         int in_width_value;
 #define READ_INPUT(i)                                                                \
         in_width_value = in_width##i + width_idx;                                    \

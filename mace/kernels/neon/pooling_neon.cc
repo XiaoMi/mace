@@ -58,19 +58,27 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input_tensor,
     Tensor *output_tensor) {
 
+  std::vector<index_t> output_shape(4);
+  std::vector<int> paddings(2);
+  std::vector<index_t> filter_shape(4);
+  filter_shape[0] = input_tensor->shape()[1];
+  filter_shape[1] = input_tensor->shape()[1];
+  filter_shape[2] = kernels_[0];
+  filter_shape[3] = kernels_[1];
+
+  kernels::CalcPaddingAndOutputSize(
+      input_tensor->shape().data(), filter_shape.data(), this->dilations_,
+      strides_, this->padding_, output_shape.data(),
+      paddings.data());
+  output_tensor->Resize(output_shape);
+
   const float *input = input_tensor->data<float>();
   float *output = output_tensor->mutable_data<float>();
   const index_t *input_shape = input_tensor->shape().data();
-  const index_t *output_shape = output_tensor->shape().data();
 
-  int paddings[2];
-  std::vector<index_t> filter_shape = {input_shape[1], input_shape[0],
-                                       kernels_[0], kernels_[1]};
-  kernels::CalPaddingSize(input_shape, filter_shape.data(), this->dilations_,
-                          strides_, this->padding_, paddings);
 #ifdef __COPY_MAKE_PADDING
   Tensor padded_input;
-  ConstructInputWithPadding(input_tensor, paddings, &padded_input);
+  ConstructInputWithPadding(input_tensor, paddings.data(), &padded_input);
   input = padded_input.data<float>();
   input_shape = padded_input.shape().data();
 #endif
@@ -80,17 +88,17 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
     // kernel_size: 2x2, strides: 2x2
     if (pooling_type_ == MAX) {  // MAX_POOL_2x2s2x2
 #ifdef __COPY_MAKE_PADDING
-      PoolingMaxNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
+      PoolingMaxNeonK2x2S2x2Padded(input, input_shape, output, output_shape.data());
 #else
-      PoolingMaxNeonK2x2S2x2(input, input_shape, output, output_shape,
-                             paddings);
+      PoolingMaxNeonK2x2S2x2(input, input_shape, output, output_shape.data(),
+                             paddings.data());
 #endif
     } else {  // AVG_POOL_2x2s2x2
 #ifdef __COPY_MAKE_PADDING
-      PoolingAvgNeonK2x2S2x2Padded(input, input_shape, output, output_shape);
+      PoolingAvgNeonK2x2S2x2Padded(input, input_shape, output, output_shape.data());
 #else
-      PoolingAvgNeonK2x2S2x2(input, input_shape, output, output_shape,
-                             paddings);
+      PoolingAvgNeonK2x2S2x2(input, input_shape, output, output_shape.data(),
+                             paddings.data());
 #endif
     }
   } else if (kernels_[0] == 3 && kernels_[1] == 3 && strides_[0] == 2 &&
@@ -98,17 +106,17 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
     // kernel_size: 3x3, strides: 2x2
     if (pooling_type_ == MAX) {  // MAX_POOL_3x3s2x2
 #ifdef __COPY_MAKE_PADDING
-      PoolingMaxNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
+      PoolingMaxNeonK3x3S2x2Padded(input, input_shape, output, output_shape.data());
 #else
-      PoolingMaxNeonK3x3S2x2(input, input_shape, output, output_shape,
-                             paddings);
+      PoolingMaxNeonK3x3S2x2(input, input_shape, output, output_shape.data(),
+                             paddings.data());
 #endif
     } else {  // AVG_POOL_3x3s2x2
 #ifdef __COPY_MAKE_PADDING
-      PoolingAvgNeonK3x3S2x2Padded(input, input_shape, output, output_shape);
+      PoolingAvgNeonK3x3S2x2Padded(input, input_shape, output, output_shape.data());
 #else
-      PoolingAvgNeonK3x3S2x2(input, input_shape, output, output_shape,
-                             paddings);
+      PoolingAvgNeonK3x3S2x2(input, input_shape, output, output_shape.data(),
+                             paddings.data());
 #endif
     }
   } else {  // not implement yet
