@@ -77,7 +77,7 @@ message OperatorDef {
   optional string name = 3;
   optional string type = 4;
   repeated Argument arg = 5;
-  optional OutputShape output_shape = 6;
+  repeated OutputShape output_shape = 6;
 
   // Memory optimization: only support one single output op
   optional int32 mem_id = 10 [default = -1];
