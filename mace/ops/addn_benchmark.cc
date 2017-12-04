@@ -29,13 +29,17 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
     for (int i = 0; i < inputs; ++i) {
       op_def_builder.Input(internal::MakeString("InputImage", i).c_str());
     }
-    op_def_builder.Output("OutputImage").Finalize(net.NewOperatorDef());
+    op_def_builder.Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder op_def_builder("AddN", "AddNBM");
     for (int i = 0; i < inputs; ++i) {
       op_def_builder.Input(internal::MakeString("Input", i).c_str());
     }
-    op_def_builder.Output("Output").Finalize(net.NewOperatorDef());
+    op_def_builder.Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
   }
 
   // Warm-up
@@ -66,6 +70,8 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, OPENCL);
 
 BM_ADDN(2, 1, 240, 240, 256, float);
+// BM_ADDN(2, 1, 240, 240, 256, half);
 BM_ADDN(4, 1, 240, 240, 256, float);
+// BM_ADDN(4, 1, 240, 240, 256, half);
 
 }  //  namespace mace
