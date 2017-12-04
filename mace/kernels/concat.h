@@ -8,30 +8,70 @@
 #include "mace/core/common.h"
 #include "mace/core/types.h"
 #include "mace/proto/mace.pb.h"
+#include "mace/core/tensor.h"
+
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct ConcatFunctor {
-  void operator()(std::vector<const T *> &input_list,
-                  const index_t inner_dim,
-                  const index_t *outer_dims,
-                  T *output) {
-    const size_t input_count = input_list.size();
-    for (int inner_idx = 0; inner_idx < inner_dim; ++inner_idx) {
-      for (size_t i = 0; i < input_count; ++i) {
+  void operator()(const std::vector<const Tensor *> &input_list,
+                  const int32_t axis,
+                  Tensor *output) {
+    const Tensor *input0 = input_list.front();
+    const int inputs_count = input_list.size() - 1;
+
+    std::vector<index_t> output_shape(input0->shape());
+    index_t inner_size = 1;
+    for (int i = 0; i < axis; ++i) {
+      inner_size *= output_shape[i];
+    }
+    std::vector<index_t> outer_sizes(inputs_count, 0);
+    outer_sizes[0] = input0->size() / inner_size;
+    for (int i = 1; i < inputs_count; ++i) {
+      const Tensor *input = input_list[i];
+      MACE_CHECK(input->dim_size() == input0->dim_size(),
+                 "Ranks of all input tensors must be same.");
+      for (int j = 0; j < input->dim_size(); ++j) {
+        if (j == axis) {
+          continue;
+        }
+        MACE_CHECK(input->dim(j) == input0->dim(j),
+                   "Dimensions of inputs should equal except axis.");
+      }
+      outer_sizes[i] = input->size() / inner_size;
+      output_shape[axis] += input->dim(axis);
+    }
+    output->Resize(output_shape);
+
+    T *output_ptr = output->mutable_data<T>();
+
+    std::vector<const T *> input_ptrs(input_list.size(), nullptr);
+    for (size_t i = 0; i < inputs_count; ++i) {
+      input_ptrs[i] = input_list[i]->data<T>();
+    }
+    for (int inner_idx = 0; inner_idx < inner_size; ++inner_idx) {
+      for (size_t i = 0; i < inputs_count; ++i) {
         if (DataTypeCanUseMemcpy(DataTypeToEnum<T>::v())) {
-          memcpy(output, input_list[i], outer_dims[i] * sizeof(T));
-          output += outer_dims[i];
-          input_list[i] += outer_dims[i];
+          memcpy(output_ptr, input_ptrs[i], outer_sizes[i] * sizeof(T));
+          output_ptr += outer_sizes[i];
+          input_ptrs[i] += outer_sizes[i];
         } else {
-          for (index_t k = 0; k < outer_dims[i]; ++k) {
-            *output++ = *input_list[i]++;
+          for (index_t k = 0; k < outer_sizes[i]; ++k) {
+            *output_ptr++ = *input_ptrs[i]++;
           }
         }
       }
     }
   }
+};
+
+template<typename T>
+struct ConcatFunctor<DeviceType::OPENCL, T> {
+  void operator()(const std::vector<const Tensor *> &input_list,
+                  const int32_t axis,
+                  Tensor *output);
+
 };
 
 }  //  namepsace kernels
