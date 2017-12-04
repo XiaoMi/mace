@@ -9,47 +9,63 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void AddNBenchmark(int iters, int n, int size) {
+static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder op_def_builder("AddN", "AddNBM");
-  for (int i = 0; i < n; ++i) {
-    op_def_builder.Input(internal::MakeString("Input", i).c_str());
-  }
-  op_def_builder.Output("Output").Finalize(net.NewOperatorDef());
-
   // Add input data
-  for (int i = 0; i < n; ++i) {
-    net.AddRandomInput<DeviceType::CPU, float>(internal::MakeString("Input", i).c_str(), {size});
+  for (int i = 0; i < inputs; ++i) {
+    net.AddRandomInput<D, float>(
+        internal::MakeString("Input", i).c_str(), {n, h, w, c});
+  }
+
+  if (D == DeviceType::OPENCL) {
+    for (int i = 0; i < inputs; ++i) {
+      BufferToImage<D, T>(net, internal::MakeString("Input", i).c_str(),
+                          internal::MakeString("InputImage", i).c_str(),
+                          kernels::BufferType::IN_OUT);
+    }
+    OpDefBuilder op_def_builder("AddN", "AddNBM");
+    for (int i = 0; i < inputs; ++i) {
+      op_def_builder.Input(internal::MakeString("InputImage", i).c_str());
+    }
+    op_def_builder.Output("OutputImage").Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder op_def_builder("AddN", "AddNBM");
+    for (int i = 0; i < inputs; ++i) {
+      op_def_builder.Input(internal::MakeString("Input", i).c_str());
+    }
+    op_def_builder.Output("Output").Finalize(net.NewOperatorDef());
   }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
+    net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
+    net.Sync();
   }
 }
 
-#define BM_ADDN_MACRO(N, SIZE, TYPE, DEVICE)                        \
-  static void BM_ADDN_##N##_##SIZE##_##TYPE##_##DEVICE(int iters) { \
-    const int64_t tot = static_cast<int64_t>(iters) * N * SIZE;     \
-    mace::testing::ItemsProcessed(tot);                             \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));             \
-    AddNBenchmark<DEVICE, TYPE>(iters, N, SIZE);                    \
-  }                                                                 \
-  BENCHMARK(BM_ADDN_##N##_##SIZE##_##TYPE##_##DEVICE)
+#define BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, DEVICE)                     \
+  static void BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+      int iters) {                                                          \
+    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;        \
+    mace::testing::ItemsProcessed(tot);                                     \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                     \
+    AddNBenchmark<DEVICE, TYPE>(iters, INPUTS, N, H, W, C);                 \
+  }                                                                         \
+  BENCHMARK(BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ADDN(N, SIZE, TYPE)       \
-  BM_ADDN_MACRO(N, SIZE, TYPE, CPU); \
-  BM_ADDN_MACRO(N, SIZE, TYPE, NEON);
+#define BM_ADDN(INPUTS, N, H, W, C, TYPE)       \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, CPU); \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, OPENCL);
 
-BM_ADDN(10, 1000, float);
-BM_ADDN(10, 10000, float);
-BM_ADDN(100, 1000, float);
-BM_ADDN(100, 10000, float);
+BM_ADDN(2, 1, 240, 240, 256, float);
+BM_ADDN(4, 1, 240, 240, 256, float);
+
 }  //  namespace mace
