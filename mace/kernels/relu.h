@@ -33,9 +33,13 @@ struct ReluFunctor {
 template <>
 void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                       Tensor *output);
-template <>
-void ReluFunctor<DeviceType::OPENCL, float>::operator()(const Tensor *input,
-                                                        Tensor *output);
+
+template <typename T>
+struct ReluFunctor<DeviceType::OPENCL, T> {
+  T max_limit_;
+
+  void operator()(const Tensor *input, Tensor *output);
+};
 
 }  //  namespace kernels
 }  //  namespace mace

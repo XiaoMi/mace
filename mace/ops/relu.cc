@@ -23,4 +23,9 @@ REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Relu")
                              .Build(),
                          ReluOp<DeviceType::OPENCL, float>);
 
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Relu")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         ReluOp<DeviceType::OPENCL, half>);
+
 }  //  namespace mace
