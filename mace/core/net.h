@@ -34,7 +34,8 @@ class SimpleNet : public NetBase {
  public:
   SimpleNet(const std::shared_ptr<const NetDef> &net_def,
             Workspace *ws,
-            DeviceType type);
+            DeviceType type,
+            const OpMode mode = OpMode::NORMAL);
 
   bool Run(RunMetadata *run_metadata = nullptr) override;
 
@@ -47,10 +48,12 @@ class SimpleNet : public NetBase {
 
 unique_ptr<NetBase> CreateNet(const NetDef &net_def,
                               Workspace *ws,
-                              DeviceType type);
+                              DeviceType type,
+                              const OpMode mode = OpMode::NORMAL);
 unique_ptr<NetBase> CreateNet(const std::shared_ptr<const NetDef> &net_def,
                               Workspace *ws,
-                              DeviceType type);
+                              DeviceType type,
+                              const OpMode mode = OpMode::NORMAL);
 
 }  //  namespace mace
 

@@ -17,7 +17,8 @@ NetBase::NetBase(const std::shared_ptr<const NetDef> &net_def,
 
 SimpleNet::SimpleNet(const std::shared_ptr<const NetDef> &net_def,
                      Workspace *ws,
-                     DeviceType type)
+                     DeviceType type,
+                     const OpMode mode)
     : NetBase(net_def, ws, type), device_type_(type){
   VLOG(1) << "Constructing SimpleNet " << net_def->name();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
@@ -26,7 +27,7 @@ SimpleNet::SimpleNet(const std::shared_ptr<const NetDef> &net_def,
             << operator_def.type();
     std::unique_ptr<OperatorBase> op{nullptr};
     OperatorDef temp_def(operator_def);
-    op = CreateOperator(temp_def, ws, type);
+    op = CreateOperator(temp_def, ws, type, mode);
     if (op) {
       operators_.emplace_back(std::move(op));
     }
@@ -91,15 +92,17 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
 
 unique_ptr<NetBase> CreateNet(const NetDef &net_def,
                               Workspace *ws,
-                              DeviceType type) {
+                              DeviceType type,
+                              const OpMode mode) {
   std::shared_ptr<NetDef> tmp_net_def(new NetDef(net_def));
-  return CreateNet(tmp_net_def, ws, type);
+  return CreateNet(tmp_net_def, ws, type, mode);
 }
 
 unique_ptr<NetBase> CreateNet(const std::shared_ptr<const NetDef> &net_def,
                               Workspace *ws,
-                              DeviceType type) {
-  unique_ptr<NetBase> net(new SimpleNet(net_def, ws, type));
+                              DeviceType type,
+                              const OpMode mode) {
+  unique_ptr<NetBase> net(new SimpleNet(net_def, ws, type, mode));
   return net;
 }
 
