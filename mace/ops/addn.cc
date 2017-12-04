@@ -23,4 +23,9 @@ REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
                              .Build(),
                          AddNOp<DeviceType::OPENCL, float>);
 
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         AddNOp<DeviceType::OPENCL, half>);
+
 }  //  namespace mace

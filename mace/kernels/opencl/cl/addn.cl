@@ -1,20 +1,33 @@
 #include <common.h>
 
-// Supported data type: half/float
-__kernel void add2(__global const DATA_TYPE *input0,
-                   __global const DATA_TYPE *input1,
-                   __private const int size,
-                   __global DATA_TYPE *output) {
-  int idx = get_global_id(0);
+__kernel void addn(__read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
+                   __read_only image2d_t input1,
+#if INPUT_NUM > 2
+                   __read_only image2d_t input2,
+#endif
+#if INPUT_NUM > 3
+                   __read_only image2d_t input3,
+#endif
+                   __write_only image2d_t output) {
+  const int w = get_global_id(0);
+  const int hb = get_global_id(1);
 
-  if (idx + 4 > size) {
-    for(; idx < size; ++idx) {
-      *(output+idx) = *(input0+idx) + *(input1+idx);
-    }
-  } else {
-    VEC_DATA_TYPE(DATA_TYPE,4) in_data0 = vload4(idx, input0);
-    VEC_DATA_TYPE(DATA_TYPE,4) in_data1 = vload4(idx, input1);
-    vstore4(in_data0+in_data1, idx, output);
-  }
+  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+
+  DATA_TYPE4 in0 = READ_IMAGET(input0, sampler, (int2)(w, hb));
+  DATA_TYPE4 in1 = READ_IMAGET(input1, sampler, (int2)(w, hb));
+  DATA_TYPE4 out = in0 + in1;
+
+#if INPUT_NUM > 2
+  DATA_TYPE4 in2 = READ_IMAGET(input2, sampler, (int2)(w, hb));
+  out = out + in2;
+#endif
+
+#if INPUT_NUM > 3
+  DATA_TYPE4 in3 = READ_IMAGET(input3, sampler, (int2)(w, hb));
+  out = out + in3;
+#endif
+
+  WRITE_IMAGET(output, (int2)(w, hb), out);
 }
 
