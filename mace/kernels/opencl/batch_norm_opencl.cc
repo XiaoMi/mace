@@ -11,8 +11,8 @@
 namespace mace {
 namespace kernels {
 
-template <>
-void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
+template <typename T>
+void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input,
     const Tensor *scale,
     const Tensor *offset,
@@ -27,7 +27,6 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
   const index_t channels = input->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t width_blocks = RoundUpDiv4(width);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
@@ -35,8 +34,9 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(input->dtype()));
+  auto dt = DataTypeToEnum<T>::value;
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
@@ -83,5 +83,9 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
                                                      func);
 }
 
+template
+struct BatchNormFunctor<DeviceType::OPENCL, float>;
+template
+struct BatchNormFunctor<DeviceType::OPENCL, half>;
 }  // namespace kernels
 }  // namespace mace

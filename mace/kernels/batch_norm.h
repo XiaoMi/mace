@@ -28,8 +28,11 @@ struct BatchNormFunctor {
     // new_scale = \frac{ \scale } { \sqrt{var+\variance_epsilon} }
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
-    const index_t ch_pixel_size = input->dim(0) * input->dim(1) * input->dim(2);
-    const index_t channel = input->dim(3);
+    const index_t batchs = input->dim(0);
+    const index_t height = input->dim(1);
+    const index_t width = input->dim(2);
+    const index_t height_width = height * width;
+    const index_t channels = input->dim(3);
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard scale_mapper(scale);
@@ -47,15 +50,24 @@ struct BatchNormFunctor {
     const T *epsilon_ptr = epsilon->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-#pragma omp parallel for
-    for (index_t c = 0; c < channel; ++c) {
-      T new_scale = scale_ptr[c] / std::sqrt(var_ptr[c] + *epsilon_ptr);
-      T new_offset = offset_ptr[c] - mean_ptr[c] * new_scale;
-      index_t pos = c;
+    vector<T> new_scale(channels);
+    vector<T> new_offset(channels);
 
-      for (index_t i = 0; i < ch_pixel_size; ++i) {
-        output_ptr[pos] = new_scale * input_ptr[pos] + new_offset;
-        pos += channel;
+#pragma omp parallel for
+    for (index_t c = 0; c < channels; ++c) {
+      new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + *epsilon_ptr);
+      new_offset[c] = offset_ptr[c] - mean_ptr[c] * new_scale[c];
+    }
+
+    index_t pos = 0;
+
+#pragma omp parallel for
+    for (index_t n = 0; n < batchs; ++n) {
+      for (index_t hb = 0; hb < height_width; ++hb) {
+        for (index_t c = 0; c < channels; ++c) {
+          output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
+          ++pos;
+        }
       }
     }
   }
@@ -71,15 +83,16 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *epsilon,
     Tensor *output);
 
-template <>
-void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
-      const Tensor *input,
-      const Tensor *scale,
-      const Tensor *offset,
-      const Tensor *mean,
-      const Tensor *var,
-      const Tensor *epsilon,
-      Tensor *output);
+template <typename T>
+struct BatchNormFunctor<DeviceType::OPENCL, T> {
+  void operator()(const Tensor *input,
+                  const Tensor *scale,
+                  const Tensor *offset,
+                  const Tensor *mean,
+                  const Tensor *var,
+                  const Tensor *epsilon,
+                  Tensor *output);
+};
 
 }  //  namepsace kernels
 }  //  namespace mace

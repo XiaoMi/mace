@@ -1,12 +1,12 @@
 #include <common.h>
 // Supported data types: half/float
 __kernel void batch_norm(__read_only image2d_t input,
-                       __read_only image2d_t scale,
-                       __read_only image2d_t offset,
-                       __read_only image2d_t mean,
-                       __read_only image2d_t var,
-                       global const DATA_TYPE *epsilon,
-                       __write_only image2d_t output) {
+                         __read_only image2d_t scale,
+                         __read_only image2d_t offset,
+                         __read_only image2d_t mean,
+                         __read_only image2d_t var,
+                         __global const DATA_TYPE *epsilon,
+                         __write_only image2d_t output) {
   const int ch_blk = get_global_id(0);
   const int w_blk = get_global_id(1);
   const int hb_blk = get_global_id(2);
