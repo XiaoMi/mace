@@ -141,6 +141,7 @@ const std::map<std::string, std::string>
     OpenCLRuntime::program_map_ = {
   {"addn", "addn.cl"},
   {"batch_norm", "batch_norm.cl"},
+  {"conv_2d", "conv_2d.cl"},
   {"conv_2d_1x1", "conv_2d_1x1.cl"},
   {"conv_2d_3x3", "conv_2d_3x3.cl"},
   {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},

@@ -27,21 +27,6 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
-    std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
-    std::vector<index_t> filter_shape(4);
-    // TODO(chenghui): is it kind of a hack?
-    filter_shape[0] = input->shape()[1];
-    filter_shape[1] = input->shape()[0];
-    filter_shape[2] = kernels_[0];
-    filter_shape[3] = kernels_[1];
-
-    kernels::CalcPaddingAndOutputSize(
-        input->shape().data(), filter_shape.data(), this->dilations_.data(),
-        this->strides_.data(), this->padding_, output_shape.data(),
-        paddings.data());
-    output->Resize(output_shape);
-
     functor_(input, output);
     return true;
   };
