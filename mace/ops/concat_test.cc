@@ -16,7 +16,7 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
   OpDefBuilder("Concat", "ConcatTest")
       .Input("Input0")
       .Input("Input1")
-      .Input("Axis")
+      .AddIntArg("axis", 0)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -28,7 +28,6 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
   // Add inputs
   net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
-  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {0});
 
   // Run
   net.RunOp();
@@ -54,7 +53,7 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
   OpDefBuilder("Concat", "ConcatTest")
       .Input("Input0")
       .Input("Input1")
-      .Input("Axis")
+      .AddIntArg("axis", 1)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -66,7 +65,6 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
   // Add inputs
   net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
-  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {1});
 
   // Run
   net.RunOp();
@@ -99,7 +97,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   for (int i = 0; i < num_inputs; ++i) {
     builder = builder.Input(("Input" + ToString(i)).c_str());
   }
-  builder.Input("Axis").Output("Output").Finalize(net.NewOperatorDef());
+  builder.AddIntArg("axis", axis).Output("Output").Finalize(net.NewOperatorDef());
 
   std::vector<index_t> shape_data;
   GenerateRandomIntTypeData<index_t>({dim}, shape_data, 1, dim);
@@ -115,7 +113,6 @@ TEST_F(ConcatOpTest, CPURandom) {
     net.AddInputFromArray<DeviceType::CPU, float>(("Input" + ToString(i)).c_str(),
                                  input_shapes[i], inputs[i]);
   }
-  net.AddInputFromArray<DeviceType::CPU, int>("Axis", {}, {axis});
 
   // Run
   net.RunOp();
@@ -156,14 +153,13 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
                                                   shapes[i]);
     BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name, kernels::BufferType::IN_OUT);
   }
-  net.AddInputFromArray<DeviceType::OPENCL, int>("Axis", {}, {axis});
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
     const std::string image_name = ("InputImage" + ToString(i)).c_str();
     builder = builder.Input(image_name);
   }
-  builder.Input("Axis")
+  builder.AddIntArg("axis", axis)
       .Output("OutputImage")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());

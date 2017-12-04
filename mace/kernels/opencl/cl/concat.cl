@@ -32,8 +32,6 @@ __kernel void concat_channel(__read_only image2d_t input0,
   const int hb_idx = get_global_id(2);
   const int input0_chan_blk = (input0_chan + 3) / 4;
 
-  const sampler_t SAMPLER = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
-
   DATA_TYPE4 data = 0;
 #ifdef DIVISIBLE_FOUR
   if (chan_blk_idx + 1 <= input0_chan_blk) {

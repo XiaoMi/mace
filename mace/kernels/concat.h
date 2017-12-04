@@ -13,17 +13,24 @@
 namespace mace {
 namespace kernels {
 
+struct ConcatFunctorBase {
+  ConcatFunctorBase(const int32_t axis): axis_(axis){}
+
+  int32_t axis_;
+};
+
 template<DeviceType D, typename T>
-struct ConcatFunctor {
+struct ConcatFunctor : ConcatFunctorBase {
+  ConcatFunctor(const int32_t axis): ConcatFunctorBase(axis){}
+
   void operator()(const std::vector<const Tensor *> &input_list,
-                  const int32_t axis,
                   Tensor *output) {
     const Tensor *input0 = input_list.front();
-    const int inputs_count = input_list.size() - 1;
+    const int inputs_count = input_list.size();
 
     std::vector<index_t> output_shape(input0->shape());
     index_t inner_size = 1;
-    for (int i = 0; i < axis; ++i) {
+    for (int i = 0; i < axis_; ++i) {
       inner_size *= output_shape[i];
     }
     std::vector<index_t> outer_sizes(inputs_count, 0);
@@ -33,14 +40,14 @@ struct ConcatFunctor {
       MACE_CHECK(input->dim_size() == input0->dim_size(),
                  "Ranks of all input tensors must be same.");
       for (int j = 0; j < input->dim_size(); ++j) {
-        if (j == axis) {
+        if (j == axis_) {
           continue;
         }
         MACE_CHECK(input->dim(j) == input0->dim(j),
                    "Dimensions of inputs should equal except axis.");
       }
       outer_sizes[i] = input->size() / inner_size;
-      output_shape[axis] += input->dim(axis);
+      output_shape[axis_] += input->dim(axis_);
     }
     output->Resize(output_shape);
 
@@ -67,9 +74,10 @@ struct ConcatFunctor {
 };
 
 template<typename T>
-struct ConcatFunctor<DeviceType::OPENCL, T> {
+struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase{
+  ConcatFunctor(const int32_t axis): ConcatFunctorBase(axis){}
+
   void operator()(const std::vector<const Tensor *> &input_list,
-                  const int32_t axis,
                   Tensor *output);
 
 };

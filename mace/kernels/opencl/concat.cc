@@ -60,10 +60,9 @@ static void Concat2(const Tensor *input0,
 
 template<typename T>
 void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Tensor *> &input_list,
-                                                      const int32_t axis,
                                                       Tensor *output) {
-  const int inputs_count = input_list.size() - 1;
-  MACE_CHECK(inputs_count == 2 && axis == 3)
+  const int inputs_count = input_list.size();
+  MACE_CHECK(inputs_count == 2 && axis_ == 3)
     << "Concat opencl kernel only support two elements with axis == 3";
 
   const Tensor *input0 = input_list[0];
@@ -74,13 +73,13 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     MACE_CHECK(input->dim_size() == input0->dim_size(),
                "Ranks of all input tensors must be same.");
     for (int j = 0; j < input->dim_size(); ++j) {
-      if (j == axis) {
+      if (j == axis_) {
         continue;
       }
       MACE_CHECK(input->dim(j) == input0->dim(j),
                  "Dimensions of inputs should equal except axis.");
     }
-    output_shape[axis] += input->dim(axis);
+    output_shape[axis_] += input->dim(axis_);
   }
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT, image_shape);
