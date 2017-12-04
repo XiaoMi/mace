@@ -15,7 +15,7 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
   OpDefBuilder("Concat", "ConcatBM")
       .Input("Input0")
       .Input("Input1")
-      .Input("Axis")
+      .AddIntArg("axis", concat_dim)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -23,7 +23,6 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
   const int kDim0 = 100;
   net.AddRandomInput<DeviceType::CPU, T>("Input0", {kDim0, dim1});
   net.AddRandomInput<DeviceType::CPU, T>("Input1", {kDim0, dim1});
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Axis", {}, {concat_dim});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -60,14 +59,13 @@ static void OpenclConcatHelper(int iters,
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>("Input0", shape0);
   net.AddRandomInput<DeviceType::OPENCL, float>("Input1", shape1);
-  net.AddInputFromArray<DeviceType::OPENCL, int32_t>("Axis", {}, {concat_dim});
 
   BufferToImage<DeviceType::OPENCL, T>(net, "Input0", "InputImage0", kernels::BufferType::IN_OUT);
   BufferToImage<DeviceType::OPENCL, T>(net, "Input1", "InputImage1", kernels::BufferType::IN_OUT);
   OpDefBuilder("Concat", "ConcatBM")
       .Input("InputImage0")
       .Input("InputImage1")
-      .Input("Axis")
+      .AddIntArg("axis", concat_dim)
       .Output("OutputImage")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());

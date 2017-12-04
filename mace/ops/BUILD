@@ -62,22 +62,6 @@ cc_test(
 )
 
 cc_test(
-    name = "concat_test",
-    testonly = 1,
-    srcs = glob(
-        ["concat_test.cc"],
-    ),
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp"],
-    linkstatic = 1,
-    deps = [
-        ":ops",
-        ":test",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
