@@ -141,6 +141,8 @@ const std::map<std::string, std::string>
     OpenCLRuntime::program_map_ = {
   {"addn", "addn.cl"},
   {"batch_norm", "batch_norm.cl"},
+  {"bias_add", "bias_add.cl"},
+  {"buffer_to_image", "buffer_to_image.cl"},
   {"conv_2d", "conv_2d.cl"},
   {"conv_2d_1x1", "conv_2d_1x1.cl"},
   {"conv_2d_3x3", "conv_2d_3x3.cl"},
@@ -149,7 +151,6 @@ const std::map<std::string, std::string>
   {"relu", "relu.cl"},
   {"resize_bilinear", "resize_bilinear.cl"},
   {"space_to_batch", "space_to_batch.cl"},
-  {"buffer_to_image", "buffer_to_image.cl"},
 };
 
 void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
