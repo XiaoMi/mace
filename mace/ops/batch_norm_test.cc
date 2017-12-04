@@ -5,8 +5,6 @@
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-
 namespace mace {
 
 class BatchNormOpTest : public OpsTestBase {};

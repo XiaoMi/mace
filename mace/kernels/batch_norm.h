@@ -28,10 +28,9 @@ struct BatchNormFunctor {
     // new_scale = \frac{ \scale } { \sqrt{var+\variance_epsilon} }
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
-    const index_t batchs = input->dim(0);
+    const index_t batch = input->dim(0);
     const index_t height = input->dim(1);
     const index_t width = input->dim(2);
-    const index_t height_width = height * width;
     const index_t channels = input->dim(3);
 
     Tensor::MappingGuard input_mapper(input);
@@ -62,11 +61,13 @@ struct BatchNormFunctor {
     index_t pos = 0;
 
 #pragma omp parallel for
-    for (index_t n = 0; n < batchs; ++n) {
-      for (index_t hb = 0; hb < height_width; ++hb) {
-        for (index_t c = 0; c < channels; ++c) {
-          output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
-          ++pos;
+    for (index_t n = 0; n < batch; ++n) {
+      for (index_t h = 0; h < height; ++h) {
+        for (index_t w = 0; w < width; ++w) {
+          for (index_t c = 0; c < channels; ++c) {
+            output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
+            ++pos;
+          }
         }
       }
     }

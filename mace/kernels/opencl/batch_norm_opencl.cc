@@ -21,7 +21,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *epsilon,
     Tensor *output) {
 
-  const index_t batchs = input->dim(0);
+  const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
   const index_t channels = input->dim(3);
@@ -30,7 +30,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batchs)};
+                           static_cast<uint32_t>(height * batch)};
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
@@ -40,7 +40,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
-  const std::vector<uint32_t> lws = {1, 1, kwg_size};
+  const std::vector<uint32_t> lws = {1, kwg_size, 1};
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
@@ -52,7 +52,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
-    return {{1, 1, 64},
+    return {{8, 128, 1}, //SNPE size
+            {1, 1, 64},
             {1, 1, 128},
             {1, kwg_size/16, 16},
             {1, kwg_size/32, 32},
