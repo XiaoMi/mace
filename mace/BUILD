@@ -23,3 +23,11 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "is_profiling",
+    define_values = {
+        "profiling": "true",
+    },
+    visibility = ["//visibility:public"],
+)

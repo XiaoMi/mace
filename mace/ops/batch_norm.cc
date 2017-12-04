@@ -23,4 +23,9 @@ REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BatchNorm")
                              .Build(),
                          BatchNormOp<DeviceType::OPENCL, float>);
 
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BatchNorm")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         BatchNormOp<DeviceType::OPENCL, half>);
+
 }  //  namespace mace

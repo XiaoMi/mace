@@ -1,43 +1,28 @@
 #include <common.h>
 // Supported data types: half/float
-void kernel batch_norm(global const DATA_TYPE *input,
-                       global const DATA_TYPE *scale,
-                       global const DATA_TYPE *offset,
-                       global const DATA_TYPE *mean,
-                       global const DATA_TYPE *var,
-                       global const DATA_TYPE *epsilon,
-                       private const int pixels,
-                       global DATA_TYPE *output,
-                       __local VEC_DATA_TYPE(DATA_TYPE, 4) *new_scale,
-                       __local VEC_DATA_TYPE(DATA_TYPE, 4) *new_offset) {
-  const int batch = get_global_id(0);
-  const int channel = get_global_id(1);
-  const int channels = get_global_size(1);
-  const int pixel_offset = get_global_id(2);
-  const int local_channel = get_local_id(1);
-  const int local_pixel_idx = get_local_id(2);
+__kernel void batch_norm(__read_only image2d_t input,
+                         __read_only image2d_t scale,
+                         __read_only image2d_t offset,
+                         __read_only image2d_t mean,
+                         __read_only image2d_t var,
+                         __global const DATA_TYPE *epsilon,
+                         __write_only image2d_t output) {
+  const int ch_blk = get_global_id(0);
+  const int w = get_global_id(1);
+  const int hb = get_global_id(2);
+  const int width = get_global_size(1);
 
-  if(local_pixel_idx == 0) {
-    new_scale[local_channel] = (float4)(scale[channel] * rsqrt(var[channel] + *epsilon));
-    new_offset[local_channel] = (float4)(offset[channel] - mean[channel] * new_scale[local_channel].x);
-  }
+  DATA_TYPE4 scale_value = READ_IMAGET(scale, SAMPLER, (int2)(ch_blk, 0));
+  DATA_TYPE4 offset_value = READ_IMAGET(offset, SAMPLER, (int2)(ch_blk, 0));
+  DATA_TYPE4 mean_value = READ_IMAGET(mean, SAMPLER, (int2)(ch_blk, 0));
+  DATA_TYPE4 var_value = READ_IMAGET(var, SAMPLER, (int2)(ch_blk, 0));
 
-  barrier(CLK_LOCAL_MEM_FENCE);
+  DATA_TYPE4 new_scale = scale_value * rsqrt(var_value + (DATA_TYPE4)(*epsilon));
+  DATA_TYPE4 new_offset = offset_value - mean_value * new_scale;
 
-  const int image_offset = (batch * channels + channel) * pixels + pixel_offset*4;
-  const DATA_TYPE *input_ptr = input + image_offset;
-  DATA_TYPE *output_ptr = output + image_offset;
-  const int end = (batch * channels + channel + 1) * pixels;
-  if ((image_offset+4) > end) {
-    for (int i = image_offset; i < end; ++i) {
-      *output_ptr = new_scale[local_channel].x * *input_ptr + new_offset[local_channel].x;
-      ++input_ptr;
-      ++output_ptr;
-    }
-  } else {
-    VEC_DATA_TYPE(DATA_TYPE, 4) values = vload4(0, input_ptr);
-    values = values * new_scale[local_channel] + new_offset[local_channel];
-    vstore4(values, 0, output_ptr);
-  }
+  const int pos = ch_blk * width + w;
+
+  DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
+  DATA_TYPE4 out = in * new_scale + new_offset;
+  WRITE_IMAGET(output, (int2)(pos, hb), out);
 }
-
