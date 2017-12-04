@@ -6,6 +6,7 @@
 #define MACE_UTILS_UTILS_H_
 
 #include <sys/time.h>
+#include <sstream>
 
 namespace mace {
 template <typename Integer>
@@ -38,6 +39,13 @@ inline int64_t NowInMicroSec() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
   return static_cast<int64_t>(tv.tv_sec * 1000000 + tv.tv_usec);
+}
+
+template <typename T>
+inline std::string ToString(T v) {
+  std::ostringstream ss;
+  ss << v;
+  return ss.str();
 }
 
 }  //  namespace mace

@@ -13,27 +13,44 @@ static void BatchNorm(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
-  if ( D == OPENCL )
-    OpenCLRuntime::EnableProfiling();
-
   OpsTestNet net;
-  OpDefBuilder("BatchNorm", "BatchNormBM")
-      .Input("Input")
-      .Input("Scale")
-      .Input("Offset")
-      .Input("Mean")
-      .Input("Var")
-      .Input("Epsilon")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   net.AddRandomInput<D, T>("Scale", {channels});
   net.AddRandomInput<D, T>("Offset", {channels});
   net.AddRandomInput<D, T>("Mean", {channels});
   net.AddRandomInput<D, T>("Var", {channels}, true);
   net.AddInputFromArray<D, float>("Epsilon", {}, {1e-3});
+
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Scale", "ScaleImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Offset", "OffsetImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Mean", "MeanImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Var", "VarImage", kernels::BufferType::ARGUMENT);
+    OpDefBuilder("BatchNorm", "BatchNormBM")
+        .Input("InputImage")
+        .Input("ScaleImage")
+        .Input("OffsetImage")
+        .Input("MeanImage")
+        .Input("VarImage")
+        .Input("Epsilon")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  }
+  else {
+    OpDefBuilder("BatchNorm", "BatchNormBM")
+        .Input("Input")
+        .Input("Scale")
+        .Input("Offset")
+        .Input("Mean")
+        .Input("Var")
+        .Input("Epsilon")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  }
+
 
   // tuning
   setenv("MACE_TUNING", "1", 1);

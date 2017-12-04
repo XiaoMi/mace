@@ -20,7 +20,7 @@ cc_library(
     hdrs = glob([
         "*.h",
     ]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     deps = [
         "//mace/core:core",
     ],

@@ -6,14 +6,26 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(ResizeBilinear, ResizeBilinearOp<DeviceType::CPU, float>);
+REGISTER_CPU_OPERATOR(OpKeyBuilder("ResizeBilinear")
+                          .TypeConstraint<float>("T")
+                          .Build(),
+                      ResizeBilinearOp<DeviceType::CPU, float>);
 
 #if __ARM_NEON
-REGISTER_NEON_OPERATOR(ResizeBilinear,
+REGISTER_NEON_OPERATOR(OpKeyBuilder("ResizeBilinear")
+                             .TypeConstraint<float>("T")
+                             .Build(),
                        ResizeBilinearOp<DeviceType::NEON, float>);
 #endif  // __ARM_NEON
 
-REGISTER_OPENCL_OPERATOR(ResizeBilinear,
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
+                             .TypeConstraint<float>("T")
+                             .Build(),
                          ResizeBilinearOp<DeviceType::OPENCL, float>);
+
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
+                             .TypeConstraint<half>("T")
+                             .Build(),
+                         ResizeBilinearOp<DeviceType::OPENCL, half>);
 
 }  //  namespace mace

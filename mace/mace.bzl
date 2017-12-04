@@ -23,3 +23,9 @@ def if_android_arm64(a):
       "//mace:android_arm64": a,
       "//conditions:default": [],
   })
+
+def if_profiling(a):
+  return select({
+      "//mace:is_profiling": a,
+      "//conditions:default": [],
+  })

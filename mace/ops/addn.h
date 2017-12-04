@@ -10,7 +10,7 @@
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class AddNOp : public Operator<D, T> {
  public:
   AddNOp(const OperatorDef &operator_def, Workspace *ws)
@@ -18,7 +18,6 @@ class AddNOp : public Operator<D, T> {
 
   bool Run() override {
     Tensor *output_tensor = this->outputs_[0];
-    output_tensor->ResizeLike(this->inputs_[0]);
     int n = this->inputs_.size();
     vector<const Tensor *> inputs(n, nullptr);
     for (int i = 0; i < n; ++i) {

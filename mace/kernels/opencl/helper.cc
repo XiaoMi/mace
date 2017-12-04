@@ -54,40 +54,46 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
 }
 
 
-std::string DataTypeToCLType(const DataType dt) {
+std::string DtToCLDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
       return "float";
     case DT_HALF:
       return "half";
-    case DT_UINT8:
-      return "uchar";
-    case DT_INT8:
-      return "char";
-    case DT_DOUBLE:
-      return "double";
-    case DT_INT32:
-      return "int";
-    case DT_UINT32:
-      return "int";
-    case DT_UINT16:
-      return "ushort";
-    case DT_INT16:
-      return "short";
-    case DT_INT64:
-      return "long";
     default:
       LOG(FATAL) << "Unsupported data type";
       return "";
   }
 }
 
-std::string DataTypeToOPENCLCMDDataType(const DataType dt) {
+std::string DtToCLCMDDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
       return "f";
     case DT_HALF:
       return "h";
+    default:
+      LOG(FATAL) << "Not supported data type for opencl cmd data type";
+      return "";
+  }
+}
+
+std::string DtToUpstreamCLDt(const DataType dt) {
+  switch (dt) {
+    case DT_FLOAT:
+    case DT_HALF:
+      return "float";
+    default:
+      LOG(FATAL) << "Unsupported data type";
+      return "";
+  }
+}
+
+std::string DtToUpstreamCLCMDDt(const DataType dt) {
+  switch (dt) {
+    case DT_FLOAT:
+    case DT_HALF:
+      return "f";
     default:
       LOG(FATAL) << "Not supported data type for opencl cmd data type";
       return "";

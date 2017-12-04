@@ -14,4 +14,11 @@
 #define CMD_TYPE_STR(cmd, type) cmd##type
 #define CMD_TYPE(cmd, type) CMD_TYPE_STR(cmd, type)
 
+#define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
+#define READ_IMAGET CMD_TYPE(read_image, CMD_DATA_TYPE)
+#define WRITE_IMAGET CMD_TYPE(write_image, CMD_DATA_TYPE)
+
+
+__constant sampler_t SAMPLER = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+
 #endif  // MACE_KERNELS_OPENCL_CL_COMMON_H_

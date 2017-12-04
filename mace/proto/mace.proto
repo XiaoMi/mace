@@ -67,12 +67,20 @@ message NodeInput {
   optional int32 output_port = 2;
 }
 
+message OutputShape {
+  repeated int64 dims = 1;
+}
+
 message OperatorDef {
   repeated string input = 1;
   repeated string output = 2;
   optional string name = 3;
   optional string type = 4;
   repeated Argument arg = 5;
+  repeated OutputShape output_shape = 6;
+
+  // Memory optimization: only support one single output op
+  optional int32 mem_id = 10 [default = -1];
 
   // for hexagon mace-nnlib
   optional uint32 node_id = 100;
@@ -80,6 +88,16 @@ message OperatorDef {
   optional uint32 padding = 102;
   repeated NodeInput node_input = 103;
   repeated int32 out_max_byte_size = 104; // only support 32-bit len
+}
+
+// for memory optimization
+message MemoryBlock {
+  optional int32 mem_id = 1;
+  optional uint32 x = 2;
+  optional uint32 y = 3;
+}
+message MemoryArena {
+  repeated MemoryBlock mem_block = 1;
 }
 
 // for hexagon mace-nnlib

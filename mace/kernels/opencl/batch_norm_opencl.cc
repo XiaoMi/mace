@@ -11,8 +11,8 @@
 namespace mace {
 namespace kernels {
 
-template <>
-void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
+template <typename T>
+void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input,
     const Tensor *scale,
     const Tensor *offset,
@@ -21,35 +21,39 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
     const Tensor *epsilon,
     Tensor *output) {
 
-  index_t pixel_size = input->dim(2) * input->dim(3);
-  index_t blocks = (pixel_size + 3) / 4;
+  const index_t batch = input->dim(0);
+  const index_t height = input->dim(1);
+  const index_t width = input->dim(2);
+  const index_t channels = input->dim(3);
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(input->dim(0)),
-                           static_cast<uint32_t>(input->dim(1)),
-                           static_cast<uint32_t>(blocks)};
+  const index_t channel_blocks = RoundUpDiv4(channels);
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
 
   auto runtime = OpenCLRuntime::Get();
   std::set<std::string> built_options;
-  built_options.emplace("-DDATA_TYPE=" + DataTypeToCLType(input->dtype()));
+  auto dt = DataTypeToEnum<T>::value;
+  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
-  const std::vector<uint32_t> lws = {1, 1, kwg_size};
+  const std::vector<uint32_t> lws = {1, kwg_size, 1};
 
   uint32_t idx = 0;
-  bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(input->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(scale->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(offset->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(mean->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(var->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(scale->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(offset->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(mean->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(var->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(epsilon->buffer())));
-  bm_kernel.setArg(idx++, static_cast<uint32_t>(pixel_size));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(output->buffer())));
-  bm_kernel.setArg(idx++, lws[1] * sizeof(float) * 4, nullptr);
-  bm_kernel.setArg(idx++, lws[1] * sizeof(float) * 4, nullptr);
+  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
-    return {{1, 1, 64},
+    return {{8, 128, 1}, //SNPE size
+            {1, 1, 64},
             {1, 1, 128},
             {1, kwg_size/16, 16},
             {1, kwg_size/32, 32},
@@ -80,5 +84,9 @@ void BatchNormFunctor<DeviceType::OPENCL, float>::operator()(
                                                      func);
 }
 
+template
+struct BatchNormFunctor<DeviceType::OPENCL, float>;
+template
+struct BatchNormFunctor<DeviceType::OPENCL, half>;
 }  // namespace kernels
 }  // namespace mace

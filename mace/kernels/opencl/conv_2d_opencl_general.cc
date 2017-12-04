@@ -11,10 +11,10 @@
 namespace mace {
 namespace kernels {
 
-static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
-                         const Tensor *bias, const bool fused_relu,
-                         const uint32_t stride, const int *padding,
-                         const DataType dt, Tensor *output) {
+void Conv2dOpencl(const Tensor *input, const Tensor *filter,
+                  const Tensor *bias, const bool fused_relu,
+                  const uint32_t stride, const int *padding,
+                  const DataType dt, Tensor *output) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -23,7 +23,7 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
-  const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
+  const index_t width_blocks = RoundUpDiv4(width);
 
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
@@ -37,7 +37,8 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   auto runtime = OpenCLRuntime::Get();
   auto program = runtime->program();
 
-  auto conv_2d_kernel = runtime->BuildKernel("conv_2d_3x3", "conv_2d_3x3", built_options);
+  auto conv_2d_kernel = runtime->BuildKernel("conv_2d", "conv_2d", built_options);
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
 
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
@@ -51,6 +52,8 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   conv_2d_kernel.setArg(idx++, static_cast<int>(input_channel_blocks));
   conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(filter->dim(0)));
+  conv_2d_kernel.setArg(idx++, static_cast<int>(filter->dim(1)));
   conv_2d_kernel.setArg(idx++, padding[0] / 2);
   conv_2d_kernel.setArg(idx++, padding[1] / 2);
 
@@ -65,25 +68,6 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
   MACE_CHECK(error == CL_SUCCESS, error);
 
 }
-void Conv2dOpenclK3x3S1(const Tensor *input,
-                        const Tensor *filter,
-                        const Tensor *bias,
-                        const bool fused_relu,
-                        const int *padding,
-                        const DataType dt,
-                        Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, fused_relu, 1, padding, dt, output);
-};
-
-void Conv2dOpenclK3x3S2(const Tensor *input,
-                        const Tensor *filter,
-                        const Tensor *bias,
-                        const bool fused_relu,
-                        const int *padding,
-                        const DataType dt,
-                        Tensor *output) {
-  Conv2d3x3S12(input, filter, bias, fused_relu, 2, padding, dt, output);
-};
 
 }  // namespace kernels
 }  // namespace mace

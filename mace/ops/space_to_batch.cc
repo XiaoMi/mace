@@ -6,6 +6,9 @@
 
 namespace mace {
 
-REGISTER_OPENCL_OPERATOR(SpaceToBatchND, SpaceToBatchNDOp<DeviceType::OPENCL, float>);
+REGISTER_OPENCL_OPERATOR(OpKeyBuilder("SpaceToBatchND")
+                             .TypeConstraint<float>("T")
+                             .Build(),
+                         SpaceToBatchNDOp<DeviceType::OPENCL, float>);
 
 }  //  namespace mace
