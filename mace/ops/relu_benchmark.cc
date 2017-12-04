@@ -9,17 +9,28 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void ReluBenchmark(int iters, int size) {
+static void ReluBenchmark(
+    int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("Relu", "ReluBM")
-      .Input("Input")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {size});
+  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+
+    OpDefBuilder("Relu", "ReluBM")
+        .Input("InputImage")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder("Relu", "ReluBM")
+        .Input("Input")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -34,21 +45,23 @@ static void ReluBenchmark(int iters, int size) {
   net.Sync();
 }
 
-#define BM_RELU_MACRO(SIZE, TYPE, DEVICE)                     \
-  static void BM_RELU_##SIZE##_##TYPE##_##DEVICE(int iters) { \
-    const int64_t tot = static_cast<int64_t>(iters) * SIZE;   \
-    mace::testing::ItemsProcessed(tot);                       \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));       \
-    ReluBenchmark<DEVICE, TYPE>(iters, SIZE);                 \
-  }                                                           \
-  BENCHMARK(BM_RELU_##SIZE##_##TYPE##_##DEVICE)
+#define BM_RELU_MACRO(N, C, H, W, TYPE, DEVICE)                      \
+  static void BM_RELU_##N##C##H##W##_##TYPE##_##DEVICE(int iters) {  \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
+    mace::testing::ItemsProcessed(tot);                              \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
+    ReluBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                  \
+  }                                                                  \
+  BENCHMARK(BM_RELU_##N##C##H##W##_##TYPE##_##DEVICE)
 
-#define BM_RELU(SIZE, TYPE)       \
-  BM_RELU_MACRO(SIZE, TYPE, CPU); \
-  BM_RELU_MACRO(SIZE, TYPE, NEON);\
-  BM_RELU_MACRO(SIZE, TYPE, OPENCL);
+#define BM_RELU(N, C, H, W, TYPE)       \
+  BM_RELU_MACRO(N, C, H, W, TYPE, CPU); \
+  BM_RELU_MACRO(N, C, H, W, TYPE, NEON);\
+  BM_RELU_MACRO(N, C, H, W, TYPE, OPENCL);
 
-BM_RELU(1000, float);
-BM_RELU(100000, float);
-BM_RELU(10000000, float);
+BM_RELU(1, 1, 512, 512, float);
+BM_RELU(1, 3, 128, 128, float);
+BM_RELU(1, 3, 512, 512, float);
+BM_RELU(1, 32, 112, 112, float);
+BM_RELU(1, 64, 256, 256, float);
 }  //  namespace mace
