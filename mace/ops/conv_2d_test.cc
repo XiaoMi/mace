@@ -558,18 +558,20 @@ TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
 }
 
 template<DeviceType D>
-static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
+static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
+                                      const std::vector<index_t> &filter_shape) {
   testing::internal::LogToStderr();
-  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
-                  Padding type) {
-    srand(time(NULL));
+  srand(time(NULL));
 
+  auto func = [&](int stride_h, int stride_w, Padding padding) {
     // generate random input
     index_t batch = 3 + (rand() % 10);
-    index_t height = shape[0];
-    index_t width = shape[1];
-    index_t input_channels = shape[2] + (rand() % 10);
-    index_t output_channels = shape[3] + (rand() % 10);
+    index_t height = input_shape[0];
+    index_t width = input_shape[1];
+    index_t kernel_h = filter_shape[0];
+    index_t kernel_w = filter_shape[1];
+    index_t input_channels = filter_shape[2] + (rand() % 10);
+    index_t output_channels = filter_shape[3] + (rand() % 10);
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -578,7 +580,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
         .Input("Bias")
         .Output("Output")
         .AddIntsArg("strides", {stride_h, stride_w})
-        .AddIntArg("padding", type)
+        .AddIntArg("padding", padding)
         .AddIntsArg("dilations", {1, 1})
         .Finalize(net.NewOperatorDef());
 
@@ -611,7 +613,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
         .Input("BiasImage")
         .Output("OutputImage")
         .AddIntsArg("strides", {stride_h, stride_w})
-        .AddIntArg("padding", type)
+        .AddIntArg("padding", padding)
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
         .Finalize(net.NewOperatorDef());
@@ -620,20 +622,46 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
 
     ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
   };
 
-  for (int kernel_size : {1, 3}) {
-    for (int stride : {1, 2}) {
-      func(kernel_size, kernel_size, stride, stride, VALID);
-    }
+  for (int stride : {1, 2}) {
+    func(stride, stride, VALID);
+    func(stride, stride, SAME);
   }
 }
 
-TEST_F(Conv2dOpTest, OPENCLHalfAlignedConvNxNS12) {
-  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64});
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x1S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
+                                                {1, 1, 32, 64});
 }
 
-TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConvNxNS12) {
-  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113, 5, 7});
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
+                                                {3, 3, 32, 64});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv15x1S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
+                                                {15, 1, 256, 2});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x15S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
+                                                {1, 15, 256, 2});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x75S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
+                                                {7, 7, 3, 64});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv1x1S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113},
+                                                {1, 1, 5, 7});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113},
+                                                {3, 3, 5, 7});
 }
