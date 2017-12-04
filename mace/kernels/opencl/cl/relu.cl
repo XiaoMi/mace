@@ -10,7 +10,7 @@ __kernel void relu(__read_only image2d_t input,
 
   const int pos = ch_blk * width + w;
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
-  DATA_TYPE4 out = fmax(in, (DATA_TYPE4)0);
+  DATA_TYPE4 out = fmax(in, 0);
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }
 
@@ -24,6 +24,6 @@ __kernel void relux(__read_only image2d_t input,
 
   const int pos = ch_blk * width + w;
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
-  DATA_TYPE4 out = clamp(in, (DATA_TYPE4)0, (DATA_TYPE4)max_limit);
+  DATA_TYPE4 out = clamp(in, 0, max_limit);
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }
