@@ -149,6 +149,7 @@ const std::map<std::string, std::string>
   {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},
   {"pooling", "pooling.cl"},
   {"relu", "relu.cl"},
+  {"concat", "concat.cl"},
   {"resize_bilinear", "resize_bilinear.cl"},
   {"space_to_batch", "space_to_batch.cl"},
 };
