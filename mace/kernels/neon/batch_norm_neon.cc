@@ -15,7 +15,6 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    const Tensor *epsilon,
     Tensor *output) {
   // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
   // The calculation formula for inference is
@@ -34,14 +33,13 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
   const float *offset_ptr = offset->data<float>();
   const float *mean_ptr = mean->data<float>();
   const float *var_ptr = var->data<float>();
-  const float *epsilon_ptr = epsilon->data<float>();
   float *output_ptr = output->mutable_data<float>();
 
   index_t count = sample_size >> 2;
   index_t remain_count = sample_size - (count << 2);
 #pragma omp parallel for
   for (index_t c = 0; c < channel; ++c) {
-    float new_scale = scale_ptr[c] / std::sqrt(var_ptr[c] + *epsilon_ptr);
+    float new_scale = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon_);
     float new_offset = offset_ptr[c] - mean_ptr[c] * new_scale;
     index_t pos = c * sample_size;
 
