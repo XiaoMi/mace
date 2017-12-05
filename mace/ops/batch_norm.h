@@ -16,7 +16,7 @@ class BatchNormOp : public Operator<D, T> {
   BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws), functor_() {
     functor_.epsilon_ =
-      OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(-1));
+      OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(1e-4));
   }
 
   bool Run() override {
