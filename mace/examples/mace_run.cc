@@ -100,9 +100,12 @@ int main(int argc, char **argv) {
     in_file.close();
   }
 
+  // Init model
+  auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
+  net->Run();
 
   // run model
-  auto net = CreateNet(net_def, &ws, device_type);
+  net = CreateNet(net_def, &ws, device_type);
 
   VLOG(0) << "warm up";
   // warm up
