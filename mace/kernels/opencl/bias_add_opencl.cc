@@ -40,7 +40,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
 
   uint32_t idx = 0;
   bias_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-  bias_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(bias->buffer())));
+  bias_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
   bias_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
@@ -48,6 +48,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
       NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+  MACE_CHECK(error == CL_SUCCESS);
 }
 
 template
