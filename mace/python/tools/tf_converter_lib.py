@@ -45,9 +45,11 @@ def get_input_tensor(op, index):
 def add_buffer_to_image(input_name, input_type, net_def):
   output_name = input_name[:-2] + "_b2i" + input_name[-2:]
   op_def = net_def.op.add()
-  op_def.name = output_name
+  op_def.name = output_name[:-2]
   op_def.type = 'BufferToImage'
   op_def.input.extend([input_name])
+  op_def.output.extend([output_name])
+
   epsilon_arg = op_def.arg.add()
   epsilon_arg.name = 'buffer_type'
   epsilon_arg.i = buffer_type_map[input_type]
@@ -55,6 +57,30 @@ def add_buffer_to_image(input_name, input_type, net_def):
   epsilon_arg.name = 'mode'
   epsilon_arg.i = 0
   return output_name
+
+def add_input_transform(name, net_def):
+  new_input_name = "mace_input_node:0"
+  op_def = net_def.op.add()
+  op_def.name = name
+  op_def.type = 'BufferToImage'
+  op_def.input.extend([new_input_name])
+  op_def.output.extend([name+':0'])
+
+  epsilon_arg = op_def.arg.add()
+  epsilon_arg.name = 'buffer_type'
+  epsilon_arg.i = buffer_type_map['IN_OUT']
+
+def add_output_transform(name, net_def):
+  output_name = "mace_output_node:0"
+  op_def = net_def.op.add()
+  op_def.name = output_name[:-2]
+  op_def.type = 'ImageToBuffer'
+  op_def.input.extend([name+':0'])
+  op_def.output.extend([output_name])
+
+  epsilon_arg = op_def.arg.add()
+  epsilon_arg.name = 'buffer_type'
+  epsilon_arg.i = buffer_type_map['IN_OUT']
 
 def convert_ops(unresolved_ops, net_def, device):
   ops_count = len(unresolved_ops)
@@ -257,7 +283,7 @@ def convert_ops(unresolved_ops, net_def, device):
     size_arg.ints.extend(get_input_tensor(first_op, 1).eval().astype(np.int32).flat)
     size_arg = op_def.arg.add()
     size_arg.name = 'align_corners'
-    size_arg.ints.extend(first_op.get_attr('align_corners'))
+    size_arg.i = first_op.get_attr('align_corners')
     output_shapes = []
     for output in first_op.outputs:
       output_shape = mace_pb2.OutputShape()
@@ -284,7 +310,7 @@ def convert_ops(unresolved_ops, net_def, device):
     del unresolved_ops[0]
 
 
-def convert_to_mace_pb(input_graph_def, device):
+def convert_to_mace_pb(input_graph_def, input_node, output_node, device):
   net_def = mace_pb2.NetDef()
 
   with tf.Session() as session:
@@ -292,8 +318,12 @@ def convert_to_mace_pb(input_graph_def, device):
       tf.import_graph_def(input_graph_def, name="")
       ops = graph.get_operations()
       unresolved_ops = ops
+      if device == 'gpu':
+        add_input_transform(input_node, net_def)
       while len(unresolved_ops) > 0:
         convert_ops(unresolved_ops, net_def, device)
+      if device == 'gpu':
+        add_output_transform(output_node, net_def)
 
   print "PB Parsed."
 
