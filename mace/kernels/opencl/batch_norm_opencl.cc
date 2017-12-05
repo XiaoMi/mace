@@ -44,11 +44,11 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(scale->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(offset->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(mean->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(var->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<cl::Buffer *>(epsilon->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(scale->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(offset->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(mean->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
+  bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(epsilon->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
