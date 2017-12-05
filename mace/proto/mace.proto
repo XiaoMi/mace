@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package mace;
 
-enum OpMode {
+enum NetMode {
   INIT   = 0;
   NORMAL = 1;
 }

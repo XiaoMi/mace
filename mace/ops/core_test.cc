@@ -17,7 +17,7 @@ TEST(CoreTest, INIT_MODE) {
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", kernels::BufferType::FILTER)
-      .AddIntArg("mode", static_cast<int>(OpMode::INIT))
+      .AddIntArg("mode", static_cast<int>(NetMode::INIT))
       .Finalize(&op_defs[op_defs.size()-1]);
 
   Tensor *input =
@@ -40,7 +40,7 @@ TEST(CoreTest, INIT_MODE) {
   for (auto &op_def : op_defs) {
     net_def.add_op()->CopyFrom(op_def);
   }
-  auto net = CreateNet(net_def, &ws, DeviceType::OPENCL, OpMode::INIT);
+  auto net = CreateNet(net_def, &ws, DeviceType::OPENCL, NetMode::INIT);
   net->Run();
 
   EXPECT_TRUE(ws.GetTensor("B2IOutput") != nullptr);

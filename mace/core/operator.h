@@ -196,7 +196,7 @@ MACE_DECLARE_REGISTRY(OPENCLOperatorRegistry,
 unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
                                         Workspace *ws,
                                         DeviceType type,
-                                        const OpMode mode);
+                                        const NetMode mode);
 
 }  //  namespace mace
 

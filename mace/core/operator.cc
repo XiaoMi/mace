@@ -50,15 +50,15 @@ MACE_REGISTER_DEVICE_TYPE(DeviceType::OPENCL, OPENCLOperatorRegistry);
 unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
                                         Workspace *ws,
                                         DeviceType type,
-                                        const OpMode mode) {
+                                        const NetMode mode) {
   OperatorRegistry *registry = gDeviceTypeRegistry()->at(type);
   const int dtype = ArgumentHelper::GetSingleArgument<OperatorDef, int>(operator_def,
                                                                         "T",
                                                                         static_cast<int>(DT_FLOAT));
   const int op_mode_i= ArgumentHelper::GetSingleArgument<OperatorDef, int>(operator_def,
                                                                         "mode",
-                                                                        static_cast<int>(OpMode::NORMAL));
-  const OpMode op_mode = static_cast<OpMode>(op_mode_i);
+                                                                        static_cast<int>(NetMode::NORMAL));
+  const NetMode op_mode = static_cast<NetMode>(op_mode_i);
   if (op_mode == mode) {
     return registry->Create(OpKeyBuilder(operator_def.type().data())
                                 .TypeConstraint("T", static_cast<DataType>(dtype))
