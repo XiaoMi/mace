@@ -18,7 +18,6 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    const Tensor *epsilon,
     Tensor *output) {
 
   const index_t batch = input->dim(0);
@@ -48,7 +47,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(offset->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(mean->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(epsilon->buffer())));
+  bm_kernel.setArg(idx++, epsilon_);
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {

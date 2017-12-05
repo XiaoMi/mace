@@ -14,7 +14,10 @@ template <DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
  public:
   BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws), functor_() {}
+      : Operator<D, T>(operator_def, ws), functor_() {
+    functor_.epsilon_ =
+      OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(-1));
+  }
 
   bool Run() override {
     const Tensor *input = this->Input(INPUT);
@@ -22,7 +25,6 @@ class BatchNormOp : public Operator<D, T> {
     const Tensor *offset = this->Input(OFFSET);
     const Tensor *mean = this->Input(MEAN);
     const Tensor *var = this->Input(VAR);
-    const Tensor *epsilon = this->Input(EPSILON);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
@@ -34,13 +36,11 @@ class BatchNormOp : public Operator<D, T> {
                mean->dim_size());
     MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ",
                var->dim_size());
-    MACE_CHECK(epsilon->dim_size() == 0, "epsilon must be 0-dimensional. ",
-               epsilon->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
-    functor_(input, scale, offset, mean, var, epsilon, output);
+    functor_(input, scale, offset, mean, var, output);
     return true;
   }
 
@@ -48,7 +48,7 @@ class BatchNormOp : public Operator<D, T> {
   kernels::BatchNormFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR, EPSILON);
+  OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
   OP_OUTPUT_TAGS(OUTPUT);
 };
 

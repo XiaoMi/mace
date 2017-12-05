@@ -21,7 +21,6 @@ static void BatchNorm(
   net.AddRandomInput<D, T>("Offset", {channels});
   net.AddRandomInput<D, T>("Mean", {channels});
   net.AddRandomInput<D, T>("Var", {channels}, true);
-  net.AddInputFromArray<D, float>("Epsilon", {}, {1e-3});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
@@ -35,7 +34,7 @@ static void BatchNorm(
         .Input("OffsetImage")
         .Input("MeanImage")
         .Input("VarImage")
-        .Input("Epsilon")
+        .AddFloatArg("epsilon", 1e-3)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   }
@@ -46,7 +45,7 @@ static void BatchNorm(
         .Input("Offset")
         .Input("Mean")
         .Input("Var")
-        .Input("Epsilon")
+        .AddFloatArg("epsilon", 1e-3)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   }

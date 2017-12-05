@@ -20,7 +20,6 @@ void Simple() {
   net.AddInputFromArray<D, float>("Offset", {1}, {2.0});
   net.AddInputFromArray<D, float>("Mean", {1}, {10});
   net.AddInputFromArray<D, float>("Var", {1}, {11.67f});
-  net.AddInputFromArray<D, float>("Epsilon", {}, {1e-3});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
@@ -35,7 +34,7 @@ void Simple() {
         .Input("OffsetImage")
         .Input("MeanImage")
         .Input("VarImage")
-        .Input("Epsilon")
+        .AddFloatArg("epsilon", 1e-3)
         .Output("OutputImage")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -50,7 +49,7 @@ void Simple() {
         .Input("Offset")
         .Input("Mean")
         .Input("Var")
-        .Input("Epsilon")
+        .AddFloatArg("epsilon", 1e-3)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -180,7 +179,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -190,7 +189,6 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
-  net.AddInputFromArray<DeviceType::OPENCL, float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();
@@ -212,7 +210,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
       .Input("OffsetImage")
       .Input("MeanImage")
       .Input("VarImage")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("OutputImage")
       .Finalize(net.NewOperatorDef());
 
@@ -246,7 +244,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -256,7 +254,6 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
-  net.AddInputFromArray<DeviceType::OPENCL, float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();
@@ -279,7 +276,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
       .Input("OffsetImage")
       .Input("MeanImage")
       .Input("VarImage")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("OutputImage")
       .Finalize(net.NewOperatorDef());
 
