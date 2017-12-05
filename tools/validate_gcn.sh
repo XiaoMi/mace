@@ -20,19 +20,19 @@ PHONE_DATA_DIR="/data/local/tmp/${MACE_MODEL_NAME}"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
 
 # Step 1: convert tf model to mace model
-#echo "Step 1: convert tf model to mace model"
-#bazel build //mace/python/tools:tf_converter
-#bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
-#                                         --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
-#                                         --input_node=input \
-#                                         --output_node=GCN/br_result_2/fcn_br \
-#                                         --runtime=gpu
-#
-## Step 2: Generate input data
-#echo "Step 2: Generate input data"
-#python tools/validate.py --generate_data true --random_seed 1 \
-# --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
-# --input_shape=512,512,3
+echo "Step 1: convert tf model to mace model"
+bazel build //mace/python/tools:tf_converter
+bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
+                                         --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
+                                         --input_node=input \
+                                         --output_node=GCN/br_result_2/fcn_br \
+                                         --runtime=gpu
+
+# Step 2: Generate input data
+echo "Step 2: Generate input data"
+python tools/validate.py --generate_data true --random_seed 1 \
+ --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
+ --input_shape=512,512,3
 
 # Step 3: Run model on the phone
 echo "Step 3: Run model on the phone"

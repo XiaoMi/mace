@@ -100,10 +100,8 @@ int main(int argc, char **argv) {
     in_file.close();
   }
 
-  VLOG(0) << "Before Init";
   // Init model
   auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
-  VLOG(0) << "Before Run";
   net->Run();
 
   // run model
