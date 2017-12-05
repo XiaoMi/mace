@@ -73,9 +73,9 @@ void FusedConv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   if (kernel_h == kernel_w && kernel_h <= 5 &&
       selector[kernel_h - 1][strides_[0] - 1] != nullptr) {
     auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
-    conv2d_func(input, filter, bias, false, paddings.data(), DataTypeToEnum<T>::value, output);
+    conv2d_func(input, filter, bias, true, paddings.data(), DataTypeToEnum<T>::value, output);
   } else {
-    Conv2dOpencl(input, filter, bias, false, strides_[0], paddings.data(), DataTypeToEnum<T>::value, output);
+    Conv2dOpencl(input, filter, bias, true, strides_[0], paddings.data(), DataTypeToEnum<T>::value, output);
   }
 }
 
