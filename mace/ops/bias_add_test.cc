@@ -64,8 +64,8 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   // generate random input
   index_t batch = 1 + rand() % 10;
   index_t channels = 3 + rand() % 50;
-  index_t height = 64;
-  index_t width = 64;
+  index_t height = 64 + rand() % 50;
+  index_t width = 64 + rand() % 50;
 
   // Construct graph
   auto &net = test_net();
@@ -110,8 +110,8 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   // generate random input
   index_t batch = 1 + rand() % 10;
   index_t channels = 3 + rand() % 50;
-  index_t height = 103;
-  index_t width = 113;
+  index_t height = 103 + rand() % 100;
+  index_t width = 113 + rand() % 100;
 
   // Construct graph
   auto &net = test_net();
