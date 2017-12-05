@@ -13,7 +13,7 @@ namespace kernels {
 
 template <typename T>
 void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
-    const Tensor *input, const Tensor *resize_dims, Tensor *output) {
+    const Tensor *input, Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);
@@ -21,9 +21,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
-  index_t out_height;
-  index_t out_width;
-  GetOutputSize(resize_dims, &out_height, &out_width);
+  index_t out_height = out_height_;
+  index_t out_width = out_width_;
   MACE_CHECK(out_height > 0 && out_width > 0);
   std::vector<index_t> output_shape {batch, out_height, out_width, channels};
   if (input->is_image()) {

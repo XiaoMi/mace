@@ -105,26 +105,16 @@ void ResizeImage(const T *images,
 struct ResizeBilinearFunctorBase {
   ResizeBilinearFunctorBase(const std::vector<index_t> &size,
                             bool align_corners)
-      : align_corners_(align_corners), size_(size) {}
+      : align_corners_(align_corners) {
+        MACE_CHECK(size.size() == 2);
+        out_height_ = size[0];
+        out_width_ = size[1];
+      }
 
  protected:
-  void GetOutputSize(const Tensor *resize_dims,
-                     index_t *out_height,
-                     index_t *out_width) {
-    if (size_[0] < 0 || size_[1] < 0) {
-      MACE_CHECK(resize_dims != nullptr && resize_dims->dim_size() == 1);
-      Tensor::MappingGuard resize_dims_mapper(resize_dims);
-      auto dims_data = resize_dims->data<int32_t>();
-      *out_height = dims_data[0];
-      *out_width = dims_data[1];
-    } else {
-      *out_height = size_[0];
-      *out_width = size_[1];
-    }
-  }
-
   bool align_corners_;
-  std::vector<index_t> size_;
+  index_t out_height_;
+  index_t out_width_;
 };
 
 template <DeviceType D, typename T>
@@ -132,17 +122,14 @@ struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input,
-                  const Tensor *resize_dims,
-                  Tensor *output) {
+  void operator()(const Tensor *input, Tensor *output) {
     const index_t batch = input->dim(0);
     const index_t in_height = input->dim(1);
     const index_t in_width = input->dim(2);
     const index_t channels = input->dim(3);
 
-    index_t out_height;
-    index_t out_width;
-    GetOutputSize(resize_dims, &out_height, &out_width);
+    index_t out_height = out_height_;
+    index_t out_width = out_width_;
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> out_shape{batch, out_height, out_width, channels};
     output->Resize(out_shape);
@@ -180,9 +167,7 @@ struct ResizeBilinearFunctor<DeviceType::OPENCL, T> : ResizeBilinearFunctorBase 
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input,
-                  const Tensor *resize_dims,
-                  Tensor *output);
+  void operator()(const Tensor *input, Tensor *output);
 };
 
 }  // namespace kernels

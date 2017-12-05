@@ -16,15 +16,14 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   auto &net = test_net();
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("Input")
-      .Input("OutSize")
       .Output("Output")
+      .AddIntsArg("size", {1, 2})
       .Finalize(net.NewOperatorDef());
 
   // Add input data
   vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.AddInputFromArray<DeviceType::CPU, int>("OutSize", {2}, {1, 2});
 
   // Run
   net.RunOp();
@@ -41,16 +40,15 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   auto &net = test_net();
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("Input")
-      .Input("OutSize")
       .Output("Output")
       .AddIntArg("align_corners", 1)
+      .AddIntsArg("size", {1, 2})
       .Finalize(net.NewOperatorDef());
 
   // Add input data
   vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.AddInputFromArray<DeviceType::CPU, int>("OutSize", {2}, {1, 2});
 
   // Run
   net.RunOp();
@@ -80,11 +78,9 @@ void TestRandomResizeBilinear() {
     // Add input data
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.AddInputFromArray<D, int>("OutSize", {2}, {height, width});
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("Input")
-      .Input("OutSize")
       .Output("Output")
       .AddIntArg("align_corners", align_corners)
       .AddIntsArg("size", {height, width})
@@ -99,7 +95,6 @@ void TestRandomResizeBilinear() {
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
         .Input("InputImage")
-        .Input("OutSize")
         .Output("OutputImage")
         .AddIntArg("align_corners", align_corners)
         .AddIntsArg("size", {height, width})
