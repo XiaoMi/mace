@@ -21,6 +21,15 @@ py_binary(
 )
 
 py_binary(
+    name = "memory_optimizer",
+    srcs = ["memory_optimizer.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        "//mace/proto:mace_py",
+    ],
+)
+
+py_binary(
     name = "tf_ops_stats",
     srcs = ["tf_ops_stats.py"],
     srcs_version = "PY2AND3",
