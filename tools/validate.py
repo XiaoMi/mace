@@ -1,5 +1,7 @@
 import argparse
 import sys
+import os
+import os.path
 import tensorflow as tf
 import numpy as np
 
@@ -25,13 +27,23 @@ def generate_data(shape):
   print "Generate input file done."
 
 def load_data(file):
-  return np.fromfile(file=file, dtype=np.float32)
+  if os.path.isfile(file):
+    return np.fromfile(file=file, dtype=np.float32)
+  else:
+    return np.empty([0])
 
 def valid_output(out_shape, mace_out_file, tf_out_value):
   mace_out_value = load_data(mace_out_file)
-  mace_out_value = mace_out_value.reshape(out_shape)
-  res = np.allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-5)
-  print 'Passed! Haha' if res else 'Failed! Oops'
+  if mace_out_value.size != 0:
+    mace_out_value = mace_out_value.reshape(out_shape)
+    np.testing.assert_allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
+    res = np.allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
+    if res:
+      print '=======================Passed! Haha======================'
+    else:
+      print '=======================Failed! Oops======================'
+  else:
+    print '=======================Skip empty node==================='
 
 
 def run_model(input_shape):
@@ -55,6 +67,7 @@ def run_model(input_shape):
         input_value = input_value.reshape(input_shape)
         
         output_value = session.run(output_node, feed_dict={input_node: [input_value]})
+        # output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_weight')
         return output_value
 
 def main(unused_args):
