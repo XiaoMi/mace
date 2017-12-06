@@ -13,7 +13,7 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct BatchNormFunctor {
-  T epsilon_;
+  float epsilon_;
 
   void operator()(const Tensor *input,
                   const Tensor *scale,
@@ -84,7 +84,7 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
 
 template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> {
-  T epsilon_;
+  float epsilon_;
 
   void operator()(const Tensor *input,
                   const Tensor *scale,

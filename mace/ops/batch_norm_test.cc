@@ -227,6 +227,72 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
 }
 
+TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
+  srand(time(NULL));
+
+  // generate random input
+  index_t batch = 1 + rand() % 10;
+  index_t channels = 3 + rand() % 50;
+  index_t height = 64;
+  index_t width = 64;
+
+  // Construct graph
+  auto &net = test_net();
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Input("Mean")
+      .Input("Var")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<DeviceType::OPENCL, float>("Input", {batch, height, width, channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+
+  // run cpu
+  net.RunOp();
+
+  // Check
+  Tensor expected;
+  expected.Copy(*net.GetOutput("Output"));
+
+  // Run on opencl
+  BufferToImage<DeviceType::OPENCL, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Scale", "ScaleImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Offset", "OffsetImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Mean", "MeanImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Var", "VarImage", kernels::BufferType::ARGUMENT);
+
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+      .Input("InputImage")
+      .Input("ScaleImage")
+      .Input("OffsetImage")
+      .Input("MeanImage")
+      .Input("VarImage")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
+      .Finalize(net.NewOperatorDef());
+
+  // Tuning
+  setenv("MACE_TUNING", "1", 1);
+  net.RunOp(DeviceType::OPENCL);
+  unsetenv("MACE_TUNING");
+
+  // Run on opencl
+  net.RunOp(DeviceType::OPENCL);
+  net.Sync();
+
+  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+}
+
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   srand(time(NULL));
 
@@ -293,4 +359,70 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
 }
 
+TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
+  srand(time(NULL));
+
+  // generate random input
+  index_t batch = 1 + rand() % 10;
+  index_t channels = 3 + rand() % 50;
+  index_t height = 103;
+  index_t width = 113;
+
+  // Construct graph
+  auto &net = test_net();
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Input("Mean")
+      .Input("Var")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<DeviceType::OPENCL, float>("Input", {batch, height, width, channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+
+  // run cpu
+  net.RunOp();
+
+  // Check
+  Tensor expected;
+  expected.Copy(*net.GetOutput("Output"));
+
+
+  // Run on opencl
+  BufferToImage<DeviceType::OPENCL, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Scale", "ScaleImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Offset", "OffsetImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Mean", "MeanImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<DeviceType::OPENCL, half>(net, "Var", "VarImage", kernels::BufferType::ARGUMENT);
+
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+      .Input("InputImage")
+      .Input("ScaleImage")
+      .Input("OffsetImage")
+      .Input("MeanImage")
+      .Input("VarImage")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
+      .Finalize(net.NewOperatorDef());
+
+  // tuning
+  setenv("MACE_TUNING", "1", 1);
+  net.RunOp(DeviceType::OPENCL);
+  unsetenv("MACE_TUNING");
+
+  // Run on opencl
+  net.RunOp(DeviceType::OPENCL);
+  net.Sync();
+
+  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+}
 }

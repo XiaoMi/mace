@@ -5,7 +5,7 @@ __kernel void batch_norm(__read_only image2d_t input,
                          __read_only image2d_t offset,
                          __read_only image2d_t mean,
                          __read_only image2d_t var,
-                         __private const DATA_TYPE epsilon,
+                         __private const float epsilon,
                          __write_only image2d_t output) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
