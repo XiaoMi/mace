@@ -129,15 +129,21 @@ int main(int argc, char **argv) {
   // save output
   const Tensor *output = ws.GetTensor(output_node + ":0");
 
-  Tensor::MappingGuard output_guard(output);
-  ofstream out_file(output_file, ios::binary);
-  out_file.write((const char *)(output->data<float>()),
-                 output->size() * sizeof(float));
-  out_file.flush();
-  out_file.close();
-  VLOG(0) << "Output shape: ["
-          << output->dim(0) << ", "
-          << output->dim(1) << ", "
-          << output->dim(2) << ", "
-          << output->dim(3) << "]";
+  std::remove(output_file.c_str());
+  if (output != nullptr) {
+    Tensor::MappingGuard output_guard(output);
+    ofstream out_file(output_file, ios::binary);
+    out_file.write((const char *)(output->data<float>()),
+                   output->size() * sizeof(float));
+    out_file.flush();
+    out_file.close();
+    stringstream ss;
+    ss << "Output shape: [";
+    for (int i = 0; i < output->dim_size(); ++i) {
+      ss << output->dim(i) << ", ";
+
+    }
+    ss << "]";
+    VLOG(0) << ss.str();
+  }
 }

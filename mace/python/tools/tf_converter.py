@@ -24,7 +24,7 @@ def main(unused_args):
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.prequantize)
   else:
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.runtime)
+      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
   with gfile.GFile(FLAGS.output, "wb") as f:
     f.write(output_graph_def.SerializeToString())
@@ -67,6 +67,11 @@ def parse_args():
     type=bool,
     default=False,
     help="e.g., False")
+  parser.add_argument(
+    "--data_type",
+    type=str,
+    default='DT_FLOAT',
+    help="e.g., DT_HALF/DT_FLOAT")
   return parser.parse_known_args()
 
 

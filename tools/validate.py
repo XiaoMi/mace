@@ -1,5 +1,7 @@
 import argparse
 import sys
+import os
+import os.path
 import tensorflow as tf
 import numpy as np
 
@@ -13,28 +15,35 @@ from tensorflow import gfile
 # 3. adb pull the result.
 # 4. Compare output data of mace and tf
 #    python validate_icnet.py --model_file opt_icnet.pb \
-#        --tf_input_file input_file \
+#        --input_file input_file \
 #        --mace_out_file icnet.out
 
 
 def generate_data(shape):
   np.random.seed(FLAGS.random_seed)
   data = np.random.random(shape)
-  print FLAGS.tf_input_file
-  data.astype(np.float32).tofile(FLAGS.tf_input_file)
-  mace_data = np.transpose(data, axes=(2, 0, 1))
-  mace_data.astype(np.float32).tofile(FLAGS.mace_input_file)
+  print FLAGS.input_file
+  data.astype(np.float32).tofile(FLAGS.input_file)
   print "Generate input file done."
 
 def load_data(file):
-  return np.fromfile(file=file, dtype=np.float32)
+  if os.path.isfile(file):
+    return np.fromfile(file=file, dtype=np.float32)
+  else:
+    return np.empty([0])
 
 def valid_output(out_shape, mace_out_file, tf_out_value):
   mace_out_value = load_data(mace_out_file)
-  mace_out_value = mace_out_value.reshape(out_shape)
-  tf_out_data_t = np.transpose(tf_out_value, axes=(0, 3, 1, 2))
-  res = np.allclose(mace_out_value, tf_out_data_t, rtol=0, atol=1e-5)
-  print 'Passed! Haha' if res else 'Failed! Oops'
+  if mace_out_value.size != 0:
+    mace_out_value = mace_out_value.reshape(out_shape)
+    np.testing.assert_allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
+    res = np.allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
+    if res:
+      print '=======================Passed! Haha======================'
+    else:
+      print '=======================Failed! Oops======================'
+  else:
+    print '=======================Skip empty node==================='
 
 
 def run_model(input_shape):
@@ -51,13 +60,14 @@ def run_model(input_shape):
     with tf.Session() as session:
       with session.graph.as_default() as graph:
         tf.import_graph_def(input_graph_def, name="")
-        input_node = graph.get_tensor_by_name('input_node:0')
-        output_node = graph.get_tensor_by_name('output_node:0')
+        input_node = graph.get_tensor_by_name(FLAGS.input_node + ':0')
+        output_node = graph.get_tensor_by_name(FLAGS.output_node + ':0')
 
-        input_value = load_data(FLAGS.tf_input_file)
+        input_value = load_data(FLAGS.input_file)
         input_value = input_value.reshape(input_shape)
         
         output_value = session.run(output_node, feed_dict={input_node: [input_value]})
+        # output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_weight')
         return output_value
 
 def main(unused_args):
@@ -80,15 +90,10 @@ def parse_args():
     default="",
     help="TensorFlow \'GraphDef\' file to load.")
   parser.add_argument(
-    "--tf_input_file",
+    "--input_file",
     type=str,
     default="",
-    help="tensorflow input data to load.")
-  parser.add_argument(
-    "--mace_input_file",
-    type=str,
-    default="",
-    help="mace input data to load.")
+    help="input file.")
   parser.add_argument(
     "--mace_out_file",
     type=str,
@@ -97,13 +102,23 @@ def parse_args():
   parser.add_argument(
     "--input_shape",
     type=str,
-    default="480,480,3",
+    default="512,512,3",
     help="input shape.")
   parser.add_argument(
     "--output_shape",
     type=str,
-    default="1,2,480,480",
+    default="1,512,512,2",
     help="output shape.")
+  parser.add_argument(
+    "--input_node",
+    type=str,
+    default="input_node",
+    help="input node")
+  parser.add_argument(
+    "--output_node",
+    type=str,
+    default="output_node",
+    help="output node")
   parser.add_argument(
     "--generate_data",
     type='bool',
