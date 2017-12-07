@@ -1,7 +1,6 @@
 from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
-from mace.python.tools.convert_util import tf_dtype_2_mace_dtype
 
 # TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
@@ -111,18 +110,14 @@ def add_output_transform(name, net_def):
   epsilon_arg.name = 'buffer_type'
   epsilon_arg.i = buffer_type_map['IN_OUT']
 
-
-def convert_op_outputs(mace_op_def, tf_op):
-  mace_op_def.output.extend([output.name for output in tf_op.outputs])
-  mace_op_def.output_type.extend([tf_dtype_2_mace_dtype(output.dtype)
-                                  for output in tf_op.outputs])
+def add_output_shape(outputs, op):
   output_shapes = []
-  for output in tf_op.outputs:
-    output_shape = mace_pb2.OutputShape()
-    output_shape.dims.extend(output.shape.as_list())
-    output_shapes.append(output_shape)
-  mace_op_def.output_shape.extend(output_shapes)
-
+  for output in outputs:
+    if output.shape is not None and not output.shape:
+      output_shape = mace_pb2.OutputShape()
+      output_shape.dims.extend(output.shape.as_list())
+      output_shapes.append(output_shape)
+  op.output_shape.extend(output_shapes)
 
 def convert_ops(unresolved_ops, dt, net_def, device):
   ops_count = len(unresolved_ops)
@@ -185,7 +180,8 @@ def convert_ops(unresolved_ops, dt, net_def, device):
         final_op = relu_op
         resolved_count = 4
 
-      convert_op_outputs(op_def, final_op)
+      op_def.output.extend([output.name for output in final_op.outputs])
+      add_output_shape(final_op.outputs, op_def)
 
     elif first_op.type == 'FusedBatchNorm':
       op_def.name = first_op.name
@@ -199,9 +195,7 @@ def convert_ops(unresolved_ops, dt, net_def, device):
         op_def.input.extend([input.name for input in first_op.inputs])
       op_def.output.extend([first_op.outputs[0].name])
 
-      output_shape = mace_pb2.OutputShape()
-      output_shape.dims.extend(first_op.outputs[0].shape.as_list())
-      op_def.output_shape.extend([output_shape])
+      add_output_shape(first_op.outputs, op_def)
 
       epsilon_arg = op_def.arg.add()
       epsilon_arg.name = 'epsilon'
@@ -217,31 +211,42 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       mul_2_op = unresolved_ops[4]
       sub_op = unresolved_ops[5]
       add_1_op = unresolved_ops[6]
-      # print (mul_op.type, mul_2_op.type, mul_1_op.type, sub_op.type)
+      print (mul_op.type, mul_2_op.type, mul_1_op.type, sub_op.type)
       if mul_op.type != 'Mul' or mul_2_op.type != 'Mul' or \
                       mul_1_op.type != 'Mul' or sub_op.type != 'Sub' or add_1_op.type != 'Add':
         raise Exception('Invalid BatchNorm Op')
 
-      get_input_tensor(mul_1_op, 0)
       input_name = get_input_tensor(mul_1_op, 0).name
       gamma = get_input_tensor(mul_op, 1).name
       beta = get_input_tensor(sub_op, 0).name
       mean = get_input_tensor(mul_2_op, 0).name
       variance = get_input_tensor(add_op, 0).name
-      epsilon = get_input_tensor(add_op, 1).name
 
       op_def.name = first_op.name[:-4]  # remove /add
       op_def.type = 'BatchNorm'
-      op_def.input.extend([input_name, gamma, beta, mean, variance, epsilon])
-      convert_op_outputs(op_def, add_1_op)
+      if device == 'gpu':
+        op_def.input.extend([input_name])
+        for tensor_name in [gamma, beta, mean, variance]:
+          output_name = add_buffer_to_image(tensor_name, "ARGUMENT", dt, net_def)
+          op_def.input.extend([output_name])
+      else:
+        op_def.input.extend([input_name, gamma, beta, mean, variance])
+      op_def.output.extend([output.name for output in add_1_op.outputs])
+      add_output_shape(add_1_op.outputs, op_def)
+      epsilon_arg = op_def.arg.add()
+      epsilon_arg.name = 'epsilon'
+      epsilon_arg.f = get_input_tensor(add_op, 1).eval().astype(np.float)
+      data_format_arg = op_def.arg.add()
+      data_format_arg.name = 'data_format'
+      data_format_arg.s = 'NHWC'
 
       resolved_count = 7
     elif first_op.type == 'Relu6':
       op_def.name = first_op.name
       op_def.type = 'Relu'
       op_def.input.extend([input.name for input in first_op.inputs])
-      convert_op_outputs(op_def, first_op)
-
+      op_def.output.extend([output.name for output in first_op.outputs])
+      add_output_shape(first_op.outputs, op_def)
       max_limit_arg = op_def.arg.add()
       max_limit_arg.name = 'max_limit'
       max_limit_arg.f = 6
@@ -249,8 +254,8 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       op_def.name = first_op.name
       op_def.type = 'Pooling'
       op_def.input.extend([input.name for input in first_op.inputs])
-      convert_op_outputs(op_def, first_op)
-
+      op_def.output.extend([output.name for output in first_op.outputs])
+      add_output_shape(first_op.outputs, op_def)
       pooling_type_arg = op_def.arg.add()
       pooling_type_arg.name = 'pooling_type'
       pooling_type_arg.i = pooling_type_mode[first_op.type]
@@ -270,31 +275,46 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       op_def.name = first_op.name
       op_def.type = "AddN"
       op_def.input.extend([input.name for input in first_op.inputs])
-      convert_op_outputs(op_def, first_op)
+      op_def.output.extend([output.name for output in first_op.outputs])
+      add_output_shape(first_op.outputs, op_def)
     elif first_op.type == 'ConcatV2':
       op_def.name = first_op.name
       op_def.type = "Concat"
       op_def.input.extend([first_op.inputs[i].name for i in xrange(2)])
+      op_def.output.extend([output.name for output in first_op.outputs])
       axis_arg = op_def.arg.add()
       axis_arg.name = 'axis'
       axis_arg.i = get_input_tensor(first_op, 2).eval().astype(np.int32)
-      convert_op_outputs(op_def, first_op)
+      add_output_shape(first_op.outputs, op_def)
     elif first_op.type == 'ResizeBilinear':
       op_def.name = first_op.name
       op_def.type = "ResizeBilinear"
       op_def.input.extend([first_op.inputs[0].name])
+      op_def.output.extend([output.name for output in first_op.outputs])
       size_arg = op_def.arg.add()
       size_arg.name = 'size'
       size_arg.ints.extend(get_input_tensor(first_op, 1).eval().astype(np.int32).flat)
       size_arg = op_def.arg.add()
       size_arg.name = 'align_corners'
       size_arg.i = first_op.get_attr('align_corners')
-      convert_op_outputs(op_def, first_op)
-    elif first_op.type in ['Relu', 'SpaceToBatchND', 'BatchToSpaceND', 'BiasAdd']:
+      add_output_shape(first_op.outputs, op_def)
+    elif first_op.type == 'BiasAdd':
+      op_def.name = first_op.name
+      op_def.type = first_op.type
+      op_def.input.extend([first_op.inputs[0].name])
+      if device == 'gpu':
+        output_name = add_buffer_to_image(first_op.inputs[1].name, "ARGUMENT", dt, net_def)
+        op_def.input.extend([output_name])
+      else:
+        op_def.input.extend([first_op.inputs[1].name])
+      op_def.output.extend([output.name for output in first_op.outputs])
+      add_output_shape(first_op.outputs, op_def)
+    elif first_op.type in ['Relu', 'SpaceToBatchND', 'BatchToSpaceND']:
       op_def.name = first_op.name
       op_def.type = first_op.type
       op_def.input.extend([input.name for input in first_op.inputs])
-      convert_op_outputs(op_def, first_op)
+      op_def.output.extend([output.name for output in first_op.outputs])
+      add_output_shape(first_op.outputs, op_def)
     else:
       raise Exception('Unknown Op: %s, type: %s' % (first_op.name, first_op.type))
       pass

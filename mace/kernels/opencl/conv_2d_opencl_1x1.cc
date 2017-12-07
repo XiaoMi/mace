@@ -68,8 +68,13 @@ void Conv1x1(const Tensor *input,
                            static_cast<uint32_t>(height * batch)};
   const std::vector<uint32_t> lws = {8, 15, 8};
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
-  auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
+  auto params_generator = [&]()->std::vector<std::vector<uint32_t>> {
+    std::vector<uint32_t> local_ws(3, 0);
+    local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
+    local_ws[1] = std::min<uint32_t>(width_blocks, kwg_size / local_ws[0]);
+    local_ws[2] = std::min<uint32_t>(height * batch, kwg_size / (local_ws[0] * local_ws[1]));
     return {{4, 15, 8}, //SNPE size
+            {local_ws[0], local_ws[1], local_ws[2]},
             {kwg_size/16, 4, 4},
             {kwg_size/32, 4, 8},
             {kwg_size/32, 8, 4},

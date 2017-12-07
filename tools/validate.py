@@ -4,6 +4,7 @@ import os
 import os.path
 import tensorflow as tf
 import numpy as np
+from scipy import spatial
 
 from tensorflow import gfile
 
@@ -34,9 +35,12 @@ def load_data(file):
 def valid_output(out_shape, mace_out_file, tf_out_value):
   mace_out_value = load_data(mace_out_file)
   if mace_out_value.size != 0:
+    similarity = (1 - spatial.distance.cosine(tf_out_value.flat, mace_out_value))
+    print 'MACE VS TF similarity: ', similarity
+    if similarity > 0.999:
+      print '=======================Passed! Haha======================'
     mace_out_value = mace_out_value.reshape(out_shape)
     np.testing.assert_allclose(mace_out_value, tf_out_value, rtol=0.05)
-    print '=======================Passed! Haha======================'
   else:
     print '=======================Skip empty node==================='
 
@@ -62,7 +66,7 @@ def run_model(input_shape):
         input_value = input_value.reshape(input_shape)
         
         output_value = session.run(output_node, feed_dict={input_node: [input_value]})
-        # output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_weight')
+        output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_out')
         return output_value
 
 def main(unused_args):

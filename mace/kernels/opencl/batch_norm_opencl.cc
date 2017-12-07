@@ -48,8 +48,13 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
                            static_cast<uint32_t>(height * batch)};
   const std::vector<uint32_t> lws = {8, 16, 8};
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
-  auto params_generator = [&kwg_size]() -> std::vector<std::vector<uint32_t>> {
+  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    std::vector<uint32_t> local_ws(3, 0);
+    local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
+    local_ws[1] = std::min<uint32_t>(width, kwg_size / local_ws[0]);
+    local_ws[2] = std::min<uint32_t>(height * batch, kwg_size / (local_ws[0] * local_ws[1]));
     return {{8, 128, 1}, //SNPE size
+            {local_ws[0], local_ws[1], local_ws[2]},
             {kwg_size / 16, 4, 4},
             {kwg_size / 32, 4, 8},
             {kwg_size / 32, 8, 4},
