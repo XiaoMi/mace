@@ -42,6 +42,7 @@ class Tuner {
     } else {
       // run
       if (param_table_.find(param_key) != param_table_.end()) {
+        VLOG(1) << param_key << ": " << internal::MakeString(param_table_[param_key]);
         return func(param_table_[param_key]);
       } else {
         return func(default_param);

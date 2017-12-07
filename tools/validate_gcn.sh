@@ -32,7 +32,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
                                          --input_node=input \
                                          --output_node=GCN/br_result_2/fcn_br \
-                                         --data_type=DT_FLOAT \
+                                         --data_type=DT_HALF\
                                          --runtime=gpu
 
 
@@ -50,7 +50,7 @@ adb push ${MODEL_DIR}/${MACE_MODEL_NAME} ${PHONE_DATA_DIR}
 adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
 adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 
-num_threads=${1:-1}
+num_threads=${1:-4}
 
 adb </dev/null shell MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
         MACE_KERNEL_PATH=$KERNEL_DIR \
@@ -77,4 +77,3 @@ python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_node input \
     --output_node GCN/br_result_2/fcn_br\
     --output_shape 1,512,512,2
-

@@ -25,17 +25,16 @@ __kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w *
   const float h_lerp = h_in - h_lower;
   const float w_lerp = w_in - w_lower;
 
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
   const int in_w_offset = ch_blk * in_width;
   const int in_h_offset = b * in_height;
 
-  DATA_TYPE4 top_left = READ_IMAGET(input, sampler,
+  DATA_TYPE4 top_left = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_lower, in_h_offset + h_lower));
-  DATA_TYPE4 top_right = READ_IMAGET(input, sampler,
+  DATA_TYPE4 top_right = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_upper, in_h_offset + h_lower));
-  DATA_TYPE4 bottom_left = READ_IMAGET(input, sampler,
+  DATA_TYPE4 bottom_left = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_lower, in_h_offset + h_upper));
-  DATA_TYPE4 bottom_right = READ_IMAGET(input, sampler,
+  DATA_TYPE4 bottom_right = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_upper, in_h_offset + h_upper));
 
   DATA_TYPE4 top = top_left + (top_right - top_left) * w_lerp;

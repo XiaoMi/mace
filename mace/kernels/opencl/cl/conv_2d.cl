@@ -21,10 +21,9 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   const int out_hb = get_global_id(2);
   const int rounded_in_ch = in_ch_blks * 4;
 
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 #ifdef BIAS
   DATA_TYPE4 out0 =
-     READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0));
+     READ_IMAGET(bias, SAMPLER, (int2)(out_ch_blk, 0));
   DATA_TYPE4 out1 = out0;
   DATA_TYPE4 out2 = out0;
   DATA_TYPE4 out3 = out0;
@@ -71,7 +70,7 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
         in_width_value = select(in_idx + in_width_value,                             \
                                 -1,                                                  \
                                 (in_width_value < 0 || in_width_value >= in_width)); \
-        in##i = READ_IMAGET(input, sampler, (int2)(in_width_value, in_hb_value));
+        in##i = READ_IMAGET(input, SAMPLER, (int2)(in_width_value, in_hb_value));
 
         READ_INPUT(0);
         READ_INPUT(1);
@@ -81,10 +80,10 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
 #undef READ_INPUT
 
         int filter_idx = (in_ch_blk << 2) + (hb_idx * filter_width + width_idx) * rounded_in_ch;
-        weights0 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 0, out_ch_blk));
-        weights1 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 1, out_ch_blk));
-        weights2 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 2, out_ch_blk));
-        weights3 = READ_IMAGET(filter, sampler, (int2)(filter_idx + 3, out_ch_blk));
+        weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 0, out_ch_blk));
+        weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 1, out_ch_blk));
+        weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 2, out_ch_blk));
+        weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 3, out_ch_blk));
 
         // Will prefetch L2 improve performance? How to pretch image data?
 

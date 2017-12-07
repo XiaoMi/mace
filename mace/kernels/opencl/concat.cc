@@ -43,10 +43,10 @@ static void Concat2(const Tensor *input0,
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(concat_kernel);
 
-  uint32_t lws[3];
-  lws[0] = std::min<uint32_t>(channel_blk, kwg_size);
-  lws[1] = std::min<uint32_t>(width, kwg_size / lws[0]);
-  lws[2] = std::min<uint32_t>(height * batch, kwg_size / (lws[0] * lws[1]));
+  uint32_t lws[3] = {8, 16, 8};
+//  lws[0] = std::min<uint32_t>(channel_blk, kwg_size);
+//  lws[1] = std::min<uint32_t>(width, kwg_size / lws[0]);
+//  lws[2] = std::min<uint32_t>(height * batch, kwg_size / (lws[0] * lws[1]));
 
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       concat_kernel, cl::NullRange,

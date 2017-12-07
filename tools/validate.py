@@ -18,10 +18,9 @@ from tensorflow import gfile
 #        --input_file input_file \
 #        --mace_out_file icnet.out
 
-
 def generate_data(shape):
   np.random.seed(FLAGS.random_seed)
-  data = np.random.random(shape)
+  data = np.random.random(shape) * -1
   print FLAGS.input_file
   data.astype(np.float32).tofile(FLAGS.input_file)
   print "Generate input file done."
@@ -36,12 +35,8 @@ def valid_output(out_shape, mace_out_file, tf_out_value):
   mace_out_value = load_data(mace_out_file)
   if mace_out_value.size != 0:
     mace_out_value = mace_out_value.reshape(out_shape)
-    np.testing.assert_allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
-    res = np.allclose(tf_out_value, mace_out_value, rtol=0, atol=1e-3)
-    if res:
-      print '=======================Passed! Haha======================'
-    else:
-      print '=======================Failed! Oops======================'
+    np.testing.assert_allclose(mace_out_value, tf_out_value, rtol=0.05)
+    print '=======================Passed! Haha======================'
   else:
     print '=======================Skip empty node==================='
 

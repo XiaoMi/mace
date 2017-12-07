@@ -87,6 +87,11 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
     VLOG(1) << "Op " << op->debug_def().name()
             << " has shape: " << internal::MakeString(op->Output(0)->shape());
   }
+#ifdef __USE_OPENCL
+  if (device_type_ == DeviceType::OPENCL) {
+    OpenCLRuntime::Get()->command_queue().finish();
+  }
+#endif
   return true;
 }
 
