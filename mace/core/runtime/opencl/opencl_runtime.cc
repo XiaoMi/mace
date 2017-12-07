@@ -10,23 +10,44 @@
 #include "mace/core/logging.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
+#include <CL/opencl.h>
+
 namespace mace {
 namespace {
 
-bool ReadSourceFile(const std::string &filename, std::string *content) {
-  MACE_CHECK_NOTNULL(content);
-  *content = "";
-  std::ifstream ifs(filename, std::ifstream::in);
+bool ReadFile(const std::string &filename, std::string &content, bool binary) {
+  content = "";
+
+  std::ios_base::openmode mode = std::ios::in;
+  if (binary)
+    mode |= std::ios::binary;
+
+  std::ifstream ifs(filename, mode);
+
   if (!ifs.is_open()) {
     LOG(ERROR) << "Failed to open file " << filename;
     return false;
   }
-  std::string line;
-  while (std::getline(ifs, line)) {
-    *content += line;
-    *content += "\n";
-  }
+
+  ifs.seekg(0, std::ios::end);
+  content.reserve(ifs.tellg());
+  ifs.seekg(0, std::ios::beg);
+  content.assign(std::istreambuf_iterator<char>(ifs),
+                 std::istreambuf_iterator<char>());
+
   ifs.close();
+  return true;
+}
+
+bool WriteFile(const std::string &filename, std::string &content, bool binary) {
+  std::ios_base::openmode mode = std::ios::out;
+  if (binary)
+    mode |= std::ios::binary;
+  std::ofstream ofs(filename, mode);
+
+  ofs.write(content.c_str(), content.size());
+  ofs.close();
+
   return true;
 }
 
@@ -159,13 +180,31 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
-  cl::Program::Sources sources;
-  std::string filename = kernel_path_ + program_file_name;
-  std::string kernel_source;
-  MACE_CHECK(ReadSourceFile(filename, &kernel_source));
-  sources.push_back({kernel_source.c_str(), kernel_source.length()});
+  std::string source_filename = kernel_path_ + program_file_name;
+  std::string binary_filename = source_filename + "bin";
 
-  *program = cl::Program(this->context(), sources);
+  if (std::ifstream(binary_filename).is_open()) {
+    VLOG(1) << "Create program with binary: " << binary_filename;
+    std::string kernel_binary;
+    MACE_CHECK(ReadFile(binary_filename, kernel_binary, true));
+
+    std::vector<unsigned char> binaries(kernel_binary.begin(), kernel_binary.end());
+
+    *program = cl::Program(this->context(), {device()}, {binaries});
+
+  } else if (std::ifstream(source_filename).is_open()) {
+    VLOG(1) << "Create program with source: " << source_filename;
+    std::string kernel_source;
+    MACE_CHECK(ReadFile(source_filename, kernel_source, false));
+
+    cl::Program::Sources sources;
+    sources.push_back({kernel_source.c_str(), kernel_source.length()});
+
+    *program = cl::Program(this->context(), sources);
+  } else {
+    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
+               << source_filename;
+  }
   std::string build_options_str = build_options +
       " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
@@ -178,6 +217,29 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
       LOG(INFO) << "Program build log: " << build_log;
     }
     LOG(FATAL) << "Build program failed: " << ret;
+  }
+
+  if (!std::ifstream(binary_filename).is_open()) {
+    size_t deviceListSize = 1;
+    size_t *programBinarySizes = new size_t[deviceListSize];
+    clGetProgramInfo((*program)(),
+                     CL_PROGRAM_BINARY_SIZES,
+                     sizeof(size_t) * deviceListSize,
+                     programBinarySizes,
+                     NULL);
+    unsigned char **programBinaries = new unsigned char *[deviceListSize];
+    for(cl_uint i = 0; i < deviceListSize; ++i)
+      programBinaries[i] = new unsigned char[programBinarySizes[i]];
+
+    clGetProgramInfo((*program)(),
+                     CL_PROGRAM_BINARIES,
+                     sizeof(unsigned char *) * deviceListSize,
+                     programBinaries,
+                     NULL);
+    std::string content(reinterpret_cast<char const*>(programBinaries[0]),
+                        programBinarySizes[0]);
+
+    WriteFile(binary_filename, content, true);
   }
 }
 
