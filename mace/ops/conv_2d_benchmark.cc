@@ -102,6 +102,8 @@ BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, half);
 BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, half);
 // SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
 BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
+BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64, half);
+BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256, half);
 
 // Test RGB <-> YUV
 //BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);

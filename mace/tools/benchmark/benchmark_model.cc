@@ -260,8 +260,6 @@ int Main(int argc, char **argv) {
   DeviceType_Parse(device, &device_type);
   VLOG(0) << device_type;
 
-  if (device_type == DeviceType::OPENCL)
-    OpenCLRuntime::EnableProfiling();
 
   // load model
   std::ifstream model_file_stream(model_file, std::ios::in | std::ios::binary);
@@ -296,9 +294,11 @@ int Main(int argc, char **argv) {
       }
     }
   }
+  auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
+  net->Run();
 
   // create net
-  auto net = CreateNet(net_def, &ws, device_type);
+  net = CreateNet(net_def, &ws, device_type);
 
   int64_t warmup_time_us = 0;
   int64_t num_warmup_runs = 0;

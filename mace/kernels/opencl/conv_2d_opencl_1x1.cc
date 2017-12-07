@@ -7,6 +7,7 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -48,7 +49,6 @@ void Conv1x1(const Tensor *input,
   auto program = runtime->program();
 
   auto conv_2d_kernel = runtime->BuildKernel("conv_2d_1x1", "conv_2d_1x1", built_options);
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
 
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
@@ -63,16 +63,51 @@ void Conv1x1(const Tensor *input,
   conv_2d_kernel.setArg(idx++, static_cast<int>(height));
   conv_2d_kernel.setArg(idx++, static_cast<int>(width));
 
-  auto command_queue = runtime->command_queue();
-  cl_int error;
-  error = command_queue.enqueueNDRangeKernel(
-      conv_2d_kernel, cl::NullRange,
-      cl::NDRange(static_cast<uint32_t>(channel_blocks),
-                  static_cast<uint32_t>(width_blocks),
-                  static_cast<uint32_t>(height * batch)),
-      cl::NDRange(4, 15, 8), // TODO auto tuning
-      nullptr, OpenCLRuntime::Get()->GetDefaultEvent());
-  MACE_CHECK(error == CL_SUCCESS, error);
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width_blocks),
+                           static_cast<uint32_t>(height * batch)};
+  const std::vector<uint32_t> lws = {8, 15, 8};
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(conv_2d_kernel);
+  auto params_generator = [&kwg_size]()->std::vector<std::vector<uint32_t>> {
+    return {{4, 15, 8}, //SNPE size
+            {kwg_size/16, 4, 4},
+            {kwg_size/32, 4, 8},
+            {kwg_size/32, 8, 4},
+            {kwg_size/64, 8, 8},
+            {kwg_size/64, 16, 4},
+            {kwg_size/128, 8, 16},
+            {kwg_size/128, 16, 8},
+            {kwg_size/128, 32, 4},
+            {1, kwg_size/32, 32},
+            {1, kwg_size/64, 64},
+            {1, kwg_size/128, 128},
+            {3, 15, 9},
+            {7, 15, 9},
+            {9, 7, 15},
+            {15, 7, 9},
+            {1, kwg_size, 1}};
+  };
+  auto func = [&](const std::vector<uint32_t>& params)->cl_int {
+    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+        conv_2d_kernel, cl::NullRange,
+        cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(params[0], params[1], params[2]),
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+    return error;
+  };
+  std::stringstream ss;
+  ss << "conv2d_1x1_opencl_kernel_"
+     << output->dim(0) << "_"
+     << output->dim(1) << "_"
+     << output->dim(2) << "_"
+     << output->dim(3);
+  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
+                                                     lws,
+                                                     params_generator,
+                                                     func);
+
 }
 
 extern void Conv2dOpenclK1x1S1(const Tensor *input,

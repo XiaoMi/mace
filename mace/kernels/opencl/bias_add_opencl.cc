@@ -36,7 +36,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
   auto bias_kernel = runtime->BuildKernel("bias_add", "bias_add", built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bias_kernel);
-  const std::vector<uint32_t> lws = {1, kwg_size, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8};
 
   uint32_t idx = 0;
   bias_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

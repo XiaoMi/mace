@@ -54,9 +54,8 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, ic, oc
                            + out_channel_idx;
 
   if (in_channel_idx < in_channel) {
-    const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
     int2 coord = (int2)(w, h);
-    VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, sampler, coord);
+    VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
     const int size = (out_channel - out_channel_idx);
     if (size < 4) {
       switch (size) {
@@ -119,9 +118,8 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
   const int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
                            + channel_idx;
 
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
   int2 coord = (int2)(w, h);
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, sampler, coord);
+  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
   const int size = channels - channel_idx;
   if (size < 4) {
     switch (size) {
@@ -169,9 +167,8 @@ __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
   int h = get_global_id(1);
   const int offset = w * 4;
 
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
   int2 coord = (int2)(w, h);
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, sampler, coord);
+  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
   const int size = count - offset;
   if (size < 4) {
     switch (size) {

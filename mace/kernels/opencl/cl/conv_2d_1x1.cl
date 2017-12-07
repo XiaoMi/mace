@@ -16,10 +16,8 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int out_w_blks = get_global_size(1);
   const int out_hb = get_global_id(2);
 
-  const sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
-
 #ifdef BIAS
-  DATA_TYPE4 out0 = READ_IMAGET(bias, sampler, (int2)(out_ch_blk, 0));
+  DATA_TYPE4 out0 = READ_IMAGET(bias, SAMPLER, (int2)(out_ch_blk, 0));
   DATA_TYPE4 out1 = out0;
   DATA_TYPE4 out2 = out0;
   DATA_TYPE4 out3 = out0;
@@ -58,16 +56,16 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   int in_x_base = 0;
   for (int in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
 
-    DATA_TYPE4 in0 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.x, out_hb_idx));
-    DATA_TYPE4 in1 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.y, out_hb_idx));
-    DATA_TYPE4 in2 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.z, out_hb_idx));
-    DATA_TYPE4 in3 = READ_IMAGET(input, sampler, (int2)(in_x_base + w.w, out_hb_idx));
+    DATA_TYPE4 in0 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.x, out_hb_idx));
+    DATA_TYPE4 in1 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.y, out_hb_idx));
+    DATA_TYPE4 in2 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.z, out_hb_idx));
+    DATA_TYPE4 in3 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.w, out_hb_idx));
 
     const int filter_x0 = in_ch_blk << 2;
-    DATA_TYPE4 weights0 = READ_IMAGET(filter, sampler, (int2)(filter_x0, out_ch_blk));
-    DATA_TYPE4 weights1 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 1, out_ch_blk));
-    DATA_TYPE4 weights2 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 2, out_ch_blk));
-    DATA_TYPE4 weights3 = READ_IMAGET(filter, sampler, (int2)(filter_x0 + 3, out_ch_blk));
+    DATA_TYPE4 weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0, out_ch_blk));
+    DATA_TYPE4 weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 1, out_ch_blk));
+    DATA_TYPE4 weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 2, out_ch_blk));
+    DATA_TYPE4 weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 3, out_ch_blk));
     // Will prefetch L2 improve performance? How to pretch image data?
 
     out0 += in0.x * weights0;
