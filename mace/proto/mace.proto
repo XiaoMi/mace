@@ -128,6 +128,9 @@ message NetDef {
   repeated Argument arg = 4;
   repeated TensorProto tensors = 5;
 
+  // for mem optimization
+  optional MemoryArena mem_arena = 10;
+
   // for hexagon mace-nnlib
   repeated InputInfo input_info = 100;
   repeated OutputInfo output_info = 101;

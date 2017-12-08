@@ -199,14 +199,20 @@ class Tensor {
       size_ = size;
       MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
 
-      if (is_image_) {
-        alloc_->DeleteImage(buffer_);
-      } else {
+      if (is_image_ && !image_shape_.empty()) {
+        MACE_ASSERT(image_shape_.size() == 2
+                        && image_shape_[0] >= image_shape[0]
+                        || image_shape_[1] >= image_shape[1],
+                    "image shape not large enough");
+      }
+      if (!is_image_ && buffer_ != nullptr) {
         alloc_->Delete(buffer_);
       }
       is_image_ = true;
-      image_shape_ = image_shape;
-      buffer_ = alloc_->NewImage(image_shape, dtype_);
+      if (image_shape_.empty()) {
+        image_shape_ = image_shape;
+        buffer_ = alloc_->NewImage(image_shape, dtype_);
+      }
     }
   }
 
@@ -223,6 +229,17 @@ class Tensor {
       ResizeImage(other->shape(), other->image_shape());
     } else {
       Resize(other->shape());
+    }
+  }
+
+  inline void AllocateImageMemory(const std::vector<size_t> &image_shape) {
+    is_image_ = true;
+    if (image_shape_ != image_shape) {
+      if (buffer_ != nullptr) {
+        alloc_->DeleteImage(buffer_);
+      }
+      image_shape_ = image_shape;
+      buffer_ = alloc_->NewImage(image_shape, dtype_);
     }
   }
 

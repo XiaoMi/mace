@@ -101,8 +101,11 @@ int main(int argc, char **argv) {
   }
 
   // Init model
+  VLOG(0) << "Run init";
   auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
   net->Run();
+
+  VLOG(0) << "Run model";
 
   // run model
   net = CreateNet(net_def, &ws, device_type);

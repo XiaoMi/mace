@@ -3,8 +3,8 @@
 //
 
 #include "mace/core/workspace.h"
-#include "mace/core/common.h"
 #include "mace/core/serializer.h"
+#include "mace/core/proto_utils.h"
 
 namespace mace {
 
@@ -62,6 +62,34 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
                                                     tensor_proto.dims().end()));
     tensor_map_[tensor_proto.name()] =
         serializer.Deserialize(tensor_proto, type);
+  }
+  if (type == DeviceType::OPENCL) {
+    CreateImageOutputTensor(net_def);
+  }
+}
+
+void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
+  if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
+    return;
+  }
+  std::map<std::string, std::shared_ptr<Tensor>> mem_tensor_map;
+  const DataType dtype = static_cast<DataType>(
+      ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+          net_def.op(0),
+          "T",
+          static_cast<int>(DT_FLOAT)));
+  for (auto &mem_block: net_def.mem_arena().mem_block()) {
+    string mem_block_name = MemBlockName(mem_block.mem_id());
+    mem_tensor_map[mem_block_name].reset(new Tensor(
+        GetDeviceAllocator(DeviceType::OPENCL),
+        dtype));
+    mem_tensor_map[mem_block_name]->AllocateImageMemory({mem_block.x(),
+                                                         mem_block.y()});
+  }
+  for (auto &op: net_def.op()) {
+    if (op.has_mem_id()) {
+      tensor_map_[op.output(0)] = mem_tensor_map[MemBlockName(op.mem_id())];
+    }
   }
 }
 
