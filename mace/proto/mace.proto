@@ -93,6 +93,7 @@ message OperatorDef {
   optional uint32 op_id = 101;
   optional uint32 padding = 102;
   repeated NodeInput node_input = 103;
+  repeated int32 out_max_byte_size = 104; // only support 32-bit len
 }
 
 // for memory optimization

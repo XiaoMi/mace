@@ -18,6 +18,7 @@ static NetDef BuildNetDef() {
   input_op->set_type("INPUT");
   input_op->set_node_id(0);
   input_op->set_padding(0);
+  input_op->add_out_max_byte_size(1200);
 
   // relu op
   OperatorDef *resize_bilinear_op = net.add_op();
@@ -45,6 +46,9 @@ static NetDef BuildNetDef() {
   input_node_input = resize_bilinear_op->add_node_input();
   input_node_input->set_node_id(12);
   input_node_input->set_output_port(0);
+  resize_bilinear_op->add_out_max_byte_size(1200);
+  resize_bilinear_op->add_out_max_byte_size(1000);
+  resize_bilinear_op->add_out_max_byte_size(1000);
 
   // output op
   OperatorDef *output_op = net.add_op();
