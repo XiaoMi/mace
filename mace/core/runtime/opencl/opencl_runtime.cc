@@ -201,25 +201,21 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     sources.push_back({kernel_source.c_str(), kernel_source.length()});
 
     *program = cl::Program(this->context(), sources);
-  } else {
-    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
-               << source_filename;
-  }
-  std::string build_options_str = build_options +
-      " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
-  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-  cl_int ret = program->build({device()}, build_options_str.c_str());
-  if (ret != CL_SUCCESS) {
-    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
-        CL_BUILD_ERROR) {
-      std::string build_log =
-          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
-      LOG(INFO) << "Program build log: " << build_log;
-    }
-    LOG(FATAL) << "Build program failed: " << ret;
-  }
 
-  if (!std::ifstream(binary_filename).is_open()) {
+    std::string build_options_str = build_options +
+        " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
+    // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+    cl_int ret = program->build({device()}, build_options_str.c_str());
+    if (ret != CL_SUCCESS) {
+      if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+          CL_BUILD_ERROR) {
+        std::string build_log =
+            program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+        LOG(INFO) << "Program build log: " << build_log;
+      }
+      LOG(FATAL) << "Build program failed: " << ret;
+    }
+
     size_t deviceListSize = 1;
     size_t *programBinarySizes = new size_t[deviceListSize];
     clGetProgramInfo((*program)(),
@@ -240,6 +236,9 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                         programBinarySizes[0]);
 
     WriteFile(binary_filename, content, true);
+  } else {
+    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
+               << source_filename;
   }
 }
 
