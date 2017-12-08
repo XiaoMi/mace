@@ -175,20 +175,58 @@ const std::map<std::string, std::string>
   {"space_to_batch", "space_to_batch.cl"},
 };
 
+const std::map<std::string, std::string>
+    OpenCLRuntime::binary_map_ = {
+  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=2", "addn_f_2.bin"},
+  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=3", "addn_f_3.bin"},
+  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=4", "addn_f_4.bin"},
+  {"batch_norm -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "batch_norm_f.bin"},
+  {"bias_add -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "bias_add_f.bin"},
+  {"buffer_to_image -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "buffer_to_image_f.bin"},
+  {"buffer_to_image -DCMD_DATA_TYPE=h -DDATA_TYPE=half", "buffer_to_image_h.bin"},
+  {"concat -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "concat_f.bin"},
+  {"concat -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DDIVISIBLE_FOUR", "concat_f_div4.bin"},
+  {"concat -DCMD_DATA_TYPE=h -DDATA_TYPE=half -DDIVISIBLE_FOUR", "concat_h_div4.bin"},
+  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_bias_f_fusedrelu_1.bin"},
+  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_bias_f_fusedrelu_2.bin"},
+  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_bias_f_1.bin"},
+  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_bias_f_2.bin"},
+  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_1x1_bias_f_fusedrelu_1.bin"},
+  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_1x1_bias_f_fusedrelu_2.bin"},
+  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_1x1_bias_f_1.bin"},
+  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_1x1_bias_f_2.bin"},
+  {"conv_2d_3x3  -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_3x3_f_1.bin"},
+  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_3x3_bias_f_fusedrelu_1.bin"},
+  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_3x3_bias_f_fusedrelu_2.bin"},
+  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_3x3_bias_f_1.bin"},
+  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_3x3_bias_f_2.bin"},
+  {"depthwise_conv_3x3  -DBIAS -DDATA_TYPE=float", "depthwise_conv_3x3_bias_f.bin"},
+  {"depthwise_conv_3x3 -DBIAS -DDATA_TYPE=float -DSTRIDE_1", "depthwise_conv_3x3_bias_f_1.bin"},
+  {"pooling  -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "pooling_f.bin"},
+  {"pooling -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DPOOL_AVG", "pooling_f_avg.bin"},
+  {"pooling -DCMD_DATA_TYPE=h -DDATA_TYPE=half -DFP16", "pooling_h_fp16.bin"},
+  {"relu -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "relu_f.bin"},
+  {"resize_bilinear -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "resize_bilinear_f.bin"},
+  {"space_to_batch -DDATA_TYPE=float", "space_to_batch_f.bin"},
+};
+
 void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
+                                 const std::string &binary_file_name,
                                  const std::string &build_options,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
   std::string source_filename = kernel_path_ + program_file_name;
-  std::string binary_filename = source_filename + "bin";
+  std::string binary_filename = kernel_path_ + binary_file_name;
 
+  // Create program
   if (std::ifstream(binary_filename).is_open()) {
     VLOG(1) << "Create program with binary: " << binary_filename;
     std::string kernel_binary;
     MACE_CHECK(ReadFile(binary_filename, kernel_binary, true));
 
-    std::vector<unsigned char> binaries(kernel_binary.begin(), kernel_binary.end());
+    std::vector<unsigned char> binaries(
+        kernel_binary.begin(), kernel_binary.end());
 
     *program = cl::Program(this->context(), {device()}, {binaries});
 
@@ -202,20 +240,28 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
 
     *program = cl::Program(this->context(), sources);
 
-    std::string build_options_str = build_options +
-        " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
-    // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-    cl_int ret = program->build({device()}, build_options_str.c_str());
-    if (ret != CL_SUCCESS) {
-      if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
-          CL_BUILD_ERROR) {
-        std::string build_log =
-            program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
-        LOG(INFO) << "Program build log: " << build_log;
-      }
-      LOG(FATAL) << "Build program failed: " << ret;
-    }
+  } else {
+    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
+               << source_filename;
+  }
 
+  // Build program
+  std::string build_options_str = build_options +
+      " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
+  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+  cl_int ret = program->build({device()}, build_options_str.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(FATAL) << "Build program failed: " << ret;
+  }
+
+  // Write binary if necessary
+  if (!std::ifstream(binary_filename).is_open()) {
     size_t deviceListSize = 1;
     size_t *programBinarySizes = new size_t[deviceListSize];
     clGetProgramInfo((*program)(),
@@ -236,10 +282,8 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                         programBinarySizes[0]);
 
     WriteFile(binary_filename, content, true);
-  } else {
-    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
-               << source_filename;
   }
+
 }
 
 cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
@@ -263,7 +307,15 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    this->BuildProgram(program_file_name, build_options_str, &program);
+    std::string binary_file_name = "";
+    auto binary_it = binary_map_.find(built_program_key);
+    if (binary_it != binary_map_.end()) {
+      binary_file_name = binary_it->second;
+    }
+    this->BuildProgram(program_file_name,
+                       binary_file_name,
+                       build_options_str,
+                       &program);
     built_program_map_.emplace(built_program_key, program);
   }
   return cl::Kernel(program, kernel_name.c_str());

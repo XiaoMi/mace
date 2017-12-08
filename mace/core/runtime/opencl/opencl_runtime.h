@@ -44,7 +44,8 @@ class OpenCLRuntime {
   OpenCLRuntime(const OpenCLRuntime&) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime&) = delete;
 
-  void BuildProgram(const std::string &kernel_name,
+  void BuildProgram(const std::string &program_file_name,
+                    const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
 
@@ -62,6 +63,8 @@ class OpenCLRuntime {
                std::string> program_map_;
   mutable std::map<std::string,
           cl::Program> built_program_map_;
+  static const std::map<std::string,
+               std::string> binary_map_;
 };
 
 }  // namespace mace
