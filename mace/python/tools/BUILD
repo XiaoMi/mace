@@ -1,9 +1,11 @@
 py_library(
     name = "tf_converter_lib",
     srcs = [
+        "convert_util.py",
+        "graph_util.py",
         "tf_converter_lib.py",
         "tf_dsp_converter_lib.py",
-        "graph_util.py"],
+    ],
     srcs_version = "PY2AND3",
     deps = [
         "//mace/proto:mace_py",
