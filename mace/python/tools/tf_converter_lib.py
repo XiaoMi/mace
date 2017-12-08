@@ -1,6 +1,7 @@
 from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
+from mace.python.tools.convert_util import tf_dtype_2_mace_dtype
 
 # TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
@@ -110,6 +111,19 @@ def add_output_transform(name, net_def):
   epsilon_arg.name = 'buffer_type'
   epsilon_arg.i = buffer_type_map['IN_OUT']
 
+
+def convert_op_outputs(mace_op_def, tf_op):
+  mace_op_def.output.extend([output.name for output in tf_op.outputs])
+  mace_op_def.output_type.extend([tf_dtype_2_mace_dtype(output.dtype)
+                                  for output in tf_op.outputs])
+  output_shapes = []
+  for output in tf_op.outputs:
+    output_shape = mace_pb2.OutputShape()
+    output_shape.dims.extend(output.shape.as_list())
+    output_shapes.append(output_shape)
+  mace_op_def.output_shape.extend(output_shapes)
+
+
 def convert_ops(unresolved_ops, dt, net_def, device):
   ops_count = len(unresolved_ops)
   resolved_count = 1
@@ -171,13 +185,7 @@ def convert_ops(unresolved_ops, dt, net_def, device):
         final_op = relu_op
         resolved_count = 4
 
-      op_def.output.extend([output.name for output in final_op.outputs])
-      output_shapes = []
-      for output in final_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, final_op)
 
     elif first_op.type == 'FusedBatchNorm':
       op_def.name = first_op.name
@@ -225,26 +233,15 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       op_def.name = first_op.name[:-4]  # remove /add
       op_def.type = 'BatchNorm'
       op_def.input.extend([input_name, gamma, beta, mean, variance, epsilon])
-      op_def.output.extend([output.name for output in add_1_op.outputs])
-      output_shapes = []
-      for output in add_1_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, add_1_op)
 
       resolved_count = 7
     elif first_op.type == 'Relu6':
       op_def.name = first_op.name
       op_def.type = 'Relu'
       op_def.input.extend([input.name for input in first_op.inputs])
-      op_def.output.extend([output.name for output in first_op.outputs])
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
+
       max_limit_arg = op_def.arg.add()
       max_limit_arg.name = 'max_limit'
       max_limit_arg.f = 6
@@ -252,13 +249,8 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       op_def.name = first_op.name
       op_def.type = 'Pooling'
       op_def.input.extend([input.name for input in first_op.inputs])
-      op_def.output.extend([output.name for output in first_op.outputs])
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
+
       pooling_type_arg = op_def.arg.add()
       pooling_type_arg.name = 'pooling_type'
       pooling_type_arg.i = pooling_type_mode[first_op.type]
@@ -278,55 +270,31 @@ def convert_ops(unresolved_ops, dt, net_def, device):
       op_def.name = first_op.name
       op_def.type = "AddN"
       op_def.input.extend([input.name for input in first_op.inputs])
-      op_def.output.extend([output.name for output in first_op.outputs])
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
     elif first_op.type == 'ConcatV2':
       op_def.name = first_op.name
       op_def.type = "Concat"
       op_def.input.extend([first_op.inputs[i].name for i in xrange(2)])
-      op_def.output.extend([output.name for output in first_op.outputs])
       axis_arg = op_def.arg.add()
       axis_arg.name = 'axis'
       axis_arg.i = get_input_tensor(first_op, 2).eval().astype(np.int32)
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
     elif first_op.type == 'ResizeBilinear':
       op_def.name = first_op.name
       op_def.type = "ResizeBilinear"
       op_def.input.extend([first_op.inputs[0].name])
-      op_def.output.extend([output.name for output in first_op.outputs])
       size_arg = op_def.arg.add()
       size_arg.name = 'size'
       size_arg.ints.extend(get_input_tensor(first_op, 1).eval().astype(np.int32).flat)
       size_arg = op_def.arg.add()
       size_arg.name = 'align_corners'
       size_arg.i = first_op.get_attr('align_corners')
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
     elif first_op.type in ['Relu', 'SpaceToBatchND', 'BatchToSpaceND', 'BiasAdd']:
       op_def.name = first_op.name
       op_def.type = first_op.type
       op_def.input.extend([input.name for input in first_op.inputs])
-      op_def.output.extend([output.name for output in first_op.outputs])
-      output_shapes = []
-      for output in first_op.outputs:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
-      op_def.output_shape.extend(output_shapes)
+      convert_op_outputs(op_def, first_op)
     else:
       raise Exception('Unknown Op: %s, type: %s' % (first_op.name, first_op.type))
       pass

@@ -3,6 +3,7 @@ import tensorflow as tf
 from operator import mul
 from dsp_ops import DspOps
 from mace.python.tools import graph_util
+from mace.python.tools.convert_util import tf_dtype_2_mace_dtype
 
 # converter --input ../libcv/quantized_icnet.pb --output quantized_icnet_dsp.pb \
 # --runtime dsp --input_node input_node --output_node output_node
@@ -65,6 +66,18 @@ def add_shape_const_node(net_def, op, values, name):
   tensor.dims.extend(values)
   return tensor.name
 
+
+def convert_op_outputs(mace_op_def, tf_op):
+  mace_op_def.output_type.extend([tf_dtype_2_mace_dtype(output.dtype)
+                                  for output in tf_op.outputs])
+  output_shapes = []
+  for output in tf_op.outputs:
+    output_shape = mace_pb2.OutputShape()
+    output_shape.dims.extend(output.shape.as_list())
+    output_shapes.append(output_shape)
+  mace_op_def.output_shape.extend(output_shapes)
+
+
 def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
   first_op = unresolved_ops[0]
   print ('Op: ', first_op.name, first_op.type, first_op.outputs[0].shape)
@@ -119,7 +132,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
       op_def.input.append(input_tensor.name)
       op_def.input.extend([t.name for t in s2b_op.inputs[1:]])
       op_def.input.extend([min_tensor.name, max_tensor.name])
-      op_def.out_max_byte_size.extend([max_elem_size(out) for out in quantize_op.outputs])
+      convert_op_outputs(op_def, quantize_op)
     elif has_padding_and_strides(first_op):
       op_def.padding = padding_mode[first_op.get_attr('padding')]
       op_def.input.extend([t.name for t in first_op.inputs])
@@ -130,14 +143,14 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
       strides = first_op.get_attr('strides')
       strides_tensor = add_shape_const_node(net_def, first_op, strides, 'strides')
       op_def.input.extend([strides_tensor])
-      op_def.out_max_byte_size.extend([max_elem_size(out) for out in first_op.outputs])
+      convert_op_outputs(op_def, first_op)
     elif is_node_flatten_reshape(first_op):
       op_def.type = 'Flatten'
       op_def.input.extend([t.name for t in first_op.inputs])
-      op_def.out_max_byte_size.extend([max_elem_size(out) for out in first_op.outputs])
+      convert_op_outputs(op_def, first_op)
     elif dsp_ops.has_op(first_op.type):
       op_def.input.extend([t.name for t in first_op.inputs])
-      op_def.out_max_byte_size.extend([max_elem_size(out) for out in first_op.outputs])
+      convert_op_outputs(op_def, first_op)
     else:
       raise Exception('Unsupported op: ', first_op)
 
@@ -188,11 +201,9 @@ def reverse_batch_to_space_and_biasadd(net_def):
             new_biasadd_op.input[0] = get_tensor_name_from_op(conv_requantize_op.name, 0)
             new_biasadd_op.input[2] = get_tensor_name_from_op(conv_requantize_op.name, 1)
             new_biasadd_op.input[3] = get_tensor_name_from_op(conv_requantize_op.name, 2)
-            new_biasadd_op.out_max_byte_size[0] = conv_requantize_op.out_max_byte_size[0] * 4
 
             new_biasadd_requantize_op = mace_pb2.OperatorDef()
             new_biasadd_requantize_op.CopyFrom(biasadd_requantize_op)
-            new_biasadd_requantize_op.out_max_byte_size[0] = new_biasadd_op.out_max_byte_size[0] / 4
 
             new_b2s_op = mace_pb2.OperatorDef()
             new_b2s_op.CopyFrom(b2s_op)
@@ -309,8 +320,11 @@ def strip_input_quantize_and_output_dequantize(net_def, input_node, output_node)
         new_input_op.name = input_op.name
         new_input_op.type = input_op.type
         new_input_op.padding = input_op.padding
-        new_input_op.out_max_byte_size.extend([input_op.out_max_byte_size[0]/4, 4, 4])
         new_ops.append(new_input_op)
+        new_input_op.output_shape.extend([input_op.output_shape[0],
+                                          minf_op.output_shape[0],
+                                          maxf_op.output_shape[0]])
+        new_input_op.output_type.extend([input_op.output_type[0], mace_pb2.DT_FLOAT, mace_pb2.DT_FLOAT])
         for follow_op in consumers[get_tensor_name_from_op(quantize_op.name, 0)]:
           new_follow_op = mace_pb2.OperatorDef()
           new_follow_op.CopyFrom(follow_op)
