@@ -1,3 +1,5 @@
+import operator
+import sys
 from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
@@ -44,13 +46,18 @@ class TFConverter(object):
     self.tf_graph = {}
     self.resolved_ops = {}
 
+    self.idle_mem = set()
+    self.op_mem = {}    # op_name->mem_id
+    self.mem_block = {} # mem_id->[x, y]
+    self.total_mem_count = 0
+    self.ref_counter = {}
+
     for op in tf_ops:
       self.resolved_ops[op.name] = 0
       for input in op.inputs:
         input_name = input.name[:-2]
         if input_name not in self.tf_graph:
           self.tf_graph[input_name] = []
-        print input_name
         self.tf_graph[input_name].append(op)
 
   def add_buffer_to_image(self, input_name, input_type):
@@ -104,7 +111,7 @@ class TFConverter(object):
   def add_output_shape(outputs, op):
     output_shapes = []
     for output in outputs:
-      if output.shape is not None and not output.shape:
+      if output.shape.num_elements() is not None:
         output_shape = mace_pb2.OutputShape()
         output_shape.dims.extend(output.shape.as_list())
         output_shapes.append(output_shape)
@@ -209,12 +216,21 @@ class TFConverter(object):
   def convert_batchnorm(self, op):
     bn_ops = []
     bn_ops.append(op)
-    for i in range(1, 7):
+    for i in range(1, 3):
       if len(self.tf_graph[bn_ops[i-1].name]) == 1 \
           and self.tf_graph[bn_ops[i-1].name][0].type == BATCH_NORM_ORDER[i]:
         bn_ops.append(self.tf_graph[bn_ops[i-1].name][0])
       else:
         raise Exception('Invalid BatchNorm Op')
+    if len(self.tf_graph[bn_ops[2].name]) == 2 \
+        and self.tf_graph[bn_ops[2].name][0].type == BATCH_NORM_ORDER[3] \
+        and self.tf_graph[bn_ops[2].name][1].type == BATCH_NORM_ORDER[4]:
+      bn_ops.append(self.tf_graph[bn_ops[2].name][0])
+      bn_ops.append(self.tf_graph[bn_ops[2].name][1])
+    else:
+      raise Exception('Invalid BatchNorm Op')
+    bn_ops.append(self.tf_graph[bn_ops[4].name][0])
+    bn_ops.append(self.tf_graph[bn_ops[3].name][0])
 
     op_def = mace_pb2.OperatorDef()
     arg = op_def.arg.add()
@@ -246,7 +262,7 @@ class TFConverter(object):
     data_format_arg.s = 'NHWC'
 
     self.net_def.op.extend([op_def])
-    for i in range(1, 7):
+    for i in range(0, 7):
       self.resolved_ops[bn_ops[i].name] = 1
 
   def convert_pooling(self, op):
@@ -408,6 +424,83 @@ class TFConverter(object):
       if self.resolved_ops[key] != 1:
         print 'Unresolve Op: %s' % key
 
+  @staticmethod
+  def _op_to_tensor(op):
+    return op.name + ':0'
+
+  @staticmethod
+  def is_buffer_image_op(op):
+    return op.type == 'BufferToImage' or op.type == 'ImageToBuffer'
+
+  def optimize(self):
+    consumers = {}
+    for op in self.net_def.op:
+      if self.is_buffer_image_op(op):
+        continue
+      for ipt in op.input:
+        if ipt not in consumers:
+          consumers[ipt] = []
+        consumers[ipt].append(op)
+    # only ref op's output tensor
+    for op in self.net_def.op:
+      if self.is_buffer_image_op(op):
+        continue
+      tensor_name = self._op_to_tensor(op)
+      if tensor_name in consumers:
+        self.ref_counter[tensor_name] = len(consumers[tensor_name])
+      else:
+        self.ref_counter[tensor_name] = 0
+
+    for op in self.net_def.op:
+      if self.is_buffer_image_op(op):
+        continue
+      if not op.output_shape:
+        print "Op %s don't have output shape information, No way to optimize memory." % op.name
+        return
+      if len(self.idle_mem) == 0:
+        # allocate new mem
+        mem_id = self.total_mem_count
+        self.total_mem_count += 1
+      else:
+        # reuse mem
+        mem_id = self.idle_mem.pop()
+
+      op.mem_id = mem_id
+      self.op_mem[self._op_to_tensor(op)] = mem_id
+      if mem_id not in self.mem_block:
+        self.mem_block[mem_id] = [0, 0]
+      mem_size = self.mem_block[mem_id]
+      mem_size[1] = max(mem_size[1], op.output_shape[0].dims[0] * op.output_shape[0].dims[1])
+      mem_size[0] = max(mem_size[0], op.output_shape[0].dims[2] * (op.output_shape[0].dims[3]+3)/4)
+
+      # de-ref input tensor mem
+      for ipt in op.input:
+        if ipt in self.ref_counter:
+          self.ref_counter[ipt] -= 1
+          if self.ref_counter[ipt] == 0:
+            self.idle_mem.add(self.op_mem[ipt])
+          elif self.ref_counter[ipt] < 0:
+            raise Exception('ref count is less than 0')
+
+    for mem in self.mem_block:
+      arena = self.net_def.mem_arena
+      block = arena.mem_block.add()
+      block.mem_id = mem
+      block.x = self.mem_block[mem][0]
+      block.y = self.mem_block[mem][1]
+
+    print('total op: %d', len(self.net_def.op))
+    origin_mem_size = 0
+    optimized_mem_size = 0
+    for op in self.net_def.op:
+      if self.is_buffer_image_op(op):
+        continue
+      origin_mem_size += reduce(operator.mul, op.output_shape[0].dims, 1)
+    for mem in self.mem_block:
+      optimized_mem_size += reduce(operator.mul, self.mem_block[mem], 4)
+
+    print('origin mem: %d, optimized mem: %d', origin_mem_size, optimized_mem_size)
+
 def convert_to_mace_pb(input_graph_def, input_node, output_node, data_type, device):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
@@ -418,7 +511,8 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node, data_type, devi
       ops = graph.get_operations()
       converter = TFConverter(ops, net_def, dt, device)
       converter.convert(input_node, output_node)
-
-  print "PB Parsed."
+      print "PB Converted, start optimize memory."
+      converter.optimize()
+      print "Memory optimization done."
 
   return net_def

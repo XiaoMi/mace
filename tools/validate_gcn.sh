@@ -13,7 +13,6 @@ fi
 TF_MODEL_FILE_PATH=$1
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
 MACE_MODEL_NAME='mace_model.pb'
-MACE_OPT_MODEL_NAME='mace_opt_model.pb'
 INPUT_FILE_NAME='model_input'
 OUTPUT_FILE_NAME='gcn.out'
 OUTPUT_LIST_FILE='gcn.list'
@@ -36,10 +35,6 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_node=GCN/br_result_2/fcn_br \
                                          --data_type=DT_HALF \
                                          --runtime=gpu
-bazel build mace/python/tools:memory_optimizer
-bazel-bin/mace/python/tools/memory_optimizer ${MODEL_DIR}/${MACE_MODEL_NAME} \
-                                             ${MODEL_DIR}/${MACE_OPT_MODEL_NAME}
-
 
 # Step 3: Run model on the phone
 echo "Step 3: Run model on the phone"
@@ -51,7 +46,7 @@ bazel build -c opt --strip always mace/examples:mace_run  \
 adb shell "mkdir -p ${PHONE_DATA_DIR}"
 adb shell "mkdir -p ${KERNEL_DIR}"
 adb push mace/kernels/opencl/cl/* ${KERNEL_DIR}
-adb push ${MODEL_DIR}/${MACE_OPT_MODEL_NAME} ${PHONE_DATA_DIR}
+adb push ${MODEL_DIR}/${MACE_MODEL_NAME} ${PHONE_DATA_DIR}
 adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
 adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 
@@ -62,7 +57,7 @@ adb </dev/null shell MACE_CPP_MIN_VLOG_LEVEL=0 \
         MACE_KERNEL_PATH=$KERNEL_DIR \
         OMP_NUM_THREADS=$num_threads \
         ${PHONE_DATA_DIR}/mace_run \
-          --model=${PHONE_DATA_DIR}/${MACE_OPT_MODEL_NAME} \
+          --model=${PHONE_DATA_DIR}/${MACE_MODEL_NAME} \
           --input=mace_input_node \
           --output=mace_output_node \
           --input_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},3"\
