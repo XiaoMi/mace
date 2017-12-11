@@ -19,7 +19,7 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   const int out_w_blk = get_global_id(1);
   const int out_w_blks = get_global_size(1);
   const int out_hb = get_global_id(2);
-  const int rounded_in_ch = in_ch_blks * 4;
+  const int rounded_in_ch = in_ch_blks << 2;
 
 #ifdef BIAS
   DATA_TYPE4 out0 =
@@ -41,29 +41,29 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   int in_width3 = in_width2 + out_w_blks;
   const int height_idx = (out_hb % out_height) - padding_top;
 #else
-  int in_width0 = out_w_blk * 2 - padding_left;
-  int in_width1 = (out_w_blk + out_w_blks) * 2 - padding_left;
-  int in_width2 = (out_w_blk + 2 * out_w_blks) * 2 - padding_left;
-  int in_width3 = (out_w_blk + 3 * out_w_blks) * 2 - padding_left;
-  const int height_idx = (out_hb % out_height) * 2 - padding_top;
+  int in_width0 = (out_w_blk << 1) - padding_left;
+  int in_width1 = ((out_w_blk + out_w_blks) << 1) - padding_left;
+  int in_width2 = ((out_w_blk + (out_w_blks << 1)) << 1) - padding_left;
+  int in_width3 = ((out_w_blk + (out_w_blks << 1) + out_w_blks) << 1) - padding_left;
+  const int height_idx = ((out_hb % out_height) << 1) - padding_top;
 #endif
 
-  const int batch_idx = (out_hb / out_height) * in_height;
+  const int batch_idx = mul24((out_hb / out_height), in_height);
+  const int rounded_in_ch_x_filter_width = mul24(rounded_in_ch, filter_width);
 
   DATA_TYPE4 in0, in1, in2, in3;
   DATA_TYPE4 weights0, weights1, weights2, weights3;
-  int in_idx, in_width_idx;
-  // Unrolling this loop hurt perfmance
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
+    const int in_idx = mul24(in_ch_blk, in_width);
+    int filter_x_part0 = in_ch_blk << 2;
     for (short hb_idx = 0; hb_idx < filter_height; ++hb_idx) {
-
       int in_hb_value = height_idx + hb_idx;
       in_hb_value = select(in_hb_value + batch_idx,
                            -1,
                            (in_hb_value < 0 || in_hb_value >= in_height));
 
+      int filter_x_part1 = 0;
       for (short width_idx = 0; width_idx < filter_width; ++width_idx) {
-        in_idx = in_ch_blk * in_width;
         int in_width_value;
 #define READ_INPUT(i)                                                                \
         in_width_value = in_width##i + width_idx;                                    \
@@ -79,36 +79,37 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
 
 #undef READ_INPUT
 
-        int filter_idx = (in_ch_blk << 2) + (hb_idx * filter_width + width_idx) * rounded_in_ch;
+        // int filter_idx = (hb_idx * filter_width + width_idx) * rounded_in_ch + (in_ch_blk << 2);
+        int filter_idx = filter_x_part0 + filter_x_part1;
         weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 0, out_ch_blk));
         weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 1, out_ch_blk));
         weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 2, out_ch_blk));
         weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 3, out_ch_blk));
 
-        // Will prefetch L2 improve performance? How to pretch image data?
+        out0 = mad(in0.x, weights0, out0);
+        out0 = mad(in0.y, weights1, out0);
+        out0 = mad(in0.z, weights2, out0);
+        out0 = mad(in0.w, weights3, out0);
 
-        // Interleaving load and mul does not improve performance as expected
-        out0 += in0.x * weights0;
-        out0 += in0.y * weights1;
-        out0 += in0.z * weights2;
-        out0 += in0.w * weights3;
 
-        out1 += in1.x * weights0;
-        out1 += in1.y * weights1;
-        out1 += in1.z * weights2;
-        out1 += in1.w * weights3;
+        out1 = mad(in1.x, weights0, out1);
+        out1 = mad(in1.y, weights1, out1);
+        out1 = mad(in1.z, weights2, out1);
+        out1 = mad(in1.w, weights3, out1);
 
-        out2 += in2.x * weights0;
-        out2 += in2.y * weights1;
-        out2 += in2.z * weights2;
-        out2 += in2.w * weights3;
+        out2 = mad(in2.x, weights0, out2);
+        out2 = mad(in2.y, weights1, out2);
+        out2 = mad(in2.z, weights2, out2);
+        out2 = mad(in2.w, weights3, out2);
 
-        out3 += in3.x * weights0;
-        out3 += in3.y * weights1;
-        out3 += in3.z * weights2;
-        out3 += in3.w * weights3;
+        out3 = mad(in3.x, weights0, out3);
+        out3 = mad(in3.y, weights1, out3);
+        out3 = mad(in3.z, weights2, out3);
+        out3 = mad(in3.w, weights3, out3);
 
+        filter_x_part1 += rounded_in_ch;
       }
+      filter_x_part0 += rounded_in_ch_x_filter_width;
     }
   }
 
@@ -120,28 +121,20 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   out3 = fmax(out3, 0);
 #endif
 
-  const int out_x_base = out_ch_blk * out_width;
+  const int out_x_base = mul24(out_ch_blk, out_width);
   int w = out_w_blk;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               out0);
+  WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out0);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               out1);
+  WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out1);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               out2);
+  WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out2);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  WRITE_IMAGET(output,
-               (int2)(out_x_base + w, out_hb),
-               out3);
+  WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 
 }
