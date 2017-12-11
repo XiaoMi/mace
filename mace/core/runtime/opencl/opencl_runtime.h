@@ -48,6 +48,7 @@ class OpenCLRuntime {
                     const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
+  void GenerateCLBinaryFilename(std::string &filename);
 
  private:
   static bool enable_profiling_;

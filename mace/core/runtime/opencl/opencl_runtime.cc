@@ -47,8 +47,9 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
 
 bool WriteFile(const std::string &filename, std::string &content, bool binary) {
   std::ios_base::openmode mode = std::ios::out;
-  if (binary)
+  if (binary) {
     mode |= std::ios::binary;
+  }
   std::ofstream ofs(filename, mode);
 
   ofs.write(content.c_str(), content.size());
@@ -181,40 +182,25 @@ const std::map<std::string, std::string>
   {"space_to_batch", "space_to_batch.cl"},
 };
 
-const std::map<std::string, std::string>
-    OpenCLRuntime::binary_map_ = {
-  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=2", "addn_f_2.bin"},
-  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=3", "addn_f_3.bin"},
-  {"addn -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DINPUT_NUM=4", "addn_f_4.bin"},
-  {"batch_norm -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "batch_norm_f.bin"},
-  {"bias_add -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "bias_add_f.bin"},
-  {"buffer_to_image -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "buffer_to_image_f.bin"},
-  {"buffer_to_image -DCMD_DATA_TYPE=h -DDATA_TYPE=half", "buffer_to_image_h.bin"},
-  {"concat -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "concat_f.bin"},
-  {"concat -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DDIVISIBLE_FOUR", "concat_f_div4.bin"},
-  {"concat -DCMD_DATA_TYPE=h -DDATA_TYPE=half -DDIVISIBLE_FOUR", "concat_h_div4.bin"},
-  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_bias_f_fusedrelu_1.bin"},
-  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_bias_f_fusedrelu_2.bin"},
-  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_bias_f_1.bin"},
-  {"conv_2d -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_bias_f_2.bin"},
-  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_1x1_bias_f_fusedrelu_1.bin"},
-  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_1x1_bias_f_fusedrelu_2.bin"},
-  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_1x1_bias_f_1.bin"},
-  {"conv_2d_1x1 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_1x1_bias_f_2.bin"},
-  {"conv_2d_3x3  -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_3x3_f_1.bin"},
-  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=1", "conv_2d_3x3_bias_f_fusedrelu_1.bin"},
-  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DFUSED_RELU -DSTRIDE=2", "conv_2d_3x3_bias_f_fusedrelu_2.bin"},
-  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=1", "conv_2d_3x3_bias_f_1.bin"},
-  {"conv_2d_3x3 -DBIAS -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DSTRIDE=2", "conv_2d_3x3_bias_f_2.bin"},
-  {"depthwise_conv_3x3  -DBIAS -DDATA_TYPE=float", "depthwise_conv_3x3_bias_f.bin"},
-  {"depthwise_conv_3x3 -DBIAS -DDATA_TYPE=float -DSTRIDE_1", "depthwise_conv_3x3_bias_f_1.bin"},
-  {"pooling  -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "pooling_f.bin"},
-  {"pooling -DCMD_DATA_TYPE=f -DDATA_TYPE=float -DPOOL_AVG", "pooling_f_avg.bin"},
-  {"pooling -DCMD_DATA_TYPE=h -DDATA_TYPE=half -DFP16", "pooling_h_fp16.bin"},
-  {"relu -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "relu_f.bin"},
-  {"resize_bilinear -DCMD_DATA_TYPE=f -DDATA_TYPE=float", "resize_bilinear_f.bin"},
-  {"space_to_batch -DDATA_TYPE=float", "space_to_batch_f.bin"},
-};
+void OpenCLRuntime::GenerateCLBinaryFilename(std::string &filename) {
+  while (true) {
+    size_t pos = filename.find(" -D");
+    if (pos == std::string::npos) {
+      break;
+    }
+    filename.replace(pos, 3, "__");
+  }
+
+  while (true) {
+    size_t pos = filename.find("=");
+    if (pos == std::string::npos) {
+      break;
+    }
+    filename.replace(pos, 1, "_");
+  }
+
+  filename += ".bin";
+}
 
 void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                                  const std::string &binary_file_name,
@@ -313,11 +299,8 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    std::string binary_file_name = "";
-    auto binary_it = binary_map_.find(built_program_key);
-    if (binary_it != binary_map_.end()) {
-      binary_file_name = binary_it->second;
-    }
+    std::string binary_file_name = built_program_key;
+    GenerateCLBinaryFilename(binary_file_name);
     this->BuildProgram(program_file_name,
                        binary_file_name,
                        build_options_str,
