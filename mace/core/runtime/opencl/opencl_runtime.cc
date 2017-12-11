@@ -19,8 +19,9 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
   content = "";
 
   std::ios_base::openmode mode = std::ios::in;
-  if (binary)
+  if (binary) {
     mode |= std::ios::binary;
+  }
 
   std::ifstream ifs(filename, mode);
 
@@ -30,7 +31,12 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
   }
 
   ifs.seekg(0, std::ios::end);
-  content.reserve(ifs.tellg());
+  size_t filesize = ifs.tellg();
+  if ((filesize / 1024.0 / 1024.0) > 10) {
+    LOG(ERROR) << "Filesize overflow 10MB";
+    return false;
+  }
+  content.reserve(filesize);
   ifs.seekg(0, std::ios::beg);
   content.assign(std::istreambuf_iterator<char>(ifs),
                  std::istreambuf_iterator<char>());
