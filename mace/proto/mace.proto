@@ -83,6 +83,7 @@ message OperatorDef {
   optional string type = 4;
   repeated Argument arg = 5;
   repeated OutputShape output_shape = 6;
+  repeated DataType output_type = 7;
 
   // Memory optimization: only support one single output op
   optional int32 mem_id = 10 [default = -1];
@@ -127,6 +128,9 @@ message NetDef {
   optional string version = 3;
   repeated Argument arg = 4;
   repeated TensorProto tensors = 5;
+
+  // for mem optimization
+  optional MemoryArena mem_arena = 10;
 
   // for hexagon mace-nnlib
   repeated InputInfo input_info = 100;
