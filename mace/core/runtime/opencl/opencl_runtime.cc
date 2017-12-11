@@ -31,8 +31,8 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
   }
 
   ifs.seekg(0, std::ios::end);
-  size_t filesize = ifs.tellg();
-  if ((filesize / 1024.0 / 1024.0) > 10) {
+  const size_t filesize = ifs.tellg();
+  if (filesize > 10 * 1024 * 1024) {
     LOG(ERROR) << "Filesize overflow 10MB";
     return false;
   }
@@ -42,10 +42,16 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
                  std::istreambuf_iterator<char>());
 
   ifs.close();
+  if (ifs.fail()) {
+    LOG(ERROR) << "Failed to read from file " << filename;
+    return false;
+  }
+
   return true;
 }
 
-bool WriteFile(const std::string &filename, std::string &content, bool binary) {
+bool WriteFile(const std::string &filename, const std::string &content,
+               bool binary) {
   std::ios_base::openmode mode = std::ios::out;
   if (binary) {
     mode |= std::ios::binary;
@@ -54,14 +60,18 @@ bool WriteFile(const std::string &filename, std::string &content, bool binary) {
 
   ofs.write(content.c_str(), content.size());
   ofs.close();
+  if (ofs.fail()) {
+    LOG(ERROR) << "Failed to write to file " << filename;
+    return false;
+  }
 
   return true;
 }
 
-}  // namespace
+} // namespace
 
 bool OpenCLRuntime::enable_profiling_ = false;
-std::unique_ptr<cl::Event> OpenCLRuntime::profiling_ev_ = NULL;
+std::unique_ptr<cl::Event> OpenCLRuntime::profiling_ev_ = nullptr;
 
 OpenCLRuntime *OpenCLRuntime::Get() {
   static std::once_flag init_once;
@@ -125,13 +135,9 @@ OpenCLRuntime *OpenCLRuntime::Get() {
   return instance;
 }
 
-void OpenCLRuntime::EnableProfiling() {
-  enable_profiling_ = true;
-}
+void OpenCLRuntime::EnableProfiling() { enable_profiling_ = true; }
 
-cl::Event* OpenCLRuntime::GetDefaultEvent() {
-  return profiling_ev_.get();
-}
+cl::Event *OpenCLRuntime::GetDefaultEvent() { return profiling_ev_.get(); }
 
 cl_ulong OpenCLRuntime::GetEventProfilingStartInfo() {
   MACE_CHECK(profiling_ev_, "is NULL, should enable profiling first.");
@@ -143,8 +149,7 @@ cl_ulong OpenCLRuntime::GetEventProfilingEndInfo() {
   return profiling_ev_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
 }
 
-OpenCLRuntime::OpenCLRuntime(cl::Context context,
-                             cl::Device device,
+OpenCLRuntime::OpenCLRuntime(cl::Context context, cl::Device device,
                              cl::CommandQueue command_queue)
     : context_(context), device_(device), command_queue_(command_queue) {
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
@@ -165,60 +170,51 @@ cl::Program &OpenCLRuntime::program() {
 }
 
 // TODO(heliangliang) Support binary format
-const std::map<std::string, std::string>
-    OpenCLRuntime::program_map_ = {
-  {"addn", "addn.cl"},
-  {"batch_norm", "batch_norm.cl"},
-  {"bias_add", "bias_add.cl"},
-  {"buffer_to_image", "buffer_to_image.cl"},
-  {"conv_2d", "conv_2d.cl"},
-  {"conv_2d_1x1", "conv_2d_1x1.cl"},
-  {"conv_2d_3x3", "conv_2d_3x3.cl"},
-  {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},
-  {"pooling", "pooling.cl"},
-  {"relu", "relu.cl"},
-  {"concat", "concat.cl"},
-  {"resize_bilinear", "resize_bilinear.cl"},
-  {"space_to_batch", "space_to_batch.cl"},
+const std::map<std::string, std::string> OpenCLRuntime::program_map_ = {
+    {"addn", "addn.cl"},
+    {"batch_norm", "batch_norm.cl"},
+    {"bias_add", "bias_add.cl"},
+    {"buffer_to_image", "buffer_to_image.cl"},
+    {"conv_2d", "conv_2d.cl"},
+    {"conv_2d_1x1", "conv_2d_1x1.cl"},
+    {"conv_2d_3x3", "conv_2d_3x3.cl"},
+    {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},
+    {"pooling", "pooling.cl"},
+    {"relu", "relu.cl"},
+    {"concat", "concat.cl"},
+    {"resize_bilinear", "resize_bilinear.cl"},
+    {"space_to_batch", "space_to_batch.cl"},
 };
 
-void OpenCLRuntime::GenerateCLBinaryFilename(std::string &filename) {
-  while (true) {
-    size_t pos = filename.find(" -D");
-    if (pos == std::string::npos) {
-      break;
+std::string
+OpenCLRuntime::GenerateCLBinaryFilenamePrefix(const std::string &filename_msg) {
+  std::string filename_prefix = filename_msg;
+  for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
+    if (*it == ' ' || *it == '-' || *it == '=') {
+      *it = '_';
     }
-    filename.replace(pos, 3, "__");
   }
-
-  while (true) {
-    size_t pos = filename.find("=");
-    if (pos == std::string::npos) {
-      break;
-    }
-    filename.replace(pos, 1, "_");
-  }
-
-  filename += ".bin";
+  return filename_prefix;
 }
 
 void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
-                                 const std::string &binary_file_name,
+                                 const std::string &binary_file_name_prefix,
                                  const std::string &build_options,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
   std::string source_filename = kernel_path_ + program_file_name;
-  std::string binary_filename = kernel_path_ + binary_file_name;
+  std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
 
   // Create program
-  if (std::ifstream(binary_filename).is_open()) {
+  bool is_binary_filename_exist = std::ifstream(binary_filename).is_open();
+  if (is_binary_filename_exist) {
     VLOG(1) << "Create program with binary: " << binary_filename;
     std::string kernel_binary;
     MACE_CHECK(ReadFile(binary_filename, kernel_binary, true));
 
-    std::vector<unsigned char> binaries(
-        kernel_binary.begin(), kernel_binary.end());
+    std::vector<unsigned char> binaries(kernel_binary.begin(),
+                                        kernel_binary.end());
 
     *program = cl::Program(this->context(), {device()}, {binaries});
 
@@ -233,13 +229,14 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     *program = cl::Program(this->context(), sources);
 
   } else {
-    LOG(ERROR) << "Failed to open kernel file " << binary_filename << " and "
+    LOG(FATAL) << "Failed to open kernel file " << binary_filename << " and "
                << source_filename;
   }
 
   // Build program
-  std::string build_options_str = build_options +
-      " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" + kernel_path_;
+  std::string build_options_str =
+      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" +
+      kernel_path_;
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
   cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
@@ -253,34 +250,32 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
   }
 
   // Write binary if necessary
-  if (!std::ifstream(binary_filename).is_open()) {
+  if (!is_binary_filename_exist) {
     size_t deviceListSize = 1;
     size_t *programBinarySizes = new size_t[deviceListSize];
-    clGetProgramInfo((*program)(),
-                     CL_PROGRAM_BINARY_SIZES,
-                     sizeof(size_t) * deviceListSize,
-                     programBinarySizes,
-                     NULL);
+    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
+                                  sizeof(size_t) * deviceListSize,
+                                  programBinarySizes, nullptr);
+    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
     unsigned char **programBinaries = new unsigned char *[deviceListSize];
-    for(cl_uint i = 0; i < deviceListSize; ++i)
+    for (cl_uint i = 0; i < deviceListSize; ++i)
       programBinaries[i] = new unsigned char[programBinarySizes[i]];
 
-    clGetProgramInfo((*program)(),
-                     CL_PROGRAM_BINARIES,
-                     sizeof(unsigned char *) * deviceListSize,
-                     programBinaries,
-                     NULL);
-    std::string content(reinterpret_cast<char const*>(programBinaries[0]),
+    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
+                           sizeof(unsigned char *) * deviceListSize,
+                           programBinaries, nullptr);
+    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
+    std::string content(reinterpret_cast<char const *>(programBinaries[0]),
                         programBinarySizes[0]);
 
-    WriteFile(binary_filename, content, true);
+    MACE_CHECK(WriteFile(binary_filename, content, true));
   }
-
 }
 
-cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
-                                      const std::string &kernel_name,
-                                      const std::set<std::string> &build_options) {
+cl::Kernel
+OpenCLRuntime::BuildKernel(const std::string &program_name,
+                           const std::string &kernel_name,
+                           const std::set<std::string> &build_options) {
   auto kernel_program_it = program_map_.find(program_name);
   if (kernel_program_it == program_map_.end()) {
     MACE_CHECK(false, program_name, " opencl kernel doesn't exist.");
@@ -288,7 +283,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
 
   std::string program_file_name = kernel_program_it->second;
   std::string build_options_str;
-  for(auto &option : build_options) {
+  for (auto &option : build_options) {
     build_options_str += " " + option;
   }
   std::string built_program_key = program_name + build_options_str;
@@ -299,12 +294,10 @@ cl::Kernel OpenCLRuntime::BuildKernel(const std::string &program_name,
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    std::string binary_file_name = built_program_key;
-    GenerateCLBinaryFilename(binary_file_name);
-    this->BuildProgram(program_file_name,
-                       binary_file_name,
-                       build_options_str,
-                       &program);
+    std::string binary_file_name_prefix =
+        GenerateCLBinaryFilenamePrefix(built_program_key);
+    this->BuildProgram(program_file_name, binary_file_name_prefix,
+                       build_options_str, &program);
     built_program_map_.emplace(built_program_key, program);
   }
   return cl::Kernel(program, kernel_name.c_str());
@@ -316,10 +309,10 @@ uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
   return static_cast<uint32_t>(size);
 }
 
-uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel& kernel) {
+uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   unsigned long long size = 0;
   kernel.getWorkGroupInfo(device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
   return static_cast<uint32_t>(size);
 }
 
-}  // namespace mace
+} // namespace mace
