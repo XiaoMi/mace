@@ -17,12 +17,13 @@ __kernel void batch_norm(__read_only image2d_t input,
   DATA_TYPE4 mean_value = READ_IMAGET(mean, SAMPLER, (int2)(ch_blk, 0));
   DATA_TYPE4 var_value = READ_IMAGET(var, SAMPLER, (int2)(ch_blk, 0));
 
+  // native_rsqrt seems not faster than rsqrt
   DATA_TYPE4 new_scale = scale_value * rsqrt(var_value + (DATA_TYPE4)epsilon);
-  DATA_TYPE4 new_offset = offset_value - mean_value * new_scale;
+  DATA_TYPE4 new_offset = mad(0 - mean_value, new_scale, offset_value);
 
-  const int pos = ch_blk * width + w;
+  const int pos = mad24(ch_blk, width, w);
 
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
-  DATA_TYPE4 out = in * new_scale + new_offset;
+  DATA_TYPE4 out = mad(in, new_scale, new_offset);
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }
