@@ -25,8 +25,8 @@ __kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w *
   const float h_lerp = h_in - h_lower;
   const float w_lerp = w_in - w_lower;
 
-  const int in_w_offset = ch_blk * in_width;
-  const int in_h_offset = b * in_height;
+  const int in_w_offset = mul24(ch_blk, in_width);
+  const int in_h_offset = mul24(b, in_height);
 
   DATA_TYPE4 top_left = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_lower, in_h_offset + h_lower));
@@ -37,13 +37,12 @@ __kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w *
   DATA_TYPE4 bottom_right = READ_IMAGET(input, SAMPLER,
           (int2)(in_w_offset + w_upper, in_h_offset + h_upper));
 
-  DATA_TYPE4 top = top_left + (top_right - top_left) * w_lerp;
-  DATA_TYPE4 bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
+  DATA_TYPE4 top = mad((top_right - top_left), w_lerp, top_left);
+  DATA_TYPE4 bottom = mad((bottom_right - bottom_left), w_lerp, bottom_left);
+  DATA_TYPE4 out = mad((bottom - top), h_lerp, top);
 
-  DATA_TYPE4 out = top + (bottom - top) * h_lerp;
-
-  const int out_w_offset = ch_blk * out_width;
-  const int out_h_offset = b * out_height;
+  const int out_w_offset = mul24(ch_blk, out_width);
+  const int out_h_offset = mul24(b, out_height);
   WRITE_IMAGET(output, (int2)(out_w_offset + w, out_h_offset + h), out);
 }
 

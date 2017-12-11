@@ -36,11 +36,11 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   w.w = w.z + out_w_blks;
   int out_hb_idx = (out_hb % height);
 #else
-  w.x = out_w_blk * 2;
-  w.y = (out_w_blk + out_w_blks) * 2;
-  w.z = (out_w_blk + 2 * out_w_blks) * 2;
-  w.w = (out_w_blk + 3 * out_w_blks) * 2;
-  int out_hb_idx = (out_hb % height) * 2;
+  w.x = out_w_blk << 1;
+  w.y = (out_w_blk + out_w_blks) << 1;
+  w.z = (out_w_blk + (out_w_blks << 1)) << 1;
+  w.w = (out_w_blk + (out_w_blks << 1) + out_w_blks) << 1;
+  int out_hb_idx = (out_hb % height) << 1;
 #endif
 
   w.x = select(w.x, INT_MIN, w.x >= in_width);
@@ -48,47 +48,46 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   w.z = select(w.z, INT_MIN, w.z >= in_width);
   w.w = select(w.w, INT_MIN, w.w >= in_width);
 
-  out_hb_idx = select(out_hb_idx + (out_hb / height) * in_height,
+  out_hb_idx = select(mad24((out_hb / height), in_height, out_hb_idx),
                       -1,
                       out_hb_idx >= in_height);
 
   // Unrolling this loop hurt perfmance
   int in_x_base = 0;
+  int filter_x_base = 0;
   for (int in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
-
     DATA_TYPE4 in0 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.x, out_hb_idx));
     DATA_TYPE4 in1 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.y, out_hb_idx));
     DATA_TYPE4 in2 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.z, out_hb_idx));
     DATA_TYPE4 in3 = READ_IMAGET(input, SAMPLER, (int2)(in_x_base + w.w, out_hb_idx));
 
-    const int filter_x0 = in_ch_blk << 2;
-    DATA_TYPE4 weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0, out_ch_blk));
-    DATA_TYPE4 weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 1, out_ch_blk));
-    DATA_TYPE4 weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 2, out_ch_blk));
-    DATA_TYPE4 weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x0 + 3, out_ch_blk));
-    // Will prefetch L2 improve performance? How to pretch image data?
+    DATA_TYPE4 weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_base + 0, out_ch_blk));
+    DATA_TYPE4 weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_base + 1, out_ch_blk));
+    DATA_TYPE4 weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_base + 2, out_ch_blk));
+    DATA_TYPE4 weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_base + 3, out_ch_blk));
 
-    out0 += in0.x * weights0;
-    out0 += in0.y * weights1;
-    out0 += in0.z * weights2;
-    out0 += in0.w * weights3;
+    out0 = mad(in0.x, weights0, out0);
+    out0 = mad(in0.y, weights1, out0);
+    out0 = mad(in0.z, weights2, out0);
+    out0 = mad(in0.w, weights3, out0);
 
-    out1 += in1.x * weights0;
-    out1 += in1.y * weights1;
-    out1 += in1.z * weights2;
-    out1 += in1.w * weights3;
+    out1 = mad(in1.x, weights0, out1);
+    out1 = mad(in1.y, weights1, out1);
+    out1 = mad(in1.z, weights2, out1);
+    out1 = mad(in1.w, weights3, out1);
 
-    out2 += in2.x * weights0;
-    out2 += in2.y * weights1;
-    out2 += in2.z * weights2;
-    out2 += in2.w * weights3;
+    out2 = mad(in2.x, weights0, out2);
+    out2 = mad(in2.y, weights1, out2);
+    out2 = mad(in2.z, weights2, out2);
+    out2 = mad(in2.w, weights3, out2);
 
-    out3 += in3.x * weights0;
-    out3 += in3.y * weights1;
-    out3 += in3.z * weights2;
-    out3 += in3.w * weights3;
+    out3 = mad(in3.x, weights0, out3);
+    out3 = mad(in3.y, weights1, out3);
+    out3 = mad(in3.z, weights2, out3);
+    out3 = mad(in3.w, weights3, out3);
 
     in_x_base += in_width;
+    filter_x_base += 4;
   }
 
 #ifdef FUSED_RELU
@@ -99,7 +98,7 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   out3 = fmax(out3, 0);
 #endif
 
-  const int out_x_base = out_ch_blk * width;
+  const int out_x_base = mul24(out_ch_blk, width);
   int out_x_idx = out_w_blk;
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out0);
 
@@ -114,5 +113,4 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   out_x_idx += out_w_blks;
   if (out_x_idx >= width) return;
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out3);
-
 }

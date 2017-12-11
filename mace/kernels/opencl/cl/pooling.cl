@@ -15,7 +15,7 @@ inline int calculate_avg_block_size(const int pool_size,
   const int w_start = max(0, pos_w);
   const int h_end = min(pos_h + pool_size, h_size);
   const int w_end = min(pos_w + pool_size, w_size);
-  return (h_end - h_start) * (w_end - w_start);
+  return mul24((h_end - h_start), (w_end - w_start));
 }
 
 // Supported data type: half/float
@@ -33,10 +33,10 @@ __kernel void pooling(__read_only image2d_t input,
   const int out_width = get_global_size(1);
   const int out_hb_idx = get_global_id(2);
 
-  const int batch_idx = (out_hb_idx / out_height) * in_height;
-  const int in_height_start = (out_hb_idx % out_height) * stride - pad_top;
-  const int in_width_start = out_width_idx * stride - pad_left;
-  const int in_channel_offset = out_chan_idx * in_width;
+  const int batch_idx = mul24((out_hb_idx / out_height), in_height);
+  const int in_height_start = mul24((out_hb_idx % out_height), stride) - pad_top;
+  const int in_width_start = mul24(out_width_idx, stride) - pad_left;
+  const int in_channel_offset = mul24(out_chan_idx, in_width);
 
 
 #ifdef POOL_AVG
@@ -83,5 +83,5 @@ __kernel void pooling(__read_only image2d_t input,
   }
 #endif
 
-  WRITE_IMAGET(output, (int2)(out_chan_idx * out_width + out_width_idx, out_hb_idx), res);
+  WRITE_IMAGET(output, (int2)(mad24(out_chan_idx, out_width, out_width_idx), out_hb_idx), res);
 }

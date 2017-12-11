@@ -8,8 +8,7 @@ __kernel void bias_add(__read_only image2d_t input,
   const int hb = get_global_id(2);
   const int width = get_global_size(1);
 
-
-  const int pos = ch_blk * width + w;
+  const int pos = mad24(ch_blk, width, w);
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
   DATA_TYPE4 bias_value = READ_IMAGET(bias, SAMPLER, (int2)(ch_blk, 0));
   DATA_TYPE4 out = in + bias_value;
