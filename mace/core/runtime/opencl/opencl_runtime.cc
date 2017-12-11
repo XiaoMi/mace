@@ -32,7 +32,7 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
 
   ifs.seekg(0, std::ios::end);
   const size_t filesize = ifs.tellg();
-  if (filesize > 10 * 1024 * 1024) {
+  if (filesize > 10485760) { // 10485760 == 10 * 1024 * 1024
     LOG(ERROR) << "Filesize overflow 10MB";
     return false;
   }
