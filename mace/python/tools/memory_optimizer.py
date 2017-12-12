@@ -65,7 +65,7 @@ class MemoryOptimizer(object):
             raise Exception('ref count is less than 0')
 
     for mem in self.mem_block:
-      arena = net_def.mem_arena
+      arena = self.net_def.mem_arena
       block = arena.mem_block.add()
       block.mem_id = mem
       block.x = self.mem_block[mem][0]
@@ -83,20 +83,7 @@ class MemoryOptimizer(object):
 
     print('origin mem: %d, optimized mem: %d', origin_mem_size, optimized_mem_size)
 
-if __name__ == '__main__':
-  model_file = sys.argv[1]
-  opt_model_file = sys.argv[2]
-  with open(model_file, "rb") as f:
-    net_def = mace_pb2.NetDef()
-    net_def.ParseFromString(f.read())
-    optimizer = MemoryOptimizer(net_def)
-    optimizer.optimize()
 
-    with open(opt_model_file, "wb") as f:
-      f.write(net_def.SerializeToString())
-    with open(opt_model_file + '_txt', "wb") as f:
-      net_def.ClearField('tensors')
-      f.write(str(net_def))
-
-
-
+def optimize_memory(net_def):
+  mem_optimizer = MemoryOptimizer(net_def)
+  mem_optimizer.optimize()

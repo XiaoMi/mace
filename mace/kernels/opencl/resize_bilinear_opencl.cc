@@ -7,6 +7,7 @@
 #include "mace/kernels/resize_bilinear.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -44,8 +45,6 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   auto rb_kernel  = runtime->BuildKernel("resize_bilinear", "resize_bilinear_nocache", built_options);
 
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(rb_kernel);
-
   uint32_t idx = 0;
   rb_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
   rb_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
@@ -55,17 +54,52 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   rb_kernel.setArg(idx++, static_cast<int32_t>(in_width));
   rb_kernel.setArg(idx++, static_cast<int32_t>(out_height));
 
-  auto command_queue = runtime->command_queue();
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(out_width),
+                           static_cast<uint32_t>(out_height * batch)};
+  const std::vector<uint32_t> lws = {8, 16, 8};
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(rb_kernel);
+  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    std::vector<uint32_t> local_ws(3, 0);
+    local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
+    local_ws[1] = std::min<uint32_t>(out_width, kwg_size / local_ws[0]);
+    local_ws[2] = std::min<uint32_t>(out_height * batch, kwg_size / (local_ws[0] * local_ws[1]));
+    return {{4, 15, 8}, //SNPE size
+            {local_ws[0], local_ws[1], local_ws[2]},
+            {kwg_size / 16, 4, 4},
+            {kwg_size / 32, 4, 8},
+            {kwg_size / 32, 8, 4},
+            {kwg_size / 64, 8, 8},
+            {kwg_size / 64, 16, 4},
+            {kwg_size / 128, 8, 16},
+            {kwg_size / 128, 16, 8},
+            {kwg_size / 128, 32, 4},
+            {1, kwg_size / 32, 32},
+            {1, kwg_size / 64, 64},
+            {1, kwg_size / 128, 128},
+            {1, kwg_size, 1}};
+  };
+  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
+    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+        rb_kernel, cl::NullRange,
+        cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(params[0], params[1], params[2]),
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
 
-  cl_int error = command_queue.enqueueNDRangeKernel(
-      rb_kernel, cl::NullRange,
-      cl::NDRange(static_cast<int32_t>(channel_blocks),
-                  static_cast<int32_t>(out_width),
-                  static_cast<int32_t>(out_height * batch)),
-      // TODO tuning
-      cl::NDRange(1, static_cast<int32_t>(out_width > kwg_size ? kwg_size : out_width), 1),
-      nullptr, OpenCLRuntime::Get()->GetDefaultEvent());
-  MACE_CHECK(error == CL_SUCCESS, error);
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+    return error;
+  };
+  std::stringstream ss;
+  ss << "resize_bilinear_opencl_kernel_"
+     << output->dim(0) << "_"
+     << output->dim(1) << "_"
+     << output->dim(2) << "_"
+     << output->dim(3);
+  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
+                                                     lws,
+                                                     params_generator,
+                                                     func);
+
 }
 
 template struct ResizeBilinearFunctor<DeviceType::OPENCL, float>;

@@ -8,6 +8,7 @@ py_library(
     ],
     srcs_version = "PY2AND3",
     deps = [
+        ":memory_optimizer",
         "//mace/proto:mace_py",
     ],
 )
