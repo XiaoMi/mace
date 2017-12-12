@@ -6,6 +6,7 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -41,21 +42,57 @@ static void Concat2(const Tensor *input0,
   concat_kernel.setArg(idx++, static_cast<int32_t>(input0->dim(3)));
   concat_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
+  const uint32_t gws[3] = {
+      static_cast<uint32_t>(channel_blk),
+      static_cast<uint32_t>(width),
+      static_cast<uint32_t>(batch * height),
+  };
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(concat_kernel);
+  std::vector<uint32_t> lws = {8, 16, 8};
+  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    std::vector<uint32_t> local_ws(3, 0);
+    local_ws[0] = std::min<uint32_t>(channel_blk, kwg_size);
+    local_ws[1] = std::min<uint32_t>(width, kwg_size / local_ws[0]);
+    local_ws[2] = std::min<uint32_t>(height * batch, kwg_size / (local_ws[0] * local_ws[1]));
+    return {{4, 15, 8}, //SNPE size
+            {local_ws[0], local_ws[1], local_ws[2]},
+            {kwg_size / 16, 4, 4},
+            {kwg_size / 32, 4, 8},
+            {kwg_size / 32, 8, 4},
+            {kwg_size / 64, 8, 8},
+            {kwg_size / 64, 16, 4},
+            {kwg_size / 128, 8, 16},
+            {kwg_size / 128, 16, 8},
+            {kwg_size / 128, 32, 4},
+            {1, kwg_size / 32, 32},
+            {1, kwg_size / 64, 64},
+            {1, kwg_size / 128, 128},
+            {3, 15, 9},
+            {7, 15, 9},
+            {9, 7, 15},
+            {15, 7, 9},
+            {1, kwg_size, 1}};
+  };
+  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
+    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+        concat_kernel, cl::NullRange,
+        cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(params[0], params[1], params[2]),
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
 
-  uint32_t lws[3] = {8, 16, 8};
-//  lws[0] = std::min<uint32_t>(channel_blk, kwg_size);
-//  lws[1] = std::min<uint32_t>(width, kwg_size / lws[0]);
-//  lws[2] = std::min<uint32_t>(height * batch, kwg_size / (lws[0] * lws[1]));
-
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      concat_kernel, cl::NullRange,
-      cl::NDRange(static_cast<uint32_t>(channel_blk),
-                  static_cast<uint32_t>(width),
-                  static_cast<uint32_t>(height * batch)),
-      cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
-  MACE_CHECK(error == CL_SUCCESS);
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+    return error;
+  };
+  std::stringstream ss;
+  ss << "concat_opencl_kernel_"
+     << output->dim(0) << "_"
+     << output->dim(1) << "_"
+     << output->dim(2) << "_"
+     << output->dim(3);
+  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
+                                                     lws,
+                                                     params_generator,
+                                                     func);
 }
 
 template<typename T>

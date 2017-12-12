@@ -6,6 +6,7 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -33,8 +34,6 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
   built_options.emplace("-DINPUT_NUM=" + ToString(input_tensors.size()));
   auto addn_kernel = runtime->BuildKernel("addn", "addn", built_options);
 
-  const uint32_t lws = runtime->GetKernelMaxWorkGroupSize(addn_kernel);
-
   uint32_t idx = 0;
   for (auto input : input_tensors) {
   addn_kernel.setArg(idx++,
@@ -42,12 +41,47 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
   }
   addn_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      addn_kernel, cl::NullRange,
-      cl::NDRange(width_pixels, batch_height_pixels),
-      cl::NDRange(64, 16),  // TODO fix this
-      nullptr, OpenCLRuntime::Get()->GetDefaultEvent());
-  MACE_CHECK(error == CL_SUCCESS) << "error code: " << error;
+  const uint32_t gws[2] = {
+      static_cast<uint32_t>(width_pixels),
+      static_cast<uint32_t>(batch_height_pixels)
+  };
+  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(addn_kernel);
+  std::vector<uint32_t> lws = {64, 16};
+  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    uint32_t local_ws[2];
+    local_ws[0] = std::min<uint32_t>(width_pixels, kwg_size);
+    local_ws[1] = std::min<uint32_t>(batch_height_pixels, kwg_size / local_ws[0]);
+    return {{local_ws[0], local_ws[1]},
+            {kwg_size / 16, 16},
+            {kwg_size / 32, 32},
+            {kwg_size / 64, 64},
+            {kwg_size / 128, 128},
+            {kwg_size / 256, 256},
+            {kwg_size, 1},
+            {1, kwg_size}
+    };
+  };
+  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
+    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
+        addn_kernel, cl::NullRange,
+        cl::NDRange(gws[0], gws[1]),
+        cl::NDRange(params[0], params[1]),
+        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+    return error;
+  };
+  std::stringstream ss;
+  ss << "addn_opencl_kernel_"
+     << output->dim(0) << "_"
+     << output->dim(1) << "_"
+     << output->dim(2) << "_"
+     << output->dim(3);
+  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
+                                                     lws,
+                                                     params_generator,
+                                                     func);
+
 }
 
 template <typename T>
