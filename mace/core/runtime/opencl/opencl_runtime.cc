@@ -15,8 +15,9 @@
 namespace mace {
 namespace {
 
-bool ReadFile(const std::string &filename, std::string &content, bool binary) {
-  content = "";
+bool ReadFile(const std::string &filename, bool binary,
+              std::vector<unsigned char> *content_ptr) {
+  MACE_CHECK_NOTNULL(content_ptr);
 
   std::ios_base::openmode mode = std::ios::in;
   if (binary) {
@@ -25,6 +26,9 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
 
   std::ifstream ifs(filename, mode);
 
+  // Stop eating new lines and whitespace
+  ifs.unsetf(std::ios::skipws);
+
   if (!ifs.is_open()) {
     LOG(ERROR) << "Failed to open file " << filename;
     return false;
@@ -32,33 +36,35 @@ bool ReadFile(const std::string &filename, std::string &content, bool binary) {
 
   ifs.seekg(0, std::ios::end);
   const size_t filesize = ifs.tellg();
-  if (filesize > 10485760) { // 10485760 == 10 * 1024 * 1024
+  if (filesize > 10 * 1024 * 1024) {
     LOG(ERROR) << "Filesize overflow 10MB";
     return false;
   }
-  content.reserve(filesize);
+  content_ptr->reserve(filesize);
   ifs.seekg(0, std::ios::beg);
-  content.assign(std::istreambuf_iterator<char>(ifs),
-                 std::istreambuf_iterator<char>());
+  content_ptr->insert(content_ptr->begin(), std::istreambuf_iterator<char>(ifs),
+                      std::istreambuf_iterator<char>());
 
-  ifs.close();
   if (ifs.fail()) {
     LOG(ERROR) << "Failed to read from file " << filename;
     return false;
   }
 
+  ifs.close();
+
   return true;
 }
 
-bool WriteFile(const std::string &filename, const std::string &content,
-               bool binary) {
+bool WriteFile(const std::string &filename, bool binary,
+               const std::vector<unsigned char> &content) {
   std::ios_base::openmode mode = std::ios::out;
   if (binary) {
     mode |= std::ios::binary;
   }
   std::ofstream ofs(filename, mode);
 
-  ofs.write(content.c_str(), content.size());
+  ofs.write(reinterpret_cast<const char *>(&content[0]),
+            content.size() * sizeof(char));
   ofs.close();
   if (ofs.fail()) {
     LOG(ERROR) << "Failed to write to file " << filename;
@@ -210,26 +216,23 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
   bool is_binary_filename_exist = std::ifstream(binary_filename).is_open();
   if (is_binary_filename_exist) {
     VLOG(1) << "Create program with binary: " << binary_filename;
-    std::string kernel_binary;
-    MACE_CHECK(ReadFile(binary_filename, kernel_binary, true));
-
-    std::vector<unsigned char> binaries(kernel_binary.begin(),
-                                        kernel_binary.end());
+    std::vector<unsigned char> binaries;
+    MACE_CHECK(ReadFile(binary_filename, true, &binaries));
 
     *program = cl::Program(this->context(), {device()}, {binaries});
 
   } else if (std::ifstream(source_filename).is_open()) {
     VLOG(1) << "Create program with source: " << source_filename;
-    std::string kernel_source;
-    MACE_CHECK(ReadFile(source_filename, kernel_source, false));
+    std::vector<unsigned char> kernel_source;
+    MACE_CHECK(ReadFile(source_filename, false, &kernel_source));
 
     cl::Program::Sources sources;
-    sources.push_back({kernel_source.c_str(), kernel_source.length()});
+    sources.push_back(std::string(kernel_source.begin(), kernel_source.end()));
 
     *program = cl::Program(this->context(), sources);
 
   } else {
-    LOG(FATAL) << "Failed to open kernel file " << binary_filename << " and "
+    LOG(FATAL) << "Failed to open kernel file " << binary_filename << " or "
                << source_filename;
   }
 
@@ -251,24 +254,30 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
 
   // Write binary if necessary
   if (!is_binary_filename_exist) {
-    size_t deviceListSize = 1;
-    size_t *programBinarySizes = new size_t[deviceListSize];
+    size_t device_list_size = 1;
+    std::unique_ptr<size_t[]> program_binary_sizes(
+        new size_t[device_list_size]);
     cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
-                                  sizeof(size_t) * deviceListSize,
-                                  programBinarySizes, nullptr);
+                                  sizeof(size_t) * device_list_size,
+                                  program_binary_sizes.get(), nullptr);
     MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-    unsigned char **programBinaries = new unsigned char *[deviceListSize];
-    for (cl_uint i = 0; i < deviceListSize; ++i)
-      programBinaries[i] = new unsigned char[programBinarySizes[i]];
+    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+        new std::unique_ptr<unsigned char[]>[ device_list_size ]);
+    for (cl_uint i = 0; i < device_list_size; ++i) {
+      program_binaries[i] = std::unique_ptr<unsigned char[]>(
+          new unsigned char[program_binary_sizes[i]]);
+    }
 
     err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
-                           sizeof(unsigned char *) * deviceListSize,
-                           programBinaries, nullptr);
+                           sizeof(unsigned char *) * device_list_size,
+                           program_binaries.get(), nullptr);
     MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-    std::string content(reinterpret_cast<char const *>(programBinaries[0]),
-                        programBinarySizes[0]);
+    std::vector<unsigned char> content(
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+            program_binary_sizes[0]);
 
-    MACE_CHECK(WriteFile(binary_filename, content, true));
+    MACE_CHECK(WriteFile(binary_filename, true, content));
   }
 }
 

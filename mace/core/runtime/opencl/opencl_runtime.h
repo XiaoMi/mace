@@ -64,8 +64,6 @@ class OpenCLRuntime {
                std::string> program_map_;
   mutable std::map<std::string,
           cl::Program> built_program_map_;
-  static const std::map<std::string,
-               std::string> binary_map_;
 };
 
 }  // namespace mace

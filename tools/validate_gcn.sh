@@ -49,7 +49,7 @@ bazel build -c opt --strip always mace/examples:mace_run  \
 
 adb shell "mkdir -p ${PHONE_DATA_DIR}"
 adb shell "mkdir -p ${KERNEL_DIR}"
-adb push mace/kernels/opencl/cl/* ${KERNEL_DIR}
+adb push mace/kernels/opencl/cl/ ${KERNEL_DIR}
 adb push ${MODEL_DIR}/${MACE_OPT_MODEL_NAME} ${PHONE_DATA_DIR}
 adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
 adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
