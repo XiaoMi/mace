@@ -74,7 +74,7 @@ bool WriteFile(const std::string &filename, bool binary,
   return true;
 }
 
-} // namespace
+}  // namespace
 
 bool OpenCLRuntime::enable_profiling_ = false;
 std::unique_ptr<cl::Event> OpenCLRuntime::profiling_ev_ = nullptr;
@@ -324,4 +324,4 @@ uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   return static_cast<uint32_t>(size);
 }
 
-} // namespace mace
+}  // namespace mace
