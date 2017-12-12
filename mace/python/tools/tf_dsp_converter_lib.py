@@ -149,6 +149,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
     elif is_node_flatten_reshape(first_op):
       op_def.type = 'Flatten'
       op_def.input.extend([t.name for t in first_op.inputs])
+      op_def.out_max_byte_size.extend([max_elem_size(out) for out in first_op.outputs])
       convert_op_outputs(op_def, first_op)
     elif dsp_ops.has_op(first_op.type):
       op_def.input.extend([t.name for t in first_op.inputs])
