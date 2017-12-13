@@ -44,9 +44,11 @@ class OpenCLRuntime {
   OpenCLRuntime(const OpenCLRuntime&) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime&) = delete;
 
-  void BuildProgram(const std::string &kernel_name,
+  void BuildProgram(const std::string &program_file_name,
+                    const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
+  std::string GenerateCLBinaryFilenamePrefix(const std::string &filename_msg);
 
  private:
   static bool enable_profiling_;
