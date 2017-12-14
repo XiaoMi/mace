@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_profiling")
+load("//mace:mace.bzl", "if_android", "if_profiling_enabled")
 
 cc_library(
     name = "opencl_runtime",
@@ -15,13 +15,16 @@ cc_library(
         "runtime/opencl/*.cc",
     ]),
     hdrs = glob([
-        "runtime/opencl/cl.hpp",
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
-    copts = ["-std=c++11"] + if_profiling(["-D__ENABLE_PROFILING"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"] +
+            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]),
+    linkopts = ["-ldl"],
     deps = [
-        ":logging",
+        ":core",
+        "//mace/utils:logging",
+        "//mace/utils:tuner",
         "@opencl_headers//:opencl20_headers",
     ],
     alwayslink = 1,
@@ -29,62 +32,31 @@ cc_library(
 
 
 cc_library(
-    name = "logging",
-    srcs = [
-        "logging.cc",
-    ],
-    hdrs = [
-        "logging.h",
-    ],
-    copts = ["-std=c++11"],
-    linkopts = if_android([
-        "-llog",
-    ]),
-)
-
-cc_library(
     name = "core",
-    srcs = glob(
-        ["*.cc",],
-        exclude=[
-            "logging.cc",
-        ]),
-    hdrs = glob(
-        ["*.h"],
-        exclude=[
-            "logging.h",
-        ]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"] + if_android([
-            "-D__USE_OPENCL",
-    ]),
-    linkopts = ["-ldl"] + if_android([
-        "-pie",
-    ]),
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = if_android(["-pie"]),
     deps = [
-        ":logging",
-        "//mace/proto:stats_proto",
-        "//mace/utils",
-        ":opencl_runtime",
+        "//mace/utils:utils_hdrs",
+        "//mace/utils:logging",
     ],
 )
 
-# Main program for tests
 cc_library(
     name = "test_benchmark_main",
     testonly = 1,
-    srcs = glob([
-        "testing/*.cc",
-    ]),
-    hdrs = glob([
-        "testing/*.h",
-    ]),
-    copts = [
-        "-std=c++11",
-        "-D_GLIBCXX_USE_C99_MATH_TR1",
+    hdrs = [
+        "testing/test_benchmark.h",
     ],
-    linkopts = ["-lm"],
+    srcs = [
+        "testing/test_benchmark.cc",
+        "testing/test_benchmark_main.cc",
+    ],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    alwayslink = 1,
     deps = [
         ":core",
+        "//mace/utils:utils_hdrs",
     ],
-    alwayslink = 1,
 )

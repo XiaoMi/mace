@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_ADDN_H_
 #define MACE_KERNELS_ADDN_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -15,7 +16,7 @@ struct AddNFunctorBase {};
 template <DeviceType D, typename T>
 struct AddNFunctor : AddNFunctorBase {
   void operator()(const std::vector<const Tensor *> &input_tensors,
-                  Tensor *output_tensor) {
+                  Tensor *output_tensor, StatsFuture *future) {
     output_tensor->ResizeLike(input_tensors[0]);
     Tensor::MappingGuard output_map(output_tensor);
     index_t size = input_tensors[0]->size();
@@ -38,12 +39,14 @@ struct AddNFunctor : AddNFunctorBase {
 
 template <>
 void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const std::vector<const Tensor *> &input_tensors, Tensor *output_tensor);
+    const std::vector<const Tensor *> &input_tensors,
+    Tensor *output_tensor,
+    StatsFuture *future);
 
 template <typename T>
 struct AddNFunctor<DeviceType::OPENCL, T> : AddNFunctorBase {
   void operator()(const std::vector<const Tensor *> &input_tensors,
-                  Tensor *output_tensor);
+                  Tensor *output_tensor, StatsFuture *future);
 };
 
 }  //  namespace kernels

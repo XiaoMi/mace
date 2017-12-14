@@ -6,6 +6,7 @@
 #define MACE_KERNELS_POOLING_H
 
 #include <limits>
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 
@@ -49,7 +50,8 @@ struct PoolingFunctor : PoolingFunctorBase {
                            dilations) {}
 
   void operator()(const Tensor *input_tensor,
-                  Tensor *output_tensor) {
+                  Tensor *output_tensor,
+                  StatsFuture *future) {
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
@@ -153,7 +155,8 @@ struct PoolingFunctor : PoolingFunctorBase {
 template<>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input_tensor,
-    Tensor *output_tensor);
+    Tensor *output_tensor,
+    StatsFuture *future);
 
 template<typename T>
 struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
@@ -166,7 +169,8 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
                            strides, padding,
                            dilations) {}
   void operator()(const Tensor *input_tensor,
-                  Tensor *output_tensor);
+                  Tensor *output_tensor,
+                  StatsFuture *future);
 };
 
 }  //  namespace kernels

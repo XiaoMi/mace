@@ -44,7 +44,8 @@ template <>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
-                                                        Tensor *output) {
+                                                        Tensor *output,
+                                                        StatsFuture *future) {
   MACE_CHECK_NOTNULL(input);
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
@@ -79,7 +80,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
     Conv2dFunctor<DeviceType::CPU, float>(strides_, paddings_, dilations_)(
-        input, filter, bias, output);
+        input, filter, bias, output, future);
     return;
   }
 

@@ -73,7 +73,6 @@ static void ResizeBilinearBenchmark(int iters,
   BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, OPENCL);
 
 // SNPE 835 GPU: 6870us
-BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480, half);
 BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480, float);
 
 BM_RESIZE_BILINEAR(1, 256, 7, 7, 15, 15, float);

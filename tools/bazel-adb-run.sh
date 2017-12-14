@@ -21,10 +21,13 @@ ANDROID_ABI=armeabi-v7a
 ANDROID_ABI=arm64-v8a
 STRIP=""
 STRIP="--strip always"
+VLOG_LEVEL=0
+PROFILINE="--define profiling=true"
 
-# for profiling
-bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI --define profiling=true
-#bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI
+BRANCH=$(git symbolic-ref --short HEAD)
+COMMIT_ID=$(git rev-parse --short HEAD)
+
+bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI
 
 if [ $? -ne 0 ]; then
   exit 1
@@ -39,5 +42,5 @@ for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`
   adb -s ${device} shell "mkdir -p $DEVICE_PATH"
   adb -s ${device} push $CL_PATH $DEVICE_CL_PATH && \
   adb -s ${device} push $BAZEL_BIN_PATH/$BIN_NAME $DEVICE_PATH && \
-  adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH $DEVICE_PATH/$BIN_NAME $@"
+  adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=0$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
 done

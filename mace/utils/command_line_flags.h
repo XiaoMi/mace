@@ -5,31 +5,32 @@
 #ifndef MACE_CORE_COMMAND_LINE_FLAGS_H
 #define MACE_CORE_COMMAND_LINE_FLAGS_H
 
-#include "mace/core/common.h"
+#include <string>
+#include <vector>
 
 namespace mace {
 
 class Flag {
  public:
-  Flag(const char *name, int *dst1, const string &usage_text);
-  Flag(const char *name, long long *dst1, const string &usage_text);
-  Flag(const char *name, bool *dst, const string &usage_text);
-  Flag(const char *name, string *dst, const string &usage_text);
-  Flag(const char *name, float *dst, const string &usage_text);
+  Flag(const char *name, int *dst1, const std::string &usage_text);
+  Flag(const char *name, long long *dst1, const std::string &usage_text);
+  Flag(const char *name, bool *dst, const std::string &usage_text);
+  Flag(const char *name, std::string *dst, const std::string &usage_text);
+  Flag(const char *name, float *dst, const std::string &usage_text);
 
  private:
   friend class Flags;
 
-  bool Parse(string arg, bool *value_parsing_ok) const;
+  bool Parse(std::string arg, bool *value_parsing_ok) const;
 
-  string name_;
+  std::string name_;
   enum { TYPE_INT, TYPE_INT64, TYPE_BOOL, TYPE_STRING, TYPE_FLOAT } type_;
   int *int_value_;
   long long *int64_value_;
   bool *bool_value_;
-  string *string_value_;
+  std::string *string_value_;
   float *float_value_;
-  string usage_text_;
+  std::string usage_text_;
 };
 
 class Flags {
@@ -43,7 +44,7 @@ class Flags {
 
   // Return a usage message with command line cmdline, and the
   // usage_text strings in flag_list[].
-  static string Usage(const string &cmdline,
+  static std::string Usage(const std::string &cmdline,
                       const std::vector<Flag> &flag_list);
 };
 

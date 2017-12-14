@@ -53,9 +53,11 @@ TEST_F(ReluOpTest, CPUSimple) {
   TestSimple<DeviceType::CPU>();
 }
 
+#if __ARM_NEON
 TEST_F(ReluOpTest, NEONSimple) {
   TestSimple<DeviceType::NEON>();
 }
+#endif
 
 TEST_F(ReluOpTest, OPENCLSimple) {
   TestSimple<DeviceType::OPENCL>();
@@ -103,9 +105,11 @@ TEST_F(ReluOpTest, CPUUnalignedSimple) {
   TestUnalignedSimple<DeviceType::CPU>();
 }
 
+#if __ARM_NEON
 TEST_F(ReluOpTest, NEONUnalignedSimple) {
   TestUnalignedSimple<DeviceType::NEON>();
 }
+#endif
 
 TEST_F(ReluOpTest, OPENCLUnalignedSimple) {
   TestUnalignedSimple<DeviceType::OPENCL>();
@@ -157,9 +161,11 @@ TEST_F(ReluOpTest, CPUSimpleReluX) {
   TestSimpleReluX<DeviceType::CPU>();
 }
 
+#if __ARM_NEON
 TEST_F(ReluOpTest, NEONSimpleReluX) {
   TestSimpleReluX<DeviceType::NEON>();
 }
+#endif
 
 TEST_F(ReluOpTest, OPENCLSimpleReluX) {
   TestSimpleReluX<DeviceType::OPENCL>();
@@ -209,9 +215,11 @@ TEST_F(ReluOpTest, CPUUnalignedSimpleReluX) {
   TestUnalignedSimpleReluX<DeviceType::CPU>();
 }
 
+#if __ARM_NEON
 TEST_F(ReluOpTest, NEONUnalignedSimpleReluX) {
   TestUnalignedSimpleReluX<DeviceType::NEON>();
 }
+#endif
 
 TEST_F(ReluOpTest, OPENCLUnalignedSimpleReluX) {
   TestUnalignedSimpleReluX<DeviceType::OPENCL>();

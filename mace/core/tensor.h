@@ -7,7 +7,7 @@
 
 #include "mace/core/allocator.h"
 #include "mace/core/common.h"
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
 #include "mace/core/types.h"
 #include "mace/core/mace.h"
 

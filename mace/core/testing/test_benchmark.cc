@@ -9,8 +9,8 @@
 #include <regex>
 #include <vector>
 
-#include "mace/core/logging.h"
-#include "mace/core/testing/env_time.h"
+#include "mace/utils/env_time.h"
+#include "mace/utils/logging.h"
 #include "mace/core/testing/test_benchmark.h"
 
 namespace mace {
@@ -82,7 +82,7 @@ void Benchmark::Run(const char *pattern) {
   }
 
   printf("%-*s %10s %10s\n", width, "Benchmark", "Time(ns)", "Iterations");
-  printf("%s\n", string(width + 22, '-').c_str());
+  printf("%s\n", std::string(width + 22, '-').c_str());
   for (auto b : *all_benchmarks) {
     if (!std::regex_match(b->name_, match, regex)) continue;
     for (auto arg : b->args_) {
@@ -128,7 +128,7 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
   int64_t iters = kMinIters;
   while (true) {
     accum_time = 0;
-    start_time = NowMicros();
+    start_time = utils::NowMicros();
     bytes_processed = -1;
     items_processed = -1;
     label.clear();
@@ -160,11 +160,11 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
 void BytesProcessed(int64_t n) { bytes_processed = n; }
 void ItemsProcessed(int64_t n) { items_processed = n; }
 void StartTiming() {
-  if (start_time == 0) start_time = NowMicros();
+  if (start_time == 0) start_time = utils::NowMicros();
 }
 void StopTiming() {
   if (start_time != 0) {
-    accum_time += (NowMicros() - start_time);
+    accum_time += (utils::NowMicros() - start_time);
     start_time = 0;
   }
 }

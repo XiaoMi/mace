@@ -3,13 +3,12 @@
 //
 
 // Simple benchmarking facility.
-#ifndef MACE_TEST_BENCHMARK_H_
-#define MACE_TEST_BENCHMARK_H_
+#ifndef MACE_CORE_TESTING_TEST_BENCHMARK_H_
+#define MACE_CORE_TESTING_TEST_BENCHMARK_H_
 
 #include <utility>
 #include <vector>
-
-#include "mace/core/types.h"
+#include <string>
 
 #define MACE_BENCHMARK_CONCAT(a, b, c) a##b##c
 #define BENCHMARK(n)                                        \
@@ -31,7 +30,7 @@ class Benchmark {
   static void Run(const char *pattern);
 
  private:
-  string name_;
+  std::string name_;
   int num_args_;
   std::vector<std::pair<int, int>> args_;
   void (*fn0_)(int) = nullptr;
@@ -51,4 +50,4 @@ void StopTiming();
 }  // namespace testing
 }  // namespace mace
 
-#endif  // MACE_TEST_BENCHMARK_H_
+#endif  // MACE_CORE_TESTING_TEST_BENCHMARK_H_

@@ -23,11 +23,11 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
         functor_(pooling_type_, kernels_.data(), this->strides_.data(),
                  this->padding_, this->dilations_.data()){};
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input, output);
+    functor_(input, output, future);
     return true;
   };
 

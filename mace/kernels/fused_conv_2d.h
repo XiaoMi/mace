@@ -33,8 +33,10 @@ struct FusedConv2dFunctor : FusedConv2dFunctorBase {
   void operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
-                  Tensor *output) {
-    Conv2dFunctor<D, T>(strides_, paddings_, dilations_)(input, filter, bias, output);
+                  Tensor *output,
+                  StatsFuture *future) {
+    Conv2dFunctor<D, T>(strides_, paddings_, dilations_)(input, filter, bias,
+                                                         output, future);
     T *output_data = output->mutable_data<T>();
 
     T zero_value;
@@ -62,7 +64,8 @@ struct FusedConv2dFunctor<DeviceType::OPENCL, T> : FusedConv2dFunctorBase {
   void operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
-                  Tensor *output);
+                  Tensor *output,
+                  StatsFuture *future);
 };
 
 }  // namespace kernels

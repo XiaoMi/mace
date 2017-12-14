@@ -15,7 +15,8 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    Tensor *output) {
+    Tensor *output,
+    StatsFuture *future) {
   // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
   // The calculation formula for inference is
   // Y = \frac{ \scale } { \sqrt{var+\epsilon} } * X +

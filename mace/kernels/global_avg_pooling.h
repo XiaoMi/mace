@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_GLOBAL_AVG_POOLING_H_
 #define MACE_KERNELS_GLOBAL_AVG_POOLING_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -12,7 +13,10 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct GlobalAvgPoolingFunctor {
-  void operator()(const T *input, const index_t *input_shape, T *output) {
+  void operator()(const T *input,
+                  const index_t *input_shape,
+                  T *output,
+                  StatsFuture *future) {
     index_t batch = input_shape[0];
     index_t channels = input_shape[1];
     index_t height = input_shape[2];
@@ -35,7 +39,8 @@ struct GlobalAvgPoolingFunctor {
 
 template <>
 void GlobalAvgPoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input, const index_t *input_shape, float *output);
+    const float *input, const index_t *input_shape,
+    float *output, StatsFuture *future);
 
 }  //  namespace kernels
 }  //  namespace mace

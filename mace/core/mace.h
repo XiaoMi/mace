@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 

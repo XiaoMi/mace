@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_BUFFER_TO_IMAGE_H_
 #define MACE_KERNELS_BUFFER_TO_IMAGE_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
@@ -22,7 +23,8 @@ struct BufferToImageFunctor : BufferToImageFunctorBase{
       BufferToImageFunctorBase(i2b) {}
   void operator()(Tensor *input,
                   const BufferType type,
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     MACE_NOT_IMPLEMENTED;
   }
   bool i2b_;
@@ -34,7 +36,8 @@ struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase{
       BufferToImageFunctorBase(i2b) {}
   void operator()(Tensor *input,
                   const BufferType type,
-                  Tensor *output);
+                  Tensor *output,
+                  StatsFuture *future);
 };
 
 }  //  namepsace kernels

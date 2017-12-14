@@ -15,8 +15,8 @@ template <typename T>
 void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input,
     const Tensor *bias,
-    Tensor *output) {
-
+    Tensor *output,
+    StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -28,7 +28,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
@@ -43,12 +43,19 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
   bias_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
   bias_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
+  cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       bias_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+      nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template

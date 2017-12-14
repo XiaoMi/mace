@@ -24,8 +24,8 @@ def if_android_arm64(a):
       "//conditions:default": [],
   })
 
-def if_profiling(a):
+def if_profiling_enabled(a):
   return select({
-      "//mace:is_profiling": a,
+      "//mace:profiling_enabled": a,
       "//conditions:default": [],
-  })
+})

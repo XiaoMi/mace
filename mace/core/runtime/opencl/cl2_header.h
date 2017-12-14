@@ -5,6 +5,8 @@
 #ifndef MACE_CORE_RUNTIME_OPENCL_CL2_HEADER_H_
 #define MACE_CORE_RUNTIME_OPENCL_CL2_HEADER_H_
 
+// Do not include cl2.hpp directly, include this header instead.
+
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 
 #include "mace/core/runtime/opencl/cl2.hpp"

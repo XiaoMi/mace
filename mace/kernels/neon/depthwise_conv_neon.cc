@@ -29,7 +29,8 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
-    Tensor *output) {
+    Tensor *output,
+    StatsFuture *future) {
   typedef void (*Conv2dNeonFunction)(
       const float *input, const index_t *input_shape, const float *filter,
       const index_t *filter_shape, const float *bias, float *output,
@@ -53,7 +54,7 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
                  << " is not implemented yet, using slow version";
     DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, paddings_,
                                                    dilations_)(
-        input, filter, bias, output);
+        input, filter, bias, output, future);
     return;
   }
 

@@ -4,6 +4,7 @@
 #ifndef MACE_KERNELS_RESIZE_BILINEAR_H_
 #define MACE_KERNELS_RESIZE_BILINEAR_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -122,7 +123,7 @@ struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input, Tensor *output) {
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
     const index_t batch = input->dim(0);
     const index_t in_height = input->dim(1);
     const index_t in_width = input->dim(2);
@@ -167,7 +168,7 @@ struct ResizeBilinearFunctor<DeviceType::OPENCL, T> : ResizeBilinearFunctorBase 
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input, Tensor *output);
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 };
 
 }  // namespace kernels

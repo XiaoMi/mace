@@ -10,7 +10,8 @@ namespace kernels {
 
 template <>
 void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input_tensor,
-                                                      Tensor *output_tensor) {
+                                                      Tensor *output_tensor,
+                                                      StatsFuture *future) {
   const float *input = input_tensor->data<float>();
   float *output = output_tensor->mutable_data<float>();
   index_t size = input_tensor->size();

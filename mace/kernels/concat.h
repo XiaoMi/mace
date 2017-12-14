@@ -6,6 +6,7 @@
 #define MACE_KERNELS_CONCAT_H_
 
 #include "mace/core/common.h"
+#include "mace/core/future.h"
 #include "mace/core/types.h"
 #include "mace/core/mace.h"
 #include "mace/core/tensor.h"
@@ -24,7 +25,8 @@ struct ConcatFunctor : ConcatFunctorBase {
   ConcatFunctor(const int32_t axis): ConcatFunctorBase(axis){}
 
   void operator()(const std::vector<const Tensor *> &input_list,
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     const Tensor *input0 = input_list.front();
     const int inputs_count = input_list.size();
 
@@ -78,7 +80,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase{
   ConcatFunctor(const int32_t axis): ConcatFunctorBase(axis){}
 
   void operator()(const std::vector<const Tensor *> &input_list,
-                  Tensor *output);
+                  Tensor *output, StatsFuture *future);
 
 };
 

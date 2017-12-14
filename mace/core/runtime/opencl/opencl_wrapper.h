@@ -7,13 +7,10 @@
 
 namespace mace {
 
-class OpenCLLibrary {
- public:
-  static bool Supported();
-  static void Load();
-  static void Unload();
-};
-
+  // These functions are not thread-safe.
+  void LoadOpenCLLibrary();
+  void UnloadOpenCLLibrary();
+ 
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_WRAPPER_H_

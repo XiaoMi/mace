@@ -15,7 +15,8 @@ namespace kernels {
 void Conv2dOpencl(const Tensor *input, const Tensor *filter,
                   const Tensor *bias, const bool fused_relu,
                   const uint32_t stride, const int *padding,
-                  const DataType dt, Tensor *output) {
+                  const DataType dt, Tensor *output,
+                  StatsFuture *future) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -35,9 +36,7 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
     built_options.emplace("-DFUSED_RELU");
   }
 
-  auto runtime = OpenCLRuntime::Get();
-  auto program = runtime->program();
-
+  auto runtime = OpenCLRuntime::Global();
   auto conv_2d_kernel = runtime->BuildKernel("conv_2d", "conv_2d", built_options);
 
   uint32_t idx = 0;
@@ -86,12 +85,13 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
             {15, 7, 9},
             {1, kwg_size, 1}};
   };
+  cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
     cl_int error = runtime->command_queue().enqueueNDRangeKernel(
         conv_2d_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]),
-        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+        nullptr, &event);
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
@@ -102,11 +102,19 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
+  OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
                                                      params_generator,
-                                                     func);
+                                                     func,
+                                                     &timer);
 
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 }  // namespace kernels

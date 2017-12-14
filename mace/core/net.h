@@ -9,7 +9,6 @@
 #include "mace/core/operator.h"
 #include "mace/core/workspace.h"
 #include "mace/core/mace.h"
-#include "mace/proto/stats.pb.h"
 
 namespace mace {
 

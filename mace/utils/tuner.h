@@ -5,44 +5,50 @@
 #ifndef MACE_UTILS_TUNER_H_
 #define MACE_UTILS_TUNER_H_
 #include <stdlib.h>
-#include <vector>
+#include <fstream>
 #include <functional>
+#include <limits>
 #include <string>
 #include <unordered_map>
-#include <fstream>
-#include <limits>
+#include <vector>
 
-#include "mace/core/logging.h"
-#include "mace/utils/utils.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/timer.h"
 
 namespace mace {
 
-
-template<typename param_type>
+template <typename param_type>
 class Tuner {
  public:
-  static Tuner* Get() {
+  static Tuner *Get() {
     static Tuner tuner;
     return &tuner;
   }
 
-  template <typename RetType>
-  RetType TuneOrRun(const std::string param_key,
-              const std::vector<param_type> &default_param,
-              const std::function<std::vector<std::vector<param_type>>()> &param_generator,
-              const std::function<RetType(const std::vector<param_type> &)> &func) {
+  inline bool IsTuning() {
+    const char *tuning = getenv("MACE_TUNING");
+    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
+  }
 
+  template <typename RetType>
+  RetType TuneOrRun(
+      const std::string param_key,
+      const std::vector<param_type> &default_param,
+      const std::function<std::vector<std::vector<param_type>>()>
+          &param_generator,
+      const std::function<RetType(const std::vector<param_type> &)> &func,
+      Timer *timer) {
     if (IsTuning() && param_generator != nullptr) {
       // tune
       std::vector<param_type> opt_param = default_param;
-      RetType res = Tune<RetType>(param_generator, func, opt_param);
+      RetType res = Tune<RetType>(param_generator, func, timer, &opt_param);
       param_table_[param_key] = opt_param;
       return res;
     } else {
       // run
       if (param_table_.find(param_key) != param_table_.end()) {
-        VLOG(1) << param_key << ": " << internal::MakeString(param_table_[param_key]);
+        VLOG(1) << param_key << ": "
+                << internal::MakeString(param_table_[param_key]);
         return func(param_table_[param_key]);
       } else {
         return func(default_param);
@@ -56,17 +62,10 @@ class Tuner {
     ReadRunParamters();
   }
 
-  ~Tuner() {
-    WriteRunParameters();
-  }
+  ~Tuner() { WriteRunParameters(); }
 
-  Tuner(const Tuner&) = delete;
-  Tuner& operator=(const Tuner&) = delete;
-
-  inline bool IsTuning() {
-    const char *tuning = getenv("MACE_TUNING");
-    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
-  }
+  Tuner(const Tuner &) = delete;
+  Tuner &operator=(const Tuner &) = delete;
 
   inline void WriteRunParameters() {
     VLOG(1) << path_;
@@ -83,7 +82,8 @@ class Tuner {
 
           auto &params = kp.second;
           int32_t params_size = params.size() * sizeof(param_type);
-          ofs.write(reinterpret_cast<char*>(&params_size), sizeof(params_size));
+          ofs.write(reinterpret_cast<char *>(&params_size),
+                    sizeof(params_size));
           for (auto &param : params) {
             ofs.write(reinterpret_cast<char *>(&param), sizeof(params_size));
             VLOG(1) << param;
@@ -114,7 +114,7 @@ class Tuner {
           params_count = params_size / sizeof(param_type);
           std::vector<param_type> params(params_count);
           for (int i = 0; i < params_count; ++i) {
-            ifs.read(reinterpret_cast<char*>(&params[i]), sizeof(param_type));
+            ifs.read(reinterpret_cast<char *>(&params[i]), sizeof(param_type));
           }
           param_table_.emplace(key, params);
         }
@@ -126,45 +126,47 @@ class Tuner {
   }
 
   template <typename RetType>
-  inline RetType Run(const std::function<RetType(const std::vector<param_type> &)> &func,
-                     const std::vector<param_type> &params,
-                     int num_runs,
-                     double &time_us) {
+  inline RetType Run(
+      const std::function<RetType(const std::vector<param_type> &)> &func,
+      const std::vector<param_type> &params,
+      Timer *timer,
+      int num_runs,
+      double *time_us) {
     RetType res;
     int64_t total_time_us = 0;
     for (int i = 0; i < num_runs; ++i) {
+      timer->StartTiming();
       res = func(params);
-      OpenCLRuntime::Get()->command_queue().finish();
-
-      double start_time = OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000.0;
-      double end_time = OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000.0;
-      total_time_us += end_time - start_time;
+      timer->StopTiming();
+      total_time_us += timer->ElapsedMicros();
     }
 
-    time_us = total_time_us * 1.0 / num_runs;
+    *time_us = total_time_us * 1.0 / num_runs;
     return res;
   }
 
   template <typename RetType>
-  inline RetType Tune(const std::function<std::vector<std::vector<param_type>>()> &param_generator,
-                   const std::function<RetType(const std::vector<param_type> &)> &func,
-                   std::vector<param_type> &opt_params) {
-    OpenCLRuntime::EnableProfiling();
+  inline RetType Tune(
+      const std::function<std::vector<std::vector<param_type>>()>
+          &param_generator,
+      const std::function<RetType(const std::vector<param_type> &)> &func,
+      Timer *timer,
+      std::vector<param_type> *opt_params) {
     RetType res;
     double opt_time = std::numeric_limits<double>::max();
     auto params = param_generator();
-    for (const auto &param: params) {
+    for (const auto &param : params) {
       double tmp_time = 0.0;
       // warm up
-      Run<RetType>(func, param, 2, tmp_time);
+      Run<RetType>(func, param, timer, 2, &tmp_time);
 
       // run
-      RetType tmp_res = Run<RetType>(func, param, 10, tmp_time);
+      RetType tmp_res = Run<RetType>(func, param, timer, 10, &tmp_time);
 
       // Check the execution time
       if (tmp_time < opt_time) {
         opt_time = tmp_time;
-        opt_params = param;
+        *opt_params = param;
         res = tmp_res;
       }
     }
@@ -172,9 +174,9 @@ class Tuner {
   }
 
  private:
-  const char* path_;
+  const char *path_;
   std::unordered_map<std::string, std::vector<param_type>> param_table_;
 };
 
-} //  namespace mace
-#endif //  MACE_UTILS_TUNER_H_
+}  //  namespace mace
+#endif  //  MACE_UTILS_TUNER_H_

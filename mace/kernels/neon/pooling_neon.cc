@@ -56,7 +56,8 @@ extern void PoolingAvgNeonK3x3S2x2Padded(const float *input,
 template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input_tensor,
-    Tensor *output_tensor) {
+    Tensor *output_tensor,
+    StatsFuture *future) {
 
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);
@@ -122,7 +123,7 @@ void PoolingFunctor<DeviceType::NEON, float>::operator()(
   } else {  // not implement yet
     PoolingFunctor<DeviceType::CPU, float>(pooling_type_, kernels_, strides_,
                                            padding_, dilations_)(
-        input_tensor, output_tensor);
+        input_tensor, output_tensor, future);
   }
 }
 

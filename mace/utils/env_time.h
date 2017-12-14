@@ -2,19 +2,17 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-// Only support POSIX environment
-#ifndef MACE_TESTING_TIME_H_
-#define MACE_TESTING_TIME_H_
+#ifndef MACE_UTILS_ENV_TIME_H
+#define MACE_UTILS_ENV_TIME_H
 
 #include <stdint.h>
 #include <sys/time.h>
 #include <time.h>
 
-#include "mace/core/types.h"
 
 namespace mace {
 
-namespace testing {
+namespace utils {
 
 inline int64_t NowMicros() {
   struct timeval tv;
@@ -25,4 +23,4 @@ inline int64_t NowMicros() {
 }  // namespace testing
 }  // namespace mace
 
-#endif  // MACE_TESTING_TIME_H_
+#endif  // MACE_UTILS_ENV_TIME_H

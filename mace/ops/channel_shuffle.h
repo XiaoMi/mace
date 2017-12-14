@@ -20,7 +20,7 @@ class ChannelShuffleOp : public Operator<D, T> {
         group_(OperatorBase::GetSingleArgument<int>("group", 1)),
         functor_(this->group_) {}
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->shape()[1] % group_ == 0,
@@ -29,7 +29,7 @@ class ChannelShuffleOp : public Operator<D, T> {
 
     output->ResizeLike(input);
     functor_(input->data<T>(), input->shape().data(),
-             output->mutable_data<T>());
+             output->mutable_data<T>(), future);
 
     return true;
   }

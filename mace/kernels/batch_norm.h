@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_BATCH_NORM_H_
 #define MACE_KERNELS_BATCH_NORM_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/mace.h"
 
@@ -20,7 +21,8 @@ struct BatchNormFunctor {
                   const Tensor *offset,
                   const Tensor *mean,
                   const Tensor *var,
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
     // The calculation formula for inference is
     // Y = \frac{ \scale } { \sqrt{var+\variance_epsilon} } * X +
@@ -80,7 +82,8 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    Tensor *output);
+    Tensor *output,
+    StatsFuture *future);
 
 template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> {
@@ -91,7 +94,8 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> {
                   const Tensor *offset,
                   const Tensor *mean,
                   const Tensor *var,
-                  Tensor *output);
+                  Tensor *output,
+                  StatsFuture *future);
 };
 
 }  //  namepsace kernels

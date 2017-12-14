@@ -88,7 +88,7 @@ TEST_F(BatchNormOpTest, SimpleRandomNeon) {
   index_t height = 64;
   index_t width = 64;
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -129,7 +129,7 @@ TEST_F(BatchNormOpTest, ComplexRandomNeon) {
   index_t height = 103;
   index_t width = 113;
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -172,7 +172,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   index_t width = 64;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -237,7 +237,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   index_t width = 64;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -303,7 +303,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   index_t width = 113;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")
@@ -369,7 +369,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   index_t width = 113;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("Input")
       .Input("Scale")

@@ -5,7 +5,7 @@
 #ifndef MACE_HEXAGON_NN_OPS_H_
 #define MACE_HEXAGON_NN_OPS_H_
 
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
 #include <unordered_map>
 
 namespace mace {

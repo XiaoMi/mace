@@ -28,13 +28,14 @@ TEST_F(TunerTest, SimpleRun) {
     }
   };
 
+  WallClockTimer timer;
   std::vector<int> default_params(1, 1);
-  int res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc);
+  int res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc, &timer);
 
   EXPECT_EQ(expect, res);
 
   default_params[0] = 2;
-  res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc);
+  res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc, &timer);
   EXPECT_EQ(expect+1, res);
 }
 
@@ -54,11 +55,12 @@ TEST_F(TunerTest, SimpleTune) {
     return {{1}, {2}, {3}, {4}};
   };
   // tune
-  int res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, *params_generator, TunerFunc);
+  WallClockTimer timer;
+  int res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, *params_generator, TunerFunc, &timer);
   EXPECT_EQ(expect, res);
 
   // run
-  res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc);
+  res = Tuner<int>::Get()->template TuneOrRun<int>("SimpleRun", default_params, nullptr, TunerFunc, &timer);
   EXPECT_EQ(expect, res);
 }
 

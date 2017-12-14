@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
 
 #include <stdlib.h>
 #if defined(PLATFORM_POSIX_ANDROID)

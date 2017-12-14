@@ -19,7 +19,7 @@ class BatchNormOp : public Operator<D, T> {
       OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(1e-4));
   }
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *scale = this->Input(SCALE);
     const Tensor *offset = this->Input(OFFSET);
@@ -40,7 +40,7 @@ class BatchNormOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
-    functor_(input, scale, offset, mean, var, output);
+    functor_(input, scale, offset, mean, var, output, future);
     return true;
   }
 

@@ -96,27 +96,33 @@ void TestNxNS12(const index_t height, const index_t width) {
 
 }
 
+#if __ARM_NEON
 TEST_F(DepthwiseConv2dOpTest, NeonSimpleNxNS12) {
   TestNxNS12<DeviceType::NEON>(4, 4);
 }
+#endif
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLSimpleNxNS12) {
   TestNxNS12<DeviceType::OPENCL>(4, 4);
 }
 
+#if __ARM_NEON
 TEST_F(DepthwiseConv2dOpTest, NeonAlignedNxNS12) {
   TestNxNS12<DeviceType::NEON>(64, 64);
   TestNxNS12<DeviceType::NEON>(128, 128);
 }
+#endif
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLAlignedNxNS12) {
   TestNxNS12<DeviceType::OPENCL>(64, 64);
   TestNxNS12<DeviceType::OPENCL>(128, 128);
 }
 
+#if __ARM_NEON
 TEST_F(DepthwiseConv2dOpTest, NeonUnalignedNxNS12) {
   TestNxNS12<DeviceType::NEON>(107, 113);
 }
+#endif
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12) {
   TestNxNS12<DeviceType::OPENCL>(107, 113);

@@ -23,7 +23,7 @@ class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
     functor_.dilations_ = this->dilations_.data();
   }
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = nullptr;
@@ -46,7 +46,7 @@ class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
     output->Resize(output_shape);
     functor_.paddings_ = paddings;
 
-    functor_(input, filter, bias, output);
+    functor_(input, filter, bias, output, future);
 
     return true;
   }

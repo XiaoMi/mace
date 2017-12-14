@@ -3,7 +3,8 @@
 //
 
 #include "mace/dsp/hexagon_control_wrapper.h"
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/env_time.h"
 #include "gtest/gtest.h"
 
 using namespace mace;
@@ -27,17 +28,14 @@ TEST(HexagonControlerWrapper, InputFloat) {
   }
 
   wrapper.ResetPerfInfo();
-  timeval tv1, tv2;
-  gettimeofday(&tv1, NULL);
+  int64_t start_micros = utils::NowMicros();
   int round = 10;
   for (int i = 0; i < round; ++i) {
     VLOG(0) << wrapper.ExecuteGraph(input_tensor, &output_tensor);
   }
-  gettimeofday(&tv2, NULL);
-  VLOG(0) << "avg duration: "
-       << ((tv2.tv_sec - tv1.tv_sec) * 1000 +
-           (tv2.tv_usec - tv1.tv_usec) / 1000) /
-           round;
+  int64_t end_micros = utils::NowMicros();
+  VLOG(0) << "avg duration: " << (end_micros - start_micros) / (double)round
+          << " ms";
 
   wrapper.GetPerfInfo();
   wrapper.PrintLog();

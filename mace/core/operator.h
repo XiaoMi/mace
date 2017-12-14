@@ -7,6 +7,7 @@
 
 #include "mace/core/common.h"
 #include "mace/core/arg_helper.h"
+#include "mace/core/future.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
@@ -55,7 +56,8 @@ class OperatorBase {
   inline const vector<const Tensor *> &Inputs() const { return inputs_; }
   inline const vector<Tensor *> &Outputs() { return outputs_; }
 
-  virtual bool Run() = 0;
+  // Run Op asynchronously (depends on device), return a future if not nullptr.
+  virtual bool Run(StatsFuture *future) = 0;
 
   inline const OperatorDef &debug_def() const {
     MACE_CHECK(has_debug_def(), "operator_def was null!");
@@ -100,7 +102,7 @@ class Operator : public OperatorBase {
       }
     }
   }
-  virtual bool Run() override = 0;
+  virtual bool Run(StatsFuture *future) override  = 0;
   ~Operator() noexcept override {}
 };
 

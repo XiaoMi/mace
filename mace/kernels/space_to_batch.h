@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_CONV_2D_H_
 #define MACE_KERNELS_CONV_2D_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/mace.h"
 
@@ -18,7 +19,8 @@ struct SpaceToBatchFunctor {
   void operator()(Tensor *input_tensor,
                   const Tensor *block_shape_tensor,
                   const Tensor *paddings_tensor,
-                  Tensor *output_tensor) {
+                  Tensor *output_tensor,
+                  StatsFuture *future) {
     MACE_NOT_IMPLEMENTED;
   }
 
@@ -29,7 +31,8 @@ template <>
 void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *input_tensor,
                                                                 const Tensor *block_shape_tensor,
                                                                 const Tensor *paddings_tensor,
-                                                                Tensor *output);
+                                                                Tensor *output,
+                                                                StatsFuture *future);
 
 }  // namespace kernels
 }  // namespace mace

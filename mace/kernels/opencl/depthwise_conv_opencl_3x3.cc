@@ -14,7 +14,8 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
                                             const Tensor *filter,
                                             const Tensor *bias,
                                             const uint32_t stride,
-                                            Tensor *output) {
+                                            Tensor *output,
+                                            StatsFuture *future) {
   const index_t batch = output->dim(0);
   const index_t channels = output->dim(1);
   const index_t height = output->dim(2);
@@ -30,7 +31,7 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
   const index_t channel_blocks = (channels + 3) / 4;
   const index_t pixel_blocks = (width + 3) / 4 * height;
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(input->dtype()));
   built_options.emplace(stride == 1 ? "-DSTRIDE_1" : "");
@@ -57,26 +58,36 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
   const uint32_t lws[3] = {static_cast<uint32_t>(1),
                            static_cast<uint32_t>(1),
                            static_cast<uint32_t>(256)};
+  cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       conv_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+      nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
+
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 extern void DepthwiseConvOpenclK3x3S1(const Tensor *input,
                                       const Tensor *filter,
                                       const Tensor *bias,
-                                      Tensor *output) {
-  InnerDepthwiseConvOpenclK3x3S12(input, filter, bias, 1, output);
+                                      Tensor *output,
+                                      StatsFuture *future) {
+  InnerDepthwiseConvOpenclK3x3S12(input, filter, bias, 1, output, future);
 };
 
 extern void DepthwiseConvOpenclK3x3S2(const Tensor *input,
                                       const Tensor *filter,
                                       const Tensor *bias,
-                                      Tensor *output) {
-  InnerDepthwiseConvOpenclK3x3S12(input, filter, bias, 2, output);
+                                      Tensor *output,
+                                      StatsFuture *future) {
+  InnerDepthwiseConvOpenclK3x3S12(input, filter, bias, 2, output, future);
 };
 
 }  // namespace kernels
