@@ -2,12 +2,44 @@ import argparse
 import sys
 import tensorflow as tf
 from tensorflow import gfile
+from mace.proto import mace_pb2
 from mace.python.tools import tf_converter_lib
 from mace.python.tools import tf_dsp_converter_lib
+import struct
+from jinja2 import Environment, FileSystemLoader
+import os
 
 # ./bazel-bin/mace/python/tools/tf_converter --input quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
 
 FLAGS = None
+
+class TensorInfo:
+  def __init__(self, t):
+    self.name = t.name
+    if t.data_type == mace_pb2.DT_FLOAT:
+      self.data = bytearray(struct.pack('%sf' % len(t.float_data), *t.float_data))
+    elif t.data_type == mace_pb2.DT_INT32:
+      self.data = bytearray(struct.pack('%si' % len(t.int32_data), *t.int32_data))
+
+def stringfy(value):
+  return ', '.join('"{0}"'.format(w) for w in value)
+
+def convert_to_source(net_def):
+  # Capture our current directory
+  template_dir = os.path.dirname(FLAGS.template)
+  template_name = os.path.basename(FLAGS.template)
+  print template_dir
+
+  # Create the jinja2 environment.
+  # Notice the use of trim_blocks, which greatly helps control whitespace.
+  j2_env = Environment(loader=FileSystemLoader(template_dir),
+    trim_blocks=True)
+  j2_env.filters['stringfy'] = stringfy
+  tensors = [TensorInfo(t) for t in net_def.tensors]
+  return j2_env.get_template(template_name).render(
+    tensors = tensors,
+    net = net_def
+  )
 
 def main(unused_args):
   if not gfile.Exists(FLAGS.input):
@@ -19,6 +51,7 @@ def main(unused_args):
     data = f.read()
     input_graph_def.ParseFromString(data)
 
+  print 'done'
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.prequantize)
@@ -26,11 +59,16 @@ def main(unused_args):
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
-  with gfile.GFile(FLAGS.output, "wb") as f:
-    f.write(output_graph_def.SerializeToString())
-  with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
-    # output_graph_def.ClearField('tensors')
-    f.write(str(output_graph_def))
+  if FLAGS.output_type == 'source':
+    source = convert_to_source(output_graph_def)
+    with gfile.GFile(FLAGS.output, "wb") as f:
+      f.write(source)
+  else:
+    with gfile.GFile(FLAGS.output, "wb") as f:
+      f.write(output_graph_def.SerializeToString())
+    with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
+      # output_graph_def.ClearField('tensors')
+      f.write(str(output_graph_def))
 
 
 def parse_args():
@@ -51,7 +89,7 @@ def parse_args():
     "--runtime",
     type=str,
     default="cpu",
-    help="Runtime: cpu/gpu/dsp.")
+    help="Runtime: cpu/gpu/dsp")
   parser.add_argument(
     "--input_node",
     type=str,
@@ -72,6 +110,16 @@ def parse_args():
     type=str,
     default='DT_FLOAT',
     help="e.g., DT_HALF/DT_FLOAT")
+  parser.add_argument(
+    "--output_type",
+    type=str,
+    default="source",
+    help="output type: source/pb")
+  parser.add_argument(
+    "--template",
+    type=str,
+    default="",
+    help="template path")
   return parser.parse_known_args()
 
 

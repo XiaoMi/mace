@@ -10,7 +10,7 @@
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 
 namespace mace {
 

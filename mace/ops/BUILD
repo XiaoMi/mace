@@ -40,7 +40,6 @@ cc_library(
     ],
     deps = [
         "//mace/kernels",
-        "//mace/proto:cc_proto",
     ],
     alwayslink = 1,
 )

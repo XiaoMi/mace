@@ -1,0 +1,139 @@
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
+
+#include <vector>
+#include <string>
+#include "mace/core/mace.h"
+namespace mace {
+
+{% for tensor in tensors %}
+static unsigned char {{ "_" + tensor.name[:-2].replace("/", "_") }}[] = {
+{% for d in tensor.data %}{{"0x%02X, " % d }}{%endfor%}
+};
+{% endfor %}
+
+static void CreateNetArg(NetDef &net_def) {
+  net_def.mutable_arg().reserve({{ net.arg|length }});
+  Argument *arg = nullptr;
+  {% for arg in net.arg %}
+
+  arg = net_def.add_arg();
+  arg->set_name({{ arg.name|tojson }});
+
+  {% if arg.has_f %}
+  arg->set_f({{ arg.f }});
+  {% endif %}
+
+  {% if arg.has_i %}
+  arg->set_i({{ arg.i }});
+  {% endif %}
+
+  {% if arg.has_s %}
+  arg->set_s({{ arg.s|tojson }});
+  {% endif %}
+
+  arg->set_floats({ {{ arg.floats|join(', ') }} });
+  arg->set_ints({ {{ arg.ints|join(', ') }} });
+  arg->set_strings({ {{ arg.strings|stringfy() }} });
+
+  {% endfor %}
+
+}
+
+static void UpdateOp(OperatorDef &op,
+                     const std::string &name,
+                     const std::string &type,
+                     const int mem_id,
+                     const std::vector<std::string> &inputs,
+                     const std::vector<std::string> &outputs,
+                     const std::vector<OutputShape> &output_shapes,
+                     const std::vector<DataType> &output_types) {
+  op.set_name(name);
+  op.set_type(type);
+  op.set_input(inputs);
+  op.set_output(outputs);
+  op.set_mem_id(mem_id);
+  op.set_output_shape(output_shapes);
+  op.set_output_type(output_types);
+}
+
+static void CreateOperators(std::vector<OperatorDef> &ops) {
+  ops.resize({{ net.op|length }});
+  Argument *arg = nullptr;
+  {% for i in range(net.op|length) %}
+  {% for arg in net.op[i].arg %}
+
+  arg = ops[{{i}}].add_arg();
+  arg->set_name({{ arg.name|tojson }});
+
+  {%- if arg.HasField('f') %}
+  arg->set_f({{ arg.f }});
+  {%- endif %}
+  {%- if arg.HasField('i') %}
+  arg->set_i({{ arg.i }});
+  {%- endif %}
+  {%- if arg.HasField('s') %}
+  arg->set_s({{ arg.s|tojson }});
+  {%- endif %}
+
+  arg->set_floats({ {{ arg.floats|join(', ') }} });
+  arg->set_ints({ {{ arg.ints|join(', ') }} });
+  arg->set_strings({ {{ arg.strings|stringfy() }} });
+  {% endfor %}
+
+  UpdateOp(ops[{{i}}], {{ net.op[i].name|tojson }}, {{ net.op[i].type|tojson}}, {{ net.op[i].mem_id }},
+           { {{ net.op[i].input|stringfy }} },
+           { {{ net.op[i].output|stringfy }} },
+           { {{ net.op[i].output_shape.dims|join(', ') }} },
+           { {{ net.op[i].output_type|join(', ') }} });
+
+  {% endfor %}
+
+}
+
+static void CreateTensors(std::vector<TensorProto> &tensors) {
+  tensors.reserve({{ net.tensors|length }});
+
+  {% for tensor in net.tensors %}
+
+  tensors.emplace_back(TensorProto(
+      {{ tensor.name|tojson }}, {{ "_" + tensor.name[:-2].replace("/", "_") }},
+      { {{ tensor.dims|join(', ') }} }, {{ tensor.data_type }},
+      {{ tensor.node_id }}
+  ));
+
+  {% endfor %}
+
+}
+
+
+static void CreateMemoryArena(MemoryArena &mem_arena) {
+  auto mem_block = mem_arena.mutable_mem_block();
+  mem_block.reserve({{ net.mem_arena.mem_block|length }});
+
+  {% for mem_blk in net.mem_arena.mem_block %}
+  mem_block.emplace_back(MemoryBlock({{ mem_blk.mem_id }},
+                                    {{mem_blk.x}},
+                                    {{mem_blk.y}}));
+  {% endfor %}
+
+}
+
+NetDef CreateNet() {
+  NetDef net_def;
+  net_def.set_name("{{ net.name}}");
+  net_def.set_version("{{ net.version }}");
+
+  CreateNetArg(net_def);
+
+  CreateOperators(net_def.mutable_op());
+
+  CreateTensors(net_def.mutable_tensors());
+
+  CreateMemoryArena(net_def.mutable_mem_arena());
+
+  return net_def;
+}
+
+} //  namespace mace

@@ -159,7 +159,6 @@ class OpsTestNet {
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
     }
-    VLOG(3) << net_def.DebugString();
     net_ = CreateNet(net_def, &ws_, device);
     device_ = device;
     return net_->Run();

@@ -24,46 +24,32 @@ unique_ptr<Tensor> Serializer::Deserialize(const TensorProto &proto,
 
   switch (proto.data_type()) {
     case DT_FLOAT:
-      tensor->Copy<float>(proto.float_data().data(), proto.float_data().size());
+      tensor->Copy<float>(reinterpret_cast<float*>(proto.data()), proto.data_size());
       break;
     case DT_DOUBLE:
-      tensor->Copy<double>(proto.double_data().data(),
-                           proto.double_data().size());
+      tensor->Copy<double>(reinterpret_cast<double*>(proto.data()), proto.data_size());
       break;
     case DT_INT32:
-      tensor->template Copy<int32_t>(proto.int32_data().data(),
-                                     proto.int32_data().size());
-      break;
-    case DT_UINT8:
-      tensor->CopyWithCast<int32_t, uint8_t>(proto.int32_data().data(),
-                                             proto.int32_data().size());
-      break;
-    case DT_INT16:
-      tensor->CopyWithCast<int32_t, int16_t>(proto.int32_data().data(),
-                                             proto.int32_data().size());
-      break;
-    case DT_INT8:
-      tensor->CopyWithCast<int32_t, int8_t>(proto.int32_data().data(),
-                                            proto.int32_data().size());
+      tensor->Copy<int32_t>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
       break;
     case DT_INT64:
-      tensor->Copy<int64_t>(proto.int64_data().data(),
-                            proto.int64_data().size());
+      tensor->Copy<int64_t>(reinterpret_cast<int64_t*>(proto.data()), proto.data_size());
+      break;
+    case DT_UINT8:
+      tensor->CopyWithCast<int32_t, uint8_t>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
+      break;
+    case DT_INT16:
+      tensor->CopyWithCast<int32_t, uint16_t>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
+      break;
+    case DT_INT8:
+      tensor->CopyWithCast<int32_t, int8_t>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
       break;
     case DT_UINT16:
-      tensor->CopyWithCast<int32_t, uint16_t>(proto.int32_data().data(),
-                                              proto.int32_data().size());
+      tensor->CopyWithCast<int32_t, int16_t>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
       break;
     case DT_BOOL:
-      tensor->CopyWithCast<int32_t, bool>(proto.int32_data().data(),
-                                          proto.int32_data().size());
+      tensor->CopyWithCast<int32_t, bool>(reinterpret_cast<int32_t*>(proto.data()), proto.data_size());
       break;
-    case DT_STRING: {
-      string *content = tensor->mutable_data<string>();
-      for (int i = 0; i < proto.string_data().size(); ++i) {
-        content[i] = proto.string_data(i);
-      }
-    } break;
     default:
       MACE_NOT_IMPLEMENTED;
       break;

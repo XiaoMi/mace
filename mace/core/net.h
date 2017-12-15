@@ -8,7 +8,7 @@
 #include "mace/core/common.h"
 #include "mace/core/operator.h"
 #include "mace/core/workspace.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 #include "mace/proto/stats.pb.h"
 
 namespace mace {

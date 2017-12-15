@@ -7,7 +7,7 @@
 
 #include "mace/core/common.h"
 #include "mace/kernels/conv_pool_2d_util.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 
 namespace mace {
 namespace kernels {
