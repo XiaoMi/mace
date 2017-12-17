@@ -53,7 +53,7 @@ class TensorProto {
 
   const std::string &name() const;
   unsigned char *data() const;
-  const int data_size() const;
+  const int64_t data_size() const;
   const std::vector<int64_t> &dims() const;
   DataType data_type() const;
   uint32_t node_id() const;
@@ -61,7 +61,7 @@ class TensorProto {
  private:
   std::string name_;
   unsigned char *data_;
-  int data_size_;
+  int64_t data_size_;
   std::vector<int64_t> dims_;
   DataType data_type_;
   uint32_t node_id_;
@@ -129,15 +129,11 @@ class NodeInput {
 
 class OutputShape {
  public:
-  void CopyFrom(const OutputShape &from) {
-    auto from_dims = from.dims();
-    dims_.resize(from_dims.size());
-    std::copy(from_dims.begin(), from_dims.end(), dims_.begin());
-  }
+  OutputShape();
+  OutputShape(const std::vector<int64_t> &dims);
+  void CopyFrom(const OutputShape &from);
  public:
-  const std::vector<int64_t> &dims() const {
-    return dims_;
-  }
+  const std::vector<int64_t> &dims() const;
  private:
   std::vector<int64_t> dims_;
 };
@@ -176,7 +172,7 @@ class OperatorDef {
   const std::vector<Argument> &arg() const;
   Argument* add_arg();
   const std::vector<OutputShape> &output_shape() const;
-  void set_output_shape(const std::vector<OutputShape> &value);
+  void add_output_shape(const OutputShape &value);
   const std::vector<DataType> &output_type() const;
   void set_output_type(const std::vector<DataType> &value);
 

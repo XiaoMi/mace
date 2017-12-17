@@ -35,11 +35,26 @@ def convert_to_source(net_def):
   j2_env = Environment(loader=FileSystemLoader(template_dir),
     trim_blocks=True)
   j2_env.filters['stringfy'] = stringfy
+  counter = 0
+  output_dir = os.path.dirname(FLAGS.output) + '/'
+  for t in net_def.tensors:
+    source = j2_env.get_template(template_name).render(
+      tensor = TensorInfo(t),
+      mode = 0,
+    )
+    with gfile.GFile(output_dir + str(counter) + '.cc', "wb") as f:
+      f.write(source)
+    counter += 1
+
+
   tensors = [TensorInfo(t) for t in net_def.tensors]
-  return j2_env.get_template(template_name).render(
+  source = j2_env.get_template(template_name).render(
     tensors = tensors,
-    net = net_def
+    net = net_def,
+    mode = 1
   )
+  with gfile.GFile(FLAGS.output, "wb") as f:
+    f.write(source)
 
 def main(unused_args):
   if not gfile.Exists(FLAGS.input):
@@ -60,9 +75,7 @@ def main(unused_args):
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
   if FLAGS.output_type == 'source':
-    source = convert_to_source(output_graph_def)
-    with gfile.GFile(FLAGS.output, "wb") as f:
-      f.write(source)
+    convert_to_source(output_graph_def)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
       f.write(output_graph_def.SerializeToString())

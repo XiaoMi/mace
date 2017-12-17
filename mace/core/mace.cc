@@ -3,7 +3,7 @@
 //
 
 #include "mace/core/mace.h"
-#include "mace/core/logging.h"
+#include "mace/core/types.h"
 
 namespace mace {
 
@@ -14,9 +14,12 @@ TensorProto::TensorProto(const std::string &name,
                          uint32_t node_id) :
     name_(name),
     data_(data),
-    dims_(dims),
+    data_size_(0),
+    dims_(dims.begin(), dims.end()),
     data_type_(data_type),
-    node_id_(node_id) {}
+    node_id_(node_id) {
+  data_size_ = std::accumulate(dims_.begin(), dims_.end(), 1, std::multiplies<int64_t>());
+}
 
 TensorProto::TensorProto(const std::string &name,
                          unsigned char *data,
@@ -25,9 +28,12 @@ TensorProto::TensorProto(const std::string &name,
                          uint32_t node_id) :
     name_(name),
     data_(data),
-    dims_(dims),
+    data_size_(0),
+    dims_(dims.begin(), dims.end()),
     data_type_(static_cast<DataType>(data_type)),
-    node_id_(node_id) {}
+    node_id_(node_id) {
+  data_size_ = std::accumulate(dims_.begin(), dims_.end(), 1, std::multiplies<int64_t>());
+}
 
 const std::string &TensorProto::name() const {
   return name_;
@@ -35,7 +41,7 @@ const std::string &TensorProto::name() const {
 unsigned char *TensorProto::data() const {
   return data_;
 }
-const int TensorProto::data_size() const {
+const int64_t TensorProto::data_size() const {
   return data_size_;
 }
 const std::vector<int64_t> &TensorProto::dims() const {
@@ -119,7 +125,7 @@ void Argument::add_floats(float value) {
   floats_.push_back(value);
 }
 void Argument::set_floats(const std::vector<float> &value) {
-  floats_.reserve(value.size());
+  floats_.resize(value.size());
   std::copy(value.begin(), value.end(), floats_.begin());
 }
 const std::vector<int64_t> &Argument::ints() const {
@@ -129,7 +135,7 @@ void Argument::add_ints(int64_t value) {
   ints_.push_back(value);
 }
 void Argument::set_ints(const std::vector<int64_t> &value) {
-  ints_.reserve(value.size());
+  ints_.resize(value.size());
   std::copy(value.begin(), value.end(), ints_.begin());
 }
 const std::vector<std::string> &Argument::strings() const {
@@ -139,10 +145,25 @@ void Argument::add_strings(const ::std::string &value) {
   strings_.push_back(value);
 }
 void Argument::set_strings(const std::vector<std::string> &value) {
-  strings_.reserve(value.size());
+  strings_.resize(value.size());
   std::copy(value.begin(), value.end(), strings_.begin());
 }
 
+
+// OutputShape
+OutputShape::OutputShape() {}
+OutputShape::OutputShape(const std::vector<int64_t> &dims):
+    dims_(dims.begin(), dims.end()) {}
+void OutputShape::CopyFrom(const OutputShape &from) {
+  auto from_dims = from.dims();
+  dims_.resize(from_dims.size());
+  std::copy(from_dims.begin(), from_dims.end(), dims_.begin());
+}
+const std::vector<int64_t> &OutputShape::dims() const {
+  return dims_;
+}
+
+// Operator Def
 void OperatorDef::CopyFrom(const OperatorDef &from) {
   name_ = from.name();
   type_ = from.type();
@@ -258,7 +279,7 @@ void OperatorDef::add_input(::std::string &&value) {
   input_.push_back(value);
 }
 void OperatorDef::set_input(const std::vector<std::string> &value) {
-  input_.reserve(value.size());
+  input_.resize(value.size());
   std::copy(value.begin(), value.end(), input_.begin());
 }
 const std::vector<std::string> &OperatorDef::output() const {
@@ -279,7 +300,7 @@ void OperatorDef::add_output(::std::string &&value) {
   output_.push_back(value);
 }
 void OperatorDef::set_output(const std::vector<std::string> &value) {
-  output_.reserve(value.size());
+  output_.resize(value.size());
   std::copy(value.begin(), value.end(), output_.begin());
 }
 const std::vector<Argument> &OperatorDef::arg() const {
@@ -292,11 +313,8 @@ Argument *OperatorDef::add_arg() {
 const std::vector<OutputShape> &OperatorDef::output_shape() const {
   return output_shape_;
 }
-void OperatorDef::set_output_shape(const std::vector<OutputShape> &value) {
-  output_shape_.reserve(value.size());
-  for (int i = 0; i < value.size(); ++i) {
-    output_shape_[i].CopyFrom(value[i]);
-  }
+void OperatorDef::add_output_shape(const OutputShape &value) {
+  output_shape_.push_back(value);
 }
 const std::vector<DataType> &OperatorDef::output_type() const {
   return output_type_;
@@ -306,6 +324,7 @@ void OperatorDef::set_output_type(const std::vector<DataType> &value) {
   std::copy(value.begin(), value.end(), output_type_.begin());
 }
 
+// MemoryBlock
 MemoryBlock::MemoryBlock(int mem_id, uint32_t x, uint32_t y) :
     mem_id_(mem_id), x_(x), y_(y) {}
 
@@ -319,6 +338,7 @@ uint32_t MemoryBlock::y() const {
   return y_;
 }
 
+// NetDef
 NetDef::NetDef() : has_bits_(0) {}
 
 const std::string &NetDef::name() const {
