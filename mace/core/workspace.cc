@@ -4,7 +4,7 @@
 
 #include "mace/core/workspace.h"
 #include "mace/core/serializer.h"
-#include "mace/core/proto_utils.h"
+#include "mace/core/arg_helper.h"
 
 namespace mace {
 
@@ -69,7 +69,7 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
 }
 
 void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
-  if (net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
+  if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
     return;
   }
   std::map<std::string, std::shared_ptr<Tensor>> mem_tensor_map;

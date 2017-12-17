@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_PROTO_UTILS_H_
-#define MACE_CORE_PROTO_UTILS_H_
+#ifndef MACE_CORE_ARG_HELPER_H_
+#define MACE_CORE_ARG_HELPER_H_
 
 #include <map>
 
@@ -68,4 +68,4 @@ class ArgumentHelper {
 
 }  // namespace mace
 
-#endif  // MACE_CORE_PROTO_UTILS_H_
+#endif  // MACE_CORE_ARG_HELPER_H_

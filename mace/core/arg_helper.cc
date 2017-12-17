@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/proto_utils.h"
+#include "mace/core/arg_helper.h"
 
 namespace mace {
 
