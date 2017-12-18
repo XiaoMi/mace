@@ -13,12 +13,24 @@ py_library(
     ],
 )
 
+py_library(
+    name = "source_converter_lib",
+    srcs = [
+        "source_converter_lib.py",
+    ],
+    srcs_version = "PY2AND3",
+    deps = [
+        "//mace/proto:mace_py",
+    ],
+)
+
 py_binary(
     name = "tf_converter",
     srcs = ["tf_converter.py"],
     srcs_version = "PY2AND3",
     deps = [
         ":tf_converter_lib",
+        ":source_converter_lib",
         "@six_archive//:six",
     ],
 )
