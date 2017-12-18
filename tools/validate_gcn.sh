@@ -12,6 +12,7 @@ fi
 
 TF_MODEL_FILE_PATH=$1
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
+MACE_SOURCE_DIR=`/bin/pwd`
 MACE_MODEL_NAME='mace_model.pb'
 INPUT_FILE_NAME='model_input'
 OUTPUT_FILE_NAME='gcn.out'
@@ -19,6 +20,7 @@ OUTPUT_LIST_FILE='gcn.list'
 PHONE_DATA_DIR="/data/local/tmp/${MACE_MODEL_NAME}"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
 IMAGE_SIZE=$2
+MODEL_TAG=GCN${IMAGE_SIZE}
 
 # Step 1: Generate input data
 echo "Step 1: Generate input data"
@@ -27,18 +29,24 @@ python tools/validate.py --generate_data true --random_seed 1 \
  --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3"
 
 # Step 2: convert tf model to mace model
-#echo "Step 2: convert tf model to mace model and optimize memory"
-#bazel build //mace/python/tools:tf_converter
-#bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
-#                                         --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
-#                                         --input_node=input \
-#                                         --output_node=GCN/br_result_2/fcn_br \
-#                                         --data_type=DT_HALF \
-#                                         --runtime=gpu
+echo "Step 2: convert tf model to mace model and optimize memory"
+echo $MACE_SOURCE_DIR
+bazel build //mace/python/tools:tf_converter
+mkdir -p ${MACE_SOURCE_DIR}/mace/examples/models/gcn
+bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
+                                         --output=${MACE_SOURCE_DIR}/mace/examples/models/gcn/mace_gcn.cc \
+                                         --input_node=input \
+                                         --output_node=GCN/br_result_2/fcn_br \
+                                         --data_type=DT_HALF \
+                                         --runtime=gpu \
+                                         --output_type=source \
+                                         --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
+                                         --model_tag=${MODEL_TAG} \
+                                         --confuse=True
 
 # Step 3: Run model on the phone
 echo "Step 3: Run model on the phone"
-bazel build -c opt --strip always mace/examples:mace_run  \
+bazel build -c opt --strip always mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
     --cpu=arm64-v8a
@@ -46,7 +54,6 @@ bazel build -c opt --strip always mace/examples:mace_run  \
 adb shell "mkdir -p ${PHONE_DATA_DIR}"
 adb shell "mkdir -p ${KERNEL_DIR}"
 adb push mace/kernels/opencl/cl/* ${KERNEL_DIR}
-#adb push ${MODEL_DIR}/${MACE_MODEL_NAME} ${PHONE_DATA_DIR}
 adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
 adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 

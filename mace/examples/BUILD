@@ -29,9 +29,7 @@ cc_test(
 
 cc_binary(
     name = "mace_run",
-    srcs = [
-        "mace_run.cc",
-    ],
+    srcs = glob(["models/*/*.cc"] + ["mace_run.cc"]),
     copts = ["-std=c++11"],
     linkopts = ["-fopenmp"] + if_android(["-ldl"]),
     linkstatic = 1,
