@@ -21,7 +21,7 @@ using namespace std;
 using namespace mace;
 
 namespace mace {
-extern NetDef CreateGCN512();
+extern NetDef MACE_MODEL_FUNCTION();
 }
 void ParseShape(const string &str, vector<index_t> *shape) {
   string tmp = str;
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 //  NetDef net_def;
 //  net_def.ParseFromIstream(&file_stream);
 //  file_stream.close();
-  NetDef net_def = mace::CreateGCN512();
+  NetDef net_def = mace::MACE_MODEL_FUNCTION();
 
   DeviceType device_type = ParseDeviceType(device);
   VLOG(0) << device_type;

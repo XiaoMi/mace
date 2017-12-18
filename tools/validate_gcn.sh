@@ -46,10 +46,12 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
 
 # Step 3: Run model on the phone
 echo "Step 3: Run model on the phone"
+echo Create${MODEL_TAG}
 bazel build -c opt --strip always mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
-    --cpu=arm64-v8a
+    --cpu=arm64-v8a \
+    --copt=-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}
 
 adb shell "mkdir -p ${PHONE_DATA_DIR}"
 adb shell "mkdir -p ${KERNEL_DIR}"
