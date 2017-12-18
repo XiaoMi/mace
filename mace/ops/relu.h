@@ -18,12 +18,12 @@ class ReluOp : public Operator<D, T> {
     functor_.max_limit_ =
         OperatorBase::GetSingleArgument<float>("max_limit", static_cast<float>(-1));
   }
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->inputs_[0];
     Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(input_tensor);
 
-    functor_(input_tensor, output_tensor);
+    functor_(input_tensor, output_tensor, future);
     return true;
   }
 

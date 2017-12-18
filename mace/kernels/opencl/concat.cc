@@ -14,7 +14,8 @@ namespace kernels {
 static void Concat2(const Tensor *input0,
                     const Tensor *input1,
                     const DataType dt,
-                    Tensor *output) {
+                    Tensor *output,
+                    StatsFuture *future) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -22,7 +23,7 @@ static void Concat2(const Tensor *input0,
 
   const int channel_blk = RoundUpDiv4(channel);
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   if (input0->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
@@ -73,12 +74,13 @@ static void Concat2(const Tensor *input0,
             {15, 7, 9},
             {1, kwg_size, 1}};
   };
+  cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
     cl_int error = runtime->command_queue().enqueueNDRangeKernel(
         concat_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]),
-        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+        nullptr, &event);
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
@@ -89,15 +91,24 @@ static void Concat2(const Tensor *input0,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
+  OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
                                                      params_generator,
-                                                     func);
+                                                     func,
+                                                     &timer);
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template<typename T>
 void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Tensor *> &input_list,
-                                                      Tensor *output) {
+                                                      Tensor *output,
+                                                      StatsFuture *future) {
   const int inputs_count = input_list.size();
   MACE_CHECK(inputs_count == 2 && axis_ == 3)
     << "Concat opencl kernel only support two elements with axis == 3";
@@ -124,7 +135,8 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
 
   switch (inputs_count) {
     case 2:
-      Concat2(input_list[0], input_list[1], DataTypeToEnum<T>::value, output);
+      Concat2(input_list[0], input_list[1], DataTypeToEnum<T>::value,
+              output, future);
       break;
     default:MACE_NOT_IMPLEMENTED;
   }

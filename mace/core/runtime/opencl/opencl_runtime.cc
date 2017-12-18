@@ -7,15 +7,17 @@
 #include <memory>
 #include <mutex>
 
-#include "mace/core/logging.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/utils/logging.h"
+#include "mace/utils/tuner.h"
 
 #include <CL/opencl.h>
 
 namespace mace {
 namespace {
 
-bool ReadFile(const std::string &filename, bool binary,
+bool ReadFile(const std::string &filename,
+              bool binary,
               std::vector<unsigned char> *content_ptr) {
   MACE_CHECK_NOTNULL(content_ptr);
 
@@ -55,7 +57,8 @@ bool ReadFile(const std::string &filename, bool binary,
   return true;
 }
 
-bool WriteFile(const std::string &filename, bool binary,
+bool WriteFile(const std::string &filename,
+               bool binary,
                const std::vector<unsigned char> &content) {
   std::ios_base::openmode mode = std::ios::out;
   if (binary) {
@@ -76,124 +79,92 @@ bool WriteFile(const std::string &filename, bool binary,
 
 }  // namespace
 
-bool OpenCLRuntime::enable_profiling_ = false;
-std::unique_ptr<cl::Event> OpenCLRuntime::profiling_ev_ = nullptr;
+void OpenCLProfilingTimer::StartTiming() {}
 
-OpenCLRuntime *OpenCLRuntime::Get() {
-  static std::once_flag init_once;
-  static OpenCLRuntime *instance = nullptr;
-  std::call_once(init_once, []() {
-    if (!mace::OpenCLLibrary::Supported()) {
-      LOG(ERROR) << "OpenCL not supported";
-      return;
-    }
+void OpenCLProfilingTimer::StopTiming() {
+  OpenCLRuntime::Global()->command_queue().finish();
+  start_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  stop_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
+}
 
-    std::vector<cl::Platform> all_platforms;
-    cl::Platform::get(&all_platforms);
-    if (all_platforms.size() == 0) {
-      LOG(ERROR) << "No OpenCL platforms found";
-      return;
-    }
-    cl::Platform default_platform = all_platforms[0];
-    VLOG(1) << "Using platform: "
-            << default_platform.getInfo<CL_PLATFORM_NAME>() << ", "
-            << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
-            << default_platform.getInfo<CL_PLATFORM_VERSION>();
+double OpenCLProfilingTimer::ElapsedMicros() {
+  return (stop_nanos_ - start_nanos_) / 1000.0;
+}
 
-    // get default device (CPUs, GPUs) of the default platform
-    std::vector<cl::Device> all_devices;
-    default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-    if (all_devices.size() == 0) {
-      LOG(ERROR) << "No OpenCL devices found";
-      return;
-    }
+OpenCLRuntime *OpenCLRuntime::Global() {
+  static OpenCLRuntime instance;
+  return &instance;
+}
 
-    bool gpu_detected = false;
-    cl::Device gpu_device;
-    for (auto device : all_devices) {
-      if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
-        gpu_device = device;
-        gpu_detected = true;
-        VLOG(1) << "Using device: " << device.getInfo<CL_DEVICE_NAME>();
-        break;
-      }
-    }
-    if (!gpu_detected) {
-      LOG(ERROR) << "No GPU device found";
-      return;
-    }
+OpenCLRuntime::OpenCLRuntime() {
+  LoadOpenCLLibrary();
 
-    cl_command_queue_properties properties = 0;
-#ifdef __ENABLE_PROFILING
-    enable_profiling_ = true;
-    profiling_ev_.reset(new cl::Event());
-    properties = CL_QUEUE_PROFILING_ENABLE;
+  std::vector<cl::Platform> all_platforms;
+  cl::Platform::get(&all_platforms);
+  if (all_platforms.size() == 0) {
+    LOG(FATAL) << "No OpenCL platforms found";
+  }
+  cl::Platform default_platform = all_platforms[0];
+  VLOG(1) << "Using platform: " << default_platform.getInfo<CL_PLATFORM_NAME>()
+          << ", " << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
+          << default_platform.getInfo<CL_PLATFORM_VERSION>();
+
+  // get default device (CPUs, GPUs) of the default platform
+  std::vector<cl::Device> all_devices;
+  default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+  if (all_devices.size() == 0) {
+    LOG(FATAL) << "No OpenCL devices found";
+  }
+
+  bool gpu_detected = false;
+  cl::Device gpu_device;
+  for (auto device : all_devices) {
+    if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
+      gpu_device = device;
+      gpu_detected = true;
+      VLOG(1) << "Using device: " << device.getInfo<CL_DEVICE_NAME>();
+      break;
+    }
+  }
+  if (!gpu_detected) {
+    LOG(FATAL) << "No GPU device found";
+  }
+
+  cl_command_queue_properties properties = 0;
+
+#ifdef MACE_OPENCL_PROFILING
+  properties |= CL_QUEUE_PROFILING_ENABLE;
 #endif
 
-    // a context is like a "runtime link" to the device and platform;
-    // i.e. communication is possible
-    cl::Context context({gpu_device});
-    cl::CommandQueue command_queue(context, gpu_device, properties);
-    instance = new OpenCLRuntime(context, gpu_device, command_queue);
+  // a context is like a "runtime link" to the device and platform;
+  // i.e. communication is possible
+  cl::Context context({gpu_device});
+  cl::CommandQueue command_queue(context, gpu_device, properties);
 
-  });
-
-  return instance;
-}
-
-void OpenCLRuntime::EnableProfiling() { enable_profiling_ = true; }
-
-cl::Event *OpenCLRuntime::GetDefaultEvent() { return profiling_ev_.get(); }
-
-cl_ulong OpenCLRuntime::GetEventProfilingStartInfo() {
-  MACE_CHECK(profiling_ev_, "is NULL, should enable profiling first.");
-  return profiling_ev_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
-}
-
-cl_ulong OpenCLRuntime::GetEventProfilingEndInfo() {
-  MACE_CHECK(profiling_ev_, "is NULL, should enable profiling first.");
-  return profiling_ev_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
-}
-
-OpenCLRuntime::OpenCLRuntime(cl::Context context, cl::Device device,
-                             cl::CommandQueue command_queue)
-    : context_(context), device_(device), command_queue_(command_queue) {
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
-  kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+  this->kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+
+  this->device_ = new cl::Device(gpu_device);
+  this->context_ = new cl::Context(context);
+  this->command_queue_ = new cl::CommandQueue(command_queue);
 }
 
-OpenCLRuntime::~OpenCLRuntime() {}
-
-cl::Context &OpenCLRuntime::context() { return context_; }
-
-cl::Device &OpenCLRuntime::device() { return device_; }
-
-cl::CommandQueue &OpenCLRuntime::command_queue() { return command_queue_; }
-
-cl::Program &OpenCLRuntime::program() {
-  // TODO(liuqi) : useless, leave it for old code.
-  return program_;
+OpenCLRuntime::~OpenCLRuntime() {
+  built_program_map_.clear();
+  delete command_queue_;
+  delete context_;
+  delete device_;
+  UnloadOpenCLLibrary();
 }
 
-// TODO(heliangliang) Support binary format
-const std::map<std::string, std::string> OpenCLRuntime::program_map_ = {
-    {"addn", "addn.cl"},
-    {"batch_norm", "batch_norm.cl"},
-    {"bias_add", "bias_add.cl"},
-    {"buffer_to_image", "buffer_to_image.cl"},
-    {"conv_2d", "conv_2d.cl"},
-    {"conv_2d_1x1", "conv_2d_1x1.cl"},
-    {"conv_2d_3x3", "conv_2d_3x3.cl"},
-    {"depthwise_conv_3x3", "depthwise_conv_3x3.cl"},
-    {"pooling", "pooling.cl"},
-    {"relu", "relu.cl"},
-    {"concat", "concat.cl"},
-    {"resize_bilinear", "resize_bilinear.cl"},
-    {"space_to_batch", "space_to_batch.cl"},
-};
+cl::Context &OpenCLRuntime::context() { return *context_; }
 
-std::string
-OpenCLRuntime::GenerateCLBinaryFilenamePrefix(const std::string &filename_msg) {
+cl::Device &OpenCLRuntime::device() { return *device_; }
+
+cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
+
+std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
+    const std::string &filename_msg) {
   std::string filename_prefix = filename_msg;
   for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
     if (*it == ' ' || *it == '-' || *it == '=') {
@@ -262,7 +233,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                                   program_binary_sizes.get(), nullptr);
     MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
     std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
-        new std::unique_ptr<unsigned char[]>[ device_list_size ]);
+        new std::unique_ptr<unsigned char[]>[device_list_size]);
     for (cl_uint i = 0; i < device_list_size; ++i) {
       program_binaries[i] = std::unique_ptr<unsigned char[]>(
           new unsigned char[program_binary_sizes[i]]);
@@ -281,16 +252,11 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
   }
 }
 
-cl::Kernel
-OpenCLRuntime::BuildKernel(const std::string &program_name,
-                           const std::string &kernel_name,
-                           const std::set<std::string> &build_options) {
-  auto kernel_program_it = program_map_.find(program_name);
-  if (kernel_program_it == program_map_.end()) {
-    MACE_CHECK(false, program_name, " opencl kernel doesn't exist.");
-  }
-
-  std::string program_file_name = kernel_program_it->second;
+cl::Kernel OpenCLRuntime::BuildKernel(
+    const std::string &program_name,
+    const std::string &kernel_name,
+    const std::set<std::string> &build_options) {
+  std::string program_file_name = program_name + ".cl";
   std::string build_options_str;
   for (auto &option : build_options) {
     build_options_str += " " + option;
@@ -312,15 +278,24 @@ OpenCLRuntime::BuildKernel(const std::string &program_name,
   return cl::Kernel(program, kernel_name.c_str());
 }
 
+void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
+  if (stats != nullptr) {
+    stats->start_micros =
+      event.getProfilingInfo<CL_PROFILING_COMMAND_START>() / 1000;
+    stats->end_micros =
+      event.getProfilingInfo<CL_PROFILING_COMMAND_END>() / 1000;
+  }
+}
+
 uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
   unsigned long long size = 0;
-  device_.getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
   return static_cast<uint32_t>(size);
 }
 
 uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   unsigned long long size = 0;
-  kernel.getWorkGroupInfo(device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
+  kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
   return static_cast<uint32_t>(size);
 }
 

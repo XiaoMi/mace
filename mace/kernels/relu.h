@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_RELU_H_
 #define MACE_KERNELS_RELU_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -14,7 +15,7 @@ template <DeviceType D, typename T>
 struct ReluFunctor {
   T max_limit_;
 
-  void operator()(const Tensor *input, Tensor *output) {
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
     index_t size = input->size();
@@ -32,13 +33,14 @@ struct ReluFunctor {
 
 template <>
 void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
-                                                      Tensor *output);
+                                                      Tensor *output,
+                                                      StatsFuture *future);
 
 template <typename T>
 struct ReluFunctor<DeviceType::OPENCL, T> {
   T max_limit_;
 
-  void operator()(const Tensor *input, Tensor *output);
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 };
 
 }  //  namespace kernels

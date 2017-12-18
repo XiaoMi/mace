@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_DEPTHWISE_CONV_H_
 #define MACE_KERNELS_DEPTHWISE_CONV_H_
 
+#include "mace/core/future.h"
 #include "mace/core/common.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/core/mace.h"
@@ -23,7 +24,8 @@ struct DepthwiseConv2dFunctor {
   void operator()(const Tensor *input,  // NCHW
                   const Tensor *filter,  // c_out, c_in, kernel_h, kernel_w
                   const Tensor *bias,  // c_out
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(bias);
@@ -115,14 +117,16 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
-    Tensor *output);
+    Tensor *output,
+    StatsFuture *future);
 
 template <>
 void DepthwiseConv2dFunctor<DeviceType::OPENCL, float>::operator()(
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
-    Tensor *output);
+    Tensor *output,
+    StatsFuture *future);
 
 }  //  namespace kernels
 }  //  namespace mace

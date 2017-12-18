@@ -16,13 +16,13 @@ class ImageToBufferOp: public Operator<D, T> {
   ImageToBufferOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws), functor_(true)  {}
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
     kernels::BufferType type = static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
         "buffer_type", static_cast<int>(kernels::FILTER)));
-    functor_(output, type, const_cast<Tensor *>(input_tensor));
+    functor_(output, type, const_cast<Tensor *>(input_tensor), future);
     return true;
   }
 

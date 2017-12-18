@@ -17,8 +17,9 @@ template <>
 void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *space_tensor,
                                                                 const Tensor *block_shape_tensor,
                                                                 const Tensor *paddings_tensor,
-                                                                Tensor *batch_tensor) {
-  auto runtime = OpenCLRuntime::Get();
+                                                                Tensor *batch_tensor,
+                                                                StatsFuture *future) {
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(space_tensor->dtype()));
   auto s2b_kernel = runtime->BuildKernel("space_to_batch", "space_to_batch", built_options);
@@ -42,12 +43,19 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *space_te
   const uint32_t lws[3] = {static_cast<uint32_t>(1),
                            static_cast<uint32_t>(8),
                            static_cast<uint32_t>(128)};
+  cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       s2b_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]),
-      NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+      nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 } //  namespace kernels

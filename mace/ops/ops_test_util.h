@@ -176,7 +176,7 @@ class OpsTestNet {
 
   void Sync() {
     if (net_ && device_ == DeviceType::OPENCL) {
-      OpenCLRuntime::Get()->command_queue().finish();
+      OpenCLRuntime::Global()->command_queue().finish();
     }
   }
 
@@ -188,20 +188,14 @@ class OpsTestNet {
 };
 
 class OpsTestBase : public ::testing::Test {
- public:
-  OpsTestNet &test_net() { return test_net_; };
-
  protected:
-  virtual void TearDown() {
-    auto ws = test_net_.ws();
-    auto tensor_names = ws->Tensors();
-    for (auto &name : tensor_names) {
-      ws->RemoveTensor(name);
-    }
+  virtual void SetUp() {
+    // OpenCLRuntime::CreateGlobal();
   }
 
- private:
-  OpsTestNet test_net_;
+  virtual void TearDown() {
+    // OpenCLRuntime::DestroyGlobal();
+  }
 };
 
 template <typename T>

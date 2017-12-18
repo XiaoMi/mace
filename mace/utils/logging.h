@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_LOGGING_H_
-#define MACE_CORE_LOGGING_H_
+#ifndef MACE_UTILS_LOGGING_H_
+#define MACE_UTILS_LOGGING_H_
 
 #include <limits>
 #include <sstream>
@@ -150,4 +150,4 @@ T &&CheckNotNull(const char *file, int line, const char *exprtext, T &&t) {
 }  // namespace internal
 }  // namespace mace
 
-#endif  // MACE_CORE_LOGGING_H_
+#endif  // MACE_UTILS_LOGGING_H_

@@ -12,7 +12,7 @@ class ConcatOpTest : public OpsTestBase {};
 
 TEST_F(ConcatOpTest, CPUSimpleHorizon) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Concat", "ConcatTest")
       .Input("Input0")
       .Input("Input1")
@@ -49,7 +49,7 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
 
 TEST_F(ConcatOpTest, CPUSimpleVertical) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Concat", "ConcatTest")
       .Input("Input0")
       .Input("Input1")
@@ -92,7 +92,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   int num_inputs = 2 + rand() % 10;
   int axis = rand() % dim;
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
     builder = builder.Input(("Input" + ToString(i)).c_str());

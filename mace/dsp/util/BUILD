@@ -30,7 +30,7 @@ cc_test(
     name = "util_test",
     testonly = 1,
     srcs = glob(["*_test.cc"]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = if_android([
         "-ldl",
         "-lm",

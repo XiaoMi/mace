@@ -17,7 +17,8 @@ static void Pooling(const Tensor *input,
                     const int pooling_size,
                     const PoolingType type,
                     const DataType dt,
-                    Tensor *output) {
+                    Tensor *output,
+                    StatsFuture *future) {
   index_t batch = output->dim(0);
   index_t out_height = output->dim(1);
   index_t out_width = output->dim(2);
@@ -25,7 +26,7 @@ static void Pooling(const Tensor *input,
 
   index_t channel_blocks = (channels + 3) / 4;
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   if (type == MAX && input->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
@@ -85,12 +86,13 @@ static void Pooling(const Tensor *input,
             {15, 7, 9},
             {1, kwg_size, 1}};
   };
+  cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
     cl_int error = runtime->command_queue().enqueueNDRangeKernel(
         pooling_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]),
-        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+        nullptr, &event);
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
@@ -101,16 +103,27 @@ static void Pooling(const Tensor *input,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
+  OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
                                                      params_generator,
-                                                     func);
+                                                     func,
+                                                     &timer);
+
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template<typename T>
 void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
-                                                       Tensor *output) {
-  MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1) << "Pooling opencl kernel not support dilation yet";
+                                                       Tensor *output,
+                                                       StatsFuture *future) {
+  MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1)
+    << "Pooling opencl kernel not support dilation yet";
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);
   std::vector<index_t> filter_shape = {
@@ -128,7 +141,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   output->ResizeImage(output_shape, output_image_shape);
 
   Pooling(input, strides_, paddings.data(), kernels_[0], pooling_type_,
-          DataTypeToEnum<T>::value, output);
+          DataTypeToEnum<T>::value, output, future);
 
 }
 

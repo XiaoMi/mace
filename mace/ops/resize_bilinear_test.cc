@@ -13,7 +13,7 @@ class ResizeBilinearTest : public OpsTestBase {};
 TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   testing::internal::LogToStderr();
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("Input")
       .Output("Output")
@@ -37,7 +37,7 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
 TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   testing::internal::LogToStderr();
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
       .Input("Input")
       .Output("Output")

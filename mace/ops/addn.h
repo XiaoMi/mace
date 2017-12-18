@@ -16,7 +16,7 @@ class AddNOp : public Operator<D, T> {
   AddNOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     Tensor *output_tensor = this->outputs_[0];
     int n = this->inputs_.size();
     vector<const Tensor *> inputs(n, nullptr);
@@ -24,7 +24,7 @@ class AddNOp : public Operator<D, T> {
       inputs[i] = this->inputs_[i];
     }
 
-    functor_(inputs, output_tensor);
+    functor_(inputs, output_tensor, future);
     return true;
   }
 

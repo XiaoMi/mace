@@ -10,7 +10,7 @@ class ChannelShuffleOpTest : public OpsTestBase {};
 
 TEST_F(ChannelShuffleOpTest, C8G4) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
       .Input("Input")
       .Output("Output")

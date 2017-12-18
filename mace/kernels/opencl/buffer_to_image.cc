@@ -12,7 +12,8 @@ namespace kernels {
 template<typename T>
 void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                                                              const BufferType type,
-                                                             Tensor *image) {
+                                                             Tensor *image,
+                                                             StatsFuture *future) {
   MACE_CHECK(!buffer->is_image()) << "buffer must be buffer-type";
   std::vector<size_t> image_shape;
   if (!i2b_) {
@@ -31,7 +32,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
   }
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   string kernel_name;
   switch (type) {
     case FILTER:
@@ -64,12 +65,20 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                          1};
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(b2f_kernel);
   const std::vector<uint32_t> lws = {kwg_size, 1, 1};
+  cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       b2f_kernel, cl::NullRange,
       cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]));
-
+      cl::NDRange(lws[0], lws[1], lws[2]),
+      nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template struct BufferToImageFunctor<DeviceType::OPENCL, float>;

@@ -6,11 +6,12 @@ cc_binary(
     srcs = [
         "helloworld.cc",
     ],
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = ["-fopenmp"],
     deps = [
         "//mace/core",
         "//mace/ops",
+        "//mace/core:opencl_runtime",
     ],
 )
 
@@ -18,8 +19,8 @@ cc_test(
     name = "benchmark_example",
     testonly = 1,
     srcs = ["benchmark_example.cc"],
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
         "//mace/core",
@@ -30,8 +31,8 @@ cc_test(
 cc_binary(
     name = "mace_run",
     srcs = glob(["models/*/*.cc"] + ["mace_run.cc"]),
-    copts = ["-std=c++11"],
-    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-v", "-ftime-report"],
+    linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
         "//mace/core",

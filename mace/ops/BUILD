@@ -34,10 +34,7 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = [
-        "-std=c++11",
-        "-D_GLIBCXX_USE_C99_MATH_TR1",
-    ],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     deps = [
         "//mace/kernels",
     ],
@@ -50,7 +47,7 @@ cc_test(
     srcs = glob(
         ["*_test.cc"],
     ),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
@@ -64,12 +61,8 @@ cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
-    copts = [
-        "-std=c++11",
-        "-fopenmp",
-        "-D_GLIBCXX_USE_C99_MATH_TR1",
-    ],
-    linkopts = ["-fopenmp"] + if_android(["-ldl"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
         ":ops",

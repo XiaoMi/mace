@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_CONV_2D_H_
 #define MACE_KERNELS_CONV_2D_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 
@@ -32,7 +33,8 @@ struct Conv2dFunctor : Conv2dFunctorBase {
   void operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
@@ -130,7 +132,8 @@ template<>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
-                                                        Tensor *output);
+                                                        Tensor *output,
+                                                        StatsFuture *future);
 
 template<typename T>
 struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
@@ -142,7 +145,8 @@ struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
   void operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
-                  Tensor *output);
+                  Tensor *output,
+                  StatsFuture *future);
 };
 
 }  // namespace kernels

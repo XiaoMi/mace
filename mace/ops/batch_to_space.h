@@ -53,14 +53,14 @@ class BatchToSpaceNDOp: public Operator<D, T> {
   BatchToSpaceNDOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws), functor_(true) {}
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
     const Tensor *block_shape_tensor = this->Input(BLOCK_SHAPE);
     const Tensor *cropped_tensor = this->Input(CROPS);
     Tensor *output = this->Output(OUTPUT);
 
     BatchToSpaceHelper(input_tensor, block_shape_tensor, cropped_tensor, output);
-    functor_(output, block_shape_tensor, cropped_tensor, const_cast<Tensor*>(input_tensor));
+    functor_(output, block_shape_tensor, cropped_tensor, const_cast<Tensor*>(input_tensor), future);
     return true;
   }
 

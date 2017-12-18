@@ -43,12 +43,3 @@ py_binary(
         "//mace/proto:mace_py",
     ],
 )
-
-py_binary(
-    name = "tf_ops_stats",
-    srcs = ["tf_ops_stats.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        "@six_archive//:six",
-    ],
-)

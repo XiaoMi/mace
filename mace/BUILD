@@ -25,7 +25,7 @@ config_setting(
 )
 
 config_setting(
-    name = "is_profiling",
+    name = "profiling_enabled",
     define_values = {
         "profiling": "true",
     },

@@ -3,6 +3,7 @@
 //
 
 #include "mace/core/net.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 using namespace mace;
 
@@ -42,16 +43,10 @@ int main() {
   net_def.add_op()->CopyFrom(op_def_1);
   net_def.add_op()->CopyFrom(op_def_2);
 
-  auto input = net_def.add_tensors();
-  input->set_name("Input");
-  input->set_data_type(DataType::DT_FLOAT);
-  input->add_dims(2);
-  input->add_dims(3);
-  for (int i = 0; i < 6; ++i) {
-    input->add_float_data(i - 3);
-  }
-
-  VLOG(0) << net_def.DebugString();
+  alignas(4) unsigned char tensor_data[] = "012345678901234567890123";
+  const std::vector<int64_t> dims = {1, 2, 3, 1};
+  TensorProto input("Input", tensor_data, dims, DataType::DT_FLOAT);
+  net_def.mutable_tensors().push_back(input);
 
   // Create workspace and input tensor
   Workspace ws;

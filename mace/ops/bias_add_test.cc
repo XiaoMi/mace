@@ -68,7 +68,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   index_t width = 64 + rand() % 50;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("Input")
       .Input("Bias")
@@ -114,7 +114,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   index_t width = 113 + rand() % 100;
 
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("Input")
       .Input("Bias")

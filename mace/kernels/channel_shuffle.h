@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_CHANNEL_SHUFFLE_H_
 #define MACE_KERNELS_CHANNEL_SHUFFLE_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
 namespace mace {
@@ -15,7 +16,8 @@ class ChannelShuffleFunctor {
  public:
   ChannelShuffleFunctor(const int group) : group_(group) {}
 
-  void operator()(const T *input, const index_t *input_shape, T *output) {
+  void operator()(const T *input, const index_t *input_shape,
+                  T *output, StatsFuture *future) {
     index_t batch = input_shape[0];
     index_t channels = input_shape[1];
     index_t height = input_shape[2];

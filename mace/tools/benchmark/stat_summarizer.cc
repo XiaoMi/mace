@@ -4,7 +4,7 @@
 
 #include "mace/tools/benchmark/stat_summarizer.h"
 #include "mace/core/common.h"
-#include "mace/proto/stats.pb.h"
+#include "mace/core/operator.h"
 
 #include <iomanip>
 #include <queue>
@@ -26,20 +26,21 @@ void StatSummarizer::ProcessMetadata(const RunMetadata &run_metadata) {
   int64_t curr_total_us = 0;
   int64_t mem_total = 0;
 
-  int64_t first_node_start_us = run_metadata.op_stats(0).all_start_micros();
+  MACE_CHECK(!run_metadata.op_stats.empty());
+  int64_t first_node_start_us = run_metadata.op_stats[0].stats.start_micros;
 
   int node_num = 0;
-  for (const auto &ops : run_metadata.op_stats()) {
-    std::string name = ops.operator_name();
-    std::string op_type = ops.type();
+  for (const auto &ops : run_metadata.op_stats) {
+    std::string name = ops.operator_name;
+    std::string op_type = ops.type;
 
     ++node_num;
-    const int64_t curr_time = ops.all_end_rel_micros();
+    const int64_t curr_time = ops.stats.end_micros - ops.stats.start_micros;
     curr_total_us += curr_time;
     auto result = details_.emplace(name, Detail());
     Detail *detail = &(result.first->second);
 
-    detail->start_us.UpdateStat(ops.all_start_micros() - first_node_start_us);
+    detail->start_us.UpdateStat(ops.stats.start_micros - first_node_start_us);
     detail->rel_end_us.UpdateStat(curr_time);
 
     // If this is the first pass, initialize some values.

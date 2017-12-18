@@ -6,6 +6,7 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -18,8 +19,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    Tensor *output) {
-
+    Tensor *output,
+    StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -27,7 +28,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
@@ -72,12 +73,13 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
             {15, 7, 9},
             {1, kwg_size, 1}};
   };
+  cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
     cl_int error = runtime->command_queue().enqueueNDRangeKernel(
         bm_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(params[0], params[1], params[2]),
-        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+        nullptr, &event);
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
@@ -88,10 +90,18 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
+  OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
                                                      params_generator,
-                                                     func);
+                                                     func,
+                                                     &timer);
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template

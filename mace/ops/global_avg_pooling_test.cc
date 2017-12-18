@@ -10,7 +10,7 @@ class GlobalAvgPoolingOpTest : public OpsTestBase {};
 
 TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
@@ -32,9 +32,10 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
+#if __ARM_NEON
 TEST_F(GlobalAvgPoolingOpTest, 3x7x7_NEON) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
       .Input("Input")
       .Output("Output")
@@ -55,3 +56,4 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_NEON) {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+#endif

@@ -22,13 +22,13 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  this->dilations_.data()) {
   }
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input, filter, bias, output);
+    functor_(input, filter, bias, output, future);
 
     return true;
   }

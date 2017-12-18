@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_BIAS_ADD_H_
 #define MACE_KERNELS_BIAS_ADD_H_
 
+#include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/mace.h"
 
@@ -15,7 +16,8 @@ template <DeviceType D, typename T>
 struct BiasAddFunctor {
   void operator()(const Tensor *input,
                   const Tensor *bias,
-                  Tensor *output) {
+                  Tensor *output,
+                  StatsFuture *future) {
     const index_t batch = input->dim(0);
     const index_t height = input->dim(1);
     const index_t width = input->dim(2);
@@ -51,14 +53,16 @@ template <>
 void BiasAddFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *input,
     const Tensor *bias,
-    Tensor *output);
+    Tensor *output,
+    StatsFuture *future);
 */
 
 template <typename T>
 struct BiasAddFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *input,
                   const Tensor *bias,
-                  Tensor *output);
+                  Tensor *output,
+                  StatsFuture *future);
 };
 
 }  //  namepsace kernels

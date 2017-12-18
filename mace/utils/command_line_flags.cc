@@ -3,11 +3,15 @@
 //
 
 #include "mace/utils/command_line_flags.h"
+#include "mace/utils/logging.h"
+
 #include <cstring>
 #include <iomanip>
 
 namespace mace {
 namespace {
+
+using namespace std;
 
 bool StringConsume(string &arg, const string &x) {
   if ((arg.size() >= x.size()) &&

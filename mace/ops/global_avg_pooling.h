@@ -16,7 +16,7 @@ class GlobalAvgPoolingOp : public Operator<D, T> {
   GlobalAvgPoolingOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
-  bool Run() override {
+  bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
@@ -29,7 +29,7 @@ class GlobalAvgPoolingOp : public Operator<D, T> {
 
     auto pooling_func = kernels::GlobalAvgPoolingFunctor<D, T>();
     pooling_func(input->data<float>(), input->shape().data(),
-                 output->mutable_data<float>());
+                 output->mutable_data<float>(), future);
     return true;
   }
 

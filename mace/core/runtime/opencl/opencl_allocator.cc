@@ -3,7 +3,7 @@
 //
 
 #include "mace/core/runtime/opencl/cl2_header.h"
-#include "mace/core/opencl_allocator.h"
+#include "mace/core/runtime/opencl/opencl_allocator.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
@@ -37,7 +37,7 @@ OpenCLAllocator::OpenCLAllocator() {}
 OpenCLAllocator::~OpenCLAllocator() {}
 void *OpenCLAllocator::New(size_t nbytes) {
   cl_int error;
-  cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Get()->context(),
+  cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                       nbytes, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS);
@@ -53,7 +53,7 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
 
   cl_int error;
   cl::Image2D *cl_image =
-      new cl::Image2D(OpenCLRuntime::Get()->context(),
+      new cl::Image2D(OpenCLRuntime::Global()->context(),
                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                       img_format,
                       image_shape[0], image_shape[1],
@@ -79,7 +79,7 @@ void OpenCLAllocator::DeleteImage(void *buffer) {
 
 void *OpenCLAllocator::Map(void *buffer, size_t nbytes) {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
-  auto queue = OpenCLRuntime::Get()->command_queue();
+  auto queue = OpenCLRuntime::Global()->command_queue();
   // TODO(heliangliang) Non-blocking call
   cl_int error;
   void *mapped_ptr =
@@ -101,7 +101,7 @@ void *OpenCLAllocator::MapImage(void *buffer,
   mapped_image_pitch.resize(2);
   cl_int error;
   void *mapped_ptr =
-      OpenCLRuntime::Get()->command_queue().enqueueMapImage(*cl_image,
+      OpenCLRuntime::Global()->command_queue().enqueueMapImage(*cl_image,
                                                             CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                                                             origin, region,
                                                             &mapped_image_pitch[0],
@@ -114,12 +114,13 @@ void *OpenCLAllocator::MapImage(void *buffer,
 
 void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
-  auto queue = OpenCLRuntime::Get()->command_queue();
+  auto queue = OpenCLRuntime::Global()->command_queue();
   MACE_CHECK(queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr, nullptr,
                                          nullptr) == CL_SUCCESS);
 }
 
 bool OpenCLAllocator::OnHost() { return false; }
 
+MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
 
 }  // namespace mace

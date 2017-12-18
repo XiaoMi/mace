@@ -13,7 +13,7 @@ namespace kernels {
 
 template <typename T>
 static void AddN(const std::vector<const Tensor *> &input_tensors,
-                 Tensor *output) {
+                 Tensor *output, StatsFuture *future) {
   if (input_tensors.size() > 4) {
     MACE_NOT_IMPLEMENTED;
   }
@@ -26,7 +26,7 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
   const index_t width_pixels = channel_blocks * width;
   const index_t batch_height_pixels = batch * height;
 
-  auto runtime = OpenCLRuntime::Get();
+  auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
@@ -61,12 +61,13 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
             {1, kwg_size}
     };
   };
+  cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
     cl_int error = runtime->command_queue().enqueueNDRangeKernel(
         addn_kernel, cl::NullRange,
         cl::NDRange(gws[0], gws[1]),
         cl::NDRange(params[0], params[1]),
-        NULL, OpenCLRuntime::Get()->GetDefaultEvent());
+        nullptr, &event);
 
     MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
     return error;
@@ -77,16 +78,25 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
+  OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
                                                      params_generator,
-                                                     func);
-
+                                                     func,
+                                                     &timer);
+  future->wait_fn = [runtime, event](CallStats *stats) {
+    event.wait();
+    if (stats != nullptr) {
+      runtime->GetCallStats(event, stats);
+    }
+  };
 }
 
 template <typename T>
 void AddNFunctor<DeviceType::OPENCL, T>::operator()(
-    const std::vector<const Tensor *> &input_tensors, Tensor *output_tensor) {
+    const std::vector<const Tensor *> &input_tensors,
+    Tensor *output_tensor,
+    StatsFuture *future) {
   size_t size = input_tensors.size();
   MACE_CHECK(size >= 2 && input_tensors[0] != nullptr);
 
@@ -108,7 +118,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
   output_tensor->ResizeImage(output_shape, output_image_shape);
 
-  AddN<T>(input_tensors, output_tensor);
+  AddN<T>(input_tensors, output_tensor, future);
 };
 
 template

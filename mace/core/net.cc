@@ -4,9 +4,6 @@
 
 #include "mace/core/net.h"
 #include "mace/utils/utils.h"
-#ifdef __USE_OPENCL
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#endif
 
 namespace mace {
 
@@ -33,65 +30,51 @@ SimpleNet::SimpleNet(const std::shared_ptr<const NetDef> &net_def,
     }
   }
 }
+
 bool SimpleNet::Run(RunMetadata *run_metadata) {
   VLOG(1) << "Running net " << name_;
-  for (auto &op : operators_) {
+  for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
+    bool future_wait = (device_type_ == DeviceType::OPENCL &&
+                        (run_metadata != nullptr ||
+                         std::distance(iter, operators_.end()) == 1));
+    auto &op = *iter;
     VLOG(1) << "Running operator " << op->debug_def().name() << "("
             << op->debug_def().type() << ").";
-    OperatorStats *op_stats = nullptr;
-    if (run_metadata ) {
-      if (device_type_ != DeviceType::OPENCL) {
-        op_stats = run_metadata->add_op_stats();
-        op_stats->set_operator_name(op->debug_def().name());
-        op_stats->set_type(op->debug_def().type());
-        op_stats->set_all_start_micros(NowInMicroSec());
-        op_stats->set_op_start_rel_micros(NowInMicroSec() -
-            op_stats->all_start_micros());
+
+    bool ret;
+    CallStats call_stats;
+    if (future_wait) {
+      StatsFuture future;
+      ret = op->Run(&future);
+      if (run_metadata != nullptr) {
+        future.wait_fn(&call_stats);
+      } else {
+        future.wait_fn(nullptr);
       }
+    } else if (run_metadata != nullptr) {
+      call_stats.start_micros = NowInMicroSec();
+      ret = op->Run(nullptr);
+      call_stats.end_micros = NowInMicroSec();
+    } else {
+      ret = op->Run(nullptr);
     }
-    if (!op->Run()) {
+
+    if (run_metadata != nullptr) {
+      OperatorStats op_stats = { op->debug_def().name(),
+                                 op->debug_def().type(),
+                                 call_stats };
+      run_metadata->op_stats.emplace_back(op_stats);
+    }
+
+    if (!ret) {
       LOG(ERROR) << "Operator failed: " << op->debug_def().name();
       return false;
     }
 
-    if (run_metadata) {
-      if (device_type_ == DeviceType::OPENCL) {
-#ifndef __USE_OPENCL
-        LOG(FATAL) << "OpenCL is not supported";
-#else
-        OpenCLRuntime::Get()->command_queue().finish();
-        op_stats = run_metadata->add_op_stats();
-        op_stats->set_operator_name(op->debug_def().name());
-        op_stats->set_type(op->debug_def().type());
-
-        op_stats->set_all_start_micros(
-            OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000);
-        op_stats->set_op_start_rel_micros(
-            OpenCLRuntime::Get()->GetEventProfilingStartInfo() / 1000 -
-            op_stats->all_start_micros());
-
-        op_stats->set_op_end_rel_micros(
-            OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000 -
-            op_stats->all_start_micros());
-        op_stats->set_all_end_rel_micros(
-            OpenCLRuntime::Get()->GetEventProfilingEndInfo() / 1000 -
-            op_stats->all_start_micros());
-#endif
-      } else {
-        op_stats->set_op_end_rel_micros(NowInMicroSec() -
-                                        op_stats->all_start_micros());
-        op_stats->set_all_end_rel_micros(NowInMicroSec() -
-                                         op_stats->all_start_micros());
-      }
-    }
     VLOG(1) << "Op " << op->debug_def().name()
             << " has shape: " << internal::MakeString(op->Output(0)->shape());
   }
-#ifdef __USE_OPENCL
-  if (device_type_ == DeviceType::OPENCL) {
-    OpenCLRuntime::Get()->command_queue().finish();
-  }
-#endif
+
   return true;
 }
 

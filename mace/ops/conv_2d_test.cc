@@ -78,11 +78,12 @@ void TestSimple3x3SAME() {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-
+#if __ARM_NEON
 TEST_F(Conv2dOpTest, NEONSimple) {
   TestSimple3x3VALID<DeviceType::NEON>();
   TestSimple3x3SAME<DeviceType::NEON>();
 }
+#endif
 
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
@@ -233,9 +234,11 @@ void TestSimple3x3WithoutBias() {
 }
 
 
+#ifdef __ARM_NEON
 TEST_F(Conv2dOpTest, NEONWithouBias) {
   TestSimple3x3WithoutBias<DeviceType::NEON>();
 }
+#endif
 
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3WithoutBias() {
@@ -335,9 +338,11 @@ static void TestCombined3x3() {
 }
 
 
+#ifdef __ARM_NEON
 TEST_F(Conv2dOpTest, NEONCombined) {
   TestCombined3x3<DeviceType::NEON>();
 }
+#endif
 
 template<DeviceType D, typename T>
 static void TestNHWCCombined3x3() {

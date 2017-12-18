@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/logging.h"
+#include "mace/utils/logging.h"
 
 using std::set;
 using std::map;

@@ -15,7 +15,7 @@ class PoolingOpTest : public OpsTestBase {};
 
 TEST_F(PoolingOpTest, MAX_VALID) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -45,7 +45,7 @@ TEST_F(PoolingOpTest, MAX_VALID) {
 
 TEST_F(PoolingOpTest, MAX_SAME) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -71,7 +71,7 @@ TEST_F(PoolingOpTest, MAX_SAME) {
 
 TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -98,7 +98,7 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
 
 TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
@@ -245,7 +245,7 @@ TEST_F(PoolingOpTest, OPENCLUnalignedMaxPooling3S2) {
 
 TEST_F(PoolingOpTest, AVG_VALID) {
   // Construct graph
-  auto &net = test_net();
+  OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
