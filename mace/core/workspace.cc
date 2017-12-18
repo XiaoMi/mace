@@ -4,7 +4,7 @@
 
 #include "mace/core/workspace.h"
 #include "mace/core/serializer.h"
-#include "mace/core/proto_utils.h"
+#include "mace/core/arg_helper.h"
 
 namespace mace {
 

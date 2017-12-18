@@ -27,14 +27,14 @@ python tools/validate.py --generate_data true --random_seed 1 \
  --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3"
 
 # Step 2: convert tf model to mace model
-echo "Step 2: convert tf model to mace model and optimize memory"
-bazel build //mace/python/tools:tf_converter
-bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
-                                         --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
-                                         --input_node=input \
-                                         --output_node=GCN/br_result_2/fcn_br \
-                                         --data_type=DT_HALF \
-                                         --runtime=gpu
+#echo "Step 2: convert tf model to mace model and optimize memory"
+#bazel build //mace/python/tools:tf_converter
+#bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
+#                                         --output=${MODEL_DIR}/${MACE_MODEL_NAME} \
+#                                         --input_node=input \
+#                                         --output_node=GCN/br_result_2/fcn_br \
+#                                         --data_type=DT_HALF \
+#                                         --runtime=gpu
 
 # Step 3: Run model on the phone
 echo "Step 3: Run model on the phone"
@@ -46,7 +46,7 @@ bazel build -c opt --strip always mace/examples:mace_run  \
 adb shell "mkdir -p ${PHONE_DATA_DIR}"
 adb shell "mkdir -p ${KERNEL_DIR}"
 adb push mace/kernels/opencl/cl/* ${KERNEL_DIR}
-adb push ${MODEL_DIR}/${MACE_MODEL_NAME} ${PHONE_DATA_DIR}
+#adb push ${MODEL_DIR}/${MACE_MODEL_NAME} ${PHONE_DATA_DIR}
 adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
 adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 

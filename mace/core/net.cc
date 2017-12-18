@@ -50,7 +50,7 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
       }
     }
     if (!op->Run()) {
-      LOG(ERROR) << "Operator failed: " << ProtoDebugString(op->debug_def());
+      LOG(ERROR) << "Operator failed: " << op->debug_def().name();
       return false;
     }
 

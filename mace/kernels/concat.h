@@ -7,7 +7,7 @@
 
 #include "mace/core/common.h"
 #include "mace/core/types.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 #include "mace/core/tensor.h"
 
 namespace mace {

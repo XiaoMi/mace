@@ -62,7 +62,6 @@ cc_library(
     ]),
     deps = [
         ":logging",
-        "//mace/proto:cc_proto",
         "//mace/proto:stats_proto",
         "//mace/utils",
         ":opencl_runtime",

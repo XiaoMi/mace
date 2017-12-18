@@ -2,8 +2,10 @@ import argparse
 import sys
 import tensorflow as tf
 from tensorflow import gfile
+from mace.proto import mace_pb2
 from mace.python.tools import tf_converter_lib
 from mace.python.tools import tf_dsp_converter_lib
+from mace.python.tools import source_converter_lib
 
 # ./bazel-bin/mace/python/tools/tf_converter --input quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
 
@@ -19,6 +21,7 @@ def main(unused_args):
     data = f.read()
     input_graph_def.ParseFromString(data)
 
+  print 'done'
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.prequantize)
@@ -26,11 +29,15 @@ def main(unused_args):
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
-  with gfile.GFile(FLAGS.output, "wb") as f:
-    f.write(output_graph_def.SerializeToString())
-  with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
-    # output_graph_def.ClearField('tensors')
-    f.write(str(output_graph_def))
+  if FLAGS.output_type == 'source':
+    source_converter_lib.convert_to_source(output_graph_def, FLAGS.template, FLAGS.confuse,
+      FLAGS.model_tag, FLAGS.output)
+  else:
+    with gfile.GFile(FLAGS.output, "wb") as f:
+      f.write(output_graph_def.SerializeToString())
+    with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
+      # output_graph_def.ClearField('tensors')
+      f.write(str(output_graph_def))
 
 
 def parse_args():
@@ -51,7 +58,7 @@ def parse_args():
     "--runtime",
     type=str,
     default="cpu",
-    help="Runtime: cpu/gpu/dsp.")
+    help="Runtime: cpu/gpu/dsp")
   parser.add_argument(
     "--input_node",
     type=str,
@@ -72,6 +79,26 @@ def parse_args():
     type=str,
     default='DT_FLOAT',
     help="e.g., DT_HALF/DT_FLOAT")
+  parser.add_argument(
+    "--output_type",
+    type=str,
+    default="source",
+    help="output type: source/pb")
+  parser.add_argument(
+    "--template",
+    type=str,
+    default="",
+    help="template path")
+  parser.add_argument(
+    "--confuse",
+    type=bool,
+    default=False,
+    help="confuse model names")
+  parser.add_argument(
+    "--model_tag",
+    type=str,
+    default="",
+    help="model tag for generated function and namespace")
   return parser.parse_known_args()
 
 

@@ -6,7 +6,7 @@
 #define MACE_KERNELS_CONV_2D_H_
 
 #include "mace/core/tensor.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 
 namespace mace {
 namespace kernels {

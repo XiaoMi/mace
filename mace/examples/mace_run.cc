@@ -20,6 +20,9 @@
 using namespace std;
 using namespace mace;
 
+namespace mace {
+extern NetDef CreateNet();
+}
 void ParseShape(const string &str, vector<index_t> *shape) {
   string tmp = str;
   while (!tmp.empty()) {
@@ -31,6 +34,18 @@ void ParseShape(const string &str, vector<index_t> *shape) {
     } else {
       tmp = tmp.substr(next_offset + 1);
     }
+  }
+}
+
+DeviceType ParseDeviceType(const string &device_str) {
+  if(device_str.compare("CPU") == 0) {
+    return DeviceType::CPU;
+  } else if (device_str.compare("NEON") == 0) {
+    return DeviceType::NEON;
+  } else if (device_str.compare("OPENCL") == 0) {
+    return DeviceType::OPENCL;
+  } else {
+    return DeviceType::CPU;
   }
 }
 
@@ -76,13 +91,13 @@ int main(int argc, char **argv) {
   ParseShape(input_shape, &shape);
 
   // load model
-  ifstream file_stream(model_file, ios::in | ios::binary);
-  NetDef net_def;
-  net_def.ParseFromIstream(&file_stream);
-  file_stream.close();
+//  ifstream file_stream(model_file, ios::in | ios::binary);
+//  NetDef net_def;
+//  net_def.ParseFromIstream(&file_stream);
+//  file_stream.close();
+  NetDef net_def = mace::CreateNet();
 
-  DeviceType device_type;
-  DeviceType_Parse(device, &device_type);
+  DeviceType device_type = ParseDeviceType(device);
   VLOG(0) << device_type;
   Workspace ws;
   ws.LoadModelTensor(net_def, device_type);

@@ -9,7 +9,7 @@
 #include "mace/core/common.h"
 #include "mace/core/logging.h"
 #include "mace/core/types.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 
 namespace mace {
 

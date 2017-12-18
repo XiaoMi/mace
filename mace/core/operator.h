@@ -6,11 +6,11 @@
 #define MACE_CORE_OPERATOR_H
 
 #include "mace/core/common.h"
-#include "mace/core/proto_utils.h"
+#include "mace/core/arg_helper.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/mace.h"
 
 namespace mace {
 
