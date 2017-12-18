@@ -97,12 +97,14 @@ static void Concat2(const Tensor *input0,
                                                      params_generator,
                                                      func,
                                                      &timer);
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 template<typename T>

@@ -102,12 +102,14 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
                                                      params_generator,
                                                      func,
                                                      &timer);
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 template struct ResizeBilinearFunctor<DeviceType::OPENCL, float>;

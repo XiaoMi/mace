@@ -97,12 +97,14 @@ void ReluFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                      params_generator,
                                                      func,
                                                      &timer);
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 template

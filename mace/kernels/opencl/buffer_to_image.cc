@@ -73,12 +73,14 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 template struct BufferToImageFunctor<DeviceType::OPENCL, float>;

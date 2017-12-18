@@ -50,12 +50,14 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
       cl::NDRange(lws[0], lws[1], lws[2]),
       nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 template

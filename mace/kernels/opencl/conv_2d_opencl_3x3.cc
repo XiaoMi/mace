@@ -107,12 +107,14 @@ static void Conv2d3x3S12(const Tensor *input, const Tensor *filter,
                                                      func,
                                                      &timer);
 
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 void Conv2dOpenclK3x3S1(const Tensor *input,
                         const Tensor *filter,

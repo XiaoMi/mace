@@ -42,5 +42,5 @@ for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`
   adb -s ${device} shell "mkdir -p $DEVICE_PATH"
   adb -s ${device} push $CL_PATH $DEVICE_CL_PATH && \
   adb -s ${device} push $BAZEL_BIN_PATH/$BIN_NAME $DEVICE_PATH && \
-  adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=0$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
+  adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
 done

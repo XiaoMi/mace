@@ -66,12 +66,14 @@ static void InnerDepthwiseConvOpenclK3x3S12(const Tensor *input,
       nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
 
-  future->wait_fn = [runtime, event](CallStats *stats) {
-    event.wait();
-    if (stats != nullptr) {
-      runtime->GetCallStats(event, stats);
-    }
-  };
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        runtime->GetCallStats(event, stats);
+      }
+    };
+  }
 }
 
 extern void DepthwiseConvOpenclK3x3S1(const Tensor *input,
