@@ -48,7 +48,7 @@ class MemoryOptimizer(object):
         mem_id = self.idle_mem.pop()
 
       if not op.output_shape:
-        print('There is no output shape information to do memory optimization.')
+        print('WARNING: There is no output shape information to do memory optimization.')
         return
       op.mem_id = mem_id
       self.op_mem[self._op_to_tensor(op)] = mem_id
