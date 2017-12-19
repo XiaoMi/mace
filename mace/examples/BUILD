@@ -1,5 +1,5 @@
 # Examples
-load("//mace:mace.bzl", "if_android")
+load("//mace:mace.bzl", "if_android", "if_embed_binary_program")
 
 cc_binary(
     name = "helloworld",
@@ -30,13 +30,12 @@ cc_test(
 
 cc_binary(
     name = "mace_run",
-    srcs = glob(["models/*/*.cc"] + ["mace_run.cc"]),
+    srcs = ["mace_run.cc"],
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
-        "//mace/core",
-        "//mace/ops",
+        "//mace/codegen:generated_models_lib",
         "//mace/utils:command_line_flags",
     ],
 )

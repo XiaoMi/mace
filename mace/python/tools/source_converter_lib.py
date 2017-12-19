@@ -106,7 +106,7 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
       tag = model_tag,
       mode = 0,
     )
-    with gfile.GFile(output_dir + str(counter) + '.cc', "wb") as f:
+    with gfile.GFile(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
       f.write(source)
     counter += 1
 

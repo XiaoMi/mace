@@ -180,6 +180,17 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
+#ifdef MACE_EMBED_BINARY_PROGRAM
+  extern const std::map<std::string, std::vector<unsigned char>> kCompiledProgramMap;
+  VLOG(1) << "Create program with merged binary map";
+  auto it_binary = kCompiledProgramMap.find(binary_file_name_prefix);
+  if (it_binary == kCompiledProgramMap.end()) {
+    LOG(FATAL) << "Cannot found the binary key '" << binary_file_name_prefix
+      << "' in kCompiledProgramMap";
+  }
+  std::vector<unsigned char> binary = it_binary->second;
+  *program = cl::Program(this->context(), {device()}, {binary});
+#else
   std::string source_filename = kernel_path_ + program_file_name;
   std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
 
@@ -187,10 +198,10 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
   bool is_binary_filename_exist = std::ifstream(binary_filename).is_open();
   if (is_binary_filename_exist) {
     VLOG(1) << "Create program with binary: " << binary_filename;
-    std::vector<unsigned char> binaries;
-    MACE_CHECK(ReadFile(binary_filename, true, &binaries));
+    std::vector<unsigned char> binary;
+    MACE_CHECK(ReadFile(binary_filename, true, &binary));
 
-    *program = cl::Program(this->context(), {device()}, {binaries});
+    *program = cl::Program(this->context(), {device()}, {binary});
 
   } else if (std::ifstream(source_filename).is_open()) {
     VLOG(1) << "Create program with source: " << source_filename;
@@ -206,6 +217,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     LOG(FATAL) << "Failed to open kernel file " << binary_filename << " or "
                << source_filename;
   }
+#endif
 
   // Build program
   std::string build_options_str =
@@ -223,6 +235,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     LOG(FATAL) << "Build program failed: " << ret;
   }
 
+#ifndef MACE_EMBED_BINARY_PROGRAM
   // Write binary if necessary
   if (!is_binary_filename_exist) {
     size_t device_list_size = 1;
@@ -250,6 +263,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
 
     MACE_CHECK(WriteFile(binary_filename, true, content));
   }
+#endif
 }
 
 cl::Kernel OpenCLRuntime::BuildKernel(

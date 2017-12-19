@@ -28,4 +28,10 @@ def if_profiling_enabled(a):
   return select({
       "//mace:profiling_enabled": a,
       "//conditions:default": [],
-})
+  })
+
+def if_embed_binary_program(a):
+  return select({
+      "//mace:embed_binary_program": a,
+      "//conditions:default": [],
+  })

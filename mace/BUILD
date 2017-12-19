@@ -31,3 +31,11 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "embed_binary_program",
+    define_values = {
+        "embed_binary_program": "true",
+    },
+    visibility = ["//visibility:public"],
+)
