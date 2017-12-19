@@ -102,7 +102,8 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
   # generate tensor source files
   for t in net_def.tensors:
     source = j2_env.get_template(template_name).render(
-      tensor = TensorInfo(t),
+      tensor_info = TensorInfo(t),
+      tensor = t,
       tag = model_tag,
       mode = 0,
     )
