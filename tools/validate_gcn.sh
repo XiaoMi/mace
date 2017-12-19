@@ -30,8 +30,8 @@ python tools/validate.py --generate_data true --random_seed 1 \
 
 # Step 2: convert tf model to mace model
 echo "Step 2: convert tf model to mace model and optimize memory"
-echo $MACE_SOURCE_DIR
 bazel build //mace/python/tools:tf_converter
+rm -rf ${MACE_SOURCE_DIR}/mace/examples/models/gcn
 mkdir -p ${MACE_SOURCE_DIR}/mace/examples/models/gcn
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MACE_SOURCE_DIR}/mace/examples/models/gcn/mace_gcn.cc \

@@ -12,6 +12,78 @@ alignas(4) unsigned char {{ tensor.name }}[] = {
 };
 
 } //  namespace {{tag}}
+
+{% elif mode == 1 %}
+#include <vector>
+#include <string>
+#include "mace/core/mace.h"
+
+namespace {
+static void UpdateOp(mace::OperatorDef &op,
+                     const std::string &name,
+                     const std::string &type,
+                     const std::vector<std::string> &inputs,
+                     const std::vector<std::string> &outputs,
+                     const std::vector<mace::DataType> &output_types) {
+  op.set_name(name);
+  op.set_type(type);
+  op.set_input(inputs);
+  op.set_output(outputs);
+  op.set_output_type(output_types);
+}
+}
+
+namespace {{tag}}{
+
+{% for i in range(start, end) %}
+
+void CreateOperator{{i}}(mace::OperatorDef &op) {
+  mace::Argument *arg = nullptr;
+  {% for arg in net.op[i].arg %}
+
+  arg = op.add_arg();
+  arg->set_name({{ arg.name|tojson }});
+
+  {%- if arg.HasField('f') %}
+  arg->set_f({{ arg.f }});
+  {%- endif %}
+  {%- if arg.HasField('i') %}
+  arg->set_i({{ arg.i }});
+  {%- endif %}
+  {%- if arg.HasField('s') %}
+  arg->set_s({{ arg.s|tojson }});
+  {%- endif %}
+
+  {% if arg.floats|length != 0 %}
+  arg->set_floats({ {{ arg.floats|join(', ') }} });
+  {% endif %}
+  {% if arg.ints|length != 0 %}
+  arg->set_ints({ {{ arg.ints|join(', ') }} });
+  {% endif %}
+  {% if arg.strings|length != 0 %}
+  arg->set_strings({ {{ arg.strings|stringfy() }} });
+  {% endif %}
+  {% endfor %}
+
+  {% if net.op[i].HasField('mem_id') %}
+  op.set_mem_id({{net.op[i].mem_id}});
+  {% endif %}
+
+  {% for shape in net.op[i].output_shape %}
+  op.add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
+  {% endfor %}
+
+  UpdateOp(op, {{ net.op[i].name|tojson }}, {{ net.op[i].type|tojson}},
+          { {{ net.op[i].input|stringfy }} },
+          { {{ net.op[i].output|stringfy }} },
+          { {{ net.op[i].output_type|join(', ') }} });
+
+}
+
+{% endfor %}
+
+} //  namespace {{tag}}
+
 {% else %}
 #include <vector>
 #include <string>
@@ -23,7 +95,13 @@ namespace {{tag}} {
 extern unsigned char {{ tensor.name }}[];
 {% endfor %}
 
+
+{% for i in range(net.op|length) %}
+extern void CreateOperator{{i}}(mace::OperatorDef &op);
+{% endfor %}
+
 } //  namespace {{ tag }}
+
 
 namespace {
 
@@ -63,62 +141,12 @@ static void CreateNetArg(mace::NetDef &net_def) {
 }
 {% endif %}
 
-static void UpdateOp(mace::OperatorDef &op,
-                     const std::string &name,
-                     const std::string &type,
-                     const std::vector<std::string> &inputs,
-                     const std::vector<std::string> &outputs,
-                     const std::vector<mace::DataType> &output_types) {
-  op.set_name(name);
-  op.set_type(type);
-  op.set_input(inputs);
-  op.set_output(outputs);
-  op.set_output_type(output_types);
-}
 
 static void CreateOperators(std::vector<mace::OperatorDef> &ops) {
   ops.resize({{ net.op|length }});
-  mace::Argument *arg = nullptr;
   {% for i in range(net.op|length) %}
-  {% for arg in net.op[i].arg %}
 
-  arg = ops[{{i}}].add_arg();
-  arg->set_name({{ arg.name|tojson }});
-
-  {%- if arg.HasField('f') %}
-  arg->set_f({{ arg.f }});
-  {%- endif %}
-  {%- if arg.HasField('i') %}
-  arg->set_i({{ arg.i }});
-  {%- endif %}
-  {%- if arg.HasField('s') %}
-  arg->set_s({{ arg.s|tojson }});
-  {%- endif %}
-
-  {% if arg.floats|length != 0 %}
-  arg->set_floats({ {{ arg.floats|join(', ') }} });
-  {% endif %}
-  {% if arg.ints|length != 0 %}
-  arg->set_ints({ {{ arg.ints|join(', ') }} });
-  {% endif %}
-  {% if arg.strings|length != 0 %}
-  arg->set_strings({ {{ arg.strings|stringfy() }} });
-  {% endif %}
-  {% endfor %}
-
-  {% if net.op[i].HasField('mem_id') %}
-  ops[{{i}}].set_mem_id({{net.op[i].mem_id}});
-  {% endif %}
-
-  {% for shape in net.op[i].output_shape %}
-  ops[{{i}}].add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
-  {% endfor %}
-
-  UpdateOp(ops[{{i}}], {{ net.op[i].name|tojson }}, {{ net.op[i].type|tojson}},
-           { {{ net.op[i].input|stringfy }} },
-           { {{ net.op[i].output|stringfy }} },
-           { {{ net.op[i].output_type|join(', ') }} });
-
+  {{tag}}::CreateOperator{{i}}(ops[{{i}}]);
   {% endfor %}
 
 }
@@ -130,10 +158,7 @@ static void CreateTensors(std::vector<mace::TensorProto> &tensors) {
 
   tensors.emplace_back(mace::TensorProto(
       {{ tensor.name|tojson }}, {{ tag + '::' + tensor.name }},
-      { {{ tensor.dims|join(', ') }} }, {{ tensor.data_type }},
-      {{ tensor.node_id }}
-  ));
-
+      { {{ tensor.dims|join(', ') }} }, {{ tensor.data_type }}, {{ tensor.node_id }}));
   {% endfor %}
 
 }
