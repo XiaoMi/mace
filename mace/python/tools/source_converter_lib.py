@@ -110,13 +110,28 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
       f.write(source)
     counter += 1
 
+  # generate op source files
+  counter = 0
+  op_size = len(net_def.op)
+  for start in range(0, op_size, 10):
+    source = j2_env.get_template(template_name).render(
+      start = start,
+      end = min(start+10, op_size),
+      net = net_def,
+      tag = model_tag,
+      mode = 1
+    )
+    with gfile.GFile(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
+      f.write(source)
+    counter += 1
+
   # generate model source files
   tensors = [TensorInfo(t) for t in net_def.tensors]
   source = j2_env.get_template(template_name).render(
     tensors = tensors,
     net = net_def,
     tag = model_tag,
-    mode = 1
+    mode = 2
   )
   with gfile.GFile(output, "wb") as f:
     f.write(source)
