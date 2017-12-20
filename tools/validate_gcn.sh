@@ -44,7 +44,6 @@ build_and_run()
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}"
   if [ "$EMBED_OPENCL_BINARY" = false ]; then
-    adb shell "rm -rf ${KERNEL_DIR}"
     adb shell "mkdir -p ${KERNEL_DIR}"
     adb push mace/kernels/opencl/cl/. ${KERNEL_DIR}
   fi
