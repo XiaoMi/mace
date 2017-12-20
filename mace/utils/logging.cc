@@ -5,7 +5,7 @@
 #include "mace/utils/logging.h"
 
 #include <stdlib.h>
-#if defined(PLATFORM_POSIX_ANDROID)
+#if defined(ANDROID) || defined(__ANDROID__)
 #include <android/log.h>
 #include <iostream>
 #include <sstream>
@@ -17,7 +17,7 @@ namespace internal {
 LogMessage::LogMessage(const char *fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
 
-#if defined(PLATFORM_POSIX_ANDROID)
+#if defined(ANDROID) || defined(__ANDROID__)
 void LogMessage::GenerateLogMessage() {
   int android_log_level;
   switch (severity_) {
@@ -46,10 +46,10 @@ void LogMessage::GenerateLogMessage() {
   const char *const partial_name = strrchr(fname_, '/');
   ss << (partial_name != nullptr ? partial_name + 1 : fname_) << ":" << line_
      << " " << str();
-  __android_log_write(android_log_level, "native", ss.str().c_str());
+  __android_log_write(android_log_level, "MACE", ss.str().c_str());
 
   // Also log to stderr (for standalone Android apps).
-  std::cerr << "native : " << ss.str() << std::endl;
+  std::cerr << "IWEF"[severity_] << " " << ss.str() << std::endl;
 
   // Android logging at level FATAL does not terminate execution, so abort()
   // is still required to stop the program.
