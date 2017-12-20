@@ -71,7 +71,7 @@ build_and_run()
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --device=OPENCL   \
-    --round=1
+    --round=2
 }
 
 echo "Step 1: Generate input data"
