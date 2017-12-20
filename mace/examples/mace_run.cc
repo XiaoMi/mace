@@ -20,6 +20,7 @@
 #include "mace/utils/command_line_flags.h"
 #include "mace/core/mace.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/env_time.h"
 
 using namespace std;
 using namespace mace;
@@ -95,10 +96,14 @@ int main(int argc, char **argv) {
   ParseShape(input_shape, &shape);
 
   // load model
+  int64_t t0 = utils::NowMicros();
   NetDef net_def = mace::MACE_MODEL_FUNCTION();
+  int64_t t1 = utils::NowMicros();
+  LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << "us";
+  int64_t init_micros = t1 - t0;
 
   DeviceType device_type = ParseDeviceType(device);
-  VLOG(0) << device_type;
+  VLOG(1) << "Device Type" << device_type;
   int64_t input_size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
   std::unique_ptr<float[]> input_data(new float[input_size]);
 
@@ -110,7 +115,13 @@ int main(int argc, char **argv) {
 
   // Init model
   VLOG(0) << "Run init";
+  t0 = utils::NowMicros();
   mace::MaceEngine engine(&net_def, device_type);
+  t1 = utils::NowMicros();
+  init_micros += t1 - t0;
+  LOG(INFO) << "Net init duration: " << t1 - t0 << "us";
+
+  LOG(INFO) << "Total init duration: " << init_micros << "us";
 
   std::vector<int64_t> output_shape;
   VLOG(0) << "warm up";
