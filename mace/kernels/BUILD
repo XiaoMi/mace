@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_android_arm64")
+load("//mace:mace.bzl", "if_android", "if_android_arm64", "if_embed_binary_program")
 
 cc_library(
     name = "kernels",
@@ -21,7 +21,8 @@ cc_library(
         "-std=c++11",
         "-fopenmp",
         "-D_GLIBCXX_USE_C99_MATH_TR1",
-    ],
+    ] +
+    if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
