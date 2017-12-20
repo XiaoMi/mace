@@ -12,10 +12,10 @@
  *          --output_file=mace.out  \
  *          --device=NEON
  */
-#include <sys/time.h>
 #include <fstream>
 #include "mace/core/net.h"
 #include "mace/utils/command_line_flags.h"
+#include "mace/utils/env_time.h"
 
 using namespace std;
 using namespace mace;
@@ -90,20 +90,40 @@ int main(int argc, char **argv) {
   vector<index_t> shape;
   ParseShape(input_shape, &shape);
 
-  // load model
-//  ifstream file_stream(model_file, ios::in | ios::binary);
-//  NetDef net_def;
-//  net_def.ParseFromIstream(&file_stream);
-//  file_stream.close();
+  int64_t t0 = utils::NowMicros();
   NetDef net_def = mace::MACE_MODEL_FUNCTION();
+  int64_t t1 = utils::NowMicros();
+  LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << "us";
+  int64_t init_micros = t1 - t0;
 
+  t0 = utils::NowMicros();
   DeviceType device_type = ParseDeviceType(device);
-  VLOG(0) << device_type;
+  VLOG(1) << "Device Type" << device_type;
   Workspace ws;
   ws.LoadModelTensor(net_def, device_type);
   Tensor *input_tensor =
       ws.CreateTensor(input_node + ":0", GetDeviceAllocator(device_type), DT_FLOAT);
   input_tensor->Resize(shape);
+  t1 = utils::NowMicros();
+  init_micros += t1 - t0;
+  LOG(INFO) << "CreateWorkspaceTensor duration: " << t1 - t0 << "us";
+
+  // Init model
+  VLOG(0) << "Run init";
+  t0 = utils::NowMicros();
+  auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
+  net->Run();
+  t1 = utils::NowMicros();
+  init_micros += t1 - t0;
+  LOG(INFO) << "Net init duration: " << t1 - t0 << "us";
+
+  // run model
+  t0 = utils::NowMicros();
+  net = CreateNet(net_def, &ws, device_type);
+  t1 = utils::NowMicros();
+  init_micros += t1 - t0;
+  LOG(INFO) << "Total init duration: " << init_micros << "us";
+
   {
     Tensor::MappingGuard input_guard(input_tensor);
     float *input_data = input_tensor->mutable_data<float>();
@@ -115,34 +135,20 @@ int main(int argc, char **argv) {
     in_file.close();
   }
 
-  // Init model
-  VLOG(0) << "Run init";
-  auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
-  net->Run();
-
-  VLOG(0) << "Run model";
-
-  // run model
-  net = CreateNet(net_def, &ws, device_type);
-
-  VLOG(0) << "warm up";
   // warm up
-  for (int i = 0; i < 1; ++i) {
-    net->Run();
-  }
+  VLOG(0) << "Warm up";
+  t0 = utils::NowMicros();
+  net->Run();
+  t1 = utils::NowMicros();
+  LOG(INFO) << "1st run duration: " << t1 - t0 << "us";
 
-  VLOG(0) << "run";
-  timeval tv1, tv2;
-  gettimeofday(&tv1, NULL);
+  VLOG(0) << "Run";
+  t0 = utils::NowMicros();
   for (int i = 0; i < round; ++i) {
     net->Run();
   }
-  gettimeofday(&tv2, NULL);
-  cout << "avg duration: "
-       << ((tv2.tv_sec - tv1.tv_sec) * 1000 +
-           (tv2.tv_usec - tv1.tv_usec) / 1000) /
-              round
-       << endl;
+  t1 = utils::NowMicros();
+  LOG(INFO) << "Average duration: " << (t1 - t0) / round << "us";
 
   // save output
   const Tensor *output = ws.GetTensor(output_node + ":0");
@@ -159,7 +165,6 @@ int main(int argc, char **argv) {
     ss << "Output shape: [";
     for (int i = 0; i < output->dim_size(); ++i) {
       ss << output->dim(i) << ", ";
-
     }
     ss << "]";
     VLOG(0) << ss.str();
