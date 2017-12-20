@@ -4,6 +4,9 @@
 
 #include "mace/core/mace.h"
 #include "mace/core/types.h"
+#include "mace/core/net.h"
+#include "mace/core/workspace.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
@@ -149,6 +152,17 @@ void Argument::set_strings(const std::vector<std::string> &value) {
   std::copy(value.begin(), value.end(), strings_.begin());
 }
 
+// Node Input
+void NodeInput::CopyFrom(const NodeInput &from) {
+  node_id_ = from.node_id();
+  output_port_ = from.output_port();
+}
+int NodeInput::node_id() const {
+  return node_id_;
+}
+int NodeInput::output_port() const {
+  return output_port_;
+}
 
 // OutputShape
 OutputShape::OutputShape() {}
@@ -338,6 +352,51 @@ uint32_t MemoryBlock::y() const {
   return y_;
 }
 
+// MemoryArena
+const std::vector<MemoryBlock> &MemoryArena::mem_block() const {
+  return mem_block_;
+}
+std::vector<MemoryBlock> &MemoryArena::mutable_mem_block() {
+  return mem_block_;
+}
+int MemoryArena::mem_block_size() const {
+  return mem_block_.size();
+}
+
+// InputInfo
+const std::string &InputInfo::name() const {
+  return name_;
+}
+int32_t InputInfo::node_id() const {
+  return node_id_;
+}
+int32_t InputInfo::max_byte_size() const {
+  return max_byte_size_;
+}
+DataType InputInfo::data_type() const {
+  return data_type_;
+}
+const std::vector<int32_t> &InputInfo::dims() const {
+  return dims_;
+}
+
+// OutputInfo
+const std::string &OutputInfo::name() const {
+  return name_;
+}
+int32_t OutputInfo::node_id() const {
+  return node_id_;
+}
+int32_t OutputInfo::max_byte_size() const {
+  return max_byte_size_;
+}
+DataType OutputInfo::data_type() const {
+  return data_type_;
+}
+const std::vector<int32_t> &OutputInfo::dims() const {
+  return dims_;
+}
+
 // NetDef
 NetDef::NetDef() : has_bits_(0) {}
 
@@ -421,4 +480,49 @@ const OperatorDef &NetDef::op(const int idx) const {
   MACE_CHECK(0 <= idx && idx < op_size());
   return op_[idx];
 }
+
+// Mace Engine
+MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type):
+    device_type_(device_type), ws_(new Workspace()), net_(nullptr) {
+
+  ws_->LoadModelTensor(*net_def, device_type);
+
+  // Init model
+  auto net = CreateNet(*net_def, ws_.get(), device_type, NetMode::INIT);
+  if(!net->Run()) {
+    LOG(FATAL) << "Net init run failed";
+  }
+  ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
+  net_ = std::move(CreateNet(*net_def, ws_.get(), device_type));
+}
+MaceEngine::~MaceEngine() {
+}
+const float *MaceEngine::Run(const float *input,
+                             const std::vector<index_t> &input_shape,
+                             std::vector<int64_t> &output_shape) {
+  Tensor *input_tensor =
+      ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
+  input_tensor->Resize(input_shape);
+  {
+    Tensor::MappingGuard input_guard(input_tensor);
+    float *input_data = input_tensor->mutable_data<float>();
+    memcpy(input_data, input, input_tensor->size() * sizeof(float));
+  }
+  if(!net_->Run()) {
+    LOG(FATAL) << "Net run failed";
+  }
+  // save output
+  const Tensor *output = ws_->GetTensor("mace_output_node:0");
+
+  if (output != nullptr) {
+    Tensor::MappingGuard output_guard(output);
+    auto shape = output->shape();
+    output_shape.resize(shape.size());
+    std::copy(shape.begin(), shape.end(), output_shape.begin());
+    return output->data<float>();
+  } else {
+    return nullptr;
+  }
+}
+
 } //  namespace mace

@@ -39,3 +39,15 @@ cc_binary(
         "//mace/utils:command_line_flags",
     ],
 )
+
+cc_binary(
+    name = "example",
+    srcs = ["example.cc"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkopts = ["-fopenmp"],
+    linkstatic = 1,
+    deps = [
+        "//mace/codegen:generated_models_lib",
+        "//mace/utils:command_line_flags",
+    ],
+)

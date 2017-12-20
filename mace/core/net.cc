@@ -3,6 +3,8 @@
 //
 
 #include "mace/core/net.h"
+#include "mace/core/operator.h"
+#include "mace/core/workspace.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
