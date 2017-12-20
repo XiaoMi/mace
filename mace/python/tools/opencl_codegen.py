@@ -14,7 +14,7 @@ FLAGS = None
 
 
 def generate_cpp_source():
-  maps = {"binary_maps": []}
+  maps = {}
   for file_name in os.listdir(FLAGS.cl_binary_dir):
     file_path = os.path.join(FLAGS.cl_binary_dir, file_name)
     if file_path[-4:] == ".bin":
@@ -23,13 +23,16 @@ def generate_cpp_source():
       binary_array = np.fromfile(f, dtype=np.uint8)
       f.close()
 
-      binary_dict = {"name": file_name[:-4], "content": []}
+      maps[file_name[:-4]] = []
       for ele in binary_array:
-        binary_dict["content"].append(hex(ele))
-      maps["binary_maps"].append(binary_dict)
+        maps[file_name[:-4]].append(hex(ele))
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  return env.get_template('opencl_compiled_program.cc.tmpl').render(maps)
+  return env.get_template('binary.cc.tmpl').render(
+    maps = maps,
+    data_type = 'unsigned char',
+    variable_name = 'kCompiledProgramMap'
+  )
 
 
 def main(unused_args):

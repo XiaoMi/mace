@@ -10,21 +10,17 @@
 
 namespace mace {
 
-{% for map in binary_maps %}
-//  {{map.name}}
-{% endfor %}
-
-extern const std::map<std::string, std::vector<unsigned char>> kCompiledProgramMap =
+extern const std::map<std::string, std::vector<{{data_type}}>> {{variable_name}}=
 {
-  {% for map in binary_maps %}
+  {% for key, value in maps.iteritems() %}
   {
-    "{{map.name}}",
+    "{{key}}",
     {
-      {%- for ele in map.content -%}
+      {%- for ele in value -%}
       {{ele}},
       {%- endfor -%}
     }
-  },  // {{map.name}}
+  },  // {{key}}
 {% endfor %}
 };
 

@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <map>
 
 #include "mace/utils/logging.h"
 #include "mace/utils/timer.h"
@@ -72,7 +73,7 @@ class Tuner {
     if (path_ != nullptr) {
       std::ofstream ofs(path_, std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
-        size_t num_pramas = param_table_.size();
+        int64_t num_pramas = param_table_.size();
         ofs.write(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
         for (auto &kp : param_table_) {
           int32_t key_size = kp.first.size();
@@ -97,13 +98,20 @@ class Tuner {
   }
 
   inline void ReadRunParamters() {
+#ifdef MACE_EMBED_BINARY_PROGRAM
+    extern const std::map<std::string, std::vector<int>> kTuningParamsData;
+    VLOG(1) << "Read tuning parameters from source";
+    for (auto it = kTuningParamsData.begin(); it != kTuningParamsData.end(); ++it) {
+      param_table_.emplace(it->first, std::vector<param_type>(it->second.begin(), it->second.end()));
+    }
+#else
     if (path_ != nullptr) {
       std::ifstream ifs(path_, std::ios::binary | std::ios::in);
       if (ifs.is_open()) {
         int32_t key_size = 0;
         int32_t params_size = 0;
         int32_t params_count = 0;
-        size_t num_pramas = 0;
+        int64_t num_pramas = 0;
         ifs.read(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
         while (num_pramas--) {
           ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
@@ -123,6 +131,7 @@ class Tuner {
         LOG(WARNING) << "Read run parameter file failed.";
       }
     }
+#endif
   }
 
   template <typename RetType>
