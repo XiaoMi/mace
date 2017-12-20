@@ -53,8 +53,10 @@ build_and_run()
   num_threads=${1:-4}
   if [[ "${TUNING_OR_NOT}" != "0" && "$EMBED_OPENCL_BINARY" != true ]];then
     tuning_flag=1
+    round=0 # only warm up
   else
     tuning_flag=0
+    round=2
   fi
 
   adb </dev/null shell MACE_TUNING=${tuning_flag} \
@@ -70,7 +72,7 @@ build_and_run()
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --device=OPENCL   \
-    --round=2
+    --round=$round
 }
 
 echo "Step 1: Generate input data"
