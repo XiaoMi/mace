@@ -6,11 +6,13 @@
 #define MACE_CORE_NET_H_
 
 #include "mace/core/common.h"
-#include "mace/core/operator.h"
-#include "mace/core/workspace.h"
 #include "mace/core/mace.h"
 
 namespace mace {
+
+class RunMetadata;
+class OperatorBase;
+class Workspace;
 
 class NetBase {
  public:

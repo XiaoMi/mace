@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-#include "mace/utils/logging.h"
+#include <memory>
 
 namespace mace {
 
@@ -111,17 +111,10 @@ class Argument {
 
 class NodeInput {
  public:
-  void CopyFrom(const NodeInput &from) {
-    node_id_ = from.node_id();
-    output_port_ = from.output_port();
-  }
+  void CopyFrom(const NodeInput &from);
  public:
-  int node_id() const {
-    return node_id_;
-  }
-  int output_port() const {
-    return output_port_;
-  }
+  int node_id() const;
+  int output_port() const;
  private:
   int node_id_;
   int output_port_;
@@ -218,15 +211,9 @@ class MemoryBlock {
 
 class MemoryArena {
  public:
-  inline const std::vector<MemoryBlock> &mem_block() const {
-    return mem_block_;
-  }
-  inline std::vector<MemoryBlock> &mutable_mem_block() {
-    return mem_block_;
-  }
-  inline int mem_block_size() const {
-    return mem_block_.size();
-  }
+  const std::vector<MemoryBlock> &mem_block() const;
+  std::vector<MemoryBlock> &mutable_mem_block();
+  int mem_block_size() const;
  private:
   std::vector<MemoryBlock> mem_block_;
 
@@ -235,21 +222,11 @@ class MemoryArena {
 // for hexagon mace-nnlib
 class InputInfo {
  public:
-  const std::string &name() const {
-    return name_;
-  }
-  int32_t node_id() const {
-    return node_id_;
-  }
-  int32_t max_byte_size() const {
-    return max_byte_size_;
-  }
-  DataType data_type() const {
-    return data_type_;
-  }
-  const std::vector<int32_t> &dims() const {
-    return dims_;
-  }
+  const std::string &name() const;
+  int32_t node_id() const;
+  int32_t max_byte_size() const;
+  DataType data_type() const;
+  const std::vector<int32_t> &dims() const;
  private:
   std::string name_;
   int32_t node_id_;
@@ -260,21 +237,11 @@ class InputInfo {
 
 class OutputInfo {
  public:
-  const std::string &name() const {
-    return name_;
-  }
-  int32_t node_id() const {
-    return node_id_;
-  }
-  int32_t max_byte_size() const {
-    return max_byte_size_;
-  }
-  DataType data_type() const {
-    return data_type_;
-  }
-  const std::vector<int32_t> &dims() const {
-    return dims_;
-  }
+  const std::string &name() const;
+  int32_t node_id() const;
+  int32_t max_byte_size() const;
+  DataType data_type() const;
+  const std::vector<int32_t> &dims() const;
  private:
   std::string name_;
   int32_t node_id_;
@@ -331,6 +298,22 @@ class NetDef {
   std::vector<OutputInfo> output_info_;
 
   uint32_t has_bits_;
+};
+
+class Workspace;
+class NetBase;
+
+class MaceEngine {
+ public:
+  explicit MaceEngine(const NetDef *net_def, DeviceType device_type);
+  ~MaceEngine();
+  const float *Run(const float *input,
+                   const std::vector<int64_t> &input_shape,
+                   std::vector<int64_t> &output_shape);
+ private:
+  DeviceType device_type_;
+  std::unique_ptr<Workspace> ws_;
+  std::unique_ptr<NetBase> net_;
 };
 
 } //  namespace mace

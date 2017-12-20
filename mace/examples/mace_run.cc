@@ -12,9 +12,14 @@
  *          --output_file=mace.out  \
  *          --device=NEON
  */
+#include <sys/time.h>
 #include <fstream>
-#include "mace/core/net.h"
+#include <numeric>
+#include <iostream>
+#include <cstdlib>
 #include "mace/utils/command_line_flags.h"
+#include "mace/core/mace.h"
+#include "mace/utils/logging.h"
 #include "mace/utils/env_time.h"
 
 using namespace std;
@@ -23,7 +28,7 @@ using namespace mace;
 namespace mace {
 extern NetDef MACE_MODEL_FUNCTION();
 }
-void ParseShape(const string &str, vector<index_t> *shape) {
+void ParseShape(const string &str, vector<int64_t> *shape) {
   string tmp = str;
   while (!tmp.empty()) {
     int dim = atoi(tmp.data());
@@ -87,84 +92,69 @@ int main(int argc, char **argv) {
           << "device: " << device << std::endl
           << "round: " << round << std::endl;
 
-  vector<index_t> shape;
+  vector<int64_t> shape;
   ParseShape(input_shape, &shape);
 
+  // load model
   int64_t t0 = utils::NowMicros();
   NetDef net_def = mace::MACE_MODEL_FUNCTION();
   int64_t t1 = utils::NowMicros();
   LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << "us";
   int64_t init_micros = t1 - t0;
 
-  t0 = utils::NowMicros();
   DeviceType device_type = ParseDeviceType(device);
   VLOG(1) << "Device Type" << device_type;
-  Workspace ws;
-  ws.LoadModelTensor(net_def, device_type);
-  Tensor *input_tensor =
-      ws.CreateTensor(input_node + ":0", GetDeviceAllocator(device_type), DT_FLOAT);
-  input_tensor->Resize(shape);
-  t1 = utils::NowMicros();
-  init_micros += t1 - t0;
-  LOG(INFO) << "CreateWorkspaceTensor duration: " << t1 - t0 << "us";
+  int64_t input_size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+  std::unique_ptr<float[]> input_data(new float[input_size]);
+
+  // load input
+  ifstream in_file(input_file, ios::in | ios::binary);
+  in_file.read(reinterpret_cast<char *>(input_data.get()),
+               input_size * sizeof(float));
+  in_file.close();
 
   // Init model
   VLOG(0) << "Run init";
   t0 = utils::NowMicros();
-  auto net = CreateNet(net_def, &ws, device_type, NetMode::INIT);
-  net->Run();
+  mace::MaceEngine engine(&net_def, device_type);
   t1 = utils::NowMicros();
   init_micros += t1 - t0;
   LOG(INFO) << "Net init duration: " << t1 - t0 << "us";
 
-  // run model
-  t0 = utils::NowMicros();
-  net = CreateNet(net_def, &ws, device_type);
-  t1 = utils::NowMicros();
-  init_micros += t1 - t0;
   LOG(INFO) << "Total init duration: " << init_micros << "us";
 
-  {
-    Tensor::MappingGuard input_guard(input_tensor);
-    float *input_data = input_tensor->mutable_data<float>();
-
-    // load input
-    ifstream in_file(input_file, ios::in | ios::binary);
-    in_file.read(reinterpret_cast<char *>(input_data),
-                 input_tensor->size() * sizeof(float));
-    in_file.close();
-  }
-
+  std::vector<int64_t> output_shape;
+  VLOG(0) << "warm up";
   // warm up
-  VLOG(0) << "Warm up";
-  t0 = utils::NowMicros();
-  net->Run();
-  t1 = utils::NowMicros();
-  LOG(INFO) << "1st run duration: " << t1 - t0 << "us";
-
-  VLOG(0) << "Run";
-  t0 = utils::NowMicros();
-  for (int i = 0; i < round; ++i) {
-    net->Run();
+  for (int i = 0; i < 1; ++i) {
+    engine.Run(input_data.get(), shape, output_shape);
   }
-  t1 = utils::NowMicros();
-  LOG(INFO) << "Average duration: " << (t1 - t0) / round << "us";
 
-  // save output
-  const Tensor *output = ws.GetTensor(output_node + ":0");
+  VLOG(0) << "Run model";
+  timeval tv1, tv2;
+  gettimeofday(&tv1, NULL);
+  for (int i = 0; i < round; ++i) {
+    engine.Run(input_data.get(), shape, output_shape);
+  }
+  gettimeofday(&tv2, NULL);
+  std::cout << "avg duration: "
+       << ((tv2.tv_sec - tv1.tv_sec) * 1000 +
+           (tv2.tv_usec - tv1.tv_usec) / 1000) /
+              round
+       << endl;
 
-  std::remove(output_file.c_str());
+  const float *output = engine.Run(input_data.get(), shape, output_shape);
   if (output != nullptr) {
-    Tensor::MappingGuard output_guard(output);
     ofstream out_file(output_file, ios::binary);
-    out_file.write((const char *)(output->data<float>()),
-                   output->size() * sizeof(float));
+    int64_t output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int64_t>());
+    out_file.write((const char *) (output),
+                   output_size * sizeof(float));
     out_file.flush();
     out_file.close();
     stringstream ss;
     ss << "Output shape: [";
-    for (int i = 0; i < output->dim_size(); ++i) {
-      ss << output->dim(i) << ", ";
+    for (auto i : output_shape) {
+      ss << i << ", ";
     }
     ss << "]";
     VLOG(0) << ss.str();
