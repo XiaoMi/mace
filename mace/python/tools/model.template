@@ -5,7 +5,7 @@
 
 {% if mode == 0 %}
 #include <vector>
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 
 namespace {{tag}}{
 
@@ -24,7 +24,7 @@ void Create{{tensor.name}}(std::vector<mace::TensorProto> &tensors) {
 {% elif mode == 1 %}
 #include <vector>
 #include <string>
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 
 namespace {
 static void UpdateOp(mace::OperatorDef &op,
@@ -95,7 +95,7 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
 {% else %}
 #include <vector>
 #include <string>
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 
 namespace {{tag}} {
 

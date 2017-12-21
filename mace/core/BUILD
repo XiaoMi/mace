@@ -35,7 +35,7 @@ cc_library(
 cc_library(
     name = "core",
     srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
+    hdrs = glob(["*.h", "public/*.h"]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkopts = if_android(["-pie"]),
     deps = [

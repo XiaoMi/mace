@@ -15,6 +15,7 @@ cc_library(
     deps = [
         "//mace/core",
         "//mace/ops",
+        '//mace/codegen:version_lib',
     ] + if_embed_binary_program([
         '//mace/codegen:generated_opencl_lib',
         '//mace/codegen:generated_tuning_lib',
@@ -33,4 +34,14 @@ cc_library(
     srcs = glob(["tuning/*.cc"]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
     linkstatic = 1,
+)
+
+cc_library(
+    name = "version_lib",
+    srcs = glob(["version/*.cc"]),
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    linkstatic = 1,
+    deps = [
+        "//mace/core",
+    ]
 )

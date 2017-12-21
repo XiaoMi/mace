@@ -9,7 +9,7 @@
 #include <malloc.h>
 #include "mace/core/common.h"
 #include "mace/core/registry.h"
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 #include "mace/core/types.h"
 
 namespace mace {

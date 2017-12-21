@@ -27,6 +27,7 @@ CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 CL_BIN_DIR=${CODEGEN_DIR}/opencl_bin
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
 TUNING_OR_NOT=${3:-0}
+VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 
 build_and_run()
 {
@@ -94,6 +95,11 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
                                          --confuse=True
+
+echo "Step 3: Generate version source"
+rm -rf ${VERSION_SOURCE_PATH}
+mkdir -p ${VERSION_SOURCE_PATH}
+bash mace/tools/git/gen_version_source.sh ${VERSION_SOURCE_PATH}/version.cc
 
 echo "Step 3: Run model on the phone with files"
 build_and_run false
