@@ -15,12 +15,12 @@ REGISTER_CPU_OPERATOR(OpKeyBuilder("Pooling")
                           .Build(),
                       PoolingOp<DeviceType::CPU, half>);
 
-#if __ARM_NEON
+#if MACE_ENABLE_NEON
 REGISTER_NEON_OPERATOR(OpKeyBuilder("Pooling")
                              .TypeConstraint<float>("T")
                              .Build(),
                        PoolingOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
+#endif  // MACE_ENABLE_NEON
 
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Pooling")
                              .TypeConstraint<float>("T")

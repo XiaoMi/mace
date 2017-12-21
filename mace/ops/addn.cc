@@ -11,12 +11,12 @@ REGISTER_CPU_OPERATOR(OpKeyBuilder("AddN")
                              .Build(),
                       AddNOp<DeviceType::CPU, float>);
 
-#if __ARM_NEON
+#if MACE_ENABLE_NEON
 REGISTER_NEON_OPERATOR(OpKeyBuilder("AddN")
                              .TypeConstraint<float>("T")
                              .Build(),
                        AddNOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
+#endif  // MACE_ENABLE_NEON
 
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
                              .TypeConstraint<float>("T")

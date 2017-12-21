@@ -11,6 +11,7 @@
 #include "mace/core/common.h"
 #include "mace/core/net.h"
 #include "mace/core/tensor.h"
+#include "mace/core/workspace.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"

@@ -11,12 +11,12 @@ REGISTER_CPU_OPERATOR(OpKeyBuilder("ResizeBilinear")
                           .Build(),
                       ResizeBilinearOp<DeviceType::CPU, float>);
 
-#if __ARM_NEON
+#if MACE_ENABLE_NEON
 REGISTER_NEON_OPERATOR(OpKeyBuilder("ResizeBilinear")
                              .TypeConstraint<float>("T")
                              .Build(),
                        ResizeBilinearOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
+#endif  // MACE_ENABLE_NEON
 
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
                              .TypeConstraint<float>("T")

@@ -16,12 +16,12 @@ REGISTER_CPU_OPERATOR(OpKeyBuilder("Conv2D")
                           .Build(),
                       Conv2dOp<DeviceType::CPU, half>);
 
-#if __ARM_NEON
+#if MACE_ENABLE_NEON
 REGISTER_NEON_OPERATOR(OpKeyBuilder("Conv2D")
                              .TypeConstraint<float>("T")
                              .Build(),
                        Conv2dOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
+#endif  // MACE_ENABLE_NEON
 
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Conv2D")
                              .TypeConstraint<float>("T")

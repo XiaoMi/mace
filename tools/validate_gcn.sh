@@ -51,7 +51,6 @@ build_and_run()
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
   adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 
-  num_threads=${1:-4}
   if [[ "${TUNING_OR_NOT}" != "0" && "$EMBED_OPENCL_BINARY" != true ]];then
     tuning_flag=1
     round=0 # only warm up
@@ -64,7 +63,6 @@ build_and_run()
     MACE_CPP_MIN_VLOG_LEVEL=0 \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_KERNEL_PATH=$KERNEL_DIR \
-    OMP_NUM_THREADS=$num_threads \
     ${PHONE_DATA_DIR}/mace_run \
     --model=${PHONE_DATA_DIR}/${MACE_MODEL_NAME} \
     --input=mace_input_node \

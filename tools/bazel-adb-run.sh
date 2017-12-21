@@ -27,7 +27,11 @@ PROFILINE="--define profiling=true"
 BRANCH=$(git symbolic-ref --short HEAD)
 COMMIT_ID=$(git rev-parse --short HEAD)
 
-bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET --crosstool_top=//external:android/crosstool --host_crosstool_top=@bazel_tools//tools/cpp:toolchain --cpu=$ANDROID_ABI
+bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET \
+   --crosstool_top=//external:android/crosstool \
+   --host_crosstool_top=@bazel_tools//tools/cpp:toolchain  \
+   --cpu=$ANDROID_ABI \
+   --define neon=true
 
 if [ $? -ne 0 ]; then
   exit 1

@@ -7,22 +7,22 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_android_arm64", "if_embed_binary_program")
+load("//mace:mace.bzl", "if_android", "if_enable_neon", "if_embed_binary_program")
 
 cc_library(
     name = "kernels",
-    srcs = glob(["*.cc", "opencl/*.cc"]) + if_android_arm64(glob([
+    srcs = glob(["*.cc", "opencl/*.cc"]) + if_enable_neon(glob([
         "neon/*.cc",
     ])),
-    hdrs = glob(["*.h", "opencl/*.h"]) + if_android_arm64(glob([
+    hdrs = glob(["*.h", "opencl/*.h"]) + if_enable_neon(glob([
         "neon/*.h",
     ])),
     copts = [
         "-std=c++11",
-        "-fopenmp",
         "-D_GLIBCXX_USE_C99_MATH_TR1",
     ] +
-    if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
+    if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]) +
+    if_enable_neon(["-fopenmp"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
