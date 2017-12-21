@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
       engine.Run(input_data.get(), shape, output_shape);
     }
     t1 = utils::NowMicros();
-    LOG(INFO) << "Avg duration: " << (t1 - t0) / (double)round << " us";
+    LOG(INFO) << "Avg duration: " << (t1 - t0) / round << " us";
   }
 
   const float *output = engine.Run(input_data.get(), shape, output_shape);
