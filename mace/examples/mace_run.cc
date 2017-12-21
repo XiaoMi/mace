@@ -12,7 +12,6 @@
  *          --output_file=mace.out  \
  *          --device=NEON
  */
-#include <sys/time.h>
 #include <fstream>
 #include <numeric>
 #include <iostream>
@@ -99,7 +98,7 @@ int main(int argc, char **argv) {
   int64_t t0 = utils::NowMicros();
   NetDef net_def = mace::MACE_MODEL_FUNCTION();
   int64_t t1 = utils::NowMicros();
-  LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << "us";
+  LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << " us";
   int64_t init_micros = t1 - t0;
 
   DeviceType device_type = ParseDeviceType(device);
@@ -119,29 +118,26 @@ int main(int argc, char **argv) {
   mace::MaceEngine engine(&net_def, device_type);
   t1 = utils::NowMicros();
   init_micros += t1 - t0;
-  LOG(INFO) << "Net init duration: " << t1 - t0 << "us";
+  LOG(INFO) << "Net init duration: " << t1 - t0 << " us";
 
-  LOG(INFO) << "Total init duration: " << init_micros << "us";
+  LOG(INFO) << "Total init duration: " << init_micros << " us";
 
   std::vector<int64_t> output_shape;
-  VLOG(0) << "warm up";
-  // warm up
-  for (int i = 0; i < 1; ++i) {
-    engine.Run(input_data.get(), shape, output_shape);
-  }
+  VLOG(0) << "Warm up";
+  t0 = utils::NowMicros();
+  engine.Run(input_data.get(), shape, output_shape);
+  t1 = utils::NowMicros();
+  LOG(INFO) << "1st warm up run duration: " << t1 - t0 << " us";
 
-  VLOG(0) << "Run model";
-  timeval tv1, tv2;
-  gettimeofday(&tv1, NULL);
-  for (int i = 0; i < round; ++i) {
-    engine.Run(input_data.get(), shape, output_shape);
+  if (round > 0) {
+    VLOG(0) << "Run model";
+    t0 = utils::NowMicros();
+    for (int i = 0; i < round; ++i) {
+      engine.Run(input_data.get(), shape, output_shape);
+    }
+    t1 = utils::NowMicros();
+    LOG(INFO) << "Avg duration: " << (t1 - t0) / (double)round << " us";
   }
-  gettimeofday(&tv2, NULL);
-  std::cout << "avg duration: "
-       << ((tv2.tv_sec - tv1.tv_sec) * 1000 +
-           (tv2.tv_usec - tv1.tv_usec) / 1000) /
-              round
-       << endl;
 
   const float *output = engine.Run(input_data.get(), shape, output_shape);
   if (output != nullptr) {
