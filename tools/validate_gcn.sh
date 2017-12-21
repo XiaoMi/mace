@@ -99,10 +99,10 @@ rm -rf ${VERSION_SOURCE_PATH}
 mkdir -p ${VERSION_SOURCE_PATH}
 bash mace/tools/git/gen_version_source.sh ${VERSION_SOURCE_PATH}/version.cc
 
-echo "Step 3: Run model on the phone with files"
+echo "Step 4: Run model on the phone with files"
 build_and_run false
 
-echo "Step 4: Generate OpenCL binary program and config code"
+echo "Step 5: Generate OpenCL binary program and config code"
 rm -rf ${CL_BIN_DIR}
 adb pull ${KERNEL_DIR} ${CL_BIN_DIR}
 rm -rf ${CL_CODEGEN_DIR}
@@ -110,20 +110,20 @@ mkdir -p ${CL_CODEGEN_DIR}
 python mace/python/tools/opencl_codegen.py \
   --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
 
-echo "Step 5: Generate tuning source file"
+echo "Step 6: Generate tuning source file"
 adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR}
 mkdir -p ${TUNING_CODEGEN_DIR}
 python mace/python/tools/binary_codegen.py \
   --binary_file=${CL_BIN_DIR}/mace_run.config --output_path=${TUNING_CODEGEN_DIR}/tuning_params.cc
 
-echo "Step 6: Run model on the phone using binary"
+echo "Step 7: Run model on the phone using binary"
 build_and_run true
 
-echo "Step 7: Pull the mace run result."
+echo "Step 8: Pull the mace run result."
 rm -rf ${MODEL_DIR}/${OUTPUT_FILE_NAME}
 adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_DIR}
 
-echo "Step 8: Validate the result"
+echo "Step 9: Validate the result"
 python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_file ${MODEL_DIR}/${INPUT_FILE_NAME} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
