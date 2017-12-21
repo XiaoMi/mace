@@ -52,6 +52,7 @@ class Tuner {
                 << internal::MakeString(param_table_[param_key]);
         return func(param_table_[param_key]);
       } else {
+        LOG(WARNING) << "Fallback to default parameter: " << param_key;
         return func(default_param);
       }
     }
