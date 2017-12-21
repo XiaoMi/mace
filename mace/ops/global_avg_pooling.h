@@ -1,4 +1,4 @@
-//
+//DMACE_ENABLE_NEON
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 

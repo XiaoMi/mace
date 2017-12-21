@@ -7,7 +7,6 @@
 
 #include "mace/core/operator.h"
 #include "mace/kernels/concat.h"
-#include "mace/core/mace.h"
 namespace mace {
 
 template <DeviceType D, typename T>

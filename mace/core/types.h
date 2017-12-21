@@ -6,7 +6,7 @@
 #define MACE_CORE_TYPES_H_
 
 #include "mace/core/common.h"
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 #include "mace/core/half.h"
 
 

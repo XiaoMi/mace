@@ -33,6 +33,14 @@ config_setting(
 )
 
 config_setting(
+    name = "enable_neon",
+    define_values = {
+        "neon": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "embed_binary_program",
     define_values = {
         "embed_binary_program": "true",

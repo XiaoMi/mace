@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 #include "mace/core/types.h"
 #include "mace/core/net.h"
 #include "mace/core/workspace.h"
@@ -495,8 +495,7 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type):
   ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
   net_ = std::move(CreateNet(*net_def, ws_.get(), device_type));
 }
-MaceEngine::~MaceEngine() {
-}
+MaceEngine::~MaceEngine(){}
 const float *MaceEngine::Run(const float *input,
                              const std::vector<index_t> &input_shape,
                              std::vector<int64_t> &output_shape) {

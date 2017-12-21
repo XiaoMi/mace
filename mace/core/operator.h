@@ -11,7 +11,7 @@
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/core/mace.h"
+#include "mace/core/public/mace.h"
 
 namespace mace {
 

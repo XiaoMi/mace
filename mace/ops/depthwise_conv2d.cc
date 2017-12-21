@@ -11,12 +11,12 @@ REGISTER_CPU_OPERATOR(OpKeyBuilder("DepthwiseConv2d")
                              .Build(),
                       DepthwiseConv2dOp<DeviceType::CPU, float>);
 
-#if __ARM_NEON
+#if MACE_ENABLE_NEON
 REGISTER_NEON_OPERATOR(OpKeyBuilder("DepthwiseConv2d")
                              .TypeConstraint<float>("T")
                              .Build(),
                        DepthwiseConv2dOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
+#endif  // MACE_ENABLE_NEON
 
 REGISTER_OPENCL_OPERATOR(OpKeyBuilder("DepthwiseConv2d")
                              .TypeConstraint<float>("T")

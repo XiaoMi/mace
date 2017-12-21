@@ -17,9 +17,11 @@
 #include <iostream>
 #include <cstdlib>
 #include "mace/utils/command_line_flags.h"
-#include "mace/core/mace.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/env_time.h"
+
+#include "mace/core/public/mace.h"
+#include "mace/core/public/version.h"
 
 using namespace std;
 using namespace mace;
@@ -82,7 +84,9 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  VLOG(0) << "model: " << model_file << std::endl
+  VLOG(0) << "mace version: " << MaceVersion() << std::endl
+          << "mace git version: " << MaceGitVersion() << std::endl
+          << "model: " << model_file << std::endl
           << "input: " << input_node << std::endl
           << "output: " << output_node << std::endl
           << "input_shape: " << input_shape << std::endl
