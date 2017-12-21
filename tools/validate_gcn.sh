@@ -10,6 +10,7 @@ if [ $# -lt 2 ];then
   exit -1
 fi
 
+VLOG_LEVEL=0
 TF_MODEL_FILE_PATH=$1
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
 MACE_SOURCE_DIR=`/bin/pwd`
@@ -60,7 +61,7 @@ build_and_run()
   fi
 
   adb </dev/null shell MACE_TUNING=${tuning_flag} \
-    MACE_CPP_MIN_VLOG_LEVEL=0 \
+    MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_KERNEL_PATH=$KERNEL_DIR \
     ${PHONE_DATA_DIR}/mace_run \
@@ -81,7 +82,7 @@ python tools/validate.py --generate_data true --random_seed 1 \
 
 echo "Step 2: Convert tf model to mace model and optimize memory"
 bazel build //mace/python/tools:tf_converter
-rm -rf ${CODEGEN_DIR}/models
+rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MODEL_CODEGEN_DIR}/mace_gcn${IMAGE_SIZE}.cc \

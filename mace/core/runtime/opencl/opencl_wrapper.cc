@@ -337,13 +337,13 @@ OpenCLLibraryImpl *openclLibraryImpl = nullptr;
 }  // namespace
 
 void LoadOpenCLLibrary() {
-  if (openclLibraryImpl == nullptr) {
-    openclLibraryImpl = new OpenCLLibraryImpl();
-    MACE_CHECK(openclLibraryImpl->Load());
-  }
+  MACE_CHECK(openclLibraryImpl == nullptr);
+  openclLibraryImpl = new OpenCLLibraryImpl();
+  MACE_CHECK(openclLibraryImpl->Load());
 }
 
 void UnloadOpenCLLibrary() {
+  MACE_CHECK_NOTNULL(openclLibraryImpl);
   openclLibraryImpl->Unload();
   delete openclLibraryImpl;
   openclLibraryImpl = nullptr;
