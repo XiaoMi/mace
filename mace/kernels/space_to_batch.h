@@ -12,27 +12,46 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
-struct SpaceToBatchFunctor {
-  SpaceToBatchFunctor(const bool b2s = false): b2s_(b2s){}
+struct SpaceToBatchFunctorBase {
+  SpaceToBatchFunctorBase(const std::vector<int> &paddings,
+                          const std::vector<int> &block_shape,
+                          bool b2s):
+      paddings_(paddings.begin(), paddings.end()),
+      block_shape_(block_shape.begin(), block_shape.end()),
+      b2s_(b2s)
+  {}
 
-  void operator()(Tensor *input_tensor,
-                  const Tensor *block_shape_tensor,
-                  const Tensor *paddings_tensor,
-                  Tensor *output_tensor,
-                  StatsFuture *future) {
-    MACE_NOT_IMPLEMENTED;
-  }
-
+  std::vector<int> paddings_;
+  std::vector<int> block_shape_;
   bool b2s_;
 };
 
-template <>
-void SpaceToBatchFunctor<DeviceType::OPENCL, float>::operator()(Tensor *input_tensor,
-                                                                const Tensor *block_shape_tensor,
-                                                                const Tensor *paddings_tensor,
-                                                                Tensor *output,
-                                                                StatsFuture *future);
+template <DeviceType D, typename T>
+struct SpaceToBatchFunctor : SpaceToBatchFunctorBase{
+  SpaceToBatchFunctor(const std::vector<int> &paddings,
+                      const std::vector<int> &block_shape,
+                      bool b2s): SpaceToBatchFunctorBase(paddings, block_shape, b2s){}
+
+  void operator()(Tensor *space_tensor,
+                  const std::vector<index_t> &output_shape,
+                  Tensor *batch_tensor,
+                  StatsFuture *future) {
+    MACE_NOT_IMPLEMENTED;
+  }
+};
+
+template <typename T>
+struct SpaceToBatchFunctor<DeviceType::OPENCL, T>: SpaceToBatchFunctorBase{
+  SpaceToBatchFunctor(const std::vector<int> &paddings,
+                      const std::vector<int> &block_shape,
+                      bool b2s): SpaceToBatchFunctorBase(paddings, block_shape, b2s){}
+
+  void operator()(Tensor *space_tensor,
+                  const std::vector<index_t> &output_shape,
+                  Tensor *batch_tensor,
+                  StatsFuture *future);
+
+};
 
 }  // namespace kernels
 }  // namespace mace

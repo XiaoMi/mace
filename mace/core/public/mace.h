@@ -310,6 +310,9 @@ class MaceEngine {
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
            float *output);
+  MaceEngine(const MaceEngine&) = delete;
+  MaceEngine &operator=(const MaceEngine&) = delete;
+
  private:
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;

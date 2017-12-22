@@ -64,7 +64,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                          image_shape[1],
                          1};
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(b2f_kernel);
-  const std::vector<uint32_t> lws = {kwg_size, 1, 1};
+  const std::vector<uint32_t> lws = {16, 64, 1};
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       b2f_kernel, cl::NullRange,

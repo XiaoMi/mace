@@ -12,63 +12,58 @@
 
 namespace mace {
 
-static void BatchToSpaceHelper(const Tensor *input_tensor,
-                               const Tensor *block_shape_tensor,
-                               const Tensor *cropped_tensor,
-                               Tensor *output) {
-  MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
-  MACE_CHECK(block_shape_tensor->dim_size() == 1, "Block's shape should be 1D");
-  MACE_CHECK(cropped_tensor->dim_size() == 2, "Paddings' shape should be 2D");
-
-  const index_t block_dims = block_shape_tensor->dim(0);
-  MACE_CHECK(block_dims == cropped_tensor->dim(0) && 2 == cropped_tensor->dim(1));
-  // TODO change tensor to attribute if needed based on the benchmark
-  Tensor::MappingGuard block_shape_tensor_mapper(block_shape_tensor);
-  Tensor::MappingGuard cropped_tensor_mapper(cropped_tensor);
-  const int *block_shape_ptr = block_shape_tensor->data<int>();
-  const int *cropped_ptr = cropped_tensor->data<int>();
-  std::vector<index_t> output_shape(4, 0);
-  index_t block_shape_product = 1;
-  for (uint32_t block_dim = 0; block_dim < block_dims; ++block_dim) {
-    MACE_CHECK(block_shape_ptr[block_dim] > 1, "block_shape's value should be great to 1");
-    const index_t block_shape_value = block_shape_ptr[block_dim];
-    const index_t cropped_input_size = input_tensor->dim(block_dim + 2) * block_shape_value
-                                      - *cropped_ptr
-                                      - *(cropped_ptr+1);
-    MACE_CHECK(cropped_input_size >= 0,
-               "cropped size must be non-negative");
-    block_shape_product *= block_shape_value;
-    output_shape[block_dim+2] = cropped_input_size;
-    cropped_ptr += 2;
-  }
-  output_shape[0] = input_tensor->dim(0) / block_shape_product;
-  output_shape[1] = input_tensor->dim(1);
-
-  output->Resize(output_shape);
-}
-
-template <DeviceType D, typename T>
-class BatchToSpaceNDOp: public Operator<D, T> {
+template<DeviceType D, typename T>
+class BatchToSpaceNDOp : public Operator<D, T> {
  public:
   BatchToSpaceNDOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws), functor_(true) {}
+      : Operator<D, T>(op_def, ws),
+        functor_(
+            OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0}),
+            OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
+            true) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
-    const Tensor *block_shape_tensor = this->Input(BLOCK_SHAPE);
-    const Tensor *cropped_tensor = this->Input(CROPS);
     Tensor *output = this->Output(OUTPUT);
 
-    BatchToSpaceHelper(input_tensor, block_shape_tensor, cropped_tensor, output);
-    functor_(output, block_shape_tensor, cropped_tensor, const_cast<Tensor*>(input_tensor), future);
+    std::vector<index_t> output_shape(4, 0);
+    BatchToSpaceHelper(input_tensor, output, output_shape);
+    functor_(output, output_shape, const_cast<Tensor *>(input_tensor), future);
     return true;
+  }
+
+ private:
+  inline void BatchToSpaceHelper(const Tensor *input_tensor,
+                                 Tensor *output,
+                                 std::vector<index_t> &output_shape) {
+    auto crops = OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0});
+    auto block_shape = OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1});
+    MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
+    MACE_CHECK(block_shape.size() == 2, "Block's shape should be 1D");
+    MACE_CHECK(crops.size() == 4, "Crops' shape should be 2D");
+
+    const index_t block_dims = block_shape.size();
+    index_t block_shape_product = 1;
+    for (uint32_t block_dim = 0; block_dim < block_dims; ++block_dim) {
+      MACE_CHECK(block_shape[block_dim] > 1, "block_shape's value should be great to 1");
+      const index_t block_shape_value = block_shape[block_dim];
+      const index_t cropped_input_size = input_tensor->dim(block_dim + 1) * block_shape_value
+          - crops[block_dim * 2]
+          - crops[block_dim * 2 + 1];
+      MACE_CHECK(cropped_input_size >= 0,
+                 "cropped size must be non-negative");
+      block_shape_product *= block_shape_value;
+      output_shape[block_dim + 1] = cropped_input_size;
+    }
+    output_shape[0] = input_tensor->dim(0) / block_shape_product;
+    output_shape[3] = input_tensor->dim(3);
   }
 
  private:
   kernels::SpaceToBatchFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, BLOCK_SHAPE, CROPS);
+  OP_INPUT_TAGS(INPUT);
   OP_OUTPUT_TAGS(OUTPUT);
 };
 

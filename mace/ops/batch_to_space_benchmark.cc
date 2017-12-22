@@ -9,22 +9,18 @@
 namespace mace {
 template <DeviceType D, typename T>
 static void BMBatchToSpace(
-    int iters, int batch, int channels, int height, int width) {
+    int iters, int batch, int channels, int height, int width, int arg) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
+  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
-      .Input("Input")
-      .Input("BlockShape")
-      .Input("Crops")
-      .Output("Output")
+      .Input("InputImage")
+      .Output("OutputImage")
+      .AddIntsArg("crops", {0, 0, 0, 0})
+      .AddIntsArg("block_shape", {arg, arg})
       .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  net.AddInputFromArray<D, int>(
-      "BlockShape", {2}, {2, 2});
-  net.AddInputFromArray<D, int>("Crops", {2, 2}, {0,1,0,1});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -39,18 +35,20 @@ static void BMBatchToSpace(
   net.Sync();
 }
 
-#define BM_BATCH_TO_SPACE_MACRO(N, C, H, W, TYPE, DEVICE)                  \
-  static void BM_BATCH_TO_SPACE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \
+#define BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, DEVICE)             \
+  static void BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE( \
       int iters) {                                                     \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
     mace::testing::ItemsProcessed(tot);                                \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
-    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W);                   \
+    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W, ARG);              \
   }                                                                    \
-  BENCHMARK(BM_BATCH_TO_SPACE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
+  BENCHMARK(BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
 
-#define BM_BATCH_TO_SPACE(N, C, H, W, TYPE)       \
-  BM_BATCH_TO_SPACE_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_BATCH_TO_SPACE(N, H, W, C, ARG, TYPE)       \
+  BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, OPENCL);
 
-BM_BATCH_TO_SPACE(128, 128, 8, 8, float);
+BM_BATCH_TO_SPACE(128, 8, 8, 128, 2, float);
+BM_BATCH_TO_SPACE(4, 128, 128, 32, 2, float);
+BM_BATCH_TO_SPACE(16, 64, 64, 32, 4, float);
 }  //  namespace mace
