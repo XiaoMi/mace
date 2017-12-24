@@ -24,4 +24,4 @@ mkdir -p ${MACE_INCLUDE_PATH}
 sh ./tools/validate_gcn.sh $1 $2
 cp bazel-bin/mace/**/*.a ${MACE_LIB_PATH}
 cp bazel-bin/mace/**/*.lo ${MACE_LIB_PATH}
-cp mace/core/public/mace.h ${MACE_INCLUDE_PATH}
+cp mace/core/public/*.h ${MACE_INCLUDE_PATH}
