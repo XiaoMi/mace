@@ -23,12 +23,12 @@ class BatchToSpaceNDOp : public Operator<D, T> {
             true) {}
 
   bool Run(StatsFuture *future) override {
-    const Tensor *input_tensor = this->Input(INPUT);
-    Tensor *output = this->Output(OUTPUT);
+    const Tensor *batch_tensor = this->Input(INPUT);
+    Tensor *space_tensor= this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4, 0);
-    BatchToSpaceHelper(input_tensor, output, output_shape);
-    functor_(output, output_shape, const_cast<Tensor *>(input_tensor), future);
+    BatchToSpaceHelper(batch_tensor, space_tensor, output_shape);
+    functor_(space_tensor, output_shape, const_cast<Tensor *>(batch_tensor), future);
     return true;
   }
 

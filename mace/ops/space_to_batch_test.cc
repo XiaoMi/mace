@@ -131,6 +131,20 @@ TEST(SpaceToBatchTest, SmallDataWithTwoPadding) {
   );
 }
 
+TEST(SpaceToBatchTest, SmallDataWithLargeImage) {
+  TestBidirectionalTransform<float>({1, 2, 10, 1},
+                                    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                                     11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+                                    {2, 2},
+                                    {0, 0, 0, 0},
+                                    {4, 1, 5, 1},
+                                    {1, 3, 5, 7, 9,
+                                     2, 4, 6, 8, 10,
+                                     11, 13, 15, 17, 19,
+                                     12, 14, 16, 18, 20}
+  );
+}
+
 TEST(SpaceToBatchTest, MultiChannelData) {
   TestBidirectionalTransform<float>({1, 2, 2, 3},
                                     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},

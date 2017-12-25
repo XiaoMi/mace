@@ -54,7 +54,6 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
   s2b_kernel.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
 
   const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
-//  const uint32_t width_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(2));
   const uint32_t gws[3] = {chan_blk,
                            static_cast<uint32_t>(batch_tensor->dim(2)),
                            static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
