@@ -53,6 +53,7 @@ class CPUAllocator : public Allocator {
  public:
   ~CPUAllocator() override {}
   void *New(size_t nbytes) override {
+    VLOG(3) << "Allocate CPU buffer: " << nbytes;
     void *data = nullptr;
 #ifdef __ANDROID__
     data = memalign(kMaceAlignment, nbytes);
@@ -67,11 +68,18 @@ class CPUAllocator : public Allocator {
 
   void *NewImage(const std::vector<size_t> &shape,
                  const DataType dt) override {
+    LOG(FATAL) << "Allocate CPU image";
     return nullptr;
   }
 
-  void Delete(void *data) override { free(data); }
-  void DeleteImage(void *data) override { free(data); };
+  void Delete(void *data) override {
+    VLOG(3) << "Free CPU buffer";
+    free(data);
+  }
+  void DeleteImage(void *data) override {
+    LOG(FATAL) << "Free CPU image";
+    free(data);
+  };
   void *Map(void *buffer, size_t nbytes) override { return buffer; }
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,

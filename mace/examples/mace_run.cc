@@ -13,13 +13,14 @@
  *          --output_file=mace.out  \
  *          --device=NEON
  */
-#include <fstream>
-#include <numeric>
-#include <iostream>
+#include <malloc.h>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <numeric>
 #include "mace/utils/command_line_flags.h"
-#include "mace/utils/logging.h"
 #include "mace/utils/env_time.h"
+#include "mace/utils/logging.h"
 
 #include "mace/core/public/mace.h"
 #include "mace/core/public/version.h"
@@ -45,7 +46,7 @@ void ParseShape(const string &str, vector<int64_t> *shape) {
 }
 
 DeviceType ParseDeviceType(const string &device_str) {
-  if(device_str.compare("CPU") == 0) {
+  if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
   } else if (device_str.compare("NEON") == 0) {
     return DeviceType::NEON;
@@ -54,6 +55,53 @@ DeviceType ParseDeviceType(const string &device_str) {
   } else {
     return DeviceType::CPU;
   }
+}
+
+struct mallinfo LogMallinfoChange(struct mallinfo prev) {
+  struct mallinfo curr = mallinfo();
+  if (prev.arena != curr.arena) {
+    LOG(INFO) << "Non-mmapped space allocated (bytes): " << curr.arena
+              << ", diff: " << ((int64_t)curr.arena - (int64_t)prev.arena);
+  }
+  if (prev.ordblks != curr.ordblks) {
+    LOG(INFO) << "Number of free chunks: " << curr.ordblks
+              << ", diff: " << ((int64_t)curr.ordblks - (int64_t)prev.ordblks);
+  }
+  if (prev.smblks != curr.smblks) {
+    LOG(INFO) << "Number of free fastbin blocks: " << curr.smblks
+              << ", diff: " << ((int64_t)curr.smblks - (int64_t)prev.smblks);
+  }
+  if (prev.hblks != curr.hblks) {
+    LOG(INFO) << "Number of mmapped regions: " << curr.hblks
+              << ", diff: " << ((int64_t)curr.hblks - (int64_t)prev.hblks);
+  }
+  if (prev.hblkhd != curr.hblkhd) {
+    LOG(INFO) << "Space allocated in mmapped regions (bytes): " << curr.hblkhd
+              << ", diff: " << ((int64_t)curr.hblkhd - (int64_t)prev.hblkhd);
+  }
+  if (prev.usmblks != curr.usmblks) {
+    LOG(INFO) << "Maximum total allocated space (bytes): " << curr.usmblks
+              << ", diff: " << ((int64_t)curr.usmblks - (int64_t)prev.usmblks);
+  }
+  if (prev.fsmblks != curr.fsmblks) {
+    LOG(INFO) << "Space in freed fastbin blocks (bytes): " << curr.fsmblks
+              << ", diff: " << ((int64_t)curr.fsmblks - (int64_t)prev.fsmblks);
+  }
+  if (prev.uordblks != curr.uordblks) {
+    LOG(INFO) << "Total allocated space (bytes): " << curr.uordblks
+              << ", diff: "
+              << ((int64_t)curr.uordblks - (int64_t)prev.uordblks);
+  }
+  if (prev.fordblks != curr.fordblks) {
+    LOG(INFO) << "Total free space (bytes): " << curr.fordblks << ", diff: "
+              << ((int64_t)curr.fordblks - (int64_t)prev.fordblks);
+  }
+  if (prev.keepcost != curr.keepcost) {
+    LOG(INFO) << "Top-most, releasable space (bytes): " << curr.keepcost
+              << ", diff: "
+              << ((int64_t)curr.keepcost - (int64_t)prev.keepcost);
+  }
+  return curr;
 }
 
 int main(int argc, char **argv) {
@@ -66,6 +114,7 @@ int main(int argc, char **argv) {
   string output_file;
   string device;
   int round = 1;
+  int malloc_check_cycle = -1;
 
   std::vector<Flag> flag_list = {
       Flag("model", &model_file, "model file name"),
@@ -77,6 +126,8 @@ int main(int argc, char **argv) {
       Flag("output_file", &output_file, "output file name"),
       Flag("device", &device, "CPU/NEON"),
       Flag("round", &round, "round"),
+      Flag("malloc_check_cycle", &malloc_check_cycle,
+           "malloc debug check cycle, -1 to disable"),
   };
 
   string usage = Flags::Usage(argv[0], flag_list);
@@ -145,8 +196,13 @@ int main(int argc, char **argv) {
   if (round > 0) {
     VLOG(0) << "Run model";
     t0 = utils::NowMicros();
+    struct mallinfo prev = mallinfo();
     for (int i = 0; i < round; ++i) {
       engine.Run(input_data.get(), input_shape_vec, output_data.get());
+      if (malloc_check_cycle >= 1 && i % malloc_check_cycle == 0) {
+        LOG(INFO) << "=== check malloc info change #" << i << " ===";
+        prev = LogMallinfoChange(prev);
+      }
     }
     t1 = utils::NowMicros();
     LOG(INFO) << "Avg duration: " << (t1 - t0) / round << " us";
