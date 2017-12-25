@@ -38,33 +38,33 @@ enum DataType {
   DT_UINT32 = 22
 };
 
-class TensorProto {
+class ConstTensor {
  public:
-  TensorProto(const std::string &name,
+  ConstTensor(const std::string &name,
               unsigned char *data,
               const std::vector<int64_t> &dims,
               const DataType data_type = DT_FLOAT,
               uint32_t node_id = 0);
-  TensorProto(const std::string &name,
+  ConstTensor(const std::string &name,
               unsigned char *data,
               const std::vector<int64_t> &dims,
               const int data_type,
               uint32_t node_id = 0);
 
   const std::string &name() const;
-  unsigned char *data() const;
-  const int64_t data_size() const;
+  const unsigned char *data() const;
+  int64_t data_size() const;
   const std::vector<int64_t> &dims() const;
   DataType data_type() const;
   uint32_t node_id() const;
 
  private:
-  std::string name_;
-  unsigned char *data_;
-  int64_t data_size_;
-  std::vector<int64_t> dims_;
-  DataType data_type_;
-  uint32_t node_id_;
+  const std::string name_;
+  const unsigned char *data_;
+  const int64_t data_size_;
+  const std::vector<int64_t> dims_;
+  const DataType data_type_;
+  const uint32_t node_id_;
 };
 
 class Argument {
@@ -270,8 +270,8 @@ class NetDef {
   const std::vector<Argument> &arg() const;
   Argument *add_arg();
   std::vector<Argument> &mutable_arg();
-  const std::vector<TensorProto> &tensors() const;
-  std::vector<TensorProto> &mutable_tensors();
+  const std::vector<ConstTensor> &tensors() const;
+  std::vector<ConstTensor> &mutable_tensors();
   const MemoryArena &mem_arena() const;
   bool has_mem_arena() const;
   MemoryArena &mutable_mem_arena();
@@ -288,7 +288,7 @@ class NetDef {
   std::string version_;
   std::vector<OperatorDef> op_;
   std::vector<Argument> arg_;
-  std::vector<TensorProto> tensors_;
+  std::vector<ConstTensor> tensors_;
 
   // for mem optimization
   MemoryArena mem_arena_;

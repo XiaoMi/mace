@@ -10,50 +10,48 @@
 
 namespace mace {
 
-TensorProto::TensorProto(const std::string &name,
+ConstTensor::ConstTensor(const std::string &name,
                          unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const DataType data_type,
                          uint32_t node_id) :
     name_(name),
     data_(data),
-    data_size_(0),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
     dims_(dims.begin(), dims.end()),
     data_type_(data_type),
-    node_id_(node_id) {
-  data_size_ = std::accumulate(dims_.begin(), dims_.end(), 1, std::multiplies<int64_t>());
-}
+    node_id_(node_id) {}
 
-TensorProto::TensorProto(const std::string &name,
+ConstTensor::ConstTensor(const std::string &name,
                          unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const int data_type,
                          uint32_t node_id) :
     name_(name),
     data_(data),
-    data_size_(0),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
     dims_(dims.begin(), dims.end()),
     data_type_(static_cast<DataType>(data_type)),
-    node_id_(node_id) {
-  data_size_ = std::accumulate(dims_.begin(), dims_.end(), 1, std::multiplies<int64_t>());
-}
+    node_id_(node_id) {}
 
-const std::string &TensorProto::name() const {
+const std::string &ConstTensor::name() const {
   return name_;
 }
-unsigned char *TensorProto::data() const {
+const unsigned char *ConstTensor::data() const {
   return data_;
 }
-const int64_t TensorProto::data_size() const {
+int64_t ConstTensor::data_size() const {
   return data_size_;
 }
-const std::vector<int64_t> &TensorProto::dims() const {
+const std::vector<int64_t> &ConstTensor::dims() const {
   return dims_;
 }
-DataType TensorProto::data_type() const {
+DataType ConstTensor::data_type() const {
   return data_type_;
 }
-uint32_t TensorProto::node_id() const {
+uint32_t ConstTensor::node_id() const {
   return node_id_;
 }
 
@@ -446,10 +444,10 @@ Argument *NetDef::add_arg() {
 std::vector<Argument> &NetDef::mutable_arg() {
   return arg_;
 }
-const std::vector<TensorProto> &NetDef::tensors() const {
+const std::vector<ConstTensor> &NetDef::tensors() const {
   return tensors_;
 }
-std::vector<TensorProto> &NetDef::mutable_tensors() {
+std::vector<ConstTensor> &NetDef::mutable_tensors() {
   return tensors_;
 }
 const MemoryArena &NetDef::mem_arena() const {

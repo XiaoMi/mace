@@ -45,7 +45,7 @@ int main() {
 
   alignas(4) unsigned char tensor_data[] = "012345678901234567890123";
   const std::vector<int64_t> dims = {1, 2, 3, 1};
-  TensorProto input("Input", tensor_data, dims, DataType::DT_FLOAT);
+  ConstTensor input("Input", tensor_data, dims, DataType::DT_FLOAT);
   net_def.mutable_tensors().push_back(input);
 
   // Create workspace and input tensor
