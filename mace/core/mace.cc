@@ -17,11 +17,11 @@ ConstTensor::ConstTensor(const std::string &name,
                          uint32_t node_id) :
     name_(name),
     data_(data),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
     dims_(dims.begin(), dims.end()),
     data_type_(data_type),
-    node_id_(node_id),
-    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                               std::multiplies<int64_t>())) {}
+    node_id_(node_id) {}
 
 ConstTensor::ConstTensor(const std::string &name,
                          unsigned char *data,
@@ -30,11 +30,11 @@ ConstTensor::ConstTensor(const std::string &name,
                          uint32_t node_id) :
     name_(name),
     data_(data),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
     dims_(dims.begin(), dims.end()),
     data_type_(static_cast<DataType>(data_type)),
-    node_id_(node_id),
-    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                               std::multiplies<int64_t>())) {}
+    node_id_(node_id) {}
 
 const std::string &ConstTensor::name() const {
   return name_;
