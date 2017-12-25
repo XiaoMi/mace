@@ -25,8 +25,14 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
   const int space_w_idx = (remaining_batch_idx % block_width) +
       batch_w_idx * block_width - padding_width;
 
-  int2 space_coord = (int2)(chan_idx * space_width + space_w_idx,
-                            space_b_idx * space_height + space_h_idx);
+  const int space_coord_x = select(chan_idx * space_width + space_w_idx,
+                                   -1,
+                                   space_w_idx < 0 || space_w_idx >= space_width);
+  const int space_coord_y = select(space_b_idx * space_height + space_h_idx,
+                                   -1,
+                                   space_h_idx < 0 || space_h_idx >= space_height);
+  int2 space_coord = (int2)(space_coord_x,
+                            space_coord_y);
   DATA_TYPE4 value = READ_IMAGET(space_data, SAMPLER, space_coord);
 
   int2 batch_coord = (int2)(chan_idx * batch_width + batch_w_idx, batch_hb_idx);
@@ -58,10 +64,13 @@ __kernel void batch_to_space(__read_only image2d_t batch_data,
   const int space_w_idx = (remaining_batch_idx % block_width) +
       batch_w_idx * block_width - padding_width;
 
-  int2 batch_coord = (int2)(chan_idx * batch_width + batch_w_idx, batch_hb_idx);
-  DATA_TYPE4 value = READ_IMAGET(batch_data, SAMPLER, batch_coord);
+  if (0 <= space_w_idx && space_w_idx < space_width &&
+      0 <= space_h_idx && space_h_idx < space_height) {
+    int2 batch_coord = (int2)(chan_idx * batch_width + batch_w_idx, batch_hb_idx);
+    DATA_TYPE4 value = READ_IMAGET(batch_data, SAMPLER, batch_coord);
 
-  int2 space_coord = (int2)(chan_idx * space_width + space_w_idx,
-                            space_b_idx * space_height + space_h_idx);
-  WRITE_IMAGET(space_data, space_coord, value);
+    int2 space_coord = (int2)(chan_idx * space_width + space_w_idx,
+                              space_b_idx * space_height + space_h_idx);
+    WRITE_IMAGET(space_data, space_coord, value);
+  }
 }

@@ -173,9 +173,13 @@ int main(int argc, char **argv) {
 
   // load input
   ifstream in_file(input_file, ios::in | ios::binary);
-  in_file.read(reinterpret_cast<char *>(input_data.get()),
-               input_size * sizeof(float));
-  in_file.close();
+  if (in_file.is_open()) {
+    in_file.read(reinterpret_cast<char *>(input_data.get()),
+                 input_size * sizeof(float));
+    in_file.close();
+  } else {
+    LOG(ERROR) << "Open input file failed";
+  }
 
   // Init model
   VLOG(0) << "Run init";

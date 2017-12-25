@@ -4,6 +4,7 @@
 
 #include "gtest/gtest.h"
 #include "mace/ops/ops_test_util.h"
+#include <fstream>
 
 using namespace mace;
 
@@ -186,4 +187,62 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
                                     17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28, 31, 32}
   );
 }
+
+//TEST(SpaceTobatchTest, CompareTF) {
+//
+//  const std::string space_file = "/data/local/tmp/test/input";
+//  const std::string batch_file = "/data/local/tmp/test/output";
+//  const std::vector<index_t> space_shape = {1, 256, 256, 32};
+//  const int space_size = std::accumulate(space_shape.begin(), space_shape.end(), 1, std::multiplies<int>());
+//  const std::vector<index_t> batch_shape = {4, 130, 130, 32};
+//  const int batch_size = std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
+//
+//  auto space_tensor = unique_ptr<Tensor>(new Tensor(GetDeviceAllocator(DeviceType::OPENCL),
+//                                                    DataTypeToEnum<float>::v()));
+//  space_tensor->Resize(space_shape);
+//  std::vector<float> space_data(space_size, 0.0);
+//  std::ifstream in_file(space_file, std::ios::in | std::ios::binary);
+//  if (in_file.is_open()) {
+//    in_file.read(reinterpret_cast<char *>(space_data.data()),
+//                 space_size * sizeof(float));
+//    in_file.close();
+//    Tensor::MappingGuard space_mapper(space_tensor.get());
+//    float *space_ptr = space_tensor->mutable_data<float>();
+//    MACE_CHECK(static_cast<size_t>(space_tensor->size()) == space_data.size())
+//      << "Space tensor size:" << space_tensor->size()
+//      << ", space data size:" << space_data.size();
+//    memcpy(space_ptr, space_data.data(), space_data.size() * sizeof(float));
+//  } else {
+//    VLOG(0) << "open space file failed";
+//  }
+//
+//  auto batch_tensor = unique_ptr<Tensor>(new Tensor(GetDeviceAllocator(DeviceType::OPENCL),
+//                                                    DataTypeToEnum<float>::v()));
+//  std::vector<float> batch_data(batch_size, 0.0);
+//  batch_tensor->Resize(batch_shape);
+//  {
+//    std::ifstream in_file(batch_file, std::ios::in | std::ios::binary);
+//    if (in_file.is_open()) {
+//      in_file.read(reinterpret_cast<char *>(batch_data.data()),
+//                    batch_size * sizeof(float));
+//      in_file.close();
+//    } else {
+//      VLOG(0) << "open batch file failed";
+//    }
+//    Tensor::MappingGuard batch_mapper(batch_tensor.get());
+//    float *batch_ptr = batch_tensor->mutable_data<float>();
+//    MACE_CHECK(static_cast<size_t>(batch_tensor->size()) == batch_data.size());
+//    memcpy(batch_ptr, batch_data.data(), batch_data.size() * sizeof(float));
+//  }
+//
+//  RunSpaceToBatch<DeviceType::OPENCL>(space_shape, space_data,
+//                                      {2, 2},
+//                                      {2, 2, 2, 2},
+//                                      batch_tensor.get());
+//
+//  RunBatchToSpace<DeviceType::OPENCL>(batch_shape, batch_data,
+//                                      {2, 2},
+//                                      {2, 2, 2, 2},
+//                                      space_tensor.get());
+//}
 
