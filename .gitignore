@@ -3,3 +3,8 @@ tags
 .idea/
 cmake-build-debug/
 *.pyc
+mace/codegen/models/
+mace/codegen/opencl/
+mace/codegen/opencl_bin/
+mace/codegen/tuning/
+mace/codegen/version/

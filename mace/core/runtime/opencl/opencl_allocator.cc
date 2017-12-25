@@ -36,6 +36,7 @@ OpenCLAllocator::OpenCLAllocator() {}
 
 OpenCLAllocator::~OpenCLAllocator() {}
 void *OpenCLAllocator::New(size_t nbytes) {
+  VLOG(3) << "Allocate OpenCL buffer: " << nbytes;
   cl_int error;
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
@@ -48,6 +49,7 @@ void *OpenCLAllocator::New(size_t nbytes) {
 void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                 const DataType dt) {
   MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
+  VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", " << image_shape[1];
 
   cl::ImageFormat img_format(CL_RGBA, DataTypeToCLChannelType(dt));
 
@@ -64,6 +66,7 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
 }
 
 void OpenCLAllocator::Delete(void *buffer) {
+  VLOG(3) << "Free OpenCL buffer";
   if (buffer != nullptr) {
     cl::Buffer *cl_buffer = static_cast<cl::Buffer *>(buffer);
     delete cl_buffer;
@@ -71,6 +74,7 @@ void OpenCLAllocator::Delete(void *buffer) {
 }
 
 void OpenCLAllocator::DeleteImage(void *buffer) {
+  VLOG(3) << "Free OpenCL image";
   if (buffer != nullptr) {
     cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
     delete cl_image;
