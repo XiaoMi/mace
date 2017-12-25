@@ -24,18 +24,18 @@ class BatchToSpaceNDOp : public Operator<D, T> {
 
   bool Run(StatsFuture *future) override {
     const Tensor *batch_tensor = this->Input(INPUT);
-    Tensor *space_tensor= this->Output(OUTPUT);
+    Tensor *space_tensor = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4, 0);
-    BatchToSpaceHelper(batch_tensor, space_tensor, output_shape);
+    CalculateOutputShape(batch_tensor, space_tensor, output_shape.data());
     functor_(space_tensor, output_shape, const_cast<Tensor *>(batch_tensor), future);
     return true;
   }
 
  private:
-  inline void BatchToSpaceHelper(const Tensor *input_tensor,
-                                 Tensor *output,
-                                 std::vector<index_t> &output_shape) {
+  inline void CalculateOutputShape(const Tensor *input_tensor,
+                                   Tensor *output,
+                                   index_t *output_shape) {
     auto crops = OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0});
     auto block_shape = OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1});
     MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
