@@ -307,9 +307,9 @@ class MaceEngine {
  public:
   explicit MaceEngine(const NetDef *net_def, DeviceType device_type);
   ~MaceEngine();
-  const float *Run(const float *input,
-                   const std::vector<int64_t> &input_shape,
-                   std::vector<int64_t> &output_shape);
+  bool Run(const float *input,
+           const std::vector<int64_t> &input_shape,
+           float *output);
  private:
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;

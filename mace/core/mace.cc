@@ -494,9 +494,11 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type):
   net_ = std::move(CreateNet(*net_def, ws_.get(), device_type));
 }
 MaceEngine::~MaceEngine(){}
-const float *MaceEngine::Run(const float *input,
-                             const std::vector<index_t> &input_shape,
-                             std::vector<int64_t> &output_shape) {
+bool MaceEngine::Run(const float *input,
+                     const std::vector<index_t> &input_shape,
+                     float *output) {
+  MACE_CHECK(output != nullptr, "output ptr cannot be NULL");
+
   Tensor *input_tensor =
       ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
   input_tensor->Resize(input_shape);
@@ -509,16 +511,18 @@ const float *MaceEngine::Run(const float *input,
     LOG(FATAL) << "Net run failed";
   }
   // save output
-  const Tensor *output = ws_->GetTensor("mace_output_node:0");
+  const Tensor *output_tensor = ws_->GetTensor("mace_output_node:0");
 
-  if (output != nullptr) {
-    Tensor::MappingGuard output_guard(output);
-    auto shape = output->shape();
-    output_shape.resize(shape.size());
-    std::copy(shape.begin(), shape.end(), output_shape.begin());
-    return output->data<float>();
+  if (output_tensor != nullptr) {
+    Tensor::MappingGuard output_guard(output_tensor);
+    auto shape = output_tensor->shape();
+    int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
+                                          std::multiplies<int64_t>());
+    std::memcpy(output, output_tensor->data<float>(),
+                output_size * sizeof(float));
+    return true;
   } else {
-    return nullptr;
+    return false;
   }
 }
 
