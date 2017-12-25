@@ -68,6 +68,7 @@ build_and_run()
     --input=mace_input_node \
     --output=mace_output_node \
     --input_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},3"\
+    --output_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},2"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --device=OPENCL   \
