@@ -363,6 +363,27 @@ class TFConverter(object):
     self.net_def.op.extend([op_def])
     self.resolved_ops[op.name] = 1
 
+  def convert_space_to_batch(self, op, b2s):
+    op_def = self.net_def.op.add()
+    arg = op_def.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    op_def.name = op.name
+    op_def.type = op.type
+    op_def.input.extend([op.inputs[0].name])
+    op_def.output.extend([output.name for output in op.outputs])
+    size_arg = op_def.arg.add()
+    size_arg.name = 'block_shape'
+    size_arg.ints.extend(get_input_tensor(op, 1).eval().astype(np.int32).flat)
+    size_arg = op_def.arg.add()
+    if b2s:
+      size_arg.name = 'crops'
+    else:
+      size_arg.name = 'paddings'
+    size_arg.ints.extend(get_input_tensor(op, 2).eval().astype(np.int32).flat)
+    self.add_output_shape(op.outputs, op_def)
+    self.resolved_ops[op.name] = 1
+
   def convert_normal_op(self, op):
     op_def = self.net_def.op.add()
     arg = op_def.arg.add()
@@ -405,7 +426,11 @@ class TFConverter(object):
         self.convert_resize_bilinear(op)
       elif op.type == 'BiasAdd':
         self.convert_bias_add(op)
-      elif op.type in ['Relu', 'SpaceToBatchND', 'BatchToSpaceND']:
+      elif op.type == 'SpaceToBatchND':
+        self.convert_space_to_batch(op, False)
+      elif op.type == 'BatchToSpaceND':
+        self.convert_space_to_batch(op, True)
+      elif op.type in ['Relu']:
         self.convert_normal_op(op)
       else:
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))

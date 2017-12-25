@@ -2,7 +2,7 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_gcn.sh tf_model_path image_size [tuning]'
+  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path image_size [tuning]'
 }
 
 if [ $# -lt 2 ];then
@@ -10,8 +10,10 @@ if [ $# -lt 2 ];then
   exit -1
 fi
 
+source $1
+
 VLOG_LEVEL=0
-TF_MODEL_FILE_PATH=$1
+TF_MODEL_FILE_PATH=$2
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
 MACE_SOURCE_DIR=`/bin/pwd`
 MACE_MODEL_NAME='mace_model.pb'
@@ -20,14 +22,14 @@ OUTPUT_FILE_NAME='gcn.out'
 OUTPUT_LIST_FILE='gcn.list'
 PHONE_DATA_DIR="/data/local/tmp/${MACE_MODEL_NAME}"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
-IMAGE_SIZE=$2
+IMAGE_SIZE=$3
 MODEL_TAG=GCN${IMAGE_SIZE}
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/gcn-$IMAGE_SIZE
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 CL_BIN_DIR=${CODEGEN_DIR}/opencl_bin
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
-TUNING_OR_NOT=${3:-0}
+TUNING_OR_NOT=${4:-0}
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 
 build_and_run()
@@ -87,8 +89,8 @@ rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MODEL_CODEGEN_DIR}/mace_gcn${IMAGE_SIZE}.cc \
-                                         --input_node=input \
-                                         --output_node=GCN/br_result_2/fcn_br \
+                                         --input_node=${TF_INPUT_NODE} \
+                                         --output_node=${TF_OUTPUT_NODE} \
                                          --data_type=DT_HALF \
                                          --runtime=gpu \
                                          --output_type=source \
@@ -129,7 +131,7 @@ echo "Step 9: Validate the result"
 python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_file ${MODEL_DIR}/${INPUT_FILE_NAME} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
-    --input_node input \
-    --output_node GCN/br_result_2/fcn_br\
+    --input_node ${TF_INPUT_NODE} \
+    --output_node ${TF_OUTPUT_NODE} \
     --input_shape "${IMAGE_SIZE},${IMAGE_SIZE},3" \
     --output_shape "1,${IMAGE_SIZE},${IMAGE_SIZE},2"
