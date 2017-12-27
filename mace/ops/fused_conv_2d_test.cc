@@ -486,3 +486,160 @@ TEST_F(FusedConv2dOpTest, OPENCL15X1ConvNxNS12) {
                                                    {15, 1, 32, 64});
 }
 
+template<DeviceType D, typename T>
+static void TestAtrousConvNxN(const std::vector<index_t> &shape, const int dilation) {
+  testing::internal::LogToStderr();
+  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
+                  Padding type) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 1;
+    index_t height = shape[0];
+    index_t width = shape[1];
+    index_t input_channels = shape[2];
+    index_t output_channels = shape[3];
+    // Construct graph
+    OpsTestNet net;
+    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {dilation, dilation})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+
+    // Add input data
+    net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, T>(
+        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+    net.AddRandomInput<D, T>("Bias", {output_channels});
+
+    // run on cpu
+    net.RunOp();
+    // Check
+    Tensor expected;
+    expected.Copy(*net.GetOutput("Output"));
+
+    // run on gpu
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+
+    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("OutputImage")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {dilation, dilation})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+    // Run on device
+    net.RunOp(D);
+
+    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+  };
+
+  for (int kernel_size : {3}) {
+    for (int stride : {1}) {
+      func(kernel_size, kernel_size, stride, stride, VALID);
+      func(kernel_size, kernel_size, stride, stride, SAME);
+    }
+  }
+}
+
+TEST_F(FusedConv2dOpTest, OPENCLalignedAtrousConvNxN2) {
+  TestAtrousConvNxN<DeviceType::OPENCL, float>({128, 128, 16, 16}, 2);
+}
+
+TEST_F(FusedConv2dOpTest, OPENCLalignedAtrousConvNxN4) {
+  TestAtrousConvNxN<DeviceType::OPENCL, float>({128, 128, 16, 16}, 4);
+}
+
+TEST_F(FusedConv2dOpTest, OPENCLUnalignedAtrousConvNxN) {
+  TestAtrousConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7}, 2);
+}
+
+template<DeviceType D>
+static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
+                                      const std::vector<index_t> &filter_shape,
+                                      const std::vector<int> &dilations) {
+  testing::internal::LogToStderr();
+  auto func = [&](int stride_h, int stride_w, Padding type) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 1;
+    index_t height = image_shape[0];
+    index_t width = image_shape[1];
+    index_t input_channels = filter_shape[2];
+    index_t output_channels = filter_shape[3];
+    index_t kernel_h = filter_shape[0];
+    index_t kernel_w = filter_shape[1];
+    // Construct graph
+    OpsTestNet net;
+    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {1, 1})
+        .Finalize(net.NewOperatorDef());
+
+    // Add input data
+    net.AddRandomInput<D, float>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, float>(
+        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+    net.AddRandomInput<D, float>("Bias", {output_channels});
+
+    // run on cpu
+    net.RunOp();
+    // Check
+    Tensor expected;
+    expected.Copy(*net.GetOutput("Output"));
+
+    // run on gpu
+    BufferToImage<D, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, half>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, half>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+
+    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("OutputImage")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<half>::value))
+        .Finalize(net.NewOperatorDef());
+    // Run on device
+    net.RunOp(D);
+
+    ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.7);
+  };
+
+  func(1, 1, VALID);
+  func(1, 1, SAME);
+}
+
+TEST_F(FusedConv2dOpTest, OPENCL7X7AtrousConvD2) {
+  TestGeneralHalfAtrousConv<DeviceType::OPENCL>({32, 32},
+                                                {7, 7, 3, 16},
+                                                {2, 2});
+}
+
+TEST_F(FusedConv2dOpTest, OPENCL15X15AtrousConvD4) {
+  TestGeneralHalfAtrousConv<DeviceType::OPENCL>({63, 71},
+                                                {15, 15, 16, 16},
+                                                {2, 2});
+}

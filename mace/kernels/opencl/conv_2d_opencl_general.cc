@@ -15,8 +15,8 @@ namespace kernels {
 void Conv2dOpencl(const Tensor *input, const Tensor *filter,
                   const Tensor *bias, const bool fused_relu,
                   const uint32_t stride, const int *padding,
-                  const DataType dt, Tensor *output,
-                  StatsFuture *future) {
+                  const int *dilations, const DataType dt,
+                  Tensor *output, StatsFuture *future) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -55,6 +55,8 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
   conv_2d_kernel.setArg(idx++, static_cast<int>(filter->dim(1)));
   conv_2d_kernel.setArg(idx++, padding[0] / 2);
   conv_2d_kernel.setArg(idx++, padding[1] / 2);
+  conv_2d_kernel.setArg(idx++, dilations[0]);
+  conv_2d_kernel.setArg(idx++, dilations[1]);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width_blocks),

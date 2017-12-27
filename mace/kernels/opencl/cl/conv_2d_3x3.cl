@@ -12,7 +12,9 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __private const int out_height,
                           __private const int out_width,
                           __private const int padding_top,
-                          __private const int padding_left) {
+                          __private const int padding_left,
+                          __private const int dilation_h,
+                          __private const int dilation_w) {
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
   const int out_w_blks = get_global_size(1);
@@ -55,12 +57,11 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 
   DATA_TYPE4 in0, in1, in2, in3, in4;
   DATA_TYPE4 weights0, weights1, weights2, weights3;
-  int hb_idx, width_idx, in_width_idx;
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
     const int in_idx = mul24(in_ch_blk, in_width);
     int filter_x_part0 = in_ch_blk << 2;
     for (short hb_idx = 0; hb_idx < 3; ++hb_idx) {
-      int in_hb_value = height_idx + hb_idx;
+      int in_hb_value = height_idx + mul24(hb_idx, dilation_h);
       in_hb_value = select(in_hb_value + batch_idx,
                            -1,
                            (in_hb_value < 0 || in_hb_value >= in_height));
@@ -68,7 +69,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
       for (short width_idx = 0; width_idx < 3; ++width_idx) {
         int in_width_value;
 #define READ_INPUT(i)                                                                \
-        in_width_value = in_width##i + width_idx;                                    \
+        in_width_value = in_width##i + mul24(width_idx, dilation_w);                 \
         in_width_value = select(in_idx + in_width_value,                             \
                                 -1,                                                  \
                                 (in_width_value < 0 || in_width_value >= in_width)); \

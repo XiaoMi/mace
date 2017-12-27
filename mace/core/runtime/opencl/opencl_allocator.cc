@@ -60,7 +60,9 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                       img_format,
                       image_shape[0], image_shape[1],
                       0, nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS);
+  MACE_CHECK(error == CL_SUCCESS) << error << " with image shape: ["
+                                  << image_shape[0] << ", " << image_shape[1]
+                                  << "]";
 
   return cl_image;
 }

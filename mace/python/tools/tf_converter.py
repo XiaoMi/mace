@@ -21,7 +21,6 @@ def main(unused_args):
     data = f.read()
     input_graph_def.ParseFromString(data)
 
-  print 'done'
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.prequantize)
@@ -38,6 +37,7 @@ def main(unused_args):
     with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
       # output_graph_def.ClearField('tensors')
       f.write(str(output_graph_def))
+  print("Model conversion is completed.")
 
 
 def parse_args():
@@ -82,7 +82,7 @@ def parse_args():
   parser.add_argument(
     "--output_type",
     type=str,
-    default="source",
+    default="pb",
     help="output type: source/pb")
   parser.add_argument(
     "--template",

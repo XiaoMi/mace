@@ -322,17 +322,24 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
     Tensor::MappingGuard y_mapper(&y);
     auto a = x.data<EXP_TYPE>();
     auto b = y.data<RES_TYPE>();
-    for (int n = 0; n < x.dim(0); ++n) {
-      for (int h = 0; h < x.dim(1); ++h) {
-        for (int w = 0; w < x.dim(2); ++w) {
-          for (int c = 0; c < x.dim(3); ++c) {
-            EXPECT_NEAR(*a, *b, abs_err) << "with index = ["
-                                         << n << ", " << h << ", "
-                                         << w << ", " << c << "]";
-            a++;
-            b++;
+    if (x.dim_size() == 4) {
+      for (int n = 0; n < x.dim(0); ++n) {
+        for (int h = 0; h < x.dim(1); ++h) {
+          for (int w = 0; w < x.dim(2); ++w) {
+            for (int c = 0; c < x.dim(3); ++c) {
+              EXPECT_NEAR(*a, *b, abs_err) << "with index = ["
+                                           << n << ", " << h << ", "
+                                           << w << ", " << c << "]";
+              a++;
+              b++;
+            }
           }
         }
+      }
+    } else {
+      for (int i = 0; i < x.size(); ++i) {
+        EXPECT_NEAR(a[i], b[i], abs_err) << "a = " << a << " b = " << b
+                                         << " index = " << i;
       }
     }
   }
