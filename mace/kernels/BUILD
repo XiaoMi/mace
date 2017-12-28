@@ -20,6 +20,7 @@ cc_library(
     copts = [
         "-std=c++11",
         "-D_GLIBCXX_USE_C99_MATH_TR1",
+        "-Werror=return-type",
     ] +
     if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]) +
     if_enable_neon(["-fopenmp"]),
@@ -34,7 +35,7 @@ cc_test(
     name = "kernel_test",
     testonly = 1,
     srcs = glob(["test/*.cc"]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_android(["-pie"]),
     linkstatic = 1,
     deps = [
@@ -48,7 +49,7 @@ cc_test(
     name = "benchmark",
     testonly = 1,
     srcs = glob(["benchmark/*.cc"]),
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
     deps = [
         ":kernels",

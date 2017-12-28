@@ -17,7 +17,7 @@ cc_library(
     hdrs = [
         "logging.h",
     ],
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_android([
         "-llog",
     ]),
@@ -31,7 +31,7 @@ cc_library(
     hdrs = [
         "command_line_flags.h",
     ],
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     deps = [
         ":logging",
     ],
@@ -43,7 +43,7 @@ cc_library(
         "tuner.h",
         "timer.h",
     ],
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     deps = [
         ":utils_hdrs",
         ":logging",
@@ -56,7 +56,7 @@ cc_test(
     srcs = [
         "tuner_test.cc",
     ],
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_android(["-pie", "-lm"]),
     linkstatic = 1,
     deps = [
@@ -72,7 +72,7 @@ cc_library(
         "utils.h",
         "env_time.h",
     ],
-    copts = ["-std=c++11"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
 )
 
 cc_library(
@@ -83,4 +83,5 @@ cc_library(
         ":command_line_flags",
         ":logging",
     ],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
 )

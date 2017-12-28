@@ -21,7 +21,7 @@ cc_library(
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"] +
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
             if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) +
             if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
     linkopts = if_android(["-pie", "-ldl"]),
@@ -43,7 +43,7 @@ cc_library(
         "testing/test_benchmark.cc",
         "testing/test_benchmark_main.cc",
     ],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     alwayslink = 1,
     deps = [
         ":core",

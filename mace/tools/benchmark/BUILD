@@ -7,7 +7,7 @@ cc_library(
     name = "stat_summarizer",
     srcs = ["stat_summarizer.cc"],
     hdrs = ["stat_summarizer.h"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
     deps = [
         "//mace/core",
@@ -19,7 +19,7 @@ cc_binary(
     srcs = [
         "benchmark_model.cc",
     ],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
     deps = [
         ":stat_summarizer",
