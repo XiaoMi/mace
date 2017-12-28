@@ -26,22 +26,23 @@ static void ResizeBilinearBenchmark(int iters,
   net.AddInputFromArray<D, index_t>("OutSize", {2},
                                     {output_height, output_width});
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Input", "InputImage",
+                        kernels::BufferType::IN_OUT);
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
-      .Input("InputImage")
-      .Input("OutSize")
-      .Output("OutputImage")
-      .AddIntsArg("size", {output_height, output_width})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+        .Input("InputImage")
+        .Input("OutSize")
+        .Output("OutputImage")
+        .AddIntsArg("size", {output_height, output_width})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
-      .Input("Input")
-      .Input("OutSize")
-      .Output("Output")
-      .AddIntsArg("size", {output_height, output_width})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Input("OutSize")
+        .Output("Output")
+        .AddIntsArg("size", {output_height, output_width})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
   }
 
   // Warm-up
@@ -68,8 +69,8 @@ static void ResizeBilinearBenchmark(int iters,
   BENCHMARK(                                                                        \
       BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_##DEVICE)
 
-#define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1, TYPE)        \
-  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, CPU);  \
+#define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1, TYPE)       \
+  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, CPU); \
   BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, OPENCL);
 
 // SNPE 835 GPU: 6870us

@@ -6,9 +6,12 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("ChannelShuffle")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      ChannelShuffleOp<DeviceType::CPU, float>);
+void Register_ChannelShuffle(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ChannelShuffle")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ChannelShuffleOp<DeviceType::CPU, float>);
+}
 
 }  // namespace mace

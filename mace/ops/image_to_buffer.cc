@@ -6,14 +6,18 @@
 
 namespace mace {
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ImageToBuffer")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         ImageToBufferOp<DeviceType::OPENCL, float>);
+void Register_ImageToBuffer(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ImageToBuffer")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ImageToBufferOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ImageToBuffer")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         ImageToBufferOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ImageToBuffer")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    ImageToBufferOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

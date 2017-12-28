@@ -22,7 +22,8 @@ static void GlobalAvgPooling(
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height, width});
+  net.AddRandomInput<DeviceType::CPU, float>("Input",
+                                             {batch, channels, height, width});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

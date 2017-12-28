@@ -15,7 +15,8 @@ static void BMSpaceToBatch(
   OpsTestNet net;
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
-  BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, float>(net, "Input", "InputImage",
+                          kernels::BufferType::IN_OUT);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -36,17 +37,19 @@ static void BMSpaceToBatch(
   net.Sync();
 }
 
-#define BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, TYPE, DEVICE)                  \
-  static void BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE( \
-      int iters) {                                                     \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
-    mace::testing::ItemsProcessed(tot);                                \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
-    BMSpaceToBatch<DEVICE, TYPE>(iters, N, H, W, C, SHAPE);            \
-  }                                                                    \
-  BENCHMARK(BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE)
+#define BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, TYPE, DEVICE)             \
+  static void                                                                \
+      BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE( \
+          int iters) {                                                       \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
+    mace::testing::ItemsProcessed(tot);                                      \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
+    BMSpaceToBatch<DEVICE, TYPE>(iters, N, H, W, C, SHAPE);                  \
+  }                                                                          \
+  BENCHMARK(                                                                 \
+      BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE)
 
-#define BM_SPACE_TO_BATCH(N, H, W, C, SHAPE, TYPE)       \
+#define BM_SPACE_TO_BATCH(N, H, W, C, SHAPE, TYPE) \
   BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, TYPE, OPENCL);
 
 BM_SPACE_TO_BATCH(128, 16, 16, 128, 2, float);

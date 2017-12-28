@@ -23,11 +23,16 @@ static void BatchNorm(
   net.AddRandomInput<D, T>("Var", {channels}, true);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, float>(net, "Scale", "ScaleImage", kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Offset", "OffsetImage", kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Mean", "MeanImage", kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Var", "VarImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Scale", "ScaleImage",
+                            kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Offset", "OffsetImage",
+                            kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Mean", "MeanImage",
+                            kernels::BufferType::ARGUMENT);
+    BufferToImage<D, float>(net, "Var", "VarImage",
+                            kernels::BufferType::ARGUMENT);
     OpDefBuilder("BatchNorm", "BatchNormBM")
         .Input("InputImage")
         .Input("ScaleImage")
@@ -37,8 +42,7 @@ static void BatchNorm(
         .AddFloatArg("epsilon", 1e-3)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
-  }
-  else {
+  } else {
     OpDefBuilder("BatchNorm", "BatchNormBM")
         .Input("Input")
         .Input("Scale")
@@ -49,7 +53,6 @@ static void BatchNorm(
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   }
-
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
@@ -79,9 +82,8 @@ static void BatchNorm(
   }                                                                    \
   BENCHMARK(BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_BATCH_NORM(N, C, H, W, TYPE)       \
-  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, NEON);\
+#define BM_BATCH_NORM(N, C, H, W, TYPE)        \
+  BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, CPU);  \
   BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, OPENCL);
 
 BM_BATCH_NORM(1, 1, 512, 512, float);

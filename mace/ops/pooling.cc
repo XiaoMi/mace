@@ -6,29 +6,36 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Pooling")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      PoolingOp<DeviceType::CPU, float>);
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Pooling")
-                          .TypeConstraint<half>("T")
-                          .Build(),
-                      PoolingOp<DeviceType::CPU, half>);
+void Register_Pooling(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::CPU, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::CPU, half>);
 
 #if MACE_ENABLE_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("Pooling")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       PoolingOp<DeviceType::NEON, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Pooling")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         PoolingOp<DeviceType::OPENCL, float>);
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Pooling")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         PoolingOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

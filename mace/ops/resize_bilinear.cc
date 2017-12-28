@@ -6,26 +6,32 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("ResizeBilinear")
-                          .TypeConstraint<float>("T")
-                          .Build(),
-                      ResizeBilinearOp<DeviceType::CPU, float>);
+void Register_ResizeBilinear(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ResizeBilinearOp<DeviceType::CPU, float>);
 
 #if MACE_ENABLE_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("ResizeBilinear")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       ResizeBilinearOp<DeviceType::NEON, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ResizeBilinearOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         ResizeBilinearOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ResizeBilinearOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("ResizeBilinear")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         ResizeBilinearOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    ResizeBilinearOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

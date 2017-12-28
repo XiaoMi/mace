@@ -6,31 +6,38 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Conv2D")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      Conv2dOp<DeviceType::CPU, float>);
+void Register_Conv2D(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    Conv2dOp<DeviceType::CPU, float>);
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Conv2D")
-                          .TypeConstraint<half>("T")
-                          .Build(),
-                      Conv2dOp<DeviceType::CPU, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    Conv2dOp<DeviceType::CPU, half>);
 
 #if MACE_ENABLE_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("Conv2D")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       Conv2dOp<DeviceType::NEON, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    Conv2dOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Conv2D")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         Conv2dOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    Conv2dOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Conv2D")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         Conv2dOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    Conv2dOp<DeviceType::OPENCL, half>);
+}
 
 }  // namespace mace

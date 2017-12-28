@@ -19,7 +19,8 @@ static void ReluBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
 
     OpDefBuilder("Relu", "ReluBM")
         .Input("InputImage")
@@ -54,9 +55,9 @@ static void ReluBenchmark(
   }                                                                  \
   BENCHMARK(BM_RELU_##N##C##H##W##_##TYPE##_##DEVICE)
 
-#define BM_RELU(N, C, H, W, TYPE)       \
-  BM_RELU_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_RELU_MACRO(N, C, H, W, TYPE, NEON);\
+#define BM_RELU(N, C, H, W, TYPE)        \
+  BM_RELU_MACRO(N, C, H, W, TYPE, CPU);  \
+  BM_RELU_MACRO(N, C, H, W, TYPE, NEON); \
   BM_RELU_MACRO(N, C, H, W, TYPE, OPENCL);
 
 BM_RELU(1, 1, 512, 512, float);

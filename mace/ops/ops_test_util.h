@@ -10,9 +10,9 @@
 #include "gtest/gtest.h"
 #include "mace/core/common.h"
 #include "mace/core/net.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/utils.h"
 
@@ -56,7 +56,8 @@ class OpDefBuilder {
     return *this;
   }
 
-  OpDefBuilder AddIntsArg(const std::string &name, const std::vector<int> &values) {
+  OpDefBuilder AddIntsArg(const std::string &name,
+                          const std::vector<int> &values) {
     auto arg = op_def_.add_arg();
     arg->set_name(name);
     for (auto value : values) {
@@ -65,7 +66,8 @@ class OpDefBuilder {
     return *this;
   }
 
-  OpDefBuilder AddFloatsArg(const std::string &name, const std::vector<float> &values) {
+  OpDefBuilder AddFloatsArg(const std::string &name,
+                            const std::vector<float> &values) {
     auto arg = op_def_.add_arg();
     arg->set_name(name);
     for (auto value : values) {
@@ -75,7 +77,7 @@ class OpDefBuilder {
   }
 
   OpDefBuilder AddStringsArg(const std::string &name,
-                     const std::vector<const char *> &values) {
+                             const std::vector<const char *> &values) {
     auto arg = op_def_.add_arg();
     arg->set_name(name);
     for (auto value : values) {
@@ -94,7 +96,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() {}
+  OpsTestNet() : op_registry_(new OperatorRegistry()) {};
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -135,10 +137,11 @@ class OpsTestNet {
     std::mt19937 gen(rd());
     std::normal_distribution<float> nd(0, 1);
     if (DataTypeToEnum<T>::value == DT_HALF) {
-      std::generate(input_data, input_data + input->size(),
-                    [&gen, &nd, positive] {
-                      return half_float::half_cast<half>(positive ? std::abs(nd(gen)) : nd(gen));
-                    });
+      std::generate(
+          input_data, input_data + input->size(), [&gen, &nd, positive] {
+            return half_float::half_cast<half>(positive ? std::abs(nd(gen))
+                                                        : nd(gen));
+          });
     } else {
       std::generate(input_data, input_data + input->size(),
                     [&gen, &nd, positive] {
@@ -160,7 +163,7 @@ class OpsTestNet {
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
     }
-    net_ = CreateNet(net_def, &ws_, device);
+    net_ = CreateNet(op_registry_, net_def, &ws_, device);
     device_ = device;
     return net_->Run();
   }
@@ -182,6 +185,7 @@ class OpsTestNet {
   }
 
  public:
+  std::shared_ptr<OperatorRegistry> op_registry_;
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;
@@ -211,7 +215,8 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
   res.resize(size);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    std::generate(res.begin(), res.end(), [&gen, &nd] { return half_float::half_cast<half>(nd(gen)); });
+    std::generate(res.begin(), res.end(),
+                  [&gen, &nd] { return half_float::half_cast<half>(nd(gen)); });
   } else {
     std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
   }
@@ -236,7 +241,8 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
 template <typename T>
 unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                 const std::vector<T> &data) {
-  unique_ptr<Tensor> res(new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
+  unique_ptr<Tensor> res(
+      new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
   T *input_data = res->mutable_data<T>();
   memcpy(input_data, data.data(), data.size() * sizeof(T));
@@ -268,9 +274,9 @@ inline std::string ShapeToString(const Tensor &x) {
 
 template <typename T>
 struct is_floating_point_type {
-  static const bool value =
-      std::is_same<T, float>::value || std::is_same<T, double>::value
-          || std::is_same<T, half>::value;
+  static const bool value = std::is_same<T, float>::value ||
+                            std::is_same<T, double>::value ||
+                            std::is_same<T, half>::value;
 };
 
 template <typename T>
@@ -293,7 +299,9 @@ inline void AssertSameDims(const Tensor &x, const Tensor &y) {
                                 << "y.shape [ " << ShapeToString(y) << "]";
 }
 
-template <typename EXP_TYPE, typename RES_TYPE, bool is_fp = is_floating_point_type<EXP_TYPE>::value>
+template <typename EXP_TYPE,
+          typename RES_TYPE,
+          bool is_fp = is_floating_point_type<EXP_TYPE>::value>
 struct Expector;
 
 // Partial specialization for float and double.
@@ -343,7 +351,6 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
       }
     }
   }
-
 };
 
 template <typename T>
@@ -355,8 +362,8 @@ void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
 
 template <typename EXP_TYPE, typename RES_TYPE>
 void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
-  static_assert(is_floating_point_type<EXP_TYPE>::value
-                    && is_floating_point_type<RES_TYPE>::value,
+  static_assert(is_floating_point_type<EXP_TYPE>::value &&
+                    is_floating_point_type<RES_TYPE>::value,
                 "T is not a floating point type");
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, abs_err);
 }

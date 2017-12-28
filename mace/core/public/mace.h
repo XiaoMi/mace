@@ -302,10 +302,12 @@ class NetDef {
 
 class Workspace;
 class NetBase;
+class OperatorRegistry;
 
 class MaceEngine {
  public:
-  explicit MaceEngine(const NetDef *net_def, DeviceType device_type);
+  explicit MaceEngine(const NetDef *net_def,
+                      DeviceType device_type);
   ~MaceEngine();
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
@@ -314,6 +316,7 @@ class MaceEngine {
   MaceEngine &operator=(const MaceEngine&) = delete;
 
  private:
+  std::shared_ptr<OperatorRegistry> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;

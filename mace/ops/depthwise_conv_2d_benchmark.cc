@@ -38,8 +38,8 @@ static void DepthwiseConv2d(int iters,
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
   net.AddRandomInput<D, float>("Filter",
-                            {output_channels, channels, kernel_h, kernel_w});
-  net.AddRandomInput<D, float>("Bias", {output_channels*channels});
+                               {output_channels, channels, kernel_h, kernel_w});
+  net.AddRandomInput<D, float>("Bias", {output_channels * channels});
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -54,23 +54,22 @@ static void DepthwiseConv2d(int iters,
   net.Sync();
 }
 
-#define BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE,                                  \
-                                   DEVICE)                                                                   \
-  static void                                                                                                \
+#define BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE,                             \
+                                   DEVICE)                                                              \
+  static void                                                                                           \
       BM_DEPTHWISE_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE( \
-          int iters) {                                                                                       \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                                         \
-    mace::testing::ItemsProcessed(tot);                                                                      \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                                      \
-    DepthwiseConv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE,                                         \
-                                  mace::Padding::P, OC);                                                     \
-  }                                                                                                          \
-  BENCHMARK(                                                                                                 \
+          int iters) {                                                                                  \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                                    \
+    mace::testing::ItemsProcessed(tot);                                                                 \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                                 \
+    DepthwiseConv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE,                                    \
+                                  mace::Padding::P, OC);                                                \
+  }                                                                                                     \
+  BENCHMARK(                                                                                            \
       BM_DEPTHWISE_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)       \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU); \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, NEON);\
+#define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 2, float);

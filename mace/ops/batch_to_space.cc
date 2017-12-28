@@ -6,13 +6,17 @@
 
 namespace mace {
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BatchToSpaceND")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         BatchToSpaceNDOp<DeviceType::OPENCL, float>);
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BatchToSpaceND")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         BatchToSpaceNDOp<DeviceType::OPENCL, half>);
+void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    BatchToSpaceNDOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    BatchToSpaceNDOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

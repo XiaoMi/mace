@@ -26,7 +26,7 @@ void SimpleValidTest() {
 
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 2, 2, 3},
-                                                {1, 3, 5, 7, 9, 11, 2, 4, 6, 8, 10, 12});
+                                  {1, 3, 5, 7, 9, 11, 2, 4, 6, 8, 10, 12});
   net.AddInputFromArray<D, float>(
       "Filter", {2, 2, 2, 2},
       {1.0f, 5.0f, 9.0f, 13.0f, 2.0f, 6.0f, 10.0f, 14.0f, 3.0f, 7.0f, 11.0f,
@@ -41,12 +41,9 @@ void SimpleValidTest() {
       {196.1f, 252.1f, 216.2f, 280.2f, 272.3f, 344.3f, 296.4f, 376.4f});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
-
 }
 
-TEST_F(DepthwiseConv2dOpTest, SimpleCPU) {
-  SimpleValidTest<DeviceType::CPU>();
-}
+TEST_F(DepthwiseConv2dOpTest, SimpleCPU) { SimpleValidTest<DeviceType::CPU>(); }
 
 template <DeviceType D>
 void TestNxNS12(const index_t height, const index_t width) {
@@ -72,8 +69,10 @@ void TestNxNS12(const index_t height, const index_t width) {
         .Finalize(net.NewOperatorDef());
 
     // Add input data
-    net.AddRandomInput<D, float>("Input", {batch, input_channels, height, width});
-    net.AddRandomInput<D, float>("Filter", {multiplier, input_channels, kernel_h, kernel_w});
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, input_channels, height, width});
+    net.AddRandomInput<D, float>(
+        "Filter", {multiplier, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, float>("Bias", {multiplier * input_channels});
     // Run on device
     net.RunOp(D);
@@ -93,7 +92,6 @@ void TestNxNS12(const index_t height, const index_t width) {
       func(kernel_size, kernel_size, stride, stride, SAME);
     }
   }
-
 }
 
 #if __ARM_NEON

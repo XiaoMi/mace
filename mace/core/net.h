@@ -6,6 +6,7 @@
 #define MACE_CORE_NET_H_
 
 #include "mace/core/common.h"
+#include "mace/core/operator.h"
 #include "mace/core/public/mace.h"
 
 namespace mace {
@@ -16,7 +17,8 @@ class Workspace;
 
 class NetBase {
  public:
-  NetBase(const std::shared_ptr<const NetDef> &net_def,
+  NetBase(const std::shared_ptr<const OperatorRegistry> op_registry,
+          const std::shared_ptr<const NetDef> net_def,
           Workspace *ws,
           DeviceType type);
   virtual ~NetBase() noexcept {}
@@ -27,13 +29,15 @@ class NetBase {
 
  protected:
   string name_;
+  const std::shared_ptr<const OperatorRegistry> op_registry_;
 
   DISABLE_COPY_AND_ASSIGN(NetBase);
 };
 
 class SimpleNet : public NetBase {
  public:
-  SimpleNet(const std::shared_ptr<const NetDef> &net_def,
+  SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
+            const std::shared_ptr<const NetDef> net_def,
             Workspace *ws,
             DeviceType type,
             const NetMode mode = NetMode::NORMAL);
@@ -47,14 +51,18 @@ class SimpleNet : public NetBase {
   DISABLE_COPY_AND_ASSIGN(SimpleNet);
 };
 
-unique_ptr<NetBase> CreateNet(const NetDef &net_def,
-                              Workspace *ws,
-                              DeviceType type,
-                              const NetMode mode = NetMode::NORMAL);
-unique_ptr<NetBase> CreateNet(const std::shared_ptr<const NetDef> &net_def,
-                              Workspace *ws,
-                              DeviceType type,
-                              const NetMode mode = NetMode::NORMAL);
+std::unique_ptr<NetBase> CreateNet(
+    const std::shared_ptr<const OperatorRegistry> op_registry,
+    const NetDef &net_def,
+    Workspace *ws,
+    DeviceType type,
+    const NetMode mode = NetMode::NORMAL);
+std::unique_ptr<NetBase> CreateNet(
+    const std::shared_ptr<const OperatorRegistry> op_registry,
+    const std::shared_ptr<const NetDef> net_def,
+    Workspace *ws,
+    DeviceType type,
+    const NetMode mode = NetMode::NORMAL);
 
 }  //  namespace mace
 

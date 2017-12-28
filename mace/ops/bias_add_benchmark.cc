@@ -9,8 +9,7 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void BiasAdd(
-    int iters, int batch, int channels, int height, int width) {
+static void BiasAdd(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -20,15 +19,16 @@ static void BiasAdd(
   net.AddRandomInput<D, T>("Bias", {channels}, true);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+    BufferToImage<D, T>(net, "Input", "InputImage",
+                        kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Bias", "BiasImage",
+                        kernels::BufferType::ARGUMENT);
     OpDefBuilder("BiasAdd", "BiasAddBM")
         .Input("InputImage")
         .Input("BiasImage")
         .Output("Output")
         .Finalize(net.NewOperatorDef());
-  }
-  else {
+  } else {
     OpDefBuilder("BiasAdd", "BiasAddBM")
         .Input("Input")
         .Input("Bias")
@@ -51,12 +51,12 @@ static void BiasAdd(
 
 #define BM_BIAS_ADD_MACRO(N, C, H, W, TYPE, DEVICE)                  \
   static void BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \
-      int iters) {                                                     \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
-    mace::testing::ItemsProcessed(tot);                                \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
+      int iters) {                                                   \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
+    mace::testing::ItemsProcessed(tot);                              \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     BiasAdd<DEVICE, TYPE>(iters, N, C, H, W);                        \
-  }                                                                    \
+  }                                                                  \
   BENCHMARK(BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define BM_BIAS_ADD(N, C, H, W, TYPE)       \

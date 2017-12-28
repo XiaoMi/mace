@@ -14,13 +14,13 @@ void TestSimple() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, float>("Input",
-                                  {2, 2, 2, 2},
-                                  {-7, 7, -6, 6, -5, 5, -4, 4,
-                                   -3, 3, -2, 2, -1, 1, 0, 0});
+  net.AddInputFromArray<D, float>(
+      "Input", {2, 2, 2, 2},
+      {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
 
     OpDefBuilder("Relu", "ReluTest")
         .Input("InputImage")
@@ -31,7 +31,8 @@ void TestSimple() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT);
   } else {
     OpDefBuilder("Relu", "ReluTest")
         .Input("Input")
@@ -42,38 +43,30 @@ void TestSimple() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({2, 2, 2, 2},
-                                      {0, 7, 0, 6, 0, 5, 0, 4,
-                                       0, 3, 0, 2, 0, 1, 0, 0});
+  auto expected = CreateTensor<float>(
+      {2, 2, 2, 2}, {0, 7, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-TEST_F(ReluOpTest, CPUSimple) {
-  TestSimple<DeviceType::CPU>();
-}
+TEST_F(ReluOpTest, CPUSimple) { TestSimple<DeviceType::CPU>(); }
 
 #if __ARM_NEON
-TEST_F(ReluOpTest, NEONSimple) {
-  TestSimple<DeviceType::NEON>();
-}
+TEST_F(ReluOpTest, NEONSimple) { TestSimple<DeviceType::NEON>(); }
 #endif
 
-TEST_F(ReluOpTest, OPENCLSimple) {
-  TestSimple<DeviceType::OPENCL>();
-}
+TEST_F(ReluOpTest, OPENCLSimple) { TestSimple<DeviceType::OPENCL>(); }
 
 template <DeviceType D>
 void TestUnalignedSimple() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, float>("Input",
-                                  {1, 3, 2, 1},
-                                  {-7, 7, -6, 6, -5, 5});
+  net.AddInputFromArray<D, float>("Input", {1, 3, 2, 1}, {-7, 7, -6, 6, -5, 5});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
 
     OpDefBuilder("Relu", "ReluTest")
         .Input("InputImage")
@@ -84,7 +77,8 @@ void TestUnalignedSimple() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT);
   } else {
     OpDefBuilder("Relu", "ReluTest")
         .Input("Input")
@@ -95,8 +89,7 @@ void TestUnalignedSimple() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 3, 2, 1},
-                                      {0, 7, 0, 6, 0, 5});
+  auto expected = CreateTensor<float>({1, 3, 2, 1}, {0, 7, 0, 6, 0, 5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -120,13 +113,13 @@ void TestSimpleReluX() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, float>("Input",
-                                  {2, 2, 2, 2},
-                                  {-7, 7, -6, 6, -5, 5, -4, 4,
-                                   -3, 3, -2, 2, -1, 1, 0, 0});
+  net.AddInputFromArray<D, float>(
+      "Input", {2, 2, 2, 2},
+      {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
 
     OpDefBuilder("Relu", "ReluTest")
         .Input("InputImage")
@@ -138,7 +131,8 @@ void TestSimpleReluX() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT);
   } else {
     OpDefBuilder("Relu", "ReluTest")
         .Input("Input")
@@ -150,38 +144,31 @@ void TestSimpleReluX() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({2, 2, 2, 2},
-                                      {0, 6, 0, 6, 0, 5, 0, 4,
-                                       0, 3, 0, 2, 0, 1, 0, 0});
+  auto expected = CreateTensor<float>(
+      {2, 2, 2, 2}, {0, 6, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-TEST_F(ReluOpTest, CPUSimpleReluX) {
-  TestSimpleReluX<DeviceType::CPU>();
-}
+TEST_F(ReluOpTest, CPUSimpleReluX) { TestSimpleReluX<DeviceType::CPU>(); }
 
 #if __ARM_NEON
-TEST_F(ReluOpTest, NEONSimpleReluX) {
-  TestSimpleReluX<DeviceType::NEON>();
-}
+TEST_F(ReluOpTest, NEONSimpleReluX) { TestSimpleReluX<DeviceType::NEON>(); }
 #endif
 
-TEST_F(ReluOpTest, OPENCLSimpleReluX) {
-  TestSimpleReluX<DeviceType::OPENCL>();
-}
+TEST_F(ReluOpTest, OPENCLSimpleReluX) { TestSimpleReluX<DeviceType::OPENCL>(); }
 
 template <DeviceType D>
 void TestUnalignedSimpleReluX() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, float>("Input",
-                                  {1, 1, 7, 1},
+  net.AddInputFromArray<D, float>("Input", {1, 1, 7, 1},
                                   {-7, 7, -6, 6, -5, 5, -4});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, float>(net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT);
 
     OpDefBuilder("Relu", "ReluTest")
         .Input("InputImage")
@@ -193,7 +180,8 @@ void TestUnalignedSimpleReluX() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT);
   } else {
     OpDefBuilder("Relu", "ReluTest")
         .Input("Input")
@@ -205,8 +193,7 @@ void TestUnalignedSimpleReluX() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 1, 7, 1},
-                                      {0, 6, 0, 6, 0, 5, 0});
+  auto expected = CreateTensor<float>({1, 1, 7, 1}, {0, 6, 0, 6, 0, 5, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }

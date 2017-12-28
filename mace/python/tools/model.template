@@ -27,12 +27,12 @@ void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors) {
 #include "mace/core/public/mace.h"
 
 namespace {
-static void UpdateOp(mace::OperatorDef &op,
-                     const std::string &name,
-                     const std::string &type,
-                     const std::vector<std::string> &inputs,
-                     const std::vector<std::string> &outputs,
-                     const std::vector<mace::DataType> &output_types) {
+void UpdateOp(mace::OperatorDef &op,
+              const std::string &name,
+              const std::string &type,
+              const std::vector<std::string> &inputs,
+              const std::vector<std::string> &outputs,
+              const std::vector<mace::DataType> &output_types) {
   op.set_name(name);
   op.set_type(type);
   op.set_input(inputs);
