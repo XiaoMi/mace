@@ -5,13 +5,13 @@
 #ifndef MACE_CORE_OPERATOR_H
 #define MACE_CORE_OPERATOR_H
 
-#include "mace/core/common.h"
 #include "mace/core/arg_helper.h"
+#include "mace/core/common.h"
 #include "mace/core/future.h"
+#include "mace/core/public/mace.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/core/public/mace.h"
 
 namespace mace {
 
@@ -102,7 +102,7 @@ class Operator : public OperatorBase {
       }
     }
   }
-  virtual bool Run(StatsFuture *future) override  = 0;
+  virtual bool Run(StatsFuture *future) override = 0;
   ~Operator() noexcept override {}
 };
 
@@ -122,28 +122,11 @@ class Operator : public OperatorBase {
 #define OP_OUTPUT_TAGS(first_input, ...) \
   enum _OutputTags { first_input = 0, __VA_ARGS__ }
 
-typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *>
-    OperatorRegistry;
-typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *> *(
-    *RegistryFunction)();
-std::map<int32_t, OperatorRegistry *> *gDeviceTypeRegistry();
-
-struct DeviceTypeRegisterer {
-  explicit DeviceTypeRegisterer(int32_t type, RegistryFunction func) {
-    if (gDeviceTypeRegistry()->count(type)) {
-      LOG(ERROR) << "Device type " << type
-                 << "registered twice. This should not happen. Did you have "
-                    "duplicated numbers assigned to different devices?";
-      std::exit(1);
-    }
-    // Calling the registry function to get the actual registry pointer.
-    gDeviceTypeRegistry()->emplace(type, func());
-  }
-};
-
 class OpKeyBuilder {
  public:
   explicit OpKeyBuilder(const char *op_name);
+
+  OpKeyBuilder &Device(DeviceType device);
 
   OpKeyBuilder &TypeConstraint(const char *attr_name, const DataType allowed);
 
@@ -154,6 +137,7 @@ class OpKeyBuilder {
 
  private:
   std::string op_name_;
+  DeviceType device_type_;
   std::map<std::string, DataType> type_constraint_;
 };
 
@@ -162,48 +146,30 @@ OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
   return this->TypeConstraint(attr_name, DataTypeToEnum<T>::value);
 }
 
+class OperatorRegistry {
+ public:
+  typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *>
+    RegistryType;
+  OperatorRegistry();
+  ~OperatorRegistry() = default;
+  RegistryType *registry() { return &registry_; };
+  std::unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
+                                               Workspace *ws,
+                                               DeviceType type,
+                                               const NetMode mode) const;
 
+ private:
+  RegistryType registry_;
+  DISABLE_COPY_AND_ASSIGN(OperatorRegistry);
+};
 
-#define MACE_REGISTER_DEVICE_TYPE(type, registry_function)         \
-  namespace {                                                      \
-  static DeviceTypeRegisterer MACE_ANONYMOUS_VARIABLE(DeviceType)( \
-      type, &registry_function);                                   \
-  }
-
-MACE_DECLARE_REGISTRY(CPUOperatorRegistry,
+MACE_DECLARE_REGISTRY(OpRegistry,
                       OperatorBase,
                       const OperatorDef &,
                       Workspace *);
 
-#define REGISTER_CPU_OPERATOR_CREATOR(key, ...) \
-  MACE_REGISTER_CREATOR(CPUOperatorRegistry, key, __VA_ARGS__)
-#define REGISTER_CPU_OPERATOR(name, ...) \
-  MACE_REGISTER_CLASS(CPUOperatorRegistry, name, __VA_ARGS__)
-
-MACE_DECLARE_REGISTRY(NEONOperatorRegistry,
-                      OperatorBase,
-                      const OperatorDef &,
-                      Workspace *);
-
-#define REGISTER_NEON_OPERATOR_CREATOR(key, ...) \
-  MACE_REGISTER_CREATOR(NEONOperatorRegistry, key, __VA_ARGS__)
-#define REGISTER_NEON_OPERATOR(name, ...) \
-  MACE_REGISTER_CLASS(NEONOperatorRegistry, name, __VA_ARGS__)
-
-MACE_DECLARE_REGISTRY(OPENCLOperatorRegistry,
-                      OperatorBase,
-                      const OperatorDef &,
-                      Workspace *);
-
-#define REGISTER_OPENCL_OPERATOR_CREATOR(key, ...) \
-  MACE_REGISTER_CREATOR(OPENCLOperatorRegistry, key, __VA_ARGS__)
-#define REGISTER_OPENCL_OPERATOR(name, ...) \
-  MACE_REGISTER_CLASS(OPENCLOperatorRegistry, name, __VA_ARGS__)
-
-unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
-                                        Workspace *ws,
-                                        DeviceType type,
-                                        const NetMode mode);
+#define REGISTER_OPERATOR(op_registry, name, ...) \
+  MACE_REGISTER_CLASS(OpRegistry, op_registry->registry(), name, __VA_ARGS__)
 
 }  //  namespace mace
 

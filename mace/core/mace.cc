@@ -5,6 +5,7 @@
 #include "mace/core/public/mace.h"
 #include "mace/core/types.h"
 #include "mace/core/net.h"
+#include "mace/core/operator.h"
 #include "mace/core/workspace.h"
 #include "mace/utils/logging.h"
 
@@ -481,17 +482,19 @@ const OperatorDef &NetDef::op(const int idx) const {
 
 // Mace Engine
 MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type):
-    device_type_(device_type), ws_(new Workspace()), net_(nullptr) {
+    op_registry_(new OperatorRegistry()), device_type_(device_type),
+    ws_(new Workspace()), net_(nullptr) {
 
   ws_->LoadModelTensor(*net_def, device_type);
 
   // Init model
-  auto net = CreateNet(*net_def, ws_.get(), device_type, NetMode::INIT);
+  auto net = CreateNet(op_registry_, *net_def, ws_.get(),
+                       device_type, NetMode::INIT);
   if(!net->Run()) {
     LOG(FATAL) << "Net init run failed";
   }
   ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
-  net_ = std::move(CreateNet(*net_def, ws_.get(), device_type));
+  net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
 }
 MaceEngine::~MaceEngine() = default;
 bool MaceEngine::Run(const float *input,

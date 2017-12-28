@@ -6,28 +6,34 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("BiasAdd")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      BiasAddOp<DeviceType::CPU, float>);
+void Register_BiasAdd(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    BiasAddOp<DeviceType::CPU, float>);
 
-/*
-#if __ARM_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("BiasAdd")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       BiasAddOp<DeviceType::NEON, float>);
-#endif  // __ARM_NEON
-*/
+  /*
+  #if __ARM_NEON
+  REGISTER_OPERATOR(op_registry,OpKeyBuilder("BiasAdd")
+                               .Device(DeviceType::NEON)
+                               .TypeConstraint<float>("T")
+                               .Build(),
+                         BiasAddOp<DeviceType::NEON, float>);
+  #endif  // __ARM_NEON
+  */
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BiasAdd")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         BiasAddOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    BiasAddOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("BiasAdd")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         BiasAddOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    BiasAddOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

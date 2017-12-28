@@ -10,37 +10,26 @@ licenses(["notice"])  # Apache 2.0
 load("//mace:mace.bzl", "if_android", "if_profiling_enabled", "if_embed_binary_program")
 
 cc_library(
-    name = "opencl_runtime",
+    name = "core",
     srcs = glob([
+        "*.cc",
         "runtime/opencl/*.cc",
     ]),
     hdrs = glob([
+        "*.h",
+        "public/*.h",
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"] +
             if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) +
             if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
-    linkopts = ["-ldl"],
-    deps = [
-        ":core",
-        "//mace/utils:logging",
-        "//mace/utils:tuner",
-        "@opencl_headers//:opencl20_headers",
-    ],
-    alwayslink = 1,
-)
-
-
-cc_library(
-    name = "core",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h", "public/*.h"]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
-    linkopts = if_android(["-pie"]),
+    linkopts = if_android(["-pie", "-ldl"]),
     deps = [
         "//mace/utils:utils_hdrs",
         "//mace/utils:logging",
+        "//mace/utils:tuner",
+        "@opencl_headers//:opencl20_headers",
     ],
 )
 

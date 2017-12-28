@@ -6,21 +6,28 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Concat")
-                          .TypeConstraint<float>("T")
-                          .Build(),
-                      ConcatOp<DeviceType::CPU, float>);
-REGISTER_CPU_OPERATOR(OpKeyBuilder("Concat")
-                          .TypeConstraint<half>("T")
-                          .Build(),
-                      ConcatOp<DeviceType::CPU, half>);
+void Register_Concat(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ConcatOp<DeviceType::CPU, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    ConcatOp<DeviceType::CPU, half>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Concat")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         ConcatOp<DeviceType::OPENCL, float>);
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("Concat")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         ConcatOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ConcatOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    ConcatOp<DeviceType::OPENCL, half>);
+}
+
 }  // namespace mace

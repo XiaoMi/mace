@@ -6,26 +6,32 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("AddN")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      AddNOp<DeviceType::CPU, float>);
+void Register_AddN(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    AddNOp<DeviceType::CPU, float>);
 
 #if MACE_ENABLE_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("AddN")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       AddNOp<DeviceType::NEON, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    AddNOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         AddNOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    AddNOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("AddN")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         AddNOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    AddNOp<DeviceType::OPENCL, half>);
+}
 
 }  //  namespace mace

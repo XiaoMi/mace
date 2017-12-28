@@ -11,7 +11,6 @@ cc_binary(
     deps = [
         "//mace/core",
         "//mace/ops",
-        "//mace/core:opencl_runtime",
     ],
 )
 

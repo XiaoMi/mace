@@ -6,16 +6,20 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("GlobalAvgPooling")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      GlobalAvgPoolingOp<DeviceType::CPU, float>);
+void Register_GlobalAvgPooling(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("GlobalAvgPooling")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    GlobalAvgPoolingOp<DeviceType::CPU, float>);
 
 #if MACE_ENABLE_NEON
-REGISTER_NEON_OPERATOR(OpKeyBuilder("GlobalAvgPooling")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                       GlobalAvgPoolingOp<DeviceType::NEON, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("GlobalAvgPooling")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    GlobalAvgPoolingOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
+}
 
 }  //  namespace mace

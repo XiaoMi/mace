@@ -60,8 +60,10 @@ static void OpenclConcatHelper(int iters,
   net.AddRandomInput<DeviceType::OPENCL, float>("Input0", shape0);
   net.AddRandomInput<DeviceType::OPENCL, float>("Input1", shape1);
 
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input0", "InputImage0", kernels::BufferType::IN_OUT);
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input1", "InputImage1", kernels::BufferType::IN_OUT);
+  BufferToImage<DeviceType::OPENCL, T>(net, "Input0", "InputImage0",
+                                       kernels::BufferType::IN_OUT);
+  BufferToImage<DeviceType::OPENCL, T>(net, "Input1", "InputImage1",
+                                       kernels::BufferType::IN_OUT);
   OpDefBuilder("Concat", "ConcatBM")
       .Input("InputImage0")
       .Input("InputImage1")
@@ -75,7 +77,8 @@ static void OpenclConcatHelper(int iters,
     net.RunOp(DeviceType::OPENCL);
   }
 
-  const int64_t tot = static_cast<int64_t>(iters) *
+  const int64_t tot =
+      static_cast<int64_t>(iters) *
       (net.GetTensor("Input0")->size() + net.GetTensor("Input1")->size());
   mace::testing::ItemsProcessed(tot);
   testing::BytesProcessed(tot * sizeof(T));

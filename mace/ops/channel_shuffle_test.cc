@@ -17,7 +17,6 @@ TEST_F(ChannelShuffleOpTest, C8G4) {
       .AddIntArg("group", 4)
       .Finalize(net.NewOperatorDef());
 
-
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 8, 1, 2},

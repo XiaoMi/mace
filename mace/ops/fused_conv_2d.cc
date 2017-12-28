@@ -6,25 +6,30 @@
 
 namespace mace {
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("FusedConv2D")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                      FusedConv2dOp<DeviceType::CPU, float>);
+void Register_FusedConv2D(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    FusedConv2dOp<DeviceType::CPU, float>);
 
-REGISTER_CPU_OPERATOR(OpKeyBuilder("FusedConv2D")
-                          .TypeConstraint<half>("T")
-                          .Build(),
-                      FusedConv2dOp<DeviceType::CPU, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    FusedConv2dOp<DeviceType::CPU, half>);
 
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    FusedConv2dOp<DeviceType::OPENCL, float>);
 
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("FusedConv2D")
-                             .TypeConstraint<float>("T")
-                             .Build(),
-                         FusedConv2dOp<DeviceType::OPENCL, float>);
-
-REGISTER_OPENCL_OPERATOR(OpKeyBuilder("FusedConv2D")
-                             .TypeConstraint<half>("T")
-                             .Build(),
-                         FusedConv2dOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    FusedConv2dOp<DeviceType::OPENCL, half>);
+}
 
 }  // namespace mace

@@ -97,7 +97,9 @@ TEST_F(ConcatOpTest, CPURandom) {
   for (int i = 0; i < num_inputs; ++i) {
     builder = builder.Input(("Input" + ToString(i)).c_str());
   }
-  builder.AddIntArg("axis", axis).Output("Output").Finalize(net.NewOperatorDef());
+  builder.AddIntArg("axis", axis)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
 
   std::vector<index_t> shape_data;
   GenerateRandomIntTypeData<index_t>({dim}, shape_data, 1, dim);
@@ -110,8 +112,8 @@ TEST_F(ConcatOpTest, CPURandom) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::CPU, float>(("Input" + ToString(i)).c_str(),
-                                 input_shapes[i], inputs[i]);
+    net.AddInputFromArray<DeviceType::CPU, float>(
+        ("Input" + ToString(i)).c_str(), input_shapes[i], inputs[i]);
   }
 
   // Run
@@ -137,7 +139,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   }
 }
 
-template<typename T>
+template <typename T>
 void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
                       const int axis) {
   srand(time(nullptr));
@@ -149,9 +151,9 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     const std::string input_name = ("Input" + ToString(i)).c_str();
     const std::string image_name = ("InputImage" + ToString(i)).c_str();
     concat_axis_size += shapes[i][axis];
-    net.AddRandomInput<DeviceType::OPENCL, float>(input_name,
-                                                  shapes[i]);
-    BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name, kernels::BufferType::IN_OUT);
+    net.AddRandomInput<DeviceType::OPENCL, float>(input_name, shapes[i]);
+    BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name,
+                                         kernels::BufferType::IN_OUT);
   }
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -167,7 +169,8 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   // Run
   net.RunOp(DeviceType::OPENCL);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "Output", kernels::BufferType::IN_OUT);
+  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "Output",
+                                           kernels::BufferType::IN_OUT);
 
   // Check
   auto output = net.GetOutput("Output");
@@ -182,15 +185,16 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   while (output_ptr != (output->data<float>() + output->size())) {
     for (int i = 0; i < num_inputs; ++i) {
       index_t num_elements =
-          std::accumulate(shapes[i].begin() + axis, shapes[i].end(),
-                          1, std::multiplies<index_t>());
+          std::accumulate(shapes[i].begin() + axis, shapes[i].end(), 1,
+                          std::multiplies<index_t>());
 
       const std::string input_name = ("Input" + ToString(i)).c_str();
       const Tensor *input_tensor = net.GetTensor(input_name.data());
       Tensor::MappingGuard input_guard(input_tensor);
       const float *input_ptr = input_tensor->data<float>() + k * num_elements;
       for (int j = 0; j < num_elements; ++j) {
-        EXPECT_NEAR(*(input_ptr + j), *output_ptr++, 1e-2) << "With index: " << i << ", " << j;
+        EXPECT_NEAR(*(input_ptr + j), *output_ptr++, 1e-2)
+            << "With index: " << i << ", " << j;
       }
     }
     k++;
@@ -198,25 +202,13 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
 }
 
 TEST_F(ConcatOpTest, OPENCLAligned) {
-  OpenclRandomTest<float>({
-                              {3, 32, 32, 32},
-                              {3, 32, 32, 64}
-                          },
-                          3);
+  OpenclRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3);
 }
 
 TEST_F(ConcatOpTest, OPENCLHalfAligned) {
-  OpenclRandomTest<half>({
-                              {3, 32, 32, 32},
-                              {3, 32, 32, 64}
-                          },
-                          3);
+  OpenclRandomTest<half>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3);
 }
 
 TEST_F(ConcatOpTest, OPENCLUnAligned) {
-  OpenclRandomTest<float>({
-                              {3, 32, 32, 13},
-                              {3, 32, 32, 17}
-                          },
-                          3);
+  OpenclRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3);
 }

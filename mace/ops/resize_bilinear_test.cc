@@ -80,29 +80,31 @@ void TestRandomResizeBilinear() {
                                  {batch, in_height, in_width, channels});
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("align_corners", align_corners)
-      .AddIntsArg("size", {height, width})
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Output("Output")
+        .AddIntArg("align_corners", align_corners)
+        .AddIntsArg("size", {height, width})
+        .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::OPENCL) {
-      BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+      BufferToImage<D, float>(net, "Input", "InputImage",
+                              kernels::BufferType::IN_OUT);
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddIntArg("align_corners", align_corners)
-        .AddIntsArg("size", {height, width})
-        .Finalize(net.NewOperatorDef());
+          .Input("InputImage")
+          .Output("OutputImage")
+          .AddIntArg("align_corners", align_corners)
+          .AddIntsArg("size", {height, width})
+          .Finalize(net.NewOperatorDef());
       // Run
       net.RunOp(D);
 
-      ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput", kernels::BufferType::IN_OUT);
+      ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
+                              kernels::BufferType::IN_OUT);
     } else {
       // TODO support NEON
     }

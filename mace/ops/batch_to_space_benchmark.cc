@@ -14,7 +14,8 @@ static void BMBatchToSpace(
 
   OpsTestNet net;
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
-  BufferToImage<D, float>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, float>(net, "Input", "InputImage",
+                          kernels::BufferType::IN_OUT);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -36,16 +37,17 @@ static void BMBatchToSpace(
 }
 
 #define BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, DEVICE)             \
-  static void BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE( \
-      int iters) {                                                     \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
-    mace::testing::ItemsProcessed(tot);                                \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
-    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W, ARG);              \
-  }                                                                    \
+  static void                                                              \
+      BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE( \
+          int iters) {                                                     \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;       \
+    mace::testing::ItemsProcessed(tot);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                    \
+    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W, ARG);                  \
+  }                                                                        \
   BENCHMARK(BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
 
-#define BM_BATCH_TO_SPACE(N, H, W, C, ARG, TYPE)       \
+#define BM_BATCH_TO_SPACE(N, H, W, C, ARG, TYPE) \
   BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, OPENCL);
 
 BM_BATCH_TO_SPACE(128, 8, 8, 128, 2, float);
