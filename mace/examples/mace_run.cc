@@ -212,12 +212,14 @@ int main(int argc, char **argv) {
     LOG(INFO) << "Avg duration: " << (t1 - t0) / round << " us";
   }
 
-  MACE_CHECK(engine.Run(input_data.get(), input_shape_vec, output_data.get()));
   if (output_data != nullptr) {
     ofstream out_file(output_file, ios::binary);
     out_file.write((const char *) (output_data.get()),
                    output_size * sizeof(float));
     out_file.flush();
     out_file.close();
+    LOG(INFO) << "Write output file done.";
+  } else {
+    LOG(ERROR) << "output data is null";
   }
 }

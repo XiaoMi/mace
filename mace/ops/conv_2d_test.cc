@@ -2,6 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <fstream>
 #include "mace/ops/conv_2d.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -564,19 +565,20 @@ TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
 
 template<DeviceType D>
 static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
-                                      const std::vector<index_t> &filter_shape) {
+                                      const std::vector<index_t> &filter_shape,
+                                      const std::vector<int> &dilations) {
   testing::internal::LogToStderr();
   srand(time(NULL));
 
   auto func = [&](int stride_h, int stride_w, Padding padding) {
     // generate random input
-    index_t batch = 3 + (rand() % 10);
+    index_t batch = 3;
     index_t height = input_shape[0];
     index_t width = input_shape[1];
     index_t kernel_h = filter_shape[0];
     index_t kernel_w = filter_shape[1];
-    index_t input_channels = filter_shape[2] + (rand() % 10);
-    index_t output_channels = filter_shape[3] + (rand() % 10);
+    index_t input_channels = filter_shape[2];
+    index_t output_channels = filter_shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -586,7 +588,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
         .Output("Output")
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
+        .AddIntsArg("dilations", {dilations[0], dilations[1]})
         .Finalize(net.NewOperatorDef());
 
     std::vector<float> float_input_data;
@@ -619,7 +621,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
         .Output("OutputImage")
         .AddIntsArg("strides", {stride_h, stride_w})
         .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
+        .AddIntsArg("dilations", {dilations[0], dilations[1]})
         .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
         .Finalize(net.NewOperatorDef());
     // Run on device
@@ -630,43 +632,154 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
   };
 
-  for (int stride : {1, 2}) {
-    func(stride, stride, VALID);
-    func(stride, stride, SAME);
+  func(1, 1, VALID);
+  func(1, 1, SAME);
+  if (dilations[0] == 1) {
+    func(2, 2, VALID);
+    func(2, 2, SAME);
   }
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
-                                                {1, 1, 32, 64});
+                                                {1, 1, 32, 64},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
-                                                {3, 3, 32, 64});
+                                                {3, 3, 32, 64},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv15x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
-                                                {15, 1, 256, 2});
+                                                {15, 1, 256, 2},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x15S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
-                                                {1, 15, 256, 2});
+                                                {1, 15, 256, 2},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x75S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32},
-                                                {7, 7, 3, 64});
+                                                {7, 7, 3, 64},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv1x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113},
-                                                {1, 1, 5, 7});
+                                                {1, 1, 5, 7},
+                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv3x3S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({107, 113},
-                                                {3, 3, 5, 7});
+                                                {3, 3, 5, 7},
+                                                {1, 1});
 }
+
+TEST_F(Conv2dOpTest, OPENCLHalfConv5x5Dilation2) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({64, 64},
+                                                {5, 5, 16, 16},
+                                                {2, 2});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfConv7x7Dilation2) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({64, 64},
+                                                {7, 7, 16, 16},
+                                                {2, 2});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfConv7x7Dilation4) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({63, 67},
+                                                {7, 7, 16, 16},
+                                                {4, 4});
+}
+
+template<DeviceType D, typename T>
+static void TestDilationConvNxN(const std::vector<index_t> &shape, const int dilation_rate) {
+  testing::internal::LogToStderr();
+  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
+                  Padding type) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 1;
+    index_t height = shape[0];
+    index_t width = shape[1];
+    index_t input_channels = shape[2];
+    index_t output_channels = shape[3];
+    // Construct graph
+    OpsTestNet net;
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {dilation_rate, dilation_rate})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+
+    // Add input data
+    net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, T>(
+        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+    net.AddRandomInput<D, T>("Bias", {output_channels});
+
+    // run on cpu
+    net.RunOp();
+    // Check
+    Tensor expected;
+    expected.Copy(*net.GetOutput("Output"));
+
+    // run on gpu
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("OutputImage")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntArg("padding", type)
+        .AddIntsArg("dilations", {dilation_rate, dilation_rate})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+    // Run on device
+    net.RunOp(D);
+
+    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+  };
+
+  for (int kernel_size : {3}) {
+    for (int stride : {1}) {
+      func(kernel_size, kernel_size, stride, stride, VALID);
+      func(kernel_size, kernel_size, stride, stride, SAME);
+    }
+  }
+}
+
+TEST_F(Conv2dOpTest, OPENCLAlignedDilation2) {
+  TestDilationConvNxN<DeviceType::OPENCL, float>({32, 32, 32, 64},
+                                                 2);
+}
+
+TEST_F(Conv2dOpTest, OPENCLAligned2Dilation4) {
+  TestDilationConvNxN<DeviceType::OPENCL, float>({128, 128, 16, 16},
+                                                 4);
+}
+
+TEST_F(Conv2dOpTest, OPENCLUnalignedDilation4) {
+  TestDilationConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7},
+                                                 4);
+}
+

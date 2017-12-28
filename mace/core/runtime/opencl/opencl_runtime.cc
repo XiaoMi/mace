@@ -192,18 +192,9 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
   *program = cl::Program(this->context(), {device()}, {binary});
 #else
   std::string source_filename = kernel_path_ + program_file_name;
-  std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
 
   // Create program
-  bool is_binary_filename_exist = std::ifstream(binary_filename).is_open();
-  if (is_binary_filename_exist) {
-    VLOG(1) << "Create program with binary: " << binary_filename;
-    std::vector<unsigned char> binary;
-    MACE_CHECK(ReadFile(binary_filename, true, &binary));
-
-    *program = cl::Program(this->context(), {device()}, {binary});
-
-  } else if (std::ifstream(source_filename).is_open()) {
+  if (std::ifstream(source_filename).is_open()) {
     VLOG(1) << "Create program with source: " << source_filename;
     std::vector<unsigned char> kernel_source;
     MACE_CHECK(ReadFile(source_filename, false, &kernel_source));
@@ -214,8 +205,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     *program = cl::Program(this->context(), sources);
 
   } else {
-    LOG(FATAL) << "Failed to open kernel file " << binary_filename << " or "
-               << source_filename;
+    LOG(FATAL) << "Failed to open kernel file " << source_filename;
   }
 #endif
 
@@ -237,32 +227,31 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
 
 #ifndef MACE_EMBED_BINARY_PROGRAM
   // Write binary if necessary
-  if (!is_binary_filename_exist) {
-    size_t device_list_size = 1;
-    std::unique_ptr<size_t[]> program_binary_sizes(
-        new size_t[device_list_size]);
-    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
-                                  sizeof(size_t) * device_list_size,
-                                  program_binary_sizes.get(), nullptr);
-    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
-        new std::unique_ptr<unsigned char[]>[device_list_size]);
-    for (cl_uint i = 0; i < device_list_size; ++i) {
-      program_binaries[i] = std::unique_ptr<unsigned char[]>(
-          new unsigned char[program_binary_sizes[i]]);
-    }
-
-    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
-                           sizeof(unsigned char *) * device_list_size,
-                           program_binaries.get(), nullptr);
-    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-    std::vector<unsigned char> content(
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
-        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
-            program_binary_sizes[0]);
-
-    MACE_CHECK(WriteFile(binary_filename, true, content));
+  std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
+  size_t device_list_size = 1;
+  std::unique_ptr<size_t[]> program_binary_sizes(
+      new size_t[device_list_size]);
+  cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
+                                sizeof(size_t) * device_list_size,
+                                program_binary_sizes.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
+  std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+      new std::unique_ptr<unsigned char[]>[device_list_size]);
+  for (cl_uint i = 0; i < device_list_size; ++i) {
+    program_binaries[i] = std::unique_ptr<unsigned char[]>(
+        new unsigned char[program_binary_sizes[i]]);
   }
+
+  err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
+                         sizeof(unsigned char *) * device_list_size,
+                         program_binaries.get(), nullptr);
+  MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
+  std::vector<unsigned char> content(
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+      reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+          program_binary_sizes[0]);
+
+  MACE_CHECK(WriteFile(binary_filename, true, content));
 #endif
 }
 

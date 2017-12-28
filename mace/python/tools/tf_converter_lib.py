@@ -44,6 +44,7 @@ class TFConverter(object):
     self.device = device
     self.tf_graph = {}
     self.resolved_ops = {}
+    self.unused_tensor = set()
 
     for op in tf_ops:
       self.resolved_ops[op.name] = 0
@@ -71,6 +72,23 @@ class TFConverter(object):
     arg.name = 'T'
     arg.i = self.dt
     return output_name
+
+  def add_image_to_buffer(self, input_name, input_type):
+    output_name = input_name[:-2] + "_i2b" + input_name[-2:]
+    op_def = self.net_def.op.add()
+    op_def.name = output_name[:-2]
+    op_def.type = 'ImageToBuffer'
+    op_def.input.extend([input_name])
+    op_def.output.extend([output_name])
+
+    arg = op_def.arg.add()
+    arg.name = 'buffer_type'
+    arg.i = buffer_type_map[input_type]
+    arg = op_def.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    return output_name
+
 
   def add_input_transform(self, name):
     new_input_name = MACE_INPUT_NODE_NAME + ":0"
@@ -111,22 +129,23 @@ class TFConverter(object):
     op.output_shape.extend(output_shapes)
 
   def convert_tensor(self, op):
-    tensor = self.net_def.tensors.add()
-    tf_tensor = op.outputs[0].eval()
-    tensor.name = op.outputs[0].name
+    if op.outputs[0].name not in self.unused_tensor:
+      tensor = self.net_def.tensors.add()
+      tf_tensor = op.outputs[0].eval()
+      tensor.name = op.outputs[0].name
 
-    shape = list(tf_tensor.shape)
-    tensor.dims.extend(shape)
+      shape = list(tf_tensor.shape)
+      tensor.dims.extend(shape)
 
-    tf_dt = op.get_attr('dtype')
-    if tf_dt == tf.float32:
-      tensor.data_type = mace_pb2.DT_FLOAT
-      tensor.float_data.extend(tf_tensor.astype(np.float32).flat)
-    elif tf_dt == tf.int32:
-      tensor.data_type = mace_pb2.DT_INT32
-      tensor.int32_data.extend(tf_tensor.astype(np.int32).flat)
-    else:
-      raise Exception("Not supported tensor type: " + tf_dt.name)
+      tf_dt = op.get_attr('dtype')
+      if tf_dt == tf.float32:
+        tensor.data_type = mace_pb2.DT_FLOAT
+        tensor.float_data.extend(tf_tensor.astype(np.float32).flat)
+      elif tf_dt == tf.int32:
+        tensor.data_type = mace_pb2.DT_INT32
+        tensor.int32_data.extend(tf_tensor.astype(np.int32).flat)
+      else:
+        raise Exception("Not supported tensor type: " + tf_dt.name)
     self.resolved_ops[op.name] = 1
 
   def convert_conv2d(self, op):
@@ -253,6 +272,7 @@ class TFConverter(object):
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = 'NHWC'
+    self.unused_tensor.add(get_input_tensor(op, 1).name)
 
     self.net_def.op.extend([op_def])
     for i in range(0, 7):
@@ -326,6 +346,7 @@ class TFConverter(object):
     axis_arg.i = get_input_tensor(op, 2).eval().astype(np.int32)
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
+    self.unused_tensor.add(get_input_tensor(op, 2).name)
 
   def convert_resize_bilinear(self, op):
     op_def = self.net_def.op.add()
@@ -344,6 +365,7 @@ class TFConverter(object):
     size_arg.i = op.get_attr('align_corners')
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
+    self.unused_tensor.add(get_input_tensor(op, 1).name)
 
   def convert_bias_add(self, op):
     op_def = mace_pb2.OperatorDef()
@@ -383,6 +405,79 @@ class TFConverter(object):
     size_arg.ints.extend(get_input_tensor(op, 2).eval().astype(np.int32).flat)
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
+    self.unused_tensor.add(get_input_tensor(op, 1).name)
+    self.unused_tensor.add(get_input_tensor(op, 2).name)
+
+  def is_atrous_conv2d(self, op):
+    return op.type == 'SpaceToBatchND' and\
+           len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'Conv2D'
+
+  def convert_atrous_conv2d(self, op):
+    op_def = mace_pb2.OperatorDef()
+    arg = op_def.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    conv_op = self.tf_graph[op.name][0]
+    op_def.name = conv_op.name
+    op_def.type = conv_op.type
+    if self.device == 'gpu':
+      op_def.input.extend([op.inputs[0].name])
+      output_name = self.add_buffer_to_image(conv_op.inputs[1].name, "FILTER")
+      op_def.input.extend([output_name])
+    else:
+      op_def.input.extend([op.inputs[0].name])
+      op_def.input.extend([conv_op.inputs[1].name])
+
+    dilation_arg = op_def.arg.add()
+    dilation_arg.name = 'dilations'
+    dilation_arg.ints.extend(get_input_tensor(op, 1).eval().astype(np.int32).flat)
+    padding_arg = op_def.arg.add()
+    padding_arg.name = 'padding'
+    padding_values = get_input_tensor(op, 2).eval().astype(np.int32).flat
+    if len(padding_values) > 0 and padding_values[0] > 0:
+      padding_arg.i = padding_mode['SAME']
+    else:
+      padding_arg.i = padding_mode['VALID']
+    self.unused_tensor.add(get_input_tensor(op, 1).name)
+    self.unused_tensor.add(get_input_tensor(op, 2).name)
+
+    strides_arg = op_def.arg.add()
+    strides_arg.name = 'strides'
+    strides_arg.ints.extend([1, 1])
+    data_format_arg = op_def.arg.add()
+    data_format_arg.name = 'data_format'
+    data_format_arg.s = 'NHWC'
+    final_op = conv_op
+    self.resolved_ops[op.name] = 1
+    self.resolved_ops[conv_op.name] = 1
+
+    if len(self.tf_graph[final_op.name]) == 1 and self.tf_graph[final_op.name][0].type == 'BiasAdd' :
+      bias_add_op = self.tf_graph[final_op.name][0]
+      if self.device == 'gpu':
+        output_name = self.add_buffer_to_image(bias_add_op.inputs[1].name, "ARGUMENT")
+        op_def.input.extend([output_name])
+      else:
+        op_def.input.extend([bias_add_op.inputs[1].name])
+      final_op = bias_add_op
+      self.resolved_ops[bias_add_op.name] = 1
+
+    if len(self.tf_graph[final_op.name]) == 1 \
+      and self.tf_graph[final_op.name][0].type == 'BatchToSpaceND':
+      final_op = self.tf_graph[final_op.name][0]
+      self.resolved_ops[final_op.name] = 1
+    else:
+      raise Exception('Convert atrous conv error: no BatchToSpaceND op')
+
+    if len(self.tf_graph[final_op.name]) == 1 \
+        and self.tf_graph[final_op.name][0].type == 'Relu':
+      relu_op = self.tf_graph[final_op.name][0]
+      op_def.type = "FusedConv2D"
+      final_op = relu_op
+      self.resolved_ops[relu_op.name] = 1
+
+    op_def.output.extend([output.name for output in final_op.outputs])
+    self.add_output_shape(final_op.outputs, op_def)
+    self.net_def.op.extend([op_def])
 
   def convert_normal_op(self, op):
     op_def = self.net_def.op.add()
@@ -407,7 +502,9 @@ class TFConverter(object):
         self.resolved_ops[op.name] = 1
         pass
       elif op.type == 'Const':
-        self.convert_tensor(op)
+        pass
+      elif self.is_atrous_conv2d(op):
+        self.convert_atrous_conv2d(op)
       elif op.type == 'Conv2D' or op.type == 'DepthwiseConv2dNative':
         self.convert_conv2d(op)
       elif op.type == 'FusedBatchNorm':
@@ -432,6 +529,15 @@ class TFConverter(object):
         self.convert_space_to_batch(op, True)
       elif op.type in ['Relu']:
         self.convert_normal_op(op)
+      else:
+        raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
+
+
+    for op in self.tf_ops:
+      if self.resolved_ops[op.name] == 1:
+        continue
+      elif op.type == 'Const':
+        self.convert_tensor(op)
       else:
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 

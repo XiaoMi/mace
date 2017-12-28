@@ -10,8 +10,8 @@ from tensorflow import gfile
 
 # Validation Flow:
 # 1. Generate input data
-#    python validate_icnet.py --generate_data 1 \
-#          --random_seed 1
+#    python validate_icnet.py --generate_data 1
+#
 # 2. Use mace_run to run icnet on phone.
 # 3. adb pull the result.
 # 4. Compare output data of mace and tf
@@ -20,7 +20,7 @@ from tensorflow import gfile
 #        --mace_out_file icnet.out
 
 def generate_data(shape):
-  np.random.seed(FLAGS.random_seed)
+  np.random.seed()
   data = np.random.random(shape) * -1
   print FLAGS.input_file
   data.astype(np.float32).tofile(FLAGS.input_file)
@@ -122,12 +122,7 @@ def parse_args():
     "--generate_data",
     type='bool',
     default="false",
-    help="Random seed for generate test case.")
-  parser.add_argument(
-    "--random_seed",
-    type=int,
-    default="0",
-    help="Random seed for generate test case.")
+    help="Generate data or not.")
 
   return parser.parse_known_args()
 

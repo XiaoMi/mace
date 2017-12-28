@@ -79,7 +79,8 @@ build_and_run()
 }
 
 echo "Step 1: Generate input data"
-python tools/validate.py --generate_data true --random_seed 1 \
+rm -rf ${MODEL_DIR}/${INPUT_FILE_NAME}
+python tools/validate.py --generate_data true \
  --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
  --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3"
 
