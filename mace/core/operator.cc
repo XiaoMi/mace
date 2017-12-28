@@ -14,7 +14,10 @@ OperatorBase::OperatorBase(const OperatorDef &operator_def, Workspace *ws)
 
 OpKeyBuilder::OpKeyBuilder(const char *op_name) : op_name_(op_name) {}
 
-OpKeyBuilder &OpKeyBuilder::Device(DeviceType device) { device_type_ = device; }
+OpKeyBuilder &OpKeyBuilder::Device(DeviceType device) {
+  device_type_ = device;
+  return *this;
+}
 
 OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name,
                                            const DataType allowed) {

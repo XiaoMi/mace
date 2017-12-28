@@ -6,7 +6,7 @@ cc_binary(
     srcs = [
         "helloworld.cc",
     ],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_enable_neon(["-fopenmp"]),
     deps = [
         "//mace/core",
@@ -18,7 +18,7 @@ cc_test(
     name = "benchmark_example",
     testonly = 1,
     srcs = ["benchmark_example.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_enable_neon(["-fopenmp"]),
     linkstatic = 1,
     deps = [
@@ -30,7 +30,7 @@ cc_test(
 cc_binary(
     name = "mace_run",
     srcs = ["mace_run.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_enable_neon(["-fopenmp"]),
     linkstatic = 1,
     deps = [
