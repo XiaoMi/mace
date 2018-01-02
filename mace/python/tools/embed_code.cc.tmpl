@@ -1,0 +1,111 @@
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
+
+// This is a generated file, DO NOT EDIT
+
+{% if mode == "read_tuning_config" %}
+#include <fstream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+
+namespace mace {
+bool GetTuningParams(const char *path,
+                      std::unordered_map<std::string, std::vector<{{data_type}}>> *param_table) {
+  if (path != nullptr) {
+    std::ifstream ifs(path, std::ios::binary | std::ios::in);
+    if (ifs.is_open()) {
+      int32_t key_size = 0;
+      int32_t params_size = 0;
+      int32_t params_count = 0;
+      int64_t num_pramas = 0;
+      ifs.read(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
+      while (num_pramas--) {
+        ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
+        std::string key(key_size, ' ');
+        ifs.read(&key[0], key_size);
+
+        ifs.read(reinterpret_cast<char *>(&params_size), sizeof(params_size));
+        params_count = params_size / sizeof({{data_type}});
+        std::vector<{{data_type}}> params(params_count);
+        for (int i = 0; i < params_count; ++i) {
+          ifs.read(reinterpret_cast<char *>(&params[i]), sizeof({{data_type}}));
+        }
+        param_table->emplace(key, params);
+      }
+      ifs.close();
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+}  // namespace
+{% else %}
+
+#include <map>
+#include <string>
+#include <vector>
+{% if mode == "tuning_binary" %}
+#include <unordered_map>
+{% endif %}
+
+namespace mace {
+
+extern const std::map<std::string, std::vector<{{data_type}}>> {{variable_name}}=
+{
+  {% for key, value in maps.iteritems() %}
+  {
+    "{{key}}",
+    {
+      {%- for ele in value -%}
+      {{ele}},
+      {%- endfor -%}
+    }
+  },  // {{key}}
+{% endfor %}
+};
+
+{% if mode == "cl_encrypt" %}
+bool GetOpenCLProgram(const std::string &program_name,
+                      const std::string &binary_file_name_prefix,
+                      std::vector<unsigned char> *program_vec,
+                      bool *is_binary) {
+  *is_binary = false;
+  auto it_source = {{variable_name}}.find(program_name);
+  if (it_source == {{variable_name}}.end()) {
+    return false;
+  }
+  *program_vec = it_source->second;
+  return true;
+}
+
+{% elif mode == "cl_binary" %}
+bool GetOpenCLProgram(const std::string &program_name,
+                      const std::string &binary_file_name_prefix,
+                      std::vector<unsigned char> *program_vec,
+                      bool *is_binary) {
+  *is_binary = true;
+  auto it_source = {{variable_name}}.find(binary_file_name_prefix);
+  if (it_source == {{variable_name}}.end()) {
+    return false;
+  }
+  *program_vec = it_source->second;
+  return true;
+}
+
+{% elif mode == "tuning_binary" %}
+bool GetTuningParams(const char *path,
+                      std::unordered_map<std::string, std::vector<{{data_type}}>> *param_table) {
+  for (auto it = kTuningParamsData.begin(); it != kTuningParamsData.end(); ++it) {
+    param_table->emplace(it->first, std::vector<{{data_type}}>(it->second.begin(), it->second.end()));
+  }
+  return true;
+}
+
+{% endif %}
+
+}  // namespace
+
+{% endif %}

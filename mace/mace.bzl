@@ -30,12 +30,6 @@ def if_profiling_enabled(a):
       "//conditions:default": [],
   })
 
-def if_embed_binary_program(a):
-  return select({
-      "//mace:embed_binary_program": a,
-      "//conditions:default": [],
-  })
-
 def if_enable_neon(a):
   return select({
       "//mace:enable_neon": a,

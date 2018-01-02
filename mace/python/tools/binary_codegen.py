@@ -38,14 +38,14 @@ def generate_cpp_source():
     idx += params_size
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  return env.get_template('binary.cc.tmpl').render(
+  return env.get_template('embed_code.cc.tmpl').render(
     maps = data_map,
-    data_type = 'int',
-    variable_name = FLAGS.variable_name
+    data_type = 'unsigned int',
+    variable_name = FLAGS.variable_name,
+    mode="tuning_binary"
   )
 
 def main(unused_args):
-
   cpp_binary_source = generate_cpp_source()
   if os.path.isfile(FLAGS.output_path):
     os.remove(FLAGS.output_path)

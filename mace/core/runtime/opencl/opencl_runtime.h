@@ -55,6 +55,7 @@ class OpenCLRuntime {
                     const std::string &build_options,
                     cl::Program *program);
   std::string GenerateCLBinaryFilenamePrefix(const std::string &filename_msg);
+  const std::vector<unsigned char> DecryptOpenCLSource(const std::vector<unsigned char> &src);
 
  private:
   // All OpenCL object must be a pointer and manually deleted before unloading

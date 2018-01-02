@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_profiling_enabled", "if_embed_binary_program")
+load("//mace:mace.bzl", "if_android", "if_profiling_enabled")
 
 cc_library(
     name = "core",
@@ -22,8 +22,7 @@ cc_library(
         "runtime/opencl/*.h",
     ]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
-            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) +
-            if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
+            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]),
     linkopts = if_android(["-pie", "-ldl"]),
     deps = [
         "//mace/utils:utils_hdrs",

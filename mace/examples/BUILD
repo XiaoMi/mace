@@ -1,5 +1,5 @@
 # Examples
-load("//mace:mace.bzl", "if_android", "if_enable_neon", "if_embed_binary_program")
+load("//mace:mace.bzl", "if_android", "if_enable_neon")
 
 cc_binary(
     name = "helloworld",

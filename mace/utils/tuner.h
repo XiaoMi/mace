@@ -18,6 +18,9 @@
 
 namespace mace {
 
+extern bool GetTuningParams(const char *path,
+    std::unordered_map<std::string, std::vector<unsigned int>> *param_table);
+
 template <typename param_type>
 class Tuner {
  public:
@@ -99,40 +102,10 @@ class Tuner {
   }
 
   inline void ReadRunParamters() {
-#ifdef MACE_EMBED_BINARY_PROGRAM
-    extern const std::map<std::string, std::vector<int>> kTuningParamsData;
-    VLOG(1) << "Read tuning parameters from source";
-    for (auto it = kTuningParamsData.begin(); it != kTuningParamsData.end(); ++it) {
-      param_table_.emplace(it->first, std::vector<param_type>(it->second.begin(), it->second.end()));
+    bool success = GetTuningParams(path_, &param_table_);
+    if (!success) {
+      LOG(WARNING) << "Read run parameter failed.";
     }
-#else
-    if (path_ != nullptr) {
-      std::ifstream ifs(path_, std::ios::binary | std::ios::in);
-      if (ifs.is_open()) {
-        int32_t key_size = 0;
-        int32_t params_size = 0;
-        int32_t params_count = 0;
-        int64_t num_pramas = 0;
-        ifs.read(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
-        while (num_pramas--) {
-          ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
-          std::string key(key_size, ' ');
-          ifs.read(&key[0], key_size);
-
-          ifs.read(reinterpret_cast<char *>(&params_size), sizeof(params_size));
-          params_count = params_size / sizeof(param_type);
-          std::vector<param_type> params(params_count);
-          for (int i = 0; i < params_count; ++i) {
-            ifs.read(reinterpret_cast<char *>(&params[i]), sizeof(param_type));
-          }
-          param_table_.emplace(key, params);
-        }
-        ifs.close();
-      } else {
-        LOG(WARNING) << "Read run parameter file failed.";
-      }
-    }
-#endif
   }
 
   template <typename RetType>

@@ -5,8 +5,6 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
-load("//mace:mace.bzl", "if_embed_binary_program")
-
 cc_library(
     name = "generated_models_lib",
     srcs = glob(["models/*/*.cc"]),
@@ -15,11 +13,10 @@ cc_library(
     deps = [
         "//mace/core",
         "//mace/ops",
-        '//mace/codegen:version_lib',
-    ] + if_embed_binary_program([
-        '//mace/codegen:generated_opencl_lib',
-        '//mace/codegen:generated_tuning_lib',
-    ]),
+        "//mace/codegen:version_lib",
+        "//mace/codegen:generated_opencl_lib",
+        "//mace/codegen:generated_tuning_lib",
+    ],
 )
 
 cc_library(
