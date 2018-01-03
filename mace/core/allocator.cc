@@ -24,5 +24,6 @@ Allocator *GetDeviceAllocator(DeviceType type) {
 MACE_REGISTER_ALLOCATOR(DeviceType::CPU, new CPUAllocator());
 MACE_REGISTER_ALLOCATOR(DeviceType::NEON, new CPUAllocator());
 MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
+MACE_REGISTER_ALLOCATOR(DeviceType::HEXAGON, new CPUAllocator());
 
 }  // namespace mace

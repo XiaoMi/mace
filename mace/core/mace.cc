@@ -5,9 +5,7 @@
 #include "mace/core/public/mace.h"
 #include "mace/core/types.h"
 #include "mace/core/net.h"
-#include "mace/core/operator.h"
-#include "mace/core/workspace.h"
-#include "mace/utils/logging.h"
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 
 namespace mace {
 
@@ -16,26 +14,26 @@ ConstTensor::ConstTensor(const std::string &name,
                          const std::vector<int64_t> &dims,
                          const DataType data_type,
                          uint32_t node_id) :
-    name_(name),
-    data_(data),
-    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                               std::multiplies<int64_t>())),
-    dims_(dims.begin(), dims.end()),
-    data_type_(data_type),
-    node_id_(node_id) {}
+  name_(name),
+  data_(data),
+  data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                             std::multiplies<int64_t>())),
+  dims_(dims.begin(), dims.end()),
+  data_type_(data_type),
+  node_id_(node_id) {}
 
 ConstTensor::ConstTensor(const std::string &name,
                          unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const int data_type,
                          uint32_t node_id) :
-    name_(name),
-    data_(data),
-    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                               std::multiplies<int64_t>())),
-    dims_(dims.begin(), dims.end()),
-    data_type_(static_cast<DataType>(data_type)),
-    node_id_(node_id) {}
+  name_(name),
+  data_(data),
+  data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                             std::multiplies<int64_t>())),
+  dims_(dims.begin(), dims.end()),
+  data_type_(static_cast<DataType>(data_type)),
+  node_id_(node_id) {}
 
 const std::string &ConstTensor::name() const {
   return name_;
@@ -152,6 +150,8 @@ void Argument::set_strings(const std::vector<std::string> &value) {
 }
 
 // Node Input
+NodeInput::NodeInput(int node_id, int output_port)
+  : node_id_(node_id), output_port_(output_port) {}
 void NodeInput::CopyFrom(const NodeInput &from) {
   node_id_ = from.node_id();
   output_port_ = from.output_port();
@@ -159,14 +159,20 @@ void NodeInput::CopyFrom(const NodeInput &from) {
 int NodeInput::node_id() const {
   return node_id_;
 }
+void NodeInput::set_node_id(int node_id) {
+  node_id_ = node_id;
+}
 int NodeInput::output_port() const {
   return output_port_;
+}
+void NodeInput::set_output_port(int output_port) {
+  output_port_ = output_port;
 }
 
 // OutputShape
 OutputShape::OutputShape() {}
-OutputShape::OutputShape(const std::vector<int64_t> &dims):
-    dims_(dims.begin(), dims.end()) {}
+OutputShape::OutputShape(const std::vector<int64_t> &dims) :
+  dims_(dims.begin(), dims.end()) {}
 void OutputShape::CopyFrom(const OutputShape &from) {
   auto from_dims = from.dims();
   dims_.resize(from_dims.size());
@@ -214,7 +220,9 @@ void OperatorDef::CopyFrom(const OperatorDef &from) {
   }
   auto from_out_max_byte_size = from.out_max_byte_size();
   out_max_byte_size_.resize(from_out_max_byte_size.size());
-  std::copy(from_out_max_byte_size.begin(), from_out_max_byte_size.end(), out_max_byte_size_.begin());
+  std::copy(from_out_max_byte_size.begin(),
+            from_out_max_byte_size.end(),
+            out_max_byte_size_.begin());
 
   has_bits_ = from.has_bits_;
 
@@ -262,17 +270,29 @@ void OperatorDef::set_has_mem_id() {
 uint32_t OperatorDef::node_id() const {
   return node_id_;
 }
+void OperatorDef::set_node_id(uint32_t node_id) {
+  node_id_ = node_id;
+}
 uint32_t OperatorDef::op_id() const {
   return op_id_;
 }
 uint32_t OperatorDef::padding() const {
   return padding_;
 }
+void OperatorDef::set_padding(uint32_t padding) {
+  padding_ = padding;
+}
 const std::vector<NodeInput> &OperatorDef::node_input() const {
   return node_input_;
 }
+void OperatorDef::add_node_input(const NodeInput &value) {
+  node_input_.push_back(value);
+}
 const std::vector<int> &OperatorDef::out_max_byte_size() const {
   return out_max_byte_size_;
+}
+void OperatorDef::add_out_max_byte_size(int value) {
+  out_max_byte_size_.push_back(value);
 }
 const std::vector<std::string> &OperatorDef::input() const {
   return input_;
@@ -339,7 +359,7 @@ void OperatorDef::set_output_type(const std::vector<DataType> &value) {
 
 // MemoryBlock
 MemoryBlock::MemoryBlock(int mem_id, uint32_t x, uint32_t y) :
-    mem_id_(mem_id), x_(x), y_(y) {}
+  mem_id_(mem_id), x_(x), y_(y) {}
 
 int MemoryBlock::mem_id() const {
   return mem_id_;
@@ -392,8 +412,14 @@ int32_t OutputInfo::max_byte_size() const {
 DataType OutputInfo::data_type() const {
   return data_type_;
 }
+void OutputInfo::set_data_type(DataType data_type) {
+  data_type_ = data_type;
+}
 const std::vector<int32_t> &OutputInfo::dims() const {
   return dims_;
+}
+void OutputInfo::set_dims(const std::vector<int32_t> &dims) {
+  dims_ = dims;
 }
 
 // NetDef
@@ -470,6 +496,9 @@ const std::vector<InputInfo> &NetDef::input_info() const {
 const std::vector<OutputInfo> &NetDef::output_info() const {
   return output_info_;
 }
+std::vector<OutputInfo> &NetDef::mutable_output_info() {
+  return output_info_;
+}
 
 int NetDef::op_size() const {
   return op_.size();
@@ -481,40 +510,66 @@ const OperatorDef &NetDef::op(const int idx) const {
 }
 
 // Mace Engine
-MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type):
-    op_registry_(new OperatorRegistry()), device_type_(device_type),
-    ws_(new Workspace()), net_(nullptr) {
+MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
+  op_registry_(new OperatorRegistry()), device_type_(device_type),
+  ws_(new Workspace()), net_(nullptr), hexagon_controller_(nullptr) {
 
-  ws_->LoadModelTensor(*net_def, device_type);
+  if (device_type == HEXAGON) {
+    hexagon_controller_.reset(new HexagonControlWrapper());
+    hexagon_controller_->Init();
+    hexagon_controller_->SetDebugLevel(0);
+    hexagon_controller_->Config();
+    hexagon_controller_->SetupGraph(*net_def);
+    hexagon_controller_->PrintGraph();
+  } else {
+    ws_->LoadModelTensor(*net_def, device_type);
 
-  // Init model
-  auto net = CreateNet(op_registry_, *net_def, ws_.get(),
-                       device_type, NetMode::INIT);
-  if(!net->Run()) {
-    LOG(FATAL) << "Net init run failed";
+    // Init model
+    auto net = CreateNet(op_registry_, *net_def, ws_.get(),
+                         device_type, NetMode::INIT);
+    if (!net->Run()) {
+      LOG(FATAL) << "Net init run failed";
+    }
+    ws_->CreateTensor("mace_input_node:0",
+                      GetDeviceAllocator(device_type_),
+                      DT_FLOAT);
+    net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
   }
-  ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
-  net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
 }
-MaceEngine::~MaceEngine() = default;
+MaceEngine::~MaceEngine() {
+  if (device_type_ == HEXAGON) {
+    hexagon_controller_->GetPerfInfo();
+    hexagon_controller_->PrintLog();
+    hexagon_controller_->TeardownGraph();
+    hexagon_controller_->Finalize();
+  }
+};
 bool MaceEngine::Run(const float *input,
                      const std::vector<index_t> &input_shape,
                      float *output) {
   MACE_CHECK(output != nullptr, "output ptr cannot be NULL");
   Tensor *input_tensor =
-      ws_->CreateTensor("mace_input_node:0", GetDeviceAllocator(device_type_), DT_FLOAT);
+    ws_->CreateTensor("mace_input_node:0",
+                      GetDeviceAllocator(device_type_),
+                      DT_FLOAT);
+  Tensor *output_tensor =
+    ws_->CreateTensor("mace_output_node:0",
+                      GetDeviceAllocator(device_type_),
+                      DT_FLOAT);
   input_tensor->Resize(input_shape);
   {
     Tensor::MappingGuard input_guard(input_tensor);
     float *input_data = input_tensor->mutable_data<float>();
     memcpy(input_data, input, input_tensor->size() * sizeof(float));
   }
-  if(!net_->Run()) {
-    LOG(FATAL) << "Net run failed";
+  if (device_type_ == HEXAGON) {
+    hexagon_controller_->ExecuteGraphPreQuantize(*input_tensor, output_tensor);
+  } else {
+    if (!net_->Run()) {
+      LOG(FATAL) << "Net run failed";
+    }
   }
   // save output
-  const Tensor *output_tensor = ws_->GetTensor("mace_output_node:0");
-
   if (output_tensor != nullptr) {
     Tensor::MappingGuard output_guard(output_tensor);
     auto shape = output_tensor->shape();

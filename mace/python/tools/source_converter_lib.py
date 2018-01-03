@@ -1,6 +1,7 @@
 import struct
 import os
 import uuid
+import numpy as np
 
 from tensorflow import gfile
 from mace.proto import mace_pb2
@@ -74,15 +75,18 @@ def rename_tensor(net_def):
 class TensorInfo:
   def __init__(self, t):
     self.name = t.name
+    self.data_type = mace_pb2.DataType.Name(t.data_type)
     if t.data_type == mace_pb2.DT_FLOAT:
       self.data = bytearray(struct.pack('%sf' % len(t.float_data), *t.float_data))
     elif t.data_type == mace_pb2.DT_INT32:
       self.data = bytearray(struct.pack('%si' % len(t.int32_data), *t.int32_data))
+    elif t.data_type == mace_pb2.DT_UINT8:
+      self.data = bytearray(np.array(t.int32_data).astype(np.uint8).tolist())
 
 def stringfy(value):
   return ', '.join('"{0}"'.format(w) for w in value)
 
-def convert_to_source(net_def, template, confuse, model_tag, output):
+def convert_to_source(net_def, template, confuse, model_tag, output, runtime):
   if confuse:
     confuse_name(net_def)
   else:
@@ -106,6 +110,7 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
       tensor = t,
       tag = model_tag,
       mode = 0,
+      runtime = runtime,
     )
     with gfile.GFile(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
       f.write(source)
@@ -120,7 +125,8 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
       end = min(start+10, op_size),
       net = net_def,
       tag = model_tag,
-      mode = 1
+      mode = 1,
+      runtime = runtime,
     )
     with gfile.GFile(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
       f.write(source)
@@ -132,7 +138,8 @@ def convert_to_source(net_def, template, confuse, model_tag, output):
     tensors = tensors,
     net = net_def,
     tag = model_tag,
-    mode = 2
+    mode = 2,
+    runtime = runtime,
   )
   with gfile.GFile(output, "wb") as f:
     f.write(source)
