@@ -5,7 +5,9 @@ if [ "$#" -lt 1 ]; then
   exit 1
 fi
 
-CL_PATH=mace/kernels/opencl/cl/
+MACE_SOURCE_DIR=`/bin/pwd`
+CL_CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen/opencl
+MODEL_TAG="Default"
 DEVICE_PATH=/data/local/tmp/mace
 DEVICE_CL_PATH=$DEVICE_PATH/cl/
 BAZEL_TARGET=$1
@@ -26,16 +28,23 @@ PROFILINE="--define profiling=true"
 BRANCH=$(git symbolic-ref --short HEAD)
 COMMIT_ID=$(git rev-parse --short HEAD)
 
+echo "Step 1: Generate encrypted opencl source"
+python mace/python/tools/encrypt_opencl_codegen.py \
+    --cl_kernel_dir=./mace/kernels/opencl/cl/ --output_path=${CL_CODEGEN_DIR}/opencl_encrypt_program.cc
+
+echo "Step 2: Build target"
 bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET \
    --crosstool_top=//external:android/crosstool \
    --host_crosstool_top=@bazel_tools//tools/cpp:toolchain  \
    --cpu=$ANDROID_ABI \
-   --define neon=false
+   --define neon=false \
+   --copt=-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}
 
 if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "Step 3: Run target"
 du -hs $BAZEL_BIN_PATH/$BIN_NAME
 
 for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`; do
@@ -43,7 +52,6 @@ for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`
   echo "Run on device: ${device}"
   adb -s ${device} shell "rm -rf $DEVICE_PATH"
   adb -s ${device} shell "mkdir -p $DEVICE_PATH"
-  adb -s ${device} push $CL_PATH $DEVICE_CL_PATH && \
   adb -s ${device} push $BAZEL_BIN_PATH/$BIN_NAME $DEVICE_PATH && \
   adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
 done

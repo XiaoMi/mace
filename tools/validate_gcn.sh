@@ -103,7 +103,7 @@ rm -rf ${VERSION_SOURCE_PATH}
 mkdir -p ${VERSION_SOURCE_PATH}
 bash mace/tools/git/gen_version_source.sh ${VERSION_SOURCE_PATH}/version.cc
 
-echo "Step 4: Generate encrypted opencl source and read tuning method"
+echo "Step 4: Generate encrypted opencl source"
 rm -rf ${CL_CODEGEN_DIR}
 mkdir -p ${CL_CODEGEN_DIR}
 python mace/python/tools/encrypt_opencl_codegen.py \
