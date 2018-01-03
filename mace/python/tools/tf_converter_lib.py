@@ -465,6 +465,8 @@ class TFConverter(object):
       and self.tf_graph[final_op.name][0].type == 'BatchToSpaceND':
       final_op = self.tf_graph[final_op.name][0]
       self.resolved_ops[final_op.name] = 1
+      self.unused_tensor.add(get_input_tensor(final_op, 1).name)
+      self.unused_tensor.add(get_input_tensor(final_op, 2).name)
     else:
       raise Exception('Convert atrous conv error: no BatchToSpaceND op')
 

@@ -11,10 +11,9 @@
 namespace mace {
 namespace kernels {
 
-struct AddNFunctorBase {};
 
 template <DeviceType D, typename T>
-struct AddNFunctor : AddNFunctorBase {
+struct AddNFunctor {
   void operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor, StatsFuture *future) {
     output_tensor->ResizeLike(input_tensors[0]);
@@ -24,10 +23,6 @@ struct AddNFunctor : AddNFunctorBase {
     memset(output_ptr, 0, size * sizeof(T));
     int n = input_tensors.size();
     for (int i = 0; i < n; ++i) {
-      MACE_CHECK(input_tensors[i]->dim(0) == output_tensor->dim(0));
-      MACE_CHECK(input_tensors[i]->dim(1) == output_tensor->dim(1));
-      MACE_CHECK(input_tensors[i]->dim(2) == output_tensor->dim(2));
-      MACE_CHECK(input_tensors[i]->dim(3) == output_tensor->dim(3));
       Tensor::MappingGuard input_map(input_tensors[i]);
       const T *input_ptr = input_tensors[i]->data<T>();
       for (index_t j = 0; j < size; ++j) {
@@ -44,7 +39,7 @@ void AddNFunctor<DeviceType::NEON, float>::operator()(
     StatsFuture *future);
 
 template <typename T>
-struct AddNFunctor<DeviceType::OPENCL, T> : AddNFunctorBase {
+struct AddNFunctor<DeviceType::OPENCL, T> {
   void operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor, StatsFuture *future);
 };

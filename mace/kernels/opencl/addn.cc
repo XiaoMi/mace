@@ -17,6 +17,8 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
   if (input_tensors.size() > 4) {
     MACE_NOT_IMPLEMENTED;
   }
+  output->ResizeLike(input_tensors[0]);
+
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -36,8 +38,8 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
 
   uint32_t idx = 0;
   for (auto input : input_tensors) {
-  addn_kernel.setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(input->buffer())));
+    addn_kernel.setArg(idx++,
+                       *(static_cast<const cl::Image2D *>(input->buffer())));
   }
   addn_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 

@@ -17,11 +17,14 @@ class AddNOp : public Operator<D, T> {
       : Operator<D, T>(operator_def, ws) {}
 
   bool Run(StatsFuture *future) override {
-    Tensor *output_tensor = this->outputs_[0];
+    Tensor *output_tensor = this->Output(0);
     int n = this->inputs_.size();
     vector<const Tensor *> inputs(n, nullptr);
-    for (int i = 0; i < n; ++i) {
-      inputs[i] = this->inputs_[i];
+    inputs[0] = this->Input(0);
+    for (int i = 1; i < n; ++i) {
+      inputs[i] = this->Input(i);
+      MACE_CHECK(inputs[0]->dim_size() == inputs[i]->dim_size());
+      MACE_CHECK(inputs[0]->size() == inputs[i]->size());
     }
 
     functor_(inputs, output_tensor, future);
