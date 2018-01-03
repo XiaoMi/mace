@@ -15,27 +15,25 @@ cc_library(
     deps = [
         "//mace/core",
         "//mace/ops",
-        "//mace/codegen:distribute_lib",
+    ] + if_embed_binary_program(["//mace/core:opencl_binary_linkage"]) +
+    if_use_source_program(["//mace/core:opencl_source_linkage"]) + [
         "//mace/codegen:version_lib",
-        "//mace/codegen:generated_opencl_lib",
+        "//mace/codegen:generated_opencl_source_lib",
+        "//mace/codegen:generated_opencl_compiled_lib",
         "//mace/codegen:generated_tuning_lib",
     ],
 )
 
 cc_library(
-    name = "distribute_lib",
-    srcs = if_embed_binary_program(["distribute/use_binary.cc"]) +
-        if_use_source_program(["distribute/use_source.cc"]),
+    name = "generated_opencl_source_lib",
+    srcs = glob(["opencl/opencl_encrypt_program.cc"]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
-    deps = [
-        "//mace/core",
-    ],
 )
 
 cc_library(
-    name = "generated_opencl_lib",
-    srcs = glob(["opencl/*.cc"]),
+    name = "generated_opencl_compiled_lib",
+    srcs = glob(["opencl/opencl_compiled_program.cc"]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
 )

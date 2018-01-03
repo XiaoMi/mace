@@ -14,6 +14,8 @@ cc_library(
     srcs = glob([
         "*.cc",
         "runtime/opencl/*.cc",
+    ], exclude=["runtime/opencl/opencl_binary_linkage.cc",
+        "runtime/opencl/opencl_source_linkage.cc",
     ]),
     hdrs = glob([
         "*.h",
@@ -47,5 +49,25 @@ cc_library(
     deps = [
         ":core",
         "//mace/utils:utils_hdrs",
+    ],
+)
+
+cc_library(
+    name = "opencl_source_linkage",
+    srcs = ["runtime/opencl/opencl_source_linkage.cc"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    linkstatic = 1,
+    deps = [
+        ":core",
+    ],
+)
+
+cc_library(
+    name = "opencl_binary_linkage",
+    srcs = ["runtime/opencl/opencl_binary_linkage.cc"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    linkstatic = 1,
+    deps = [
+        ":core",
     ],
 )
