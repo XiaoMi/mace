@@ -19,7 +19,8 @@ enum NetMode {
 enum DeviceType {
   CPU = 0,
   NEON = 1,
-  OPENCL = 2
+  OPENCL = 2,
+  HEXAGON = 3
 };
 
 enum DataType {
@@ -70,33 +71,33 @@ class ConstTensor {
 class Argument {
  public:
   Argument();
-  void CopyFrom(const Argument &from) ;
+  void CopyFrom(const Argument &from);
  public:
   const std::string &name() const;
-  void set_name(const std::string& value);
+  void set_name(const std::string &value);
   bool has_f() const;
-  float f() const ;
-  void set_f(float value) ;
-  bool has_i() const ;
-  int64_t i() const ;
+  float f() const;
+  void set_f(float value);
+  bool has_i() const;
+  int64_t i() const;
   void set_i(int64_t value);
-  bool has_s() const ;
-  std::string s() const ;
-  void set_s(const std::string& value) ;
-  const std::vector<float> &floats() const ;
-  void add_floats(float value) ;
+  bool has_s() const;
+  std::string s() const;
+  void set_s(const std::string &value);
+  const std::vector<float> &floats() const;
+  void add_floats(float value);
   void set_floats(const std::vector<float> &value);
-  const std::vector<int64_t> &ints() const ;
-  void add_ints(int64_t value) ;
+  const std::vector<int64_t> &ints() const;
+  void add_ints(int64_t value);
   void set_ints(const std::vector<int64_t> &value);
-  const std::vector<std::string> &strings() const ;
-  void add_strings(const ::std::string& value) ;
+  const std::vector<std::string> &strings() const;
+  void add_strings(const ::std::string &value);
   void set_strings(const std::vector<std::string> &value);
 
  private:
-  void set_has_f() ;
-  void set_has_i() ;
-  void set_has_s() ;
+  void set_has_f();
+  void set_has_i();
+  void set_has_s();
 
  private:
   std::string name_;
@@ -104,17 +105,21 @@ class Argument {
   int64_t i_;
   std::string s_;
   std::vector<float> floats_;
-  std::vector<int64_t > ints_;
+  std::vector<int64_t> ints_;
   std::vector<std::string> strings_;
   uint32_t has_bits_;
 };
 
 class NodeInput {
  public:
+  NodeInput() {}
+  NodeInput(int node_id, int output_port);
   void CopyFrom(const NodeInput &from);
  public:
   int node_id() const;
+  void set_node_id(int node_id);
   int output_port() const;
+  void set_output_port(int output_port);
  private:
   int node_id_;
   int output_port_;
@@ -146,24 +151,28 @@ class OperatorDef {
   void set_mem_id(const int mem_id);
   bool has_mem_id() const;
   uint32_t node_id() const;
+  void set_node_id(uint32_t node_id);
   uint32_t op_id() const;
   uint32_t padding() const;
+  void set_padding(uint32_t padding);
   const std::vector<NodeInput> &node_input() const;
+  void add_node_input(const NodeInput &value);
   const std::vector<int> &out_max_byte_size() const;
+  void add_out_max_byte_size(int value);
   const std::vector<std::string> &input() const;
-  const std::string& input(int index) const;
-  std::string* add_input();
-  void add_input(const ::std::string& value);
-  void add_input(::std::string&& value);
+  const std::string &input(int index) const;
+  std::string *add_input();
+  void add_input(const ::std::string &value);
+  void add_input(::std::string &&value);
   void set_input(const std::vector<std::string> &value);
   const std::vector<std::string> &output() const;
-  const std::string& output(int index) const;
-  std::string* add_output();
-  void add_output(const ::std::string& value);
-  void add_output(::std::string&& value);
+  const std::string &output(int index) const;
+  std::string *add_output();
+  void add_output(const ::std::string &value);
+  void add_output(::std::string &&value);
   void set_output(const std::vector<std::string> &value);
   const std::vector<Argument> &arg() const;
-  Argument* add_arg();
+  Argument *add_arg();
   const std::vector<OutputShape> &output_shape() const;
   void add_output_shape(const OutputShape &value);
   const std::vector<DataType> &output_type() const;
@@ -241,7 +250,9 @@ class OutputInfo {
   int32_t node_id() const;
   int32_t max_byte_size() const;
   DataType data_type() const;
+  void set_data_type(DataType data_type);
   const std::vector<int32_t> &dims() const;
+  void set_dims(const std::vector<int32_t> &dims);
  private:
   std::string name_;
   int32_t node_id_;
@@ -259,13 +270,13 @@ class NetDef {
  public:
   const std::string &name() const;
   bool has_name() const;
-  void set_name(const std::string& value);
+  void set_name(const std::string &value);
   const std::string &version() const;
   bool has_version() const;
-  void set_version(const std::string& value);
+  void set_version(const std::string &value);
 
   const std::vector<OperatorDef> &op() const;
-  OperatorDef* add_op();
+  OperatorDef *add_op();
   std::vector<OperatorDef> &mutable_op();
   const std::vector<Argument> &arg() const;
   Argument *add_arg();
@@ -277,6 +288,7 @@ class NetDef {
   MemoryArena &mutable_mem_arena();
   const std::vector<InputInfo> &input_info() const;
   const std::vector<OutputInfo> &output_info() const;
+  std::vector<OutputInfo> &mutable_output_info();
 
  private:
   void set_has_name();
@@ -303,6 +315,7 @@ class NetDef {
 class Workspace;
 class NetBase;
 class OperatorRegistry;
+class HexagonControlWrapper;
 
 class MaceEngine {
  public:
@@ -312,14 +325,15 @@ class MaceEngine {
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
            float *output);
-  MaceEngine(const MaceEngine&) = delete;
-  MaceEngine &operator=(const MaceEngine&) = delete;
+  MaceEngine(const MaceEngine &) = delete;
+  MaceEngine &operator=(const MaceEngine &) = delete;
 
  private:
   std::shared_ptr<OperatorRegistry> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
+  std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 };
 
 } //  namespace mace

@@ -1,7 +1,7 @@
 #ifndef MACE_DSP_HEXAGON_DSP_CONTROLLER_H_
 #define MACE_DSP_HEXAGON_DSP_CONTROLLER_H_
 
-#include "hexagon_nn.h"
+#include "mace/core/runtime/hexagon/hexagon_nn.h"
 
 #ifdef __cplusplus
 extern "C" {

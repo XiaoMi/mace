@@ -50,9 +50,6 @@ adb shell MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
           MACE_KERNEL_PATH=$KERNEL_DIR \
           OMP_NUM_THREADS=$num_threads \
           ${PHONE_DATA_DIR}/mace_run \
-            --model=${PHONE_DATA_DIR}/${MACE_MODEL_NAME} \
-            --input=input_node \
-            --output=icnet/Conv_11/BatchNorm/batchnorm/add_1 \
             --input_shape=1,3,480,480\
             --input_file=${PHONE_DATA_DIR}/${MACE_INPUT_FILE_NAME} \
             --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \

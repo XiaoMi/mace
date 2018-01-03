@@ -9,7 +9,7 @@
 
 namespace {{tag}}{
 
-alignas(4) unsigned char {{ tensor_info.name }}[] = {
+{% if tensor_info.data_type != 'DT_UINT8' %} alignas(4) {% endif %} unsigned char {{ tensor_info.name }}[] = {
 {% for d in tensor_info.data %}{{"0x%02X, " % d }}{%endfor%}
 };
 
@@ -32,12 +32,14 @@ void UpdateOp(mace::OperatorDef &op,
               const std::string &type,
               const std::vector<std::string> &inputs,
               const std::vector<std::string> &outputs,
-              const std::vector<mace::DataType> &output_types) {
+              const std::vector<mace::DataType> &output_types,
+              uint32_t node_id) {
   op.set_name(name);
   op.set_type(type);
   op.set_input(inputs);
   op.set_output(outputs);
   op.set_output_type(output_types);
+  op.set_node_id(node_id);
 }
 }
 
@@ -78,13 +80,40 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
   {% endif %}
 
   {% for shape in net.op[i].output_shape %}
+	{% if shape.dims | length > 0 %}
   op.add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
+	{% endif %}
   {% endfor %}
 
+  std::vector<int> output_types_int({ {{ net.op[i].output_type | join(', ') }} });
+  std::vector<mace::DataType> output_types({{ net.op[i].output_type | length }});
+  for (int k = 0; k < {{ net.op[i].output_type | length }}; ++k) {
+    output_types[k] = static_cast<mace::DataType>(output_types_int[k]);
+  }
   UpdateOp(op, {{ net.op[i].name|tojson }}, {{ net.op[i].type|tojson}},
           { {{ net.op[i].input|stringfy }} },
           { {{ net.op[i].output|stringfy }} },
-          { {{ net.op[i].output_type|join(', ') }} });
+          output_types,
+          {{ net.op[i].node_id }});
+
+  {% if runtime == 'dsp' %}
+    op.set_padding({{ net.op[i].padding }});
+    {% if net.op[i].node_input | length > 0 %}
+    std::vector<int> input_node_ids({ {{ net.op[i].node_input | map(attribute='node_id') | join(', ') }} });
+    std::vector<int> input_output_ports({ {{ net.op[i].node_input | map(attribute='output_port') | join(', ')}} });
+
+    for (size_t i = 0; i < {{ net.op[i].node_input | length }}; ++i) {
+      mace::NodeInput input(input_node_ids[i], input_output_ports[i]);
+      op.add_node_input(input);
+    }
+    {% endif %}
+    {% if net.op[i].out_max_byte_size | length > 0 %}
+    std::vector<int> out_max_byte_sizes {{ net.op[i].out_max_byte_size | replace('[', '{') | replace(']', '}') }};
+    for (size_t i = 0; i < {{ net.op[i].out_max_byte_size | length }}; ++i) {
+      op.add_out_max_byte_size(out_max_byte_sizes[i]);
+    }
+    {% endif %}
+  {% endif %}
 
 }
 
@@ -145,10 +174,25 @@ static void CreateNetArg(mace::NetDef &net_def) {
   {% endif %}
 
   {% endfor %}
-
 }
 {% endif %}
 
+{% if net.output_info | length > 0 %}
+static void CreateOutputInfo(mace::NetDef &net_def) {
+	std::vector<std::vector<int>> dims { {{net.output_info | map(attribute='dims') | join(', ') | replace('[', '{') | replace(']', '}') }} };
+
+  std::vector<int> data_types_int { {{ net.output_info | map(attribute='data_type') | join(', ') }} };
+  std::vector<mace::DataType> data_types({{ net.output_info | length }});
+  for (int k = 0; k < {{ net.output_info | length }}; ++k) {
+    data_types[k] = static_cast<mace::DataType>(data_types_int[k]);
+  }
+  net_def.mutable_output_info().resize({{ net.output_info | length }});
+  for (int i = 0; i < {{ net.output_info | length }}; ++i) {
+    net_def.mutable_output_info()[i].set_data_type(data_types[i]);
+    net_def.mutable_output_info()[i].set_dims(dims[i]);
+  }
+}
+{% endif %}
 
 static void CreateOperators(std::vector<mace::OperatorDef> &ops) {
   ops.resize({{ net.op|length }});
@@ -203,6 +247,10 @@ NetDef {{'Create' + tag}}() {
 
   {% if net.mem_arena.mem_block|length != 0 %}
   CreateMemoryArena(net_def.mutable_mem_arena());
+  {% endif %}
+
+  {% if net.output_info | length > 0 %}
+  CreateOutputInfo(net_def);
   {% endif %}
 
   return net_def;

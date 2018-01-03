@@ -40,8 +40,8 @@ unique_ptr<Tensor> Serializer::Deserialize(const ConstTensor &proto,
                             proto.data_size());
       break;
     case DT_UINT8:
-      tensor->CopyWithCast<int32_t, uint8_t>(
-          reinterpret_cast<const int32_t *>(proto.data()), proto.data_size());
+      tensor->Copy<uint8_t>(reinterpret_cast<const uint8_t *>(proto.data()),
+                            proto.data_size());
       break;
     case DT_INT16:
       tensor->CopyWithCast<int32_t, uint16_t>(

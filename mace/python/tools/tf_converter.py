@@ -30,7 +30,7 @@ def main(unused_args):
 
   if FLAGS.output_type == 'source':
     source_converter_lib.convert_to_source(output_graph_def, FLAGS.template, FLAGS.confuse,
-      FLAGS.model_tag, FLAGS.output)
+      FLAGS.model_tag, FLAGS.output, FLAGS.runtime)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
       f.write(output_graph_def.SerializeToString())
@@ -72,8 +72,8 @@ def parse_args():
   parser.add_argument(
     "--prequantize",
     type=bool,
-    default=False,
-    help="e.g., False")
+    default=True,
+    help="e.g., True")
   parser.add_argument(
     "--data_type",
     type=str,

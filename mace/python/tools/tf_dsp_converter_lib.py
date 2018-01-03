@@ -391,6 +391,7 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node, prequantize=Fal
       # optimized_net_def = reverse_batch_to_space_and_biasadd(net_def)
 
       if prequantize:
+        print('Prequantize ...')
         net_def = strip_input_quantize_and_output_dequantize(net_def, input_node, output_node)
 
       sorted_net_def = graph_util.sort_mace_graph(net_def, '__output__')

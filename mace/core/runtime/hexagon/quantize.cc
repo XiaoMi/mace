@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/dsp/util/quantize.h"
+#include "mace/core/runtime/hexagon/quantize.h"
 
 namespace mace {
 
