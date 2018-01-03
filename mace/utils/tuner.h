@@ -104,7 +104,7 @@ class Tuner {
   inline void ReadRunParamters() {
     bool success = GetTuningParams(path_, &param_table_);
     if (!success) {
-      LOG(WARNING) << "Read run parameter failed.";
+      LOG(WARNING) << "Get run parameter failed.";
     }
   }
 

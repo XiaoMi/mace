@@ -35,6 +35,9 @@ VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 build_and_run()
 {
   EMBED_OPENCL_BINARY=$1
+  if [ "$EMBED_OPENCL_BINARY" = true ]; then
+    EMBED_OPENCL_BINARY_BUILD_FLAGS="--define embed_binary_program=true"
+  fi
 
   bazel build -c opt --strip always mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
@@ -44,6 +47,9 @@ build_and_run()
     --copt=-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}"
+  if [ "$EMBED_OPENCL_BINARY" = false ]; then
+    adb shell "mkdir -p ${KERNEL_DIR}"
+  fi
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
   adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
 
@@ -99,13 +105,9 @@ bash mace/tools/git/gen_version_source.sh ${VERSION_SOURCE_PATH}/version.cc
 
 echo "Step 4: Generate encrypted opencl source and read tuning method"
 rm -rf ${CL_CODEGEN_DIR}
-rm -rf ${TUNING_CODEGEN_DIR}
 mkdir -p ${CL_CODEGEN_DIR}
-mkdir -p ${TUNING_CODEGEN_DIR}
 python mace/python/tools/encrypt_opencl_codegen.py \
   --cl_kernel_dir=./mace/kernels/opencl/cl/ --output_path=${CL_CODEGEN_DIR}/opencl_encrypt_program.cc
-python mace/python/tools/read_tuning_codegen.py \
-  --output_path=${TUNING_CODEGEN_DIR}/read_tuning_params.cc
 
 echo "Step 5: Run model on the phone with files"
 build_and_run false

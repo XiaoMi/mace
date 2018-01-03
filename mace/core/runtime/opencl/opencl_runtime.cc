@@ -16,47 +16,6 @@
 namespace mace {
 namespace {
 
-bool ReadFile(const std::string &filename,
-              bool binary,
-              std::vector<unsigned char> *content_ptr) {
-  MACE_CHECK_NOTNULL(content_ptr);
-
-  std::ios_base::openmode mode = std::ios::in;
-  if (binary) {
-    mode |= std::ios::binary;
-  }
-
-  std::ifstream ifs(filename, mode);
-
-  // Stop eating new lines and whitespace
-  ifs.unsetf(std::ios::skipws);
-
-  if (!ifs.is_open()) {
-    LOG(ERROR) << "Failed to open file " << filename;
-    return false;
-  }
-
-  ifs.seekg(0, std::ios::end);
-  const size_t filesize = ifs.tellg();
-  if (filesize > 10 * 1024 * 1024) {
-    LOG(ERROR) << "Filesize overflow 10MB";
-    return false;
-  }
-  content_ptr->reserve(filesize);
-  ifs.seekg(0, std::ios::beg);
-  content_ptr->insert(content_ptr->begin(), std::istreambuf_iterator<char>(ifs),
-                      std::istreambuf_iterator<char>());
-
-  if (ifs.fail()) {
-    LOG(ERROR) << "Failed to read from file " << filename;
-    return false;
-  }
-
-  ifs.close();
-
-  return true;
-}
-
 bool WriteFile(const std::string &filename,
                bool binary,
                const std::vector<unsigned char> &content) {
@@ -174,23 +133,12 @@ std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
   return filename_prefix;
 }
 
-extern bool GetOpenCLProgram(
-    const std::string &program_name,
-    const std::string &binary_file_name_prefix,
-    std::vector<unsigned char> *program_vec,
-    bool *is_opencl_binary);
-
-const std::vector<unsigned char>
-OpenCLRuntime::DecryptOpenCLSource(const std::vector<unsigned char> &src) {
-  std::vector<unsigned char> res;
-  res.reserve(src.size());
-  std::string decrypt_lookup_table = "Xiaomi-AI-Platform-Mace";
-  size_t lookup_table_size = decrypt_lookup_table.size();
-  for (int i = 0; i < src.size(); i++) {
-    res.push_back(src[i] ^ decrypt_lookup_table[i % lookup_table_size]);
-  }
-  return res;
-}
+extern bool GetSourceOrBinaryProgram(const std::string &program_name,
+                                     const std::string &binary_file_name_prefix,
+                                     cl::Context &context,
+                                     cl::Device &device,
+                                     cl::Program *program,
+                                     bool *is_opencl_binary);
 
 void OpenCLRuntime::BuildProgram(const std::string &program_name,
                                  const std::string &binary_file_name_prefix,
@@ -200,27 +148,18 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
 
   bool is_opencl_binary = false;
   std::vector<unsigned char> program_vec;
-  const bool is_success = GetOpenCLProgram(program_name,
-                                           binary_file_name_prefix,
-                                           &program_vec,
-                                           &is_opencl_binary);
-  MACE_CHECK(is_success, "Failed in GetOpenCLProgram!");
-  if (is_opencl_binary) {
-    *program = cl::Program(this->context(), {device()}, {program_vec});
-    VLOG(1) << "Use opencl binaries";
-  } else {
-    cl::Program::Sources sources;
-    const std::vector<unsigned char> decrypt_source =
-      DecryptOpenCLSource(program_vec);
-    sources.push_back(std::string(decrypt_source.begin(), decrypt_source.end()));
-    *program = cl::Program(this->context(), sources);
-    VLOG(1) << "Use opencl sources";
-  }
+  const bool found = GetSourceOrBinaryProgram(program_name,
+                                              binary_file_name_prefix,
+                                              context(),
+                                              device(),
+                                              program,
+                                              &is_opencl_binary);
+  MACE_CHECK(found, "Program not found source: ", program_name, ", or binary: ",
+             binary_file_name_prefix);
 
   // Build program
   std::string build_options_str =
-      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" +
-      kernel_path_;
+      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
   cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
