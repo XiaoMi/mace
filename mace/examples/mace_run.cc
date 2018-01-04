@@ -53,7 +53,7 @@ DeviceType ParseDeviceType(const string &device_str) {
   } else if (device_str.compare("OPENCL") == 0) {
     return DeviceType::OPENCL;
   } else if (device_str.compare("HEXAGON") == 0) {
-    return DeviceType ::HEXAGON;
+    return DeviceType::HEXAGON;
   } else {
     return DeviceType::CPU;
   }
