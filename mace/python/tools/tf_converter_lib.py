@@ -43,8 +43,13 @@ class TFConverter(object):
     self.dt = dt
     self.device = device
     self.tf_graph = {}
+    self.tf_parents = {}
     self.resolved_ops = {}
     self.unused_tensor = set()
+    self.ops = {}
+
+    for op in tf_ops:
+      self.ops[op.name] = op
 
     for op in tf_ops:
       self.resolved_ops[op.name] = 0
@@ -53,6 +58,9 @@ class TFConverter(object):
         if input_name not in self.tf_graph:
           self.tf_graph[input_name] = []
         self.tf_graph[input_name].append(op)
+        if op.name not in self.tf_parents:
+          self.tf_parents[op.name] = []
+        self.tf_parents[op.name].append(self.ops[input_name])
 
   def add_buffer_to_image(self, input_name, input_type):
     output_name = input_name[:-2] + "_b2i" + input_name[-2:]
@@ -465,6 +473,8 @@ class TFConverter(object):
       and self.tf_graph[final_op.name][0].type == 'BatchToSpaceND':
       final_op = self.tf_graph[final_op.name][0]
       self.resolved_ops[final_op.name] = 1
+      self.unused_tensor.add(get_input_tensor(final_op, 1).name)
+      self.unused_tensor.add(get_input_tensor(final_op, 2).name)
     else:
       raise Exception('Convert atrous conv error: no BatchToSpaceND op')
 
@@ -478,6 +488,36 @@ class TFConverter(object):
     op_def.output.extend([output.name for output in final_op.outputs])
     self.add_output_shape(final_op.outputs, op_def)
     self.net_def.op.extend([op_def])
+
+  def is_softmax(self, op):
+    return op.type == 'Softmax' and \
+           len(self.tf_parents[op.name]) == 1 and self.tf_parents[op.name][0].type == 'Reshape' and \
+           len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'Reshape'
+
+  def convert_softmax(self, softmax_op):
+    op_def = self.net_def.op.add()
+    arg = op_def.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+
+    # deal with first Reshape op
+    parent_reshape_op = self.tf_parents[softmax_op.name][0]
+    op_def.input.extend([parent_reshape_op.inputs[0].name])
+    self.unused_tensor.add(get_input_tensor(parent_reshape_op, 1).name)
+    self.resolved_ops[parent_reshape_op.name] = 1
+
+    # deal with Softmax op
+    op_def.name = softmax_op.name
+    op_def.type = softmax_op.type
+    self.resolved_ops[softmax_op.name] = 1
+
+    # deal with last Reshape op
+    reshape_op = self.tf_graph[softmax_op.name][0]
+    self.unused_tensor.add(get_input_tensor(reshape_op, 1).name)
+
+    op_def.output.extend([output.name for output in reshape_op.outputs])
+    self.add_output_shape(reshape_op.outputs, op_def)
+    self.resolved_ops[reshape_op.name] = 1
 
   def convert_normal_op(self, op):
     op_def = self.net_def.op.add()
@@ -527,11 +567,12 @@ class TFConverter(object):
         self.convert_space_to_batch(op, False)
       elif op.type == 'BatchToSpaceND':
         self.convert_space_to_batch(op, True)
+      elif self.is_softmax(op):
+        self.convert_softmax(op)
       elif op.type in ['Relu']:
         self.convert_normal_op(op)
       else:
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
-
 
     for op in self.tf_ops:
       if self.resolved_ops[op.name] == 1:

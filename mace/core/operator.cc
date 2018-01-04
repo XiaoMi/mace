@@ -75,6 +75,7 @@ extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Relu(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
+extern void Register_Softmax(OperatorRegistry *op_registry);
 
 OperatorRegistry::OperatorRegistry() {
   Register_AddN(this);
@@ -93,6 +94,7 @@ OperatorRegistry::OperatorRegistry() {
   Register_Relu(this);
   Register_ResizeBilinear(this);
   Register_SpaceToBatchND(this);
+  Register_Softmax(this);
 }
 
 }  // namespace mace
