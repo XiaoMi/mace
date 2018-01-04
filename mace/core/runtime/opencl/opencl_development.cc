@@ -49,18 +49,17 @@ bool GetTuningParams(const char *path,
   if (path != nullptr) {
     std::ifstream ifs(path, std::ios::binary | std::ios::in);
     if (ifs.is_open()) {
-      int32_t key_size = 0;
-      int32_t params_size = 0;
-      int32_t params_count = 0;
-      int64_t num_pramas = 0;
-      ifs.read(reinterpret_cast<char *>(&num_pramas), sizeof(num_pramas));
-      while (num_pramas--) {
+      int64_t num_params = 0;
+      ifs.read(reinterpret_cast<char *>(&num_params), sizeof(num_params));
+      while (num_params--) {
+        int32_t key_size = 0;
         ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
         std::string key(key_size, ' ');
         ifs.read(&key[0], key_size);
 
+        int32_t params_size = 0;
         ifs.read(reinterpret_cast<char *>(&params_size), sizeof(params_size));
-        params_count = params_size / sizeof(unsigned int);
+        int32_t params_count = params_size / sizeof(unsigned int);
         std::vector<unsigned int> params(params_count);
         for (int i = 0; i < params_count; ++i) {
           ifs.read(reinterpret_cast<char *>(&params[i]), sizeof(unsigned int));

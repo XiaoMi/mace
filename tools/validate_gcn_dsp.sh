@@ -34,7 +34,9 @@ build_and_run()
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
     --cpu=armeabi-v7a \
-    --copt=-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type"
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}"
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}

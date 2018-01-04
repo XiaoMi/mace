@@ -23,7 +23,6 @@
 #include "mace/utils/logging.h"
 
 #include "mace/core/public/mace.h"
-#include "mace/core/public/version.h"
 
 using namespace std;
 using namespace mace;

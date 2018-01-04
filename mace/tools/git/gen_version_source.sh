@@ -18,7 +18,13 @@ else
 fi
 
 cat <<EOF > ${OUTPUT_FILENAME}
-#include "mace/core/public/version.h"
-const char *MaceVersion() { return MACE_VERSION_STRING; }
-const char *MaceGitVersion() { return "${GIT_VERSION}"; }
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
+
+// This is a generated file, DO NOT EDIT
+
+namespace mace {
+  const char *MaceGitVersion() { return "${GIT_VERSION}"; }
+}  // namespace mace
 EOF
