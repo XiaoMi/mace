@@ -52,6 +52,8 @@ DeviceType ParseDeviceType(const string &device_str) {
     return DeviceType::NEON;
   } else if (device_str.compare("OPENCL") == 0) {
     return DeviceType::OPENCL;
+  } else if (device_str.compare("HEXAGON") == 0) {
+    return DeviceType::HEXAGON;
   } else {
     return DeviceType::CPU;
   }
@@ -105,9 +107,6 @@ struct mallinfo LogMallinfoChange(struct mallinfo prev) {
 }
 
 int main(int argc, char **argv) {
-  string model_file;
-  string input_node;
-  string output_node;
   string input_shape;
   string output_shape;
   string input_file;
@@ -117,9 +116,6 @@ int main(int argc, char **argv) {
   int malloc_check_cycle = -1;
 
   std::vector<Flag> flag_list = {
-      Flag("model", &model_file, "model file name"),
-      Flag("input", &input_node, "input node"),
-      Flag("output", &output_node, "output node"),
       Flag("input_shape", &input_shape, "input shape, separated by comma"),
       Flag("output_shape", &output_shape, "output shape, separated by comma"),
       Flag("input_file", &input_file, "input file name"),
@@ -140,9 +136,6 @@ int main(int argc, char **argv) {
 
   VLOG(0) << "mace version: " << MaceVersion() << std::endl
           << "mace git version: " << MaceGitVersion() << std::endl
-          << "model: " << model_file << std::endl
-          << "input: " << input_node << std::endl
-          << "output: " << output_node << std::endl
           << "input_shape: " << input_shape << std::endl
           << "output_shape: " << output_shape << std::endl
           << "input_file: " << input_file << std::endl

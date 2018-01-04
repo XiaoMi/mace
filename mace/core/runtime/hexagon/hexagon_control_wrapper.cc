@@ -2,8 +2,9 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/dsp/hexagon_control_wrapper.h"
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include <fstream>
+#include <unordered_map>
 
 namespace mace {
 
@@ -45,7 +46,7 @@ bool HexagonControlWrapper::Finalize() {
 bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
   LOG(INFO) << "Hexagon setup graph";
   // const node
-  for (const TensorProto& tensor_proto: net_def.tensors()) {
+  for (const ConstTensor& tensor_proto: net_def.tensors()) {
     vector<int> tensor_shape(tensor_proto.dims().begin(),
                              tensor_proto.dims().end());
     while (tensor_shape.size() < 4) {
@@ -53,7 +54,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
     }
 
     if (tensor_proto.data_type() == DataType::DT_INT32
-        && tensor_proto.int32_data_size() == 0) {
+        && tensor_proto.data_size() == 0) {
       hexagon_nn_append_const_node(nn_id_, node_id(tensor_proto.node_id()),
                                    tensor_shape[0], tensor_shape[1],
                                    tensor_shape[2], tensor_shape[3],
@@ -81,14 +82,14 @@ bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
     unsigned int op_id;
     MACE_CHECK(hexagon_nn_op_name_to_id(op.type().data(), &op_id) == 0,
                "invalid op: ", op.name(), ", type: ", op.type());
-    vector<hexagon_nn_input> inputs(op.node_input_size());
-    for (size_t i = 0; i < op.node_input_size(); ++i) {
-      inputs[i].src_id = node_id(op.node_input(i).node_id());
-      inputs[i].output_idx = op.node_input(i).output_port();
+    vector<hexagon_nn_input> inputs(op.node_input().size());
+    for (size_t i = 0; i < op.node_input().size(); ++i) {
+      inputs[i].src_id = node_id(op.node_input()[i].node_id());
+      inputs[i].output_idx = op.node_input()[i].output_port();
     }
-    vector<hexagon_nn_output> outputs(op.out_max_byte_size_size());
-    for (size_t i = 0; i < op.out_max_byte_size_size(); ++i) {
-      outputs[i].max_size = op.out_max_byte_size(i);
+    vector<hexagon_nn_output> outputs(op.out_max_byte_size().size());
+    for (size_t i = 0; i < op.out_max_byte_size().size(); ++i) {
+      outputs[i].max_size = op.out_max_byte_size()[i];
     }
 
     hexagon_nn_padding_type padding_type = static_cast<hexagon_nn_padding_type>(
@@ -136,18 +137,16 @@ bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
     output_shapes_.push_back(output_shape);
     output_data_types_.push_back(output_info.data_type());
     num_outputs_ += 1;
+    VLOG(0) << "OutputInfo: "
+            << "\n\t shape: " << output_shape[0] << " " << output_shape[1]
+            << " " << output_shape[2] << " " << output_shape[3]
+            << "\n\t type: " << output_info.data_type();
   }
+
+  VLOG(0) << "Magic";
 
   bool res =  hexagon_nn_prepare(nn_id_) == 0;
   return res;
-}
-
-bool HexagonControlWrapper::SetupGraph(const std::string& model_file) {
-  std::ifstream file_stream(model_file, std::ios::in | std::ios::binary);
-  NetDef net_def;
-  net_def.ParseFromIstream(&file_stream);
-  file_stream.close();
-  return SetupGraph(net_def);
 }
 
 bool HexagonControlWrapper::TeardownGraph() {

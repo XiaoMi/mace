@@ -7,21 +7,32 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_profiling_enabled")
+load("//mace:mace.bzl", "if_android", "if_android_armv7", "if_android_arm64",
+ "if_profiling_enabled")
 
 cc_library(
     name = "core",
     srcs = glob([
         "*.cc",
         "runtime/opencl/*.cc",
-    ], exclude=["runtime/opencl/opencl_binary_linkage.cc",
+        "runtime/hexagon/*.cc",
+    ],
+    exclude = [
+        "runtime/opencl/opencl_binary_linkage.cc",
         "runtime/opencl/opencl_source_linkage.cc",
+        "*_test.cc",
+        "runtime/hexagon/hexagon_controller_dummy.cc",
+    ]) + if_android_armv7([
+        "runtime/hexagon/libhexagon_controller.so",
+    ]) + if_android_arm64([
+        "runtime/hexagon/hexagon_controller_dummy.cc",
     ]),
     hdrs = glob([
         "*.h",
         "public/*.h",
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
+        "runtime/hexagon/*.h",
     ]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
             if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]),

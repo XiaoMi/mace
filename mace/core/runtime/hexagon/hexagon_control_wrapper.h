@@ -5,12 +5,11 @@
 #ifndef MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 #define MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 
-#include "mace/dsp/hexagon/hexagon_controller.h"
-#include "mace/dsp/hexagon_nn_ops.h"
-#include "mace/dsp/util/quantize.h"
+#include "mace/core/runtime/hexagon/hexagon_controller.h"
+#include "mace/core/runtime/hexagon/quantize.h"
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
-#include "mace/proto/mace.pb.h"
+#include "mace/core/public/mace.h"
 #include "mace/core/serializer.h"
 
 namespace mace {
@@ -23,7 +22,6 @@ class HexagonControlWrapper {
   bool Init();
   bool Finalize();
   bool SetupGraph(const NetDef& net_def);
-  bool SetupGraph(const std::string &model_file);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
   bool ExecuteGraphNew(const vector<Tensor>& input_tensors,
                        vector<Tensor> *output_tensors);
