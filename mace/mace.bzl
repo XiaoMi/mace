@@ -36,6 +36,12 @@ def if_embed_binary_program(a):
       "//conditions:default": [],
   })
 
+def if_use_source_program(a):
+  return select({
+      "//mace:embed_binary_program": [],
+      "//conditions:default": a,
+  })
+
 def if_enable_neon(a):
   return select({
       "//mace:enable_neon": a,

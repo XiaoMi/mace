@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_enable_neon", "if_embed_binary_program")
+load("//mace:mace.bzl", "if_android", "if_enable_neon")
 
 cc_library(
     name = "kernels",
@@ -22,7 +22,6 @@ cc_library(
         "-D_GLIBCXX_USE_C99_MATH_TR1",
         "-Werror=return-type",
     ] +
-    if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]) +
     if_enable_neon(["-fopenmp"]),
     linkopts = if_android(["-lm"]),
     deps = [

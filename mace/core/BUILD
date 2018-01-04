@@ -8,8 +8,7 @@ package(
 licenses(["notice"])  # Apache 2.0
 
 load("//mace:mace.bzl", "if_android", "if_android_armv7", "if_android_arm64",
-
- "if_profiling_enabled", "if_embed_binary_program")
+ "if_profiling_enabled")
 
 cc_library(
     name = "core",
@@ -19,6 +18,8 @@ cc_library(
         "runtime/hexagon/*.cc",
     ],
     exclude = [
+        "runtime/opencl/opencl_binary_linkage.cc",
+        "runtime/opencl/opencl_source_linkage.cc",
         "*_test.cc",
         "runtime/hexagon/hexagon_controller_dummy.cc",
     ]) + if_android_armv7([
@@ -34,8 +35,7 @@ cc_library(
         "runtime/hexagon/*.h",
     ]),
     copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
-            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) +
-            if_embed_binary_program(["-DMACE_EMBED_BINARY_PROGRAM"]),
+            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]),
     linkopts = if_android(["-pie", "-ldl"]),
     deps = [
         "//mace/utils:utils_hdrs",
@@ -60,5 +60,25 @@ cc_library(
     deps = [
         ":core",
         "//mace/utils:utils_hdrs",
+    ],
+)
+
+cc_library(
+    name = "opencl_source_linkage",
+    srcs = ["runtime/opencl/opencl_source_linkage.cc"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    linkstatic = 1,
+    deps = [
+        ":core",
+    ],
+)
+
+cc_library(
+    name = "opencl_binary_linkage",
+    srcs = ["runtime/opencl/opencl_binary_linkage.cc"],
+    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    linkstatic = 1,
+    deps = [
+        ":core",
     ],
 )

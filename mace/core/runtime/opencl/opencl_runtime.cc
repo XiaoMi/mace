@@ -16,47 +16,6 @@
 namespace mace {
 namespace {
 
-bool ReadFile(const std::string &filename,
-              bool binary,
-              std::vector<unsigned char> *content_ptr) {
-  MACE_CHECK_NOTNULL(content_ptr);
-
-  std::ios_base::openmode mode = std::ios::in;
-  if (binary) {
-    mode |= std::ios::binary;
-  }
-
-  std::ifstream ifs(filename, mode);
-
-  // Stop eating new lines and whitespace
-  ifs.unsetf(std::ios::skipws);
-
-  if (!ifs.is_open()) {
-    LOG(ERROR) << "Failed to open file " << filename;
-    return false;
-  }
-
-  ifs.seekg(0, std::ios::end);
-  const size_t filesize = ifs.tellg();
-  if (filesize > 10 * 1024 * 1024) {
-    LOG(ERROR) << "Filesize overflow 10MB";
-    return false;
-  }
-  content_ptr->reserve(filesize);
-  ifs.seekg(0, std::ios::beg);
-  content_ptr->insert(content_ptr->begin(), std::istreambuf_iterator<char>(ifs),
-                      std::istreambuf_iterator<char>());
-
-  if (ifs.fail()) {
-    LOG(ERROR) << "Failed to read from file " << filename;
-    return false;
-  }
-
-  ifs.close();
-
-  return true;
-}
-
 bool WriteFile(const std::string &filename,
                bool binary,
                const std::vector<unsigned char> &content) {
@@ -174,45 +133,33 @@ std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
   return filename_prefix;
 }
 
-void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
+extern bool GetSourceOrBinaryProgram(const std::string &program_name,
+                                     const std::string &binary_file_name_prefix,
+                                     cl::Context &context,
+                                     cl::Device &device,
+                                     cl::Program *program,
+                                     bool *is_opencl_binary);
+
+void OpenCLRuntime::BuildProgram(const std::string &program_name,
                                  const std::string &binary_file_name_prefix,
                                  const std::string &build_options,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
-#ifdef MACE_EMBED_BINARY_PROGRAM
-  extern const std::map<std::string, std::vector<unsigned char>> kCompiledProgramMap;
-  VLOG(1) << "Create program with merged binary map";
-  auto it_binary = kCompiledProgramMap.find(binary_file_name_prefix);
-  if (it_binary == kCompiledProgramMap.end()) {
-    LOG(FATAL) << "Cannot found the binary key '" << binary_file_name_prefix
-      << "' in kCompiledProgramMap";
-  }
-  std::vector<unsigned char> binary = it_binary->second;
-  *program = cl::Program(this->context(), {device()}, {binary});
-#else
-  std::string source_filename = kernel_path_ + program_file_name;
-
-  // Create program
-  if (std::ifstream(source_filename).is_open()) {
-    VLOG(1) << "Create program with source: " << source_filename;
-    std::vector<unsigned char> kernel_source;
-    MACE_CHECK(ReadFile(source_filename, false, &kernel_source));
-
-    cl::Program::Sources sources;
-    sources.push_back(std::string(kernel_source.begin(), kernel_source.end()));
-
-    *program = cl::Program(this->context(), sources);
-
-  } else {
-    LOG(FATAL) << "Failed to open kernel file " << source_filename;
-  }
-#endif
+  bool is_opencl_binary = false;
+  std::vector<unsigned char> program_vec;
+  const bool found = GetSourceOrBinaryProgram(program_name,
+                                              binary_file_name_prefix,
+                                              context(),
+                                              device(),
+                                              program,
+                                              &is_opencl_binary);
+  MACE_CHECK(found, "Program not found source: ", program_name, ", or binary: ",
+             binary_file_name_prefix);
 
   // Build program
   std::string build_options_str =
-      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math -I" +
-      kernel_path_;
+      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
   // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
   cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
@@ -225,41 +172,40 @@ void OpenCLRuntime::BuildProgram(const std::string &program_file_name,
     LOG(FATAL) << "Build program failed: " << ret;
   }
 
-#ifndef MACE_EMBED_BINARY_PROGRAM
-  // Write binary if necessary
-  std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
-  size_t device_list_size = 1;
-  std::unique_ptr<size_t[]> program_binary_sizes(
-      new size_t[device_list_size]);
-  cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
-                                sizeof(size_t) * device_list_size,
-                                program_binary_sizes.get(), nullptr);
-  MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-  std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
-      new std::unique_ptr<unsigned char[]>[device_list_size]);
-  for (cl_uint i = 0; i < device_list_size; ++i) {
-    program_binaries[i] = std::unique_ptr<unsigned char[]>(
-        new unsigned char[program_binary_sizes[i]]);
+  if (!is_opencl_binary) {
+    // Write binary if necessary
+    std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
+    size_t device_list_size = 1;
+    std::unique_ptr<size_t[]> program_binary_sizes(
+        new size_t[device_list_size]);
+    cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
+                                  sizeof(size_t) * device_list_size,
+                                  program_binary_sizes.get(), nullptr);
+    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
+    std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
+        new std::unique_ptr<unsigned char[]>[device_list_size]);
+    for (cl_uint i = 0; i < device_list_size; ++i) {
+      program_binaries[i] = std::unique_ptr<unsigned char[]>(
+          new unsigned char[program_binary_sizes[i]]);
+    }
+
+    err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
+                           sizeof(unsigned char *) * device_list_size,
+                           program_binaries.get(), nullptr);
+    MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
+    std::vector<unsigned char> content(
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
+        reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
+            program_binary_sizes[0]);
+
+    MACE_CHECK(WriteFile(binary_filename, true, content));
   }
-
-  err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
-                         sizeof(unsigned char *) * device_list_size,
-                         program_binaries.get(), nullptr);
-  MACE_CHECK(err == CL_SUCCESS) << "Error code: " << err;
-  std::vector<unsigned char> content(
-      reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
-      reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
-          program_binary_sizes[0]);
-
-  MACE_CHECK(WriteFile(binary_filename, true, content));
-#endif
 }
 
 cl::Kernel OpenCLRuntime::BuildKernel(
     const std::string &program_name,
     const std::string &kernel_name,
     const std::set<std::string> &build_options) {
-  std::string program_file_name = program_name + ".cl";
   std::string build_options_str;
   for (auto &option : build_options) {
     build_options_str += " " + option;
@@ -274,7 +220,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(
   } else {
     std::string binary_file_name_prefix =
         GenerateCLBinaryFilenamePrefix(built_program_key);
-    this->BuildProgram(program_file_name, binary_file_name_prefix,
+    this->BuildProgram(program_name, binary_file_name_prefix,
                        build_options_str, &program);
     built_program_map_.emplace(built_program_key, program);
   }
