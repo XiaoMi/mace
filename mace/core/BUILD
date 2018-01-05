@@ -7,25 +7,34 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_android_armv7", "if_android_arm64",
- "if_profiling_enabled")
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_profiling_enabled",
+    "if_hexagon_enabled",
+    "if_not_hexagon_enabled",
+    "if_production_mode",
+    "if_not_production_mode",
+)
 
 cc_library(
     name = "core",
-    srcs = glob([
-        "*.cc",
-        "runtime/opencl/*.cc",
-        "runtime/hexagon/*.cc",
-    ],
-    exclude = [
-        "runtime/opencl/opencl_binary_linkage.cc",
-        "runtime/opencl/opencl_source_linkage.cc",
-        "*_test.cc",
+    srcs = glob(
+        [
+            "*.cc",
+            "runtime/opencl/*.cc",
+            "runtime/hexagon/*.cc",
+        ],
+        exclude = [
+            "runtime/opencl/opencl_prod.cc",
+            "runtime/opencl/opencl_dev.cc",
+            "*_test.cc",
+            "runtime/hexagon/hexagon_controller_dummy.cc",
+        ],
+    ) + if_not_hexagon_enabled([
         "runtime/hexagon/hexagon_controller_dummy.cc",
-    ]) + if_android_armv7([
+    ]) + if_hexagon_enabled([
         "runtime/hexagon/libhexagon_controller.so",
-    ]) + if_android_arm64([
-        "runtime/hexagon/hexagon_controller_dummy.cc",
     ]),
     hdrs = glob([
         "*.h",
@@ -34,13 +43,31 @@ cc_library(
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
-            if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]),
-    linkopts = if_android(["-pie", "-ldl"]),
+    copts = if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) + if_hexagon_enabled(["-DMACE_HEXAGON_ENABLED"]),
+    linkopts = if_android([
+        "-pie",
+        "-ldl",
+    ]),
     deps = [
-        "//mace/utils:utils_hdrs",
+        ":opencl_headers",
         "//mace/utils:logging",
         "//mace/utils:tuner",
+        "//mace/utils:utils_hdrs",
+        "//mace/codegen:generated_version",
+    ] + if_production_mode([
+        "//mace/core:opencl_prod",
+    ]) + if_not_production_mode([
+        "//mace/core:opencl_dev",
+    ]),
+)
+
+cc_library(
+    name = "opencl_headers",
+    hdrs = glob([
+        "runtime/opencl/cl2.hpp",
+        "runtime/opencl/*.h",
+    ]),
+    deps = [
         "@opencl_headers//:opencl20_headers",
     ],
 )
@@ -48,37 +75,37 @@ cc_library(
 cc_library(
     name = "test_benchmark_main",
     testonly = 1,
-    hdrs = [
-        "testing/test_benchmark.h",
-    ],
     srcs = [
         "testing/test_benchmark.cc",
         "testing/test_benchmark_main.cc",
     ],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
-    alwayslink = 1,
+    hdrs = [
+        "testing/test_benchmark.h",
+    ],
     deps = [
         ":core",
         "//mace/utils:utils_hdrs",
     ],
+    alwayslink = 1,
 )
 
 cc_library(
-    name = "opencl_source_linkage",
-    srcs = ["runtime/opencl/opencl_source_linkage.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    name = "opencl_dev",
+    srcs = ["runtime/opencl/opencl_development.cc"],
     linkstatic = 1,
     deps = [
-        ":core",
+        ":opencl_headers",
+        "//mace/codegen:generated_opencl_dev",
     ],
 )
 
 cc_library(
-    name = "opencl_binary_linkage",
-    srcs = ["runtime/opencl/opencl_binary_linkage.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
+    name = "opencl_prod",
+    srcs = ["runtime/opencl/opencl_production.cc"],
     linkstatic = 1,
     deps = [
-        ":core",
+        ":opencl_headers",
+        "//mace/codegen:generated_opencl_prod",
+        "//mace/codegen:generated_tuning_params",
     ],
 )

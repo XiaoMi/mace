@@ -39,19 +39,22 @@ build_and_run()
     EMBED_OPENCL_BINARY_BUILD_FLAGS="--define embed_binary_program=true"
   fi
 
-  bazel build -c opt --strip always mace/examples:mace_run \
+  bazel build --verbose_failures -c opt --strip always mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
     --cpu=arm64-v8a \
-    $EMBED_OPENCL_BINARY_BUILD_FLAGS \
-    --copt=-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}" \
+    $EMBED_OPENCL_BINARY_BUILD_FLAGS  || exit -1
 
-  adb shell "mkdir -p ${PHONE_DATA_DIR}"
+  adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
   if [ "$EMBED_OPENCL_BINARY" = false ]; then
-    adb shell "mkdir -p ${KERNEL_DIR}"
+    adb shell "mkdir -p ${KERNEL_DIR}" || exit -1
   fi
-  adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
-  adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
+  adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit -1
+  adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR} || exit -1
 
   if [[ "${TUNING_OR_NOT}" != "0" && "$EMBED_OPENCL_BINARY" != true ]];then
     tuning_flag=1
@@ -71,17 +74,17 @@ build_and_run()
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --device=OPENCL   \
-    --round=$round
+    --round=$round || exit -1
 }
 
 echo "Step 1: Generate input data"
 rm -rf ${MODEL_DIR}/${INPUT_FILE_NAME}
 python tools/validate.py --generate_data true \
  --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
- --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3"
+ --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3" || exit -1
 
 echo "Step 2: Convert tf model to mace model and optimize memory"
-bazel build //mace/python/tools:tf_converter
+bazel build //mace/python/tools:tf_converter || exit -1
 rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
@@ -93,7 +96,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
-                                         --confuse=False
+                                         --confuse=False || exit -1
 
 echo "Step 3: Generate version source"
 rm -rf ${VERSION_SOURCE_PATH}

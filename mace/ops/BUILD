@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_enable_neon")
+load("//mace:mace.bzl", "if_android", "if_neon_enabled")
 
 cc_library(
     name = "test",
@@ -34,8 +34,7 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"] +
-            if_enable_neon(["-DMACE_ENABLE_NEON"]),
+    copts = if_neon_enabled(["-DMACE_ENABLE_NEON"]),
     deps = [
         "//mace/kernels",
     ],
@@ -48,7 +47,6 @@ cc_test(
     srcs = glob(
         ["*_test.cc"],
     ),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
@@ -62,7 +60,6 @@ cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [

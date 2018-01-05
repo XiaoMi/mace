@@ -30,20 +30,32 @@ def if_profiling_enabled(a):
       "//conditions:default": [],
   })
 
-def if_embed_binary_program(a):
+def if_production_mode(a):
   return select({
-      "//mace:embed_binary_program": a,
+      "//mace:production_mode": a,
       "//conditions:default": [],
   })
 
-def if_use_source_program(a):
+def if_not_production_mode(a):
   return select({
-      "//mace:embed_binary_program": [],
+      "//mace:production_mode": [],
       "//conditions:default": a,
   })
 
-def if_enable_neon(a):
+def if_neon_enabled(a):
   return select({
-      "//mace:enable_neon": a,
+      "//mace:neon_enabled": a,
       "//conditions:default": [],
+  })
+
+def if_hexagon_enabled(a):
+  return select({
+      "//mace:hexagon_enabled": a,
+      "//conditions:default": [],
+  })
+
+def if_not_hexagon_enabled(a):
+  return select({
+      "//mace:hexagon_enabled": [],
+      "//conditions:default": a,
   })

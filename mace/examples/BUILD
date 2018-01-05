@@ -1,13 +1,12 @@
 # Examples
-load("//mace:mace.bzl", "if_android", "if_enable_neon")
+load("//mace:mace.bzl", "if_android", "if_neon_enabled")
 
 cc_binary(
     name = "helloworld",
     srcs = [
         "helloworld.cc",
     ],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
-    linkopts = if_enable_neon(["-fopenmp"]),
+    linkopts = if_neon_enabled(["-fopenmp"]),
     deps = [
         "//mace/core",
         "//mace/ops",
@@ -18,8 +17,7 @@ cc_test(
     name = "benchmark_example",
     testonly = 1,
     srcs = ["benchmark_example.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
-    linkopts = if_enable_neon(["-fopenmp"]),
+    linkopts = if_neon_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
         "//mace/core",
@@ -30,11 +28,10 @@ cc_test(
 cc_binary(
     name = "mace_run",
     srcs = ["mace_run.cc"],
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
-    linkopts = if_enable_neon(["-fopenmp"]),
+    linkopts = if_neon_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
-        "//mace/codegen:generated_models_lib",
+        "//mace/codegen:generated_models",
         "//mace/utils:command_line_flags",
     ],
 )

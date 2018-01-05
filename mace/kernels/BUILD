@@ -7,22 +7,23 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_enable_neon")
+load("//mace:mace.bzl", "if_android", "if_neon_enabled")
 
 cc_library(
     name = "kernels",
-    srcs = glob(["*.cc", "opencl/*.cc"]) + if_enable_neon(glob([
+    srcs = glob([
+        "*.cc",
+        "opencl/*.cc",
+    ]) + if_neon_enabled(glob([
         "neon/*.cc",
     ])),
-    hdrs = glob(["*.h", "opencl/*.h"]) + if_enable_neon(glob([
+    hdrs = glob([
+        "*.h",
+        "opencl/*.h",
+    ]) + if_neon_enabled(glob([
         "neon/*.h",
     ])),
-    copts = [
-        "-std=c++11",
-        "-D_GLIBCXX_USE_C99_MATH_TR1",
-        "-Werror=return-type",
-    ] +
-    if_enable_neon(["-fopenmp"]),
+    copts = if_neon_enabled(["-fopenmp"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
@@ -34,7 +35,6 @@ cc_test(
     name = "kernel_test",
     testonly = 1,
     srcs = glob(["test/*.cc"]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkopts = if_android(["-pie"]),
     linkstatic = 1,
     deps = [
@@ -48,7 +48,6 @@ cc_test(
     name = "benchmark",
     testonly = 1,
     srcs = glob(["benchmark/*.cc"]),
-    copts = ["-std=c++11", "-D_GLIBCXX_USE_C99_MATH_TR1", "-Werror=return-type"],
     linkstatic = 1,
     deps = [
         ":kernels",
