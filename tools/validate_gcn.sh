@@ -34,9 +34,9 @@ VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 
 build_and_run()
 {
-  EMBED_OPENCL_BINARY=$1
-  if [ "$EMBED_OPENCL_BINARY" = true ]; then
-    EMBED_OPENCL_BINARY_BUILD_FLAGS="--define embed_binary_program=true"
+  PRODUCTION_MODE=$1
+  if [ "$PRODUCTION_MODE" = true ]; then
+    PRODUCTION_MODE_BUILD_FLAGS="--define production=true"
   fi
 
   bazel build --verbose_failures -c opt --strip always mace/examples:mace_run \
@@ -47,16 +47,16 @@ build_and_run()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}" \
-    $EMBED_OPENCL_BINARY_BUILD_FLAGS  || exit -1
+    $PRODUCTION_MODE_BUILD_FLAGS  || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
-  if [ "$EMBED_OPENCL_BINARY" = false ]; then
+  if [ "$PRODUCTION_MODE" = false ]; then
     adb shell "mkdir -p ${KERNEL_DIR}" || exit -1
   fi
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit -1
   adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR} || exit -1
 
-  if [[ "${TUNING_OR_NOT}" != "0" && "$EMBED_OPENCL_BINARY" != true ]];then
+  if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != true ]];then
     tuning_flag=1
     round=0 # only warm up
   else
