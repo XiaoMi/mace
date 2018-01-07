@@ -27,7 +27,6 @@ struct BufferToImageFunctor : BufferToImageFunctorBase{
                   StatsFuture *future) {
     MACE_NOT_IMPLEMENTED;
   }
-  bool i2b_;
 };
 
 template<typename T>
