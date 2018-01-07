@@ -70,6 +70,7 @@ class Tensor {
         dtype_(DT_FLOAT),
         buffer_(nullptr),
         data_(nullptr),
+        unused_(false),
         is_image_(false){};
 
   Tensor(Allocator *alloc, DataType type)
@@ -78,6 +79,7 @@ class Tensor {
         dtype_(type),
         buffer_(nullptr),
         data_(nullptr),
+        unused_(false),
         is_image_(false){};
 
   ~Tensor() {
@@ -113,6 +115,8 @@ class Tensor {
   inline index_t size() const { return size_; }
 
   inline index_t raw_size() const { return size_ * SizeOfType(); }
+
+  inline const bool unused() const { return unused_; }
 
   inline int64_t NumElements() const {
     return std::accumulate(shape_.begin(), shape_.end(), 1,
@@ -303,6 +307,10 @@ class Tensor {
     }
   }
 
+  inline void MarkUnused() {
+    this->unused_ = true;
+  }
+
   class MappingGuard {
    public:
     MappingGuard(const Tensor *tensor) : tensor_(tensor) {
@@ -343,6 +351,7 @@ class Tensor {
   mutable void *data_;
   vector<index_t> shape_;
   // Image for opencl
+  bool unused_;
   bool is_image_;
   std::vector<size_t> image_shape_;
 

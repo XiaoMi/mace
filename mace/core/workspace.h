@@ -23,6 +23,8 @@ class Workspace {
 
   bool RemoveTensor(const string &name);
 
+  void RemoveUnsedTensor();
+
   inline bool HasTensor(const string &name) const {
     return tensor_map_.count(name);
   }

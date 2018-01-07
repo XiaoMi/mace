@@ -14,26 +14,26 @@ ConstTensor::ConstTensor(const std::string &name,
                          const std::vector<int64_t> &dims,
                          const DataType data_type,
                          uint32_t node_id) :
-  name_(name),
-  data_(data),
-  data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                             std::multiplies<int64_t>())),
-  dims_(dims.begin(), dims.end()),
-  data_type_(data_type),
-  node_id_(node_id) {}
+    name_(name),
+    data_(data),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
+    dims_(dims.begin(), dims.end()),
+    data_type_(data_type),
+    node_id_(node_id) {}
 
 ConstTensor::ConstTensor(const std::string &name,
                          unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const int data_type,
                          uint32_t node_id) :
-  name_(name),
-  data_(data),
-  data_size_(std::accumulate(dims.begin(), dims.end(), 1,
-                             std::multiplies<int64_t>())),
-  dims_(dims.begin(), dims.end()),
-  data_type_(static_cast<DataType>(data_type)),
-  node_id_(node_id) {}
+    name_(name),
+    data_(data),
+    data_size_(std::accumulate(dims.begin(), dims.end(), 1,
+                               std::multiplies<int64_t>())),
+    dims_(dims.begin(), dims.end()),
+    data_type_(static_cast<DataType>(data_type)),
+    node_id_(node_id) {}
 
 const std::string &ConstTensor::name() const {
   return name_;
@@ -151,7 +151,7 @@ void Argument::set_strings(const std::vector<std::string> &value) {
 
 // Node Input
 NodeInput::NodeInput(int node_id, int output_port)
-  : node_id_(node_id), output_port_(output_port) {}
+    : node_id_(node_id), output_port_(output_port) {}
 void NodeInput::CopyFrom(const NodeInput &from) {
   node_id_ = from.node_id();
   output_port_ = from.output_port();
@@ -172,7 +172,7 @@ void NodeInput::set_output_port(int output_port) {
 // OutputShape
 OutputShape::OutputShape() {}
 OutputShape::OutputShape(const std::vector<int64_t> &dims) :
-  dims_(dims.begin(), dims.end()) {}
+    dims_(dims.begin(), dims.end()) {}
 void OutputShape::CopyFrom(const OutputShape &from) {
   auto from_dims = from.dims();
   dims_.resize(from_dims.size());
@@ -359,7 +359,7 @@ void OperatorDef::set_output_type(const std::vector<DataType> &value) {
 
 // MemoryBlock
 MemoryBlock::MemoryBlock(int mem_id, uint32_t x, uint32_t y) :
-  mem_id_(mem_id), x_(x), y_(y) {}
+    mem_id_(mem_id), x_(x), y_(y) {}
 
 int MemoryBlock::mem_id() const {
   return mem_id_;
@@ -511,8 +511,8 @@ const OperatorDef &NetDef::op(const int idx) const {
 
 // Mace Engine
 MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
-  op_registry_(new OperatorRegistry()), device_type_(device_type),
-  ws_(new Workspace()), net_(nullptr), hexagon_controller_(nullptr) {
+    op_registry_(new OperatorRegistry()), device_type_(device_type),
+    ws_(new Workspace()), net_(nullptr), hexagon_controller_(nullptr) {
 
   if (device_type == HEXAGON) {
     hexagon_controller_.reset(new HexagonControlWrapper());
@@ -530,9 +530,11 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
     if (!net->Run()) {
       LOG(FATAL) << "Net init run failed";
     }
+    ws_->RemoveUnsedTensor();
     ws_->CreateTensor("mace_input_node:0",
                       GetDeviceAllocator(device_type_),
                       DT_FLOAT);
+
     net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
   }
 }
@@ -548,12 +550,8 @@ bool MaceEngine::Run(const float *input,
                      const std::vector<index_t> &input_shape,
                      float *output) {
   MACE_CHECK(output != nullptr, "output ptr cannot be NULL");
-  Tensor *input_tensor =
-    ws_->CreateTensor("mace_input_node:0",
-                      GetDeviceAllocator(device_type_),
-                      DT_FLOAT);
-  Tensor *output_tensor =
-    ws_->CreateTensor("mace_output_node:0",
+  Tensor *input_tensor = ws_->GetTensor("mace_input_node:0");
+  Tensor *output_tensor = ws_->CreateTensor("mace_output_node:0",
                       GetDeviceAllocator(device_type_),
                       DT_FLOAT);
   input_tensor->Resize(input_shape);

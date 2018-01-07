@@ -47,6 +47,18 @@ const Tensor *Workspace::GetTensor(const string &name) const {
   return nullptr;
 }
 
+
+void Workspace::RemoveUnsedTensor() {
+  auto iter = tensor_map_.begin();
+  auto end_iter = tensor_map_.end();
+  while(iter != end_iter) {
+    auto old_iter = iter++;
+    if(old_iter->second->unused()) {
+      tensor_map_.erase(old_iter);
+    }
+  }
+}
+
 Tensor *Workspace::GetTensor(const string &name) {
   return const_cast<Tensor *>(
       static_cast<const Workspace *>(this)->GetTensor(name));

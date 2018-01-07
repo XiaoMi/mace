@@ -19,6 +19,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
   if (!i2b_) {
     CalImage2DShape(buffer->shape(), type, image_shape);
     image->ResizeImage(buffer->shape(), image_shape);
+    buffer->MarkUnused();
   } else {
     image_shape = image->image_shape();
     buffer->Resize(image->shape());
