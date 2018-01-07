@@ -1,6 +1,7 @@
 from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
+import math
 from mace.python.tools import memory_optimizer
 
 # TODO: support NCHW formt, now only support NHWC.
@@ -136,6 +137,22 @@ class TFConverter(object):
         output_shapes.append(output_shape)
     op.output_shape.extend(output_shapes)
 
+  def add_tensor(self, name, shape, tf_dt, value):
+    tensor = self.net_def.tensors.add()
+    tensor.name = name
+
+    shape = list(shape)
+    tensor.dims.extend(shape)
+
+    if tf_dt == tf.float32:
+      tensor.data_type = mace_pb2.DT_FLOAT
+      tensor.float_data.extend(value.flat)
+    elif tf_dt == tf.int32:
+      tensor.data_type = mace_pb2.DT_INT32
+      tensor.int32_data.extend(value.flat)
+    else:
+      raise Exception("Not supported tensor type: " + tf_dt.name)
+
   def convert_tensor(self, op):
     if op.outputs[0].name not in self.unused_tensor:
       tensor = self.net_def.tensors.add()
@@ -212,25 +229,52 @@ class TFConverter(object):
     arg.name = 'T'
     arg.i = self.dt
     op_def.name = op.name
-    op_def.type = 'BatchNorm'
+    op_def.type = 'FoldedBatchNorm'
+    gamma_tensor = get_input_tensor(op, 1)
+    gamma_value = gamma_tensor.eval().astype(np.float32)
+    beta_value = get_input_tensor(op, 2).eval().astype(np.float32)
+    mean_value = get_input_tensor(op, 3).eval().astype(np.float32)
+    var_value = get_input_tensor(op, 4).eval().astype(np.float32)
+    epsilon_value = op.get_attr('epsilon')
+
+    scale_value = (
+      (1.0 / np.vectorize(math.sqrt)(var_value + epsilon_value)) *
+      gamma_value)
+    offset_value = (-mean_value * scale_value) + beta_value
+    name_prefix = op.inputs[1].name
+    idx = name_prefix.rfind('/')
+    name_prefix = op.inputs[1].name[:idx] + '/'
+    input_names = [name_prefix+'scale:0', name_prefix+'offset:0']
+    self.add_tensor(input_names[0], gamma_value.shape,
+      gamma_tensor.dtype, scale_value)
+    self.add_tensor(input_names[1], gamma_value.shape,
+      gamma_tensor.dtype, offset_value)
+
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
-      for i in range(1, len(op.inputs)):
-        output_name = self.add_buffer_to_image(op.inputs[i].name, "ARGUMENT")
+      for name in input_names:
+        output_name = self.add_buffer_to_image(name, "ARGUMENT")
         op_def.input.extend([output_name])
     else:
-      op_def.input.extend([input.name for input in op.inputs])
-    op_def.output.extend([op.outputs[0].name])
+      op_def.input.extend([input.name for input in input_names])
 
-    self.add_output_shape(op.outputs, op_def)
+    self.resolved_ops[op.name] = 1
 
-    epsilon_arg = op_def.arg.add()
-    epsilon_arg.name = 'epsilon'
-    epsilon_arg.f = op.get_attr('epsilon')
+    final_op = op
+    if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'Relu':
+      relu_op = self.tf_graph[op.name][0]
+      final_op = relu_op
+      fused_relu_arg = op_def.arg.add()
+      fused_relu_arg.name = 'fused_relu'
+      fused_relu_arg.i = 1
+      self.resolved_ops[relu_op.name] = 1
+
+    op_def.output.extend([final_op.outputs[0].name])
+    self.add_output_shape(final_op.outputs, op_def)
+
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
     data_format_arg.s = 'NHWC'
-    self.resolved_ops[op.name] = 1
     self.net_def.op.extend([op_def])
 
   def convert_batchnorm(self, op):

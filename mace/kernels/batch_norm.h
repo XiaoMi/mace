@@ -14,13 +14,14 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct BatchNormFunctor {
-  float epsilon_;
-
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,
                   const Tensor *mean,
                   const Tensor *var,
+                  const float epsilon,
+                  const bool folded_constant,
+                  const bool fused_relu,
                   Tensor *output,
                   StatsFuture *future) {
     // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
@@ -39,8 +40,6 @@ struct BatchNormFunctor {
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard scale_mapper(scale);
     Tensor::MappingGuard offset_mapper(offset);
-    Tensor::MappingGuard mean_mapper(mean);
-    Tensor::MappingGuard var_mapper(var);
     Tensor::MappingGuard output_mapper(output);
 
     const T *input_ptr = input->data<T>();
@@ -50,13 +49,18 @@ struct BatchNormFunctor {
     const T *var_ptr = var->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-    vector<T> new_scale(channels);
-    vector<T> new_offset(channels);
-
+    vector<T> new_scale;
+    vector<T> new_offset;
+    if (!folded_constant) {
+      new_scale.resize(channels);
+      new_offset.resize(channels);
+      Tensor::MappingGuard mean_mapper(mean);
+      Tensor::MappingGuard var_mapper(var);
 #pragma omp parallel for
-    for (index_t c = 0; c < channels; ++c) {
-      new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon_);
-      new_offset[c] = offset_ptr[c] - mean_ptr[c] * new_scale[c];
+      for (index_t c = 0; c < channels; ++c) {
+        new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon);
+        new_offset[c] = offset_ptr[c] - mean_ptr[c] * new_scale[c];
+      }
     }
 
     index_t pos = 0;
@@ -66,7 +70,14 @@ struct BatchNormFunctor {
       for (index_t h = 0; h < height; ++h) {
         for (index_t w = 0; w < width; ++w) {
           for (index_t c = 0; c < channels; ++c) {
-            output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
+            if (folded_constant) {
+              output_ptr[pos] = scale_ptr[c] * input_ptr[pos] + offset_ptr[c];
+            } else {
+              output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
+            }
+            if (fused_relu) {
+              output_ptr[pos] = std::max(output_ptr[pos], static_cast<T>(0));
+            }
             ++pos;
           }
         }
@@ -82,18 +93,22 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
+    const float epsilon,
+    const bool folded_constant,
+    const bool fused_relu,
     Tensor *output,
     StatsFuture *future);
 
 template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> {
-  float epsilon_;
-
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,
                   const Tensor *mean,
                   const Tensor *var,
+                  const float epsilon,
+                  const bool folded_constant,
+                  const bool fused_relu,
                   Tensor *output,
                   StatsFuture *future);
 };

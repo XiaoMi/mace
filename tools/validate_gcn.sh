@@ -96,7 +96,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
-                                         --confuse=False || exit -1
+                                         --confuse=True || exit -1
 
 echo "Step 3: Generate version source"
 rm -rf ${VERSION_SOURCE_PATH}

@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_BATCH_NORM_H_
-#define MACE_OPS_BATCH_NORM_H_
+#ifndef MACE_OPS_FOLDED_BATCH_NORM_H_
+#define MACE_OPS_FOLDED_BATCH_NORM_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/batch_norm.h"
@@ -11,20 +11,17 @@
 namespace mace {
 
 template <DeviceType D, class T>
-class BatchNormOp : public Operator<D, T> {
+class FoldedBatchNormOp : public Operator<D, T> {
  public:
-  BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
+  FoldedBatchNormOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {
-    epsilon_ =
-        OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(1e-4));
+    fused_relu_ = OperatorBase::GetSingleArgument<bool>("fused_relu", false);
   }
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *scale = this->Input(SCALE);
     const Tensor *offset = this->Input(OFFSET);
-    const Tensor *mean = this->Input(MEAN);
-    const Tensor *var = this->Input(VAR);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
@@ -32,21 +29,17 @@ class BatchNormOp : public Operator<D, T> {
                scale->dim_size());
     MACE_CHECK(offset->dim_size() == 1, "offset must be 1-dimensional. ",
                offset->dim_size());
-    MACE_CHECK(mean->dim_size() == 1, "mean must be 1-dimensional. ",
-               mean->dim_size());
-    MACE_CHECK(var->dim_size() == 1, "var must be 1-dimensional. ",
-               var->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
-    functor_(input, scale, offset, mean, var, epsilon_,
-             false, false, output, future);
+    functor_(input, scale, offset, nullptr, nullptr, 0,
+             true, fused_relu_, output, future);
     return true;
   }
 
  private:
-  float epsilon_;
+  bool fused_relu_;
   kernels::BatchNormFunctor<D, T> functor_;
 
  protected:
@@ -56,4 +49,4 @@ class BatchNormOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_OPS_BATCH_NORM_H_
+#endif  //  MACE_OPS_FOLDED_BATCH_NORM_H_
