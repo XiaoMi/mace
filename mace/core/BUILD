@@ -26,8 +26,8 @@ cc_library(
             "runtime/hexagon/*.cc",
         ],
         exclude = [
-            "runtime/opencl/opencl_prod.cc",
-            "runtime/opencl/opencl_dev.cc",
+            "runtime/opencl/opencl_production.cc",
+            "runtime/opencl/opencl_development.cc",
             "*_test.cc",
             "runtime/hexagon/hexagon_controller_dummy.cc",
         ],
