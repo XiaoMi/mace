@@ -14,8 +14,8 @@ template <DeviceType D, class T>
 class FoldedBatchNormOp : public Operator<D, T> {
  public:
   FoldedBatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {
-    fused_relu_ = OperatorBase::GetSingleArgument<bool>("fused_relu", false);
+      : Operator<D, T>(operator_def, ws),
+        functor_(true, OperatorBase::GetSingleArgument<bool>("fused_relu", false)) {
   }
 
   bool Run(StatsFuture *future) override {
@@ -33,13 +33,11 @@ class FoldedBatchNormOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
-    functor_(input, scale, offset, nullptr, nullptr, 0,
-             true, fused_relu_, output, future);
+    functor_(input, scale, offset, nullptr, nullptr, 0, output, future);
     return true;
   }
 
  private:
-  bool fused_relu_;
   kernels::BatchNormFunctor<D, T> functor_;
 
  protected:

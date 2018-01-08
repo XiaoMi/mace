@@ -228,10 +228,19 @@ class TFConverter(object):
     arg = op_def.arg.add()
     arg.name = 'T'
     arg.i = self.dt
+    data_format_arg = op_def.arg.add()
+    data_format_arg.name = 'data_format'
+    data_format_arg.s = 'NHWC'
     op_def.name = op.name
     op_def.type = 'FoldedBatchNorm'
+
     gamma_tensor = get_input_tensor(op, 1)
-    gamma_value = gamma_tensor.eval().astype(np.float32)
+    for i in range(1, 5):
+      input_tensor = get_input_tensor(op, i)
+      assert input_tensor.shape == gamma_tensor.shape
+      self.unused_tensor.add(input_tensor.name)
+
+    gamma_value = get_input_tensor(op, 1).eval().astype(np.float32)
     beta_value = get_input_tensor(op, 2).eval().astype(np.float32)
     mean_value = get_input_tensor(op, 3).eval().astype(np.float32)
     var_value = get_input_tensor(op, 4).eval().astype(np.float32)
@@ -241,9 +250,8 @@ class TFConverter(object):
       (1.0 / np.vectorize(math.sqrt)(var_value + epsilon_value)) *
       gamma_value)
     offset_value = (-mean_value * scale_value) + beta_value
-    name_prefix = op.inputs[1].name
-    idx = name_prefix.rfind('/')
-    name_prefix = op.inputs[1].name[:idx] + '/'
+    idx = gamma_tensor.name.rfind('/')
+    name_prefix = gamma_tensor.name[:idx] + '/'
     input_names = [name_prefix+'scale:0', name_prefix+'offset:0']
     self.add_tensor(input_names[0], gamma_value.shape,
       gamma_tensor.dtype, scale_value)
@@ -259,8 +267,8 @@ class TFConverter(object):
       op_def.input.extend([input.name for input in input_names])
 
     self.resolved_ops[op.name] = 1
-
     final_op = op
+
     if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'Relu':
       relu_op = self.tf_graph[op.name][0]
       final_op = relu_op
@@ -272,9 +280,6 @@ class TFConverter(object):
     op_def.output.extend([final_op.outputs[0].name])
     self.add_output_shape(final_op.outputs, op_def)
 
-    data_format_arg = op_def.arg.add()
-    data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
     self.net_def.op.extend([op_def])
 
   def convert_batchnorm(self, op):

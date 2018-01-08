@@ -25,7 +25,7 @@ __kernel void batch_norm(__read_only image2d_t input,
 
   // native_rsqrt seems not faster than rsqrt
   DATA_TYPE4 bn_scale = scale_value * rsqrt(var_value + (DATA_TYPE4)epsilon);
-  DATA_TYPE4 bn_offset = mad(0 - mean_value, new_scale, offset_value);
+  DATA_TYPE4 bn_offset = mad(0 - mean_value, bn_scale, offset_value);
 #endif
 
   const int pos = mad24(ch_blk, width, w);

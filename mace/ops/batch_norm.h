@@ -14,7 +14,7 @@ template <DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
  public:
   BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {
+      : Operator<D, T>(operator_def, ws), functor_(false, false) {
     epsilon_ =
         OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(1e-4));
   }
@@ -40,8 +40,7 @@ class BatchNormOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(input);
 
-    functor_(input, scale, offset, mean, var, epsilon_,
-             false, false, output, future);
+    functor_(input, scale, offset, mean, var, epsilon_, output, future);
     return true;
   }
 

@@ -20,11 +20,9 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *mean,
     const Tensor *var,
     const float epsilon,
-    const bool folded_constant,
-    const bool fused_relu,
     Tensor *output,
     StatsFuture *future) {
-  MACE_CHECK(folded_constant || (mean != nullptr && var != nullptr));
+  MACE_CHECK(folded_constant_ || (mean != nullptr && var != nullptr));
 
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
@@ -38,10 +36,10 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  if (folded_constant) {
+  if (folded_constant_) {
     built_options.emplace("-DFOLDED_CONSTANT");
   }
-  if (fused_relu) {
+  if (fused_relu_) {
     built_options.emplace("-DFUSED_RELU");
   }
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
@@ -50,7 +48,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(scale->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(offset->buffer())));
-  if (!folded_constant) {
+  if (!folded_constant_) {
     bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(mean->buffer())));
     bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
     bm_kernel.setArg(idx++, epsilon);
@@ -103,7 +101,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3) << "_"
-     << folded_constant;
+     << folded_constant_;
   OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,
