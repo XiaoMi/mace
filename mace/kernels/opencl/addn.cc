@@ -54,6 +54,7 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
     local_ws[0] = std::min<uint32_t>(width_pixels, kwg_size);
     local_ws[1] = std::min<uint32_t>(batch_height_pixels, kwg_size / local_ws[0]);
     return {{local_ws[0], local_ws[1]},
+            {local_ws[1], local_ws[0]},
             {kwg_size / 16, 16},
             {kwg_size / 32, 32},
             {kwg_size / 64, 64},

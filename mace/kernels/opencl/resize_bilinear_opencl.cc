@@ -66,6 +66,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     local_ws[2] = std::min<uint32_t>(out_height * batch, kwg_size / (local_ws[0] * local_ws[1]));
     return {{4, 15, 8}, //SNPE size
             {local_ws[0], local_ws[1], local_ws[2]},
+            {local_ws[2], local_ws[1], local_ws[0]},
             {kwg_size / 16, 4, 4},
             {kwg_size / 32, 4, 8},
             {kwg_size / 32, 8, 4},

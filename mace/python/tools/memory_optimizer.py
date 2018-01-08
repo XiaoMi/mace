@@ -23,14 +23,11 @@ class MemoryOptimizer(object):
     for op in net_def.op:
       if self.is_buffer_image_op(op):
         continue
-      tensor_name = self._op_to_tensor(op)
+      tensor_name = op.output[0]
       if tensor_name in consumers:
         self.ref_counter[tensor_name] = len(consumers[tensor_name])
       else:
         self.ref_counter[tensor_name] = 0
-
-  def _op_to_tensor(self, op):
-    return op.name + ':0'
 
   def is_buffer_image_op(self, op):
     return op.type == 'BufferToImage' or op.type == 'ImageToBuffer'
@@ -51,7 +48,7 @@ class MemoryOptimizer(object):
         print('WARNING: There is no output shape information to do memory optimization.')
         return
       op.mem_id = mem_id
-      self.op_mem[self._op_to_tensor(op)] = mem_id
+      self.op_mem[op.output[0]] = mem_id
       if mem_id not in self.mem_block:
         self.mem_block[mem_id] = [0, 0]
       mem_size = self.mem_block[mem_id]
