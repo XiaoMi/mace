@@ -19,8 +19,11 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
+    const float epsilon,
     Tensor *output,
     StatsFuture *future) {
+  MACE_CHECK(folded_constant_ || (mean != nullptr && var != nullptr));
+
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -33,15 +36,23 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+  if (folded_constant_) {
+    built_options.emplace("-DFOLDED_CONSTANT");
+  }
+  if (fused_relu_) {
+    built_options.emplace("-DFUSED_RELU");
+  }
   auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(scale->buffer())));
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(offset->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(mean->buffer())));
-  bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
-  bm_kernel.setArg(idx++, epsilon_);
+  if (!folded_constant_) {
+    bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(mean->buffer())));
+    bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
+    bm_kernel.setArg(idx++, epsilon);
+  }
   bm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -89,7 +100,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
      << output->dim(0) << "_"
      << output->dim(1) << "_"
      << output->dim(2) << "_"
-     << output->dim(3);
+     << output->dim(3) << "_"
+     << folded_constant_;
   OpenCLProfilingTimer timer(&event);
   Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
                                                      lws,

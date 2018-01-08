@@ -39,6 +39,13 @@ def main(unused_args):
       f.write(str(output_graph_def))
   print("Model conversion is completed.")
 
+def str2bool(v):
+  if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    return True
+  elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    return False
+  else:
+    raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def parse_args():
   """Parses command line arguments."""
@@ -91,7 +98,9 @@ def parse_args():
     help="template path")
   parser.add_argument(
     "--confuse",
-    type=bool,
+    type=str2bool,
+    nargs='?',
+    const=False,
     default=False,
     help="confuse model names")
   parser.add_argument(
