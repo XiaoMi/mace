@@ -69,9 +69,12 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, CPU); \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, OPENCL);
 
-BM_ADDN(2, 1, 240, 240, 256, float);
+BM_ADDN(2, 1, 256, 256, 32, float);
+BM_ADDN(2, 1, 128, 128, 32, float);
 // BM_ADDN(2, 1, 240, 240, 256, half);
-BM_ADDN(4, 1, 240, 240, 256, float);
+BM_ADDN(4, 1, 128, 128, 3, float);
+BM_ADDN(2, 1, 256, 256, 3, float);
+BM_ADDN(2, 1, 512, 512, 3, float);
 // BM_ADDN(4, 1, 240, 240, 256, half);
 
 }  //  namespace mace

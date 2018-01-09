@@ -65,9 +65,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
     local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
     local_ws[1] = std::min<uint32_t>(width, kwg_size / local_ws[0]);
     local_ws[2] = std::min<uint32_t>(height * batch, kwg_size / (local_ws[0] * local_ws[1]));
-    return {{8, 128, 1}, //SNPE size
-            {local_ws[0], local_ws[1], local_ws[2]},
-            {local_ws[2], local_ws[1], local_ws[0]},
+    return {{local_ws[0], local_ws[1], local_ws[2]},
             {kwg_size / 16, 4, 4},
             {kwg_size / 32, 4, 8},
             {kwg_size / 32, 8, 4},
@@ -83,7 +81,9 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
             {7, 15, 9},
             {9, 7, 15},
             {15, 7, 9},
-            {1, kwg_size, 1}};
+            {1, kwg_size, 1},
+            {8, 128, 1}, //SNPE size
+    };
   };
   cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params) -> cl_int {

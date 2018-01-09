@@ -46,6 +46,8 @@ class Tuner {
       // tune
       std::vector<param_type> opt_param = default_param;
       RetType res = Tune<RetType>(param_generator, func, timer, &opt_param);
+      VLOG(1) << "Tuning result. "
+              << param_key << ": " << internal::MakeString(opt_param);
       param_table_[param_key] = opt_param;
       return res;
     } else {
