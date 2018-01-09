@@ -2,34 +2,34 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path image_size [tuning]'
+  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size [tuning]'
 }
 
-if [ $# -lt 2 ];then
+if [ $# -lt 4 ];then
   Usage
   exit -1
 fi
 
 source $1
 
-VLOG_LEVEL=0
 TF_MODEL_FILE_PATH=$2
+MODEL_TAG=$3
+IMAGE_SIZE=$4
+TUNING_OR_NOT=${5:-0}
+
+VLOG_LEVEL=0
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
 MACE_SOURCE_DIR=`/bin/pwd`
-MACE_MODEL_NAME='mace_model.pb'
 INPUT_FILE_NAME='model_input'
 OUTPUT_FILE_NAME='gcn.out'
 OUTPUT_LIST_FILE='gcn.list'
-PHONE_DATA_DIR="/data/local/tmp/${MACE_MODEL_NAME}"
+PHONE_DATA_DIR="/data/local/tmp/${MODEL_TAG}"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
-IMAGE_SIZE=$3
-MODEL_TAG=GCN${IMAGE_SIZE}
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
-MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/gcn-$IMAGE_SIZE
+MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 CL_BIN_DIR=${CODEGEN_DIR}/opencl_bin
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
-TUNING_OR_NOT=${4:-0}
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 
 build_and_run()
@@ -46,7 +46,7 @@ build_and_run()
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
-    --copt="-DMACE_MODEL_FUNCTION=Create${MODEL_TAG}" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     $PRODUCTION_MODE_BUILD_FLAGS  || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
@@ -88,7 +88,7 @@ bazel build //mace/python/tools:tf_converter || exit -1
 rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
-                                         --output=${MODEL_CODEGEN_DIR}/mace_gcn${IMAGE_SIZE}.cc \
+                                         --output=${MODEL_CODEGEN_DIR}/model.cc \
                                          --input_node=${TF_INPUT_NODE} \
                                          --output_node=${TF_OUTPUT_NODE} \
                                          --data_type=DT_HALF \
@@ -96,7 +96,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
-                                         --confuse=True || exit -1
+                                         --obfuscate=True || exit -1
 
 echo "Step 3: Generate version source"
 rm -rf ${VERSION_SOURCE_PATH}

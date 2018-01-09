@@ -42,7 +42,7 @@ def generate_in_out_map(ops, tensor_map):
           in_out_map[output_name] = generate_random_name()
   return in_out_map
 
-def confuse_name(net_def):
+def obfuscate_name(net_def):
   input_node = "mace_input_node"
   output_node = "mace_output_node"
   tensor_map = generate_tensor_map(net_def.tensors)
@@ -86,9 +86,9 @@ class TensorInfo:
 def stringfy(value):
   return ', '.join('"{0}"'.format(w) for w in value)
 
-def convert_to_source(net_def, template, confuse, model_tag, output, runtime):
-  if confuse:
-    confuse_name(net_def)
+def convert_to_source(net_def, template, obfuscate, model_tag, output, runtime):
+  if obfuscate:
+    obfuscate_name(net_def)
   else:
     rename_tensor(net_def)
 

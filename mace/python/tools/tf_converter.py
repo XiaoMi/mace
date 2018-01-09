@@ -29,7 +29,7 @@ def main(unused_args):
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
   if FLAGS.output_type == 'source':
-    source_converter_lib.convert_to_source(output_graph_def, FLAGS.template, FLAGS.confuse,
+    source_converter_lib.convert_to_source(output_graph_def, FLAGS.template, FLAGS.obfuscate,
       FLAGS.model_tag, FLAGS.output, FLAGS.runtime)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
@@ -97,12 +97,12 @@ def parse_args():
     default="",
     help="template path")
   parser.add_argument(
-    "--confuse",
+    "--obfuscate",
     type=str2bool,
     nargs='?',
     const=False,
     default=False,
-    help="confuse model names")
+    help="obfuscate model names")
   parser.add_argument(
     "--model_tag",
     type=str,
