@@ -53,7 +53,7 @@ class MemoryOptimizer(object):
         self.mem_block[mem_id] = [0, 0]
       mem_size = self.mem_block[mem_id]
       mem_size[1] = max(mem_size[1], op.output_shape[0].dims[0] * op.output_shape[0].dims[1])
-      mem_size[0] = max(mem_size[0], op.output_shape[0].dims[2] * (op.output_shape[0].dims[3]+3)/4)
+      mem_size[0] = max(mem_size[0], op.output_shape[0].dims[2] * int((op.output_shape[0].dims[3]+3)/4))
 
       # de-ref input tensor mem
       for ipt in op.input:
@@ -79,6 +79,7 @@ class MemoryOptimizer(object):
         continue
       origin_mem_size += reduce(operator.mul, op.output_shape[0].dims, 1)
     for mem in self.mem_block:
+      print mem, self.mem_block[mem]
       optimized_mem_size += reduce(operator.mul, self.mem_block[mem], 4)
 
     print('origin mem: %d, optimized mem: %d', origin_mem_size, optimized_mem_size)
