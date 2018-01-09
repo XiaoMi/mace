@@ -31,9 +31,11 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
+  std::string kernel_name = MACE_KERNRL_NAME("bias_add");
+  built_options.emplace("-Dbias_add=" + kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  auto bias_kernel = runtime->BuildKernel("bias_add", "bias_add", built_options);
+  auto bias_kernel = runtime->BuildKernel("bias_add", kernel_name, built_options);
 
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bias_kernel);
   const std::vector<uint32_t> lws = {8, 16, 8};

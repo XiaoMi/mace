@@ -30,8 +30,12 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
     batch_tensor->ResizeImage(output_shape, output_image_shape);
     kernel_name = "space_to_batch";
   }
+  std::string obfuscated_kernel_name = MACE_KERNRL_NAME(kernel_name);
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
+  std::stringstream kernel_name_ss;
+  kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
+  built_options.emplace(kernel_name_ss.str());
   built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DataTypeToEnum<T>::value));
   auto s2b_kernel = runtime->BuildKernel("space_to_batch", kernel_name, built_options);

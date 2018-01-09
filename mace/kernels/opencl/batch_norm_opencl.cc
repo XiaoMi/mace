@@ -34,6 +34,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
+  std::string kernel_name = MACE_KERNRL_NAME("batch_norm");
+  built_options.emplace("-Dbatch_norm=" + kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   if (folded_constant_) {
@@ -42,7 +44,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(
   if (fused_relu_) {
     built_options.emplace("-DFUSED_RELU");
   }
-  auto bm_kernel = runtime->BuildKernel("batch_norm", "batch_norm", built_options);
+  auto bm_kernel = runtime->BuildKernel("batch_norm", kernel_name, built_options);
 
   uint32_t idx = 0;
   bm_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

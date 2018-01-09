@@ -25,15 +25,6 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     buffer->Resize(image->shape());
   }
 
-  std::set<std::string> built_options;
-  if (buffer->dtype() == image->dtype()) {
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DataTypeToEnum<T>::value));
-  } else {
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-  }
-  auto runtime = OpenCLRuntime::Global();
   string kernel_name;
   switch (type) {
     case FILTER:
@@ -46,8 +37,21 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       kernel_name = i2b_ ? "arg_image_to_buffer" : "arg_buffer_to_image";
       break;
   }
+  string obfuscated_kernel_name = MACE_KERNRL_NAME(kernel_name);
+  std::set<std::string> built_options;
+  std::stringstream kernel_name_ss;
+  kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
+  built_options.emplace(kernel_name_ss.str());
+  if (buffer->dtype() == image->dtype()) {
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DataTypeToEnum<T>::value));
+  } else {
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
+  }
+  auto runtime = OpenCLRuntime::Global();
   auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
-                                         kernel_name,
+                                         obfuscated_kernel_name,
                                          built_options);
 
   uint32_t idx = 0;

@@ -17,6 +17,9 @@
 #include "mace/utils/timer.h"
 #include "mace/utils/utils.h"
 
+namespace {
+}  // namespace
+
 namespace mace {
 
 extern bool GetTuningParams(const char *path,
@@ -43,8 +46,7 @@ class Tuner {
           &param_generator,
       const std::function<RetType(const std::vector<param_type> &)> &func,
       Timer *timer) {
-    std::string obfucated_param_key = param_key;
-    ObfuscateString(&obfucated_param_key);
+    std::string obfucated_param_key = MACE_OBFUSCATE_SYMBOLS(param_key);
     if (IsTuning() && param_generator != nullptr) {
       // tune
       std::vector<param_type> opt_param = default_param;
@@ -57,10 +59,10 @@ class Tuner {
       // run
       if (param_table_.find(obfucated_param_key) != param_table_.end()) {
         VLOG(1) << param_key << ": "
-                << internal::MakeString(param_table_[param_key]);
-        return func(param_table_[param_key]);
+                << internal::MakeString(param_table_[obfucated_param_key]);
+        return func(param_table_[obfucated_param_key]);
       } else {
-        LOG(WARNING) << "Fallback to default parameter: " << param_key;
+        LOG(WARNING) << "Fallback to default parameter: " << param_key << ", table size: " << param_table_.size();
         return func(default_param);
       }
     }
@@ -88,7 +90,8 @@ class Tuner {
           int32_t key_size = kp.first.size();
           ofs.write(reinterpret_cast<char *>(&key_size), sizeof(key_size));
           ofs.write(kp.first.c_str(), key_size);
-          VLOG(1) << kp.first.c_str();
+          VLOG(1) << "Write tuning param: "
+                  << MACE_OBFUSCATE_SYMBOLS(kp.first.c_str());
 
           auto &params = kp.second;
           int32_t params_size = params.size() * sizeof(param_type);

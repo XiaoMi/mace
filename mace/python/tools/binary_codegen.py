@@ -27,7 +27,7 @@ def generate_cpp_source():
     key_size, = struct.unpack("i", binary_array[idx:idx+4])
     idx += 4
     key, = struct.unpack(str(key_size) + "s", binary_array[idx:idx+key_size])
-    key = ''.join(['\\x{:02x}'.format(ord(c)) for c in key])
+    key = ''.join([ "\\%03o" % ord(c) if not c.isalnum() else c for c in key])
     idx += key_size
     params_size, = struct.unpack("i", binary_array[idx:idx+4])
     idx += 4

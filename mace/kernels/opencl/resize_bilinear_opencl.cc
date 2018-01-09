@@ -40,10 +40,12 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
+  std::string kernel_name = MACE_KERNRL_NAME("resize_bilinear_nocache");
+  built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  auto rb_kernel  = runtime->BuildKernel("resize_bilinear", "resize_bilinear_nocache", built_options);
+  auto rb_kernel  = runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
 
   uint32_t idx = 0;
   rb_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

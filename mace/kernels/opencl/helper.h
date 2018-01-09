@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_OPENCL_HELPER_H_
 #define MACE_KERNELS_OPENCL_HELPER_H_
 #include "mace/core/types.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {

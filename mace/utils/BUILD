@@ -82,3 +82,21 @@ cc_library(
         ":utils_hdrs",
     ],
 )
+
+cc_test(
+    name = "utils_test",
+    testonly = 1,
+    srcs = [
+        "utils_test.cc",
+    ],
+    linkopts = if_android([
+        "-pie",
+        "-lm",
+    ]),
+    linkstatic = 1,
+    deps = [
+        ":utils_hdrs",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
+    ],
+)
