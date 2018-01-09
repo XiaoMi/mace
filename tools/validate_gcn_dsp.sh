@@ -36,13 +36,17 @@ build_and_run()
     --cpu=armeabi-v7a \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
-    --copt="-Werror=return-type"
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define hexagon=true --define production=true || exit -1
 
-  adb shell "mkdir -p ${PHONE_DATA_DIR}"
-  adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR}
-  adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR}
+  adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
+  adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit -1
+  adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR} || exit -1
+  adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit -1
 
   adb </dev/null shell \
+    LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     ${PHONE_DATA_DIR}/mace_run \
@@ -50,15 +54,15 @@ build_and_run()
     --output_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},2"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
-    --device=HEXAGON   \
-    --round=$round
+    --device=HEXAGON \
+    --round=2 || exit -1
 }
 
 echo "Step 1: Generate input data"
 rm -rf ${MODEL_DIR}/${INPUT_FILE_NAME}
 python tools/validate.py --generate_data true \
  --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
- --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3"
+ --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3" || exit -1
 
 echo "Step 2: Convert tf model to mace model and optimize memory"
 bazel build //mace/python/tools:tf_converter
@@ -73,7 +77,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
-                                         --obfuscate=True
+                                         --obfuscate=True || exit -1
 
 echo "Step 3: Generate version source"
 rm -rf ${VERSION_SOURCE_PATH}

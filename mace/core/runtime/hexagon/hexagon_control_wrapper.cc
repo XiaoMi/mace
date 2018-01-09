@@ -184,7 +184,7 @@ void HexagonControlWrapper::SetDebugLevel(int level) {
 void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
   vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
-  unsigned int n_items;
+  unsigned int n_items = 0;
   hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE, &n_items);
 
   std::unordered_map<uint32_t, float> node_id_counters;

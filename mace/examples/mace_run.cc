@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
       Flag("output_shape", &output_shape, "output shape, separated by comma"),
       Flag("input_file", &input_file, "input file name"),
       Flag("output_file", &output_file, "output file name"),
-      Flag("device", &device, "CPU/NEON"),
+      Flag("device", &device, "CPU/NEON/OPENCL/HEXAGON"),
       Flag("round", &round, "round"),
       Flag("malloc_check_cycle", &malloc_check_cycle,
            "malloc debug check cycle, -1 to disable"),
@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
                  input_size * sizeof(float));
     in_file.close();
   } else {
-    LOG(ERROR) << "Open input file failed";
+    LOG(FATAL) << "Open input file failed";
   }
 
   // Init model
