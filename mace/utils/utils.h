@@ -48,5 +48,15 @@ inline std::string ToString(T v) {
   return ss.str();
 }
 
+// ObfuscateString(ObfuscateString(str)) ==> str
+inline void ObfuscateString(std::string *str) {
+  // Keep consistent with obfuscation in python tools
+  const std::string kLookupTable = "Xiaomi-AI-Platform-Mace";
+  size_t lookup_table_size = kLookupTable.size();
+  for (int i = 0; i < str->size(); i++) {
+    (*str)[i] = (*str)[i] ^ kLookupTable[i % lookup_table_size];
+  }
+}
+
 }  //  namespace mace
 #endif  //  MACE_UTILS_UTILS_H_
