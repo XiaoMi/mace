@@ -2,30 +2,30 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path image_size [tuning]'
+  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size [tuning]'
 }
 
-if [ $# -lt 2 ];then
+if [ $# -lt 4 ];then
   Usage
   exit -1
 fi
 
 source $1
 
-VLOG_LEVEL=0
 TF_MODEL_FILE_PATH=$2
+MODEL_TAG=$3
+IMAGE_SIZE=$4
+
+VLOG_LEVEL=0
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
 MACE_SOURCE_DIR=`/bin/pwd`
-MACE_MODEL_NAME='mace_model.pb'
 INPUT_FILE_NAME='model_input'
 OUTPUT_FILE_NAME='gcn.out'
 OUTPUT_LIST_FILE='gcn.list'
-PHONE_DATA_DIR="/data/local/tmp/${MACE_MODEL_NAME}"
+PHONE_DATA_DIR="/data/local/tmp/${MODEL_TAG}"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
-IMAGE_SIZE=$3
-MODEL_TAG=GCN${IMAGE_SIZE}
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
-MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/gcn-$IMAGE_SIZE
+MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 
 build_and_run()
@@ -73,7 +73,7 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
-                                         --confuse=True
+                                         --obfuscate=True
 
 echo "Step 3: Generate version source"
 rm -rf ${VERSION_SOURCE_PATH}

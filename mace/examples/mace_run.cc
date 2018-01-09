@@ -28,8 +28,13 @@ using namespace std;
 using namespace mace;
 
 namespace mace {
-extern NetDef MACE_MODEL_FUNCTION();
+namespace MACE_MODEL_TAG {
+
+extern NetDef CreateNet();
+
 }
+}
+
 void ParseShape(const string &str, vector<int64_t> *shape) {
   string tmp = str;
   while (!tmp.empty()) {
@@ -149,7 +154,7 @@ int main(int argc, char **argv) {
 
   // load model
   int64_t t0 = utils::NowMicros();
-  NetDef net_def = mace::MACE_MODEL_FUNCTION();
+  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet();
   int64_t t1 = utils::NowMicros();
   LOG(INFO) << "CreateNetDef duration: " << t1 - t0 << " us";
   int64_t init_micros = t1 - t0;

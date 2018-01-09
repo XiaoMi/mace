@@ -7,7 +7,8 @@
 #include <vector>
 #include "mace/core/public/mace.h"
 
-namespace {{tag}}{
+namespace mace {
+namespace {{tag}} {
 
 {% if tensor_info.data_type != 'DT_UINT8' %} alignas(4) {% endif %} unsigned char {{ tensor_info.name }}[] = {
 {% for d in tensor_info.data %}{{"0x%02X, " % d }}{%endfor%}
@@ -19,7 +20,8 @@ void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors) {
       { {{ tensor.dims|join(', ') }} }, {{ tensor.data_type }}, {{ tensor.node_id }}));
 }
 
-} //  namespace {{tag}}
+}  // namespace {{tag}}
+}  // namespace mace
 
 {% elif mode == 1 %}
 #include <vector>
@@ -43,7 +45,8 @@ void UpdateOp(mace::OperatorDef &op,
 }
 }
 
-namespace {{tag}}{
+namespace mace {
+namespace {{tag}} {
 
 {% for i in range(start, end) %}
 
@@ -119,13 +122,15 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
 
 {% endfor %}
 
-} //  namespace {{tag}}
+}  // namespace {{tag}}
+}  // namespace mace
 
 {% else %}
 #include <vector>
 #include <string>
 #include "mace/core/public/mace.h"
 
+namespace mace {
 namespace {{tag}} {
 
 {% for tensor in tensors %}
@@ -137,13 +142,14 @@ extern void Create{{ tensor.name }}(std::vector<mace::ConstTensor> &tensors);
 extern void CreateOperator{{i}}(mace::OperatorDef &op);
 {% endfor %}
 
-} //  namespace {{ tag }}
+}  // namespace {{ tag }}
+}  // namespace mace
 
 
 namespace {
 
 {% if net.arg|length != 0 %}
-static void CreateNetArg(mace::NetDef &net_def) {
+void CreateNetArg(mace::NetDef &net_def) {
   net_def.mutable_arg().reserve({{ net.arg|length }});
   mace::Argument *arg = nullptr;
   {% for arg in net.arg %}
@@ -178,7 +184,7 @@ static void CreateNetArg(mace::NetDef &net_def) {
 {% endif %}
 
 {% if net.output_info | length > 0 %}
-static void CreateOutputInfo(mace::NetDef &net_def) {
+void CreateOutputInfo(mace::NetDef &net_def) {
 	std::vector<std::vector<int>> dims { {{net.output_info | map(attribute='dims') | join(', ') | replace('[', '{') | replace(']', '}') }} };
 
   std::vector<int> data_types_int { {{ net.output_info | map(attribute='data_type') | join(', ') }} };
@@ -194,28 +200,28 @@ static void CreateOutputInfo(mace::NetDef &net_def) {
 }
 {% endif %}
 
-static void CreateOperators(std::vector<mace::OperatorDef> &ops) {
+void CreateOperators(std::vector<mace::OperatorDef> &ops) {
   ops.resize({{ net.op|length }});
   {% for i in range(net.op|length) %}
 
-  {{tag}}::CreateOperator{{i}}(ops[{{i}}]);
+  mace::{{tag}}::CreateOperator{{i}}(ops[{{i}}]);
   {% endfor %}
 
 }
 
-static void CreateTensors(std::vector<mace::ConstTensor> &tensors) {
+void CreateTensors(std::vector<mace::ConstTensor> &tensors) {
   tensors.reserve({{ net.tensors|length }});
 
   {% for tensor in net.tensors %}
 
-  {{tag}}::Create{{tensor.name}}(tensors);
+  mace::{{tag}}::Create{{tensor.name}}(tensors);
   {% endfor %}
 
 }
 
 
 {% if net.mem_arena.mem_block|length != 0 %}
-static void CreateMemoryArena(mace::MemoryArena &mem_arena) {
+void CreateMemoryArena(mace::MemoryArena &mem_arena) {
   std::vector<mace::MemoryBlock> &mem_block = mem_arena.mutable_mem_block();
   mem_block.reserve({{ net.mem_arena.mem_block|length }});
 
@@ -231,8 +237,9 @@ static void CreateMemoryArena(mace::MemoryArena &mem_arena) {
 }
 
 namespace mace {
+namespace {{tag}} {
 
-NetDef {{'Create' + tag}}() {
+NetDef CreateNet() {
   NetDef net_def;
   net_def.set_name("{{ net.name}}");
   net_def.set_version("{{ net.version }}");
@@ -256,5 +263,6 @@ NetDef {{'Create' + tag}}() {
   return net_def;
 }
 
-} //  namespace mace
+}  // namespace {{tag}}
+}  // namespace mace
 {% endif %}
