@@ -25,6 +25,8 @@ static void Concat2(const Tensor *input0,
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
+  std::string kernel_name = MACE_KERNRL_NAME("concat_channel");
+  built_options.emplace("-Dconcat_channel=" + kernel_name);
   if (input0->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
@@ -35,7 +37,7 @@ static void Concat2(const Tensor *input0,
   if (input0->dim(3) % 4 == 0) {
     built_options.emplace("-DDIVISIBLE_FOUR");
   }
-  auto concat_kernel = runtime->BuildKernel("concat", "concat_channel", built_options);
+  auto concat_kernel = runtime->BuildKernel("concat", kernel_name, built_options);
 
   uint32_t idx = 0;
   concat_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input0->buffer())));

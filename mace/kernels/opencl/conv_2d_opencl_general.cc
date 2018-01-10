@@ -28,6 +28,8 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
   const index_t width_blocks = RoundUpDiv4(width);
 
   std::set<std::string> built_options;
+  std::string kernel_name = MACE_KERNRL_NAME("conv_2d");
+  built_options.emplace("-Dconv_2d=" + kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   built_options.emplace(bias != nullptr ? "-DBIAS" : "");
@@ -37,7 +39,7 @@ void Conv2dOpencl(const Tensor *input, const Tensor *filter,
   }
 
   auto runtime = OpenCLRuntime::Global();
-  auto conv_2d_kernel = runtime->BuildKernel("conv_2d", "conv_2d", built_options);
+  auto conv_2d_kernel = runtime->BuildKernel("conv_2d", kernel_name, built_options);
 
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

@@ -5,23 +5,10 @@
 #include <vector>
 
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/utils/utils.h"
 
 
 namespace mace {
-
-namespace {
-inline void DecryptOpenCLSource(const std::vector<unsigned char> &src,
-                                std::vector<unsigned char> *dst) {
-  dst->reserve(src.size());
-
-  // Keep consistent with encrypt in python tool
-  const std::string decrypt_lookup_table = "Xiaomi-AI-Platform-Mace";
-  size_t lookup_table_size = decrypt_lookup_table.size();
-  for (int i = 0; i < src.size(); i++) {
-    dst->push_back(src[i] ^ decrypt_lookup_table[i % lookup_table_size]);
-  }
-}
-}  // namespace
 
 bool GetSourceOrBinaryProgram(const std::string &program_name,
                               const std::string &binary_file_name_prefix,
@@ -36,9 +23,8 @@ bool GetSourceOrBinaryProgram(const std::string &program_name,
     return false;
   }
   cl::Program::Sources sources;
-  std::vector<unsigned char> decrypt_source;
-  DecryptOpenCLSource(it_source->second, &decrypt_source);
-  sources.push_back(std::string(decrypt_source.begin(), decrypt_source.end()));
+  std::string kernel_source(it_source->second.begin(), it_source->second.end());
+  sources.push_back(ObfuscateString(kernel_source));
   *program = cl::Program(context, sources);
 
   return true;

@@ -36,6 +36,8 @@ void Conv1x1(const Tensor *input,
   MACE_CHECK(input_batch == batch);
 
   std::set<std::string> built_options;
+  std::string kernel_name = MACE_KERNRL_NAME("conv_2d_1x1");
+  built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   built_options.emplace("-DSTRIDE=" + ToString(stride));
@@ -47,7 +49,7 @@ void Conv1x1(const Tensor *input,
   }
 
   auto runtime = OpenCLRuntime::Global();
-  auto conv_2d_kernel = runtime->BuildKernel("conv_2d_1x1", "conv_2d_1x1", built_options);
+  auto conv_2d_kernel = runtime->BuildKernel("conv_2d_1x1", kernel_name, built_options);
 
   uint32_t idx = 0;
   conv_2d_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));

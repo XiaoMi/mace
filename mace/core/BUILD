@@ -96,6 +96,7 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_dev",
+        "//mace/utils:utils_hdrs",
     ],
 )
 

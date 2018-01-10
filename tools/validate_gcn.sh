@@ -45,7 +45,7 @@ build_and_run()
     round=0 # only warm up
   else
     tuning_flag=0
-    round=100
+    round=2
   fi
 
   bazel build --verbose_failures -c opt --strip always mace/examples:mace_run \
@@ -56,6 +56,7 @@ build_and_run()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --copt="-DMACE_OBFUSCATE_LITERALS" \
     $PRODUCTION_MODE_BUILD_FLAGS \
     $TUNING_MODE_BUILD_FLAGS || exit -1
 

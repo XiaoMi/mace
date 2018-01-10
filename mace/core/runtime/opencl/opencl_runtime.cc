@@ -124,6 +124,9 @@ cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
 std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
     const std::string &filename_msg) {
+#ifdef MACE_OBFUSCATE_LITERALS
+  return ObfuscateSymbolWithCollision(filename_msg);
+#else
   std::string filename_prefix = filename_msg;
   for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
     if (*it == ' ' || *it == '-' || *it == '=') {
@@ -131,6 +134,7 @@ std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
     }
   }
   return filename_prefix;
+#endif
 }
 
 extern bool GetSourceOrBinaryProgram(const std::string &program_name,
@@ -219,7 +223,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(
     program = built_program_it->second;
   } else {
     std::string binary_file_name_prefix =
-        GenerateCLBinaryFilenamePrefix(built_program_key);
+      GenerateCLBinaryFilenamePrefix(built_program_key);
     this->BuildProgram(program_name, binary_file_name_prefix,
                        build_options_str, &program);
     built_program_map_.emplace(built_program_key, program);

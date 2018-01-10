@@ -28,6 +28,8 @@ static void Pooling(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
+  std::string kernel_name = MACE_KERNRL_NAME("pooling");
+  built_options.emplace("-Dpooling=" + kernel_name);
   if (type == MAX && input->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
@@ -39,7 +41,7 @@ static void Pooling(const Tensor *input,
   if (type == AVG) {
     built_options.emplace("-DPOOL_AVG");
   }
-  auto pooling_kernel = runtime->BuildKernel("pooling", "pooling", built_options);
+  auto pooling_kernel = runtime->BuildKernel("pooling", kernel_name, built_options);
 
   uint32_t idx = 0;
   pooling_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
