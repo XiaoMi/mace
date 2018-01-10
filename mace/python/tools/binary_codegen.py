@@ -14,10 +14,17 @@ FLAGS = None
 
 
 def generate_cpp_source():
+  data_map = {}
+  if not os.path.exists(FLAGS.binary_file):
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
+    return env.get_template('str2vec_maps.cc.tmpl').render(
+      maps=data_map,
+      data_type='unsigned int',
+      variable_name=FLAGS.variable_name
+    )
+
   with open(FLAGS.binary_file, "rb") as binary_file:
     binary_array = np.fromfile(binary_file, dtype=np.uint8)
-
-  data_map = {}
 
   idx = 0
   size, = struct.unpack("Q", binary_array[idx:idx+8])
