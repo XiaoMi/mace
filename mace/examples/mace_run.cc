@@ -32,6 +32,8 @@ namespace MACE_MODEL_TAG {
 
 extern NetDef CreateNet();
 
+extern const std::string ModelChecksum();
+
 }
 }
 
@@ -140,6 +142,7 @@ int main(int argc, char **argv) {
 
   VLOG(0) << "mace version: " << MaceVersion() << std::endl
           << "mace git version: " << MaceGitVersion() << std::endl
+          << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum() << std::endl
           << "input_shape: " << input_shape << std::endl
           << "output_shape: " << output_shape << std::endl
           << "input_file: " << input_file << std::endl

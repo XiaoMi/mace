@@ -1,5 +1,6 @@
 import argparse
 import sys
+import hashlib
 import tensorflow as tf
 from tensorflow import gfile
 from mace.proto import mace_pb2
@@ -11,11 +12,19 @@ from mace.python.tools import source_converter_lib
 
 FLAGS = None
 
+def md5(fname):
+  hash_md5 = hashlib.md5()
+  with open(fname, "rb") as f:
+    for chunk in iter(lambda: f.read(4096), b""):
+      hash_md5.update(chunk)
+  return hash_md5.hexdigest()
+
 def main(unused_args):
   if not gfile.Exists(FLAGS.input):
     print("Input graph file '" + FLAGS.input + "' does not exist!")
     return -1
 
+  mode_pb_checksum = md5(FLAGS.input)
   input_graph_def = tf.GraphDef()
   with gfile.Open(FLAGS.input, "rb") as f:
     data = f.read()
@@ -29,7 +38,7 @@ def main(unused_args):
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
 
   if FLAGS.output_type == 'source':
-    source_converter_lib.convert_to_source(output_graph_def, FLAGS.template, FLAGS.obfuscate,
+    source_converter_lib.convert_to_source(output_graph_def, mode_pb_checksum, FLAGS.template, FLAGS.obfuscate,
       FLAGS.model_tag, FLAGS.output, FLAGS.runtime)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
