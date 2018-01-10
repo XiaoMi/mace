@@ -47,6 +47,27 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "tuner_dev",
+    srcs = [
+        "tuner_development.cc",
+    ],
+    deps = [
+        ":tuner",
+    ],
+)
+
+cc_library(
+    name = "tuner_prod",
+    srcs = [
+        "tuner_production.cc",
+    ],
+    deps = [
+        ":tuner",
+        "//mace/codegen:generated_tuning_params",
+    ],
+)
+
 cc_test(
     name = "tuner_test",
     testonly = 1,
@@ -55,11 +76,12 @@ cc_test(
     ],
     linkopts = if_android([
         "-pie",
-        "-lm",
+        "-lm",  # Required by unordered_map
     ]),
     linkstatic = 1,
     deps = [
         ":tuner",
+        ":tuner_dev",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],
