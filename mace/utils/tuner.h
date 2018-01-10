@@ -62,7 +62,9 @@ class Tuner {
                 << internal::MakeString(param_table_[obfucated_param_key]);
         return func(param_table_[obfucated_param_key]);
       } else {
-        LOG(WARNING) << "Fallback to default parameter: " << param_key << ", table size: " << param_table_.size();
+#ifndef MACE_DISABLE_NO_TUNING_WARNING
+        LOG(WARNING) << "Fallback to default parameter: " << param_key;
+#endif
         return func(default_param);
       }
     }

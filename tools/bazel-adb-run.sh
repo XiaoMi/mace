@@ -32,12 +32,15 @@ echo "Step 2: Generate version source"
 bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc
 
 echo "Step 3: Build target"
+# -D_GLIBCXX_USE_C99_MATH_TR1 is used to solve include error instead
+# of linking error which solved by -lm
 bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET \
    --crosstool_top=//external:android/crosstool \
    --host_crosstool_top=@bazel_tools//tools/cpp:toolchain  \
    --cpu=$ANDROID_ABI \
    --copt="-std=c++11" \
    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+   --copt="-DMACE_DISABLE_NO_TUNING_WARNING" \
    --copt="-Werror=return-type" \
    --define neon=false
 

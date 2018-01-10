@@ -47,6 +47,7 @@ cc_library(
     linkopts = if_android([
         "-pie",
         "-ldl",
+        "-lm",
     ]),
     deps = [
         ":opencl_headers",
@@ -55,8 +56,10 @@ cc_library(
         "//mace/utils:utils_hdrs",
         "//mace/codegen:generated_version",
     ] + if_production_mode([
+        "//mace/utils:tuner_prod",
         "//mace/core:opencl_prod",
     ]) + if_not_production_mode([
+        "//mace/utils:tuner_dev",
         "//mace/core:opencl_dev",
     ]),
 )
@@ -107,6 +110,5 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_prod",
-        "//mace/codegen:generated_tuning_params",
     ],
 )
