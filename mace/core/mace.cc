@@ -513,14 +513,22 @@ const OperatorDef &NetDef::op(const int idx) const {
 MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
     op_registry_(new OperatorRegistry()), device_type_(device_type),
     ws_(new Workspace()), net_(nullptr), hexagon_controller_(nullptr) {
-
+  ws_->CreateTensor("mace_input_node:0",
+                    GetDeviceAllocator(device_type_),
+                    DT_FLOAT);
+  ws_->CreateTensor("mace_output_node:0",
+                    GetDeviceAllocator(device_type_),
+                    DT_FLOAT);
   if (device_type == HEXAGON) {
     hexagon_controller_.reset(new HexagonControlWrapper());
     hexagon_controller_->Init();
-    hexagon_controller_->SetDebugLevel(0);
+    hexagon_controller_->SetDebugLevel(
+      static_cast<int>(mace::internal::LogMessage::MinVLogLevel()));
     hexagon_controller_->Config();
     hexagon_controller_->SetupGraph(*net_def);
-    hexagon_controller_->PrintGraph();
+    if (VLOG_IS_ON(2)) {
+      hexagon_controller_->PrintGraph();
+    }
   } else {
     ws_->LoadModelTensor(*net_def, device_type);
 
@@ -531,19 +539,15 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
       LOG(FATAL) << "Net init run failed";
     }
     ws_->RemoveUnsedTensor();
-    ws_->CreateTensor("mace_input_node:0",
-                      GetDeviceAllocator(device_type_),
-                      DT_FLOAT);
-    ws_->CreateTensor("mace_output_node:0",
-                      GetDeviceAllocator(device_type_),
-                      DT_FLOAT);
     net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
   }
 }
 MaceEngine::~MaceEngine() {
   if (device_type_ == HEXAGON) {
-    hexagon_controller_->GetPerfInfo();
-    hexagon_controller_->PrintLog();
+    if (VLOG_IS_ON(2)) {
+      hexagon_controller_->GetPerfInfo();
+      hexagon_controller_->PrintLog();
+    }
     hexagon_controller_->TeardownGraph();
     hexagon_controller_->Finalize();
   }
