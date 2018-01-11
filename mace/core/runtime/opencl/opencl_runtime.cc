@@ -158,7 +158,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
                                               program,
                                               &is_opencl_binary);
   MACE_CHECK(found, "Program not found for ",
-                    is_opencl_binary ? "source: " : "binary: ",
+                    is_opencl_binary ? "binary: " : "source: ",
                     built_program_key);
 
   // Build program
@@ -174,7 +174,7 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
       LOG(INFO) << "Program build log: " << build_log;
     }
     LOG(FATAL) << "Build program from "
-               << (is_opencl_binary ? "source: " : "binary: ")
+               << (is_opencl_binary ? "binary: " : "source: ")
                << built_program_key
                << " failed: " << ret;
   }
