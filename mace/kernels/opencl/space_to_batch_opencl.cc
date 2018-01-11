@@ -30,7 +30,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
     batch_tensor->ResizeImage(output_shape, output_image_shape);
     kernel_name = "space_to_batch";
   }
-  std::string obfuscated_kernel_name = MACE_KERNRL_NAME(kernel_name);
+  std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   std::stringstream kernel_name_ss;

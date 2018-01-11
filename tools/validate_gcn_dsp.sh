@@ -27,6 +27,9 @@ KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
+CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
+CL_BIN_DIR=${CODEGEN_DIR}/opencl_bin
+TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
 
 build_and_run()
 {
@@ -71,7 +74,7 @@ mkdir -p ${MODEL_CODEGEN_DIR}
 bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MODEL_CODEGEN_DIR}/mace_gcn${IMAGE_SIZE}.cc \
                                          --input_node=${TF_INPUT_NODE} \
-                                         --output_node=${TF_OUTPUT_NODE} \
+                                         --output_node=${TF_OUTPUT_BR_NODE} \
                                          --data_type=DT_UINT8 \
                                          --runtime=dsp \
                                          --output_type=source \
@@ -84,18 +87,30 @@ rm -rf ${VERSION_SOURCE_PATH}
 mkdir -p ${VERSION_SOURCE_PATH}
 bash mace/tools/git/gen_version_source.sh ${VERSION_SOURCE_PATH}/version.cc
 
-echo "Step 4: Run model on the phone with files"
+echo "Step 4: Generate OpenCL binary program and config code"
+rm -rf ${CL_BIN_DIR}
+mkdir -p ${CL_BIN_DIR}
+python mace/python/tools/opencl_codegen.py \
+  --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
+
+echo "Step 5: Generate tuning source file"
+rm -rf ${TUNING_CODEGEN_DIR}
+mkdir -p ${TUNING_CODEGEN_DIR}
+python mace/python/tools/binary_codegen.py \
+  --binary_file=${CL_BIN_DIR}/mace_run.config --output_path=${TUNING_CODEGEN_DIR}/tuning_params.cc
+
+echo "Step 6: Run model on the phone with files"
 build_and_run
 
-echo "Step 5: Pull the mace run result."
+echo "Step 7: Pull the mace run result."
 rm -rf ${MODEL_DIR}/${OUTPUT_FILE_NAME}
 adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_DIR}
 
-echo "Step 6: Validate the result"
+echo "Step 8: Validate the result"
 python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_file ${MODEL_DIR}/${INPUT_FILE_NAME} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
     --input_node ${TF_INPUT_NODE} \
-    --output_node ${TF_OUTPUT_NODE} \
+    --output_node ${TF_OUTPUT_BR_NODE} \
     --input_shape "${IMAGE_SIZE},${IMAGE_SIZE},3" \
     --output_shape "1,${IMAGE_SIZE},${IMAGE_SIZE},2"

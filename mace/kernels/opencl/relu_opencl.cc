@@ -32,7 +32,7 @@ void ReluFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
   cl::Kernel relu_kernel;
   if (max_limit_ < 0) {
-    std::string kernel_name = MACE_KERNRL_NAME("relu");
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("relu");
     built_options.emplace("-Drelu=" + kernel_name);
     relu_kernel  = runtime->BuildKernel("relu", kernel_name, built_options);
 
@@ -40,7 +40,7 @@ void ReluFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     relu_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
     relu_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
   } else {
-    std::string kernel_name = MACE_KERNRL_NAME("relux");
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("relux");
     built_options.emplace("-Drelux=" + kernel_name);
     relu_kernel  = runtime->BuildKernel("relu", kernel_name, built_options);
 

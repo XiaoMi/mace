@@ -65,26 +65,41 @@ inline std::string ObfuscateString(const std::string &src) {
 }
 
 // Obfuscate synbol or path string
-inline std::string ObfuscateSymbolWithCollision(const std::string &src) {
-  std::string dest = ObfuscateString(src);
+inline std::string ObfuscateSymbol(const std::string &src) {
+  std::string dest = src;
+  if (dest.empty()) {
+    return dest;
+  }
+  dest[0] = src[0]; // avoid invalid symbol which starts from 0-9
   const std::string encode_dict =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  for (int i = 0; i < src.size(); i++) {
-    dest[i] = encode_dict[dest[i] % encode_dict.size()];
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+  for (int i = 1; i < src.size(); i++) {
+    char ch = src[i];
+    int idx;
+    if (ch >= '0' && ch <= '9') {
+      idx = ch - '0';
+    } else if (ch >= 'a' && ch <= 'z') {
+      idx = 10 + ch - 'a';
+    } else if (ch >= 'A' && ch <= 'Z') {
+      idx = 10 + 26 + ch - 'a';
+    } else if (ch == '_') {
+      idx = 10 + 26 + 26;
+    } else {
+      dest[i] = ch;
+      continue;
+    }
+    // There is no collision if it's true for every char at every position
+    dest[i] = encode_dict[(idx + i + 31) % encode_dict.size()];
   }
   return std::move(dest);
 }
 
 #ifdef MACE_OBFUSCATE_LITERALS
 #define MACE_OBFUSCATE_STRING(str) ObfuscateString(str)
-// This table is delibratedly selected to avoid '\0' in genereated literal
-#define MACE_OBFUSCATE_SYMBOLS(str) ObfuscateString(str, "!@#$%^&*()+?")
-// OpenCL will report error if there is name collision
-#define MACE_KERNRL_NAME(name) ObfuscateSymbolWithCollision(name)
+#define MACE_OBFUSCATE_SYMBOL(str) ObfuscateSymbol(str)
 #else
 #define MACE_OBFUSCATE_STRING(str) (str)
-#define MACE_OBFUSCATE_SYMBOLS(str) (str)
-#define MACE_KERNRL_NAME(name) (name)
+#define MACE_OBFUSCATE_SYMBOL(str) (str)
 #endif
 
 }  //  namespace mace

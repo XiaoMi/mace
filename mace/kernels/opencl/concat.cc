@@ -25,7 +25,7 @@ static void Concat2(const Tensor *input0,
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
-  std::string kernel_name = MACE_KERNRL_NAME("concat_channel");
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
   built_options.emplace("-Dconcat_channel=" + kernel_name);
   if (input0->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));

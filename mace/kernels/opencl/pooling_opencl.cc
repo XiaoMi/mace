@@ -28,7 +28,7 @@ static void Pooling(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
-  std::string kernel_name = MACE_KERNRL_NAME("pooling");
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
   built_options.emplace("-Dpooling=" + kernel_name);
   if (type == MAX && input->dtype() == output->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
