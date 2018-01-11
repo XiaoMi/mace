@@ -40,7 +40,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
-  std::string kernel_name = MACE_KERNRL_NAME("resize_bilinear_nocache");
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
   built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));

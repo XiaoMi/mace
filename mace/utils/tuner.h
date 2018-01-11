@@ -46,7 +46,7 @@ class Tuner {
           &param_generator,
       const std::function<RetType(const std::vector<param_type> &)> &func,
       Timer *timer) {
-    std::string obfucated_param_key = MACE_OBFUSCATE_SYMBOLS(param_key);
+    std::string obfucated_param_key = MACE_OBFUSCATE_SYMBOL(param_key);
     if (IsTuning() && param_generator != nullptr) {
       // tune
       std::vector<param_type> opt_param = default_param;
@@ -92,8 +92,7 @@ class Tuner {
           int32_t key_size = kp.first.size();
           ofs.write(reinterpret_cast<char *>(&key_size), sizeof(key_size));
           ofs.write(kp.first.c_str(), key_size);
-          VLOG(1) << "Write tuning param: "
-                  << MACE_OBFUSCATE_SYMBOLS(kp.first.c_str());
+          VLOG(1) << "Write tuning param: " << kp.first.c_str();
 
           auto &params = kp.second;
           int32_t params_size = params.size() * sizeof(param_type);
