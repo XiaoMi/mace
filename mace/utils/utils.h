@@ -88,7 +88,8 @@ inline std::string ObfuscateSymbol(const std::string &src) {
       dest[i] = ch;
       continue;
     }
-    dest[i] = encode_dict[(idx + 37) % encode_dict.size()];
+    // There is no collision if it's true for every char at every position
+    dest[i] = encode_dict[(idx + i + 31) % encode_dict.size()];
   }
   return std::move(dest);
 }
