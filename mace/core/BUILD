@@ -97,6 +97,7 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_dev",
+        "//mace/utils:logging",
         "//mace/utils:utils_hdrs",
     ],
 )
@@ -108,5 +109,6 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_prod",
+        "//mace/utils:logging",
     ],
 )

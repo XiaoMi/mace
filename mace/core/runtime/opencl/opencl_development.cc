@@ -6,6 +6,7 @@
 
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 

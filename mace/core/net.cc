@@ -5,6 +5,7 @@
 #include "mace/core/net.h"
 #include "mace/core/workspace.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/memory_logging.h"
 
 namespace mace {
 
@@ -36,6 +37,7 @@ SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
 }
 
 bool SimpleNet::Run(RunMetadata *run_metadata) {
+  MACE_MEMORY_LOGGING_GUARD();
   VLOG(1) << "Running net " << name_;
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     bool future_wait = (device_type_ == DeviceType::OPENCL &&

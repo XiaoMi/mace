@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
