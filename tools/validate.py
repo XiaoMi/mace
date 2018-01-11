@@ -21,7 +21,7 @@ from tensorflow import gfile
 
 def generate_data(shape):
   np.random.seed()
-  data = np.random.random(shape) * -1
+  data = np.random.random(shape) * 2 - 1
   print FLAGS.input_file
   data.astype(np.float32).tofile(FLAGS.input_file)
   print "Generate input file done."
