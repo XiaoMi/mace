@@ -31,7 +31,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
   auto dt = DataTypeToEnum<T>::value;
-  std::string kernel_name = MACE_KERNRL_NAME("bias_add");
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("bias_add");
   built_options.emplace("-Dbias_add=" + kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));

@@ -19,7 +19,7 @@ namespace {
 bool WriteFile(const std::string &filename,
                bool binary,
                const std::vector<unsigned char> &content) {
-  std::ios_base::openmode mode = std::ios::out;
+  std::ios_base::openmode mode = std::ios_base::out | std::ios_base::trunc;
   if (binary) {
     mode |= std::ios::binary;
   }
@@ -124,17 +124,14 @@ cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
 std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
     const std::string &filename_msg) {
-#ifdef MACE_OBFUSCATE_LITERALS
-  return ObfuscateSymbolWithCollision(filename_msg);
-#else
+  // TODO This can be long and slow, fix it
   std::string filename_prefix = filename_msg;
   for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
     if (*it == ' ' || *it == '-' || *it == '=') {
       *it = '_';
     }
   }
-  return filename_prefix;
-#endif
+  return MACE_OBFUSCATE_SYMBOL(filename_prefix);
 }
 
 extern bool GetSourceOrBinaryProgram(const std::string &program_name,
@@ -145,21 +142,24 @@ extern bool GetSourceOrBinaryProgram(const std::string &program_name,
                                      bool *is_opencl_binary);
 
 void OpenCLRuntime::BuildProgram(const std::string &program_name,
-                                 const std::string &binary_file_name_prefix,
+                                 const std::string &built_program_key,
                                  const std::string &build_options,
                                  cl::Program *program) {
   MACE_CHECK_NOTNULL(program);
 
-  bool is_opencl_binary = false;
+  std::string binary_file_name_prefix =
+    GenerateCLBinaryFilenamePrefix(built_program_key);
   std::vector<unsigned char> program_vec;
+  bool is_opencl_binary;
   const bool found = GetSourceOrBinaryProgram(program_name,
                                               binary_file_name_prefix,
                                               context(),
                                               device(),
                                               program,
                                               &is_opencl_binary);
-  MACE_CHECK(found, "Program not found source: ", program_name, ", or binary: ",
-             binary_file_name_prefix);
+  MACE_CHECK(found, "Program not found for ",
+                    is_opencl_binary ? "source: " : "binary: ",
+                    built_program_key);
 
   // Build program
   std::string build_options_str =
@@ -173,7 +173,10 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
           program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
       LOG(INFO) << "Program build log: " << build_log;
     }
-    LOG(FATAL) << "Build program failed: " << ret;
+    LOG(FATAL) << "Build program from "
+               << (is_opencl_binary ? "source: " : "binary: ")
+               << built_program_key
+               << " failed: " << ret;
   }
 
   if (!is_opencl_binary) {
@@ -222,9 +225,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    std::string binary_file_name_prefix =
-      GenerateCLBinaryFilenamePrefix(built_program_key);
-    this->BuildProgram(program_name, binary_file_name_prefix,
+    this->BuildProgram(program_name, built_program_key,
                        build_options_str, &program);
     built_program_map_.emplace(built_program_key, program);
   }

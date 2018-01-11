@@ -26,7 +26,7 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   auto runtime = OpenCLRuntime::Global();
 
   std::set<std::string> built_options;
-  std::string kernel_name = MACE_KERNRL_NAME("softmax");
+  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
   built_options.emplace("-Dsoftmax=" + kernel_name);
   auto dt = DataTypeToEnum<T>::value;
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));

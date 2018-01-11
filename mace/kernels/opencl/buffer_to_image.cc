@@ -37,7 +37,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       kernel_name = i2b_ ? "arg_image_to_buffer" : "arg_buffer_to_image";
       break;
   }
-  string obfuscated_kernel_name = MACE_KERNRL_NAME(kernel_name);
+  string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
   std::set<std::string> built_options;
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
