@@ -521,11 +521,12 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
                     DT_FLOAT);
   if (device_type == HEXAGON) {
     hexagon_controller_.reset(new HexagonControlWrapper());
-    hexagon_controller_->Init();
+    MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
+    MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
       static_cast<int>(mace::internal::LogMessage::MinVLogLevel()));
-    hexagon_controller_->Config();
-    hexagon_controller_->SetupGraph(*net_def);
+    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def),
+                "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintGraph();
     }
@@ -548,8 +549,8 @@ MaceEngine::~MaceEngine() {
       hexagon_controller_->GetPerfInfo();
       hexagon_controller_->PrintLog();
     }
-    hexagon_controller_->TeardownGraph();
-    hexagon_controller_->Finalize();
+    MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
+    MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
   }
 };
 bool MaceEngine::Run(const float *input,
