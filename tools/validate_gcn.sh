@@ -23,7 +23,7 @@ MACE_SOURCE_DIR=`/bin/pwd`
 INPUT_FILE_NAME='model_input'
 OUTPUT_FILE_NAME='gcn.out'
 OUTPUT_LIST_FILE='gcn.list'
-PHONE_DATA_DIR="/data/local/tmp/${MODEL_TAG}"
+PHONE_DATA_DIR="/data/local/tmp/mace_gcn"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
@@ -51,7 +51,7 @@ build_and_run()
   bazel build --verbose_failures -c opt --strip always mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
-    --cpu=arm64-v8a \
+    --cpu=armeabi-v7a \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
