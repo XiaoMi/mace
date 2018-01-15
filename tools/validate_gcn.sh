@@ -76,9 +76,7 @@ build_and_run()
   fi
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit -1
   adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR} || exit -1
-  if [ x"$RUNTIME" = x"dsp" ]; then
-    adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit -1
-  fi
+  adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit -1
 
   adb </dev/null shell \
     LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
@@ -132,6 +130,7 @@ build_and_run false
 
 echo "Step 6: Generate OpenCL binary program and config code"
 rm -rf ${CL_BIN_DIR}
+mkdir -p ${CL_BIN_DIR}
 adb pull ${KERNEL_DIR} ${CL_BIN_DIR}
 python mace/python/tools/opencl_codegen.py \
   --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
