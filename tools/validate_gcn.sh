@@ -2,7 +2,7 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size [tuning]'
+  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size runtime[gpu/dsp] [tuning]'
 }
 
 if [ $# -lt 4 ];then
@@ -15,7 +15,17 @@ source $1
 TF_MODEL_FILE_PATH=$2
 MODEL_TAG=$3
 IMAGE_SIZE=$4
-TUNING_OR_NOT=${5:-0}
+RUNTIME=$5
+TUNING_OR_NOT=${6:-0}
+
+if [ x"$RUNTIME" = x"dsp" ]; then
+  DATA_TYPE="DT_UINT8"
+  DEVICE_TYPE="HEXAGON"
+  TF_OUTPUT_NODE=${TF_OUTPUT_BR_NODE}
+else
+  DATA_TYPE="DT_HALF"
+  DEVICE_TYPE="OPENCL"
+fi
 
 VLOG_LEVEL=0
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
@@ -58,7 +68,7 @@ build_and_run()
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
     $PRODUCTION_MODE_BUILD_FLAGS \
-    $TUNING_MODE_BUILD_FLAGS || exit -1
+    $TUNING_MODE_BUILD_FLAGS --define hexagon=true || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
   if [ "$PRODUCTION_MODE" = false ]; then
@@ -66,8 +76,13 @@ build_and_run()
   fi
   adb push ${MODEL_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit -1
   adb push bazel-bin/mace/examples/mace_run ${PHONE_DATA_DIR} || exit -1
+  if [ x"$RUNTIME" = x"dsp" ]; then
+    adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit -1
+  fi
 
-  adb </dev/null shell MACE_TUNING=${tuning_flag} \
+  adb </dev/null shell \
+    LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
+    MACE_TUNING=${tuning_flag} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_KERNEL_PATH=$KERNEL_DIR \
@@ -76,7 +91,7 @@ build_and_run()
     --output_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},2"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
-    --device=OPENCL   \
+    --device=${DEVICE_TYPE}   \
     --round=$round || exit -1
 }
 
@@ -94,8 +109,8 @@ bazel-bin/mace/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                          --output=${MODEL_CODEGEN_DIR}/model.cc \
                                          --input_node=${TF_INPUT_NODE} \
                                          --output_node=${TF_OUTPUT_NODE} \
-                                         --data_type=DT_HALF \
-                                         --runtime=gpu \
+                                         --data_type=${DATA_TYPE} \
+                                         --runtime=${RUNTIME} \
                                          --output_type=source \
                                          --template=${MACE_SOURCE_DIR}/mace/python/tools/model.template \
                                          --model_tag=${MODEL_TAG} \
