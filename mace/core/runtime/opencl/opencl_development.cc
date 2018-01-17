@@ -22,8 +22,9 @@ bool GetSourceOrBinaryProgram(const std::string &program_name,
     return false;
   }
   cl::Program::Sources sources;
-  std::string kernel_source(it_source->second.begin(), it_source->second.end());
-  sources.push_back(ObfuscateString(kernel_source));
+  std::string content(it_source->second.begin(), it_source->second.end());
+  std::string kernel_source = ObfuscateString(content);
+  sources.push_back(kernel_source);
   *program = cl::Program(context, sources);
 
   return true;

@@ -6,25 +6,37 @@
 #define MACE_KERNELS_BATCH_NORM_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/public/mace.h"
+#include "mace/core/tensor.h"
+#include "mace/kernels/activation.h"
 
 namespace mace {
 namespace kernels {
 
 struct BatchNormFunctorBase {
-  BatchNormFunctorBase(bool folded_constant, bool fused_relu) :
-      folded_constant_(folded_constant),
-      fused_relu_(fused_relu){}
+  BatchNormFunctorBase(bool folded_constant,
+                       const ActivationType activation,
+                       const float relux_max_limit,
+                       const float prelu_alpha)
+      : folded_constant_(folded_constant),
+        activation_(activation),
+        relux_max_limit_(relux_max_limit),
+        prelu_alpha_(prelu_alpha) {}
 
   const bool folded_constant_;
-  const bool fused_relu_;
+  const ActivationType activation_;
+  const float relux_max_limit_;
+  const float prelu_alpha_;
 };
 
 template <DeviceType D, typename T>
-struct BatchNormFunctor : BatchNormFunctorBase{
-  BatchNormFunctor(const bool folded_constant, const bool fused_relu) :
-      BatchNormFunctorBase(folded_constant, fused_relu) {}
+struct BatchNormFunctor : BatchNormFunctorBase {
+  BatchNormFunctor(const bool folded_constant,
+                   const ActivationType activation,
+                   const float relux_max_limit,
+                   const float prelu_alpha)
+      : BatchNormFunctorBase(
+            folded_constant, activation, relux_max_limit, prelu_alpha) {}
 
   void operator()(const Tensor *input,
                   const Tensor *scale,
@@ -85,32 +97,34 @@ struct BatchNormFunctor : BatchNormFunctorBase{
             } else {
               output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
             }
-            if (fused_relu_) {
-              output_ptr[pos] = std::max(output_ptr[pos], static_cast<T>(0));
-            }
             ++pos;
           }
         }
       }
     }
+    DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
+                 relux_max_limit_, prelu_alpha_);
   }
 };
 
 template <>
-void BatchNormFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input,
-    const Tensor *scale,
-    const Tensor *offset,
-    const Tensor *mean,
-    const Tensor *var,
-    const float epsilon,
-    Tensor *output,
-    StatsFuture *future);
+void BatchNormFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
+                                                           const Tensor *scale,
+                                                           const Tensor *offset,
+                                                           const Tensor *mean,
+                                                           const Tensor *var,
+                                                           const float epsilon,
+                                                           Tensor *output,
+                                                           StatsFuture *future);
 
 template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
-  BatchNormFunctor(const bool folded_constant, const bool fused_relu) :
-      BatchNormFunctorBase(folded_constant, fused_relu) {}
+  BatchNormFunctor(const bool folded_constant,
+                   const ActivationType activation,
+                   const float relux_max_limit,
+                   const float prelu_alpha)
+      : BatchNormFunctorBase(
+            folded_constant, activation, relux_max_limit, prelu_alpha) {}
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,

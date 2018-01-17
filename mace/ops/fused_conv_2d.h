@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#include "mace/kernels/fused_conv_2d.h"
+#include "mace/kernels/conv_2d.h"
 #include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
@@ -18,9 +18,14 @@ class FusedConv2dOp : public ConvPool2dOpBase<D, T> {
  public:
   FusedConv2dOp(const OperatorDef &op_def, Workspace *ws)
       : ConvPool2dOpBase<D, T>(op_def, ws),
-        functor_(this->strides_.data(), this->padding_,
-                 this->dilations_.data()) {
-  }
+        functor_(this->strides_.data(),
+                 this->padding_,
+                 this->dilations_.data(),
+                 kernels::StringToActivationType(
+                     OperatorBase::GetSingleArgument<std::string>("activation",
+                                                                  "NOOP")),
+                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f),
+                 OperatorBase::GetSingleArgument<float>("alpha", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -34,7 +39,7 @@ class FusedConv2dOp : public ConvPool2dOpBase<D, T> {
   }
 
  private:
-  kernels::FusedConv2dFunctor<D, T> functor_;
+  kernels::Conv2dFunctor<D, T> functor_;
 
  protected:
   OP_INPUT_TAGS(INPUT, FILTER, BIAS);

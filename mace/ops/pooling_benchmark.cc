@@ -63,8 +63,8 @@ static void Pooling(int iters,
       BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE)
 
 #define BM_POOLING(N, C, H, W, K, S, PA, PO)       \
-  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU); \
-  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, NEON);
+  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);
+//  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, NEON);
 
 BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);

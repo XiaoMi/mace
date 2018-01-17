@@ -6,6 +6,7 @@
 #define MACE_OPS_BATCH_NORM_H_
 
 #include "mace/core/operator.h"
+#include "mace/kernels/activation.h"
 #include "mace/kernels/batch_norm.h"
 
 namespace mace {
@@ -14,9 +15,10 @@ template <DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
  public:
   BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws), functor_(false, false) {
-    epsilon_ =
-        OperatorBase::GetSingleArgument<float>("epsilon", static_cast<float>(1e-4));
+      : Operator<D, T>(operator_def, ws),
+        functor_(false, kernels::ActivationType::NOOP, 0.0f, 0.0f) {
+    epsilon_ = OperatorBase::GetSingleArgument<float>("epsilon",
+                                                      static_cast<float>(1e-4));
   }
 
   bool Run(StatsFuture *future) override {

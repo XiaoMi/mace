@@ -18,9 +18,12 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
   Conv2dOp(const OperatorDef &op_def, Workspace *ws)
       : ConvPool2dOpBase<D, T>(op_def, ws),
-        functor_(this->strides_.data(), this->padding_,
-                 this->dilations_.data()) {
-  }
+        functor_(this->strides_.data(),
+                 this->padding_,
+                 this->dilations_.data(),
+                 kernels::ActivationType::NOOP,
+                 0.0f,
+                 0.0f) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

@@ -59,6 +59,7 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
   }
 }
 
+extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
 extern void Register_BatchToSpaceND(OperatorRegistry *op_registry);
@@ -68,17 +69,17 @@ extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
+extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
 extern void Register_FusedConv2D(OperatorRegistry *op_registry);
 extern void Register_GlobalAvgPooling(OperatorRegistry *op_registry);
 extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
 extern void Register_Pooling(OperatorRegistry *op_registry);
-extern void Register_Relu(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
-extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
-extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
+extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
 
 OperatorRegistry::OperatorRegistry() {
+  Register_Activation(this);
   Register_AddN(this);
   Register_BatchNorm(this);
   Register_BatchToSpaceND(this);
@@ -88,15 +89,14 @@ OperatorRegistry::OperatorRegistry() {
   Register_Concat(this);
   Register_Conv2D(this);
   Register_DepthwiseConv2d(this);
+  Register_FoldedBatchNorm(this);
   Register_FusedConv2D(this);
   Register_GlobalAvgPooling(this);
   Register_ImageToBuffer(this);
   Register_Pooling(this);
-  Register_Relu(this);
   Register_ResizeBilinear(this);
-  Register_SpaceToBatchND(this);
   Register_Softmax(this);
-  Register_FoldedBatchNorm(this);
+  Register_SpaceToBatchND(this);
 }
 
 }  // namespace mace
