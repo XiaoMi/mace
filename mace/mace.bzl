@@ -24,12 +24,6 @@ def if_android_arm64(a):
       "//conditions:default": [],
   })
 
-def if_profiling_enabled(a):
-  return select({
-      "//mace:profiling_enabled": a,
-      "//conditions:default": [],
-  })
-
 def if_production_mode(a):
   return select({
       "//mace:production_mode": a,

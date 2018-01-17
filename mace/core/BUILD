@@ -10,7 +10,6 @@ licenses(["notice"])  # Apache 2.0
 load(
     "//mace:mace.bzl",
     "if_android",
-    "if_profiling_enabled",
     "if_hexagon_enabled",
     "if_not_hexagon_enabled",
     "if_production_mode",
@@ -43,7 +42,6 @@ cc_library(
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
-    copts = if_profiling_enabled(["-DMACE_OPENCL_PROFILING"]) + if_hexagon_enabled(["-DMACE_HEXAGON_ENABLED"]),
     linkopts = if_android([
         "-pie",
         "-ldl",

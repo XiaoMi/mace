@@ -22,7 +22,7 @@ ANDROID_ABI=arm64-v8a
 ANDROID_ABI=armeabi-v7a
 STRIP="--strip always"
 VLOG_LEVEL=0
-PROFILINE="--define profiling=true"
+PROFILING="1"
 
 echo "Step 1: Generate encrypted opencl source"
 python mace/python/tools/encrypt_opencl_codegen.py \
@@ -58,5 +58,5 @@ for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`
   adb -s ${device} shell "mkdir -p $DEVICE_PATH"
   adb -s ${device} shell "mkdir -p $DEVICE_PATH/cl"
   adb -s ${device} push $BAZEL_BIN_PATH/$BIN_NAME $DEVICE_PATH && \
-  adb -s ${device} shell "MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
+  adb -s ${device} shell "MACE_OPENCL_PROFILING=$PROFILING MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
 done
