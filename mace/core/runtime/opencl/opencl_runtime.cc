@@ -91,9 +91,11 @@ OpenCLRuntime::OpenCLRuntime() {
 
   cl_command_queue_properties properties = 0;
 
-#ifdef MACE_OPENCL_PROFILING
-  properties |= CL_QUEUE_PROFILING_ENABLE;
-#endif
+  const char *profiling = getenv("MACE_OPENCL_PROFILING");
+  if (Tuner<uint32_t>::Get()->IsTuning() ||
+      (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
+    properties |= CL_QUEUE_PROFILING_ENABLE;
+  }
 
   // a context is like a "runtime link" to the device and platform;
   // i.e. communication is possible

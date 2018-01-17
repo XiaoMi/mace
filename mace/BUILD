@@ -25,14 +25,6 @@ config_setting(
 )
 
 config_setting(
-    name = "profiling_enabled",
-    define_values = {
-        "profiling": "true",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
     name = "production_mode",
     define_values = {
         "production": "true",

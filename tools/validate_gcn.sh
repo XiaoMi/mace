@@ -5,7 +5,7 @@ Usage() {
   echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size runtime[gpu/dsp] [tuning]'
 }
 
-if [ $# -lt 4 ];then
+if [ $# -lt 5 ];then
   Usage
   exit -1
 fi
@@ -50,7 +50,6 @@ build_and_run()
   fi
 
   if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != true ]];then
-    TUNING_MODE_BUILD_FLAGS="--define profiling=true"
     tuning_flag=1
     round=0 # only warm up
   else
@@ -68,7 +67,7 @@ build_and_run()
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
     $PRODUCTION_MODE_BUILD_FLAGS \
-    $TUNING_MODE_BUILD_FLAGS --define hexagon=true || exit -1
+    --define hexagon=true || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
   if [ "$PRODUCTION_MODE" = false ]; then
