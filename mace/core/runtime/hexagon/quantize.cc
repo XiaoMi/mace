@@ -53,16 +53,28 @@ void Quantizer::QuantizeAdjustRange(float min_in,
                                     float *recip_stepsize_out) {
   float minval = std::min(0.0f, min_in);
   float maxval = std::max(0.0f, max_in);
-  float range = fmaxf(0.0001f, maxval - minval);
-  float stepsize = range / 254.0f;
-  float recip_stepsize = 254.0f / range;
-  // round quantized_zero up so min_out <= minval
-  int quantized_zero = ((0.0f - minval) * recip_stepsize) + 0.999;
-  float newmin = -quantized_zero * stepsize;
-  float newmax = 255.0f * stepsize + newmin;
-  *min_out = newmin;
-  *max_out = newmax;
-  *stepsize_out = stepsize;
+  float range = std::max(0.0001f, maxval - minval);
+  float recip_stepsize = 255.0f / range;
+  // make z(q0) integer
+  if (minval < 0.0f) {
+    float z = -minval * recip_stepsize;
+    float zi = floorf(z);
+    float zf = z - zi;
+    if (zf > 0.0001f && zf < 0.9999f) {
+      if (zi > 0.0f && (zi >= 254.0f || (zf - 1.0f) * minval > zf * maxval)) {
+        range = -255.0f * minval / zi;
+        maxval = minval + range;
+      } else {
+        range = 255.0f * maxval / (254.0f - zi);
+        minval = maxval - range;
+      }
+      recip_stepsize = 255.0f / range;
+    }
+  }
+
+  *min_out = minval;
+  *max_out = maxval;
+  *stepsize_out = range / 255.0f;
   *recip_stepsize_out = recip_stepsize;
 }
 
