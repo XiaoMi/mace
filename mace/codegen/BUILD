@@ -22,6 +22,19 @@ cc_library(
 )
 
 cc_library(
+    name = "generated_opencl_prod",
+    srcs = ["opencl/opencl_compiled_program.cc"],
+    linkstatic = 1,
+)
+
+cc_library(
+    name = "generated_tuning_params",
+    srcs = ["tuning/tuning_params.cc"],
+    linkstatic = 1,
+)
+
+
+cc_library(
     name = "generated_version",
     srcs = ["version/version.cc"],
     linkstatic = 1,
