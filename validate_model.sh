@@ -22,9 +22,12 @@ if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
   DEVICE_TYPE="HEXAGON"
   TF_OUTPUT_NODE=${TF_OUTPUT_BR_NODE}
-else
+elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
+else
+  Usage
+  exit -1
 fi
 
 VLOG_LEVEL=0
