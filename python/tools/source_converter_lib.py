@@ -86,7 +86,7 @@ class TensorInfo:
 def stringfy(value):
   return ', '.join('"{0}"'.format(w) for w in value)
 
-def convert_to_source(net_def, template, obfuscate, model_tag, output, runtime):
+def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag, output, runtime):
   if obfuscate:
     obfuscate_name(net_def)
   else:
@@ -140,6 +140,7 @@ def convert_to_source(net_def, template, obfuscate, model_tag, output, runtime):
     tag = model_tag,
     mode = 2,
     runtime = runtime,
+    model_pb_checksum = mode_pb_checksum,
   )
   with gfile.GFile(output, "wb") as f:
     f.write(source)
