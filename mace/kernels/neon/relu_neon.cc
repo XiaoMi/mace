@@ -9,7 +9,7 @@ namespace mace {
 namespace kernels {
 
 template <>
-void ReluFunctor<DeviceType::NEON, float>::operator()(const Tensor *input_tensor,
+void ActivationFunctor<DeviceType::NEON, float>::operator()(const Tensor *input_tensor,
                                                       Tensor *output_tensor,
                                                       StatsFuture *future) {
   const float *input = input_tensor->data<float>();

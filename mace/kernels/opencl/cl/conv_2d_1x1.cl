@@ -6,6 +6,8 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
                           __write_only image2d_t output,
+                          __private const DATA_TYPE relux_max_limit,
+                          __private const DATA_TYPE prelu_alpha,
                           __private const int in_height,
                           __private const int in_width,
                           __private const int in_ch_blks,
@@ -90,12 +92,11 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     filter_x_base += 4;
   }
 
-#ifdef FUSED_RELU
-  // TODO relux
-  out0 = fmax(out0, 0);
-  out1 = fmax(out1, 0);
-  out2 = fmax(out2, 0);
-  out3 = fmax(out3, 0);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0 = do_activation(out0, relux_max_limit, prelu_alpha);
+  out1 = do_activation(out1, relux_max_limit, prelu_alpha);
+  out2 = do_activation(out2, relux_max_limit, prelu_alpha);
+  out3 = do_activation(out3, relux_max_limit, prelu_alpha);
 #endif
 
   const int out_x_base = mul24(out_ch_blk, width);

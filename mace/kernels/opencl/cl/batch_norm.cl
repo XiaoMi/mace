@@ -8,7 +8,9 @@ __kernel void batch_norm(__read_only image2d_t input,
                          __read_only image2d_t var,
                          __private const float epsilon,
 #endif
-                         __write_only image2d_t output) {
+                         __write_only image2d_t output,
+                         __private const DATA_TYPE relux_max_limit,
+                         __private const DATA_TYPE prelu_alpha) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);
@@ -33,8 +35,8 @@ __kernel void batch_norm(__read_only image2d_t input,
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
   DATA_TYPE4 out = mad(in, bn_scale, bn_offset);
 
-#ifdef FUSED_RELU
-  out = fmax(out, 0);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out = do_activation(out, relux_max_limit, prelu_alpha);
 #endif
 
   WRITE_IMAGET(output, (int2)(pos, hb), out);

@@ -2,36 +2,36 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/relu.h"
+#include "mace/ops/activation.h"
 
 namespace mace {
 
-void Register_Relu(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Relu")
+void Register_Activation(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
                                      .Device(DeviceType::CPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ReluOp<DeviceType::CPU, float>);
+                    ActivationOp<DeviceType::CPU, float>);
 
 #if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Relu")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
                                      .Device(DeviceType::NEON)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ReluOp<DeviceType::NEON, float>);
+                    ActivationOp<DeviceType::NEON, float>);
 #endif  // MACE_ENABLE_NEON
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Relu")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ReluOp<DeviceType::OPENCL, float>);
+                    ActivationOp<DeviceType::OPENCL, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Relu")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    ReluOp<DeviceType::OPENCL, half>);
+                    ActivationOp<DeviceType::OPENCL, half>);
 }
 
 }  //  namespace mace

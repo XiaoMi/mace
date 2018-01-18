@@ -7,6 +7,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
@@ -15,20 +16,39 @@ namespace kernels {
 struct Conv2dFunctorBase {
   Conv2dFunctorBase(const int *strides,
                     const Padding &paddings,
-                    const int *dilations)
-      : strides_(strides), dilations_(dilations), paddings_(paddings) {}
+                    const int *dilations,
+                    const ActivationType activation,
+                    const float relux_max_limit,
+                    const float prelu_alpha)
+      : strides_(strides),
+        dilations_(dilations),
+        paddings_(paddings),
+        activation_(activation),
+        relux_max_limit_(relux_max_limit),
+        prelu_alpha_(prelu_alpha) {}
 
-  const int *strides_;         // [stride_h, stride_w]
-  const int *dilations_;       // [dilation_h, dilation_w]
-  Padding paddings_;
+  const int *strides_;    // [stride_h, stride_w]
+  const int *dilations_;  // [dilation_h, dilation_w]
+  const Padding paddings_;
+  const ActivationType activation_;
+  const float relux_max_limit_;
+  const float prelu_alpha_;
 };
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct Conv2dFunctor : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
                 const Padding &paddings,
-                const int *dilations)
-      : Conv2dFunctorBase(strides, paddings, dilations) {}
+                const int *dilations,
+                const ActivationType activation,
+                const float relux_max_limit,
+                const float prelu_alpha)
+      : Conv2dFunctorBase(strides,
+                          paddings,
+                          dilations,
+                          activation,
+                          relux_max_limit,
+                          prelu_alpha) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
@@ -42,8 +62,8 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
     kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), filter->shape().data(), dilations_,
-        strides_, paddings_, output_shape.data(), paddings.data());
+        input->shape().data(), filter->shape().data(), dilations_, strides_,
+        paddings_, output_shape.data(), paddings.data());
     output->Resize(output_shape);
 
     index_t batch = output->dim(0);
@@ -101,7 +121,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                   if (inh < 0 || inh >= input_height || inw < 0 ||
                       inw >= input_width) {
                     MACE_CHECK(inh >= padded_h_start && inh < padded_h_stop &&
-                        inw >= padded_w_start && inw < padded_w_stop,
+                                   inw >= padded_w_start && inw < padded_w_stop,
                                "Out of range read from input: ", inh, ", ",
                                inw);
                     // else padding with 0:
@@ -109,8 +129,8 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                   } else {
                     index_t input_offset =
                         n * input_height * input_width * input_channels +
-                            inh * input_width * input_channels + inw * input_channels +
-                            inc;
+                        inh * input_width * input_channels +
+                        inw * input_channels + inc;
                     sum += input_data[input_offset] * *filter_ptr;
                   }
                   filter_ptr += channels;
@@ -123,24 +143,33 @@ struct Conv2dFunctor : Conv2dFunctorBase {
         }
       }
     }
-
+    output_data = output->mutable_data<T>();
+    DoActivation(output_data, output_data, output->NumElements(), activation_,
+                 relux_max_limit_, prelu_alpha_);
   }
-
 };
 
-template<>
+template <>
 void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                                         const Tensor *filter,
                                                         const Tensor *bias,
                                                         Tensor *output,
                                                         StatsFuture *future);
 
-template<typename T>
+template <typename T>
 struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
                 const Padding &paddings,
-                const int *dilations)
-      : Conv2dFunctorBase(strides, paddings, dilations) {}
+                const int *dilations,
+                const ActivationType activation,
+                const float relux_max_limit,
+                const float prelu_alpha)
+      : Conv2dFunctorBase(strides,
+                          paddings,
+                          dilations,
+                          activation,
+                          relux_max_limit,
+                          prelu_alpha) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
