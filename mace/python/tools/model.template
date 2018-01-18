@@ -263,6 +263,10 @@ NetDef CreateNet() {
   return net_def;
 }
 
+const std::string ModelChecksum() {
+  return {{ model_pb_checksum|tojson }};
+}
+
 }  // namespace {{tag}}
 }  // namespace mace
 {% endif %}
