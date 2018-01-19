@@ -10,14 +10,20 @@ from tensorflow import gfile
 
 # Validation Flow:
 # 1. Generate input data
-#    python validate_icnet.py --generate_data 1
+#    python validate.py --generate_data true \
+#        --input_file input_file
+#        --input_shape 1,64,64,3
 #
-# 2. Use mace_run to run icnet on phone.
+# 2. Use mace_run to run model on phone.
 # 3. adb pull the result.
 # 4. Compare output data of mace and tf
-#    python validate_icnet.py --model_file opt_icnet.pb \
+#    python validate.py --model_file tf_model_opt.pb \
 #        --input_file input_file \
-#        --mace_out_file icnet.out
+#        --mace_out_file output_file \
+#        --input_node input_node \
+#        --output_node output_node \
+#        --input_shape 1,64,64,3 \
+#        --output_shape 1,64,64,2
 
 def generate_data(shape):
   np.random.seed()
@@ -65,7 +71,7 @@ def run_model(input_shape):
         input_value = load_data(FLAGS.input_file)
         input_value = input_value.reshape(input_shape)
         
-        output_value = session.run(output_node, feed_dict={input_node: [input_value]})
+        output_value = session.run(output_node, feed_dict={input_node: input_value})
         output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_out')
         return output_value
 

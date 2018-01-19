@@ -2,10 +2,10 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_model.sh tools/model.config tf_model_path model_tag image_size runtime[gpu/dsp] [tuning]'
+  echo 'Usage: bash tools/validate_model.sh tools/model.config tf_model_path model_tag input_shape output_shape runtime[gpu/dsp] [tuning]'
 }
 
-if [ $# -lt 5 ];then
+if [ $# -lt 6 ];then
   Usage
   exit -1
 fi
@@ -14,9 +14,10 @@ source $1
 
 TF_MODEL_FILE_PATH=$2
 MODEL_TAG=$3
-IMAGE_SIZE=$4
-RUNTIME=$5
-TUNING_OR_NOT=${6:-0}
+INPUT_SHAPE=$4
+OUTPUT_SHAPE=$5
+RUNTIME=$6
+TUNING_OR_NOT=${7:-0}
 
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
@@ -87,8 +88,8 @@ build_and_run()
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_KERNEL_PATH=$KERNEL_DIR \
     ${PHONE_DATA_DIR}/mace_run \
-    --input_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},3"\
-    --output_shape="1,${IMAGE_SIZE},${IMAGE_SIZE},2"\
+    --input_shape="${INPUT_SHAPE}"\
+    --output_shape="${OUTPUT_SHAPE}"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --device=${DEVICE_TYPE}   \
@@ -99,7 +100,7 @@ echo "Step 1: Generate input data"
 rm -rf ${MODEL_DIR}/${INPUT_FILE_NAME}
 python tools/validate.py --generate_data true \
  --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
- --input_shape="${IMAGE_SIZE},${IMAGE_SIZE},3" || exit -1
+ --input_shape="${INPUT_SHAPE}" || exit -1
 
 echo "Step 2: Convert tf model to mace model and optimize memory"
 bazel build //lib/python/tools:tf_converter || exit -1
@@ -148,5 +149,5 @@ python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
     --input_node ${TF_INPUT_NODE} \
     --output_node ${TF_OUTPUT_NODE} \
-    --input_shape "${IMAGE_SIZE},${IMAGE_SIZE},3" \
-    --output_shape "1,${IMAGE_SIZE},${IMAGE_SIZE},2"
+    --input_shape "${INPUT_SHAPE}" \
+    --output_shape "${OUTPUT_SHAPE}"
