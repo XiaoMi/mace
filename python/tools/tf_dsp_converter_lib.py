@@ -5,7 +5,7 @@ from dsp_ops import DspOps
 from lib.python.tools import graph_util
 from lib.python.tools.convert_util import tf_dtype_2_mace_dtype
 
-# converter --input ../libcv/quantized_icnet.pb --output quantized_icnet_dsp.pb \
+# converter --input ../libcv/quantized_model.pb --output quantized_model_dsp.pb \
 # --runtime dsp --input_node input_node --output_node output_node
 
 padding_mode = {
