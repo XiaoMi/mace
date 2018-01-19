@@ -32,7 +32,7 @@ def main(unused_args):
 
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.prequantize)
+      input_graph_def, FLAGS.input_node, FLAGS.output_node)
   else:
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
@@ -85,11 +85,6 @@ def parse_args():
     type=str,
     default="softmax",
     help="e.g., softmax")
-  parser.add_argument(
-    "--prequantize",
-    type=bool,
-    default=True,
-    help="e.g., True")
   parser.add_argument(
     "--data_type",
     type=str,
