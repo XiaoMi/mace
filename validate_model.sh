@@ -2,7 +2,7 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_gcn.sh tools/gcn.config tf_model_path model_tag image_size runtime[gpu/dsp] [tuning]'
+  echo 'Usage: bash tools/validate_model.sh tools/model.config tf_model_path model_tag image_size runtime[gpu/dsp] [tuning]'
 }
 
 if [ $# -lt 5 ];then
@@ -57,10 +57,6 @@ build_and_run()
     round=2
   fi
 
-  if [ x"$RUNTIME" = x"dsp" ]; then
-    HEXAGON_MODE_BUILD_FLAGS="--define hexagon=true"
-  fi
-
   bazel build --verbose_failures -c opt --strip always examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
@@ -71,7 +67,7 @@ build_and_run()
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
     $PRODUCTION_MODE_BUILD_FLAGS \
-    $HEXAGON_MODE_BUILD_FLAGS || exit -1
+    --define hexagon=true || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
   if [ "$PRODUCTION_MODE" = false ]; then
