@@ -566,7 +566,7 @@ bool MaceEngine::Run(const float *input,
     memcpy(input_data, input, input_tensor->size() * sizeof(float));
   }
   if (device_type_ == HEXAGON) {
-    hexagon_controller_->ExecuteGraphPreQuantize(*input_tensor, output_tensor);
+    hexagon_controller_->ExecuteGraph(*input_tensor, output_tensor);
   } else {
     if (!net_->Run()) {
       LOG(FATAL) << "Net run failed";
