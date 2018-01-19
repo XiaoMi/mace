@@ -6,7 +6,7 @@
  * Usage:
  * mace_run --model=mobi_mace.pb \
  *          --input=input_node  \
- *          --output=MobilenetV1/Logits/conv2d/convolution  \
+ *          --output=output_node  \
  *          --input_shape=1,224,224,3   \
  *          --output_shape=1,224,224,2   \
  *          --input_file=input_data \
