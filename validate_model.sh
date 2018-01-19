@@ -2,22 +2,15 @@
 # Must run at root dir of mace project.
 set +x
 Usage() {
-  echo 'Usage: bash tools/validate_model.sh tools/model.config tf_model_path model_tag input_shape output_shape runtime[gpu/dsp] [tuning]'
+  echo 'Usage: bash tools/validate_model.sh tools/model.config'
 }
 
-if [ $# -lt 6 ];then
+if [ $# -lt 1 ];then
   Usage
   exit -1
 fi
 
 source $1
-
-TF_MODEL_FILE_PATH=$2
-MODEL_TAG=$3
-INPUT_SHAPE=$4
-OUTPUT_SHAPE=$5
-RUNTIME=$6
-TUNING_OR_NOT=${7:-0}
 
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
