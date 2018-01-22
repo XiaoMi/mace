@@ -54,7 +54,6 @@ static void BMWinogradTransform(
 BM_WINOGRAD_TRANSFORM(1, 16, 16, 128, half);
 BM_WINOGRAD_TRANSFORM(1, 64, 64, 128, half);
 BM_WINOGRAD_TRANSFORM(1, 128, 128, 128, half);
-BM_WINOGRAD_TRANSFORM(1, 256, 256, 32, half);
 
 template <DeviceType D, typename T>
 static void BMWinogradInverseTransform(

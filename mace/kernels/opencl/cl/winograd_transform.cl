@@ -31,32 +31,32 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
   DATA_TYPE4 tv2[4];
   DATA_TYPE4 tv3[4];
 
-  int y = nh_idx;
+  int y = select(nh_idx, -1, height_idx < 0 || height_idx >= in_height);
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
     int x = width_idx + i;
-    x = select(wc_idx + i, -1, x >= in_width);
+    x = select(wc_idx + i, -1, x < 0 || x >= in_width);
     input0[i] = READ_IMAGET(input, SAMPLER, (int2)(x, y));
   }
-  y = select(nh_idx + 1, -1, height_idx + 1 >= in_height);
+  y = select(nh_idx + 1, -1, height_idx + 1 < 0 || height_idx + 1 >= in_height);
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
     int x = width_idx + i;
-    x = select(wc_idx + i, -1, x >= in_width);
+    x = select(wc_idx + i, -1, x < 0 || x >= in_width);
     input1[i] = READ_IMAGET(input, SAMPLER, (int2)(x, y));
   }
-  y = select(nh_idx + 2, -1, height_idx + 2 >= in_height);
+  y = select(nh_idx + 2, -1, height_idx + 2 < 0 || height_idx + 2 >= in_height);
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
     int x = width_idx + i;
-    x = select(wc_idx + i, -1, x >= in_width);
+    x = select(wc_idx + i, -1, x < 0 || x >= in_width);
     input2[i] = READ_IMAGET(input, SAMPLER, (int2)(x, y));
   }
-  y = select(nh_idx + 3, -1, height_idx + 3 >= in_height);
+  y = select(nh_idx + 3, -1, height_idx + 3 < 0 || height_idx + 3 >= in_height);
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
     int x = width_idx + i;
-    x = select(wc_idx + i, -1, x >= in_width);
+    x = select(wc_idx + i, -1, x < 0 || x >= in_width);
     input3[i] = READ_IMAGET(input, SAMPLER, (int2)(x, y));
   }
 
