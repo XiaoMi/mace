@@ -92,7 +92,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       output_shape.data(), paddings.data());
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
   Pooling(input, strides_, paddings.data(), kernels_[0], pooling_type_,

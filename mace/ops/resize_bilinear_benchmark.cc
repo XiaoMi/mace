@@ -27,7 +27,7 @@ static void ResizeBilinearBenchmark(int iters,
                                     {output_height, output_width});
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
         .Input("InputImage")
         .Input("OutSize")

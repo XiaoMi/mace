@@ -85,7 +85,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     output_shape[axis_] += input->dim(axis_);
   }
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT, image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
   output->ResizeImage(output_shape, image_shape);
 
   switch (inputs_count) {

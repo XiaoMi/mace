@@ -153,7 +153,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     concat_axis_size += shapes[i][axis];
     net.AddRandomInput<DeviceType::OPENCL, float>(input_name, shapes[i]);
     BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name,
-                                         kernels::BufferType::IN_OUT);
+                                         kernels::BufferType::IN_OUT_CHANNEL);
   }
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -170,7 +170,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   net.RunOp(DeviceType::OPENCL);
 
   ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "Output",
-                                           kernels::BufferType::IN_OUT);
+                                           kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto output = net.GetOutput("Output");

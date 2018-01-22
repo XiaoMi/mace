@@ -19,12 +19,12 @@ struct GEMMFunctor {
                   Tensor *C,
                   StatsFuture *future) {
 
-    std::vector<index_t> c_shape = {A->dim(0), A->dim(1), 1, B->dim(3)};
+    std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
     C->Resize(c_shape);
     const index_t N = C->dim(0);
     const index_t height = C->dim(1);
-    const index_t width = C->dim(3);
-    const index_t K = A->dim(3);
+    const index_t width = C->dim(2);
+    const index_t K = A->dim(2);
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);
     Tensor::MappingGuard guardc(C);

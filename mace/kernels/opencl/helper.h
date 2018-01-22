@@ -18,14 +18,20 @@ const float kMaxKernelExeTime = 1000.0; // microseconds
 
 enum BufferType {
   CONV2D_FILTER = 0,
-  DW_CONV2D_FILTER = 1,
-  IN_OUT = 2,
-  ARGUMENT = 3
+  IN_OUT_CHANNEL = 1,
+  ARGUMENT = 2,
+  IN_OUT_HEIGHT = 3,
+  IN_OUT_WIDTH = 4,
+  WINOGRAD_FILTER = 5,
+  DW_CONV2D_FILTER = 6,
 };
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape);
+
+std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape, 
+                                      const BufferType type);
 
 std::string DtToCLCMDDt(const DataType dt);
 

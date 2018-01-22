@@ -17,17 +17,17 @@ void GEMMFunctor<DeviceType::OPENCL, T>::operator()(
     Tensor *C,
     StatsFuture *future) {
 
-  std::vector<index_t> c_shape = {A->dim(0), A->dim(1), 1, B->dim(3)};
+  std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
-  CalImage2DShape(c_shape, BufferType::IN_OUT, c_image_shape);
+  CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, c_image_shape);
   C->ResizeImage(c_shape, c_image_shape);
 
   const index_t batch = C->dim(0);
   const index_t height = C->dim(1);
-  const index_t width = C->dim(3);
+  const index_t width = C->dim(2);
 
-  const index_t width_blocks = RoundUpDiv4(width);
   const index_t height_blocks = RoundUpDiv4(height);
+  const index_t width_blocks = RoundUpDiv4(width);
 
   auto runtime = OpenCLRuntime::Global();
   std::set<std::string> built_options;
@@ -45,8 +45,10 @@ void GEMMFunctor<DeviceType::OPENCL, T>::operator()(
                      *(static_cast<const cl::Image2D *>(B->buffer())));
   gemm_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(C->buffer())));
   gemm_kernel.setArg(idx++, static_cast<int>(height));
+  gemm_kernel.setArg(idx++, static_cast<int>(width));
+  gemm_kernel.setArg(idx++, static_cast<int>(A->dim(2)));
   gemm_kernel.setArg(idx++, static_cast<int>(height_blocks));
-  gemm_kernel.setArg(idx++, static_cast<int>(A->dim(3)));
+  gemm_kernel.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
 
   const uint32_t gws[3] = {
       static_cast<uint32_t>(width_blocks),
@@ -61,6 +63,7 @@ void GEMMFunctor<DeviceType::OPENCL, T>::operator()(
     return {{local_ws[0], local_ws[1]},
             {local_ws[1], local_ws[0]},
             {kwg_size / 4, 4},
+            {kwg_size / 8, 8},
             {kwg_size / 16, 16},
             {kwg_size / 32, 32},
             {kwg_size / 64, 64},

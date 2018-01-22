@@ -92,7 +92,7 @@ void TestRandomResizeBilinear() {
 
     if (D == DeviceType::OPENCL) {
       BufferToImage<D, float>(net, "Input", "InputImage",
-                              kernels::BufferType::IN_OUT);
+                              kernels::BufferType::IN_OUT_CHANNEL);
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
           .Input("InputImage")
@@ -104,7 +104,7 @@ void TestRandomResizeBilinear() {
       net.RunOp(D);
 
       ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
-                              kernels::BufferType::IN_OUT);
+                              kernels::BufferType::IN_OUT_CHANNEL);
     } else {
       // TODO support NEON
     }

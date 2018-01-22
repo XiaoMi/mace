@@ -16,14 +16,14 @@ static void GEMMBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("A", {batch, height, 1, channels});
-  net.AddRandomInput<D, float>("B", {batch, channels, 1, out_width});
+  net.AddRandomInput<D, float>("A", {batch, height, channels, 1});
+  net.AddRandomInput<D, float>("B", {batch, channels, out_width, 1});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "A", "AImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, T>(net, "B", "BImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("GEMM", "GEMMBM")
         .Input("AImage")
@@ -53,17 +53,18 @@ static void GEMMBenchmark(
 }
 
 #define BM_GEMM_MACRO(N, H, C, W, TYPE, DEVICE)                      \
-  static void BM_GEMM_##N##H##C##W##_##TYPE##_##DEVICE(int iters) {  \
+  static void BM_GEMM_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) {  \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
     mace::testing::ItemsProcessed(tot);                              \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     GEMMBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                  \
   }                                                                  \
-  BENCHMARK(BM_GEMM_##N##H##C##W##_##TYPE##_##DEVICE)
+  BENCHMARK(BM_GEMM_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
 #define BM_GEMM(N, H, C, W, TYPE)        \
   BM_GEMM_MACRO(N, H, C, W, TYPE, OPENCL);
 
-BM_GEMM(16, 32, 128, 1024, half);
-BM_GEMM(36, 32, 128, 256, half);
+BM_GEMM(16, 32, 128, 49, half);
+BM_GEMM(16, 32, 128, 961, half);
+BM_GEMM(16, 32, 128, 3969, half);
 }  //  namespace mace

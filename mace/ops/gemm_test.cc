@@ -25,9 +25,9 @@ void Simple(const std::vector<index_t> &A_shape,
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "A", "AImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, float>(net, "B", "BImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("GEMM", "GEMMTest")
         .Input("AImage")
@@ -39,7 +39,7 @@ void Simple(const std::vector<index_t> &A_shape,
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_HEIGHT);
   } else {
     OpDefBuilder("GEMM", "GEMMTest")
         .Input("A")
@@ -58,35 +58,48 @@ void Simple(const std::vector<index_t> &A_shape,
 }
 
 TEST_F(GEMMOpTest, SimpleCPU) {
-  Simple<DeviceType::CPU>({1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
-                          {1, 3, 1, 2}, {1, 2, 3, 4, 5, 6},
-                          {1, 2, 1, 2}, {22, 28, 49, 64});
-  Simple<DeviceType::CPU>({1, 5, 1, 5},
+  Simple<DeviceType::CPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
+                          {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
+                          {1, 2, 2, 1}, {22, 28, 49, 64});
+  Simple<DeviceType::CPU>({1, 5, 5, 1},
                           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                            16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                          {1, 5, 1, 5},
+                          {1, 5, 5, 1},
                           {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                            16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                          {1, 5, 1, 5},
+                          {1, 5, 5, 1},
                           {215, 230, 245, 260, 275, 490, 530, 570, 610, 650,
                            765, 830, 895, 960, 1025, 1040, 1130, 1220, 1310, 1400,
                            1315, 1430, 1545, 1660, 1775});
 }
 
+
+TEST_F(GEMMOpTest, SimpleCPUWithBatch) {
+  Simple<DeviceType::CPU>({2, 2, 3, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
+                          {2, 3, 2, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
+                          {2, 2, 2, 1}, {22, 28, 49, 64, 22, 28, 49, 64});
+}
+
 TEST_F(GEMMOpTest, SimpleOPENCL) {
-  Simple<DeviceType::OPENCL>({1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
-                             {1, 3, 1, 2}, {1, 2, 3, 4, 5, 6},
-                             {1, 2, 1, 2}, {22, 28, 49, 64});
-  Simple<DeviceType::OPENCL>({1, 5, 1, 5},
+  Simple<DeviceType::OPENCL>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
+                             {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
+                             {1, 2, 2, 1}, {22, 28, 49, 64});
+  Simple<DeviceType::OPENCL>({1, 5, 5, 1},
                              {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                               16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                             {1, 5, 1, 5},
+                             {1, 5, 5, 1},
                              {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                               16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                             {1, 5, 1, 5},
+                             {1, 5, 5, 1},
                              {215, 230, 245, 260, 275, 490, 530, 570, 610, 650,
                               765, 830, 895, 960, 1025, 1040, 1130, 1220, 1310, 1400,
                               1315, 1430, 1545, 1660, 1775});
+}
+
+TEST_F(GEMMOpTest, SimpleGPUWithBatch) {
+  Simple<DeviceType::CPU>({2, 2, 3, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
+                          {2, 3, 2, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
+                          {2, 2, 2, 1}, {22, 28, 49, 64, 22, 28, 49, 64});
 }
 
 template <typename T>
@@ -106,9 +119,9 @@ void Complex(const index_t batch,
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "A", {batch, height, 1, channels});
+      "A", {batch, height, channels, 1});
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "B", {batch, channels, 1, out_width});
+      "B", {batch, channels, out_width, 1});
 
   // run cpu
   net.RunOp();
@@ -119,9 +132,9 @@ void Complex(const index_t batch,
 
   // Run on opencl
   BufferToImage<DeviceType::OPENCL, T>(net, "A", "AImage",
-                                           kernels::BufferType::IN_OUT);
+                                           kernels::BufferType::IN_OUT_WIDTH);
   BufferToImage<DeviceType::OPENCL, T>(net, "B", "BImage",
-                                           kernels::BufferType::IN_OUT);
+                                           kernels::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("GEMM", "GEMMTest")
       .Input("AImage")
@@ -132,10 +145,9 @@ void Complex(const index_t batch,
 
   // Run on opencl
   net.RunOp(DeviceType::OPENCL);
-  net.Sync();
 
   ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
-                                           kernels::BufferType::IN_OUT);
+                                           kernels::BufferType::IN_OUT_HEIGHT);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1);
   } else {
@@ -152,8 +164,8 @@ TEST_F(GEMMOpTest, OPENCLUnAlignedWithoutBatch) {
   Complex<float>(1, 113, 31, 73);
 }
 TEST_F(GEMMOpTest, OPENCLUnAlignedWithBatch) {
-  Complex<float>(2, 31, 113, 61);
-  Complex<float>(16, 32, 64, 64);
+  Complex<float>(2, 3, 3, 3);
+  Complex<float>(16, 31, 61, 67);
   Complex<float>(31, 31, 61, 67);
 }
 TEST_F(GEMMOpTest, OPENCLHalfAlignedWithoutBatch) {

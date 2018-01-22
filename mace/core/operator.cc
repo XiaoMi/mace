@@ -77,6 +77,10 @@ extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
+extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
+extern void Register_GEMM(OperatorRegistry *op_registry);
+extern void Register_WinogradTransform(OperatorRegistry *op_registry);
+extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 
 OperatorRegistry::OperatorRegistry() {
   Register_Activation(this);
@@ -97,6 +101,10 @@ OperatorRegistry::OperatorRegistry() {
   Register_ResizeBilinear(this);
   Register_Softmax(this);
   Register_SpaceToBatchND(this);
+  Register_FoldedBatchNorm(this);
+  Register_GEMM(this);
+  Register_WinogradTransform(this);
+  Register_WinogradInverseTransform(this);
 }
 
 }  // namespace mace

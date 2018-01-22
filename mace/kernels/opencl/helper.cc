@@ -45,6 +45,34 @@ void CalArgImageShape(const std::vector<index_t> &shape,
   image_shape[1] = 1;
 }
 
+// Only support 3x3 now
+// [ (Ic + 3) / 4, 16 * Oc]
+void CalWinogradFilterImageShape(const std::vector<index_t> &shape, /* Oc, Ic, H, W*/
+                                 std::vector<size_t> &image_shape) {
+  MACE_CHECK(shape.size() == 4);
+  image_shape.resize(2);
+  image_shape[0] = RoundUpDiv4(shape[1]);
+  image_shape[1] = (shape[0] << 4);
+}
+
+// [W * C, N * RoundUp<4>(H)]
+void CalInOutHeightImageShape(const std::vector<index_t> &shape, /* NHWC */
+                              std::vector<size_t> &image_shape) {
+  MACE_CHECK(shape.size() == 4);
+  image_shape.resize(2);
+  image_shape[0] = shape[2] * shape[3];
+  image_shape[1] = shape[0] * RoundUpDiv4(shape[1]);
+}
+
+// [RoundUp<4>(W) * C, N * H]
+void CalInOutWidthImageShape(const std::vector<index_t> &shape, /* NHWC */
+                             std::vector<size_t> &image_shape) {
+  MACE_CHECK(shape.size() == 4);
+  image_shape.resize(2);
+  image_shape[0] = RoundUpDiv4(shape[2]) * shape[3];
+  image_shape[1] = shape[0] * shape[1];
+}
+
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape) {
@@ -55,13 +83,39 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
     case DW_CONV2D_FILTER:
       CalDepthwiseConv2dFilterImageShape(shape, image_shape);
       break;
-    case IN_OUT:
+    case IN_OUT_CHANNEL:
       CalInOutputImageShape(shape, image_shape);
       break;
     case ARGUMENT:
       CalArgImageShape(shape, image_shape);
       break;
-    default:LOG(FATAL) << "Mace not supported yet.";
+    case IN_OUT_HEIGHT:
+      CalInOutHeightImageShape(shape, image_shape);
+      break;
+    case IN_OUT_WIDTH:
+      CalInOutWidthImageShape(shape, image_shape);
+      break;
+    case WINOGRAD_FILTER:
+      CalWinogradFilterImageShape(shape, image_shape);
+      break;
+    default:
+      LOG(FATAL) << "Mace not supported yet.";
+  }
+}
+
+
+std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
+                                      const BufferType type) {
+  if (type == WINOGRAD_FILTER) {
+    return {16, shape[0], shape[1], 1};
+  }else if (type == IN_OUT_HEIGHT) {
+    index_t out_width = shape[0] *
+                        ((shape[1] - 1) / 2) *
+                        ((shape[2] - 1) / 2);
+    return {16, shape[3], out_width, 1};
+  } else {
+    LOG(FATAL) << "Mace not supported yet.";
+  return std::vector<index_t>();
   }
 }
 

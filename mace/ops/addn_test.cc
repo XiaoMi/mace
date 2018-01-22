@@ -104,7 +104,7 @@ void RandomTest() {
     for (int i = 0; i < input_num; ++i) {
       BufferToImage<D, half>(net, "Input" + ToString(i),
                              "InputImage" + ToString(i),
-                             kernels::BufferType::IN_OUT);
+                             kernels::BufferType::IN_OUT_CHANNEL);
     }
 
     auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
@@ -119,7 +119,7 @@ void RandomTest() {
     net.RunOp(D);
 
     ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.1);
   }
