@@ -21,6 +21,7 @@ class DspOps(object):
       'QuantizedResizeBilinear' : 'QuantizedResizeBilinear_8',
       'QuantizedSpaceToBatchND': 'QuantizedSpaceToBatchND_8',
       'QuantizedBatchToSpaceND': 'QuantizedBatchToSpaceND_8',
+      'QuantizedSoftmax': 'QuantizedSoftmax_8',
       'Min': 'Min_f',
       'Max': 'Max_f',
       'QuantizeV2': 'Quantize',
