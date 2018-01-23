@@ -118,7 +118,7 @@ def parse_args():
     nargs='?',
     const=False,
     default=False,
-    help="obfuscate model names")
+    help="open winograd convolution or not")
   return parser.parse_known_args()
 
 
