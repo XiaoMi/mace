@@ -35,7 +35,7 @@ def main(unused_args):
       input_graph_def, FLAGS.input_node, FLAGS.output_node)
   else:
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime)
+      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
     source_converter_lib.convert_to_source(output_graph_def, mode_pb_checksum, FLAGS.template, FLAGS.obfuscate,
@@ -112,6 +112,13 @@ def parse_args():
     type=str,
     default="",
     help="model tag for generated function and namespace")
+  parser.add_argument(
+    "--winograd",
+    type=str2bool,
+    nargs='?',
+    const=False,
+    default=False,
+    help="obfuscate model names")
   return parser.parse_known_args()
 
 
