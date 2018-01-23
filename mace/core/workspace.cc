@@ -5,6 +5,7 @@
 #include "mace/core/workspace.h"
 #include "mace/core/serializer.h"
 #include "mace/core/arg_helper.h"
+#include "mace/core/runtime/opencl/opencl_preallocated_pooled_allocator.h"
 
 namespace mace {
 
@@ -23,7 +24,7 @@ Tensor *Workspace::CreateTensor(const string &name,
     VLOG(1) << "Tensor " << name << " already exists. Skipping.";
   } else {
     VLOG(1) << "Creating Tensor " << name;
-    tensor_map_[name] = unique_ptr<Tensor>(new Tensor(alloc, type));
+    tensor_map_[name] = std::move(std::unique_ptr<Tensor>(new Tensor(alloc, type)));
   }
   return GetTensor(name);
 }
@@ -84,23 +85,43 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
     return;
   }
-  std::map<std::string, std::shared_ptr<Tensor>> mem_tensor_map;
-  const DataType dtype = static_cast<DataType>(
-      ArgumentHelper::GetSingleArgument<OperatorDef, int>(
-          net_def.op(0),
-          "T",
-          static_cast<int>(DT_FLOAT)));
-  for (auto &mem_block: net_def.mem_arena().mem_block()) {
-    string mem_block_name = MemBlockName(mem_block.mem_id());
-    mem_tensor_map[mem_block_name].reset(new Tensor(
-        GetDeviceAllocator(DeviceType::OPENCL),
-        dtype));
-    mem_tensor_map[mem_block_name]->AllocateImageMemory({mem_block.x(),
-                                                         mem_block.y()});
-  }
+  preallocated_allocator_ =
+    std::move(std::unique_ptr<PreallocatedPooledAllocator>(
+      new OpenCLPreallocatedPooledAllocator));
+
+  DataType dtype = DataType::DT_INVALID;
+  // We use the data type of the first op (with mem id, must be image),
+  // as GPU have consistent data type for each layer for now.
+  // As DSP may have different data output type for each op,
+  // we stick to the same concept.
   for (auto &op: net_def.op()) {
     if (op.has_mem_id()) {
-      tensor_map_[op.output(0)] = mem_tensor_map[MemBlockName(op.mem_id())];
+      const DataType op_dtype = static_cast<DataType>(
+        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+          op,
+          "T",
+          static_cast<int>(DT_FLOAT)));
+      if (op_dtype != DataType::DT_INVALID) {
+        dtype = op_dtype;
+        // find first valid data type, break
+        break;
+      }
+    }
+  }
+  MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
+  for (auto &mem_block: net_def.mem_arena().mem_block()) {
+    preallocated_allocator_->PreallocateImage(mem_block.mem_id(),
+                                              {mem_block.x(), mem_block.y()},
+                                              dtype);
+  }
+  VLOG(1) << "Preallocate image to tensors";
+  auto allocator = GetDeviceAllocator(DeviceType::OPENCL);
+  for (auto &op: net_def.op()) {
+    if (op.has_mem_id()) {
+      CreateTensor(op.output(0), allocator, dtype);
+      tensor_map_[op.output(0)]->PreallocateImage(
+        preallocated_allocator_->GetImage(op.mem_id()),
+        preallocated_allocator_->GetImageSize(op.mem_id()));
     }
   }
 }

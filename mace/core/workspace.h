@@ -8,14 +8,17 @@
 #include "mace/core/common.h"
 #include "mace/core/tensor.h"
 #include "mace/core/public/mace.h"
+#include "mace/core/preallocated_pooled_allocator.h"
 
 namespace mace {
 
 class Workspace {
  public:
-  typedef map<string, std::shared_ptr<Tensor>> TensorMap;
+  typedef map<string, std::unique_ptr<Tensor>> TensorMap;
 
-  Workspace() {}
+  Workspace()
+    : preallocated_allocator_(nullptr) {}
+  ~Workspace() {}
 
   vector<string> Tensors() const;
 
@@ -35,14 +38,12 @@ class Workspace {
 
   void LoadModelTensor(const NetDef &net_def, DeviceType type);
 
-  inline std::string MemBlockName(int mem_id) const {
-	  return internal::MakeString("mem_block_", mem_id);
-  };
-
  private:
   void CreateImageOutputTensor(const NetDef &net_def);
 
   TensorMap tensor_map_;
+
+  std::unique_ptr<PreallocatedPooledAllocator> preallocated_allocator_;
 
   DISABLE_COPY_AND_ASSIGN(Workspace);
 };
