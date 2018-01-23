@@ -15,7 +15,6 @@ source $1
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
   DEVICE_TYPE="HEXAGON"
-  TF_OUTPUT_NODE=${TF_OUTPUT_BR_NODE}
 elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
