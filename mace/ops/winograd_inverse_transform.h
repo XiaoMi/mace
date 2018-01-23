@@ -9,6 +9,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/kernels/winograd_transform.h"
+#include "mace/kernels/activation.h"
 
 namespace mace {
 
@@ -19,13 +20,18 @@ class WinogradInverseTransformOp : public Operator<D, T> {
       : Operator<D, T>(op_def, ws),
         functor_(OperatorBase::GetSingleArgument<int>("batch", 1),
                  OperatorBase::GetSingleArgument<int>("height", 0),
-                 OperatorBase::GetSingleArgument<int>("width", 0)) {}
+                 OperatorBase::GetSingleArgument<int>("width", 0),
+                 kernels::StringToActivationType(
+                     OperatorBase::GetSingleArgument<std::string>("activation",
+                                                                  "NOOP")),
+                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f),
+                 OperatorBase::GetSingleArgument<float>("alpha", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
+    const Tensor *bias = this->InputSize() == 2 ? this->Input(BIAS) : nullptr;
     Tensor *output_tensor = this->Output(OUTPUT);
-
-    functor_(input_tensor, output_tensor, future);
+    functor_(input_tensor, bias, output_tensor, future);
     return true;
   }
 
@@ -33,7 +39,7 @@ class WinogradInverseTransformOp : public Operator<D, T> {
   kernels::WinogradInverseTransformFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT);
+  OP_INPUT_TAGS(INPUT, BIAS);
   OP_OUTPUT_TAGS(OUTPUT);
 };
 

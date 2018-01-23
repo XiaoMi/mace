@@ -96,17 +96,18 @@ static void Conv2d(int iters,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
 // ICNet
-//BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, half);
+BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, half);
 //// SNPE GPU ExecutionDuration = 448us, % ALU Utilization = 105
-//BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, half);
+BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, half);
 //// SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
-//BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, half);
-//
-//BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, half);
+BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, half);
+
+BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, half);
 //// SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
-//BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
-//BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64, half);
-//BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256, half);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
+BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64, half);
+BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256, half);
+
 BM_CONV_2D(1, 128, 16, 16, 3, 3, 1, VALID, 32, half);
 BM_CONV_2D(1, 128, 64, 64, 3, 3, 1, VALID, 32, half);
 BM_CONV_2D(1, 128, 128, 128, 3, 3, 1, VALID, 32, half);

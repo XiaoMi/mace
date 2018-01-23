@@ -11,7 +11,6 @@ namespace mace {
 
 class WinogradConvlutionTest : public OpsTestBase {};
 
-
 void TransposeFilter(const std::vector<float> &input,
                      const std::vector<index_t> &input_shape,
                      std::vector<float> &output) {
@@ -48,14 +47,18 @@ void WinogradConvolution(const index_t batch,
   GenerateRandomRealTypeData<float>(filter_shape, filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
+  net.AddRandomInput<D, T>("Bias", {out_channels});
 
   BufferToImage<D, T>(net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(net, "Filter", "FilterImage",
                       kernels::BufferType::FILTER);
+  BufferToImage<D, T>(net, "Bias", "BiasImage",
+                      kernels::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
+      .Input("BiasImage")
       .Output("OutputImage")
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", padding)
@@ -102,6 +105,7 @@ void WinogradConvolution(const index_t batch,
   // Inverse transform
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("WinoGemm")
+      .Input("BiasImage")
       .AddIntArg("batch", batch)
       .AddIntArg("height", output_shape[1])
       .AddIntArg("width", output_shape[2])
@@ -113,14 +117,13 @@ void WinogradConvolution(const index_t batch,
   net.Sync();
 
   ImageToBuffer<D, float>(net, "WinoOutputImage", "WinoOutput",
-                                           kernels::BufferType::IN_OUT_CHANNEL);
+                          kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-1);
   } else {
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-4);
   }
 }
-
 
 TEST_F(WinogradConvlutionTest, AlignedConvolution) {
   WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16, Padding::VALID);

@@ -8,6 +8,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/kernels/activation.h"
 
 namespace mace {
 namespace kernels {
@@ -47,22 +48,37 @@ struct WinogradTransformFunctor<DeviceType::OPENCL, T> : WinogradTransformFuncto
 struct WinogradInverseTransformFunctorBase {
   WinogradInverseTransformFunctorBase(const int batch,
                                       const int height,
-                                      const int width)
-      : batch_(batch), height_(height), width_(width) {}
+                                      const int width,
+                                      const ActivationType activation,
+                                      const float relux_max_limit,
+                                      const float prelu_alpha)
+      : batch_(batch),
+        height_(height),
+        width_(width),
+        activation_(activation),
+        relux_max_limit_(relux_max_limit),
+        prelu_alpha_(prelu_alpha) {}
 
   const int batch_;
   const int height_;
   const int width_;
+  const ActivationType activation_;
+  const float relux_max_limit_;
+  const float prelu_alpha_;
 };
 
 template<DeviceType D, typename T>
 struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
   WinogradInverseTransformFunctor(const int batch,
                                   const int height,
-                                  const int width)
-      : WinogradInverseTransformFunctorBase(batch, height, width) {}
+                                  const int width,
+                                  const ActivationType activation,
+                                  const float relux_max_limit,
+                                  const float prelu_alpha)
+      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit, prelu_alpha) {}
 
   void operator()(const Tensor *input,
+                  const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
     MACE_NOT_IMPLEMENTED;
@@ -74,10 +90,14 @@ template<typename T>
 struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T> : WinogradInverseTransformFunctorBase {
   WinogradInverseTransformFunctor(const int batch,
                                   const int height,
-                                  const int width)
-      : WinogradInverseTransformFunctorBase(batch, height, width) {}
+                                  const int width,
+                                  const ActivationType activation,
+                                  const float relux_max_limit,
+                                  const float prelu_alpha)
+      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit, prelu_alpha) {}
 
   void operator()(const Tensor *input,
+                  const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);
 };

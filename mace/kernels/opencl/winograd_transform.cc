@@ -109,6 +109,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
 
 template<typename T>
 void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input_tensor,
+                                                                        const Tensor *bias,
                                                                         Tensor *output_tensor,
                                                                         StatsFuture *future) {
   std::vector<index_t> output_shape = {batch_, height_, width_, input_tensor->dim(1)};
@@ -121,10 +122,29 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
   built_options.emplace("-Dwinograd_inverse_transform_2x2=" + obfuscated_kernel_name);
   built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
   built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-  if ((input_tensor->dim(1) % 4 == 0 || input_tensor->dim(0) == 1) &&
-      input_tensor->dim(2) % 4 == 0) {
-    built_options.emplace("-DDIVISIBLE_FOUR");
+  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+  switch (activation_) {
+    case NOOP:
+      break;
+    case RELU:
+      built_options.emplace("-DUSE_RELU");
+      break;
+    case RELUX:
+      built_options.emplace("-DUSE_RELUX");
+      break;
+    case PRELU:
+      built_options.emplace("-DUSE_PRELU");
+      break;
+    case TANH:
+      built_options.emplace("-DUSE_TANH");
+      break;
+    case SIGMOID:
+      built_options.emplace("-DUSE_SIGMOID");
+      break;
+    defeult:
+      LOG(FATAL) << "Unknown activation type: " << activation_;
   }
+
   auto runtime = OpenCLRuntime::Global();
   auto wino_kernel = runtime->BuildKernel("winograd_transform",
                                          obfuscated_kernel_name,
@@ -134,11 +154,16 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
   const uint32_t round_w = (width_ + 1) / 2;
   uint32_t idx = 0;
   wino_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
+  if (bias != nullptr) {
+    wino_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
+  }
   wino_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
   wino_kernel.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
   wino_kernel.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
   wino_kernel.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
   wino_kernel.setArg(idx++, static_cast<uint32_t>(round_w));
+  wino_kernel.setArg(idx++, relux_max_limit_);
+  wino_kernel.setArg(idx++, prelu_alpha_);
 
   const size_t gws[2] = {static_cast<size_t>(input_tensor->dim(2)),
                          static_cast<size_t>(RoundUpDiv4(input_tensor->dim(1)))};

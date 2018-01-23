@@ -107,16 +107,34 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
 }
 
 __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
+#ifdef BIAS
+                                             __read_only image2d_t bias, /* cout%4 * cout/4 */
+#endif
                                              __write_only image2d_t output,
                                              __private const int out_height,
                                              __private const int out_width,
                                              __private const int round_hw,
-                                             __private const int round_w) {
+                                             __private const int round_w,
+                                             __private const DATA_TYPE relux_max_limit,
+                                             __private const DATA_TYPE prelu_alpha) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
   const int out_channel = get_global_size(1);
   int width = width_idx;
   int height = height_idx;
+
+  const int batch = width_idx / round_hw;
+  int t = width_idx % round_hw;
+  const int out_height_idx = (t / round_w) << 1;
+  const int out_width_idx = (t % round_w) << 1;
+  const int out_chan_idx = height_idx;
+  const int coord_x = mad24(out_chan_idx, out_width, out_width_idx);
+  const int coord_y = mad24(batch, out_height, out_height_idx);
+
+#ifdef BIAS
+  DATA_TYPE4 bias_value =
+     READ_IMAGET(bias, SAMPLER, (int2)(out_chan_idx, 0));
+#endif
 
   DATA_TYPE4 in0[4], in1[4], in2[4], in3[4];
 
@@ -157,13 +175,20 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
   in1[0] = in1[0] + in1[1] + in1[2];
   in1[1] = in1[1] - in1[2] - in1[3];
 
-  const int batch = width_idx / round_hw;
-  int t = width_idx % round_hw;
-  const int out_height_idx = (t / round_w) << 1;
-  const int out_width_idx = (t % round_w) << 1;
-  const int out_chan_idx = height_idx;
-  const int coord_x = mad24(out_chan_idx, out_width, out_width_idx);
-  const int coord_y = mad24(batch, out_height, out_height_idx);
+#ifdef BIAS
+  in0[0] += bias_value;
+  in0[1] += bias_value;
+  in1[0] += bias_value;
+  in1[1] += bias_value;
+#endif
+
+
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
+  in0[0] = do_activation(in0[0], relux_max_limit, prelu_alpha);
+  in0[1] = do_activation(in0[1], relux_max_limit, prelu_alpha);
+  in1[0] = do_activation(in1[0], relux_max_limit, prelu_alpha);
+  in1[1] = do_activation(in1[1], relux_max_limit, prelu_alpha);
+#endif
 
   WRITE_IMAGET(output, (int2)(coord_x, coord_y), in0[0]);
 
