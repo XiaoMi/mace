@@ -16,6 +16,7 @@ cc_library(
     ],
     hdrs = [
         "logging.h",
+        "memory_logging.h",
     ],
     linkopts = if_android([
         "-llog",

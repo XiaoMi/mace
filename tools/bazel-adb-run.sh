@@ -29,6 +29,7 @@ python mace/python/tools/encrypt_opencl_codegen.py \
     --cl_kernel_dir=./mace/kernels/opencl/cl/ --output_path=${CODEGEN_DIR}/opencl/opencl_encrypt_program.cc
 
 echo "Step 2: Generate version source"
+mkdir -p ${CODEGEN_DIR}/version
 bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc
 
 echo "Step 3: Build target"
