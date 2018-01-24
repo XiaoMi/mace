@@ -29,6 +29,9 @@ CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 VERSION_CODEGEN_DIR=${CODEGEN_DIR}/version
 STRIP="--strip always"
 
+# TO REMOVE
+LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`
+
 LIBMACE_NAME="libmace"
 LIBMACE_DEV_NAME="libmace_dev"
 LIBMACE_PROD_NAME="libmace_prod"
@@ -73,7 +76,7 @@ merge_libs()
 {
   CREATE_LIB_NAME=$1
   LIBS_LIST=$2
-  echo "create /tmp/${CREATE_LIB_NAME}.a" > /tmp/${CREATE_LIB_NAME}.mri || exit -1
+  echo "create ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.a" > ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
 
   for lib_target in ${LIBS_LIST[*]}
   do
@@ -86,14 +89,14 @@ merge_libs()
     else
       bin_path="${bin_path}.lo"
     fi
-    echo "addlib ${bin_path}" >> /tmp/${CREATE_LIB_NAME}.mri || exit -1
+    echo "addlib ${bin_path}" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
   done
 
-  echo "save" >> /tmp/${CREATE_LIB_NAME}.mri || exit -1
-  echo "end" >> /tmp/${CREATE_LIB_NAME}.mri || exit -1
+  echo "save" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
+  echo "end" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
 
   $ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar \
-    -M < /tmp/${CREATE_LIB_NAME}.mri || exit -1
+    -M < ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
 }
 
 
@@ -130,6 +133,9 @@ rm -rf ${EXPORT_LIB_DIR}
 mkdir -p ${EXPORT_LIB_DIR}
 
 cp ${MACE_SOURCE_DIR}/mace/core/public/* ${EXPORT_INCLUDE_DIR}/mace/core/public || exit -1
-cp /tmp/libmace.a /tmp/libmace_dev.a /tmp/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit -1
+cp ${LIBMACE_TEMP_DIR}/libmace.a ${LIBMACE_TEMP_DIR}/libmace_dev.a ${LIBMACE_TEMP_DIR}/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit -1
+
+echo "Step 6: Remove temporary file"
+rm -rf ${LIBMACE_TEMP_DIR}
 
 echo "Done!"
