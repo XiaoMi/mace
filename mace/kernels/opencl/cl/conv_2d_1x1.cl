@@ -37,7 +37,7 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   w.z = w.y + out_w_blks;
   w.w = w.z + out_w_blks;
   int out_hb_idx = (out_hb % height);
-#else
+#elif STRIDE == 2
   w.x = out_w_blk << 1;
   w.y = (out_w_blk + out_w_blks) << 1;
   w.z = (out_w_blk + (out_w_blks << 1)) << 1;

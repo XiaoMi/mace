@@ -17,9 +17,10 @@ namespace kernels {
 const float kMaxKernelExeTime = 1000.0; // microseconds
 
 enum BufferType {
-  FILTER = 0,
-  IN_OUT = 1,
-  ARGUMENT = 2
+  CONV2D_FILTER = 0,
+  DW_CONV2D_FILTER = 1,
+  IN_OUT = 2,
+  ARGUMENT = 3
 };
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */

@@ -20,7 +20,7 @@ class BufferToImageOp: public Operator<D, T> {
     const Tensor *input_tensor = this->Input(INPUT);
 
     kernels::BufferType type = static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
-        "buffer_type", static_cast<int>(kernels::FILTER)));
+        "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
     Tensor *output = this->Output(OUTPUT);
 
     functor_(const_cast<Tensor *>(input_tensor), type, output, future);

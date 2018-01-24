@@ -36,7 +36,7 @@ static void Conv2d(int iters,
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("Conv2D", "Conv2dTest")

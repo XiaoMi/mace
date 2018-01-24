@@ -21,15 +21,15 @@ struct Conv2dFunctorBase {
                     const float relux_max_limit,
                     const float prelu_alpha)
       : strides_(strides),
-        dilations_(dilations),
         paddings_(paddings),
+        dilations_(dilations),
         activation_(activation),
         relux_max_limit_(relux_max_limit),
         prelu_alpha_(prelu_alpha) {}
 
   const int *strides_;    // [stride_h, stride_w]
-  const int *dilations_;  // [dilation_h, dilation_w]
   const Padding paddings_;
+  const int *dilations_;  // [dilation_h, dilation_w]
   const ActivationType activation_;
   const float relux_max_limit_;
   const float prelu_alpha_;
@@ -50,8 +50,8 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                           relux_max_limit,
                           prelu_alpha) {}
 
-  void operator()(const Tensor *input,
-                  const Tensor *filter,
+  void operator()(const Tensor *input,  // NHWC
+                  const Tensor *filter, // HWIO
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
