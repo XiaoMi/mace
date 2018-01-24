@@ -10,6 +10,7 @@
 #include "mace/utils/logging.h"
 #include "mace/core/types.h"
 #include "mace/core/public/mace.h"
+#include "preallocated_pooled_allocator.h"
 
 namespace mace {
 
@@ -71,7 +72,8 @@ class Tensor {
         buffer_(nullptr),
         data_(nullptr),
         unused_(false),
-        is_image_(false){};
+        is_image_(false){
+};
 
   Tensor(Allocator *alloc, DataType type)
       : alloc_(alloc),
@@ -80,18 +82,10 @@ class Tensor {
         buffer_(nullptr),
         data_(nullptr),
         unused_(false),
-        is_image_(false){};
+        is_image_(false){
+  };
 
   ~Tensor() {
-    MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before destroy");
-    if (buffer_ != nullptr) {
-      MACE_CHECK_NOTNULL(alloc_);
-      if (is_image_) {
-        alloc_->DeleteImage(buffer_);
-      } else {
-        alloc_->Delete(buffer_);
-      }
-    }
   }
 
   inline DataType dtype() const { return dtype_; }
@@ -132,13 +126,13 @@ class Tensor {
   inline void Map() const {
     if (!OnHost()) {
       MACE_CHECK(buffer_ != nullptr && data_ == nullptr);
-      data_ = alloc_->Map(buffer_, size_ * SizeOfType());
+      data_ = alloc_->Map(buffer_.get(), size_ * SizeOfType());
     }
   }
 
   inline void MapImage(std::vector<size_t> &mapped_image_pitch) const {
     MACE_CHECK(!OnHost() && buffer_ != nullptr && data_ == nullptr);
-    data_ = alloc_->MapImage(buffer_, image_shape_, mapped_image_pitch);
+    data_ = alloc_->MapImage(buffer_.get(), image_shape_, mapped_image_pitch);
   }
 
   /*
@@ -147,12 +141,12 @@ class Tensor {
   inline void Unmap() const {
     if (!OnHost()) {
       MACE_CHECK(buffer_ != nullptr && data_ != nullptr);
-      alloc_->Unmap(buffer_, data_);
+      alloc_->Unmap(buffer_.get(), data_);
       data_ = nullptr;
     }
   }
 
-  void *buffer() const { return buffer_; }
+  void *buffer() const { return buffer_.get(); }
 
   inline const void *raw_data() const {
     void *data = MappedBuffer();
@@ -181,42 +175,51 @@ class Tensor {
   }
 
   inline void Resize(const vector<index_t> &shape) {
+    MACE_CHECK(!is_image_ || buffer_ == nullptr,
+               "Resize is not for image, use ResizeImage instead.");
+    is_image_ = false;
     shape_ = shape;
     index_t size = NumElements();
-    if (size_ != size || is_image_) {
+    if (size_ != size) {
       size_ = size;
       MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
-      if (is_image_) {
-        alloc_->DeleteImage(buffer_);
-      } else {
-        alloc_->Delete(buffer_);
-      }
-      is_image_ = false;
-      CASES(dtype_, buffer_ = alloc_->New(size_ * sizeof(T)));
+      CASES(dtype_,
+            (buffer_ =
+               std::move(std::unique_ptr<void, std::function<void(void *)>>(
+                 alloc_->New(size_ * sizeof(T)),
+                 [this](void *p) {
+                   this->alloc_->Delete(p);
+                 })
+               )));
     }
   }
 
   inline void ResizeImage(const vector<index_t> &shape,
                           const std::vector<size_t> &image_shape) {
+    MACE_CHECK(is_image_ || buffer_ == nullptr,
+               "ResizeImage is not for buffer, use Resize instead.");
+    is_image_ = true;
     shape_ = shape;
     index_t size = NumElements();
-    if (size_ != size || !is_image_) {
+    if (size_ != size) {
       size_ = size;
-      MACE_CHECK(data_ == nullptr, "Buffer must be unmapped before resize");
-
-      if (is_image_ && !image_shape_.empty()) {
-        MACE_ASSERT(image_shape_.size() == 2
-                        && image_shape_[0] >= image_shape[0]
-                        || image_shape_[1] >= image_shape[1],
-                    "image shape not large enough");
-      }
-      if (!is_image_ && buffer_ != nullptr) {
-        alloc_->Delete(buffer_);
-      }
-      is_image_ = true;
-      if (image_shape_.empty()) {
-        image_shape_ = image_shape;
-        buffer_ = alloc_->NewImage(image_shape, dtype_);
+      image_shape_ = image_shape;
+      if (!preallocated_image_shape_.empty()) {
+        MACE_CHECK(preallocated_image_shape_[0] >= image_shape[0]
+                     && preallocated_image_shape_[1] >= image_shape[1],
+                   "image shape not large enough: preallocated ",
+                   preallocated_image_shape_[0],
+                   " ",
+                   preallocated_image_shape_[1],
+                   "apply for ",
+                   image_shape[0],
+                   " ",
+                   image_shape[1]);
+      } else {
+        buffer_ = std::move(std::unique_ptr<void, std::function<void(void *)>>(
+          alloc_->NewImage(image_shape, dtype_),
+          [this](void *p) { this->alloc_->DeleteImage(p); }));
+        preallocated_image_shape_ = image_shape;
       }
     }
   }
@@ -237,15 +240,14 @@ class Tensor {
     }
   }
 
-  inline void AllocateImageMemory(const std::vector<size_t> &image_shape) {
+  inline void PreallocateImage(void *image,
+                               const std::vector<size_t>& image_shape) {
     is_image_ = true;
-    if (image_shape_ != image_shape) {
-      if (buffer_ != nullptr) {
-        alloc_->DeleteImage(buffer_);
-      }
-      image_shape_ = image_shape;
-      buffer_ = alloc_->NewImage(image_shape, dtype_);
-    }
+    buffer_ = std::move(std::unique_ptr<void, std::function<void(void *)>>(
+      image, [](void *p) {
+        // tensor does not have ownership of preallocated memory
+      }));
+    preallocated_image_shape_ = image_shape;
   }
 
   template <typename T>
@@ -273,7 +275,7 @@ class Tensor {
   inline void DebugPrint() const {
     using namespace numerical_chars;
     std::stringstream os;
-    for (int i : shape_) {
+    for (index_t i : shape_) {
       os << i << ", ";
     }
 
@@ -336,7 +338,7 @@ class Tensor {
  private:
   inline void *MappedBuffer() const {
     if (OnHost()) {
-      return buffer_;
+      return buffer_.get();
     }
     return data_;
   }
@@ -346,7 +348,7 @@ class Tensor {
   DataType dtype_;
   // Raw buffer, must be mapped as host accessable data before
   // read or write
-  void *buffer_;
+  std::unique_ptr<void, std::function<void(void*)>> buffer_;
   // Mapped buffer
   mutable void *data_;
   vector<index_t> shape_;
@@ -354,6 +356,7 @@ class Tensor {
   bool unused_;
   bool is_image_;
   std::vector<size_t> image_shape_;
+  std::vector<size_t> preallocated_image_shape_;
 
   DISABLE_COPY_AND_ASSIGN(Tensor);
 };
