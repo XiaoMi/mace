@@ -156,7 +156,7 @@ rm -rf ${CL_BIN_DIR}
 rm -rf ${CL_CODEGEN_DIR}
 mkdir -p ${CL_BIN_DIR}
 mkdir -p ${CL_CODEGEN_DIR}
-adb pull ${KERNEL_DIR}/\. ${CL_BIN_DIR}
+adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR}
 python lib/python/tools/opencl_codegen.py \
   --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
 
