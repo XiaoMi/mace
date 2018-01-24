@@ -60,7 +60,7 @@ static void Pooling(const Tensor *input,
       static_cast<uint32_t>(batch * out_height),
   };
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(pooling_kernel);
-  std::vector<uint32_t> lws(3, 0);
+  std::vector<uint32_t> lws(4, 1);
   lws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
   lws[1] = std::min<uint32_t>(out_width, kwg_size / lws[0]);
   lws[2] = std::min<uint32_t>(out_height * batch, kwg_size / (lws[0] * lws[1]));
@@ -69,35 +69,67 @@ static void Pooling(const Tensor *input,
     local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
     local_ws[1] = std::min<uint32_t>(out_width, kwg_size / local_ws[0]);
     local_ws[2] = std::min<uint32_t>(out_height * batch, kwg_size / (local_ws[0] * local_ws[1]));
-    return {{local_ws[0], local_ws[1], local_ws[2]},
-            {kwg_size / 16, 4, 4},
-            {kwg_size / 32, 4, 8},
-            {kwg_size / 32, 8, 4},
-            {kwg_size / 64, 8, 8},
-            {kwg_size / 64, 16, 4},
-            {kwg_size / 128, 8, 16},
-            {kwg_size / 128, 16, 8},
-            {kwg_size / 128, 32, 4},
-            {1, kwg_size / 32, 32},
-            {1, kwg_size / 64, 64},
-            {1, kwg_size / 128, 128},
-            {3, 15, 9},
-            {7, 15, 9},
-            {9, 7, 15},
-            {15, 7, 9},
-            {1, kwg_size, 1},
-            {4, 15, 8}, //SNPE size
+    return {
+        {local_ws[0], local_ws[1], local_ws[2], 1},
+        {kwg_size / 16, 4, 4, 1},
+        {kwg_size / 32, 4, 8, 1},
+        {kwg_size / 32, 8, 4, 1},
+        {kwg_size / 64, 8, 8, 1},
+        {kwg_size / 64, 16, 4, 1},
+        {kwg_size / 128, 8, 16, 1},
+        {kwg_size / 128, 16, 8, 1},
+        {kwg_size / 128, 32, 4, 1},
+        {1, kwg_size / 32, 32, 1},
+        {1, kwg_size / 64, 64, 1},
+        {1, kwg_size / 128, 128, 1},
+        {3, 15, 9, 1},
+        {7, 15, 9, 1},
+        {9, 7, 15, 1},
+        {15, 7, 9, 1},
+        {1, kwg_size, 1, 1},
+        {4, 15, 8, 1},  // SNPE size
     };
   };
   cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        pooling_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(params[0], params[1], params[2]),
-        nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  auto func = [&](std::vector<uint32_t> &params, Timer *timer) -> cl_int {
+    cl_int error = CL_SUCCESS;
+    if (timer == nullptr) {
+      uint32_t num_blocks = params.back();
+      const uint32_t block_size = gws[2] / num_blocks;
+      if (gws[2] % num_blocks > 0) num_blocks++;
+      for (uint32_t i = 0; i < num_blocks; ++i) {
+        uint32_t gws2 = (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            pooling_kernel,
+            cl::NDRange(0, 0, i * block_size),
+            cl::NDRange(gws[0], gws[1], gws2),
+            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      }
+    } else {
+      timer->StartTiming();
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          pooling_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+          cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+      MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      timer->StopTiming();
+      double elapse_time = timer->ElapsedMicros();
+      timer->ClearTiming();
+      uint32_t num_blocks = std::min(static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[2]);
+      params.back() = num_blocks;
+      const uint32_t block_size = gws[2] / num_blocks;
+      if (gws[2] % num_blocks > 0) num_blocks++;
+      for (uint32_t i = 0; i < num_blocks; ++i) {
+        uint32_t gws2 = (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            pooling_kernel,
+            cl::NDRange(0, 0, i * block_size),
+            cl::NDRange(gws[0], gws[1], gws2),
+            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+        timer->AccumulateTiming();
+      }
+    }
     return error;
   };
   std::stringstream ss;

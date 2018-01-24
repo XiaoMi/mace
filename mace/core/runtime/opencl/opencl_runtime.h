@@ -18,16 +18,20 @@
 namespace mace {
 
 class OpenCLProfilingTimer : public Timer {
-  public:
-    explicit OpenCLProfilingTimer(const cl::Event *event) : event_(event) {};
-    void StartTiming() override;
-    void StopTiming() override;
-    double ElapsedMicros() override;
+ public:
+  explicit OpenCLProfilingTimer(const cl::Event *event) : event_(event), accumulated_micros_(0) {};
+  void StartTiming() override;
+  void StopTiming() override;
+  void AccumulateTiming() override;
+  void ClearTiming() override;
+  double ElapsedMicros() override;
+  double AccumulatedMicros() override;
 
-  private:
-    const cl::Event *event_;
-    double start_nanos_;
-    double stop_nanos_;
+ private:
+  const cl::Event *event_;
+  double start_nanos_;
+  double stop_nanos_;
+  double accumulated_micros_;
 };
 
 class OpenCLRuntime {
@@ -40,15 +44,15 @@ class OpenCLRuntime {
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint32_t GetDeviceMaxWorkGroupSize();
-  uint32_t GetKernelMaxWorkGroupSize(const cl::Kernel& kernel);
+  uint32_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);
  private:
   OpenCLRuntime();
   ~OpenCLRuntime();
-  OpenCLRuntime(const OpenCLRuntime&) = delete;
-  OpenCLRuntime &operator=(const OpenCLRuntime&) = delete;
+  OpenCLRuntime(const OpenCLRuntime &) = delete;
+  OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
 
   void BuildProgram(const std::string &program_file_name,
                     const std::string &binary_file_name,

@@ -50,33 +50,66 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
       static_cast<uint32_t>(batch_height_pixels)
   };
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(addn_kernel);
-  std::vector<uint32_t> lws = {64, 16};
+  std::vector<uint32_t> lws = {64, 16, 1};
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     uint32_t local_ws[2];
     local_ws[0] = std::min<uint32_t>(width_pixels, kwg_size);
     local_ws[1] = std::min<uint32_t>(batch_height_pixels, kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1]},
-            {local_ws[1], local_ws[0]},
-            {kwg_size / 4, 4},
-            {kwg_size / 16, 16},
-            {kwg_size / 32, 32},
-            {kwg_size / 64, 64},
-            {kwg_size / 128, 128},
-            {kwg_size / 256, 256},
-            {kwg_size / 512, 512},
-            {kwg_size, 1},
-            {1, kwg_size}
+    return {{local_ws[0], local_ws[1], 1},
+            {local_ws[1], local_ws[0], 1},
+            {kwg_size / 4, 4, 1},
+            {kwg_size / 16, 16, 1},
+            {kwg_size / 32, 32, 1},
+            {kwg_size / 64, 64, 1},
+            {kwg_size / 128, 128, 1},
+            {kwg_size / 256, 256, 1},
+            {kwg_size / 512, 512, 1},
+            {kwg_size, 1, 1},
+            {1, kwg_size, 1}
     };
   };
   cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        addn_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1]),
-        cl::NDRange(params[0], params[1]),
-        nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  auto func = [&](std::vector<uint32_t> &params, Timer *timer) -> cl_int {
+    cl_int error = CL_SUCCESS;
+    if (timer == nullptr) {
+      uint32_t num_blocks = params.back();
+      const uint32_t block_size = gws[1] / num_blocks;
+      if (gws[1] % num_blocks > 0) num_blocks++;
+      for (uint32_t i = 0; i < num_blocks; ++i) {
+        uint32_t gws1 = (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            addn_kernel,
+            cl::NDRange(0, i * block_size),
+            cl::NDRange(gws[0], gws1),
+            cl::NDRange(params[0], params[1]),
+            nullptr, &event);
+        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      }
+    } else {
+      timer->StartTiming();
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          addn_kernel, cl::NullRange,
+          cl::NDRange(gws[0], gws[1]),
+          cl::NDRange(params[0], params[1]), nullptr, &event);
+      MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      timer->StopTiming();
+      double elapse_time = timer->ElapsedMicros();
+      timer->ClearTiming();
+      uint32_t num_blocks = std::min(static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[1]);
+      params.back() = num_blocks;
+      const uint32_t block_size = gws[1] / num_blocks;
+      if (gws[1] % num_blocks > 0) num_blocks++;
+      for (uint32_t i = 0; i < num_blocks; ++i) {
+        uint32_t gws1 = (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            addn_kernel,
+            cl::NDRange(0, i * block_size),
+            cl::NDRange(gws[0], gws1),
+            cl::NDRange(params[0], params[1]), nullptr, &event);
+        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+        timer->AccumulateTiming();
+      }
+    }
     return error;
   };
   std::stringstream ss;

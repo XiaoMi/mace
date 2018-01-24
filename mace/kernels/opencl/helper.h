@@ -14,6 +14,8 @@
 namespace mace {
 namespace kernels {
 
+const float kMaxKernelExeTime = 1000.0; // microseconds
+
 enum BufferType {
   FILTER = 0,
   IN_OUT= 1,
