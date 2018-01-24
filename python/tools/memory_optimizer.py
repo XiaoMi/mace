@@ -32,6 +32,16 @@ class MemoryOptimizer(object):
   def is_buffer_image_op(self, op):
     return op.type == 'BufferToImage' or op.type == 'ImageToBuffer'
 
+  def get_mem_size(self, op_type, output_shape):
+    mem_size = [0, 0]
+    if op_type == 'WinogradTransform' or op_type == 'GEMM':
+      mem_size[0] = output_shape[2] * output_shape[3]
+      mem_size[1] = output_shape[0] * int((output_shape[1]+3)/4)
+    else:
+      mem_size[0] = output_shape[2] * int((output_shape[3]+3)/4)
+      mem_size[1] = output_shape[0] * output_shape[1]
+    return mem_size
+
   def optimize(self):
     for op in self.net_def.op:
       if self.is_buffer_image_op(op):
@@ -52,8 +62,9 @@ class MemoryOptimizer(object):
       if mem_id not in self.mem_block:
         self.mem_block[mem_id] = [0, 0]
       mem_size = self.mem_block[mem_id]
-      mem_size[1] = max(mem_size[1], op.output_shape[0].dims[0] * op.output_shape[0].dims[1])
-      mem_size[0] = max(mem_size[0], op.output_shape[0].dims[2] * int((op.output_shape[0].dims[3]+3)/4))
+      op_mem_size = self.get_mem_size(op.type, op.output_shape[0].dims)
+      mem_size[0] = max(mem_size[0], op_mem_size[0])
+      mem_size[1] = max(mem_size[1], op_mem_size[1])
 
       # de-ref input tensor mem
       for ipt in op.input:
