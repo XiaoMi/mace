@@ -107,9 +107,11 @@ RUN apt-get install -y --no-install-recommends \
     android-tools-adb
 
 # Install tools
-RUN pip install tensorflow==1.4.0 && \
+RUN pip install setuptools && \
+    pip install tensorflow==1.4.0 && \
     pip install scipy && \
     pip install jinja2
 
 # Download tensorflow tools
-RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph
+RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \
+    chmod +x transform_graph
