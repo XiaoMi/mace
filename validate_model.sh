@@ -36,7 +36,7 @@ fi
 
 LIBMACE_TAG=`git describe --abbrev=0 --tags`
 if [ ! "${LIBMACE_TAG}" ]; then
-  LIBMACE_TAG="r0.1"
+  LIBMACE_TAG="v0.1"
 fi
 
 VLOG_LEVEL=0
