@@ -1,7 +1,7 @@
 #include <common.h>
 
 __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
-                          __read_only image2d_t filter, /* cout%4 * cin * kw * kh, cout/4 */
+                          __read_only image2d_t filter, /* cout%4 * cin * kh * kw, cout/4 */
 #ifdef BIAS
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
@@ -45,7 +45,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   int in_width3 = in_width2 + out_w_blks;
   int in_width4 = in_width3 + out_w_blks;
   const int height_idx = (out_hb % out_height) - padding_top;
-#else
+#elif STRIDE == 2
   int in_width0 = (out_w_blk << 1) - padding_left;
   int in_width1 = ((out_w_blk + out_w_blks) << 1) - padding_left;
   int in_width2 = ((out_w_blk + (out_w_blks << 1)) << 1) - padding_left;
@@ -63,6 +63,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     const int in_idx = mul24(in_ch_blk, in_width);
     int filter_x_part0 = in_ch_blk << 2;
     for (short hb_idx = 0; hb_idx < 3; ++hb_idx) {
+      // TODO (heliangliang) optimize out these muls
       int in_hb_value = height_idx + mul24(hb_idx, dilation_h);
       in_hb_value = select(in_hb_value + batch_idx,
                            -1,

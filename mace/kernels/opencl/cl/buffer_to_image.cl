@@ -72,6 +72,56 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, ic, oc
   }
 }
 
+
+__kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, m */
+                                        __private const int filter_w,
+                                        __private const int in_channel,
+                                        __private const int multiplier,
+                                        __write_only image2d_t output) { /* ic%4 * kh * kw * m, ic/4 */
+  const int w = get_global_id(0);
+  const int h = get_global_id(1);
+
+  DATA_TYPE4 values = 0;
+  if (multiplier == 1) {
+    const int in_channel_idx = h << 2;
+    const int h_idx = w / filter_w;
+    const int w_idx = w % filter_w;
+
+    const int offset = mad24(mad24(h_idx, filter_w, w_idx),
+                             in_channel, in_channel_idx);
+
+    const int size = in_channel - in_channel_idx;
+    if (in_channel_idx < in_channel) {
+      if (size < 4) {
+        switch(size) {
+          case 3:
+            values.z = *(input + offset + 2);
+          case 2:
+            values.y = *(input + offset + 1);
+          case 1:
+            values.x = *(input + offset);
+        }
+      } else {
+        values = vload4(0, input + offset);
+      }
+    }
+  } else {
+    const int in_channel_idx = h << 2;
+    const int m = w % multiplier;
+    const int hw_idx = w / multiplier;
+    const int h_idx = hw_idx / filter_w;
+    const int w_idx = hw_idx % filter_w;
+
+    const int offset = mad24(mad24(mad24(h_idx, filter_w, w_idx),
+                in_channel, in_channel_idx),
+            multiplier, m);
+    // TODO support multiplier > 1
+  }
+
+  int2 coord = (int2)(w, h);
+  WRITE_IMAGET(output, coord, values);
+}
+
 __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
                                      __private const int height,
                                      __private const int width,

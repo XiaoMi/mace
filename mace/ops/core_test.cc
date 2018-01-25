@@ -15,7 +15,7 @@ TEST(CoreTest, INIT_MODE) {
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input("Input")
       .Output("B2IOutput")
-      .AddIntArg("buffer_type", kernels::BufferType::FILTER)
+      .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)
       .AddIntArg("mode", static_cast<int>(NetMode::INIT))
       .Finalize(&op_defs[op_defs.size() - 1]);
 
@@ -33,7 +33,7 @@ TEST(CoreTest, INIT_MODE) {
   OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
       .Input("B2IOutput")
       .Output("Output")
-      .AddIntArg("buffer_type", kernels::BufferType::FILTER)
+      .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)
       .Finalize(&op_defs[op_defs.size() - 1]);
 
   NetDef net_def;

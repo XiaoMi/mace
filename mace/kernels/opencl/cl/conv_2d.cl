@@ -1,7 +1,7 @@
 #include <common.h>
 
 __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
-                      __read_only image2d_t filter, /* cout%4 * cin * kw * kh, cout/4 */
+                      __read_only image2d_t filter, /* cout%4 * cin * kh * kw, cout/4 */
 #ifdef BIAS
     __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
@@ -15,6 +15,7 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                       __private const int out_width,
                       __private const int filter_height,
                       __private const int filter_width,
+                      __private const int stride,
                       __private const int padding_top,
                       __private const int padding_left,
                       __private const int dilation_h,
@@ -38,19 +39,12 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
   DATA_TYPE4 out3 = 0;
 #endif
 
-#if STRIDE == 1
-  int in_width0 = out_w_blk - padding_left;
-  int in_width1 = in_width0 + out_w_blks;
-  int in_width2 = in_width1 + out_w_blks;
-  int in_width3 = in_width2 + out_w_blks;
-  const int height_idx = (out_hb % out_height) - padding_top;
-#else
-  int in_width0 = (out_w_blk << 1) - padding_left;
-  int in_width1 = ((out_w_blk + out_w_blks) << 1) - padding_left;
-  int in_width2 = ((out_w_blk + (out_w_blks << 1)) << 1) - padding_left;
-  int in_width3 = ((out_w_blk + (out_w_blks << 1) + out_w_blks) << 1) - padding_left;
-  const int height_idx = ((out_hb % out_height) << 1) - padding_top;
-#endif
+  int in_width_stride = mul24(out_w_blks, stride);
+  int in_width0 = mad24(out_w_blk, stride, -padding_left);
+  int in_width1 = in_width0 + in_width_stride;
+  int in_width2 = in_width1 + in_width_stride;
+  int in_width3 = in_width2 + in_width_stride;
+  const int height_idx = mad24((out_hb % out_height), stride, -padding_top);
 
   const int batch_idx = mul24((out_hb / out_height), in_height);
   const int rounded_in_ch_x_filter_width = mul24(rounded_in_ch, filter_width);
@@ -61,6 +55,7 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
     const int in_idx = mul24(in_ch_blk, in_width);
     int filter_x_part0 = in_ch_blk << 2;
     for (short hb_idx = 0; hb_idx < filter_height; ++hb_idx) {
+      // TODO (heliangliang) optimize out these muls
       int in_hb_value = height_idx + mul24(hb_idx, dilation_h);
       in_hb_value = select(in_hb_value + batch_idx,
                            -1,

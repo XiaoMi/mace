@@ -75,27 +75,27 @@ TEST(BufferToImageTest, InputLarge) {
 }
 
 TEST(BufferToImageTest, Filter1x1Small) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {1, 1, 3, 5});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 3, 5});
 }
 
 TEST(BufferToImageTest, Filter1x1Media) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {1, 1, 13, 17});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 13, 17});
 }
 
 TEST(BufferToImageTest, Filter1x1Large) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {1, 1, 128, 512});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 128, 512});
 }
 
 TEST(BufferToImageTest, Filter3x3Small) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {3, 3, 3, 5});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 3, 5});
 }
 
 TEST(BufferToImageTest, Filter3x3Meida) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {3, 3, 13, 17});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 13, 17});
 }
 
 TEST(BufferToImageTest, Filter3x3Large) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::FILTER, {3, 3, 128, 256});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 128, 256});
 }
 
 template<DeviceType D, typename T>

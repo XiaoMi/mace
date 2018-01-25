@@ -27,8 +27,11 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
 
   string kernel_name;
   switch (type) {
-    case FILTER:
+    case CONV2D_FILTER:
       kernel_name = i2b_ ? "filter_image_to_buffer" : "filter_buffer_to_image";
+      break;
+    case DW_CONV2D_FILTER:
+      kernel_name = i2b_ ? "dw_filter_image_to_buffer" : "dw_filter_buffer_to_image";
       break;
     case IN_OUT:
       kernel_name = i2b_ ? "in_out_image_to_buffer" : "in_out_buffer_to_image";

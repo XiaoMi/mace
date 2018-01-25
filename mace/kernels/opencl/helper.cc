@@ -9,7 +9,7 @@
 namespace mace {
 namespace kernels {
 
-// [(c+3)/4*W, N * H]
+// [(C + 3) / 4 * W, N * H]
 void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
                            std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
@@ -18,13 +18,22 @@ void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
   image_shape[1] = shape[0] * shape[1];
 }
 
-// [H * W * RoundUp<4>(Ic), (Oc + 3) / 4]
-void CalFilterImageShape(const std::vector<index_t> &shape, /* HWIO*/
-                         std::vector<size_t> &image_shape) {
+// [RoundUp<4>(Ic) * H * W, (Oc + 3) / 4]
+void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWIO */
+                               std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape.resize(2);
   image_shape[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[2], 4);
-  image_shape[1] = RoundUpDiv4(shape.back());
+  image_shape[1] = RoundUpDiv4(shape[3]);
+}
+
+// [H * W * M, (Ic + 3) / 4]
+void CalDepthwiseConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWIM */
+                                        std::vector<size_t> &image_shape) {
+  MACE_CHECK(shape.size() == 4);
+  image_shape.resize(2);
+  image_shape[0] = shape[0] * shape[1] * shape[3];
+  image_shape[1] = RoundUpDiv4(shape[2]);
 }
 
 // [(size + 3) / 4, 1]
@@ -40,11 +49,17 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape) {
   switch (type) {
-    case FILTER:CalFilterImageShape(shape, image_shape);
+    case CONV2D_FILTER:
+      CalConv2dFilterImageShape(shape, image_shape);
       break;
-    case IN_OUT:CalInOutputImageShape(shape, image_shape);
+    case DW_CONV2D_FILTER:
+      CalDepthwiseConv2dFilterImageShape(shape, image_shape);
       break;
-    case ARGUMENT:CalArgImageShape(shape, image_shape);
+    case IN_OUT:
+      CalInOutputImageShape(shape, image_shape);
+      break;
+    case ARGUMENT:
+      CalArgImageShape(shape, image_shape);
       break;
     default:LOG(FATAL) << "Mace not supported yet.";
   }

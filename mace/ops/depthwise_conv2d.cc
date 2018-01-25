@@ -26,6 +26,12 @@ void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     DepthwiseConv2dOp<DeviceType::OPENCL, float>);
+
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
+                    DepthwiseConv2dOp<DeviceType::OPENCL, half>);
 }
 
 }  // namespace mace

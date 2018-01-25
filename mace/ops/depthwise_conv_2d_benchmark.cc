@@ -14,44 +14,65 @@ namespace mace {
 template <DeviceType D, typename T>
 static void DepthwiseConv2d(int iters,
                             int batch,
-                            int channels,
+                            int input_channels,
                             int height,
                             int width,
                             int kernel_h,
                             int kernel_w,
                             int stride,
                             Padding padding,
-                            int output_channels) {
+                            int multiplier) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {stride, stride})
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  net.AddRandomInput<D, float>("Filter",
-                               {output_channels, channels, kernel_h, kernel_w});
-  net.AddRandomInput<D, float>("Bias", {output_channels * channels});
+  net.AddRandomInput<D, float>("Input", {batch, height, width, input_channels});
+  net.AddRandomInput<D, float>(
+      "Filter", {kernel_h, kernel_w, input_channels, multiplier});
+  net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+
+  if (D == DeviceType::OPENCL) {
+    BufferToImage<D, T>(net, "Input", "InputImage",
+                        kernels::BufferType::IN_OUT);
+    BufferToImage<D, T>(net, "Filter", "FilterImage",
+                        kernels::BufferType::DW_CONV2D_FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage",
+                        kernels::BufferType::ARGUMENT);
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("Output")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("dilations", {1, 1})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+  }
 
   // Warm-up
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 2; ++i) {
     net.RunOp(D);
+    net.Sync();
   }
-  net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
     net.RunOp(D);
+    net.Sync();
   }
-  net.Sync();
 }
 
 #define BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE,                             \
@@ -68,20 +89,21 @@ static void DepthwiseConv2d(int iters,
   BENCHMARK(                                                                                            \
       BM_DEPTHWISE_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)        \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU);  \
+#define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE)       \
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, CPU); \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
 
-BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 2, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 1, float);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 1, VALID, 1, float);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 1, SAME, 1, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 2, float);
-BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 2, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 1, float);
+BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 1, float);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 1, float);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 2, SAME, 1, float);
+
 }  //  namespace mace

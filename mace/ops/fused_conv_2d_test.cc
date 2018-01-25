@@ -26,7 +26,7 @@ void TestNHWCSimple3x3VALID() {
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -83,7 +83,7 @@ void TestNHWCSimple3x3SAME() {
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -151,7 +151,7 @@ void TestNHWCSimple3x3WithoutBias() {
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
         .Input("InputImage")
@@ -220,7 +220,7 @@ void TestConv1x1() {
     BufferToImage<D, float>(net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT);
     BufferToImage<D, float>(net, "Filter", "FilterImage",
-                            kernels::BufferType::FILTER);
+                            kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, float>(net, "Bias", "BiasImage",
                             kernels::BufferType::ARGUMENT);
 
@@ -311,7 +311,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
@@ -397,7 +397,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     BufferToImage<D, half>(net, "Input", "InputImage",
                            kernels::BufferType::IN_OUT);
     BufferToImage<D, half>(net, "Filter", "FilterImage",
-                           kernels::BufferType::FILTER);
+                           kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, half>(net, "Bias", "BiasImage",
                            kernels::BufferType::ARGUMENT);
 
@@ -475,7 +475,7 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
-                        kernels::BufferType::FILTER);
+                        kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
@@ -551,7 +551,7 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape, const int dilat
 
     // run on gpu
     BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -633,7 +633,7 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
 
     // run on gpu
     BufferToImage<D, half>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
-    BufferToImage<D, half>(net, "Filter", "FilterImage", kernels::BufferType::FILTER);
+    BufferToImage<D, half>(net, "Filter", "FilterImage", kernels::BufferType::CONV2D_FILTER);
     BufferToImage<D, half>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
