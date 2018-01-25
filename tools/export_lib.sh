@@ -68,7 +68,6 @@ build_target()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
-    $TUNING_MODE_BUILD_FLAGS \
     $DSP_MODE_BUILD_FLAGS || exit -1
 }
 

@@ -83,51 +83,11 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8};
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(bm_kernel);
-  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
-    std::vector<uint32_t> local_ws(3, 0);
-    local_ws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
-    local_ws[1] = std::min<uint32_t>(width, kwg_size / local_ws[0]);
-    local_ws[2] = std::min<uint32_t>(height * batch,
-                                     kwg_size / (local_ws[0] * local_ws[1]));
-    return {
-        {local_ws[0], local_ws[1], local_ws[2]},
-        {kwg_size / 16, 4, 4},
-        {kwg_size / 32, 4, 8},
-        {kwg_size / 32, 8, 4},
-        {kwg_size / 64, 8, 8},
-        {kwg_size / 64, 16, 4},
-        {kwg_size / 128, 8, 16},
-        {kwg_size / 128, 16, 8},
-        {kwg_size / 128, 32, 4},
-        {1, kwg_size / 32, 32},
-        {1, kwg_size / 64, 64},
-        {1, kwg_size / 128, 128},
-        {3, 15, 9},
-        {7, 15, 9},
-        {9, 7, 15},
-        {15, 7, 9},
-        {1, kwg_size, 1},
-        {8, 128, 1},  // SNPE size
-    };
-  };
-  cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        bm_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
-    return error;
-  };
+  std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel_", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);
-  OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(
-      tuning_key, lws, params_generator, func, &timer);
-  SetFuture(future, event);
+  TuningOrRun3DKernel(bm_kernel, tuning_key, gws, lws, future);
 }
 
 template struct BatchNormFunctor<DeviceType::OPENCL, float>;

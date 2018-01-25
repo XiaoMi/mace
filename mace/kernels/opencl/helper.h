@@ -14,9 +14,11 @@
 namespace mace {
 namespace kernels {
 
+const float kMaxKernelExeTime = 1000.0; // microseconds
+
 enum BufferType {
   FILTER = 0,
-  IN_OUT= 1,
+  IN_OUT = 1,
   ARGUMENT = 2
 };
 
@@ -32,6 +34,19 @@ std::string DtToCLDt(const DataType dt);
 
 std::string DtToUpstreamCLDt(const DataType dt);
 
+void TuningOrRun3DKernel(cl::Kernel &kernel,
+                         const std::string tuning_key,
+                         const uint32_t *gws,
+                         std::vector<uint32_t> &lws,
+                         StatsFuture *future);
+
+
+void TuningOrRun2DKernel(cl::Kernel &kernel,
+                         const std::string tuning_key,
+                         const uint32_t *gws,
+                         std::vector<uint32_t> &lws,
+                         StatsFuture *future);
+
 inline void SetFuture(StatsFuture *future, const cl::Event &event) {
   if (future != nullptr) {
     future->wait_fn = [event](CallStats *stats) {
@@ -43,10 +58,15 @@ inline void SetFuture(StatsFuture *future, const cl::Event &event) {
   }
 }
 
+inline bool LimitKernelTime() {
+  const char *flag = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
+  return flag != nullptr && strlen(flag) == 1 && flag[0] == '1';
+}
+
 namespace {
 template<typename T>
 void AppendToStream(std::stringstream *ss, const std::string &delimiter, T v) {
-    (*ss) << v;
+  (*ss) << v;
 }
 
 template<typename T, typename... Args>
@@ -54,8 +74,8 @@ void AppendToStream(std::stringstream *ss,
                     const std::string &delimiter,
                     T first,
                     Args... args) {
-    (*ss) << first << delimiter;
-    AppendToStream(ss, delimiter, args...);
+  (*ss) << first << delimiter;
+  AppendToStream(ss, delimiter, args...);
 }
 }  // namespace
 

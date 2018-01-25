@@ -50,6 +50,21 @@ double OpenCLProfilingTimer::ElapsedMicros() {
   return (stop_nanos_ - start_nanos_) / 1000.0;
 }
 
+double OpenCLProfilingTimer::AccumulatedMicros() {
+  return accumulated_micros_;
+}
+
+void OpenCLProfilingTimer::AccumulateTiming(){
+  StopTiming();
+  accumulated_micros_ += (stop_nanos_ - start_nanos_) / 1000.0;
+}
+
+void OpenCLProfilingTimer::ClearTiming() {
+  start_nanos_ = 0;
+  stop_nanos_ = 0;
+  accumulated_micros_ = 0;
+}
+
 OpenCLRuntime *OpenCLRuntime::Global() {
   static OpenCLRuntime instance;
   return &instance;

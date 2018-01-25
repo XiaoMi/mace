@@ -49,56 +49,14 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
       static_cast<uint32_t>(width_pixels),
       static_cast<uint32_t>(batch_height_pixels)
   };
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(addn_kernel);
-  std::vector<uint32_t> lws = {64, 16};
-  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
-    uint32_t local_ws[2];
-    local_ws[0] = std::min<uint32_t>(width_pixels, kwg_size);
-    local_ws[1] = std::min<uint32_t>(batch_height_pixels, kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1]},
-            {local_ws[1], local_ws[0]},
-            {kwg_size / 4, 4},
-            {kwg_size / 16, 16},
-            {kwg_size / 32, 32},
-            {kwg_size / 64, 64},
-            {kwg_size / 128, 128},
-            {kwg_size / 256, 256},
-            {kwg_size / 512, 512},
-            {kwg_size, 1},
-            {1, kwg_size}
-    };
-  };
-  cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        addn_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1]),
-        cl::NDRange(params[0], params[1]),
-        nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
-    return error;
-  };
+  std::vector<uint32_t> lws = {64, 16, 1};
   std::stringstream ss;
   ss << "addn_opencl_kernel_"
      << output->dim(0) << "_"
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
-  OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
-                                                     lws,
-                                                     params_generator,
-                                                     func,
-                                                     &timer);
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
-      }
-    };
-  }
+  TuningOrRun2DKernel(addn_kernel, ss.str(), gws, lws, future);
 }
 
 template <typename T>

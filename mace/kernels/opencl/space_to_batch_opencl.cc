@@ -61,58 +61,14 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
   const uint32_t gws[3] = {chan_blk,
                            static_cast<uint32_t>(batch_tensor->dim(2)),
                            static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
-  const std::vector<uint32_t> lws = {8, 16, 8};
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(s2b_kernel);
-  auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
-    std::vector<uint32_t> local_ws(3, 0);
-    local_ws[0] = std::min<uint32_t>(chan_blk, kwg_size);
-    local_ws[1] = std::min<uint32_t>(32, kwg_size / local_ws[0]);
-    local_ws[2] = std::min<uint32_t>(32, kwg_size / (local_ws[0] * local_ws[1]));
-    return {{local_ws[0], local_ws[1], local_ws[2]},
-            {4, 32, 8},
-            {4, 64, 4},
-            {4, 128, 2},
-            {8, 16, 8},
-            {8, 32, 4},
-            {8, 64, 2},
-            {16, 8, 8},
-            {16, 16, 4},
-            {16, 32, 2},
-            {32, 8, 4},
-            {32, 16, 2},
-            {64, 4, 4}};
-  };
-  cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params) -> cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        s2b_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1], gws[2]),
-        cl::NDRange(params[0], params[1], params[2]),
-        nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
-    return error;
-  };
+  std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << kernel_name << "_"
      << batch_tensor->dim(0) << "_"
      << batch_tensor->dim(1) << "_"
      << batch_tensor->dim(2) << "_"
      << batch_tensor->dim(3);
-  OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
-                                                     lws,
-                                                     params_generator,
-                                                     func,
-                                                     &timer);
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
-      }
-    };
-  }
+  TuningOrRun3DKernel(s2b_kernel, ss.str(), gws, lws, future);
 }
 
 template struct SpaceToBatchFunctor<DeviceType::OPENCL, float>;
