@@ -44,7 +44,7 @@ class Tuner {
       std::vector<param_type> &default_param,
       const std::function<std::vector<std::vector<param_type>>()>
           &param_generator,
-      const std::function<RetType(std::vector<param_type> &, Timer *)> &func,
+      const std::function<RetType(const std::vector<param_type> &, Timer *, std::vector<param_type> *)> &func,
       Timer *timer) {
     std::string obfucated_param_key = MACE_OBFUSCATE_SYMBOL(param_key);
     if (IsTuning() && param_generator != nullptr) {
@@ -60,12 +60,12 @@ class Tuner {
       if (param_table_.find(obfucated_param_key) != param_table_.end()) {
         VLOG(1) << param_key << ": "
                 << internal::MakeString(param_table_[obfucated_param_key]);
-        return func(param_table_[obfucated_param_key], nullptr);
+        return func(param_table_[obfucated_param_key], nullptr, nullptr);
       } else {
 #ifndef MACE_DISABLE_NO_TUNING_WARNING
         LOG(WARNING) << "Fallback to default parameter: " << param_key;
 #endif
-        return func(default_param, nullptr);
+        return func(default_param, nullptr, nullptr);
       }
     }
   }
@@ -119,15 +119,16 @@ class Tuner {
 
   template <typename RetType>
   inline RetType Run(
-      const std::function<RetType(std::vector<param_type> &, Timer *)> &func,
+      const std::function<RetType(const std::vector<param_type> &, Timer *, std::vector<param_type> *)> &func,
       std::vector<param_type> &params,
       Timer *timer,
       int num_runs,
-      double *time_us) {
+      double *time_us,
+      std::vector<param_type> *tuning_result) {
     RetType res;
     int64_t total_time_us = 0;
     for (int i = 0; i < num_runs; ++i) {
-      res = func(params, timer);
+      res = func(params, timer, tuning_result);
       total_time_us += timer->AccumulatedMicros();
     }
 
@@ -139,24 +140,25 @@ class Tuner {
   inline RetType Tune(
       const std::function<std::vector<std::vector<param_type>>()>
           &param_generator,
-      const std::function<RetType(std::vector<param_type> &, Timer *)> &func,
+      const std::function<RetType(const std::vector<param_type> &, Timer *, std::vector<param_type> *)> &func,
       Timer *timer,
       std::vector<param_type> *opt_params) {
     RetType res;
     double opt_time = std::numeric_limits<double>::max();
     auto params = param_generator();
+    std::vector<param_type> tuning_result;
     for (auto param : params) {
       double tmp_time = 0.0;
       // warm up
-      Run<RetType>(func, param, timer, 2, &tmp_time);
+      Run<RetType>(func, param, timer, 2, &tmp_time, &tuning_result);
 
       // run
-      RetType tmp_res = Run<RetType>(func, param, timer, 10, &tmp_time);
+      RetType tmp_res = Run<RetType>(func, param, timer, 10, &tmp_time, &tuning_result);
 
       // Check the execution time
       if (tmp_time < opt_time) {
         opt_time = tmp_time;
-        *opt_params = param;
+        *opt_params = tuning_result;
         res = tmp_res;
       }
     }

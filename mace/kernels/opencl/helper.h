@@ -58,6 +58,11 @@ inline void SetFuture(StatsFuture *future, const cl::Event &event) {
   }
 }
 
+inline bool LimitKernelTime() {
+  const char *flag = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
+  return flag != nullptr && strlen(flag) == 1 && flag[0] == '1';
+}
+
 namespace {
 template<typename T>
 void AppendToStream(std::stringstream *ss, const std::string &delimiter, T v) {
