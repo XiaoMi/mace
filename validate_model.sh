@@ -78,7 +78,6 @@ build_and_run()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
-    --copt="-DMACE_OBFUSCATE_LITERALS" \
     $PRODUCTION_MODE_BUILD_FLAGS \
     --define hexagon=true || exit -1
 
@@ -96,6 +95,7 @@ build_and_run()
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_KERNEL_PATH=$KERNEL_DIR \
+    MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
     ${PHONE_DATA_DIR}/mace_run \
     --input_shape="${INPUT_SHAPE}"\
     --output_shape="${OUTPUT_SHAPE}"\
