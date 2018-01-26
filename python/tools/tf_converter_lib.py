@@ -16,17 +16,24 @@ pooling_type_mode = {
 }
 
 buffer_type_map = {
-  'FILTER' : 0,
+  'CONV2D_FILTER' : 0,
   'IN_OUT_CHANNEL' : 1,
   'ARGUMENT' : 2,
   'IN_OUT_HEIGHT' : 3,
   'IN_OUT_WIDTH' : 4,
   'WINOGRAD_FILTER' : 5,
+  'DW_CONV2D_FILTER' : 6,
 }
 
 data_type_map = {
   'DT_HALF' : mace_pb2.DT_HALF,
   'DT_FLOAT': mace_pb2.DT_FLOAT
+}
+
+activation_name_map = {
+  'Relu' : 'RELU',
+  'Sigmoid' : 'SIGMOID',
+  'Tanh' : 'TANH'
 }
 
 BATCH_NORM_ORDER = ["Add", "Rsqrt", "Mul", "Mul", "Mul", "Sub", "Add"]
@@ -53,7 +60,8 @@ class TFConverter(object):
     self.tf_parents = {}
     self.resolved_ops = {}
     self.unused_tensor = set()
-    self.transpose_filter_tensor = set()
+    self.transpose_filter_tensor = {}
+    self.reshape_tensor = {}
     self.ops = {}
 
     for op in tf_ops:
@@ -160,12 +168,23 @@ class TFConverter(object):
     else:
       raise Exception("Not supported tensor type: " + tf_dt.name)
 
+  def convert_reshape(self, op):
+    input_tensor = get_input_tensor(op, 0)
+    shape_tensor = get_input_tensor(op, 1)
+    shape_value = shape_tensor.eval().astype(np.int32)
+    self.unused_tensor.add(shape_tensor.name)
+    self.reshape_tensor[input_tensor.name] = shape_value
+    self.resolved_ops[op.name] = 1
+
   def convert_tensor(self, op):
-    if op.outputs[0].name not in self.unused_tensor:
+    output_name = op.outputs[0].name
+    if output_name not in self.unused_tensor:
       tensor = self.net_def.tensors.add()
       tf_tensor = op.outputs[0].eval()
-      if op.outputs[0].name in self.transpose_filter_tensor:
-        tf_tensor = tf_tensor.transpose(3, 2, 0, 1)
+      if output_name in self.transpose_filter_tensor:
+        tf_tensor = tf_tensor.transpose(self.transpose_filter_tensor[output_name])
+      if output_name in self.reshape_tensor:
+        tf_tensor = tf_tensor.reshape(self.reshape_tensor[output_name])
       tensor.name = op.outputs[0].name
 
       shape = list(tf_tensor.shape)
@@ -186,6 +205,8 @@ class TFConverter(object):
     filter_shape = get_input_tensor(op, 1).shape.as_list()
     strides = op.get_attr('strides')[1:3]
     output_shape = op.outputs[0].shape.as_list()
+    if len(output_shape) == 0 or output_shape[0] is None:
+      return False
     width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
     return self.winograd and op.type != 'DepthwiseConv2dNative' and self.device == 'gpu' and \
             filter_shape[0] == 3 and (filter_shape[0] == filter_shape[1]) and \
@@ -199,7 +220,7 @@ class TFConverter(object):
     filter_shape = filter_tensor.shape.as_list()
     output_shape = op.outputs[0].shape.as_list()
 
-    self.transpose_filter_tensor.add(filter_tensor.name)
+    self.transpose_filter_tensor[filter_tensor.name] = (3, 2, 0, 1)
     filter_name = self.add_buffer_to_image(op.inputs[1].name, "WINOGRAD_FILTER")
 
     # Input transform
@@ -220,19 +241,19 @@ class TFConverter(object):
     wt_output_shape.dims.extend([16, filter_shape[2], wt_output_width, 1])
     wt_op.output_shape.extend([wt_output_shape])
 
-    # GEMM
-    gemm_op = mace_pb2.OperatorDef()
-    arg = gemm_op.arg.add()
+    # MatMul
+    matmul_op = mace_pb2.OperatorDef()
+    arg = matmul_op.arg.add()
     arg.name = 'T'
     arg.i = self.dt
-    gemm_op.name = op.name + '_gemm'
-    gemm_op.type = 'GEMM'
-    gemm_op.input.extend([filter_name, wt_output_name])
-    gemm_output_name = gemm_op.name + ":0"
-    gemm_op.output.extend([gemm_output_name])
-    gemm_output_shape = mace_pb2.OutputShape()
-    gemm_output_shape.dims.extend([16, filter_shape[3], wt_output_width, 1])
-    gemm_op.output_shape.extend([gemm_output_shape])
+    matmul_op.name = op.name + '_matmul'
+    matmul_op.type = 'MatMul'
+    matmul_op.input.extend([filter_name, wt_output_name])
+    matmul_output_name = matmul_op.name + ":0"
+    matmul_op.output.extend([matmul_output_name])
+    matmul_output_shape = mace_pb2.OutputShape()
+    matmul_output_shape.dims.extend([16, filter_shape[3], wt_output_width, 1])
+    matmul_op.output_shape.extend([matmul_output_shape])
 
     # Inverse transform
     iwt_op = mace_pb2.OperatorDef()
@@ -250,14 +271,14 @@ class TFConverter(object):
     width_arg.i = output_shape[2]
     iwt_op.name = op.name + '_inverse_transform'
     iwt_op.type = 'WinogradInverseTransform'
-    iwt_op.input.extend([gemm_output_name])
+    iwt_op.input.extend([matmul_output_name])
 
     final_op = op
     self.resolved_ops[op.name] = 1
 
     if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'BiasAdd' :
       bias_add_op = self.tf_graph[op.name][0]
-      output_name = self.add_buffer_to_image(bias_add_op.inputs[1].name, "ARGUMENT")
+      output_name = self.add_buffer_to_image(get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
       iwt_op.input.extend([output_name])
       final_op = bias_add_op
       self.resolved_ops[bias_add_op.name] = 1
@@ -273,7 +294,7 @@ class TFConverter(object):
 
     iwt_op.output.extend([output.name for output in final_op.outputs])
     self.add_output_shape(final_op.outputs, iwt_op)
-    self.net_def.op.extend([wt_op, gemm_op, iwt_op])
+    self.net_def.op.extend([wt_op, matmul_op, iwt_op])
 
 
   def convert_conv2d(self, op):
@@ -288,10 +309,11 @@ class TFConverter(object):
       op_def.type = op.type
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
-      output_name = self.add_buffer_to_image(op.inputs[1].name, "FILTER")
+      buffer_type = "DW_CONV2D_FILTER" if op_def.type == 'DepthwiseConv2d' else "CONV2D_FILTER"
+      output_name = self.add_buffer_to_image(get_input_tensor(op, 1).name, buffer_type)
       op_def.input.extend([output_name])
     else:
-      op_def.input.extend([input.name for input in op.inputs])
+      op_def.input.extend([get_input_tensor(op, i).name for i in range(len(op.inputs))])
 
     padding_arg = op_def.arg.add()
     padding_arg.name = 'padding'
@@ -308,10 +330,10 @@ class TFConverter(object):
     if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'BiasAdd' :
       bias_add_op = self.tf_graph[op.name][0]
       if self.device == 'gpu':
-        output_name = self.add_buffer_to_image(bias_add_op.inputs[1].name, "ARGUMENT")
+        output_name = self.add_buffer_to_image(get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
         op_def.input.extend([output_name])
       else:
-        op_def.input.extend([bias_add_op.inputs[1].name])
+        op_def.input.extend([get_input_tensor(bias_add_op, 1).name])
       final_op = bias_add_op
       self.resolved_ops[bias_add_op.name] = 1
 
@@ -468,7 +490,7 @@ class TFConverter(object):
     data_format_arg.s = 'NHWC'
     self.resolved_ops[op.name] = 1
 
-  def convert_relu(self, op):
+  def convert_activation(self, op):
     op_def = self.net_def.op.add()
     arg = op_def.arg.add()
     arg.name = 'T'
@@ -477,7 +499,7 @@ class TFConverter(object):
     op_def.type = 'Activation'
     activation_arg = op_def.arg.add()
     activation_arg.name = 'activation'
-    activation_arg.s = "RELU"
+    activation_arg.s = activation_name_map[op.type]
     op_def.input.extend([input.name for input in op.inputs])
     op_def.output.extend([output.name for output in op.outputs])
     self.add_output_shape(op.outputs, op_def)
@@ -557,10 +579,10 @@ class TFConverter(object):
     op_def.type = "BiasAdd"
     op_def.input.extend([op.inputs[0].name])
     if self.device == 'gpu':
-      output_name = self.add_buffer_to_image(op.inputs[1].name, "ARGUMENT")
+      output_name = self.add_buffer_to_image(get_input_tensor(op, 1).name, "ARGUMENT")
       op_def.input.extend([output_name])
     else:
-      op_def.input.extend([op.inputs[1].name])
+      op_def.input.extend([get_input_tensor(op, 1).name])
     op_def.output.extend([output.name for output in op.outputs])
     self.add_output_shape(op.outputs, op_def)
     self.net_def.op.extend([op_def])
@@ -603,11 +625,11 @@ class TFConverter(object):
     op_def.type = conv_op.type
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
-      output_name = self.add_buffer_to_image(conv_op.inputs[1].name, "FILTER")
+      output_name = self.add_buffer_to_image(get_input_tensor(conv_op, 1).name, "CONV2D_FILTER")
       op_def.input.extend([output_name])
     else:
-      op_def.input.extend([op.inputs[0].name])
-      op_def.input.extend([conv_op.inputs[1].name])
+      op_def.input.extend([get_input_tensor(op, 0).name])
+      op_def.input.extend([get_input_tensor(conv_op, 1).name])
 
     dilation_arg = op_def.arg.add()
     dilation_arg.name = 'dilations'
@@ -635,10 +657,10 @@ class TFConverter(object):
     if len(self.tf_graph[final_op.name]) == 1 and self.tf_graph[final_op.name][0].type == 'BiasAdd' :
       bias_add_op = self.tf_graph[final_op.name][0]
       if self.device == 'gpu':
-        output_name = self.add_buffer_to_image(bias_add_op.inputs[1].name, "ARGUMENT")
+        output_name = self.add_buffer_to_image(get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
         op_def.input.extend([output_name])
       else:
-        op_def.input.extend([bias_add_op.inputs[1].name])
+        op_def.input.extend([get_input_tensor(bias_add_op, 1).name])
       final_op = bias_add_op
       self.resolved_ops[bias_add_op.name] = 1
 
@@ -714,11 +736,13 @@ class TFConverter(object):
     for op in self.tf_ops:
       if self.resolved_ops[op.name] == 1:
         continue
-      if op.type in ['Placeholder', 'Reshape', 'Identity']:
+      if op.type in ['Placeholder', 'Identity']:
         self.resolved_ops[op.name] = 1
         pass
       elif op.type == 'Const':
         pass
+      elif op.type == 'Reshape':
+        self.convert_reshape(op)
       elif self.is_atrous_conv2d(op):
         self.convert_atrous_conv2d(op)
       elif op.type == 'Conv2D' or op.type == 'DepthwiseConv2dNative':
@@ -732,8 +756,6 @@ class TFConverter(object):
         self.convert_batchnorm(op)
       elif op.type == 'AvgPool' or op.type == 'MaxPool':
         self.convert_pooling(op)
-      elif op.type == 'Relu':
-        self.convert_relu(op)
       elif op.type == 'Relu6':
         self.convert_relu6(op)
       elif op.type == 'Add':
@@ -750,6 +772,8 @@ class TFConverter(object):
         self.convert_space_to_batch(op, True)
       elif self.is_softmax(op):
         self.convert_softmax(op)
+      elif op.type in ['Relu', 'Sigmoid', 'Tanh']:
+        self.convert_activation(op)
       #elif op.type in ['']:
       #  self.convert_normal_op(op)
       else:
