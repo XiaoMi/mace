@@ -24,7 +24,7 @@ static void BatchNorm(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(net, "Scale", "ScaleImage",
                             kernels::BufferType::ARGUMENT);
     BufferToImage<D, float>(net, "Offset", "OffsetImage",

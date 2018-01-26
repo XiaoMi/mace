@@ -23,7 +23,7 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
     for (int i = 0; i < inputs; ++i) {
       BufferToImage<D, T>(net, internal::MakeString("Input", i).c_str(),
                           internal::MakeString("InputImage", i).c_str(),
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
     }
     OpDefBuilder op_def_builder("AddN", "AddNBM");
     for (int i = 0; i < inputs; ++i) {

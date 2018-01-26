@@ -50,7 +50,7 @@ static void Concat2(const Tensor *input0,
       static_cast<uint32_t>(width),
       static_cast<uint32_t>(batch * height),
   };
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << "concat_opencl_kernel_"
      << output->dim(0) << "_"
@@ -85,7 +85,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     output_shape[axis_] += input->dim(axis_);
   }
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT, image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
   output->ResizeImage(output_shape, image_shape);
 
   switch (inputs_count) {

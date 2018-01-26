@@ -18,13 +18,21 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
   std::vector<size_t> image_shape;
   if (!i2b_) {
     CalImage2DShape(buffer->shape(), type, image_shape);
-    image->ResizeImage(buffer->shape(), image_shape);
+    if(type == WINOGRAD_FILTER) {
+      std::vector<index_t> new_shape = 
+        CalWinogradShape(buffer->shape(), type);
+      image->ResizeImage(new_shape, image_shape);
+    } else {
+      image->ResizeImage(buffer->shape(), image_shape);
+    }
     buffer->MarkUnused();
   } else {
     image_shape = image->image_shape();
     buffer->Resize(image->shape());
   }
 
+  size_t gws[2] = {image_shape[0],
+                   image_shape[1]};
   string kernel_name;
   switch (type) {
     case CONV2D_FILTER:
@@ -33,11 +41,22 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     case DW_CONV2D_FILTER:
       kernel_name = i2b_ ? "dw_filter_image_to_buffer" : "dw_filter_buffer_to_image";
       break;
-    case IN_OUT:
+    case IN_OUT_CHANNEL:
       kernel_name = i2b_ ? "in_out_image_to_buffer" : "in_out_buffer_to_image";
       break;
     case ARGUMENT:
       kernel_name = i2b_ ? "arg_image_to_buffer" : "arg_buffer_to_image";
+      break;
+    case IN_OUT_HEIGHT:
+      kernel_name = i2b_ ? "in_out_height_image_to_buffer" : "in_out_height_buffer_to_image";
+      break;
+    case IN_OUT_WIDTH:
+      MACE_CHECK(!i2b_) << "IN_OUT_WIDTH only support buffer to image now";
+      kernel_name = "in_out_width_buffer_to_image";
+      break;
+    case WINOGRAD_FILTER:
+      gws[1] /= 16;
+      kernel_name = i2b_ ? "winograd_filter_image_to_buffer" : "winograd_filter_buffer_to_image";
       break;
   }
   string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
@@ -68,16 +87,13 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
   }
   b2f_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(image->buffer())));
 
-  const size_t gws[3] = {image_shape[0],
-                         image_shape[1],
-                         1};
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(b2f_kernel);
-  const std::vector<uint32_t> lws = {16, 64, 1};
+  const std::vector<uint32_t> lws = {16, 64};
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       b2f_kernel, cl::NullRange,
-      cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]),
+      cl::NDRange(gws[0], gws[1]),
+      cl::NDRange(lws[0], lws[1]),
       nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 

@@ -20,7 +20,7 @@ static void BiasAdd(int iters, int batch, int channels, int height, int width) {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("BiasAdd", "BiasAddBM")

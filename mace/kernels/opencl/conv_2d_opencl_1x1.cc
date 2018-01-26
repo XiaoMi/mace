@@ -96,7 +96,7 @@ void Conv1x1(const Tensor *input,
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
-  std::vector<uint32_t> lws = {8, 15, 8, 1};
+  const std::vector<uint32_t> lws = {8, 15, 8, 1};
   std::string tuning_key =
       Concat("conv2d_1x1_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

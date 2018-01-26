@@ -28,7 +28,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   std::vector<index_t> output_shape {batch, out_height, out_width, channels};
   if (input->is_image()) {
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
     output->ResizeImage(output_shape, output_image_shape);
   } else {
     output->Resize(output_shape);
@@ -59,7 +59,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(out_width),
                            static_cast<uint32_t>(out_height * batch)};
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << "resize_bilinear_opencl_kernel_"
      << output->dim(0) << "_"

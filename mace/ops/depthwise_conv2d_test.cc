@@ -26,7 +26,7 @@ void SimpleValidTest() {
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f});
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
@@ -46,7 +46,7 @@ void SimpleValidTest() {
 
     // Transfer output
     ImageToBuffer<D, T>(net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
@@ -129,7 +129,7 @@ void ComplexValidTest() {
                                   {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
@@ -149,7 +149,7 @@ void ComplexValidTest() {
 
     // Transfer output
     ImageToBuffer<D, T>(net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
@@ -239,7 +239,7 @@ void TestNxNS12(const index_t height, const index_t width) {
 
     if (D == DeviceType::OPENCL) {
       BufferToImage<D, T>(net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
       BufferToImage<D, T>(net, "Filter", "FilterImage",
                           kernels::BufferType::DW_CONV2D_FILTER);
       BufferToImage<D, T>(net, "Bias", "BiasImage",
@@ -259,7 +259,7 @@ void TestNxNS12(const index_t height, const index_t width) {
 
       // Transfer output
       ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
-                              kernels::BufferType::IN_OUT);
+                              kernels::BufferType::IN_OUT_CHANNEL);
     } else {
       OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
           .Input("Input")

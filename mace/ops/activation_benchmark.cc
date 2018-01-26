@@ -20,7 +20,7 @@ static void ReluBenchmark(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluBM")
         .Input("InputImage")
@@ -79,7 +79,7 @@ static void ReluxBenchmark(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxBM")
         .Input("InputImage")
@@ -140,7 +140,7 @@ static void PreluBenchmark(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "PreluBM")
         .Input("InputImage")
@@ -201,7 +201,7 @@ static void TanhBenchmark(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "TanhBM")
         .Input("InputImage")
@@ -260,7 +260,7 @@ static void SigmoidBenchmark(
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "SigmoidBM")
         .Input("InputImage")

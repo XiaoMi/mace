@@ -83,7 +83,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel_", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);

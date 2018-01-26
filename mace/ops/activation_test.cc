@@ -20,7 +20,7 @@ void TestSimpleRelu() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluTest")
         .Input("InputImage")
@@ -33,7 +33,7 @@ void TestSimpleRelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluTest")
         .Input("Input")
@@ -70,7 +70,7 @@ void TestUnalignedSimpleRelu() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluTest")
         .Input("InputImage")
@@ -83,7 +83,7 @@ void TestUnalignedSimpleRelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluTest")
         .Input("Input")
@@ -125,7 +125,7 @@ void TestSimpleRelux() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxTest")
         .Input("InputImage")
@@ -139,7 +139,7 @@ void TestSimpleRelux() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluxTest")
         .Input("Input")
@@ -179,7 +179,7 @@ void TestSimpleReluRelux() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxTest")
         .Input("InputImage")
@@ -193,7 +193,7 @@ void TestSimpleReluRelux() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluxTest")
         .Input("Input")
@@ -237,7 +237,7 @@ void TestSimplePrelu() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "PreluTest")
         .Input("InputImage")
@@ -251,7 +251,7 @@ void TestSimplePrelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "PreluTest")
         .Input("Input")
@@ -293,7 +293,7 @@ void TestSimpleTanh() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "TanhTest")
         .Input("InputImage")
@@ -306,7 +306,7 @@ void TestSimpleTanh() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "TanhTest")
         .Input("Input")
@@ -348,7 +348,7 @@ void TestSimpleSigmoid() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "SigmoidTest")
         .Input("InputImage")
@@ -361,7 +361,7 @@ void TestSimpleSigmoid() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "SigmoidTest")
         .Input("Input")

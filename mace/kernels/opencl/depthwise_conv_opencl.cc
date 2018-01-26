@@ -106,7 +106,7 @@ void DepthwiseConv2d(const Tensor *input,   // NHWC
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel_", activation,
                                   batch, height, width, channels, multiplier);
   TuningOrRun3DKernel(dw_conv2d_kernel, tuning_key, gws, lws, future);
@@ -150,7 +150,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
       padding_, output_shape.data(), paddings.data());
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
   DepthwiseConv2d(input, filter, bias, strides_[0], paddings.data(), dilations_,

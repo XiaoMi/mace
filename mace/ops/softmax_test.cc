@@ -18,7 +18,7 @@ void Simple() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputImage")
@@ -30,7 +30,7 @@ void Simple() {
 
     // Transfer output
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("Input")
@@ -72,7 +72,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
   expected.Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, float>(net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
       .Input("InputImage")
@@ -84,7 +84,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
 
   // Transfer output
   ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
 
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }

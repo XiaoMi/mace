@@ -17,7 +17,6 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
   if (input_tensors.size() > 4) {
     MACE_NOT_IMPLEMENTED;
   }
-  output->ResizeLike(input_tensors[0]);
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -49,7 +48,7 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
       static_cast<uint32_t>(width_pixels),
       static_cast<uint32_t>(batch_height_pixels)
   };
-  std::vector<uint32_t> lws = {64, 16, 1};
+  const std::vector<uint32_t> lws = {64, 16, 1};
   std::stringstream ss;
   ss << "addn_opencl_kernel_"
      << output->dim(0) << "_"
@@ -82,7 +81,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
 
   std::vector<index_t> output_shape = input_tensors[0]->shape();
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output_tensor->ResizeImage(output_shape, output_image_shape);
 
   AddN<T>(input_tensors, output_tensor, future);

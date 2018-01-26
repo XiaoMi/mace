@@ -134,7 +134,7 @@ static void SimpleMaxPooling3S2() {
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pooling", "PoolingTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -146,7 +146,7 @@ static void SimpleMaxPooling3S2() {
         .Finalize(net.NewOperatorDef());
     net.RunOp(D);
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT);
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     // Run
     OpDefBuilder("Pooling", "PoolingTest")
@@ -198,7 +198,7 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -211,7 +211,7 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput",
-                      kernels::BufferType::IN_OUT);
+                      kernels::BufferType::IN_OUT_CHANNEL);
 
   ExpectTensorNear<T>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
 }
@@ -283,7 +283,7 @@ static void SimpleAvgPoolingTest() {
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   BufferToImage<D, float>(net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -296,7 +296,7 @@ static void SimpleAvgPoolingTest() {
   // Run
   net.RunOp(D);
   ImageToBuffer<D, float>(net, "OutputImage", "Output",
-                          kernels::BufferType::IN_OUT);
+                          kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto expected = CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
@@ -333,7 +333,7 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT);
+  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -346,7 +346,7 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput",
-                      kernels::BufferType::IN_OUT);
+                      kernels::BufferType::IN_OUT_CHANNEL);
 
   ExpectTensorNear<float, T>(expected, *net.GetOutput("OPENCLOutput"), 0.01);
 }
