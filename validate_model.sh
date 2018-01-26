@@ -25,7 +25,6 @@ fi
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
   DEVICE_TYPE="HEXAGON"
-  LIB_FOLDER_NAME="${LIB_FOLDER_NAME}_dsp"
 elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
@@ -34,10 +33,7 @@ else
   exit -1
 fi
 
-LIBMACE_TAG=`git describe --abbrev=0 --tags`
-if [ ! "${LIBMACE_TAG}" ]; then
-  LIBMACE_TAG="v0.1"
-fi
+LIBMACE_TAG=`git describe --abbrev=0 --tags` || exit -1
 
 VLOG_LEVEL=0
 MODEL_DIR=$(dirname ${TF_MODEL_FILE_PATH})
@@ -105,23 +101,22 @@ build_and_run()
     --round=$round || exit -1
 }
 
-download_libs()
+download_and_link_lib()
 {
   if [ ! -d "${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME}" ]; then
     wget -P ${LIBMACE_SOURCE_DIR}/lib http://cnbj1-inner-fds.api.xiaomi.net/libmace/libs/${LIBMACE_TAG}/${LIB_FOLDER_NAME}.tar.gz && \
       tar xvzf ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME}.tar.gz -C ${LIBMACE_SOURCE_DIR}/lib/ || exit -1
-
-    if [ -p ${LIBMACE_SOURCE_DIR}/lib/mace ]; then
-      unlink ${LIBMACE_SOURCE_DIR}/lib/mace
-    fi
-
-    ln -s ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME} ${LIBMACE_SOURCE_DIR}/lib/mace && \
-      rm -rf ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME}.tar.gz || exit -1
-
     echo "${LIB_FOLDER_NAME} download successfully!"
   else
     echo "${LIB_FOLDER_NAME} already exists!"
   fi
+
+  echo "Create link 'mace' of downloaded or existed ${LIB_FOLDER_NAME}"
+  if [ -p ${LIBMACE_SOURCE_DIR}/lib/mace ]; then
+    unlink ${LIBMACE_SOURCE_DIR}/lib/mace
+  fi
+  ln -s ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME} ${LIBMACE_SOURCE_DIR}/lib/mace && \
+    rm -rf ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME}.tar.gz || exit -1
 }
 
 echo "Step 1: Generate input data"
@@ -146,7 +141,7 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         --obfuscate=True || exit -1
 
 echo "Step 3: Download mace static library"
-download_libs
+download_and_link_lib
 
 echo "Step 4: Run model on the phone with files"
 build_and_run false
@@ -178,10 +173,11 @@ echo "Step 9: Validate the result"
 python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_file ${MODEL_DIR}/${INPUT_FILE_NAME} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
+    --mace_runtime ${RUNTIME} \
     --input_node ${TF_INPUT_NODE} \
     --output_node ${TF_OUTPUT_NODE} \
-    --input_shape "${INPUT_SHAPE}" \
-    --output_shape "${OUTPUT_SHAPE}"
+    --input_shape ${INPUT_SHAPE} \
+    --output_shape ${OUTPUT_SHAPE}
 
 echo "Step 10: Generate project static lib"
 rm -rf ${LIBMACE_BUILD_DIR}
