@@ -112,7 +112,7 @@ download_and_link_lib()
   fi
 
   echo "Create link 'mace' of downloaded or existed ${LIB_FOLDER_NAME}"
-  if [ -p ${LIBMACE_SOURCE_DIR}/lib/mace ]; then
+  if [ -L ${LIBMACE_SOURCE_DIR}/lib/mace ]; then
     unlink ${LIBMACE_SOURCE_DIR}/lib/mace
   fi
   ln -s ${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME} ${LIBMACE_SOURCE_DIR}/lib/mace && \
