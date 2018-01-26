@@ -52,7 +52,7 @@ void WinogradConvolution(const index_t batch,
   BufferToImage<D, T>(net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(net, "Filter", "FilterImage",
-                      kernels::BufferType::FILTER);
+                      kernels::BufferType::CONV2D_FILTER);
   BufferToImage<D, T>(net, "Bias", "BiasImage",
                       kernels::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
@@ -92,8 +92,8 @@ void WinogradConvolution(const index_t batch,
   // Run on opencl
   net.RunOp(D);
 
-  // GEMM
-  OpDefBuilder("GEMM", "GEMMTest")
+  // MatMul
+  OpDefBuilder("MatMul", "MatMulTest")
       .Input("WinoFilter")
       .Input("WinoInput")
       .Output("WinoGemm")

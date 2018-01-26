@@ -61,7 +61,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
   const uint32_t gws[3] = {chan_blk,
                            static_cast<uint32_t>(batch_tensor->dim(2)),
                            static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << kernel_name << "_"
      << batch_tensor->dim(0) << "_"

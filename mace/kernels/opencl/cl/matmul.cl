@@ -1,14 +1,14 @@
 #include <common.h>
 
 // C = A * B
-__kernel void gemm(__read_only image2d_t A,
-                   __read_only image2d_t B,
-                   __write_only image2d_t C,
-                   __private const int M,
-                   __private const int N,
-                   __private const int K,
-                   __private const int height_blocks,
-                   __private const int k_blocks) {
+__kernel void matmul(__read_only image2d_t A,
+                     __read_only image2d_t B,
+                     __write_only image2d_t C,
+                     __private const int M,
+                     __private const int N,
+                     __private const int K,
+                     __private const int height_blocks,
+                     __private const int k_blocks) {
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
   const int batch = hb / height_blocks;
@@ -16,7 +16,6 @@ __kernel void gemm(__read_only image2d_t A,
   const int gy = mad24(batch, height_blocks, ty);
   const int bm = mad24(batch, M, ty << 2);
   const int bk = mul24(batch, k_blocks);
-
 
   float4 a0, a1, a2, a3;
   float4 b0, b1, b2, b3;

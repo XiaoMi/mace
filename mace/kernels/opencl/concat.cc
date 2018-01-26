@@ -50,7 +50,7 @@ static void Concat2(const Tensor *input0,
       static_cast<uint32_t>(width),
       static_cast<uint32_t>(batch * height),
   };
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << "concat_opencl_kernel_"
      << output->dim(0) << "_"

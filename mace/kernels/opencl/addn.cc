@@ -48,7 +48,7 @@ static void AddN(const std::vector<const Tensor *> &input_tensors,
       static_cast<uint32_t>(width_pixels),
       static_cast<uint32_t>(batch_height_pixels)
   };
-  std::vector<uint32_t> lws = {64, 16, 1};
+  const std::vector<uint32_t> lws = {64, 16, 1};
   std::stringstream ss;
   ss << "addn_opencl_kernel_"
      << output->dim(0) << "_"

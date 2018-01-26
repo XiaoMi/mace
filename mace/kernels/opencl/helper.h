@@ -44,14 +44,14 @@ std::string DtToUpstreamCLDt(const DataType dt);
 void TuningOrRun3DKernel(cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
-                         std::vector<uint32_t> &lws,
+                         const std::vector<uint32_t> &lws,
                          StatsFuture *future);
 
 
 void TuningOrRun2DKernel(cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
-                         std::vector<uint32_t> &lws,
+                         const std::vector<uint32_t> &lws,
                          StatsFuture *future);
 
 inline void SetFuture(StatsFuture *future, const cl::Event &event) {

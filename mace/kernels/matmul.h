@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_KERNELS_GEMM_H_
-#define MACE_KERNELS_GEMM_H_
+#ifndef MACE_KERNELS_MATMUL_H_
+#define MACE_KERNELS_MATMUL_H_
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -13,7 +13,7 @@ namespace kernels {
 
 
 template <DeviceType D, typename T>
-struct GEMMFunctor {
+struct MatMulFunctor {
   void operator()(const Tensor *A,
                   const Tensor *B,
                   Tensor *C,
@@ -53,7 +53,7 @@ struct GEMMFunctor {
 
 
 template <typename T>
-struct GEMMFunctor<DeviceType::OPENCL, T> {
+struct MatMulFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *A,
                   const Tensor *B,
                   Tensor *C,
@@ -63,4 +63,4 @@ struct GEMMFunctor<DeviceType::OPENCL, T> {
 }  //  namespace kernels
 }  //  namespace mace
 
-#endif  // MACE_KERNELS_GEMM_H_
+#endif  // MACE_KERNELS_MATMUL_H_

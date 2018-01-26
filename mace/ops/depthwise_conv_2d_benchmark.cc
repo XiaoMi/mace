@@ -34,7 +34,7 @@ static void DepthwiseConv2d(int iters,
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(net, "Bias", "BiasImage",

@@ -2,18 +2,18 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_GEMM_H_
-#define MACE_OPS_GEMM_H_
+#ifndef MACE_OPS_MATMUL_H_
+#define MACE_OPS_MATMUL_H_
 
 #include "mace/core/operator.h"
-#include "mace/kernels/gemm.h"
+#include "mace/kernels/matmul.h"
 
 namespace mace {
 
 template <DeviceType D, class T>
-class GEMMOp : public Operator<D, T> {
+class MatMulOp : public Operator<D, T> {
  public:
-  GEMMOp(const OperatorDef &operator_def, Workspace *ws)
+  MatMulOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
   bool Run(StatsFuture *future) override {
@@ -32,9 +32,9 @@ class GEMMOp : public Operator<D, T> {
   }
 
  private:
-  kernels::GEMMFunctor<D, T> functor_;
+  kernels::MatMulFunctor<D, T> functor_;
 };
 
 }  // namespace mace
 
-#endif  // MACE_OPS_GEMM_H_
+#endif  // MACE_OPS_MATMUL_H_

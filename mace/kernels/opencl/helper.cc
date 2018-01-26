@@ -158,7 +158,7 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
 void TuningOrRun3DKernel(cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
-                         std::vector<uint32_t> &lws,
+                         const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);
@@ -255,7 +255,7 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
 void TuningOrRun2DKernel(cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
-                         std::vector<uint32_t> &lws,
+                         const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
   const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);

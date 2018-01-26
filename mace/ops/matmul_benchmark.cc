@@ -9,7 +9,7 @@
 
 namespace mace {
 template <DeviceType D, typename T>
-static void GEMMBenchmark(
+static void MatMulBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
 
@@ -25,14 +25,14 @@ static void GEMMBenchmark(
     BufferToImage<D, T>(net, "B", "BImage",
                             kernels::BufferType::IN_OUT_HEIGHT);
 
-    OpDefBuilder("GEMM", "GEMMBM")
+    OpDefBuilder("MatMul", "MatMulBM")
         .Input("AImage")
         .Input("BImage")
         .Output("Output")
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("GEMM", "GEMMBM")
+    OpDefBuilder("MatMul", "MatMulBM")
         .Input("A")
         .Input("B")
         .Output("Output")
@@ -52,19 +52,19 @@ static void GEMMBenchmark(
   net.Sync();
 }
 
-#define BM_GEMM_MACRO(N, H, C, W, TYPE, DEVICE)                      \
-  static void BM_GEMM_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) {  \
+#define BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                      \
+  static void BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) {  \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
     mace::testing::ItemsProcessed(tot);                              \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    GEMMBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                  \
+    MatMulBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                  \
   }                                                                  \
-  BENCHMARK(BM_GEMM_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
+  BENCHMARK(BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
-#define BM_GEMM(N, H, C, W, TYPE)        \
-  BM_GEMM_MACRO(N, H, C, W, TYPE, OPENCL);
+#define BM_MATMUL(N, H, C, W, TYPE)        \
+  BM_MATMUL_MACRO(N, H, C, W, TYPE, OPENCL);
 
-BM_GEMM(16, 32, 128, 49, half);
-BM_GEMM(16, 32, 128, 961, half);
-BM_GEMM(16, 32, 128, 3969, half);
+BM_MATMUL(16, 32, 128, 49, half);
+BM_MATMUL(16, 32, 128, 961, half);
+BM_MATMUL(16, 32, 128, 3969, half);
 }  //  namespace mace

@@ -51,60 +51,16 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
   wino_kernel.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
   wino_kernel.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
 
-  const size_t gws[2] = {static_cast<size_t>(out_width),
+  const uint32_t gws[2] = {static_cast<size_t>(out_width),
                          static_cast<size_t>(RoundUpDiv4(input_tensor->dim(3)))};
-  const std::vector<uint32_t> lws = {128, 8};
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(wino_kernel);
-  auto params_generator = [&]()->std::vector<std::vector<uint32_t>> {
-    std::vector<uint32_t> local_ws(2, 0);
-    local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
-    local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1]},
-            {local_ws[1], local_ws[0]},
-            {kwg_size / 4, 4},
-            {kwg_size / 8, 8},
-            {kwg_size / 16, 16},
-            {kwg_size / 32, 32},
-            {kwg_size / 64, 64},
-            {kwg_size / 128, 128},
-            {kwg_size / 256, 256},
-            {kwg_size / 512, 512},
-            {kwg_size, 1},
-            {1, kwg_size}
-    };
-  };
-  cl::Event event;
-  auto func = [&](const std::vector<uint32_t>& params)->cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        wino_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1]),
-        cl::NDRange(params[0], params[1]),
-        nullptr, &event);
-
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
-    return error;
-  };
+  const std::vector<uint32_t> lws = {128, 8, 1};
   std::stringstream ss;
   ss << "winograd_transform_kernel_"
      << input_tensor->dim(0) << "_"
      << input_tensor->dim(1) << "_"
      << input_tensor->dim(2) << "_"
      << input_tensor->dim(3);
-  OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
-                                                     lws,
-                                                     params_generator,
-                                                     func,
-                                                     &timer);
-
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
-      }
-    };
-  }
+  TuningOrRun2DKernel(wino_kernel, ss.str(), gws, lws, future);
 }
 
 template<typename T>
@@ -165,60 +121,17 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
   wino_kernel.setArg(idx++, relux_max_limit_);
   wino_kernel.setArg(idx++, prelu_alpha_);
 
-  const size_t gws[2] = {static_cast<size_t>(input_tensor->dim(2)),
+  const uint32_t gws[2] = {static_cast<size_t>(input_tensor->dim(2)),
                          static_cast<size_t>(RoundUpDiv4(input_tensor->dim(1)))};
-  const std::vector<uint32_t> lws = {128, 8};
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(wino_kernel);
-  auto params_generator = [&]()->std::vector<std::vector<uint32_t>> {
-    std::vector<uint32_t> local_ws(2, 0);
-    local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
-    local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1]},
-            {local_ws[1], local_ws[0]},
-            {kwg_size / 4, 4},
-            {kwg_size / 8, 8},
-            {kwg_size / 16, 16},
-            {kwg_size / 32, 32},
-            {kwg_size / 64, 64},
-            {kwg_size / 128, 128},
-            {kwg_size / 256, 256},
-            {kwg_size / 512, 512},
-            {kwg_size, 1},
-            {1, kwg_size}
-    };
-  };
-  cl::Event event;
-  auto func = [&](const std::vector<uint32_t>& params)->cl_int {
-    cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-        wino_kernel, cl::NullRange,
-        cl::NDRange(gws[0], gws[1]),
-        cl::NDRange(params[0], params[1]),
-        nullptr, &event);
+  const std::vector<uint32_t> lws = {128, 8, 1};
 
-    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
-    return error;
-  };
   std::stringstream ss;
   ss << "winograd_inverse_transform_kernel_"
      << input_tensor->dim(0) << "_"
      << input_tensor->dim(1) << "_"
      << input_tensor->dim(2) << "_"
      << input_tensor->dim(3);
-  OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(ss.str(),
-                                                     lws,
-                                                     params_generator,
-                                                     func,
-                                                     &timer);
-
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        runtime->GetCallStats(event, stats);
-      }
-    };
-  }
+  TuningOrRun2DKernel(wino_kernel, ss.str(), gws, lws, future);
 }
 
 template

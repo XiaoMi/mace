@@ -41,7 +41,7 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
-  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
   ss << "softmax_opencl_kernel_"
      << output->dim(0) << "_"

@@ -41,7 +41,7 @@ class Tuner {
   template <typename RetType>
   RetType TuneOrRun(
       const std::string param_key,
-      std::vector<param_type> &default_param,
+      const std::vector<param_type> &default_param,
       const std::function<std::vector<std::vector<param_type>>()>
           &param_generator,
       const std::function<RetType(const std::vector<param_type> &, Timer *, std::vector<param_type> *)> &func,

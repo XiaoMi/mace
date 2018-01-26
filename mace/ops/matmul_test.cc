@@ -8,7 +8,7 @@
 
 namespace mace {
 
-class GEMMOpTest : public OpsTestBase {};
+class MatMulOpTest : public OpsTestBase {};
 
 template<DeviceType D>
 void Simple(const std::vector<index_t> &A_shape,
@@ -29,7 +29,7 @@ void Simple(const std::vector<index_t> &A_shape,
     BufferToImage<D, float>(net, "B", "BImage",
                             kernels::BufferType::IN_OUT_HEIGHT);
 
-    OpDefBuilder("GEMM", "GEMMTest")
+    OpDefBuilder("MatMul", "MatMulTest")
         .Input("AImage")
         .Input("BImage")
         .Output("OutputImage")
@@ -41,7 +41,7 @@ void Simple(const std::vector<index_t> &A_shape,
     ImageToBuffer<D, float>(net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_HEIGHT);
   } else {
-    OpDefBuilder("GEMM", "GEMMTest")
+    OpDefBuilder("MatMul", "MatMulTest")
         .Input("A")
         .Input("B")
         .Output("Output")
@@ -57,7 +57,7 @@ void Simple(const std::vector<index_t> &A_shape,
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-TEST_F(GEMMOpTest, SimpleCPU) {
+TEST_F(MatMulOpTest, SimpleCPU) {
   Simple<DeviceType::CPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
                           {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
                           {1, 2, 2, 1}, {22, 28, 49, 64});
@@ -74,13 +74,13 @@ TEST_F(GEMMOpTest, SimpleCPU) {
 }
 
 
-TEST_F(GEMMOpTest, SimpleCPUWithBatch) {
+TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
   Simple<DeviceType::CPU>({2, 2, 3, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 3, 2, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 2, 2, 1}, {22, 28, 49, 64, 22, 28, 49, 64});
 }
 
-TEST_F(GEMMOpTest, SimpleOPENCL) {
+TEST_F(MatMulOpTest, SimpleOPENCL) {
   Simple<DeviceType::OPENCL>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
                              {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
                              {1, 2, 2, 1}, {22, 28, 49, 64});
@@ -96,7 +96,7 @@ TEST_F(GEMMOpTest, SimpleOPENCL) {
                               1315, 1430, 1545, 1660, 1775});
 }
 
-TEST_F(GEMMOpTest, SimpleGPUWithBatch) {
+TEST_F(MatMulOpTest, SimpleGPUWithBatch) {
   Simple<DeviceType::CPU>({2, 2, 3, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 3, 2, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
                           {2, 2, 2, 1}, {22, 28, 49, 64, 22, 28, 49, 64});
@@ -111,7 +111,7 @@ void Complex(const index_t batch,
 
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("GEMM", "GEMMTest")
+  OpDefBuilder("MatMul", "MatMulTest")
       .Input("A")
       .Input("B")
       .Output("Output")
@@ -136,7 +136,7 @@ void Complex(const index_t batch,
   BufferToImage<DeviceType::OPENCL, T>(net, "B", "BImage",
                                            kernels::BufferType::IN_OUT_HEIGHT);
 
-  OpDefBuilder("GEMM", "GEMMTest")
+  OpDefBuilder("MatMul", "MatMulTest")
       .Input("AImage")
       .Input("BImage")
       .Output("OutputImage")
@@ -155,24 +155,24 @@ void Complex(const index_t batch,
   }
 }
 
-TEST_F(GEMMOpTest, OPENCLAlignedWithoutBatch) {
+TEST_F(MatMulOpTest, OPENCLAlignedWithoutBatch) {
   Complex<float>(1, 64, 128, 32);
   Complex<float>(1, 64, 32, 128);
 }
-TEST_F(GEMMOpTest, OPENCLUnAlignedWithoutBatch) {
+TEST_F(MatMulOpTest, OPENCLUnAlignedWithoutBatch) {
   Complex<float>(1, 31, 113, 61);
   Complex<float>(1, 113, 31, 73);
 }
-TEST_F(GEMMOpTest, OPENCLUnAlignedWithBatch) {
+TEST_F(MatMulOpTest, OPENCLUnAlignedWithBatch) {
   Complex<float>(2, 3, 3, 3);
   Complex<float>(16, 31, 61, 67);
   Complex<float>(31, 31, 61, 67);
 }
-TEST_F(GEMMOpTest, OPENCLHalfAlignedWithoutBatch) {
+TEST_F(MatMulOpTest, OPENCLHalfAlignedWithoutBatch) {
   Complex<half>(1, 64, 128, 32);
   Complex<half>(1, 64, 32, 128);
 }
-TEST_F(GEMMOpTest, OPENCLHalfUnAlignedWithBatch) {
+TEST_F(MatMulOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(2, 31, 113, 61);
   Complex<half>(16, 32, 64, 64);
   Complex<half>(31, 31, 61, 67);
