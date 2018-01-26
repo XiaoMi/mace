@@ -121,18 +121,24 @@ std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
 
 std::string DtToCLDt(const DataType dt) {
   switch (dt) {
-    case DT_FLOAT:return "float";
-    case DT_HALF:return "half";
-    default:LOG(FATAL) << "Unsupported data type";
+    case DT_FLOAT:
+      return "float";
+    case DT_HALF:
+      return "half";
+    default:
+      LOG(FATAL) << "Unsupported data type";
       return "";
   }
 }
 
 std::string DtToCLCMDDt(const DataType dt) {
   switch (dt) {
-    case DT_FLOAT:return "f";
-    case DT_HALF:return "h";
-    default:LOG(FATAL) << "Not supported data type for opencl cmd data type";
+    case DT_FLOAT:
+      return "f";
+    case DT_HALF:
+      return "h";
+    default:
+      LOG(FATAL) << "Not supported data type for opencl cmd data type";
       return "";
   }
 }
@@ -140,8 +146,10 @@ std::string DtToCLCMDDt(const DataType dt) {
 std::string DtToUpstreamCLDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
-    case DT_HALF:return "float";
-    default:LOG(FATAL) << "Unsupported data type";
+    case DT_HALF:
+      return "float";
+    default:
+      LOG(FATAL) << "Unsupported data type";
       return "";
   }
 }
@@ -149,8 +157,10 @@ std::string DtToUpstreamCLDt(const DataType dt) {
 std::string DtToUpstreamCLCMDDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
-    case DT_HALF:return "f";
-    default:LOG(FATAL) << "Not supported data type for opencl cmd data type";
+    case DT_HALF:
+      return "f";
+    default:
+      LOG(FATAL) << "Not supported data type for opencl cmd data type";
       return "";
   }
 }
