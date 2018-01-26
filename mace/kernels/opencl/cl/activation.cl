@@ -1,8 +1,8 @@
 #include <common.h>
 
 __kernel void activation(__read_only image2d_t input,
-                         __private const DATA_TYPE relux_max_limit,
-                         __private const DATA_TYPE prelu_alpha,
+                         __private const float relux_max_limit,
+                         __private const float prelu_alpha,
                          __write_only image2d_t output) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
