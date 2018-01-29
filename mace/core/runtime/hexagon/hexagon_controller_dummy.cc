@@ -17,6 +17,7 @@ int hexagon_controller_DeInitHexagon() {
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config)(void) __QAIC_HEADER_ATTRIBUTE { return 0; }
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(void) __QAIC_HEADER_ATTRIBUTE { return 0; }
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_debug_level)(hexagon_nn_nn_id id, int level) __QAIC_HEADER_ATTRIBUTE { return 0; }
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_graph_mode)(hexagon_nn_nn_id id, int mode) __QAIC_HEADER_ATTRIBUTE { return 0; }
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_snpprint)(hexagon_nn_nn_id id, unsigned char* buf, int bufLen) __QAIC_HEADER_ATTRIBUTE { return 0; }
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_getlog)(hexagon_nn_nn_id id, unsigned char* buf, int bufLen) __QAIC_HEADER_ATTRIBUTE { return 0; }
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_append_node)(hexagon_nn_nn_id id, unsigned int node_id, unsigned int operation, hexagon_nn_padding_type padding, const hexagon_nn_input* inputs, int inputsLen, const hexagon_nn_output* outputs, int outputsLen) __QAIC_HEADER_ATTRIBUTE { return 0; }

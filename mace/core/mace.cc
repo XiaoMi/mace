@@ -525,6 +525,9 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
       static_cast<int>(mace::internal::LogMessage::MinVLogLevel()));
+    int dsp_mode = ArgumentHelper::GetSingleArgument<NetDef, int>(
+        *net_def, "dsp_mode", 0);
+    hexagon_controller_->SetGraphMode(dsp_mode);
     MACE_CHECK(hexagon_controller_->SetupGraph(*net_def),
                 "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
