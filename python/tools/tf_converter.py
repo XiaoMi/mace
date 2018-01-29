@@ -32,7 +32,7 @@ def main(unused_args):
 
   if FLAGS.runtime == 'dsp':
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, FLAGS.output_node)
+      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
   else:
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
@@ -119,6 +119,11 @@ def parse_args():
     const=False,
     default=False,
     help="open winograd convolution or not")
+  parser.add_argument(
+    "--dsp_mode",
+    type=int,
+    default=0,
+    help="dsp run mode, defalut=0")
   return parser.parse_known_args()
 
 
