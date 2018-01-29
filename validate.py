@@ -43,7 +43,8 @@ def valid_output(out_shape, mace_out_file, tf_out_value):
   if mace_out_value.size != 0:
     similarity = (1 - spatial.distance.cosine(tf_out_value.flat, mace_out_value))
     print 'MACE VS TF similarity: ', similarity
-    if similarity > 0.995:
+    if (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
+        (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
       print '=======================Similarity Test Passed======================'
     else:
       print '=======================Similarity Test Failed======================'
@@ -105,14 +106,19 @@ def parse_args():
     default="",
     help="mace output file to load.")
   parser.add_argument(
+    "--mace_runtime",
+    type=str,
+    default="gpu",
+    help="mace runtime device.")
+  parser.add_argument(
     "--input_shape",
     type=str,
-    default="512,512,3",
+    default="1,64,64,3",
     help="input shape.")
   parser.add_argument(
     "--output_shape",
     type=str,
-    default="1,512,512,2",
+    default="1,64,64,2",
     help="output shape.")
   parser.add_argument(
     "--input_node",
