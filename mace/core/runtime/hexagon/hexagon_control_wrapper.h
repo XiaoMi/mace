@@ -33,6 +33,7 @@ class HexagonControlWrapper {
   void GetPerfInfo();
   void ResetPerfInfo();
   void SetDebugLevel(int level);
+  void SetGraphMode(int mode);
 
  private:
   // CAVEAT: Need offset as HVX library reserves some ids

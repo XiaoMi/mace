@@ -180,6 +180,11 @@ void HexagonControlWrapper::SetDebugLevel(int level) {
   hexagon_nn_set_debug_level(nn_id_, level);
 }
 
+void HexagonControlWrapper::SetGraphMode(int mode) {
+  LOG(INFO) << "Set dsp mode: " << mode;
+  hexagon_nn_set_graph_mode(nn_id_, mode);
+}
+
 void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
   vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
