@@ -359,7 +359,7 @@ def fuse_quantize(net_def, input_node, output_node):
   new_net_def.op.extend(new_ops)
   return new_net_def
 
-def convert_to_mace_pb(input_graph_def, input_node, output_node):
+def convert_to_mace_pb(input_graph_def, input_node, output_node, dsp_mode):
   """
     nnlib does not have batch norm, so use tensorflow optimizer to fold
      batch norm with convolution. The fold optimization reorders ops, so
@@ -393,6 +393,10 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node):
 
       dtype = mace_pb2.DT_FLOAT
       final_net_def = add_input_output_info(net_def_with_node_id, input_node, output_node, graph, dtype)
+
+      arg = final_net_def.arg.add()
+      arg.name = 'dsp_mode'
+      arg.i = dsp_mode
 
   return final_net_def
 
