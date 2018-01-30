@@ -59,6 +59,10 @@ build_and_run()
     PRODUCTION_MODE_BUILD_FLAGS="--define production=true"
   fi
 
+  if [ x"$RUNTIME" = x"dsp" ]; then
+    HEXAGON_MODE_BUILD_FLAG="--define hexagon=true"
+  fi
+
   if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != true ]];then
     tuning_flag=1
     round=0 # only warm up
@@ -76,7 +80,7 @@ build_and_run()
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     $PRODUCTION_MODE_BUILD_FLAGS \
-    --define hexagon=true || exit -1
+    $HEXAGON_MODE_BUILD_FLAG || exit -1
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit -1
   if [ "$PRODUCTION_MODE" = false ]; then
