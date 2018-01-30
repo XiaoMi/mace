@@ -3,64 +3,44 @@
 //
 
 #include "mace/kernels/conv_2d.h"
-#include "mace/kernels/activation.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {
 
-extern void Conv2dOpenclK1x1S1(const Tensor *input,
-                               const Tensor *filter,
-                               const Tensor *bias,
-                               const int *padding,
-                               const int *dilations,
-                               const ActivationType activation,
-                               const float relux_max_limit,
-                               const float prelu_alpha,
-                               const DataType dt,
-                               Tensor *output,
-                               StatsFuture *future);
+extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
+                             const Tensor *input,
+                             const Tensor *filter,
+                             const Tensor *bias,
+                             const int stride,
+                             const int *padding,
+                             const int *dilations,
+                             const ActivationType activation,
+                             const float relux_max_limit,
+                             const float prelu_alpha,
+                             const DataType dt,
+                             Tensor *output,
+                             StatsFuture *future);
 
-extern void Conv2dOpenclK1x1S2(const Tensor *input,
-                               const Tensor *filter,
-                               const Tensor *bias,
-                               const int *padding,
-                               const int *dilations,
-                               const ActivationType activation,
-                               const float relux_max_limit,
-                               const float prelu_alpha,
-                               const DataType dt,
-                               Tensor *output,
-                               StatsFuture *future);
+extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
+                             const Tensor *input,
+                             const Tensor *filter,
+                             const Tensor *bias,
+                             const int stride,
+                             const int *padding,
+                             const int *dilations,
+                             const ActivationType activation,
+                             const float relux_max_limit,
+                             const float prelu_alpha,
+                             const DataType dt,
+                             Tensor *output,
+                             StatsFuture *future);
 
-extern void Conv2dOpenclK3x3S1(const Tensor *input,
-                               const Tensor *filter,
-                               const Tensor *bias,
-                               const int *padding,
-                               const int *dilations,
-                               const ActivationType activation,
-                               const float relux_max_limit,
-                               const float prelu_alpha,
-                               const DataType dt,
-                               Tensor *output,
-                               StatsFuture *future);
-
-extern void Conv2dOpenclK3x3S2(const Tensor *input,
-                               const Tensor *filter,
-                               const Tensor *bias,
-                               const int *padding,
-                               const int *dilations,
-                               const ActivationType activation,
-                               const float relux_max_limit,
-                               const float prelu_alpha,
-                               const DataType dt,
-                               Tensor *output,
-                               StatsFuture *future);
-
-extern void Conv2dOpencl(const Tensor *input,
+extern void Conv2dOpencl(cl::Kernel *kernel,
+                         const Tensor *input,
                          const Tensor *filter,
                          const Tensor *bias,
-                         const uint32_t stride,
+                         const int stride,
                          const int *padding,
                          const int *dilations,
                          const ActivationType activation,
@@ -70,24 +50,21 @@ extern void Conv2dOpencl(const Tensor *input,
                          Tensor *output,
                          StatsFuture *future);
 
-template <typename T>
+template<typename T>
 void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                       const Tensor *filter,
                                                       const Tensor *bias,
                                                       Tensor *output,
                                                       StatsFuture *future) {
   typedef void (*Conv2dOpenclFunction)(
-      const Tensor *input, const Tensor *filter, const Tensor *bias,
+      cl::Kernel *kernel,
+      const Tensor *input, const Tensor *filter, const Tensor *bias, const int stride,
       const int *padding, const int *dilations, const ActivationType activation,
       const float relux_max_limit, const float prelu_alpha, const DataType dt,
       Tensor *output, StatsFuture *future);
   // Selection matrix: kernel_size x stride_size
-  static const Conv2dOpenclFunction selector[5][2] = {
-      {Conv2dOpenclK1x1S1, Conv2dOpenclK1x1S2},
-      {nullptr, nullptr},
-      {Conv2dOpenclK3x3S1, Conv2dOpenclK3x3S2},
-      {nullptr, nullptr},
-      {nullptr, nullptr}};
+  static const Conv2dOpenclFunction selector[5] =
+      {Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3, nullptr, nullptr};
 
   index_t kernel_h = filter->dim(0);
   index_t kernel_w = filter->dim(1);
@@ -113,20 +90,23 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   output->ResizeImage(output_shape, output_image_shape);
 
   if (kernel_h == kernel_w && kernel_h <= 5 &&
-      selector[kernel_h - 1][strides_[0] - 1] != nullptr) {
-    auto conv2d_func = selector[kernel_h - 1][strides_[0] - 1];
-    conv2d_func(input, filter, bias, paddings.data(), dilations_, activation_,
+      selector[kernel_h - 1] != nullptr &&
+      0 < strides_[0] && strides_[0] < 3 ) {
+    auto conv2d_func = selector[kernel_h - 1];
+    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_, activation_,
                 relux_max_limit_, prelu_alpha_, DataTypeToEnum<T>::value,
                 output, future);
   } else {
-    Conv2dOpencl(input, filter, bias, strides_[0], paddings.data(), dilations_,
+    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
                  activation_, relux_max_limit_, prelu_alpha_,
                  DataTypeToEnum<T>::value, output, future);
   }
 }
 
-template struct Conv2dFunctor<DeviceType::OPENCL, float>;
-template struct Conv2dFunctor<DeviceType::OPENCL, half>;
+template
+struct Conv2dFunctor<DeviceType::OPENCL, float>;
+template
+struct Conv2dFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

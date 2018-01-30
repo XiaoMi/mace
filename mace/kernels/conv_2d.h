@@ -9,6 +9,7 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -176,6 +177,8 @@ struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  // namespace kernels

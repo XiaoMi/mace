@@ -6,6 +6,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -169,6 +170,8 @@ struct ResizeBilinearFunctor<DeviceType::OPENCL, T> : ResizeBilinearFunctorBase 
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  // namespace kernels

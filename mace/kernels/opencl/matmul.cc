@@ -29,26 +29,28 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t height_blocks = RoundUpDiv4(height);
   const index_t width_blocks = RoundUpDiv4(width);
 
-  auto runtime = OpenCLRuntime::Global();
-  std::set<std::string> built_options;
-  auto dt = DataTypeToEnum<T>::value;
-  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
-  built_options.emplace("-Dmatmul=" + kernel_name);
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  auto matmul_kernel = runtime->BuildKernel("matmul", kernel_name, built_options);
+  if (kernel_.get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
+    std::set<std::string> built_options;
+    auto dt = DataTypeToEnum<T>::value;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
+    built_options.emplace("-Dmatmul=" + kernel_name);
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    kernel_ = runtime->BuildKernel("matmul", kernel_name, built_options);
 
-  uint32_t idx = 0;
-  matmul_kernel.setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(A->buffer())));
-  matmul_kernel.setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(B->buffer())));
-  matmul_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(C->buffer())));
-  matmul_kernel.setArg(idx++, static_cast<int>(height));
-  matmul_kernel.setArg(idx++, static_cast<int>(width));
-  matmul_kernel.setArg(idx++, static_cast<int>(A->dim(2)));
-  matmul_kernel.setArg(idx++, static_cast<int>(height_blocks));
-  matmul_kernel.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
+    uint32_t idx = 0;
+    kernel_.setArg(idx++,
+                         *(static_cast<const cl::Image2D *>(A->buffer())));
+    kernel_.setArg(idx++,
+                         *(static_cast<const cl::Image2D *>(B->buffer())));
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(C->buffer())));
+    kernel_.setArg(idx++, static_cast<int>(height));
+    kernel_.setArg(idx++, static_cast<int>(width));
+    kernel_.setArg(idx++, static_cast<int>(A->dim(2)));
+    kernel_.setArg(idx++, static_cast<int>(height_blocks));
+    kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
+  }
 
   const uint32_t gws[2] = {
       static_cast<uint32_t>(width_blocks),
@@ -61,7 +63,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
      << C->dim(1) << "_"
      << C->dim(2) << "_"
      << C->dim(3);
-  TuningOrRun2DKernel(matmul_kernel, ss.str(), gws, lws, future);
+  TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
 
 };
 

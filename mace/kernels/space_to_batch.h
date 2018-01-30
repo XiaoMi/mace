@@ -8,6 +8,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/public/mace.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -50,6 +51,8 @@ struct SpaceToBatchFunctor<DeviceType::OPENCL, T>: SpaceToBatchFunctorBase{
                   const std::vector<index_t> &output_shape,
                   Tensor *batch_tensor,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 
 };
 

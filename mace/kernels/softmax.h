@@ -8,6 +8,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/public/mace.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -55,6 +56,8 @@ struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *logits,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  //  namepsace kernels

@@ -9,6 +9,7 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/kernels/activation.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -43,6 +44,8 @@ struct WinogradTransformFunctor<DeviceType::OPENCL, T> : WinogradTransformFuncto
   void operator()(const Tensor *input,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 struct WinogradInverseTransformFunctorBase {
@@ -100,6 +103,8 @@ struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T> : WinogradInverseT
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  // namespace kernels

@@ -7,6 +7,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -58,6 +59,8 @@ struct MatMulFunctor<DeviceType::OPENCL, T> {
                   const Tensor *B,
                   Tensor *C,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  //  namespace kernels

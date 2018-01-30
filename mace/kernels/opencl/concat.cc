@@ -11,7 +11,8 @@
 namespace mace {
 namespace kernels {
 
-static void Concat2(const Tensor *input0,
+static void Concat2(cl::Kernel *kernel,
+                    const Tensor *input0,
                     const Tensor *input1,
                     const DataType dt,
                     Tensor *output,
@@ -23,27 +24,29 @@ static void Concat2(const Tensor *input0,
 
   const int channel_blk = RoundUpDiv4(channel);
 
-  auto runtime = OpenCLRuntime::Global();
-  std::set<std::string> built_options;
-  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
-  built_options.emplace("-Dconcat_channel=" + kernel_name);
-  if (input0->dtype() == output->dtype()) {
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-  } else {
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  }
-  if (input0->dim(3) % 4 == 0) {
-    built_options.emplace("-DDIVISIBLE_FOUR");
-  }
-  auto concat_kernel = runtime->BuildKernel("concat", kernel_name, built_options);
+  if (kernel->get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
+    built_options.emplace("-Dconcat_channel=" + kernel_name);
+    if (input0->dtype() == output->dtype()) {
+      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    } else {
+      built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    }
+    if (input0->dim(3) % 4 == 0) {
+      built_options.emplace("-DDIVISIBLE_FOUR");
+    }
+    *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
 
-  uint32_t idx = 0;
-  concat_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input0->buffer())));
-  concat_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input1->buffer())));
-  concat_kernel.setArg(idx++, static_cast<int32_t>(input0->dim(3)));
-  concat_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    uint32_t idx = 0;
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input0->buffer())));
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input1->buffer())));
+    kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
+    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+  }
 
   const uint32_t gws[3] = {
       static_cast<uint32_t>(channel_blk),
@@ -57,7 +60,7 @@ static void Concat2(const Tensor *input0,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
-  TuningOrRun3DKernel(concat_kernel, ss.str(), gws, lws, future);
+  TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
 }
 
 template<typename T>
@@ -90,7 +93,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
 
   switch (inputs_count) {
     case 2:
-      Concat2(input_list[0], input_list[1], DataTypeToEnum<T>::value,
+      Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
               output, future);
       break;
     default:MACE_NOT_IMPLEMENTED;

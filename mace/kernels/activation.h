@@ -8,6 +8,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -128,6 +129,7 @@ class ActivationFunctor<DeviceType::OPENCL, T> {
   ActivationType activation_;
   T relux_max_limit_;
   T prelu_alpha_;
+  cl::Kernel kernel_;
 };
 
 }  // namespace kernels
