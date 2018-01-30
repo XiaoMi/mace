@@ -33,7 +33,8 @@ data_type_map = {
 activation_name_map = {
   'Relu' : 'RELU',
   'Sigmoid' : 'SIGMOID',
-  'Tanh' : 'TANH'
+  'Tanh' : 'TANH',
+  'Relu6' : 'RELUX'
 }
 
 BATCH_NORM_ORDER = ["Add", "Rsqrt", "Mul", "Mul", "Mul", "Sub", "Add"]
@@ -284,13 +285,17 @@ class TFConverter(object):
       self.resolved_ops[bias_add_op.name] = 1
 
     if len(self.tf_graph[final_op.name]) == 1 \
-            and self.tf_graph[final_op.name][0].type == 'Relu':
-      relu_op = self.tf_graph[final_op.name][0]
-      fused_relu_arg = iwt_op.arg.add()
-      fused_relu_arg.name = 'activation'
-      fused_relu_arg.s = "RELU"
-      final_op = relu_op
-      self.resolved_ops[relu_op.name] = 1
+        and self.tf_graph[final_op.name][0].type in activation_name_map:
+      activation_op = self.tf_graph[final_op.name][0]
+      fused_act_arg = iwt_op.arg.add()
+      fused_act_arg.name = 'activation'
+      fused_act_arg.s = activation_name_map[activation_op.type]
+      if activation_op.type == 'Relu6':
+        max_limit_arg = iwt_op.arg.add()
+        max_limit_arg.name = 'max_limit'
+        max_limit_arg.f = 6
+      final_op = activation_op
+      self.resolved_ops[activation_op.name] = 1
 
     iwt_op.output.extend([output.name for output in final_op.outputs])
     self.add_output_shape(final_op.outputs, iwt_op)
@@ -338,14 +343,18 @@ class TFConverter(object):
       self.resolved_ops[bias_add_op.name] = 1
 
     if len(self.tf_graph[final_op.name]) == 1 \
-        and self.tf_graph[final_op.name][0].type == 'Relu':
-      relu_op = self.tf_graph[final_op.name][0]
+        and self.tf_graph[final_op.name][0].type in activation_name_map:
+      activation_op = self.tf_graph[final_op.name][0]
       op_def.type = "FusedConv2D"
-      fused_relu_arg = op_def.arg.add()
-      fused_relu_arg.name = 'activation'
-      fused_relu_arg.s = "RELU"
-      final_op = relu_op
-      self.resolved_ops[relu_op.name] = 1
+      fused_act_arg = op_def.arg.add()
+      fused_act_arg.name = 'activation'
+      fused_act_arg.s = activation_name_map[activation_op.type]
+      if activation_op.type == 'Relu6':
+        max_limit_arg = op_def.arg.add()
+        max_limit_arg.name = 'max_limit'
+        max_limit_arg.f = 6
+      final_op = activation_op
+      self.resolved_ops[activation_op.name] = 1
 
     op_def.output.extend([output.name for output in final_op.outputs])
     self.add_output_shape(final_op.outputs, op_def)
@@ -397,16 +406,21 @@ class TFConverter(object):
     self.resolved_ops[op.name] = 1
     final_op = op
 
-    if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'Relu':
-      relu_op = self.tf_graph[op.name][0]
-      final_op = relu_op
-      fused_relu_arg = op_def.arg.add()
-      fused_relu_arg.name = 'activation'
-      fused_relu_arg.s = "RELU"
-      self.resolved_ops[relu_op.name] = 1
+    if len(self.tf_graph[op.name]) == 1 \
+        and self.tf_graph[op.name][0].type in activation_name_map:
+      activation_op = self.tf_graph[op.name][0]
+      fused_act_arg = op_def.arg.add()
+      fused_act_arg.name = 'activation'
+      fused_act_arg.s = activation_name_map[activation_op.type]
+      if activation_op.type == 'Relu6':
+        max_limit_arg = op_def.arg.add()
+        max_limit_arg.name = 'max_limit'
+        max_limit_arg.f = 6
+      final_op = activation_op
+      self.resolved_ops[activation_op.name] = 1
 
     op_def.output.extend([final_op.outputs[0].name])
-    self.add_output_shape(final_op.outputs, op_def)
+    self.add_output_shape([final_op.outputs[0]], op_def)
 
     self.net_def.op.extend([op_def])
 
@@ -794,6 +808,101 @@ class TFConverter(object):
       if self.resolved_ops[key] != 1:
         print 'Unresolve Op: %s' % key
 
+class Optimizer:
+  def __init__(self, net_def, device):
+    self.net_def = net_def
+    self.device = device
+    self.mace_graph = {}
+    self.tensor_map = {}
+    for op in net_def.op:
+      for input_name in op.input:
+        if input_name not in self.mace_graph:
+          self.mace_graph[input_name] = []
+        self.mace_graph[input_name].append(op)
+
+    for tensor in net_def.tensors:
+      self.tensor_map[tensor.name] = tensor
+
+  def get_buffer_tensor_name(self, name):
+    if self.device == 'gpu':
+      return name[:-6] + name[-2:]
+    else:
+      return name
+
+  def fold_batch_norm(self):
+    unused_tensors = set()
+    new_tensors = []
+    new_net = mace_pb2.NetDef()
+    resolved_ops = set()
+
+    for op in self.net_def.op:
+      if op.name in resolved_ops:
+        pass
+      elif op.type == 'DepthwiseConv2d' and len(op.output) == 1 \
+          and self.mace_graph[op.output[0]][0].type == 'FoldedBatchNorm':
+        depthwise_conv2d_op = op
+        folded_bn_op = self.mace_graph[op.output[0]][0]
+        weight_buffer_name = self.get_buffer_tensor_name(depthwise_conv2d_op.input[1])
+        weight_tensor = self.tensor_map[weight_buffer_name]
+        scale_buffer_name = self.get_buffer_tensor_name(folded_bn_op.input[1])
+        offset_buffer_name = self.get_buffer_tensor_name(folded_bn_op.input[2])
+        scale_tensor = self.tensor_map[scale_buffer_name]
+        weight_shape = weight_tensor.dims
+        idx = 0
+        for i in range(weight_shape[0]):
+          for j in range(weight_shape[1]):
+            for ic in range(weight_shape[2]):
+              for oc in range(weight_shape[3]):
+                weight_tensor.float_data[idx] *= scale_tensor.float_data[ic * weight_shape[3] + oc]
+                idx += 1
+
+        new_tensors.append(weight_tensor)
+        unused_tensors.add(weight_tensor.name)
+        unused_tensors.add(scale_tensor.name)
+
+        if self.device == 'gpu':
+          scale_b2i_op = self.mace_graph[scale_buffer_name][0]
+          offset_b2i_op = self.mace_graph[offset_buffer_name][0]
+          resolved_ops.add(scale_b2i_op.name)
+          resolved_ops.add(offset_b2i_op.name)
+          new_net.op.extend([offset_b2i_op])
+
+        resolved_ops.add(depthwise_conv2d_op.name)
+        resolved_ops.add(folded_bn_op.name)
+
+        offset_tensor_name = folded_bn_op.input[2]
+        depthwise_conv2d_op.input.extend([offset_tensor_name])
+
+        for arg in folded_bn_op.arg:
+          if arg.name == 'activation':
+            act_arg = depthwise_conv2d_op.arg.add()
+            act_arg.name = arg.name
+            act_arg.s = arg.s
+          elif arg.name == 'max_limit':
+            act_arg = depthwise_conv2d_op.arg.add()
+            act_arg.name = arg.name
+            act_arg.f = arg.f
+
+        depthwise_conv2d_op.output[0] = folded_bn_op.output[0]
+        new_net.op.extend([depthwise_conv2d_op])
+      else:
+        new_net.op.extend([op])
+
+    for tensor in self.net_def.tensors:
+      if tensor.name in unused_tensors:
+        pass
+      else:
+        new_net.tensors.extend([tensor])
+
+    for tensor in new_tensors:
+      new_net.tensors.extend([tensor])
+
+    return new_net
+
+  def optimize(self):
+    new_net = self.fold_batch_norm()
+    return new_net
+
 def convert_to_mace_pb(input_graph_def, input_node, output_node, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
@@ -804,6 +913,8 @@ def convert_to_mace_pb(input_graph_def, input_node, output_node, data_type, devi
       ops = graph.get_operations()
       converter = TFConverter(ops, net_def, dt, device, winograd)
       converter.convert(input_node, output_node)
+      optimizer = Optimizer(net_def, device)
+      net_def = optimizer.optimize()
       print "PB Converted, start optimize memory."
       mem_optimizer = memory_optimizer.MemoryOptimizer(net_def)
       mem_optimizer.optimize()
