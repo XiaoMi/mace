@@ -9,6 +9,7 @@
 #include "mace/core/future.h"
 #include "mace/core/public/mace.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -57,7 +58,6 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
                   StatsFuture *future) {
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
-    MACE_CHECK_NOTNULL(bias);
     MACE_CHECK_NOTNULL(output);
 
     // Create a fake conv_2d filter to calculate the paddings and output size
@@ -113,7 +113,7 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     Tensor::MappingGuard output_mapper(output);
     const T *input_ptr = input->data<T>();
     const T *filter_ptr = filter->data<T>();
-    const T *bias_ptr = bias->data<T>();
+    const T *bias_ptr = bias == nullptr ? nullptr : bias->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
 #pragma omp parallel for collapse(2)
@@ -153,6 +153,10 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
         }
       }
     }
+
+    output_ptr = output->mutable_data<T>();
+    DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
+                 relux_max_limit_, prelu_alpha_);
   }
 };
 
@@ -178,13 +182,15 @@ struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
                                    dilations,
                                    activation,
                                    relux_max_limit,
-                                   prelu_alpha) {}
+                                   prelu_alpha){}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  // namespace kernels

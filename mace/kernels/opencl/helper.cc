@@ -171,8 +171,8 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);
     std::vector<uint32_t> local_ws(3, 0);
     local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
     local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
@@ -268,8 +268,8 @@ void TuningOrRun2DKernel(cl::Kernel &kernel,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
+    const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(kernel);
     uint32_t local_ws[2];
     local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
     local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);

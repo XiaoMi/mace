@@ -8,6 +8,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/public/mace.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -63,6 +64,7 @@ struct BiasAddFunctor<DeviceType::OPENCL, T> {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);
+  cl::Kernel kernel_;
 };
 
 }  //  namepsace kernels

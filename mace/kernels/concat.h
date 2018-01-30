@@ -10,6 +10,7 @@
 #include "mace/core/types.h"
 #include "mace/core/public/mace.h"
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -81,6 +82,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase{
 
   void operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output, StatsFuture *future);
+  cl::Kernel kernel_;
 
 };
 

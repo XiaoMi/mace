@@ -7,6 +7,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -42,6 +43,8 @@ template <typename T>
 struct AddNFunctor<DeviceType::OPENCL, T> {
   void operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor, StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  //  namespace kernels

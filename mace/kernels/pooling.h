@@ -9,6 +9,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 
@@ -171,6 +172,8 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
 };
 
 }  //  namespace kernels

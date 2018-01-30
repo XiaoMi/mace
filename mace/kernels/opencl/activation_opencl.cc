@@ -22,49 +22,51 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   const index_t channels = input->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
-
-  auto runtime = OpenCLRuntime::Global();
-
   std::string tuning_key_prefix;
-  std::set<std::string> built_options;
-  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("activation");
-  built_options.emplace("-Dactivation=" + kernel_name);
-  auto dt = DataTypeToEnum<T>::value;
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  switch (activation_) {
-    case RELU:
-      tuning_key_prefix = "relu_opencl_kernel_";
-      built_options.emplace("-DUSE_RELU");
-      break;
-    case RELUX:
-      tuning_key_prefix = "relux_opencl_kernel_";
-      built_options.emplace("-DUSE_RELUX");
-      break;
-    case PRELU:
-      tuning_key_prefix = "prelu_opencl_kernel_";
-      built_options.emplace("-DUSE_PRELU");
-      break;
-    case TANH:
-      tuning_key_prefix = "tanh_opencl_kernel_";
-      built_options.emplace("-DUSE_TANH");
-      break;
-    case SIGMOID:
-      tuning_key_prefix = "sigmoid_opencl_kernel_";
-      built_options.emplace("-DUSE_SIGMOID");
-      break;
-    defeult:
-      LOG(FATAL) << "Unknown activation type: " << activation_;
+
+  if (kernel_.get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
+
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("activation");
+    built_options.emplace("-Dactivation=" + kernel_name);
+    auto dt = DataTypeToEnum<T>::value;
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    switch (activation_) {
+      case RELU:
+        tuning_key_prefix = "relu_opencl_kernel_";
+        built_options.emplace("-DUSE_RELU");
+        break;
+      case RELUX:
+        tuning_key_prefix = "relux_opencl_kernel_";
+        built_options.emplace("-DUSE_RELUX");
+        break;
+      case PRELU:
+        tuning_key_prefix = "prelu_opencl_kernel_";
+        built_options.emplace("-DUSE_PRELU");
+        break;
+      case TANH:
+        tuning_key_prefix = "tanh_opencl_kernel_";
+        built_options.emplace("-DUSE_TANH");
+        break;
+      case SIGMOID:
+        tuning_key_prefix = "sigmoid_opencl_kernel_";
+        built_options.emplace("-DUSE_SIGMOID");
+        break;
+      defeult:
+        LOG(FATAL) << "Unknown activation type: " << activation_;
+    }
+    kernel_ =
+        runtime->BuildKernel("activation", kernel_name, built_options);
+    int idx = 0;
+    kernel_.setArg(
+        idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
+    kernel_.setArg(idx++, static_cast<float>(prelu_alpha_));
+    kernel_.setArg(idx++,
+                             *(static_cast<cl::Image2D *>(output->buffer())));
   }
-  cl::Kernel activation_kernel =
-      runtime->BuildKernel("activation", kernel_name, built_options);
-  int idx = 0;
-  activation_kernel.setArg(
-      idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-  activation_kernel.setArg(idx++, static_cast<float>(relux_max_limit_));
-  activation_kernel.setArg(idx++, static_cast<float>(prelu_alpha_));
-  activation_kernel.setArg(idx++,
-                           *(static_cast<cl::Image2D *>(output->buffer())));
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
@@ -73,7 +75,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   std::string tuning_key =
       Concat(tuning_key_prefix, output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(activation_kernel, tuning_key, gws, lws, future);
+  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 }
 
 template struct ActivationFunctor<DeviceType::OPENCL, float>;

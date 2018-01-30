@@ -25,31 +25,34 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
   const index_t round_h = (output_shape[1] + 1) / 2;
   const index_t round_w = (output_shape[2] + 1) / 2;
   const index_t out_width = input_tensor->dim(0) * round_h * round_w;
-  output_shape = {16, input_tensor->dim(3), out_width, 1};
-  std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
-  output_tensor->ResizeImage(output_shape, image_shape);
 
-  string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
-  std::set<std::string> built_options;
-  built_options.emplace("-Dwinograd_transform_2x2=" + obfuscated_kernel_name);
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-  auto runtime = OpenCLRuntime::Global();
-  auto wino_kernel = runtime->BuildKernel("winograd_transform",
-                                         obfuscated_kernel_name,
-                                         built_options);
+  if (kernel_.get() == nullptr) {
+    output_shape = {16, input_tensor->dim(3), out_width, 1};
+    std::vector<size_t> image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
+    output_tensor->ResizeImage(output_shape, image_shape);
 
-  uint32_t idx = 0;
-  wino_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
-  wino_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(1)));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(round_w));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
+    string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
+    std::set<std::string> built_options;
+    built_options.emplace("-Dwinograd_transform_2x2=" + obfuscated_kernel_name);
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
+    auto runtime = OpenCLRuntime::Global();
+    kernel_ = runtime->BuildKernel("winograd_transform",
+                                   obfuscated_kernel_name,
+                                   built_options);
+
+    uint32_t idx = 0;
+    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
+    kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(1)));
+    kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
+    kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
+    kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
+    kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
+    kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
+    kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
+  }
 
   const uint32_t gws[2] = {static_cast<size_t>(out_width),
                          static_cast<size_t>(RoundUpDiv4(input_tensor->dim(3)))};
@@ -60,7 +63,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
      << input_tensor->dim(1) << "_"
      << input_tensor->dim(2) << "_"
      << input_tensor->dim(3);
-  TuningOrRun2DKernel(wino_kernel, ss.str(), gws, lws, future);
+  TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
 }
 
 template<typename T>
@@ -73,53 +76,55 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
   output_tensor->ResizeImage(output_shape, image_shape);
 
-  string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
-  std::set<std::string> built_options;
-  built_options.emplace("-Dwinograd_inverse_transform_2x2=" + obfuscated_kernel_name);
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-  built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-  switch (activation_) {
-    case NOOP:
-      break;
-    case RELU:
-      built_options.emplace("-DUSE_RELU");
-      break;
-    case RELUX:
-      built_options.emplace("-DUSE_RELUX");
-      break;
-    case PRELU:
-      built_options.emplace("-DUSE_PRELU");
-      break;
-    case TANH:
-      built_options.emplace("-DUSE_TANH");
-      break;
-    case SIGMOID:
-      built_options.emplace("-DUSE_SIGMOID");
-      break;
-    defeult:
-      LOG(FATAL) << "Unknown activation type: " << activation_;
-  }
+  if (kernel_.get() == nullptr) {
+    string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
+    std::set<std::string> built_options;
+    built_options.emplace("-Dwinograd_inverse_transform_2x2=" + obfuscated_kernel_name);
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
+    built_options.emplace(bias != nullptr ? "-DBIAS" : "");
+    switch (activation_) {
+      case NOOP:
+        break;
+      case RELU:
+        built_options.emplace("-DUSE_RELU");
+        break;
+      case RELUX:
+        built_options.emplace("-DUSE_RELUX");
+        break;
+      case PRELU:
+        built_options.emplace("-DUSE_PRELU");
+        break;
+      case TANH:
+        built_options.emplace("-DUSE_TANH");
+        break;
+      case SIGMOID:
+        built_options.emplace("-DUSE_SIGMOID");
+        break;
+      defeult:
+        LOG(FATAL) << "Unknown activation type: " << activation_;
+    }
 
-  auto runtime = OpenCLRuntime::Global();
-  auto wino_kernel = runtime->BuildKernel("winograd_transform",
-                                         obfuscated_kernel_name,
-                                         built_options);
+    auto runtime = OpenCLRuntime::Global();
+    kernel_ = runtime->BuildKernel("winograd_transform",
+                                   obfuscated_kernel_name,
+                                   built_options);
 
-  const uint32_t round_h = (height_ + 1) / 2;
-  const uint32_t round_w = (width_ + 1) / 2;
-  uint32_t idx = 0;
-  wino_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
-  if (bias != nullptr) {
-    wino_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
+    const uint32_t round_h = (height_ + 1) / 2;
+    const uint32_t round_w = (width_ + 1) / 2;
+    uint32_t idx = 0;
+    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
+    if (bias != nullptr) {
+      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
+    }
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
+    kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
+    kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
+    kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
+    kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
+    kernel_.setArg(idx++, relux_max_limit_);
+    kernel_.setArg(idx++, prelu_alpha_);
   }
-  wino_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
-  wino_kernel.setArg(idx++, static_cast<uint32_t>(round_w));
-  wino_kernel.setArg(idx++, relux_max_limit_);
-  wino_kernel.setArg(idx++, prelu_alpha_);
 
   const uint32_t gws[2] = {static_cast<size_t>(input_tensor->dim(2)),
                          static_cast<size_t>(RoundUpDiv4(input_tensor->dim(1)))};
@@ -131,7 +136,7 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
      << input_tensor->dim(1) << "_"
      << input_tensor->dim(2) << "_"
      << input_tensor->dim(3);
-  TuningOrRun2DKernel(wino_kernel, ss.str(), gws, lws, future);
+  TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
 }
 
 template

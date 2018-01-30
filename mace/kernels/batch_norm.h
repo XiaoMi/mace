@@ -9,6 +9,7 @@
 #include "mace/core/public/mace.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -133,6 +134,7 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
                   const float epsilon,
                   Tensor *output,
                   StatsFuture *future);
+  cl::Kernel kernel_;
 };
 
 }  //  namepsace kernels

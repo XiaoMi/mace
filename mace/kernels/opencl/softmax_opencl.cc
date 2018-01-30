@@ -23,21 +23,23 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   const index_t channel_blocks = RoundUpDiv4(channels);
   const int remain_channels = channel_blocks * 4 - channels;
 
-  auto runtime = OpenCLRuntime::Global();
+  if (kernel_.get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
 
-  std::set<std::string> built_options;
-  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
-  built_options.emplace("-Dsoftmax=" + kernel_name);
-  auto dt = DataTypeToEnum<T>::value;
-  built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-  built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  cl::Kernel softmax_kernel = runtime->BuildKernel("softmax", kernel_name, built_options);
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
+    built_options.emplace("-Dsoftmax=" + kernel_name);
+    auto dt = DataTypeToEnum<T>::value;
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
 
-  uint32_t idx = 0;
-  softmax_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(logits->buffer())));
-  softmax_kernel.setArg(idx++, static_cast<int>(channels));
-  softmax_kernel.setArg(idx++, remain_channels);
-  softmax_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    uint32_t idx = 0;
+    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(logits->buffer())));
+    kernel_.setArg(idx++, static_cast<int>(channels));
+    kernel_.setArg(idx++, remain_channels);
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+  }
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
@@ -48,7 +50,7 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
      << output->dim(1) << "_"
      << output->dim(2) << "_"
      << output->dim(3);
-  TuningOrRun3DKernel(softmax_kernel, ss.str(), gws, lws, future);
+  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 }
 
 template

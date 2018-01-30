@@ -11,68 +11,6 @@
 namespace mace {
 namespace kernels {
 
-static void Pooling(const Tensor *input,
-                    const int *stride,
-                    const int *paddings,
-                    const int pooling_size,
-                    const PoolingType type,
-                    const DataType dt,
-                    Tensor *output,
-                    StatsFuture *future) {
-  index_t batch = output->dim(0);
-  index_t out_height = output->dim(1);
-  index_t out_width = output->dim(2);
-  index_t channels = output->dim(3);
-
-  index_t channel_blocks = (channels + 3) / 4;
-
-  auto runtime = OpenCLRuntime::Global();
-  std::set<std::string> built_options;
-  std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
-  built_options.emplace("-Dpooling=" + kernel_name);
-  if (type == MAX && input->dtype() == output->dtype()) {
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-    built_options.emplace(dt == DT_HALF ? "-DFP16" : "");
-  } else {
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-  }
-  if (type == AVG) {
-    built_options.emplace("-DPOOL_AVG");
-  }
-  auto pooling_kernel = runtime->BuildKernel("pooling", kernel_name, built_options);
-
-  uint32_t idx = 0;
-  pooling_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-  pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(1)));
-  pooling_kernel.setArg(idx++, static_cast<int32_t>(input->dim(2)));
-  pooling_kernel.setArg(idx++, static_cast<int32_t>(out_height));
-  pooling_kernel.setArg(idx++, paddings[0] / 2);
-  pooling_kernel.setArg(idx++, paddings[1] / 2);
-  pooling_kernel.setArg(idx++, stride[0]);
-  pooling_kernel.setArg(idx++, pooling_size);
-  pooling_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
-
-  const uint32_t gws[3] = {
-      static_cast<uint32_t>(channel_blocks),
-      static_cast<uint32_t>(out_width),
-      static_cast<uint32_t>(batch * out_height),
-  };
-  const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(pooling_kernel);
-  std::vector<uint32_t> lws(4, 1);
-  lws[0] = std::min<uint32_t>(channel_blocks, kwg_size);
-  lws[1] = std::min<uint32_t>(out_width, kwg_size / lws[0]);
-  lws[2] = std::min<uint32_t>(out_height * batch, kwg_size / (lws[0] * lws[1]));
-  std::stringstream ss;
-  ss << "pooling_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
-  TuningOrRun3DKernel(pooling_kernel, ss.str(), gws, lws, future);
-}
-
 template<typename T>
 void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                        Tensor *output,
@@ -95,8 +33,57 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
-  Pooling(input, strides_, paddings.data(), kernels_[0], pooling_type_,
-          DataTypeToEnum<T>::value, output, future);
+  index_t batch = output->dim(0);
+  index_t out_height = output->dim(1);
+  index_t out_width = output->dim(2);
+  index_t channels = output->dim(3);
+
+  index_t channel_blocks = (channels + 3) / 4;
+
+  if (kernel_.get() == nullptr) {
+    const DataType dt = DataTypeToEnum<T>::value;
+    auto runtime = OpenCLRuntime::Global();
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
+    built_options.emplace("-Dpooling=" + kernel_name);
+    if (pooling_type_ == MAX && input->dtype() == output->dtype()) {
+      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+      built_options.emplace(dt == DT_HALF ? "-DFP16" : "");
+    } else {
+      built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    }
+    if (pooling_type_ == AVG) {
+      built_options.emplace("-DPOOL_AVG");
+    }
+    kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
+
+    uint32_t idx = 0;
+    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
+    kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
+    kernel_.setArg(idx++, static_cast<int32_t>(out_height));
+    kernel_.setArg(idx++, paddings[0] / 2);
+    kernel_.setArg(idx++, paddings[1] / 2);
+    kernel_.setArg(idx++, strides_[0]);
+    kernel_.setArg(idx++, kernels_[0]);
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+  }
+
+  const uint32_t gws[3] = {
+      static_cast<uint32_t>(channel_blocks),
+      static_cast<uint32_t>(out_width),
+      static_cast<uint32_t>(batch * out_height),
+  };
+  std::vector<uint32_t> lws = {8, 16, 8, 1};
+  std::stringstream ss;
+  ss << "pooling_opencl_kernel_"
+     << output->dim(0) << "_"
+     << output->dim(1) << "_"
+     << output->dim(2) << "_"
+     << output->dim(3);
+  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 
 }
 
