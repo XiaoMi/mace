@@ -145,6 +145,7 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         ${DSP_MODE_FLAG} \
                                         --obfuscate=True || exit -1
 
+
 echo "Step 3: Download mace static library"
 download_and_link_lib
 
