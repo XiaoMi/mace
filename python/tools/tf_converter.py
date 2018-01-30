@@ -34,8 +34,10 @@ def main(unused_args):
     output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
       input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
   else:
+    input_shape = [int(x) for x in FLAGS.input_shape.split(',')]
     output_graph_def = tf_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
+      input_graph_def, FLAGS.input_node, input_shape, FLAGS.output_node,
+      FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
     source_converter_lib.convert_to_source(output_graph_def, mode_pb_checksum, FLAGS.template, FLAGS.obfuscate,
@@ -124,6 +126,11 @@ def parse_args():
     type=int,
     default=0,
     help="dsp run mode, defalut=0")
+  parser.add_argument(
+    "--input_shape",
+    type=str,
+    default="1,512,512,3",
+    help="input shape.")
   return parser.parse_known_args()
 
 

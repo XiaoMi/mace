@@ -2,7 +2,12 @@ from lib.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
 import math
+import copy
 from lib.python.tools import memory_optimizer
+from tensorflow.core.framework import attr_value_pb2
+from tensorflow.core.framework import graph_pb2
+from tensorflow.core.framework import tensor_shape_pb2
+from tensorflow.core.framework import node_def_pb2
 
 # TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
@@ -903,10 +908,27 @@ class Optimizer:
     new_net = self.fold_batch_norm()
     return new_net
 
-def convert_to_mace_pb(input_graph_def, input_node, output_node, data_type, device, winograd):
+def add_shape_info(input_graph_def, input_node, input_shape):
+  inputs_replaced_graph = graph_pb2.GraphDef()
+  for node in input_graph_def.node:
+    if node.name == input_node:
+      placeholder_node = copy.deepcopy(node)
+      placeholder_node.attr.clear()
+      placeholder_node.attr['shape'].shape.dim.extend([
+        tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in input_shape
+      ])
+      placeholder_node.attr['dtype'].CopyFrom(node.attr['dtype'])
+      inputs_replaced_graph.node.extend([placeholder_node])
+    else:
+      inputs_replaced_graph.node.extend([copy.deepcopy(node)])
+  return inputs_replaced_graph
+
+
+def convert_to_mace_pb(input_graph_def, input_node, input_shape, output_node, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
 
+  input_graph_def = add_shape_info(input_graph_def, input_node, input_shape)
   with tf.Session() as session:
     with session.graph.as_default() as graph:
       tf.import_graph_def(input_graph_def, name="")
