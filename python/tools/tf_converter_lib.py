@@ -4,10 +4,8 @@ import numpy as np
 import math
 import copy
 from lib.python.tools import memory_optimizer
-from tensorflow.core.framework import attr_value_pb2
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.framework import tensor_shape_pb2
-from tensorflow.core.framework import node_def_pb2
 
 # TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
