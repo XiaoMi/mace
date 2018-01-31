@@ -52,6 +52,7 @@ build_and_run()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
     $PRODUCTION_MODE_BUILD_FLAGS || exit -1
 
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
