@@ -43,7 +43,8 @@ def valid_output(out_shape, mace_out_file, tf_out_value):
   if mace_out_value.size != 0:
     similarity = (1 - spatial.distance.cosine(tf_out_value.flat, mace_out_value))
     print 'MACE VS TF similarity: ', similarity
-    if (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
+    if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
+        (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
         (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
       print '=======================Similarity Test Passed======================'
     else:

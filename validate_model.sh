@@ -29,6 +29,9 @@ if [ x"$RUNTIME" = x"dsp" ]; then
 elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
+elif [ x"$RUNTIME" = x"cpu" ]; then
+  DATA_TYPE="DT_FLOAT"
+  DEVICE_TYPE="CPU"
 else
   Usage
   exit -1
@@ -62,6 +65,9 @@ build_and_run()
   if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != true ]];then
     tuning_flag=1
     round=0 # only warm up
+  elif [[ "$PRODUCTION_MODE" != true ]];then
+    tuning_flag=0
+    round=1
   else
     tuning_flag=0
     round=2
