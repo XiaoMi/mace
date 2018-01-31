@@ -158,7 +158,6 @@ bool HexagonControlWrapper::TeardownGraph() {
 
 void HexagonControlWrapper::PrintLog() {
   char *buf;
-  unsigned char *p;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
   hexagon_nn_getlog(nn_id_, reinterpret_cast<unsigned char*>(buf), PRINT_BUFSIZE);
   LOG(INFO) << string(buf);
@@ -168,7 +167,6 @@ void HexagonControlWrapper::PrintLog() {
 void HexagonControlWrapper::PrintGraph() {
   LOG(INFO) << "Print Graph";
   char *buf;
-  unsigned char *p;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
   hexagon_nn_snpprint(nn_id_, reinterpret_cast<unsigned char*>(buf), PRINT_BUFSIZE);
   LOG(INFO) << string(buf);

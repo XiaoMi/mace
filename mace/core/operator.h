@@ -94,7 +94,6 @@ class Operator : public OperatorBase {
 
     for (const string &output_str : operator_def.output()) {
       if (ws->HasTensor(output_str)) {
-        Tensor *found_tensor = ws->GetTensor(output_str);
         outputs_.push_back(ws->GetTensor(output_str));
       } else {
         outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(

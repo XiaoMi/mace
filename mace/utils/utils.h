@@ -52,7 +52,7 @@ inline std::string ObfuscateString(const std::string &src,
                                    const std::string &lookup_table) {
   std::string dest;
   dest.resize(src.size());
-  for (int i = 0; i < src.size(); i++) {
+  for (size_t i = 0; i < src.size(); i++) {
     dest[i] = src[i] ^ lookup_table[i % lookup_table.size()];
   }
   return std::move(dest);
@@ -73,7 +73,7 @@ inline std::string ObfuscateSymbol(const std::string &src) {
   dest[0] = src[0]; // avoid invalid symbol which starts from 0-9
   const std::string encode_dict =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
-  for (int i = 1; i < src.size(); i++) {
+  for (size_t i = 1; i < src.size(); i++) {
     char ch = src[i];
     int idx;
     if (ch >= '0' && ch <= '9') {

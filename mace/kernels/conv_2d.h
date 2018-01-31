@@ -94,8 +94,6 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     index_t padded_h_stop = input_height + paddings[0] - paddings[0] / 2;
     index_t padded_w_stop = input_width + paddings[1] - paddings[1] / 2;
 
-    index_t kernel_size = input_channels * kernel_h * kernel_w;
-
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);

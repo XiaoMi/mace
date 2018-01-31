@@ -76,7 +76,6 @@ struct PoolingFunctor : PoolingFunctorBase {
     index_t height = output_shape[1];
     index_t width = output_shape[2];
     index_t channels = output_shape[3];
-    index_t out_image_size = height * width;
 
     index_t input_height = input_shape[1];
     index_t input_width = input_shape[2];

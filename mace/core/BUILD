@@ -42,9 +42,8 @@ cc_library(
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
-    linkopts = if_android([
+    linkopts = ["-ldl",] + if_android([
         "-pie",
-        "-ldl",
         "-lm",
     ]),
     deps = [
