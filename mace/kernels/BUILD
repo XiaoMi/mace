@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_neon_enabled")
+load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled")
 
 cc_library(
     name = "kernels",
@@ -23,7 +23,7 @@ cc_library(
     ]) + if_neon_enabled(glob([
         "neon/*.h",
     ])),
-    copts = if_neon_enabled(["-fopenmp"]),
+    copts = if_openmp_enabled(["-fopenmp"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",

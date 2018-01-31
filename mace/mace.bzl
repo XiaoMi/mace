@@ -53,3 +53,9 @@ def if_not_hexagon_enabled(a):
       "//mace:hexagon_enabled": [],
       "//conditions:default": a,
   })
+
+def if_openmp_enabled(a):
+  return select({
+      "//mace:openmp_enabled": a,
+      "//conditions:default": [],
+  })

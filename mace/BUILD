@@ -51,3 +51,11 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "openmp_enabled",
+    define_values = {
+        "openmp": "true",
+    },
+    visibility = ["//visibility:public"],
+)

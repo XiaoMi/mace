@@ -114,7 +114,7 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     const T *bias_ptr = bias == nullptr ? nullptr : bias->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(4)
     for (int n = 0; n < batch; ++n) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {

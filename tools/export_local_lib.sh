@@ -55,7 +55,8 @@ build_target()
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
-    --copt="-DMACE_OBFUSCATE_LITERALS" || exit -1
+    --copt="-DMACE_OBFUSCATE_LITERALS" \
+    --define openmp=true || exit -1
 }
 
 merge_libs()
