@@ -9,7 +9,7 @@ Usage() {
 
 if [ $# -lt 4 ]; then
   Usage
-  exit -1
+  exit 1
 fi
 
 # ANDROID_ABI=arm64-v8a
@@ -68,14 +68,14 @@ build_target()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
-    $DSP_MODE_BUILD_FLAGS || exit -1
+    $DSP_MODE_BUILD_FLAGS || exit 1
 }
 
 merge_libs()
 {
   CREATE_LIB_NAME=$1
   LIBS_LIST=$2
-  echo "create ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.a" > ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
+  echo "create ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.a" > ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
 
   for lib_target in ${LIBS_LIST[*]}
   do
@@ -88,27 +88,27 @@ merge_libs()
     else
       bin_path="${bin_path}.lo"
     fi
-    echo "addlib ${bin_path}" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
+    echo "addlib ${bin_path}" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
   done
 
-  echo "save" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
-  echo "end" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
+  echo "save" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
+  echo "end" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
 
   $ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar \
-    -M < ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit -1
+    -M < ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
 }
 
 
 echo "Step 1: Generate encrypted opencl source"
 python mace/python/tools/encrypt_opencl_codegen.py \
     --cl_kernel_dir=./mace/kernels/opencl/cl/ \
-    --output_path=${CODEGEN_DIR}/opencl/opencl_encrypt_program.cc || exit -1
+    --output_path=${CODEGEN_DIR}/opencl/opencl_encrypt_program.cc || exit 1
 
 
 echo "Step 2: Generate version source"
 rm -rf ${VERSION_CODEGEN_DIR}
 mkdir ${VERSION_CODEGEN_DIR}
-bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc || exit -1
+bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc || exit 1
 
 
 echo "Step 3: Build libmace targets"
@@ -131,8 +131,8 @@ mkdir -p ${EXPORT_INCLUDE_DIR}/mace/core/public
 rm -rf ${EXPORT_LIB_DIR}
 mkdir -p ${EXPORT_LIB_DIR}
 
-cp ${MACE_SOURCE_DIR}/mace/core/public/* ${EXPORT_INCLUDE_DIR}/mace/core/public || exit -1
-cp ${LIBMACE_TEMP_DIR}/libmace.a ${LIBMACE_TEMP_DIR}/libmace_dev.a ${LIBMACE_TEMP_DIR}/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit -1
+cp ${MACE_SOURCE_DIR}/mace/core/public/* ${EXPORT_INCLUDE_DIR}/mace/core/public || exit 1
+cp ${LIBMACE_TEMP_DIR}/libmace.a ${LIBMACE_TEMP_DIR}/libmace_dev.a ${LIBMACE_TEMP_DIR}/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit 1
 
 echo "Step 6: Remove temporary file"
 rm -rf ${LIBMACE_TEMP_DIR}
