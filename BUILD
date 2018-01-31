@@ -5,12 +5,13 @@ load(
     "if_production_mode",
     "if_not_production_mode",
     "if_hexagon_enabled",
+    "if_openmp_enabled",
 )
 
 cc_binary(
     name = "mace_run",
     srcs = ["mace_run.cc"],
-    linkopts = if_neon_enabled(["-fopenmp"]),
+    linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
         "//codegen:generated_models",
