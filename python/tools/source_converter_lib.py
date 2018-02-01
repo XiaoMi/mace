@@ -77,9 +77,10 @@ class TensorInfo:
     self.name = t.name
     self.data_type = mace_pb2.DataType.Name(t.data_type)
     if t.data_type == mace_pb2.DT_FLOAT:
-      self.data = bytearray(struct.pack('%sf' % len(t.float_data), *t.float_data))
+      self.data_type = mace_pb2.DT_HALF
+      self.data = bytearray(np.array(t.float_data).astype(np.float16).tobytes())
     elif t.data_type == mace_pb2.DT_INT32:
-      self.data = bytearray(struct.pack('%si' % len(t.int32_data), *t.int32_data))
+      self.data = bytearray(np.array(t.int32_data).astype(np.int32).tobytes())
     elif t.data_type == mace_pb2.DT_UINT8:
       self.data = bytearray(np.array(t.int32_data).astype(np.uint8).tolist())
 

@@ -17,7 +17,7 @@ namespace {{tag}} {
 void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors) {
   tensors.emplace_back(mace::ConstTensor(
       {{ tensor.name|tojson }}, {{ tensor.name }},
-      { {{ tensor.dims|join(', ') }} }, {{ tensor.data_type }}, {{ tensor.node_id }}));
+      { {{ tensor.dims|join(', ') }} }, {{ tensor_info.data_type }}, {{ tensor.node_id }}));
 }
 
 }  // namespace {{tag}}
