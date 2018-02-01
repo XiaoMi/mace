@@ -22,14 +22,21 @@ else
   exit -1
 fi
 
+MACE_RUNTIME=cpu
+
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
   DEVICE_TYPE="HEXAGON"
   LIB_FOLDER_NAME="${LIB_FOLDER_NAME}_dsp"
+  MACE_RUNTIME=$RUNTIME
 elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
+  MACE_RUNTIME=$RUNTIME
 elif [ x"$RUNTIME" = x"cpu" ]; then
+  DATA_TYPE="DT_FLOAT"
+  DEVICE_TYPE="CPU"
+elif [ x"$RUNTIME" = x"local" ];then
   DATA_TYPE="DT_FLOAT"
   DEVICE_TYPE="CPU"
 else
@@ -108,6 +115,27 @@ build_and_run()
     --round=$round || exit -1
 }
 
+local_build_and_run()
+{
+
+  bazel build --verbose_failures -c opt --strip always examples:mace_run \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
+    --define production=true || exit -1
+
+  MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
+  bazel-bin/examples/mace_run \
+      --input_shape="${INPUT_SHAPE}"\
+      --output_shape="${OUTPUT_SHAPE}"\
+      --input_file=${MODEL_DIR}/${INPUT_FILE_NAME} \
+      --output_file=${MODEL_DIR}/${OUTPUT_FILE_NAME} \
+      --device=${DEVICE_TYPE}   \
+      --round=1 || exit -1
+}
+
 download_and_link_lib()
 {
   if [ ! -d "${LIBMACE_SOURCE_DIR}/lib/${LIB_FOLDER_NAME}" ]; then
@@ -144,7 +172,7 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         --input_node=${TF_INPUT_NODE} \
                                         --output_node=${TF_OUTPUT_NODE} \
                                         --data_type=${DATA_TYPE} \
-                                        --runtime=${RUNTIME} \
+                                        --runtime=${MACE_RUNTIME} \
                                         --output_type=source \
                                         --template=${LIBMACE_SOURCE_DIR}/lib/python/tools/model.template \
                                         --model_tag=${MODEL_TAG} \
@@ -155,37 +183,48 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
 echo "Step 3: Download mace static library"
 download_and_link_lib
 
-echo "Step 4: Run model on the phone with files"
-build_and_run false
+if [ x"$RUNTIME" = x"local" ]; then
 
-echo "Step 5: Generate OpenCL binary program and config code"
-rm -rf ${CL_BIN_DIR}
-rm -rf ${CL_CODEGEN_DIR}
-mkdir -p ${CL_BIN_DIR}
-mkdir -p ${CL_CODEGEN_DIR}
-adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR}
-python lib/python/tools/opencl_codegen.py \
-  --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
+  echo "Step 4: remove the mace run result."
+  rm -rf ${MODEL_DIR}/${OUTPUT_FILE_NAME}
 
-echo "Step 6: Generate tuning source file"
-adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR}
-rm -rf ${TUNING_CODEGEN_DIR}
-mkdir -p ${TUNING_CODEGEN_DIR}
-python lib/python/tools/binary_codegen.py \
-  --binary_file=${CL_BIN_DIR}/mace_run.config --output_path=${TUNING_CODEGEN_DIR}/tuning_params.cc
+  echo "Step 8: Run model on the local pc using binary"
+  local_build_and_run
 
-echo "Step 7: Run model on the phone using binary"
-build_and_run true
+else
+  echo "Step 4: Run model on the phone with files"
+  build_and_run false
 
-echo "Step 8: Pull the mace run result."
-rm -rf ${MODEL_DIR}/${OUTPUT_FILE_NAME}
-adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_DIR}
+  echo "Step 5: Generate OpenCL binary program and config code"
+  rm -rf ${CL_BIN_DIR}
+  rm -rf ${CL_CODEGEN_DIR}
+  mkdir -p ${CL_BIN_DIR}
+  mkdir -p ${CL_CODEGEN_DIR}
+  adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR}
+  python lib/python/tools/opencl_codegen.py \
+    --cl_binary_dir=${CL_BIN_DIR} --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
+
+  echo "Step 6: Generate tuning source file"
+  adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR}
+  rm -rf ${TUNING_CODEGEN_DIR}
+  mkdir -p ${TUNING_CODEGEN_DIR}
+  python lib/python/tools/binary_codegen.py \
+    --binary_file=${CL_BIN_DIR}/mace_run.config --output_path=${TUNING_CODEGEN_DIR}/tuning_params.cc
+
+  echo "Step 7: Run model on the phone using binary"
+  build_and_run true
+
+  echo "Step 8: Pull the mace run result."
+  rm -rf ${MODEL_DIR}/${OUTPUT_FILE_NAME}
+  adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_DIR}
+
+fi
 
 echo "Step 9: Validate the result"
 python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
     --input_file ${MODEL_DIR}/${INPUT_FILE_NAME} \
     --mace_out_file ${MODEL_DIR}/${OUTPUT_FILE_NAME} \
-    --mace_runtime ${RUNTIME} \
+    --mace_runtime ${MACE_RUNTIME} \
     --input_node ${TF_INPUT_NODE} \
     --output_node ${TF_OUTPUT_NODE} \
     --input_shape ${INPUT_SHAPE} \
