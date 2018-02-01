@@ -94,10 +94,18 @@ merge_libs()
     lib_dir=${lib_dir#//}
     lib_name_prefix=lib`echo ${lib_target} | cut -d: -f2`
     bin_path="${MACE_SOURCE_DIR}/bazel-bin/${lib_dir}/${lib_name_prefix}"
-    if [ -f "${bin_path}.a" ]; then
-      bin_path="${bin_path}.a"
+    if [ x"${RUNTIME}" = x"local" ]; then
+      if [ -f "${bin_path}.pic.a" ]; then
+        bin_path="${bin_path}.pic.a"
+      else
+        bin_path="${bin_path}.pic.lo"
+      fi
     else
-      bin_path="${bin_path}.lo"
+      if [ -f "${bin_path}.a" ]; then
+        bin_path="${bin_path}.a"
+      else
+        bin_path="${bin_path}.lo"
+      fi
     fi
     echo "addlib ${bin_path}" >> ${LIBMACE_TEMP_DIR}/${CREATE_LIB_NAME}.mri || exit 1
   done
