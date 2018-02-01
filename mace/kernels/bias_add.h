@@ -33,14 +33,13 @@ struct BiasAddFunctor {
     T *output_ptr = output->mutable_data<T>();
 
 
-    index_t pos = 0;
-#pragma omp parallel for
+#pragma omp parallel for collapse(4)
     for (index_t n = 0; n < batch; ++n) {
       for (index_t h = 0; h < height; ++h) {
         for (index_t w = 0; w < width; ++w) {
           for (index_t c = 0; c < channels; ++c) {
+            index_t pos = (((n * height) + h) * width + w) * channels + c;
             output_ptr[pos] = input_ptr[pos] + bias_ptr[c];
-            ++pos;
           }
         }
       }

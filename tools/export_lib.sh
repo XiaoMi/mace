@@ -71,6 +71,17 @@ build_target()
     $DSP_MODE_BUILD_FLAGS || exit 1
 }
 
+build_local_target()
+{
+  BAZEL_TARGET=$1
+  bazel build --verbose_failures -c opt --strip always $BAZEL_TARGET \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_OBFUSCATE_LITERALS" \
+    --define openmp=true || exit -1
+}
+
 merge_libs()
 {
   CREATE_LIB_NAME=$1
@@ -113,10 +124,17 @@ bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc || e
 
 echo "Step 3: Build libmace targets"
 bazel clean
-for target in ${all_targets[*]}
-do
-  build_target ${target}
-done
+if [ x"${RUNTIME}" = x"local" ]; then
+  for target in ${all_targets[*]}
+  do
+    build_local_target ${target}
+  done
+else
+  for target in ${all_targets[*]}
+  do
+    build_target ${target}
+  done
+fi
 
 
 echo "Step 4: Create mri files and generate merged libs"

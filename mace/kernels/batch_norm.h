@@ -86,19 +86,18 @@ struct BatchNormFunctor : BatchNormFunctorBase {
       }
     }
 
-    index_t pos = 0;
 
-#pragma omp parallel for
+#pragma omp parallel for collapse(4)
     for (index_t n = 0; n < batch; ++n) {
       for (index_t h = 0; h < height; ++h) {
         for (index_t w = 0; w < width; ++w) {
           for (index_t c = 0; c < channels; ++c) {
+            index_t pos = (((n * height) + h) * width + w) * channels + c;
             if (folded_constant_) {
               output_ptr[pos] = scale_ptr[c] * input_ptr[pos] + offset_ptr[c];
             } else {
               output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
             }
-            ++pos;
           }
         }
       }

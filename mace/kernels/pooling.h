@@ -76,7 +76,6 @@ struct PoolingFunctor : PoolingFunctorBase {
     index_t height = output_shape[1];
     index_t width = output_shape[2];
     index_t channels = output_shape[3];
-    index_t out_image_size = height * width;
 
     index_t input_height = input_shape[1];
     index_t input_width = input_shape[2];
@@ -97,11 +96,12 @@ struct PoolingFunctor : PoolingFunctorBase {
     int padded_w_start = 0 - paddings[1] / 2;
 
     if (pooling_type_ == MAX) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(4)
       for (int b = 0; b < batch; ++b) {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             for (int c = 0; c < channels; ++c) {
+              index_t out_offset = (((b * height) + h) * width + w) * channels + c;
               index_t in_offset = b * in_image_size * input_channels + c;
               T res = std::numeric_limits<T>::lowest();
               for (int kh = 0; kh < kernel_h; ++kh) {
@@ -115,18 +115,18 @@ struct PoolingFunctor : PoolingFunctorBase {
                   }
                 }
               }
-              *output = res;
-              output++;
+              output[out_offset] = res;
             }
           }
         }
       }
     } else if (pooling_type_ == AVG) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(4)
       for (int b = 0; b < batch; ++b) {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             for (int c = 0; c < channels; ++c) {
+              index_t out_offset = (((b * height) + h) * width + w) * channels + c;
               index_t in_offset = b * in_image_size * input_channels + c;
               T sum = 0;
               int block_size = 0;
@@ -142,8 +142,7 @@ struct PoolingFunctor : PoolingFunctorBase {
                   }
                 }
               }
-              *output = sum / block_size;
-              output++;
+              output[out_offset] = sum / block_size;
             }
           }
         }

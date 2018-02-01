@@ -105,8 +105,6 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     index_t padded_h_stop = input_height + paddings[0] - paddings[0] / 2;
     index_t padded_w_stop = input_width + paddings[1] - paddings[1] / 2;
 
-    const index_t kernel_size = kernel_h * kernel_w;
-
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);
@@ -116,7 +114,7 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     const T *bias_ptr = bias == nullptr ? nullptr : bias->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(4)
     for (int n = 0; n < batch; ++n) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {

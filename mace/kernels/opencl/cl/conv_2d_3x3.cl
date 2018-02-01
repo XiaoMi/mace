@@ -62,17 +62,17 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
     const int in_idx = mul24(in_ch_blk, in_width);
     int filter_x_part0 = in_ch_blk << 2;
+    int in_hb_idx = height_idx;
     for (short hb_idx = 0; hb_idx < 3; ++hb_idx) {
-      // TODO (heliangliang) optimize out these muls
-      int in_hb_value = height_idx + mul24(hb_idx, dilation_h);
-      in_hb_value = select(in_hb_value + batch_idx,
-                           -1,
-                           (in_hb_value < 0 || in_hb_value >= in_height));
+      int in_hb_value = select(in_hb_idx + batch_idx,
+                               -1,
+                               (in_hb_idx < 0 || in_hb_idx >= in_height));
       int filter_x_part1 = 0;
+      int in_width_idx = 0;
       for (short width_idx = 0; width_idx < 3; ++width_idx) {
         int in_width_value;
 #define READ_INPUT(i)                                                                \
-        in_width_value = in_width##i + mul24(width_idx, dilation_w);                 \
+        in_width_value = in_width##i + in_width_idx;                                 \
         in_width_value = select(in_idx + in_width_value,                             \
                                 -1,                                                  \
                                 (in_width_value < 0 || in_width_value >= in_width)); \
@@ -120,8 +120,10 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
         out4 = mad(in4.w, weights3, out4);
 
         filter_x_part1 += rounded_in_ch;
+        in_width_idx += dilation_w;
       }
       filter_x_part0 += rounded_in_ch_x_3;
+      in_hb_idx += dilation_h;
     }
   }
 

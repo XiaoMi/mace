@@ -43,7 +43,8 @@ bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET \
    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
    --copt="-DMACE_DISABLE_NO_TUNING_WARNING" \
    --copt="-Werror=return-type" \
-   --define neon=false
+   --define neon=false \
+   --define openmp=true
 
 if [ $? -ne 0 ]; then
   exit 1

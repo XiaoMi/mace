@@ -94,8 +94,6 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     index_t padded_h_stop = input_height + paddings[0] - paddings[0] / 2;
     index_t padded_w_stop = input_width + paddings[1] - paddings[1] / 2;
 
-    index_t kernel_size = input_channels * kernel_h * kernel_w;
-
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);
@@ -105,13 +103,15 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
     auto output_data = output->mutable_data<T>();
 
+#pragma omp parallel for collapse(4)
     for (int n = 0; n < batch; ++n) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {
           for (int c = 0; c < channels; ++c) {
+            const int out_idx = ((n * height + h) * width + w) * channels + c;
             T bias_channel = 0.0f;
             if (bias) bias_channel = bias_data[c];
-            *output_data = bias_channel;
+            output_data[out_idx] = bias_channel;
             T sum = 0.0f;
             const T *filter_ptr = filter_data + c;
             for (int kh = 0; kh < kernel_h; ++kh) {
@@ -125,8 +125,6 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                                    inw >= padded_w_start && inw < padded_w_stop,
                                "Out of range read from input: ", inh, ", ",
                                inw);
-                    // else padding with 0:
-                    // sum += 0;
                   } else {
                     index_t input_offset =
                         n * input_height * input_width * input_channels +
@@ -138,13 +136,11 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                 }
               }
             }
-            *output_data += sum;
-            output_data++;
+            output_data[out_idx] += sum;
           }
         }
       }
     }
-    output_data = output->mutable_data<T>();
     DoActivation(output_data, output_data, output->NumElements(), activation_,
                  relux_max_limit_, prelu_alpha_);
   }

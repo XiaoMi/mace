@@ -29,21 +29,20 @@ struct SoftmaxFunctor {
     const index_t num_classes = logits_shape.back();
 #pragma omp parallel for
     for (index_t i = 0; i < batch_size; ++i) {
-      T max_value = *logits_ptr;
+      const index_t pos = i * num_classes;
+      T max_value = logits_ptr[pos];
       for (index_t c = 1; c < num_classes; ++c) {
-        max_value = std::max(max_value, logits_ptr[c]);
+        max_value = std::max(max_value, logits_ptr[pos + c]);
       }
       // TODO: check overflow?
       T sum = 0;
       std::vector<T> exp_data(num_classes);
       for (index_t c = 0; c < num_classes; ++c) {
-        exp_data[c] = ::exp((*logits_ptr - max_value));
+        exp_data[c] = ::exp((logits_ptr[pos + c] - max_value));
         sum += exp_data[c];
-        logits_ptr++;
       }
       for (index_t c = 0; c < num_classes; ++c) {
-        *output_ptr = exp_data[c] / sum;
-        output_ptr++;
+        output_ptr[pos + c] = exp_data[c] / sum;
       }
     }
   }
