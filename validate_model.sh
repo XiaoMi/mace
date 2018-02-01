@@ -117,6 +117,13 @@ build_and_run()
 
 local_build_and_run()
 {
+  bazel build --verbose_failures -c opt --strip always codegen:generated_models \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
+    --define production=true || exit -1
 
   bazel build --verbose_failures -c opt --strip always examples:mace_run \
     --copt="-std=c++11" \
@@ -234,8 +241,14 @@ echo "Step 10: Generate project static lib"
 rm -rf ${LIBMACE_BUILD_DIR}
 mkdir -p ${LIBMACE_BUILD_DIR}/lib
 cp -rf ${LIBMACE_SOURCE_DIR}/include ${LIBMACE_BUILD_DIR}
-cp ${LIBMACE_SOURCE_DIR}/lib/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/lib
-$ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar \
-  -M < tools/libmace.mri || exit -1
+
+if [ x"$RUNTIME" = x"local" ]; then
+  $ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar \
+    -M < tools/libmace_local.mri || exit -1
+else
+  cp ${LIBMACE_SOURCE_DIR}/lib/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/lib
+  $ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin/aarch64-linux-android-ar \
+    -M < tools/libmace.mri || exit -1
+fi
 
 echo "Done"
