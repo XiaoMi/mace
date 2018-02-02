@@ -1,6 +1,0 @@
-create build/lib/libmace_generated.a
-addlib lib/mace/libmace.a
-addlib lib/mace/libmace_prod.a
-addlib bazel-bin/codegen/libgenerated_models.pic.a
-save
-end

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Must run at root dir of libmace project.
 # python tools/mace_tools.py \
 #     --global_config=models/config \
 #     --round=100 \
@@ -178,21 +179,18 @@ def parse_model_configs():
     model_dirs = []
     model_output_map = {}
     if ("models" in config_sections) and (config_parser.items("models")):
-      model_dirs_relative_to_config_str = config_parser.get(
+      model_dirs_str = config_parser.get(
           "models", "DIRECTORIES")
-      model_dirs_relative_to_config_str = model_dirs_relative_to_config_str.rstrip(
+      model_dirs_str = model_dirs_str.rstrip(
           ",")
 
       # Remove repetition element
-      model_dirs_relative_to_config_str_list = list(
-          set(model_dirs_relative_to_config_str.split(",")))
+      model_dirs = list(
+          set(model_dirs_str.split(",")))
 
-      for d in model_dirs_relative_to_config_str_list:
-        model_dir = os.path.join(global_config_dir, d)
-        model_dirs.append(model_dir)
-
+      for model_dir in model_dirs:
         # Create output dirs
-        model_output_dir = os.path.join(FLAGS.output_dir, d)
+        model_output_dir = os.path.join(FLAGS.output_dir, model_dir)
 
         model_output_map[model_dir] = model_output_dir
     else:
