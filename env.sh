@@ -15,7 +15,6 @@ CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
 GENERATED_MODEL_LIB_NAME="libgenerated_models.a"
-GENERATED_MODEL_LIB_PATH="bazel-bin/codegen/${GENERATED_MODEL_LIB_NAME}"
 
 MACE_RUNTIME=cpu
 if [ x"$RUNTIME" = x"dsp" ]; then
@@ -33,4 +32,7 @@ elif [ x"$RUNTIME" = x"cpu" ]; then
 elif [ x"$RUNTIME" = x"local" ];then
   DATA_TYPE="DT_FLOAT"
   DEVICE_TYPE="CPU"
+  GENERATED_MODEL_LIB_NAME="libgenerated_models.pic.a"
 fi
+
+GENERATED_MODEL_LIB_PATH="bazel-bin/codegen/${GENERATED_MODEL_LIB_NAME}"

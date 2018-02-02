@@ -31,9 +31,17 @@ mkdir -p ${LIBMACE_TEMP_DIR}/lib
 
 cp lib/mace/libmace.a \
   lib/mace/libmace_prod.a \
-  bazel-bin/codegen/libgenerated_opencl_prod.a \
-  bazel-bin/codegen/libgenerated_tuning_params.a \
   ${LIBMACE_TEMP_DIR}/lib/
+
+if [ x"RUNTIME" = x"local" ]; then
+  cp bazel-bin/codegen/libgenerated_opencl_prod.pic.a \
+    bazel-bin/codegen/libgenerated_tuning_params.pic.a \
+    ${LIBMACE_TEMP_DIR}/lib/
+else
+  cp bazel-bin/codegen/libgenerated_opencl_prod.a \
+    bazel-bin/codegen/libgenerated_tuning_params.a \
+    ${LIBMACE_TEMP_DIR}/lib/
+fi
 
 echo "create ${LIBMACE_BUILD_DIR}/libmace/lib/libmace_${PROJECT_NAME}.a" > ${LIBMACE_TEMP_DIR}/libmace.mri
 for static_lib in `ls ${LIBMACE_TEMP_DIR}/lib/`

@@ -7,6 +7,16 @@ Usage() {
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
+build_local_target()
+{
+  BAZEL_TARGET=$1
+  bazel build --verbose_failures -c opt --strip always $BAZEL_TARGET \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_OBFUSCATE_LITERALS" \
+    --define openmp=true || exit -1
+}
 
 build_target()
 {
@@ -21,5 +31,10 @@ build_target()
     --copt="-DMACE_OBFUSCATE_LITERALS" || exit 1
 }
 
-build_target //codegen:generated_opencl_prod
-build_target //codegen:generated_tuning_params
+if [ x"$RUNTIME" = x"local" ]; then
+  build_local_target //codegen:generated_opencl_prod
+  build_local_target //codegen:generated_tuning_params
+else
+  build_target //codegen:generated_opencl_prod
+  build_target //codegen:generated_tuning_params
+fi
