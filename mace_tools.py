@@ -153,7 +153,9 @@ def parse_sub_model_configs(model_dirs, global_configs):
         for config_map in config_list:
           model_config[config_map[0]] = config_map[1]
       else:
-        print("No config msg found in {}".format(model_config_path))
+        raise Exception("No config msg found in {}".format(model_config_path))
+    else:
+      raise Exception("Config file '{}' not found".format(model_config_path))
 
     model_config[tf_model_file_dir_key] = model_dir
 
@@ -241,6 +243,9 @@ def main(unused_args):
       shutil.rmtree(os.path.join(FLAGS.output_dir, "libmace"))
 
   get_libs(configs)
+
+  if FLAGS.mode == "run" and len(configs) > 1:
+    raise Exception("Mode 'run' only can execute one model config, which have been built lastest")
 
   model_output_dirs = []
   for config in configs:
