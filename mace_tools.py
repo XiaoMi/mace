@@ -54,6 +54,8 @@ def get_libs(configs):
   command = "bash tools/download_and_link_lib.sh " + libmace_name
   run_command(command)
 
+  return libmace_name
+
 
 def clear_env():
   command = "bash tools/clear_env.sh"
@@ -72,9 +74,9 @@ def generate_model_code():
   run_command(command)
 
 
-def build_mace_run(production_mode, model_output_dir):
-  command = "bash tools/build_mace_run.sh {} {}".format(
-      int(production_mode), model_output_dir)
+def build_mace_run(production_mode, model_output_dir, hexagon_mode):
+  command = "bash tools/build_mace_run.sh {} {} {}".format(
+      int(production_mode), model_output_dir, int(hexagon_mode))
   run_command(command)
 
 
@@ -98,9 +100,14 @@ def generate_production_code(model_output_dirs, pull_or_not):
   run_command(command)
 
 
-def build_mace_run_prod(model_output_dir, tuning):
+def build_mace_run_prod(model_output_dir, tuning, libmace_name):
+  if "dsp" in libmace_name:
+    hexagon_mode = True
+  else:
+    hexagon_mode = False
+
   production_or_not = False
-  build_mace_run(production_or_not, model_output_dir)
+  build_mace_run(production_or_not, model_output_dir, hexagon_mode)
   tuning_run(
       model_output_dir,
       running_round=0,
@@ -110,7 +117,7 @@ def build_mace_run_prod(model_output_dir, tuning):
   production_or_not = True
   pull_or_not = True
   generate_production_code([model_output_dir], pull_or_not)
-  build_mace_run(production_or_not, model_output_dir)
+  build_mace_run(production_or_not, model_output_dir, hexagon_mode)
 
 
 def validate_model(model_output_dir):
@@ -242,7 +249,7 @@ def main(unused_args):
     elif os.path.exists(os.path.join(FLAGS.output_dir, "libmace")):
       shutil.rmtree(os.path.join(FLAGS.output_dir, "libmace"))
 
-  get_libs(configs)
+  libmace_name = get_libs(configs)
 
   if FLAGS.mode == "run" and len(configs) > 1:
     raise Exception("Mode 'run' only can execute one model config, which have been built lastest")
@@ -266,7 +273,7 @@ def main(unused_args):
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
       generate_model_code()
-      build_mace_run_prod(model_output_dir, FLAGS.tuning)
+      build_mace_run_prod(model_output_dir, FLAGS.tuning, libmace_name)
 
     if FLAGS.mode == "run" or FLAGS.mode == "all":
       run_model(model_output_dir, FLAGS.round)

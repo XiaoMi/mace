@@ -1,10 +1,10 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/build_mace_run.sh production_mode model_output_dir"
+  echo "Usage: bash tools/build_mace_run.sh production_mode model_output_dir hexagon_mode"
 }
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
   Usage
   exit 1
 fi
@@ -14,6 +14,7 @@ source ${CURRENT_DIR}/env.sh
 
 PRODUCTION_MODE=$1
 MODEL_OUTPUT_DIR=$2
+HEXAGON_MODE=$3
 
 if [ "$PRODUCTION_MODE" = 1 ]; then
   PRODUCTION_MODE_BUILD_FLAGS="--define production=true"
@@ -36,7 +37,7 @@ if [ x"$RUNTIME" = x"local" ]; then
     --define openmp=true \
     $PRODUCTION_MODE_BUILD_FLAGS || exit 1
 else
-  if [ x"$RUNTIME" = x"dsp" ]; then
+  if [ "$HEXAGON_MODE" = 1 ]; then
     HEXAGON_MODE_BUILD_FLAG="--define hexagon=true"
   fi
 
