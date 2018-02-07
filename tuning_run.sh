@@ -19,7 +19,7 @@ PRODUCTION_MODE=$4
 
 if [ x"$RUNTIME" = x"local" ]; then
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
-  bazel-bin/examples/mace_run \
+  ${MODEL_OUTPUT_DIR}/mace_run \
       --input_shape="${INPUT_SHAPE}"\
       --output_shape="${OUTPUT_SHAPE}"\
       --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
@@ -38,7 +38,7 @@ else
     adb shell "mkdir -p ${KERNEL_DIR}" || exit 1
   fi
   adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit 1
-  adb push bazel-bin/examples/mace_run ${PHONE_DATA_DIR} || exit 1
+  adb push ${MODEL_OUTPUT_DIR}/mace_run ${PHONE_DATA_DIR} || exit 1
   adb push lib/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit 1
   
   adb </dev/null shell \

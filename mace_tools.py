@@ -251,9 +251,6 @@ def main(unused_args):
 
   libmace_name = get_libs(configs)
 
-  if FLAGS.mode == "run" and len(configs) > 1:
-    raise Exception("Mode 'run' only can execute one model config, which have been built lastest")
-
   model_output_dirs = []
   for config in configs:
     # Transfer params by environment

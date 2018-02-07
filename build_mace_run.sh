@@ -56,3 +56,8 @@ fi
 if [ "$PRODUCTION_MODE" = 1 ]; then
   cp $GENERATED_MODEL_LIB_PATH $MODEL_OUTPUT_DIR/libmace_${MODEL_TAG}.a
 fi
+
+if [ -f "$MODEL_OUTPUT_DIR/mace_run" ]; then
+  rm -rf $MODEL_OUTPUT_DIR/mace_run
+fi
+cp bazel-bin/examples/mace_run $MODEL_OUTPUT_DIR
