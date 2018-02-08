@@ -23,6 +23,10 @@ unique_ptr<Tensor> Serializer::Deserialize(const ConstTensor &proto,
   tensor->Resize(dims);
 
   switch (proto.data_type()) {
+    case DT_HALF:
+      tensor->Copy<half>(reinterpret_cast<const half*>(proto.data()),
+                         proto.data_size());
+      break;
     case DT_FLOAT:
       tensor->Copy<float>(reinterpret_cast<const float *>(proto.data()),
                           proto.data_size());
