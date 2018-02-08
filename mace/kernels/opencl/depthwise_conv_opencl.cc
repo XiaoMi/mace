@@ -149,8 +149,8 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
   std::vector<index_t> fake_filter_shape(4);
   fake_filter_shape[0] = filter->shape()[0];
   fake_filter_shape[1] = filter->shape()[1];
-  fake_filter_shape[3] = filter->shape()[2] * filter->shape()[3];
-  fake_filter_shape[2] = 1;
+  fake_filter_shape[2] = filter->shape()[2] * filter->shape()[3];
+  fake_filter_shape[3] = 1;
 
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);

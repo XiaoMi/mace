@@ -33,11 +33,7 @@ void SimpleAdd2() {
 
 TEST_F(AddnOpTest, CPUSimpleAdd2) { SimpleAdd2<DeviceType::CPU>(); }
 
-/*
 TEST_F(AddnOpTest, NEONSimpleAdd2) { SimpleAdd2<DeviceType::NEON>(); }
-
-TEST_F(AddnOpTest, OPENCLSimpleAdd2) { SimpleAdd2<DeviceType::OPENCL>(); }
-*/
 
 template <DeviceType D>
 void SimpleAdd3() {
@@ -65,9 +61,7 @@ void SimpleAdd3() {
 
 TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
 
-/*
 TEST_F(AddnOpTest, NEONSimpleAdd3) { SimpleAdd3<DeviceType::NEON>(); }
-*/
 
 template <DeviceType D>
 void RandomTest() {

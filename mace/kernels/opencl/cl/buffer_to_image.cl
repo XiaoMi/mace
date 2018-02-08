@@ -1,9 +1,9 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, oc */
+__kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int filter_w,
-                                     __private const int in_channel,
                                      __private const int out_channel,
+                                     __private const int in_channel,
                                      __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
@@ -13,23 +13,26 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, i
   const int in_channel_idx = w % rounded_in_channel;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = ((h_idx * filter_w + w_idx) * in_channel + in_channel_idx) * out_channel
-                           + out_channel_idx;
+  const int offset = ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
+                           + in_channel_idx;
 
-  const int size = out_channel - out_channel_idx;
   VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
-  if (in_channel_idx < in_channel) {
+  if (out_channel_idx < out_channel) {
+    const int size = out_channel - out_channel_idx;
     if (size < 4) {
-      switch(size) {
+      switch (size) {
         case 3:
-          values.z = *(input + offset + 2);
+          values.z = *(input + offset + 2 * in_channel);
         case 2:
-          values.y = *(input + offset + 1);
+          values.y = *(input + offset + 1 * in_channel);
         case 1:
           values.x = *(input + offset);
       }
     } else {
-      values = vload4(0, input + offset);
+      values.w = *(input + offset + 3 * in_channel);
+      values.z = *(input + offset + 2 * in_channel);
+      values.y = *(input + offset + 1 * in_channel);
+      values.x = *(input + offset);
     }
   }
 
@@ -37,10 +40,10 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, i
   CMD_TYPE(write_image, CMD_DATA_TYPE)(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, ic, oc */
+__kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_w,
-                                     __private const int in_channel,
                                      __private const int out_channel,
+                                     __private const int in_channel,
                                      __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
@@ -50,28 +53,30 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, ic, oc
   const int in_channel_idx = w % rounded_in_channel;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = ((h_idx * filter_w + w_idx) * in_channel + in_channel_idx) * out_channel
-                           + out_channel_idx;
+  const int offset = ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
+                           + in_channel_idx;
 
-  if (in_channel_idx < in_channel) {
+  if (out_channel_idx < out_channel) {
     int2 coord = (int2)(w, h);
     VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
     const int size = (out_channel - out_channel_idx);
     if (size < 4) {
       switch (size) {
         case 3:
-          output[offset+2] = values.s2;
+          output[offset + 2 * in_channel] = values.z;
         case 2:
-          output[offset+1] = values.s1;
+          output[offset + 1 * in_channel] = values.y;
         case 1:
-          output[offset] = values.s0;
+          output[offset] = values.x;
       }
     } else {
-      vstore4(values, 0, output + offset);
+      output[offset + 3 * in_channel] = values.w;
+      output[offset + 2 * in_channel] = values.z;
+      output[offset + 1 * in_channel] = values.y;
+      output[offset] = values.x;
     }
   }
 }
-
 
 __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int filter_w,

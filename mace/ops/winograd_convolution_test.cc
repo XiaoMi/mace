@@ -19,9 +19,9 @@ void TransposeFilter(const std::vector<float> &input,
   const float *input_ptr = input.data();
   for (index_t h = 0; h < input_shape[0]; ++h) {
     for (index_t w = 0; w < input_shape[1]; ++w) {
-      for (index_t ic = 0; ic < input_shape[2]; ++ic) {
-        for (index_t oc = 0; oc < input_shape[3]; ++oc) {
-          int offset = ((oc * input_shape[2] + ic) * input_shape[0] + h) * input_shape[1] + w;
+      for (index_t oc = 0; oc < input_shape[2]; ++oc) {
+        for (index_t ic = 0; ic < input_shape[3]; ++ic) {
+          int offset = ((oc * input_shape[3] + ic) * input_shape[0] + h) * input_shape[1] + w;
           output[offset] = *input_ptr;
           ++input_ptr;
         }
@@ -43,7 +43,7 @@ void WinogradConvolution(const index_t batch,
   OpsTestNet net;
   // Add input data
   std::vector<float> filter_data;
-  std::vector<index_t> filter_shape = {3, 3, in_channels, out_channels};
+  std::vector<index_t> filter_shape = {3, 3, out_channels, in_channels};
   GenerateRandomRealTypeData<float>(filter_shape, filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);

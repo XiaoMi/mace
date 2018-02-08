@@ -29,7 +29,7 @@ static void Conv2d(int iters,
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   net.AddRandomInput<D, float>("Filter",
-                               {kernel_h, kernel_w, channels, output_channels});
+                               {kernel_h, kernel_w, output_channels, channels});
   net.AddRandomInput<D, float>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
@@ -92,50 +92,46 @@ static void Conv2d(int iters,
   BENCHMARK(                                                                                       \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC, TYPE) \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, TYPE, OPENCL);
+#define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC)                 \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, float, CPU);    \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, float, OPENCL); \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, half, OPENCL);
 
-// ICNet
-BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024, half);
-//// SNPE GPU ExecutionDuration = 448us, % ALU Utilization = 105
-BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128, half);
-//// SNPE GPU ExecutionDuration = 258us, % ALU Utilization = 108
-BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128, half);
+BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024);
+BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128);
 
-BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128, half);
-//// SNPE GPU ExecutionDuration = 506us, % ALU Utilization = 106.8
-BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32, half);
-BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64, half);
-BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256, half);
+BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32);
+BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64);
+BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256);
 
-BM_CONV_2D(1, 128, 16, 16, 3, 3, 1, VALID, 32, half);
-BM_CONV_2D(1, 128, 64, 64, 3, 3, 1, VALID, 32, half);
-BM_CONV_2D(1, 128, 128, 128, 3, 3, 1, VALID, 32, half);
+BM_CONV_2D(1, 128, 16, 16, 3, 3, 1, VALID, 32);
+BM_CONV_2D(1, 128, 64, 64, 3, 3, 1, VALID, 32);
+BM_CONV_2D(1, 128, 128, 128, 3, 3, 1, VALID, 32);
 
-// Test RGB <-> YUV
-// BM_CONV_2D(1, 3, 2160, 1080, 1, 1, 1, VALID, 3, float);
-// BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3, float);
-//
-// BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128, float);
-// BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128, float);  // Test bad
-// alignments
-// BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3, float);
-// BM_CONV_2D(1, 32, 112, 112, 1, 1, 1, VALID, 64, float);
-// BM_CONV_2D(1, 64, 56, 56, 1, 1, 1, VALID, 128, float);
-// BM_CONV_2D(1, 256, 28, 28, 1, 1, 1, VALID, 256, float);
-// BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, VALID, 1024, float);
-// BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128, float);
-// BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128, float);
-// BM_CONV_2D(1, 3, 512, 512, 3, 3, 1, VALID, 3, float);
-// BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128, float);
-// BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128, float);
-// BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 128, float);
-// BM_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 3, float);
-// BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 128, float);
-// BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 128, float);
-// BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 128, float);
-// BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128, float);
-// BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128, float);
-// BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128, float);
-// BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, SAME, 128, float);
-}  //  namespace mace
+BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3);
+
+BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128);  // Test bad alignments
+BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3);
+BM_CONV_2D(1, 32, 112, 112, 1, 1, 1, VALID, 64);
+BM_CONV_2D(1, 64, 56, 56, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 256, 28, 28, 1, 1, 1, VALID, 256);
+BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, VALID, 1024);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128);
+BM_CONV_2D(1, 3, 512, 512, 3, 3, 1, VALID, 3);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 128);
+BM_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 3);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 128);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 128);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, SAME, 128);
+
+}  // namespace mace

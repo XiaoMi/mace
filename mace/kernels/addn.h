@@ -5,13 +5,16 @@
 #ifndef MACE_KERNELS_ADDN_H_
 #define MACE_KERNELS_ADDN_H_
 
+#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
-
 
 template <DeviceType D, typename T>
 struct AddNFunctor {
@@ -47,7 +50,7 @@ struct AddNFunctor<DeviceType::OPENCL, T> {
   cl::Kernel kernel_;
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_ADDN_H_

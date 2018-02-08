@@ -13,14 +13,6 @@ void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
                                      .Build(),
                     DepthwiseConv2dOp<DeviceType::CPU, float>);
 
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    DepthwiseConv2dOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")

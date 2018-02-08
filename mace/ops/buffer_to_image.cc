@@ -20,4 +20,4 @@ void Register_BufferToImage(OperatorRegistry *op_registry) {
                     BufferToImageOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

@@ -136,7 +136,7 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
   cl::Kernel kernel_;
 };
 
-}  //  namepsace kernels
-}  //  namespace mace
+}  // namepsace kernels
+}  // namespace mace
 
-#endif  //  MACE_KERNELS_BATCH_NORM_H_
+#endif  // MACE_KERNELS_BATCH_NORM_H_

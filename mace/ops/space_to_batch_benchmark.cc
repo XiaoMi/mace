@@ -49,10 +49,10 @@ static void BMSpaceToBatch(
   BENCHMARK(                                                                 \
       BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE)
 
-#define BM_SPACE_TO_BATCH(N, H, W, C, SHAPE, TYPE) \
-  BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, TYPE, OPENCL);
+#define BM_SPACE_TO_BATCH(N, H, W, C, SHAPE) \
+  BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, OPENCL);
 
-BM_SPACE_TO_BATCH(128, 16, 16, 128, 2, float);
-BM_SPACE_TO_BATCH(1, 256, 256, 32, 2, float);
-BM_SPACE_TO_BATCH(1, 256, 256, 32, 4, float);
-}  //  namespace mace
+BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);
+BM_SPACE_TO_BATCH(1, 256, 256, 32, 2);
+BM_SPACE_TO_BATCH(1, 256, 256, 32, 4);
+}  // namespace mace

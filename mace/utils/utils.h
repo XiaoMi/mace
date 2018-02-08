@@ -31,6 +31,11 @@ Integer RoundUpDiv8(Integer i) {
 }
 
 template <typename Integer>
+Integer RoundUpDiv(Integer i, Integer factor) {
+  return (i + factor - 1) / factor;
+}
+
+template <typename Integer>
 Integer CeilQuotient(Integer a, Integer b) {
   return (a + b - 1) / b;
 }

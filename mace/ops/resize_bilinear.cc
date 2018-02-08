@@ -13,14 +13,6 @@ void Register_ResizeBilinear(OperatorRegistry *op_registry) {
                                      .Build(),
                     ResizeBilinearOp<DeviceType::CPU, float>);
 
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    ResizeBilinearOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")

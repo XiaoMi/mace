@@ -35,5 +35,5 @@ class BufferToImageOp: public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
-} //  namespace mace
-#endif //  MACE_OPS_BUFFER_TO_IMAGE_H_
+}  // namespace mace
+#endif  // MACE_OPS_BUFFER_TO_IMAGE_H_

@@ -298,14 +298,15 @@ static void SigmoidBenchmark(
   }                                                                  \
   BENCHMARK(BM_SIGMOID_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_SIGMOID(N, C, H, W, TYPE)       \
-  BM_SIGMOID_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_SIGMOID_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_SIGMOID(N, C, H, W)                 \
+  BM_SIGMOID_MACRO(N, C, H, W, float, CPU);    \
+  BM_SIGMOID_MACRO(N, C, H, W, float, OPENCL); \
+  BM_SIGMOID_MACRO(N, C, H, W, half, OPENCL);
 
-BM_SIGMOID(1, 1, 512, 512, float);
-BM_SIGMOID(1, 3, 128, 128, float);
-BM_SIGMOID(1, 3, 512, 512, float);
-BM_SIGMOID(1, 32, 112, 112, float);
-BM_SIGMOID(1, 64, 256, 256, float);
+BM_SIGMOID(1, 1, 512, 512);
+BM_SIGMOID(1, 3, 128, 128);
+BM_SIGMOID(1, 3, 512, 512);
+BM_SIGMOID(1, 32, 112, 112);
+BM_SIGMOID(1, 64, 256, 256);
 
 }  // namespace mace

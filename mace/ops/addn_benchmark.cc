@@ -65,16 +65,16 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   }                                                                         \
   BENCHMARK(BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ADDN(INPUTS, N, H, W, C, TYPE)       \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, CPU); \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, OPENCL);
+#define BM_ADDN(INPUTS, N, H, W, C)       \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU); \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, NEON); \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, OPENCL); \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, half, OPENCL);
 
-BM_ADDN(2, 1, 256, 256, 32, float);
-BM_ADDN(2, 1, 128, 128, 32, float);
-// BM_ADDN(2, 1, 240, 240, 256, half);
-BM_ADDN(4, 1, 128, 128, 3, float);
-BM_ADDN(2, 1, 256, 256, 3, float);
-BM_ADDN(2, 1, 512, 512, 3, float);
-// BM_ADDN(4, 1, 240, 240, 256, half);
+BM_ADDN(2, 1, 256, 256, 32);
+BM_ADDN(2, 1, 128, 128, 32);
+BM_ADDN(4, 1, 128, 128, 3);
+BM_ADDN(2, 1, 256, 256, 3);
+BM_ADDN(2, 1, 512, 512, 3);
 
-}  //  namespace mace
+}  // namespace mace

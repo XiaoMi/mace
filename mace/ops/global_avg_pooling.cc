@@ -12,14 +12,6 @@ void Register_GlobalAvgPooling(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     GlobalAvgPoolingOp<DeviceType::CPU, float>);
-
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("GlobalAvgPooling")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    GlobalAvgPoolingOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
 }
 
 }  //  namespace mace

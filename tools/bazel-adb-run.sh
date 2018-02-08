@@ -18,8 +18,8 @@ BAZEL_BIN_PATH=${BAZEL_BIN_PATH#//}
 BAZEL_BIN_PATH=bazel-bin/$BAZEL_BIN_PATH
 BIN_NAME=`echo $BAZEL_TARGET | cut -d: -f2`
 
-ANDROID_ABI=arm64-v8a
 ANDROID_ABI=armeabi-v7a
+ANDROID_ABI=arm64-v8a
 STRIP="--strip always"
 VLOG_LEVEL=0
 PROFILING="1"
@@ -43,7 +43,8 @@ bazel build -c opt $STRIP --verbose_failures $BAZEL_TARGET \
    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
    --copt="-DMACE_DISABLE_NO_TUNING_WARNING" \
    --copt="-Werror=return-type" \
-   --define neon=false \
+   --copt="-O3" \
+   --define neon=true \
    --define openmp=true
 
 if [ $? -ne 0 ]; then

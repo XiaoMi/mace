@@ -10,81 +10,6 @@ using namespace mace;
 
 class Conv2dOpTest : public OpsTestBase {};
 
-template <DeviceType D>
-void TestSimple3x3VALID() {
-  OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2dTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-
-  // Add args
-
-  // Add input data
-  net.AddInputFromArray<D, float>(
-      "Input", {1, 2, 3, 3},
-      {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
-      "Filter", {1, 2, 3, 3},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
-
-  // Run
-  net.RunOp(D);
-
-  // Check
-  auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
-}
-
-template <DeviceType D>
-void TestSimple3x3SAME() {
-  OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2dTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddInputFromArray<D, float>(
-      "Input", {1, 2, 3, 3},
-      {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
-      "Filter", {1, 2, 3, 3},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
-
-  // Run
-  net.RunOp(D);
-
-  // Check
-  auto expected = CreateTensor<float>(
-      {1, 1, 3, 3},
-      {8.1f, 12.1f, 8.1f, 12.1f, 18.1f, 12.1f, 8.1f, 12.1f, 8.1f});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
-}
-
-#if __ARM_NEON
-TEST_F(Conv2dOpTest, NEONSimple) {
-  TestSimple3x3VALID<DeviceType::NEON>();
-  TestSimple3x3SAME<DeviceType::NEON>();
-}
-#endif
-
 template <DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
@@ -93,7 +18,7 @@ void TestNHWCSimple3x3VALID() {
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-      "Filter", {3, 3, 2, 1},
+      "Filter", {3, 3, 1, 2},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
@@ -150,7 +75,7 @@ void TestNHWCSimple3x3SAME() {
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-      "Filter", {3, 3, 2, 1},
+      "Filter", {3, 3, 1, 2},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
@@ -211,42 +136,6 @@ TEST_F(Conv2dOpTest, OPENCLSimple) {
   TestNHWCSimple3x3SAME<DeviceType::OPENCL, float>();
 }
 
-template <DeviceType D>
-void TestSimple3x3WithoutBias() {
-  OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2dTest")
-      .Input("Input")
-      .Input("Filter")
-      .Output("Output")
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddInputFromArray<D, float>(
-      "Input", {1, 2, 3, 3},
-      {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
-      "Filter", {1, 2, 3, 3},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-
-  // Run
-  net.RunOp(D);
-
-  // Check
-  auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.0f});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
-}
-
-#ifdef __ARM_NEON
-TEST_F(Conv2dOpTest, NEONWithouBias) {
-  TestSimple3x3WithoutBias<DeviceType::NEON>();
-}
-#endif
-
 template <DeviceType D, typename T>
 void TestNHWCSimple3x3WithoutBias() {
   OpsTestNet net;
@@ -256,7 +145,7 @@ void TestNHWCSimple3x3WithoutBias() {
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-      "Filter", {3, 3, 2, 1},
+      "Filter", {3, 3, 1, 2},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
@@ -309,47 +198,6 @@ TEST_F(Conv2dOpTest, OPENCLWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::OPENCL, float>();
 }
 
-template <DeviceType D>
-static void TestCombined3x3() {
-  // Construct graph
-  OpsTestNet net;
-  OpDefBuilder("Conv2D", "Conv2DTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddInputFromArray<D, float>(
-      "Input", {1, 2, 5, 5}, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, float>(
-      "Filter", {2, 2, 3, 3},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
-       0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f});
-  net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
-
-  // Run
-  net.RunOp(D);
-
-  // Check
-  auto expected = CreateTensor<float>(
-      {1, 2, 3, 3}, {8.1f, 12.1f, 8.1f, 12.1f, 18.1f, 12.1f, 8.1f, 12.1f, 8.1f,
-                     4.2f, 6.2f, 4.2f, 6.2f, 9.2f, 6.2f, 4.2f, 6.2f, 4.2f});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
-}
-
-#ifdef __ARM_NEON
-TEST_F(Conv2dOpTest, NEONCombined) { TestCombined3x3<DeviceType::NEON>(); }
-#endif
-
 template <DeviceType D, typename T>
 static void TestNHWCCombined3x3() {
   // Construct graph
@@ -362,9 +210,9 @@ static void TestNHWCCombined3x3() {
                               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
       "Filter", {3, 3, 2, 2},
-      {1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f,
-       1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f,
-       1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.5f});
+      {1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f,
+       1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f,
+       1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f});
   net.AddInputFromArray<D, T>("Bias", {2}, {0.1f, 0.2f});
 
   if (D == DeviceType::OPENCL) {
@@ -436,8 +284,8 @@ void TestConv1x1() {
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, float>(
-      "Filter", {1, 1, 5, 2},
-      {1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f});
+      "Filter", {1, 1, 2, 5},
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
   if (D == DeviceType::OPENCL) {
@@ -522,7 +370,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     // run on cpu
@@ -606,7 +454,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                                float_input_data);
     std::vector<float> float_filter_data;
     GenerateRandomRealTypeData(
-        {kernel_h, kernel_w, input_channels, output_channels},
+        {kernel_h, kernel_w, output_channels, input_channels},
         float_filter_data);
     std::vector<float> float_bias_data;
     GenerateRandomRealTypeData({output_channels}, float_bias_data);
@@ -614,7 +462,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     net.AddInputFromArray<D, float>(
         "Input", {batch, height, width, input_channels}, float_input_data);
     net.AddInputFromArray<D, float>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels},
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels},
         float_filter_data);
     net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data);
 
@@ -748,7 +596,7 @@ static void TestDilationConvNxN(const std::vector<index_t> &shape, const int dil
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     // run on cpu

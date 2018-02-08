@@ -14,12 +14,6 @@ void Register_FusedConv2D(OperatorRegistry *op_registry) {
                     FusedConv2dOp<DeviceType::CPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    FusedConv2dOp<DeviceType::CPU, half>);
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),

@@ -14,20 +14,6 @@ void Register_Conv2D(OperatorRegistry *op_registry) {
                     Conv2dOp<DeviceType::CPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    Conv2dOp<DeviceType::CPU, half>);
-
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    Conv2dOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
