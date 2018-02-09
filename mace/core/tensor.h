@@ -288,7 +288,8 @@ class Tensor {
       }
       CASES(dtype_, (os << (this->data<T>()[i]) << ", "));
     }
-    LOG(INFO) << os.str();
+    LOG(INFO) << "Tensor size: [" << dim(0) << ", " << dim(1) << ", "
+              << dim(2) << ", " << dim(3) << "], content:\n" << os.str();
   }
 
   inline size_t SizeOfType() const {

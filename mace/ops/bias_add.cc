@@ -13,16 +13,6 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
                                      .Build(),
                     BiasAddOp<DeviceType::CPU, float>);
 
-  /*
-  #if __ARM_NEON
-  REGISTER_OPERATOR(op_registry,OpKeyBuilder("BiasAdd")
-                               .Device(DeviceType::NEON)
-                               .TypeConstraint<float>("T")
-                               .Build(),
-                         BiasAddOp<DeviceType::NEON, float>);
-  #endif  // __ARM_NEON
-  */
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")

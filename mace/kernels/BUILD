@@ -15,15 +15,14 @@ cc_library(
         "*.cc",
         "opencl/*.cc",
     ]) + if_neon_enabled(glob([
-        "neon/*.cc",
+        "neon/addn_neon.cc",
+        "neon/batch_norm_neon.cc",
     ])),
     hdrs = glob([
         "*.h",
         "opencl/*.h",
-    ]) + if_neon_enabled(glob([
-        "neon/*.h",
-    ])),
-    copts = if_openmp_enabled(["-fopenmp"]),
+    ]),
+    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",

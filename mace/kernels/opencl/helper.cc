@@ -19,12 +19,12 @@ void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
 }
 
 // [RoundUp<4>(Ic) * H * W, (Oc + 3) / 4]
-void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWIO */
+void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWOI */
                                std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape.resize(2);
-  image_shape[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[2], 4);
-  image_shape[1] = RoundUpDiv4(shape[3]);
+  image_shape[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[3], 4);
+  image_shape[1] = RoundUpDiv4(shape[2]);
 }
 
 // [H * W * M, (Ic + 3) / 4]
@@ -179,6 +179,7 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
     local_ws[2] = std::min<uint32_t>(gws[2],
                                      kwg_size / (local_ws[0] * local_ws[1]));
     return {
+      // TODO tuning these magic numbers
         {local_ws[0], local_ws[1], local_ws[2], 1},
         {kwg_size / 16, 4, 4, 1},
         {kwg_size / 32, 4, 8, 1},
@@ -200,7 +201,7 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
         {9, 7, 15, 1},
         {15, 7, 9, 1},
         {1, kwg_size, 1, 1},
-        {4, 15, 8, 1},  // SNPE size
+        {4, 15, 8, 1},
     };
   };
   cl::Event event;

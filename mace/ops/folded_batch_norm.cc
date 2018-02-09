@@ -14,14 +14,6 @@ void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
                         .Build(),
                     FoldedBatchNormOp<DeviceType::CPU, float>);
 
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    FoldedBatchNormOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
   REGISTER_OPERATOR(op_registry,
                     OpKeyBuilder("FoldedBatchNorm")
                         .Device(DeviceType::OPENCL)

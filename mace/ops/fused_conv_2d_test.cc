@@ -298,7 +298,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     // run on cpu
@@ -375,7 +375,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
                                float_input_data);
     std::vector<float> float_filter_data;
     GenerateRandomRealTypeData(
-        {kernel_h, kernel_w, input_channels, output_channels},
+        {kernel_h, kernel_w, output_channels, input_channels},
         float_filter_data);
     std::vector<float> float_bias_data;
     GenerateRandomRealTypeData({output_channels}, float_bias_data);
@@ -383,7 +383,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     net.AddInputFromArray<D, float>(
         "Input", {batch, height, width, input_channels}, float_input_data);
     net.AddInputFromArray<D, float>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels},
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels},
         float_filter_data);
     net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data);
 
@@ -462,7 +462,7 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     // run on cpu
@@ -540,7 +540,7 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape, const int dilat
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     // run on cpu
@@ -622,7 +622,7 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     // Add input data
     net.AddRandomInput<D, float>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, float>(
-        "Filter", {kernel_h, kernel_w, input_channels, output_channels});
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
     net.AddRandomInput<D, float>("Bias", {output_channels});
 
     // run on cpu

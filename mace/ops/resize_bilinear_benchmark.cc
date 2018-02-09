@@ -69,18 +69,18 @@ static void ResizeBilinearBenchmark(int iters,
   BENCHMARK(                                                                        \
       BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_##DEVICE)
 
-#define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1, TYPE)       \
-  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, CPU); \
-  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, OPENCL);
+#define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
+  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
+  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, OPENCL); \
+  BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, OPENCL);
 
-// SNPE 835 GPU: 6870us
-BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480, float);
+BM_RESIZE_BILINEAR(1, 128, 120, 120, 480, 480);
 
-BM_RESIZE_BILINEAR(1, 256, 7, 7, 15, 15, float);
-BM_RESIZE_BILINEAR(1, 256, 15, 15, 30, 30, float);
-BM_RESIZE_BILINEAR(1, 128, 30, 30, 60, 60, float);
-BM_RESIZE_BILINEAR(1, 128, 240, 240, 480, 480, float);
-BM_RESIZE_BILINEAR(1, 3, 4032, 3016, 480, 480, float);
-BM_RESIZE_BILINEAR(1, 3, 480, 480, 4032, 3016, float);
+BM_RESIZE_BILINEAR(1, 256, 7, 7, 15, 15);
+BM_RESIZE_BILINEAR(1, 256, 15, 15, 30, 30);
+BM_RESIZE_BILINEAR(1, 128, 30, 30, 60, 60);
+BM_RESIZE_BILINEAR(1, 128, 240, 240, 480, 480);
+BM_RESIZE_BILINEAR(1, 3, 4032, 3016, 480, 480);
+BM_RESIZE_BILINEAR(1, 3, 480, 480, 4032, 3016);
 
-}  //  namespace mace
+}  // namespace mace

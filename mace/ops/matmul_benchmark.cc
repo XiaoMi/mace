@@ -61,10 +61,10 @@ static void MatMulBenchmark(
   }                                                                  \
   BENCHMARK(BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
-#define BM_MATMUL(N, H, C, W, TYPE)        \
-  BM_MATMUL_MACRO(N, H, C, W, TYPE, OPENCL);
+#define BM_MATMUL(N, H, C, W) \
+  BM_MATMUL_MACRO(N, H, C, W, half, OPENCL);
 
-BM_MATMUL(16, 32, 128, 49, half);
-BM_MATMUL(16, 32, 128, 961, half);
-BM_MATMUL(16, 32, 128, 3969, half);
-}  //  namespace mace
+BM_MATMUL(16, 32, 128, 49);
+BM_MATMUL(16, 32, 128, 961);
+BM_MATMUL(16, 32, 128, 3969);
+}  // namespace mace

@@ -72,23 +72,18 @@ void Simple() {
 
 TEST_F(BatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 
-/*
-TEST_F(BatchNormOpTest, SimpleNEON) {
-  Simple<DeviceType::NEON>();
-}
-*/
+TEST_F(BatchNormOpTest, SimpleNEON) { Simple<DeviceType::NEON>(); }
 
 TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<DeviceType::OPENCL>(); }
 
-/*
 TEST_F(BatchNormOpTest, SimpleRandomNeon) {
   srand(time(NULL));
 
   // generate random input
   index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
   index_t height = 64;
   index_t width = 64;
+  index_t channels = 3 + rand() % 50;
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
@@ -97,18 +92,17 @@ TEST_F(BatchNormOpTest, SimpleRandomNeon) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height,
-width});
+  net.AddRandomInput<DeviceType::CPU, float>("Input",
+                                             {batch, height, width, channels});
   net.AddRandomInput<DeviceType::CPU, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Mean", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Var", {channels}, true);
-  net.AddInputFromArray<DeviceType::CPU, float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();
@@ -139,18 +133,17 @@ TEST_F(BatchNormOpTest, ComplexRandomNeon) {
       .Input("Offset")
       .Input("Mean")
       .Input("Var")
-      .Input("Epsilon")
+      .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", {batch, channels, height,
-width});
+  net.AddRandomInput<DeviceType::CPU, float>("Input",
+                                             {batch, height, width, channels});
   net.AddRandomInput<DeviceType::CPU, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Mean", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Var", {channels}, true);
-  net.AddInputFromArray<DeviceType::CPU, float>("Epsilon", {}, {1e-3});
 
   // run cpu
   net.RunOp();
@@ -164,7 +157,6 @@ width});
 
   ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-2);
 }
-*/
 
 TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   srand(time(NULL));

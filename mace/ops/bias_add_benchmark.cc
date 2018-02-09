@@ -59,21 +59,22 @@ static void BiasAdd(int iters, int batch, int channels, int height, int width) {
   }                                                                  \
   BENCHMARK(BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_BIAS_ADD(N, C, H, W, TYPE)       \
-  BM_BIAS_ADD_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_BIAS_ADD_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_BIAS_ADD(N, C, H, W)                 \
+  BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
+  BM_BIAS_ADD_MACRO(N, C, H, W, float, OPENCL); \
+  BM_BIAS_ADD_MACRO(N, C, H, W, half, OPENCL);
 
-BM_BIAS_ADD(1, 1, 512, 512, float);
-BM_BIAS_ADD(1, 3, 128, 128, float);
-BM_BIAS_ADD(1, 3, 512, 512, float);
-BM_BIAS_ADD(1, 32, 112, 112, float);
-BM_BIAS_ADD(1, 64, 256, 256, float);
-BM_BIAS_ADD(1, 64, 512, 512, float);
-BM_BIAS_ADD(1, 128, 56, 56, float);
-BM_BIAS_ADD(1, 128, 256, 256, float);
-BM_BIAS_ADD(1, 256, 14, 14, float);
-BM_BIAS_ADD(1, 512, 14, 14, float);
-BM_BIAS_ADD(1, 1024, 7, 7, float);
-BM_BIAS_ADD(32, 1, 256, 256, float);
-BM_BIAS_ADD(32, 3, 256, 256, float);
-}  //  namespace mace
+BM_BIAS_ADD(1, 1, 512, 512);
+BM_BIAS_ADD(1, 3, 128, 128);
+BM_BIAS_ADD(1, 3, 512, 512);
+BM_BIAS_ADD(1, 32, 112, 112);
+BM_BIAS_ADD(1, 64, 256, 256);
+BM_BIAS_ADD(1, 64, 512, 512);
+BM_BIAS_ADD(1, 128, 56, 56);
+BM_BIAS_ADD(1, 128, 256, 256);
+BM_BIAS_ADD(1, 256, 14, 14);
+BM_BIAS_ADD(1, 512, 14, 14);
+BM_BIAS_ADD(1, 1024, 7, 7);
+BM_BIAS_ADD(32, 1, 256, 256);
+BM_BIAS_ADD(32, 3, 256, 256);
+}  // namespace mace

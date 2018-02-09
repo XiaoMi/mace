@@ -10,9 +10,11 @@ namespace kernels {
 
 template <>
 void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const std::vector<const Tensor *> &input_tensors, Tensor *output_tensor,
+    const std::vector<const Tensor *> &input_tensors,
+    Tensor *output_tensor,
     StatsFuture *future) {
   // TODO: neon mem copy
+  output_tensor->ResizeLike(input_tensors[0]);
   index_t size = output_tensor->size();
   float *output_ptr = output_tensor->mutable_data<float>();
   memset(output_ptr, 0, size * sizeof(float));

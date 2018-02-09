@@ -31,29 +31,3 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
-
-#if __ARM_NEON
-TEST_F(GlobalAvgPoolingOpTest, 3x7x7_NEON) {
-  // Construct graph
-  OpsTestNet net;
-  OpDefBuilder("GlobalAvgPooling", "GlobalAvgPoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  std::vector<float> input(147);
-  for (int i = 0; i < 147; ++i) {
-    input[i] = i / 49 + 1;
-  }
-  net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 7, 7}, input);
-
-  // Run
-  net.RunOp(DeviceType::NEON);
-
-  // Check
-  auto expected = CreateTensor<float>({1, 3, 1, 1}, {1, 2, 3});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
-}
-#endif

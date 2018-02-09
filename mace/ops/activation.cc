@@ -13,14 +13,6 @@ void Register_Activation(OperatorRegistry *op_registry) {
                                      .Build(),
                     ActivationOp<DeviceType::CPU, float>);
 
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    ActivationOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")

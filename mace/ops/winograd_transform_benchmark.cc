@@ -48,12 +48,12 @@ static void BMWinogradTransform(
   BENCHMARK(                                                          \
       BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_WINOGRAD_TRANSFORM(N, H, W, C, TYPE) \
-  BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, OPENCL);
+#define BM_WINOGRAD_TRANSFORM(N, H, W, C) \
+  BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, half, OPENCL);
 
-BM_WINOGRAD_TRANSFORM(1, 16, 16, 128, half);
-BM_WINOGRAD_TRANSFORM(1, 64, 64, 128, half);
-BM_WINOGRAD_TRANSFORM(1, 128, 128, 128, half);
+BM_WINOGRAD_TRANSFORM(1, 16, 16, 128);
+BM_WINOGRAD_TRANSFORM(1, 64, 64, 128);
+BM_WINOGRAD_TRANSFORM(1, 128, 128, 128);
 
 template <DeviceType D, typename T>
 static void BMWinogradInverseTransform(
@@ -100,11 +100,11 @@ static void BMWinogradInverseTransform(
   BENCHMARK(                                                          \
       BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_WINOGRAD_INVERSE_TRANSFORM(N, H, W, C, TYPE) \
-  BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, OPENCL);
+#define BM_WINOGRAD_INVERSE_TRANSFORM(N, H, W, C) \
+  BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, half, OPENCL);
 
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 14, 14, 32, half);
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 62, 62, 32, half);
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 126, 126, 32, half);
+BM_WINOGRAD_INVERSE_TRANSFORM(1, 14, 14, 32);
+BM_WINOGRAD_INVERSE_TRANSFORM(1, 62, 62, 32);
+BM_WINOGRAD_INVERSE_TRANSFORM(1, 126, 126, 32);
 
-}  //  namespace mace
+}  // namespace mace

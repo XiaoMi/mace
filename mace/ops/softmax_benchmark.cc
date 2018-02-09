@@ -55,13 +55,14 @@ static void SoftmaxBenchmark(
   }                                                                  \
   BENCHMARK(BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_SOFTMAX(N, C, H, W, TYPE)        \
-  BM_SOFTMAX_MACRO(N, C, H, W, TYPE, CPU);  \
-  BM_SOFTMAX_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_SOFTMAX(N, C, H, W)                 \
+  BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
+  BM_SOFTMAX_MACRO(N, C, H, W, float, OPENCL); \
+  BM_SOFTMAX_MACRO(N, C, H, W, half, OPENCL);
 
-BM_SOFTMAX(1, 1, 512, 512, float);
-BM_SOFTMAX(1, 3, 128, 128, float);
-BM_SOFTMAX(1, 3, 512, 512, float);
-BM_SOFTMAX(1, 32, 112, 112, float);
-BM_SOFTMAX(1, 64, 256, 256, float);
+BM_SOFTMAX(1, 1, 512, 512);
+BM_SOFTMAX(1, 3, 128, 128);
+BM_SOFTMAX(1, 3, 512, 512);
+BM_SOFTMAX(1, 32, 112, 112);
+BM_SOFTMAX(1, 64, 256, 256);
 }  //  namespace mace

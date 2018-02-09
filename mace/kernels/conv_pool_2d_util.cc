@@ -17,7 +17,7 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-      (dilations[1] == 1 || strides[1] == 1),
+                 (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
@@ -51,7 +51,8 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
       output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:
+      MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
@@ -59,12 +60,10 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
 
-  padding_size[0] =
-      std::max<int>(0, (output_height - 1) * strides[0]
-          + k_extent_height - input_shape[2]);
-  padding_size[1] =
-      std::max<int>(0, (output_width - 1) * strides[1]
-          + k_extent_width - input_shape[3]);
+  padding_size[0] = std::max<int>(
+      0, (output_height - 1) * strides[0] + k_extent_height - input_shape[2]);
+  padding_size[1] = std::max<int>(
+      0, (output_width - 1) * strides[1] + k_extent_width - input_shape[3]);
 
   output_shape[0] = input_shape[0];
   output_shape[1] = output_channels;
@@ -73,7 +72,7 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
 }
 
 void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
-                                  const index_t *filter_shape,  // HWIO
+                                  const index_t *filter_shape,  // HWOI
                                   const int *dilations,
                                   const int *strides,
                                   Padding padding,
@@ -82,7 +81,7 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-      (dilations[1] == 1 || strides[1] == 1),
+                 (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
@@ -98,7 +97,7 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   index_t output_height = 0, output_width = 0;
   index_t kernel_height = filter_shape[0];
   index_t kernel_width = filter_shape[1];
-  index_t output_channels = filter_shape[3];
+  index_t output_channels = filter_shape[2];
 
   index_t k_extent_height = (kernel_height - 1) * dilations[0] + 1;
   index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
@@ -116,7 +115,8 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
       output_height = (input_shape[1] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[2] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:
+      MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
@@ -124,12 +124,10 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
 
-  padding_size[0] =
-      std::max<int>(0, (output_height - 1) * strides[0]
-          + k_extent_height - input_shape[1]);
-  padding_size[1] =
-      std::max<int>(0, (output_width - 1) * strides[1]
-          + k_extent_width - input_shape[2]);
+  padding_size[0] = std::max<int>(
+      0, (output_height - 1) * strides[0] + k_extent_height - input_shape[1]);
+  padding_size[1] = std::max<int>(
+      0, (output_width - 1) * strides[1] + k_extent_width - input_shape[2]);
 
   output_shape[0] = input_shape[0];
   output_shape[1] = output_height;
@@ -146,7 +144,7 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-      (dilations[1] == 1 || strides[1] == 1),
+                 (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(padding_size);
 
@@ -167,19 +165,18 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
       output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
       output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
       break;
-    default:MACE_CHECK(false, "Unsupported padding type: ", padding);
+    default:
+      MACE_CHECK(false, "Unsupported padding type: ", padding);
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
   // TODO may be it's better to also truncate the left/top to
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
-  padding_size[0] =
-      std::max<int>(0, (output_height - 1) * strides[0]
-          + k_extent_height - input_shape[2]);
-  padding_size[1] =
-      std::max<int>(0, (output_width - 1) * strides[1]
-          + k_extent_width - input_shape[3]);
+  padding_size[0] = std::max<int>(
+      0, (output_height - 1) * strides[0] + k_extent_height - input_shape[2]);
+  padding_size[1] = std::max<int>(
+      0, (output_width - 1) * strides[1] + k_extent_width - input_shape[3]);
 }
 
 void ConstructInputWithPadding(const Tensor *input_tensor,
@@ -206,18 +203,18 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
   output_tensor->Resize(output_shape);
 
   Tensor::MappingGuard padded_output_mapper(output_tensor);
-  float *output_ptr = output_tensor->mutable_data<float>();
-  memset(output_ptr, 0, output_tensor->size() * sizeof(float));
+  float *output_data = output_tensor->mutable_data<float>();
+  memset(output_data, 0, output_tensor->size() * sizeof(float));
 
   // Skip the padded top rows
   if (padding_same_value) {
-#define COPY_INPUT            \
-    std::fill(output_ptr, output_ptr+padded_left, input[0]);           \
-    output_ptr += padded_left;                                         \
-    memcpy(output_ptr, input, width * sizeof(float));                  \
-    output_ptr += width;                                               \
-    std::fill(output_ptr , output_ptr + padded_right, input[width-1]); \
-    output_ptr += padded_right;
+#define COPY_INPUT                                                      \
+  std::fill(output_data, output_data + padded_left, input[0]);          \
+  output_data += padded_left;                                           \
+  memcpy(output_data, input, width * sizeof(float));                    \
+  output_data += width;                                                 \
+  std::fill(output_data, output_data + padded_right, input[width - 1]); \
+  output_data += padded_right;
 
     const int padded_bottom = paddings[0] - padded_top;
     const int padded_right = paddings[1] - padded_left;
@@ -239,19 +236,69 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
     }
 #undef COPY_INPUT
   } else {
-    output_ptr += padded_top * output_width;
+    output_data += padded_top * output_width;
     for (int i = 0; i < batch; ++i) {
       for (int j = 0; j < channels; ++j) {
         for (int k = 0; k < height; ++k) {
-          memcpy(output_ptr + padded_left, input, width * sizeof(float));
+          memcpy(output_data + padded_left, input, width * sizeof(float));
           input += width;
-          output_ptr += output_width;
+          output_data += output_width;
         }
         // Skip the padded bottom in this channel and top in the next channel
-        output_ptr += paddings[0] * output_width;
+        output_data += paddings[0] * output_width;
       }
     }
   }
 }
-}  //  namespace kernels
-}  //  namespace mace
+
+void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
+                                   const int *paddings,
+                                   Tensor *output_tensor,
+                                   bool padding_same_value) {
+  VLOG(1) << "input: " << input_tensor->NumElements();
+  Tensor::MappingGuard input_mapper(input_tensor);
+  const float *input = input_tensor->data<float>();
+  const index_t *input_shape = input_tensor->shape().data();
+
+  index_t batch = input_shape[0];
+  index_t height = input_shape[1];
+  index_t width = input_shape[2];
+  index_t channels = input_shape[3];
+
+  std::vector<index_t> output_shape(
+      {batch, paddings[0] + height, paddings[1] + width, channels});
+
+  const int output_height = output_shape[1];
+  const int output_width = output_shape[2];
+  const int padded_top = paddings[0] / 2;
+  const int padded_left = paddings[1] / 2;
+
+  output_tensor->Resize(output_shape);
+
+  Tensor::MappingGuard padded_output_mapper(output_tensor);
+  float *output_data = output_tensor->mutable_data<float>();
+  memset(output_data, 0, output_tensor->size() * sizeof(float));
+
+  // Skip the padded top rows
+  if (padding_same_value) {
+    LOG(FATAL) << "Not implemented";
+  } else {
+#pragma omp parallel for collapse(3)
+    for (int n = 0; n < batch; ++n) {
+      for (int h = 0; h < height; ++h) {
+        for (int w = 0; w < width; ++w) {
+          const float *input_ptr =
+              input + ((n * height + h) * width + w) * channels;
+          float *output_ptr =
+              output_data +
+              ((n * output_height + h + padded_top) * output_width + w +
+               padded_left) *
+                  channels;
+          memcpy(output_ptr, input_ptr, channels * sizeof(float));
+        }
+      }
+    }
+  }
+}
+}  // namespace kernels
+}  // namespace mace
