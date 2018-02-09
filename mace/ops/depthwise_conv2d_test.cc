@@ -283,7 +283,7 @@ void TestNxNS12(const index_t height, const index_t width) {
   for (int kernel_size : {3}) {
     for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
-      func(kernel_size, kernel_size, stride, stride, SAME);
+      //func(kernel_size, kernel_size, stride, stride, SAME);
     }
   }
 }

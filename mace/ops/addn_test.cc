@@ -33,8 +33,6 @@ void SimpleAdd2() {
 
 TEST_F(AddnOpTest, CPUSimpleAdd2) { SimpleAdd2<DeviceType::CPU>(); }
 
-TEST_F(AddnOpTest, NEONSimpleAdd2) { SimpleAdd2<DeviceType::NEON>(); }
-
 template <DeviceType D>
 void SimpleAdd3() {
   // Construct graph
@@ -60,8 +58,6 @@ void SimpleAdd3() {
 }
 
 TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
-
-TEST_F(AddnOpTest, NEONSimpleAdd3) { SimpleAdd3<DeviceType::NEON>(); }
 
 template <DeviceType D>
 void RandomTest() {

@@ -67,7 +67,6 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
 
 #define BM_ADDN(INPUTS, N, H, W, C)       \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU); \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, NEON); \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, float, OPENCL); \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, half, OPENCL);
 

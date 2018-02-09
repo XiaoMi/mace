@@ -32,6 +32,4 @@ typedef int64_t index_t;
 
 #define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")
 
-#define kCostPerGroup 10240
-
 #endif  // MACE_CORE_COMMON_H_

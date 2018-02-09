@@ -84,7 +84,7 @@ static void BatchNorm(
 
 #define BM_BATCH_NORM(N, C, H, W)                 \
   BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);    \
-  BM_BATCH_NORM_MACRO(N, C, H, W, float, NEON);   \
+  BM_BATCH_NORM_MACRO(N, C, H, W, float, NEON);    \
   BM_BATCH_NORM_MACRO(N, C, H, W, float, OPENCL); \
   BM_BATCH_NORM_MACRO(N, C, H, W, half, OPENCL);
 
