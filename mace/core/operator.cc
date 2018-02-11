@@ -81,6 +81,7 @@ extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_WinogradTransform(OperatorRegistry *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_Reshape(OperatorRegistry *op_registry);
+extern void Register_Eltwise(OperatorRegistry *op_registry);
 
 OperatorRegistry::OperatorRegistry() {
   Register_Activation(this);
@@ -105,6 +106,7 @@ OperatorRegistry::OperatorRegistry() {
   Register_WinogradTransform(this);
   Register_WinogradInverseTransform(this);
   Register_Reshape(this);
+  Register_Eltwise(this);
 }
 
 }  // namespace mace
