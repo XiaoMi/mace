@@ -4,7 +4,7 @@ set -e
 
 Usage() {
   echo "Usage: ./tools/export_lib.sh target_abi[armeabi-v7a | arm64-v8a | host] runtime[gpu | dsp] export_include_dir export_lib_dir"
-  echo "eg: ./tools/export_lib.sh armeabi-v7a gpu ../include ../lib/libmace_v7"
+  echo "eg: ./tools/export_lib.sh armeabi-v7a gpu ../include ../lib/libmace-armeabi-v7a"
 }
 
 if [ $# -lt 4 ]; then
