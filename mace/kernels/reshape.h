@@ -20,6 +20,7 @@ struct ReshapeFunctor {
                   Tensor *output,
                   StatsFuture *future) {
     output->Resize(out_shape);
+    // TODO copy on write to avoid this copy.
     output->CopyBytes(input->raw_data(), input->size() * sizeof(T));
   }
 };

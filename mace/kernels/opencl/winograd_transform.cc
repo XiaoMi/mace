@@ -54,8 +54,8 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
   }
 
-  const uint32_t gws[2] = {static_cast<size_t>(out_width),
-                         static_cast<size_t>(RoundUpDiv4(input_tensor->dim(3)))};
+  const uint32_t gws[2] = {static_cast<uint32_t>(out_width),
+                         static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)))};
   const std::vector<uint32_t> lws = {128, 8, 1};
   std::stringstream ss;
   ss << "winograd_transform_kernel_"
@@ -126,8 +126,8 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
     kernel_.setArg(idx++, prelu_alpha_);
   }
 
-  const uint32_t gws[2] = {static_cast<size_t>(input_tensor->dim(2)),
-                         static_cast<size_t>(RoundUpDiv4(input_tensor->dim(1)))};
+  const uint32_t gws[2] = {static_cast<uint32_t>(input_tensor->dim(2)),
+                         static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(1)))};
   const std::vector<uint32_t> lws = {128, 8, 1};
 
   std::stringstream ss;

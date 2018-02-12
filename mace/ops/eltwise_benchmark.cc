@@ -15,8 +15,8 @@ static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h,
 
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<D, float>("Input0", {n, h, w, c});
-  net.AddRandomInput<D, float>("Input1", {n, h, w, c});
+  net.AddRandomInput<D, T>("Input0", {n, h, w, c});
+  net.AddRandomInput<D, T>("Input1", {n, h, w, c});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, half>(net, "Input0", "InputImg0", kernels::BufferType::IN_OUT_CHANNEL);
@@ -26,7 +26,7 @@ static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h,
         .Input("InputImg1")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatsArg("coeff", {1.2, 2.1})
-        .AddIntArg("T", static_cast<int>(DT_HALF))
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Output("OutputImg")
         .Finalize(net.NewOperatorDef());
   } else {
@@ -63,16 +63,17 @@ static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h,
   }                                                                         \
   BENCHMARK(BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ELTWISE(ELT_TYPE, N, H, W, C, TYPE)       \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, CPU); \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, OPENCL);
+#define BM_ELTWISE(ELT_TYPE, N, H, W, C, )       \
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU); \
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, OPENCL); \
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, OPENCL);
 
-BM_ELTWISE(0, 1, 256, 256, 32, float);
-BM_ELTWISE(0, 1, 128, 128, 32, float);
-BM_ELTWISE(1, 1, 128, 128, 32, float);
-BM_ELTWISE(2, 1, 128, 128, 32, float);
-BM_ELTWISE(0, 1, 240, 240, 256, float);
-BM_ELTWISE(1, 1, 240, 240, 256, float);
-BM_ELTWISE(2, 1, 240, 240, 256, float);
+BM_ELTWISE(0, 1, 256, 256, 32);
+BM_ELTWISE(0, 1, 128, 128, 32);
+BM_ELTWISE(1, 1, 128, 128, 32);
+BM_ELTWISE(2, 1, 128, 128, 32);
+BM_ELTWISE(0, 1, 240, 240, 256);
+BM_ELTWISE(1, 1, 240, 240, 256);
+BM_ELTWISE(2, 1, 240, 240, 256);
 
 }  //  namespace mace
