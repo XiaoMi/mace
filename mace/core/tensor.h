@@ -325,6 +325,12 @@ class Tensor {
         }
       }
     }
+    MappingGuard(MappingGuard &&other) {
+      tensor_ = other.tensor_;
+      other.tensor_ = nullptr;
+    }
+    MappingGuard(const MappingGuard &other) = delete;
+    MappingGuard & operator = (const MappingGuard &other) = delete;
     ~MappingGuard() {
       if (tensor_ != nullptr) tensor_->Unmap();
     }

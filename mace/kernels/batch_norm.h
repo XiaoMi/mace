@@ -70,8 +70,8 @@ struct BatchNormFunctor : BatchNormFunctorBase {
     const T *offset_ptr = offset->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-    vector<T> new_scale;
-    vector<T> new_offset;
+    std::vector<T> new_scale;
+    std::vector<T> new_offset;
     if (!folded_constant_) {
       new_scale.resize(channels);
       new_offset.resize(channels);
@@ -86,6 +86,8 @@ struct BatchNormFunctor : BatchNormFunctorBase {
       }
     }
 
+    const T *scale_data  = folded_constant_ ? scale_ptr : new_scale.data();
+    const T *offset_data  = folded_constant_ ? offset_ptr : new_offset.data();
 
 #pragma omp parallel for collapse(4)
     for (index_t n = 0; n < batch; ++n) {
@@ -93,11 +95,7 @@ struct BatchNormFunctor : BatchNormFunctorBase {
         for (index_t w = 0; w < width; ++w) {
           for (index_t c = 0; c < channels; ++c) {
             index_t pos = (((n * height) + h) * width + w) * channels + c;
-            if (folded_constant_) {
-              output_ptr[pos] = scale_ptr[c] * input_ptr[pos] + offset_ptr[c];
-            } else {
-              output_ptr[pos] = new_scale[c] * input_ptr[pos] + new_offset[c];
-            }
+            output_ptr[pos] = scale_data[c] * input_ptr[pos] + offset_data[c];
           }
         }
       }

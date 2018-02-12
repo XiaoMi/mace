@@ -68,12 +68,11 @@ void ResizeImage(const T *images,
   const index_t out_batch_num_values = channels * out_height * out_width;
   const CachedInterpolation *xs = xs_vec.data();
 
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
-    const T *batch_input_ptr = images + in_batch_num_values * b;;
-    T *batch_output_ptr = output + out_batch_num_values * b;
-
     for (index_t y = 0; y < out_height; ++y) {
+      const T *batch_input_ptr = images + in_batch_num_values * b;
+      T *batch_output_ptr = output + out_batch_num_values * b;
       const T *y_lower_input_ptr =
         batch_input_ptr + ys[y].lower * in_width * channels;
       const T *y_upper_input_ptr =

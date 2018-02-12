@@ -3,8 +3,8 @@
 set -e
 
 Usage() {
-  echo "Usage: ./tools/export_lib.sh android_abi[armeabi-v7a/arm64-v8a] runtime[gpu/dsp] export_include_dir export_lib_dir"
-  echo "eg: ./tools/export_lib.sh armeabi-v7a ../include ../lib/libmace_v7"
+  echo "Usage: ./tools/export_lib.sh target_abi[armeabi-v7a | arm64-v8a | host] runtime[gpu | dsp] export_include_dir export_lib_dir"
+  echo "eg: ./tools/export_lib.sh armeabi-v7a gpu ../include ../lib/libmace-armeabi-v7a"
 }
 
 if [ $# -lt 4 ]; then
@@ -12,9 +12,7 @@ if [ $# -lt 4 ]; then
   exit 1
 fi
 
-# ANDROID_ABI=arm64-v8a
-# ANDROID_ABI=armeabi-v7a
-ANDROID_ABI=$1
+TARGET_ABI=$1
 RUNTIME=$2
 EXPORT_INCLUDE_DIR=$3
 EXPORT_LIB_DIR=$4
@@ -63,15 +61,18 @@ build_target()
   bazel build --verbose_failures -c opt --strip always $BAZEL_TARGET \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
-     --cpu=$ANDROID_ABI \
+     --cpu=$TARGET_ABI \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
+    --copt="-O3" \
+    --define neon=true \
+    --define openmp=true \
     $DSP_MODE_BUILD_FLAGS || exit 1
 }
 
-build_local_target()
+build_host_target()
 {
   BAZEL_TARGET=$1
   bazel build --verbose_failures -c opt --strip always $BAZEL_TARGET \
@@ -79,7 +80,8 @@ build_local_target()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
-    --define openmp=true || exit -1
+    --copt="-O3" \
+    --define openmp=true || exit 1
 }
 
 merge_libs()
@@ -132,10 +134,10 @@ bash mace/tools/git/gen_version_source.sh ${CODEGEN_DIR}/version/version.cc || e
 
 echo "Step 3: Build libmace targets"
 bazel clean
-if [ x"${RUNTIME}" = x"local" ]; then
+if [ x"${TARGET_ABI}" = x"host" ] || [ x"${TARGET_ABI}" = x"local" ]; then
   for target in ${all_targets[*]}
   do
-    build_local_target ${target}
+    build_host_target ${target}
   done
 else
   for target in ${all_targets[*]}

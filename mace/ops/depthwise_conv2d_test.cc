@@ -280,7 +280,7 @@ void TestNxNS12(const index_t height, const index_t width) {
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.1);
   };
 
-  for (int kernel_size : {3}) {
+  for (int kernel_size : {2, 3, 4}) {
     for (int stride : {1, 2}) {
       func(kernel_size, kernel_size, stride, stride, VALID);
       func(kernel_size, kernel_size, stride, stride, SAME);

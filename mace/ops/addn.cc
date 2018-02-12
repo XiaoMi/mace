@@ -13,14 +13,6 @@ void Register_AddN(OperatorRegistry *op_registry) {
                                      .Build(),
                     AddNOp<DeviceType::CPU, float>);
 
-#if MACE_ENABLE_NEON
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::NEON, float>);
-#endif  // MACE_ENABLE_NEON
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
