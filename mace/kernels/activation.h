@@ -54,17 +54,20 @@ void DoActivation(const T *input_ptr,
     case NOOP:
       break;
     case RELU:
+#pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0));
       }
       break;
     case RELUX:
+#pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)),
                                  static_cast<T>(relux_max_limit));
       }
       break;
     case PRELU:
+#pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
         T in = input_ptr[i];
         if (in < 0) {
@@ -75,12 +78,14 @@ void DoActivation(const T *input_ptr,
       }
       break;
     case TANH:
+#pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
         T in_exp = std::exp(-2 * input_ptr[i]);
         output_ptr[i] = (1 - in_exp) / (1 + in_exp);
       }
       break;
     case SIGMOID:
+#pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
       }
