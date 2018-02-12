@@ -199,14 +199,14 @@ def parse_model_configs():
 
       for model_dir in model_dirs:
         # Create output dirs
-        model_output_dir = os.path.join(FLAGS.output_dir, model_dir)
+        model_output_dir = FLAGS.output_dir + "/" + model_dir
 
         model_output_map[model_dir] = model_output_dir
     else:
       model_dirs = [global_config_dir]
 
       # Create output dirs
-      model_output_dir = os.path.join(FLAGS.output_dir, global_config_dir)
+      model_output_dir = FLAGS.output_dir + "/" + global_config_dir
       model_output_map[global_config_dir] = model_output_dir
   except Exception as e:
     print("Error in read model path msg. Exception: {}".format(e))
