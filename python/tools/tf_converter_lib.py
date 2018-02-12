@@ -315,6 +315,7 @@ class TFConverter(object):
       op_def.type = 'DepthwiseConv2d'
     else:
       op_def.type = op.type
+      self.transpose_filter_tensor[get_input_tensor(op, 1).name] = (0, 1, 3, 2)
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
       buffer_type = "DW_CONV2D_FILTER" if op_def.type == 'DepthwiseConv2d' else "CONV2D_FILTER"
