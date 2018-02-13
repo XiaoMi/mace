@@ -14,9 +14,7 @@ cc_library(
     srcs = glob([
         "*.cc",
         "opencl/*.cc",
-    ]) + if_neon_enabled(glob([
-        "neon/batch_norm_neon.cc",
-    ])),
+    ]),
     hdrs = glob([
         "*.h",
         "opencl/*.h",
