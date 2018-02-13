@@ -14,25 +14,21 @@ MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
-GENERATED_MODEL_LIB_NAME="libgenerated_models.a"
 
-MACE_RUNTIME=cpu
 if [ x"$RUNTIME" = x"dsp" ]; then
   DATA_TYPE="DT_UINT8"
   DEVICE_TYPE="HEXAGON"
   LIB_FOLDER_NAME="${LIB_FOLDER_NAME}_dsp"
-  MACE_RUNTIME=$RUNTIME
 elif [ x"$RUNTIME" = x"gpu" ]; then
   DATA_TYPE="DT_HALF"
   DEVICE_TYPE="OPENCL"
-  MACE_RUNTIME=$RUNTIME
 elif [ x"$RUNTIME" = x"cpu" ]; then
   DATA_TYPE="DT_FLOAT"
   DEVICE_TYPE="CPU"
-elif [ x"$RUNTIME" = x"local" ];then
-  DATA_TYPE="DT_FLOAT"
-  DEVICE_TYPE="CPU"
-  GENERATED_MODEL_LIB_NAME="libgenerated_models.pic.a"
 fi
 
+GENERATED_MODEL_LIB_NAME="libgenerated_models.a"
+if [ x"$TARGET_ABI" = x"host" ]; then
+  GENERATED_MODEL_LIB_NAME="libgenerated_models.pic.a"
+fi
 GENERATED_MODEL_LIB_PATH="bazel-bin/codegen/${GENERATED_MODEL_LIB_NAME}"

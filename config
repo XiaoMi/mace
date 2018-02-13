@@ -10,6 +10,6 @@ MODEL_TAG=mobile_net
 INPUT_SHAPE=1,64,64,3
 OUTPUT_SHAPE=1,64,64,2
 RUNTIME=gpu
-ANDROID_ABI=armeabi-v7a ; Or 'arm64-v8a'
+TARGET_ABI=armeabi-v7a ; Or 'arm64-v8a', 'host' etc.
 LIMIT_OPENCL_KERNEL_TIME=0
 DSP_MODE=0 ; used only for dsp

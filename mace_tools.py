@@ -34,22 +34,26 @@ def run_command(command):
 
 
 def get_libs(configs):
-  libmace_name = "libmace"
+  global_target_abi = ""
+  global_runtime = ""
+  runtime_list = []
   for config in configs:
-    if config["ANDROID_ABI"] == "armeabi-v7a":
-      libmace_name += "_v7"
-      break
-    elif config["ANDROID_ABI"] == "arm64-v8a":
-      libmace_name += "_v8"
-      break
+    if global_target_abi == "":
+      global_target_abi = config["TARGET_ABI"]
+    elif global_target_abi != config["TARGET_ABI"]:
+      raise Exception("Multiple TARGET_ABI found in config files!")
+    runtime_list.append(config["RUNTIME"])
 
-  for config in configs:
-    if config["RUNTIME"] == "dsp":
-      libmace_name += "_dsp"
-      break
-    if config["RUNTIME"] == "local":
-      libmace_name += "_local"
-      break
+  if "dsp" in runtime_list:
+    global_runtime = "dsp"
+  elif "gpu" in runtime_list:
+    global_runtime = "gpu"
+  elif "cpu" in runtime_list:
+    global_runtime = "cpu"
+  else:
+    raise Exception("Not found available RUNTIME in config files!")
+
+  libmace_name = "libmace-{}-{}".format(global_target_abi, global_runtime)
 
   command = "bash tools/download_and_link_lib.sh " + libmace_name
   run_command(command)

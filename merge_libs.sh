@@ -38,7 +38,7 @@ $ANDROID_NDK_HOME/toolchains/aarch64-linux-android-4.9/prebuilt/linux-x86_64/bin
 
 # Merge opencl bin and tuning result
 echo "create ${LIBMACE_BUILD_DIR}/libmace/lib/libmace_opencl.a" > ${LIBMACE_TEMP_DIR}/libmace_opencl.mri
-if [ x"RUNTIME" = x"local" ]; then
+if [ x"TARGET_ABI" = x"host" ]; then
   echo "addlib bazel-bin/codegen/libgenerated_opencl_prod.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_opencl.mri
   echo "addlib bazel-bin/codegen/libgenerated_tuning_params.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_opencl.mri
 else

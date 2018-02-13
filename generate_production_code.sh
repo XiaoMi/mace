@@ -19,7 +19,7 @@ if [ "$PULL_OR_NOT" = 1 ]; then
   CL_BIN_DIR=${CL_BIN_DIRS}
   rm -rf ${CL_BIN_DIR}
   mkdir -p ${CL_BIN_DIR}
-  if [ x"$RUNTIME" != x"local" ]; then
+  if [ x"$TARGET_ABI" != x"host" ]; then
     adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR}
     adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR}
   fi

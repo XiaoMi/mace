@@ -26,7 +26,7 @@ else
   python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
-      --mace_runtime ${MACE_RUNTIME} \
+      --mace_runtime ${RUNTIME} \
       --input_node ${TF_INPUT_NODE} \
       --output_node ${TF_OUTPUT_NODE} \
       --input_shape ${INPUT_SHAPE} \

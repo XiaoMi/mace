@@ -17,7 +17,7 @@ ROUND=$2
 TUNING_OR_NOT=$3
 PRODUCTION_MODE=$4
 
-if [ x"$RUNTIME" = x"local" ]; then
+if [ x"$TARGET_ABI" = x"host" ]; then
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
   ${MODEL_OUTPUT_DIR}/mace_run \
       --input_shape="${INPUT_SHAPE}"\
