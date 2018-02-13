@@ -28,6 +28,7 @@ build_target()
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
+    --define openmp=true \
     --copt="-DMACE_OBFUSCATE_LITERALS" || exit 1
 }
 
