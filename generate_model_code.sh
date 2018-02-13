@@ -9,6 +9,7 @@ mkdir -p ${MODEL_CODEGEN_DIR}
 if [ ${DSP_MODE} ]; then
     DSP_MODE_FLAG="--dsp_mode=${DSP_MODE}"
 fi
+
 bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         --output=${MODEL_CODEGEN_DIR}/model.cc \
                                         --input_node=${TF_INPUT_NODE} \
@@ -18,5 +19,6 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         --output_type=source \
                                         --template=${LIBMACE_SOURCE_DIR}/lib/python/tools/model.template \
                                         --model_tag=${MODEL_TAG} \
+                                        --input_shape=${INPUT_SHAPE} \
                                         ${DSP_MODE_FLAG} \
                                         --obfuscate=True || exit 1

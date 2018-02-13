@@ -49,6 +49,7 @@ else
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
     $PRODUCTION_MODE_BUILD_FLAGS \
     $HEXAGON_MODE_BUILD_FLAG || exit 1
 fi
