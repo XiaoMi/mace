@@ -1,7 +1,7 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/run_and_tuning.sh model_output_dir round tuning production_mode"
+  echo "Usage: bash tools/tuning_run.sh model_output_dir round tuning production_mode"
 }
 
 if [ $# -lt 4 ]; then

@@ -1,0 +1,68 @@
+#!/bin/bash
+
+Usage() {
+  echo "Usage: bash tools/benchmark.sh model_output_dir"
+}
+
+if [ $# -lt 1 ]; then
+  Usage
+  exit 1
+fi
+
+CURRENT_DIR=`dirname $0`
+source ${CURRENT_DIR}/env.sh
+
+MODEL_OUTPUT_DIR=$1
+
+if [ -f "$MODEL_OUTPUT_DIR/benchmark_model" ]; then
+  rm -rf $MODEL_OUTPUT_DIR/benchmark_model
+fi
+
+if [ x"$RUNTIME" = x"local" ]; then
+  bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
+    --define production=true || exit 1
+
+  cp bazel-bin/benchmark/benchmark_model $MODEL_OUTPUT_DIR
+
+  MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
+  ${MODEL_OUTPUT_DIR}/benchmark_model \
+      --device=${DEVICE_TYPE} \
+      --input_shape="${INPUT_SHAPE}"\
+      --output_shape="${OUTPUT_SHAPE}"\
+      --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} || exit 1
+
+else
+  bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
+    --crosstool_top=//external:android/crosstool \
+    --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
+    --cpu=${ANDROID_ABI} \
+    --copt="-std=c++11" \
+    --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
+    --copt="-Werror=return-type" \
+    --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --define openmp=true \
+    --define production=true || exit 1
+
+  cp bazel-bin/benchmark/benchmark_model $MODEL_OUTPUT_DIR
+
+  adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
+  adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit 1
+  adb push ${MODEL_OUTPUT_DIR}/benchmark_model ${PHONE_DATA_DIR} || exit 1
+
+  adb </dev/null shell \
+    LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
+    MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
+    MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
+    MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
+    MACE_OPENCL_PROFILING=1 \
+    ${PHONE_DATA_DIR}/benchmark_model \
+    --device=${DEVICE_TYPE} \
+    --input_shape="${INPUT_SHAPE}"\
+    --output_shape="${OUTPUT_SHAPE}"\
+    --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} || exit 1
+fi

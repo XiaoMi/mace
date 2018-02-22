@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
 VLOG_LEVEL=0

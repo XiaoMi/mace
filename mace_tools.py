@@ -89,6 +89,9 @@ def tuning_run(model_output_dir, running_round, tuning, production_mode):
       model_output_dir, running_round, int(tuning), int(production_mode))
   run_command(command)
 
+def benchmark_model(model_output_dir):
+  command = "bash tools/benchmark.sh {}".format(model_output_dir)
+  run_command(command)
 
 def run_model(model_output_dir, running_round):
   tuning_run(model_output_dir, running_round, False, False)
@@ -139,7 +142,6 @@ def build_production_code():
 def merge_libs_and_tuning_results(output_dir, model_output_dirs):
   pull_or_not = False
   generate_production_code(model_output_dirs, pull_or_not)
-  production_or_not = True
   build_production_code()
 
   model_output_dirs_str = ",".join(model_output_dirs)
@@ -281,6 +283,9 @@ def main(unused_args):
 
     if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
       run_model(model_output_dir, FLAGS.round)
+
+    if FLAGS.mode == "benchmark":
+      benchmark_model(model_output_dir)
 
     if FLAGS.mode == "validate" or FLAGS.mode == "all":
       validate_model(model_output_dir)
