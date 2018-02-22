@@ -11,20 +11,7 @@
 
 namespace mace {
 
-struct CallStats {
-  int64_t start_micros;
-  int64_t end_micros;
-};
-
-struct OperatorStats {
-  std::string operator_name;
-  std::string type;
-  CallStats stats;
-};
-
-struct RunMetadata {
-  std::vector<OperatorStats> op_stats;
-};
+class CallStats;
 
 // Wait the call to finish and get the stats if param is not nullptr
 struct StatsFuture {
