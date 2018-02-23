@@ -18,12 +18,13 @@ if [ -f "$MODEL_OUTPUT_DIR/benchmark_model" ]; then
   rm -rf $MODEL_OUTPUT_DIR/benchmark_model
 fi
 
-if [ x"$RUNTIME" = x"local" ]; then
+if [ x"$RUNTIME" = x"host" ]; then
   bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --copt="-O3" \
     --define openmp=true \
     --define production=true || exit 1
 
@@ -40,11 +41,12 @@ else
   bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
-    --cpu=${ANDROID_ABI} \
+    --cpu=${TARGET_ABI} \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
+    --copt="-O3" \
     --define openmp=true \
     --define production=true || exit 1
 

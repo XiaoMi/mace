@@ -15,6 +15,7 @@ build_host_target()
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
     --copt="-DMACE_OBFUSCATE_LITERALS" \
+    --copt="-O3" \
     --define openmp=true || exit -1
 }
 
@@ -28,6 +29,7 @@ build_target()
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
+    --copt="-O3" \
     --define openmp=true \
     --copt="-DMACE_OBFUSCATE_LITERALS" || exit 1
 }

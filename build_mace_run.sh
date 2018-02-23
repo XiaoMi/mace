@@ -27,6 +27,7 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
+    --copt="-O3" \
     $PRODUCTION_MODE_BUILD_FLAGS || exit 1
 
   bazel build --verbose_failures -c opt --strip always examples:mace_run \
@@ -35,6 +36,7 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
+    --copt="-O3" \
     $PRODUCTION_MODE_BUILD_FLAGS || exit 1
 else
   if [ "$HEXAGON_MODE" = 1 ]; then
@@ -50,6 +52,7 @@ else
     --copt="-Werror=return-type" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
+    --copt="-O3" \
     $PRODUCTION_MODE_BUILD_FLAGS \
     $HEXAGON_MODE_BUILD_FLAG || exit 1
 fi
