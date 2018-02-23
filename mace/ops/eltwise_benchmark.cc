@@ -2,15 +2,16 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/kernels/eltwise.h"
 #include <string>
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/kernels/eltwise.h"
 
 namespace mace {
 template <DeviceType D, typename T>
-static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h, int w, int c) {
+static void EltwiseBenchmark(
+    int iters, kernels::EltwiseType type, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -19,8 +20,10 @@ static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h,
   net.AddRandomInput<D, T>("Input1", {n, h, w, c});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, half>(net, "Input0", "InputImg0", kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Input1", "InputImg1", kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, half>(net, "Input0", "InputImg0",
+                           kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, half>(net, "Input1", "InputImg1",
+                           kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -53,18 +56,20 @@ static void EltwiseBenchmark(int iters, kernels::EltwiseType type, int n, int h,
   }
 }
 
-#define BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, DEVICE)                     \
-  static void BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
-      int iters) {                                                          \
-    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;        \
-    mace::testing::ItemsProcessed(tot);                                     \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                     \
-    EltwiseBenchmark<DEVICE, TYPE>(iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C);            \
-  }                                                                         \
+#define BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, DEVICE)             \
+  static void                                                            \
+      BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+          int iters) {                                                   \
+    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
+    mace::testing::ItemsProcessed(tot);                                  \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
+    EltwiseBenchmark<DEVICE, TYPE>(                                      \
+        iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C); \
+  }                                                                      \
   BENCHMARK(BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ELTWISE(ELT_TYPE, N, H, W, C, )       \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU); \
+#define BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
   BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, OPENCL); \
   BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, OPENCL);
 
