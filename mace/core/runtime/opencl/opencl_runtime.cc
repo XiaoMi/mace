@@ -8,10 +8,8 @@
 #include <mutex>
 
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/utils/logging.h"
+#include "mace/core/public/mace.h"
 #include "mace/utils/tuner.h"
-
-#include <CL/opencl.h>
 
 namespace mace {
 namespace {

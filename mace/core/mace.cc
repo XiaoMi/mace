@@ -558,7 +558,8 @@ MaceEngine::~MaceEngine() {
 };
 bool MaceEngine::Run(const float *input,
                      const std::vector<index_t> &input_shape,
-                     float *output) {
+                     float *output,
+                     RunMetadata *run_metadata) {
   MACE_CHECK(output != nullptr, "output ptr cannot be NULL");
   Tensor *input_tensor = ws_->GetTensor("mace_input_node:0");
   Tensor *output_tensor = ws_->GetTensor("mace_output_node:0");
@@ -571,7 +572,7 @@ bool MaceEngine::Run(const float *input,
   if (device_type_ == HEXAGON) {
     hexagon_controller_->ExecuteGraph(*input_tensor, output_tensor);
   } else {
-    if (!net_->Run()) {
+    if (!net_->Run(run_metadata)) {
       LOG(FATAL) << "Net run failed";
     }
   }

@@ -334,6 +334,22 @@ class NetDef {
   uint32_t has_bits_;
 };
 
+struct CallStats {
+  int64_t start_micros;
+  int64_t end_micros;
+};
+
+struct OperatorStats {
+  std::string operator_name;
+  std::string type;
+  CallStats stats;
+};
+
+struct RunMetadata {
+  std::vector<OperatorStats> op_stats;
+};
+
+
 class Workspace;
 class NetBase;
 class OperatorRegistry;
@@ -346,7 +362,8 @@ class MaceEngine {
   ~MaceEngine();
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
-           float *output);
+           float *output,
+           RunMetadata *run_metadata = nullptr);
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 

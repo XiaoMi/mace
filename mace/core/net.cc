@@ -3,7 +3,6 @@
 //
 
 #include "mace/core/net.h"
-#include "mace/core/workspace.h"
 #include "mace/utils/utils.h"
 #include "mace/utils/memory_logging.h"
 
