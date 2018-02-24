@@ -298,7 +298,7 @@ class Tensor {
     return type_size;
   }
 
-  inline void Copy(Tensor &other) {
+  inline void Copy(const Tensor &other) {
     alloc_ = other.alloc_;
     dtype_ = other.dtype_;
     ResizeLike(other);
