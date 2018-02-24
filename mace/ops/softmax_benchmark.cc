@@ -49,7 +49,7 @@ static void SoftmaxBenchmark(
 #define BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                      \
   static void BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) {  \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::ItemsProcessed(tot);                              \
+    mace::testing::MaccProcessed(tot);                              \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     SoftmaxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                  \
   }                                                                  \

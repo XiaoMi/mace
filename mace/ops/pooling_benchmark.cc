@@ -54,7 +54,7 @@ static void Pooling(int iters,
       BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE( \
           int iters) {                                                              \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                \
-    mace::testing::ItemsProcessed(tot);                                             \
+    mace::testing::MaccProcessed(tot);                                             \
     mace::testing::BytesProcessed(tot *(sizeof(float)));                            \
     Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,                     \
                     PoolingType::PO);                                               \

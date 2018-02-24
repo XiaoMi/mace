@@ -7,7 +7,7 @@
 static void foo(int iters) {
   static const int N = 32;
   const int64_t tot = static_cast<int64_t>(iters) * N;
-  mace::testing::ItemsProcessed(tot);
+  mace::testing::MaccProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
   float *inp = new float[N];
@@ -26,7 +26,7 @@ BENCHMARK(foo);
 
 static void bar(int iters, int n) {
   const int64_t tot = static_cast<int64_t>(iters) * n;
-  mace::testing::ItemsProcessed(tot);
+  mace::testing::MaccProcessed(tot);
   mace::testing::BytesProcessed(tot * (sizeof(float)));
 
   float *inp = new float[n];

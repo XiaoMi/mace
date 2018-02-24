@@ -9,9 +9,9 @@
 #include <regex>
 #include <vector>
 
+#include "mace/core/testing/test_benchmark.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
-#include "mace/core/testing/test_benchmark.h"
 
 namespace mace {
 namespace testing {
@@ -19,7 +19,7 @@ namespace testing {
 static std::vector<Benchmark *> *all_benchmarks = nullptr;
 static std::string label;
 static int64_t bytes_processed;
-static int64_t items_processed;
+static int64_t macc_processed;
 static int64_t accum_time = 0;
 static int64_t start_time = 0;
 
@@ -81,8 +81,9 @@ void Benchmark::Run(const char *pattern) {
     }
   }
 
-  printf("%-*s %10s %10s\n", width, "Benchmark", "Time(ns)", "Iterations");
-  printf("%s\n", std::string(width + 22, '-').c_str());
+  printf("%-*s %10s %10s %10s %10s\n", width, "Benchmark", "Time(ns)",
+         "Iterations", "Input(MB/s)", "MACC(G/s)");
+  printf("%s\n", std::string(width + 44, '-').c_str());
   for (auto b : *all_benchmarks) {
     if (!std::regex_match(b->name_, match, regex)) continue;
     for (auto arg : b->args_) {
@@ -98,20 +99,11 @@ void Benchmark::Run(const char *pattern) {
       double seconds;
       b->Run(arg.first, arg.second, &iters, &seconds);
 
-      char buf[100];
-      std::string full_label = label;
-      if (bytes_processed > 0) {
-        snprintf(buf, sizeof(buf), " %.1fMB/s",
-                 (bytes_processed * 1e-6) / seconds);
-        full_label += buf;
-      }
-      if (items_processed > 0) {
-        snprintf(buf, sizeof(buf), " %.1fM items/s",
-                 (items_processed * 1e-6) / seconds);
-        full_label += buf;
-      }
-      printf("%-*s %10.0f %10d\t%s\n", width, name, seconds * 1e9 / iters,
-             iters, full_label.c_str());
+      float mbps = (bytes_processed * 1e-6) / seconds;
+      // MACCs or other computations
+      float gmaccs = (macc_processed * 1e-9) / seconds;
+      printf("%-*s %10.0f %10d %10.2f %10.2f\n", width, name,
+             seconds * 1e9 / iters, iters, mbps, gmaccs);
     }
   }
 }
@@ -130,7 +122,7 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
     accum_time = 0;
     start_time = utils::NowMicros();
     bytes_processed = -1;
-    items_processed = -1;
+    macc_processed = -1;
     label.clear();
     if (fn0_) {
       (*fn0_)(iters);
@@ -158,7 +150,7 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
 }
 
 void BytesProcessed(int64_t n) { bytes_processed = n; }
-void ItemsProcessed(int64_t n) { items_processed = n; }
+void MaccProcessed(int64_t n) { macc_processed = n; }
 void StartTiming() {
   if (start_time == 0) start_time = utils::NowMicros();
 }

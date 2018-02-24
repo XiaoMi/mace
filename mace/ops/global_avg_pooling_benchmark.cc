@@ -40,7 +40,7 @@ static void GlobalAvgPooling(
   static void BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE( \
       int iters) {                                                    \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;  \
-    mace::testing::ItemsProcessed(tot);                               \
+    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(float)));              \
     GlobalAvgPooling<DEVICE>(iters, N, C, H, W);                      \
   }                                                                   \
