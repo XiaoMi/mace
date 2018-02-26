@@ -3,8 +3,17 @@
 //
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
-#include <fstream>
-#include <unordered_map>
+#include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
+#include <thread>
+#include <sys/time.h>
+
+namespace {
+  inline int64_t NowMicros() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+  }
+}
 
 namespace mace {
 
@@ -20,7 +29,7 @@ enum {
 
 int HexagonControlWrapper::GetVersion() {
   int version;
-  hexagon_nn_version(&version);
+  MACE_CHECK(hexagon_nn_version(&version) == 0, "get version error");
   return version;
 }
 
@@ -44,75 +53,121 @@ bool HexagonControlWrapper::Finalize() {
   return hexagon_controller_DeInitHexagon() == 0;
 }
 
-bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
+bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   LOG(INFO) << "Hexagon setup graph";
+
+  int64_t t0 = NowMicros();
+
   // const node
-  for (const ConstTensor& tensor_proto: net_def.tensors()) {
-    vector<int> tensor_shape(tensor_proto.dims().begin(),
-                             tensor_proto.dims().end());
-    while (tensor_shape.size() < 4) {
-      tensor_shape.insert(tensor_shape.begin(), 1);
+  std::thread const_thread([&]() {
+    std::cout << "thread function\n";
+    vector<hexagon_nn_const_node> const_node_list;
+    for (const ConstTensor &tensor_proto: net_def.tensors()) {
+      vector<int> tensor_shape(tensor_proto.dims().begin(),
+                               tensor_proto.dims().end());
+      while (tensor_shape.size() < 4) {
+        tensor_shape.insert(tensor_shape.begin(), 1);
+      }
+
+      hexagon_nn_const_node const_node;
+      const_node.node_id = node_id(tensor_proto.node_id());
+      const_node.tensor.batches = tensor_shape[0];
+      const_node.tensor.height = tensor_shape[1];
+      const_node.tensor.width = tensor_shape[2];
+      const_node.tensor.depth = tensor_shape[3];
+
+      if (tensor_proto.data_type() == DataType::DT_INT32
+        && tensor_proto.data_size() == 0) {
+        const_node.tensor.data = NULL;
+        const_node.tensor.dataLen = 0;
+      } else {
+        const_node.tensor.data =
+          const_cast<unsigned char *>(tensor_proto.data());
+        const_node.tensor.dataLen =
+          tensor_proto.data_size() * GetEnumTypeSize(tensor_proto.data_type());
+      }
+      const_node_list.push_back(const_node);
+      // 255 is magic number: why fastrpc limits sequence length to that?
+      if (const_node_list.size() >= 250) {
+        MACE_CHECK(hexagon_nn_append_const_node_list(nn_id_,
+                                                     const_node_list.data(),
+                                                     const_node_list.size())
+                     == 0, "append const node error");
+        const_node_list.clear();
+      }
     }
 
-    if (tensor_proto.data_type() == DataType::DT_INT32
-      && tensor_proto.data_size() == 0) {
-      hexagon_nn_append_const_node(nn_id_, node_id(tensor_proto.node_id()),
-                                   tensor_shape[0], tensor_shape[1],
-                                   tensor_shape[2], tensor_shape[3],
-                                   NULL,
-                                   0);
-    } else {
-      unique_ptr<Tensor> tensor = serializer_.Deserialize(tensor_proto,
-                                                          DeviceType::CPU);
-      hexagon_nn_append_const_node(nn_id_, node_id(tensor_proto.node_id()),
-                                   tensor_shape[0], tensor_shape[1],
-                                   tensor_shape[2], tensor_shape[3],
-                                   reinterpret_cast<const unsigned char *>(
-                                     tensor->raw_data()),
-                                   tensor->raw_size());
+    if (!const_node_list.empty()) {
+      MACE_CHECK(hexagon_nn_append_const_node_list(nn_id_,
+                                                   const_node_list.data(),
+                                                   const_node_list.size()) == 0,
+                 "append const node error");
     }
-    VLOG(1) << "Const: " << tensor_proto.name()
-            << ", node_id: " << node_id(tensor_proto.node_id())
-            << "\n\t shape: " << tensor_shape[0] << " " << tensor_shape[1]
-            << " " << tensor_shape[2] << " " << tensor_shape[3];
-  }
+    const_node_list.clear();
+  });
 
   // op node
-  for (const OperatorDef& op: net_def.op()) {
-    unsigned int op_id;
-    MACE_CHECK(hexagon_nn_op_name_to_id(op.type().data(), &op_id) == 0,
-                "invalid op: ", op.name(), ", type: ", op.type());
-    vector<hexagon_nn_input> inputs(op.node_input().size());
-    for (size_t i = 0; i < op.node_input().size(); ++i) {
-      inputs[i].src_id = node_id(op.node_input()[i].node_id());
-      inputs[i].output_idx = op.node_input()[i].output_port();
-    }
-    vector<hexagon_nn_output> outputs(op.out_max_byte_size().size());
-    for (size_t i = 0; i < op.out_max_byte_size().size(); ++i) {
-      outputs[i].max_size = op.out_max_byte_size()[i];
-    }
+  std::thread op_thread([&]() {
+    OpMap op_map;
+    op_map.Init();
+    vector<hexagon_nn_op_node> op_node_list;
+    vector<vector<hexagon_nn_input>> cached_inputs;
+    vector<vector<hexagon_nn_output>> cached_outputs;
+    vector<hexagon_nn_input> inputs;
+    vector<hexagon_nn_output> outputs;
 
-    hexagon_nn_padding_type padding_type = static_cast<hexagon_nn_padding_type>(
-      op.padding());
-
-    hexagon_nn_append_node(nn_id_, node_id(op.node_id()), op_id, padding_type,
-                           inputs.data(), inputs.size(),
-                           outputs.data(), outputs.size());
-
-    if (VLOG_IS_ON(1)) {
-      VLOG(1) << "Op: " << op.name()
-              << ", type: " << op.type()
-              << ", node_id: " << node_id(op.node_id())
-              << ", padding_type: " << padding_type;
-
-      for (const auto &input: inputs) {
-        VLOG(1) << "\t input: " << input.src_id << ":" << input.output_idx;
+    for (const OperatorDef &op: net_def.op()) {
+      int op_id = op_map.GetOpId(op.type());
+      inputs.resize(op.node_input().size());
+      for (size_t i = 0; i < op.node_input().size(); ++i) {
+        inputs[i].src_id = node_id(op.node_input()[i].node_id());
+        inputs[i].output_idx = op.node_input()[i].output_port();
       }
-      for (const auto &output: outputs) {
-        VLOG(1) << "\t output: " << output.max_size;
+      outputs.resize(op.out_max_byte_size().size());
+      for (size_t i = 0; i < op.out_max_byte_size().size(); ++i) {
+        outputs[i].max_size = op.out_max_byte_size()[i];
+      }
+      cached_inputs.push_back(inputs);
+      cached_outputs.push_back(outputs);
+
+      hexagon_nn_padding_type
+        padding_type = static_cast<hexagon_nn_padding_type>(
+        op.padding());
+
+      hexagon_nn_op_node op_node;
+      op_node.node_id = node_id(op.node_id());
+      op_node.operation = op_id;
+      op_node.padding = padding_type;
+      op_node.inputs = cached_inputs.back().data();
+      op_node.inputsLen = inputs.size();
+      op_node.outputs = cached_outputs.back().data();
+      op_node.outputsLen = outputs.size();
+
+      op_node_list.push_back(op_node);
+      if (op_node_list.size() >= 125) {
+        MACE_CHECK(hexagon_nn_append_node_list(nn_id_,
+                                               op_node_list.data(),
+                                               op_node_list.size()) == 0,
+                   "append node error");
+        op_node_list.clear();
+        cached_inputs.clear();
+        cached_outputs.clear();
       }
     }
-  }
+
+    if (!op_node_list.empty()) {
+      MACE_CHECK(hexagon_nn_append_node_list(nn_id_,
+                                             op_node_list.data(),
+                                             op_node_list.size()) == 0,
+                 "append node error");
+    }
+    op_node_list.clear();
+    cached_inputs.clear();
+    cached_outputs.clear();
+  });
+
+  const_thread.join();
+  op_thread.join();
 
   // input info
   num_inputs_ = 0;
@@ -146,7 +201,15 @@ bool HexagonControlWrapper::SetupGraph(const NetDef& net_def) {
             << "\n\t type: " << output_info.data_type();
   }
 
-  return hexagon_nn_prepare(nn_id_) == 0;
+  int64_t t1 = NowMicros();
+
+  int res = hexagon_nn_prepare(nn_id_);
+
+  int64_t t2 = NowMicros();
+
+  VLOG(0) << "Setup time: " << t1 - t0 << " " << t2 - t1;
+
+  return res == 0;
 }
 
 bool HexagonControlWrapper::TeardownGraph() {
@@ -159,35 +222,42 @@ bool HexagonControlWrapper::TeardownGraph() {
 void HexagonControlWrapper::PrintLog() {
   char *buf;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
-  hexagon_nn_getlog(nn_id_, reinterpret_cast<unsigned char*>(buf), PRINT_BUFSIZE);
+  MACE_CHECK(hexagon_nn_getlog(nn_id_,
+                               reinterpret_cast<unsigned char *>(buf),
+                               PRINT_BUFSIZE) == 0, "print log error");
   LOG(INFO) << string(buf);
-  delete []buf;
+  delete[]buf;
 }
 
 void HexagonControlWrapper::PrintGraph() {
   LOG(INFO) << "Print Graph";
   char *buf;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
-  hexagon_nn_snpprint(nn_id_, reinterpret_cast<unsigned char*>(buf), PRINT_BUFSIZE);
+  MACE_CHECK(hexagon_nn_snpprint(nn_id_,
+                                 reinterpret_cast<unsigned char *>(buf),
+                                 PRINT_BUFSIZE) == 0, "print graph error");
   LOG(INFO) << string(buf);
-  delete []buf;
+  delete[]buf;
 }
 
 void HexagonControlWrapper::SetDebugLevel(int level) {
   LOG(INFO) << "Set debug level: " << level;
-  hexagon_nn_set_debug_level(nn_id_, level);
+  MACE_CHECK(hexagon_nn_set_debug_level(nn_id_, level) == 0,
+             "set debug level error");
 }
 
 void HexagonControlWrapper::SetGraphMode(int mode) {
   LOG(INFO) << "Set dsp mode: " << mode;
-  hexagon_nn_set_graph_mode(nn_id_, mode);
+  MACE_CHECK(hexagon_nn_set_graph_mode(nn_id_, mode) == 0, "set mode error");
 }
 
 void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
   vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
   unsigned int n_items = 0;
-  hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE, &n_items);
+  MACE_CHECK(
+    hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE, &n_items) == 0,
+    "get perf info error");
 
   std::unordered_map<uint32_t, float> node_id_counters;
   std::unordered_map<std::string, std::pair<int, float>> node_type_counters;
@@ -197,8 +267,9 @@ void HexagonControlWrapper::GetPerfInfo() {
   for (int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
-    node_id_counters[node_id] = ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32)
-      + perf_info[i].counter_lo) * 1.0f / perf_info[i].executions;
+    node_id_counters[node_id] =
+      ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32)
+        + perf_info[i].counter_lo) * 1.0f / perf_info[i].executions;
 
     char node_type_buf[MAX_NODE];
     hexagon_nn_op_id_to_name(node_type_id, node_type_buf, MAX_NODE);
@@ -216,7 +287,7 @@ void HexagonControlWrapper::GetPerfInfo() {
     total_duration += node_id_counters[node_id];
   }
 
-  for (auto& node_type_counter: node_type_counters) {
+  for (auto &node_type_counter: node_type_counters) {
     LOG(INFO) << "node type: " << node_type_counter.first
               << ", time: " << node_type_counter.second.first
               << ", duration: " << node_type_counter.second.second;
@@ -226,12 +297,13 @@ void HexagonControlWrapper::GetPerfInfo() {
 
 void HexagonControlWrapper::ResetPerfInfo() {
   LOG(INFO) << "Reset perf info";
-  hexagon_nn_reset_perfinfo(nn_id_, NN_GRAPH_PERFEVENT_UTIME);
+  MACE_CHECK(hexagon_nn_reset_perfinfo(nn_id_, NN_GRAPH_PERFEVENT_UTIME) == 0,
+             "reset perf error");
 }
 
 bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
                                          Tensor *output_tensor) {
-  LOG(INFO) << "Execute graph: " << nn_id_;
+  VLOG(2) << "Execute graph: " << nn_id_;
   // single input and single output
   MACE_ASSERT(num_inputs_ == 1, "Wrong inputs num");
   MACE_ASSERT(num_outputs_ == 1, "Wrong outputs num");
@@ -255,6 +327,7 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
                                  output_tensor->raw_mutable_data()),
                                output_tensor->raw_size(),
                                &output_bytes);
+  MACE_CHECK(res == 0, "execute error");
 
   MACE_ASSERT(output_shape == output_shapes_[0],
               "wrong output shape inferred");
@@ -299,16 +372,16 @@ bool HexagonControlWrapper::ExecuteGraphNew(const vector<Tensor> &input_tensors,
                                    outputs, num_outputs);
 
   for (int i = 0; i < num_outputs; ++i) {
-    vector<uint32_t> output_shape {outputs[i].batches, outputs[i].height,
-                                   outputs[i].width, outputs[i].depth};
-    MACE_ASSERT(output_shape  == output_shapes_[i],
+    vector<uint32_t> output_shape{outputs[i].batches, outputs[i].height,
+                                  outputs[i].width, outputs[i].depth};
+    MACE_ASSERT(output_shape == output_shapes_[i],
                 "wrong output shape inferred");
     MACE_ASSERT(outputs[i].data_valid_len == (*output_tensors)[i].raw_size(),
                 "wrong output bytes inferred.");
   }
 
-  delete [] inputs;
-  delete [] outputs;
+  delete[] inputs;
+  delete[] outputs;
   return res == 0;
 };
 
@@ -323,7 +396,10 @@ bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
   float *min_in_data = input_tensors[1].mutable_data<float>();
   input_tensors[2].Resize({1, 1, 1, 1});
   float *max_in_data = input_tensors[2].mutable_data<float>();
-  quantizer_.Quantize(input_tensor, &input_tensors[0], min_in_data, max_in_data);
+  quantizer_.Quantize(input_tensor,
+                      &input_tensors[0],
+                      min_in_data,
+                      max_in_data);
   if (!ExecuteGraphNew(input_tensors, &output_tensors)) {
     return false;
   }
@@ -332,7 +408,10 @@ bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
 
   const float *min_out_data = output_tensors[1].data<float>();
   const float *max_out_data = output_tensors[2].data<float>();
-  quantizer_.DeQuantize(output_tensors[0], *min_out_data, *max_out_data, output_tensor);
+  quantizer_.DeQuantize(output_tensors[0],
+                        *min_out_data,
+                        *max_out_data,
+                        output_tensor);
   return true;
 }
 
