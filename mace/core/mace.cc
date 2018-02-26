@@ -556,6 +556,13 @@ MaceEngine::~MaceEngine() {
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
   }
 };
+
+bool MaceEngine::Run(const float *input,
+                     const std::vector<index_t> &input_shape,
+                     float *output) {
+  return Run(input, input_shape, output, nullptr);
+}
+
 bool MaceEngine::Run(const float *input,
                      const std::vector<index_t> &input_shape,
                      float *output,

@@ -362,8 +362,11 @@ class MaceEngine {
   ~MaceEngine();
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
+           float *output);
+  bool Run(const float *input,
+           const std::vector<int64_t> &input_shape,
            float *output,
-           RunMetadata *run_metadata = nullptr);
+           RunMetadata *run_metadata);
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 
