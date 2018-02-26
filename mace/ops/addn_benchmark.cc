@@ -55,18 +55,18 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   }
 }
 
-#define BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, DEVICE)                     \
-  static void BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
-      int iters) {                                                          \
-    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;        \
-    mace::testing::ItemsProcessed(tot);                                     \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                     \
-    AddNBenchmark<DEVICE, TYPE>(iters, INPUTS, N, H, W, C);                 \
-  }                                                                         \
+#define BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, DEVICE)                       \
+  static void BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(   \
+      int iters) {                                                            \
+    const int64_t tot = static_cast<int64_t>(iters) * INPUTS * N * H * W * C; \
+    mace::testing::MaccProcessed(tot);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
+    AddNBenchmark<DEVICE, TYPE>(iters, INPUTS, N, H, W, C);                   \
+  }                                                                           \
   BENCHMARK(BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ADDN(INPUTS, N, H, W, C)       \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU); \
+#define BM_ADDN(INPUTS, N, H, W, C)                 \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);    \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, float, OPENCL); \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, half, OPENCL);
 

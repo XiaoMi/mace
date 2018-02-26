@@ -51,21 +51,22 @@ static void ReluBenchmark(
 #define BM_RELU_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_RELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
-    mace::testing::ItemsProcessed(tot);                                      \
+    mace::testing::MaccProcessed(tot);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
     ReluBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                          \
   BENCHMARK(BM_RELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_RELU(N, C, H, W, TYPE)       \
-  BM_RELU_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_RELU_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_RELU(N, C, H, W)                 \
+  BM_RELU_MACRO(N, C, H, W, float, CPU);    \
+  BM_RELU_MACRO(N, C, H, W, float, OPENCL); \
+  BM_RELU_MACRO(N, C, H, W, half, OPENCL);
 
-BM_RELU(1, 1, 512, 512, float);
-BM_RELU(1, 3, 128, 128, float);
-BM_RELU(1, 3, 512, 512, float);
-BM_RELU(1, 32, 112, 112, float);
-BM_RELU(1, 64, 256, 256, float);
+BM_RELU(1, 1, 512, 512);
+BM_RELU(1, 3, 128, 128);
+BM_RELU(1, 3, 512, 512);
+BM_RELU(1, 32, 112, 112);
+BM_RELU(1, 64, 256, 256);
 
 template <DeviceType D, typename T>
 static void ReluxBenchmark(
@@ -112,21 +113,22 @@ static void ReluxBenchmark(
 #define BM_RELUX_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_RELUX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::ItemsProcessed(tot);                                       \
+    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     ReluxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                           \
   BENCHMARK(BM_RELUX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_RELUX(N, C, H, W, TYPE)       \
-  BM_RELUX_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_RELUX_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_RELUX(N, C, H, W)                 \
+  BM_RELUX_MACRO(N, C, H, W, float, CPU);    \
+  BM_RELUX_MACRO(N, C, H, W, float, OPENCL); \
+  BM_RELUX_MACRO(N, C, H, W, half, OPENCL);
 
-BM_RELUX(1, 1, 512, 512, float);
-BM_RELUX(1, 3, 128, 128, float);
-BM_RELUX(1, 3, 512, 512, float);
-BM_RELUX(1, 32, 112, 112, float);
-BM_RELUX(1, 64, 256, 256, float);
+BM_RELUX(1, 1, 512, 512);
+BM_RELUX(1, 3, 128, 128);
+BM_RELUX(1, 3, 512, 512);
+BM_RELUX(1, 32, 112, 112);
+BM_RELUX(1, 64, 256, 256);
 
 template <DeviceType D, typename T>
 static void PreluBenchmark(
@@ -173,21 +175,22 @@ static void PreluBenchmark(
 #define BM_PRELU_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_PRELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
-    mace::testing::ItemsProcessed(tot);                                       \
+    mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     PreluBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                           \
   BENCHMARK(BM_PRELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_PRELU(N, C, H, W, TYPE)       \
-  BM_PRELU_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_PRELU_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_PRELU(N, C, H, W)                 \
+  BM_PRELU_MACRO(N, C, H, W, float, CPU);    \
+  BM_PRELU_MACRO(N, C, H, W, float, OPENCL); \
+  BM_PRELU_MACRO(N, C, H, W, half, OPENCL);
 
-BM_PRELU(1, 1, 512, 512, float);
-BM_PRELU(1, 3, 128, 128, float);
-BM_PRELU(1, 3, 512, 512, float);
-BM_PRELU(1, 32, 112, 112, float);
-BM_PRELU(1, 64, 256, 256, float);
+BM_PRELU(1, 1, 512, 512);
+BM_PRELU(1, 3, 128, 128);
+BM_PRELU(1, 3, 512, 512);
+BM_PRELU(1, 32, 112, 112);
+BM_PRELU(1, 64, 256, 256);
 
 template <DeviceType D, typename T>
 static void TanhBenchmark(
@@ -232,21 +235,22 @@ static void TanhBenchmark(
 #define BM_TANH_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_TANH_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
-    mace::testing::ItemsProcessed(tot);                                      \
+    mace::testing::MaccProcessed(tot);                                       \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
     TanhBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                          \
   }                                                                          \
   BENCHMARK(BM_TANH_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_TANH(N, C, H, W, TYPE)       \
-  BM_TANH_MACRO(N, C, H, W, TYPE, CPU); \
-  BM_TANH_MACRO(N, C, H, W, TYPE, OPENCL);
+#define BM_TANH(N, C, H, W)                 \
+  BM_TANH_MACRO(N, C, H, W, float, CPU);    \
+  BM_TANH_MACRO(N, C, H, W, float, OPENCL); \
+  BM_TANH_MACRO(N, C, H, W, half, OPENCL);
 
-BM_TANH(1, 1, 512, 512, float);
-BM_TANH(1, 3, 128, 128, float);
-BM_TANH(1, 3, 512, 512, float);
-BM_TANH(1, 32, 112, 112, float);
-BM_TANH(1, 64, 256, 256, float);
+BM_TANH(1, 1, 512, 512);
+BM_TANH(1, 3, 128, 128);
+BM_TANH(1, 3, 512, 512);
+BM_TANH(1, 32, 112, 112);
+BM_TANH(1, 64, 256, 256);
 
 template <DeviceType D, typename T>
 static void SigmoidBenchmark(
@@ -292,7 +296,7 @@ static void SigmoidBenchmark(
   static void BM_SIGMOID_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::ItemsProcessed(tot);                              \
+    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     SigmoidBenchmark<DEVICE, TYPE>(iters, N, C, H, W);               \
   }                                                                  \

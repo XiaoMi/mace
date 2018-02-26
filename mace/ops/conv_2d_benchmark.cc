@@ -83,8 +83,20 @@ static void Conv2d(int iters,
   static void                                                                                      \
       BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE( \
           int iters) {                                                                             \
+    const int64_t dilation = 1;                                                                    \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                               \
-    mace::testing::ItemsProcessed(tot);                                                            \
+    int64_t pad_h = 0, pad_w = 0;                                                                  \
+    if (P == SAME) {                                                                               \
+      pad_h = KH / 2;                                                                              \
+      pad_w = KW / 2;                                                                              \
+    }                                                                                              \
+    int64_t oh =                                                                                   \
+        (H + 2 * pad_h - KH - (KH - 1) * (dilation - 1)) / STRIDE + 1;                             \
+    int64_t ow =                                                                                   \
+        (W + 2 * pad_w - KW - (KW - 1) * (dilation - 1)) / STRIDE + 1;                             \
+    const int64_t macc =                                                                           \
+        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);                        \
+    mace::testing::MaccProcessed(macc);                                                            \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                            \
     Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                      \
                          OC);                                                                      \

@@ -20,10 +20,8 @@ static void MatMulBenchmark(
   net.AddRandomInput<D, float>("B", {batch, channels, out_width, 1});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "A", "AImage",
-                            kernels::BufferType::IN_OUT_WIDTH);
-    BufferToImage<D, T>(net, "B", "BImage",
-                            kernels::BufferType::IN_OUT_HEIGHT);
+    BufferToImage<D, T>(net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
+    BufferToImage<D, T>(net, "B", "BImage", kernels::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulBM")
         .Input("AImage")
@@ -52,16 +50,19 @@ static void MatMulBenchmark(
   net.Sync();
 }
 
-#define BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                      \
-  static void BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) {  \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::ItemsProcessed(tot);                              \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    MatMulBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                  \
-  }                                                                  \
+#define BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                              \
+  static void BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) { \
+    const int64_t macc = static_cast<int64_t>(iters) * N * C * H * W;          \
+    const int64_t tot = static_cast<int64_t>(iters) * N * (C * H + H * W);     \
+    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    MatMulBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                          \
+  }                                                                            \
   BENCHMARK(BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
-#define BM_MATMUL(N, H, C, W) \
+#define BM_MATMUL(N, H, C, W)                 \
+  BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
+  BM_MATMUL_MACRO(N, H, C, W, float, OPENCL); \
   BM_MATMUL_MACRO(N, H, C, W, half, OPENCL);
 
 BM_MATMUL(16, 32, 128, 49);
