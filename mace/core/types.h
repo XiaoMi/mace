@@ -5,12 +5,14 @@
 #ifndef MACE_CORE_TYPES_H_
 #define MACE_CORE_TYPES_H_
 
-#include "mace/core/common.h"
-#include "mace/core/public/mace.h"
-#include "mace/core/half.h"
+#include <cstdint>
 
+#include "mace/core/half.h"
+#include "mace/public/mace.h"
 
 namespace mace {
+
+typedef int64_t index_t;
 
 using half = half_float::half;
 
@@ -57,7 +59,7 @@ MATCH_TYPE_AND_ENUM(uint16_t, DT_UINT16);
 MATCH_TYPE_AND_ENUM(uint8_t, DT_UINT8);
 MATCH_TYPE_AND_ENUM(int16_t, DT_INT16);
 MATCH_TYPE_AND_ENUM(int8_t, DT_INT8);
-MATCH_TYPE_AND_ENUM(string, DT_STRING);
+MATCH_TYPE_AND_ENUM(std::string, DT_STRING);
 MATCH_TYPE_AND_ENUM(int64_t, DT_INT64);
 MATCH_TYPE_AND_ENUM(uint32_t, DT_UINT32);
 MATCH_TYPE_AND_ENUM(bool, DT_BOOL);

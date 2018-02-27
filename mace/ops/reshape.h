@@ -29,9 +29,9 @@ class ReshapeOp : public Operator<D, T> {
         MACE_CHECK(unknown_idx == -1) << "Only one input size may be -1";
         unknown_idx = i;
         out_shape.push_back(1);
-      } else if (shape_[i] < 0) {
-        VLOG(ERROR) << "Shape must be non-negative";
       } else {
+        MACE_CHECK(shape_[i] >= 0) << "Shape must be non-negative: "
+                                   << shape_[i];
         out_shape.push_back(shape_[i]);
         product *= shape_[i];
       }

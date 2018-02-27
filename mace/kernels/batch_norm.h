@@ -10,7 +10,7 @@
 #endif
 
 #include "mace/core/future.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"

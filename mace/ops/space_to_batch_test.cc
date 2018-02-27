@@ -70,7 +70,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
                                 const std::vector<int> &padding_data,
                                 const std::vector<index_t> &batch_shape,
                                 const std::vector<float> &batch_data) {
-  auto space_tensor = unique_ptr<Tensor>(new Tensor(
+  auto space_tensor = std::unique_ptr<Tensor>(new Tensor(
       GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<T>::v()));
   space_tensor->Resize(space_shape);
   {
@@ -82,7 +82,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
     memcpy(space_ptr, space_data.data(), space_data.size() * sizeof(T));
   }
 
-  auto batch_tensor = unique_ptr<Tensor>(new Tensor(
+  auto batch_tensor = std::unique_ptr<Tensor>(new Tensor(
       GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<T>::v()));
   batch_tensor->Resize(batch_shape);
   {
@@ -165,7 +165,7 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
 //  const int batch_size = std::accumulate(batch_shape.begin(),
 //  batch_shape.end(), 1, std::multiplies<int>());
 //
-//  auto space_tensor = unique_ptr<Tensor>(new
+//  auto space_tensor = std::unique_ptr<Tensor>(new
 //  Tensor(GetDeviceAllocator(DeviceType::OPENCL),
 //                                                    DataTypeToEnum<float>::v()));
 //  space_tensor->Resize(space_shape);
@@ -185,7 +185,7 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
 //    VLOG(0) << "open space file failed";
 //  }
 //
-//  auto batch_tensor = unique_ptr<Tensor>(new
+//  auto batch_tensor = std::unique_ptr<Tensor>(new
 //  Tensor(GetDeviceAllocator(DeviceType::OPENCL),
 //                                                    DataTypeToEnum<float>::v()));
 //  std::vector<float> batch_data(batch_size, 0.0);

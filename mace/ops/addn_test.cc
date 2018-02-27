@@ -75,13 +75,13 @@ void RandomTest() {
     OpsTestNet net;
     auto op_def = OpDefBuilder("AddN", "AddNTest");
     for (int i = 0; i < input_num; ++i) {
-      op_def.Input("Input" + ToString(i));
+      op_def.Input(MakeString("Input", i));
     }
     op_def.Output("Output").Finalize(net.NewOperatorDef());
 
     // Add input data
     for (int i = 0; i < input_num; ++i) {
-      net.AddRandomInput<D, float>("Input" + ToString(i), {n, h, w, c});
+      net.AddRandomInput<D, float>(MakeString("Input", i), {n, h, w, c});
     }
 
     // run on cpu
@@ -92,14 +92,14 @@ void RandomTest() {
 
     // run on gpu
     for (int i = 0; i < input_num; ++i) {
-      BufferToImage<D, half>(net, "Input" + ToString(i),
-                             "InputImage" + ToString(i),
+      BufferToImage<D, half>(net, MakeString("Input", i),
+                             MakeString("InputImage", i),
                              kernels::BufferType::IN_OUT_CHANNEL);
     }
 
     auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
     for (int i = 0; i < input_num; ++i) {
-      op_def_cl.Input("InputImage" + ToString(i));
+      op_def_cl.Input(MakeString("InputImage", i));
     }
     op_def_cl.Output("OutputImage")
         .AddIntArg("T", static_cast<int>(DataType::DT_HALF))

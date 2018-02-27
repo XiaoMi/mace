@@ -6,6 +6,7 @@
 #define MACE_UTILS_TIMER_H_
 
 #include "mace/utils/env_time.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
@@ -24,11 +25,11 @@ class WallClockTimer : public Timer {
   WallClockTimer() : accumulated_micros_(0) {}
 
   void StartTiming() override {
-    start_micros_ = mace::utils::NowMicros();
+    start_micros_ = NowMicros();
   }
 
   void StopTiming() override {
-    stop_micros_ = mace::utils::NowMicros();
+    stop_micros_ = NowMicros();
   }
 
   void AccumulateTiming() override {
@@ -54,6 +55,8 @@ class WallClockTimer : public Timer {
   double start_micros_;
   double stop_micros_;
   double accumulated_micros_;
+
+  DISABLE_COPY_AND_ASSIGN(WallClockTimer);
 };
 
 }  // namespace mace

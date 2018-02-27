@@ -5,7 +5,6 @@
 #define MACE_KERNELS_NEON_CONV_2D_NEON_5X5_H_
 
 #include <arm_neon.h>
-#include "mace/core/common.h"
 
 namespace mace {
 namespace kernels {

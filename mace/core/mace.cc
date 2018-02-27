@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/types.h"
 #include "mace/core/net.h"
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
@@ -524,7 +524,7 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
-      static_cast<int>(mace::internal::LogMessage::MinVLogLevel()));
+      static_cast<int>(mace::logging::LogMessage::MinVLogLevel()));
     int dsp_mode = ArgumentHelper::GetSingleArgument<NetDef, int>(
         *net_def, "dsp_mode", 0);
     hexagon_controller_->SetGraphMode(dsp_mode);

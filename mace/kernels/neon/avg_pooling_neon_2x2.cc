@@ -6,8 +6,6 @@
 #include <float.h>
 #include <limits>
 
-#include "mace/core/common.h"
-
 namespace mace {
 namespace kernels {
 

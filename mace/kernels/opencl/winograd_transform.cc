@@ -32,7 +32,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
     CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
     output_tensor->ResizeImage(output_shape, image_shape);
 
-    string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
+    std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
     std::set<std::string> built_options;
     built_options.emplace("-Dwinograd_transform_2x2=" + obfuscated_kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));
@@ -77,7 +77,7 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
   output_tensor->ResizeImage(output_shape, image_shape);
 
   if (kernel_.get() == nullptr) {
-    string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
+    std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
     std::set<std::string> built_options;
     built_options.emplace("-Dwinograd_inverse_transform_2x2=" + obfuscated_kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(DataTypeToEnum<T>::value));

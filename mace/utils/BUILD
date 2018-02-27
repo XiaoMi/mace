@@ -10,61 +10,64 @@ licenses(["notice"])  # Apache 2.0
 load("//mace:mace.bzl", "if_android")
 
 cc_library(
-    name = "logging",
+    name = "utils",
     srcs = [
+        "command_line_flags.cc",
         "logging.cc",
     ],
     hdrs = [
+        "command_line_flags.h",
+        "env_time.h",
         "logging.h",
         "memory_logging.h",
+        "string_util.h",
+        "timer.h",
+        "tuner.h",
+        "utils.h",
     ],
     linkopts = if_android([
         "-llog",
     ]),
+    deps = [
+        "//mace/public",
+    ],
 )
 
-cc_library(
-    name = "command_line_flags",
+cc_test(
+    name = "utils_test",
+    testonly = 1,
     srcs = [
-        "command_line_flags.cc",
+        "utils_test.cc",
     ],
-    hdrs = [
-        "command_line_flags.h",
-    ],
+    linkopts = if_android([
+        "-pie",
+        "-lm",
+    ]),
+    linkstatic = 1,
     deps = [
-        ":logging",
+        ":utils",
+        "@gtest//:gtest",
+        "@gtest//:gtest_main",
     ],
 )
 
 cc_library(
-    name = "tuner",
-    hdrs = [
-        "timer.h",
-        "tuner.h",
-    ],
-    deps = [
-        ":logging",
-        ":utils_hdrs",
-    ],
-)
-
-cc_library(
-    name = "tuner_dev",
+    name = "utils_dev",
     srcs = [
         "tuner_development.cc",
     ],
     deps = [
-        ":tuner",
+        ":utils",
     ],
 )
 
 cc_library(
-    name = "tuner_prod",
+    name = "utils_prod",
     srcs = [
         "tuner_production.cc",
     ],
     deps = [
-        ":tuner",
+        ":utils",
         "//mace/codegen:generated_tuning_params",
     ],
 )
@@ -81,44 +84,7 @@ cc_test(
     ]),
     linkstatic = 1,
     deps = [
-        ":tuner",
-        ":tuner_dev",
-        "@gtest//:gtest",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "utils_hdrs",
-    hdrs = [
-        "env_time.h",
-        "utils.h",
-    ],
-)
-
-cc_library(
-    name = "utils",
-    deps = [
-        ":command_line_flags",
-        ":logging",
-        ":tuner",
-        ":utils_hdrs",
-    ],
-)
-
-cc_test(
-    name = "utils_test",
-    testonly = 1,
-    srcs = [
-        "utils_test.cc",
-    ],
-    linkopts = if_android([
-        "-pie",
-        "-lm",
-    ]),
-    linkstatic = 1,
-    deps = [
-        ":utils_hdrs",
+        ":utils_dev",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

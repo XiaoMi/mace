@@ -6,9 +6,8 @@
 #define MACE_CORE_OPERATOR_H
 
 #include "mace/core/arg_helper.h"
-#include "mace/core/common.h"
 #include "mace/core/future.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
@@ -37,8 +36,8 @@ class OperatorBase {
         *operator_def_, name);
   }
   template <typename T>
-  inline vector<T> GetRepeatedArgument(
-      const string &name, const vector<T> &default_value = {}) const {
+  inline std::vector<T> GetRepeatedArgument(
+      const string &name, const std::vector<T> &default_value = {}) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ArgumentHelper::GetRepeatedArgument<OperatorDef, T>(
         *operator_def_, name, default_value);
@@ -53,8 +52,8 @@ class OperatorBase {
 
   inline int InputSize() { return inputs_.size(); }
   inline int OutputSize() { return outputs_.size(); }
-  inline const vector<const Tensor *> &Inputs() const { return inputs_; }
-  inline const vector<Tensor *> &Outputs() { return outputs_; }
+  inline const std::vector<const Tensor *> &Inputs() const { return inputs_; }
+  inline const std::vector<Tensor *> &Outputs() { return outputs_; }
 
   // Run Op asynchronously (depends on device), return a future if not nullptr.
   virtual bool Run(StatsFuture *future) = 0;
@@ -74,8 +73,8 @@ class OperatorBase {
  protected:
   Workspace *operator_ws_;
   std::shared_ptr<const OperatorDef> operator_def_;
-  vector<const Tensor *> inputs_;
-  vector<Tensor *> outputs_;
+  std::vector<const Tensor *> inputs_;
+  std::vector<Tensor *> outputs_;
 
   DISABLE_COPY_AND_ASSIGN(OperatorBase);
 };

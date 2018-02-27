@@ -33,7 +33,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
 
   size_t gws[2] = {image_shape[0],
                    image_shape[1]};
-  string kernel_name;
+  std::string kernel_name;
   switch (type) {
     case CONV2D_FILTER:
       kernel_name = i2b_ ? "filter_image_to_buffer" : "filter_buffer_to_image";
@@ -59,7 +59,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       kernel_name = i2b_ ? "winograd_filter_image_to_buffer" : "winograd_filter_buffer_to_image";
       break;
   }
-  string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
+  std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
   std::set<std::string> built_options;
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;

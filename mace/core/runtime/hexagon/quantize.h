@@ -5,7 +5,6 @@
 #ifndef MACE_DSP_UTIL_QUANTIZE_H_
 #define MACE_DSP_UTIL_QUANTIZE_H_
 
-#include "mace/core/common.h"
 #include "mace/core/tensor.h"
 
 namespace mace {

@@ -9,9 +9,8 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/common.h"
 #include "mace/core/future.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 

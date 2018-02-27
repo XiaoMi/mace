@@ -59,7 +59,7 @@ void DepthwiseConv2d(cl::Kernel *kernel,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    built_options.emplace("-DSTRIDE=" + ToString(stride));
+    built_options.emplace(MakeString("-DSTRIDE=", stride));
     switch (activation) {
       case NOOP:
         break;

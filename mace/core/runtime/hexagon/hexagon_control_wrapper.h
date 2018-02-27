@@ -5,11 +5,12 @@
 #ifndef MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 #define MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
 
+#include <vector>
+
 #include "mace/core/runtime/hexagon/hexagon_controller.h"
 #include "mace/core/runtime/hexagon/quantize.h"
-#include "mace/core/common.h"
 #include "mace/core/tensor.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/serializer.h"
 
 namespace mace {
@@ -23,8 +24,8 @@ class HexagonControlWrapper {
   bool Finalize();
   bool SetupGraph(const NetDef& net_def);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
-  bool ExecuteGraphNew(const vector<Tensor>& input_tensors,
-                       vector<Tensor> *output_tensors);
+  bool ExecuteGraphNew(const std::vector<Tensor>& input_tensors,
+                       std::vector<Tensor> *output_tensors);
   bool ExecuteGraphPreQuantize(const Tensor &input_tensor, Tensor *output_tensor);
 
   bool TeardownGraph();
@@ -47,10 +48,10 @@ class HexagonControlWrapper {
   Serializer serializer_;
   Quantizer quantizer_;
 
-  vector<vector<index_t>> input_shapes_;
-  vector<vector<index_t>> output_shapes_;
-  vector<DataType> input_data_types_;
-  vector<DataType> output_data_types_;
+  std::vector<std::vector<index_t>> input_shapes_;
+  std::vector<std::vector<index_t>> output_shapes_;
+  std::vector<DataType> input_data_types_;
+  std::vector<DataType> output_data_types_;
   uint32_t num_inputs_;
   uint32_t num_outputs_;
 

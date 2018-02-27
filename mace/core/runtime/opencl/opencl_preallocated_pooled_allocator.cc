@@ -18,7 +18,7 @@ void OpenCLPreallocatedPooledAllocator::PreallocateImage(int mem_id,
                                                            size_t> &image_shape,
                                                          DataType data_type) {
   MACE_CHECK(!this->HasImage(mem_id), "Memory already exists: ", mem_id);
-  VLOG(3) << "Preallocate OpenCL image: " << mem_id << " "
+  VLOG(2) << "Preallocate OpenCL image: " << mem_id << " "
           << image_shape[0] << ", " << image_shape[1];
   images_[mem_id] = std::move(std::unique_ptr<void, std::function<void(void *)>>(
     allocator->NewImage(image_shape, data_type), [this](void *p) {
