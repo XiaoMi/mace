@@ -43,7 +43,7 @@ def main(unused_args):
 
   if FLAGS.output_type == 'source':
     source_converter_lib.convert_to_source(output_graph_def, mode_pb_checksum, FLAGS.template, FLAGS.obfuscate,
-      FLAGS.model_tag, FLAGS.output, FLAGS.runtime)
+      FLAGS.model_tag, FLAGS.output, FLAGS.runtime, FLAGS.embed_model_data)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
       f.write(output_graph_def.SerializeToString())
@@ -132,6 +132,11 @@ def parse_args():
     "--input_shape",
     type=str,
     default="",
+    help="input shape.")
+  parser.add_argument(
+    "--embed_model_data",
+    type=str2bool,
+    default=True,
     help="input shape.")
   return parser.parse_known_args()
 

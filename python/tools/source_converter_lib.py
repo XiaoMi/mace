@@ -91,7 +91,7 @@ class TensorInfo:
 def stringfy(value):
   return ', '.join('"{0}"'.format(w) for w in value)
 
-def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag, output, runtime):
+def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag, output, runtime, embed_model_data):
   if obfuscate:
     obfuscate_name(net_def)
   else:
@@ -109,17 +109,43 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
   counter = 0
   output_dir = os.path.dirname(output) + '/'
   # generate tensor source files
+  model_data = []
+  offset = 0
   for t in net_def.tensors:
+    tensor_info = TensorInfo(t, runtime)
+    # align
+    if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
+      padding = 4 - offset % 4
+      model_data.extend(bytearray([0] * padding))
+      offset += padding
     source = j2_env.get_template(template_name).render(
       tensor_info = TensorInfo(t, runtime),
       tensor = t,
       tag = model_tag,
       mode = 0,
       runtime = runtime,
+      offset = offset,
     )
+    model_data.extend(tensor_info.data)
+    offset += len(tensor_info.data)
     with gfile.GFile(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
       f.write(source)
     counter += 1
+
+  # generate tensor data
+  source = j2_env.get_template(template_name).render(
+    tag = model_tag,
+    mode = 1,
+    embed_model_data = embed_model_data,
+    model_data_size = offset,
+    model_data = model_data
+  )
+  with gfile.GFile(output_dir + 'tensor_data' + '.cc', "wb") as f:
+    f.write(source)
+  if not embed_model_data:
+    f = open(output_dir + model_tag + '.data', "wb")
+    f.write(bytearray(model_data))
+    f.close()
 
   # generate op source files
   counter = 0
@@ -130,7 +156,7 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
       end = min(start+10, op_size),
       net = net_def,
       tag = model_tag,
-      mode = 1,
+      mode = 2,
       runtime = runtime,
     )
     with gfile.GFile(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
@@ -143,9 +169,9 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
     tensors = tensors,
     net = net_def,
     tag = model_tag,
-    mode = 2,
+    mode = 3,
     runtime = runtime,
-    model_pb_checksum = mode_pb_checksum,
+    model_pb_checksum = mode_pb_checksum
   )
   with gfile.GFile(output, "wb") as f:
     f.write(source)

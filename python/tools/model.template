@@ -10,13 +10,9 @@
 namespace mace {
 namespace {{tag}} {
 
-{% if tensor_info.data_type != 'DT_UINT8' %} alignas(4) {% endif %} unsigned char {{ tensor_info.name }}[] = {
-{% for d in tensor_info.data %}{{"0x%02X, " % d }}{%endfor%}
-};
-
-void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors) {
+void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors, const unsigned char *model_data) {
   tensors.emplace_back(mace::ConstTensor(
-      {{ tensor.name|tojson }}, {{ tensor.name }},
+      {{ tensor.name|tojson }}, const_cast<unsigned char *>(model_data) + {{ offset }},
       { {{ tensor.dims|join(', ') }} }, {{ tensor_info.data_type }}, {{ tensor.node_id }}));
 }
 
@@ -24,6 +20,42 @@ void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors) {
 }  // namespace mace
 
 {% elif mode == 1 %}
+{% if not embed_model_data %}
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+{% endif %}
+
+namespace mace {
+namespace {{tag}} {
+
+{% if embed_model_data %}
+alignas(4) unsigned char model_data[{{ model_data_size }}] = {
+{% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
+};
+{% endif %}
+
+unsigned char *LoadModelData(const char *model_data_file) {
+{% if embed_model_data %}
+  return model_data;
+{% else %}
+  int fd=open(model_data_file, O_RDONLY);
+  unsigned char *model_data = (unsigned char *)mmap(nullptr, {{ model_data_size }}, PROT_READ, MAP_PRIVATE, fd, 0);
+  close(fd);
+  return model_data;
+{% endif %}
+}
+
+void UnloadModelData(unsigned char *model_data) {
+{% if not embed_model_data %}
+  munmap(model_data, {{ model_data_size }});
+{% endif %}
+}
+
+}  // namespace {{tag}}
+}  // namespace mace
+
+{% elif mode == 2 %}
 #include <vector>
 #include <string>
 #include "mace/core/public/mace.h"
@@ -134,7 +166,7 @@ namespace mace {
 namespace {{tag}} {
 
 {% for tensor in tensors %}
-extern void Create{{ tensor.name }}(std::vector<mace::ConstTensor> &tensors);
+extern void Create{{ tensor.name }}(std::vector<mace::ConstTensor> &tensors, const unsigned char *model_data);
 {% endfor %}
 
 
@@ -209,12 +241,12 @@ void CreateOperators(std::vector<mace::OperatorDef> &ops) {
 
 }
 
-void CreateTensors(std::vector<mace::ConstTensor> &tensors) {
+void CreateTensors(std::vector<mace::ConstTensor> &tensors, const unsigned char *model_data) {
   tensors.reserve({{ net.tensors|length }});
 
   {% for tensor in net.tensors %}
 
-  mace::{{tag}}::Create{{tensor.name}}(tensors);
+  mace::{{tag}}::Create{{tensor.name}}(tensors, model_data);
   {% endfor %}
 
 }
@@ -239,7 +271,7 @@ void CreateMemoryArena(mace::MemoryArena &mem_arena) {
 namespace mace {
 namespace {{tag}} {
 
-NetDef CreateNet() {
+NetDef CreateNet(const unsigned char *model_data) {
   NetDef net_def;
   net_def.set_name("{{ net.name}}");
   net_def.set_version("{{ net.version }}");
@@ -250,7 +282,7 @@ NetDef CreateNet() {
 
   CreateOperators(net_def.mutable_op());
 
-  CreateTensors(net_def.mutable_tensors());
+  CreateTensors(net_def.mutable_tensors(), model_data);
 
   {% if net.mem_arena.mem_block|length != 0 %}
   CreateMemoryArena(net_def.mutable_mem_arena());
