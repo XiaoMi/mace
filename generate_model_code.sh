@@ -26,4 +26,5 @@ bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
                                         --model_tag=${MODEL_TAG} \
                                         --input_shape=${INPUT_SHAPE} \
                                         ${DSP_MODE_FLAG} \
+                                        --embed_model_data=${EMBED_MODEL_DATA} \
                                         --obfuscate=${OBFUSCATE} || exit 1

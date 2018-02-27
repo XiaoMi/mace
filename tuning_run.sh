@@ -24,6 +24,7 @@ if [ x"$TARGET_ABI" = x"host" ]; then
       --output_shape="${OUTPUT_SHAPE}"\
       --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --output_file=${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
+      --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
       --device=${DEVICE_TYPE}   \
       --round=1 || exit 1
 else
@@ -39,6 +40,9 @@ else
   fi
   adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit 1
   adb push ${MODEL_OUTPUT_DIR}/mace_run ${PHONE_DATA_DIR} || exit 1
+  if [ "$EMBED_MODEL_DATA" = 0 ]; then
+    adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} || exit 1
+  fi
   adb push lib/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit 1
   
   adb </dev/null shell \
@@ -53,6 +57,7 @@ else
     --output_shape="${OUTPUT_SHAPE}"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
+    --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE}   \
     --round=$ROUND || exit 1
 fi
