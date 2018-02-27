@@ -3,7 +3,7 @@
 //
 
 #include "gflags/gflags.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "benchmark/stat_summarizer.h"
 
 #include <cstdlib>

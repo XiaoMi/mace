@@ -3,7 +3,7 @@
 //
 
 #include "benchmark/stat_summarizer.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 
 #include <iomanip>
 #include <queue>
