@@ -15,9 +15,11 @@ class Serializer {
   Serializer() {}
   ~Serializer() {}
 
-  std::unique_ptr<ConstTensor> Serialize(const Tensor &tensor, const std::string &name);
+  std::unique_ptr<ConstTensor> Serialize(const Tensor &tensor,
+                                         const std::string &name);
 
-  std::unique_ptr<Tensor> Deserialize(const ConstTensor &proto, DeviceType type);
+  std::unique_ptr<Tensor> Deserialize(const ConstTensor &const_tensor,
+                                      DeviceType type);
 
   DISABLE_COPY_AND_ASSIGN(Serializer);
 };

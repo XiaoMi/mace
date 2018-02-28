@@ -10,7 +10,7 @@
 namespace mace {
 
 ConstTensor::ConstTensor(const std::string &name,
-                         unsigned char *data,
+                         const unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const DataType data_type,
                          uint32_t node_id) :
@@ -23,7 +23,7 @@ ConstTensor::ConstTensor(const std::string &name,
     node_id_(node_id) {}
 
 ConstTensor::ConstTensor(const std::string &name,
-                         unsigned char *data,
+                         const unsigned char *data,
                          const std::vector<int64_t> &dims,
                          const int data_type,
                          uint32_t node_id) :

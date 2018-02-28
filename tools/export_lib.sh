@@ -161,8 +161,10 @@ rm -rf ${EXPORT_LIB_DIR}
 mkdir -p ${EXPORT_LIB_DIR}
 
 cp ${MACE_SOURCE_DIR}/mace/public/*.h ${EXPORT_INCLUDE_DIR}/mace/public/ || exit 1
-# utils is noti part of public API
-cp ${MACE_SOURCE_DIR}/mace/utils/*.h ${EXPORT_INCLUDE_DIR}/mace/utils/ || exit 1
+# utils is not part of public API
+cp ${MACE_SOURCE_DIR}/mace/utils/env_time.h ${EXPORT_INCLUDE_DIR}/mace/utils/ || exit 1
+cp ${MACE_SOURCE_DIR}/mace/utils/logging.h ${EXPORT_INCLUDE_DIR}/mace/utils/ || exit 1
+cp ${MACE_SOURCE_DIR}/mace/utils/string_util.h ${EXPORT_INCLUDE_DIR}/mace/utils/ || exit 1
 cp ${LIBMACE_TEMP_DIR}/libmace.a ${LIBMACE_TEMP_DIR}/libmace_dev.a ${LIBMACE_TEMP_DIR}/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit 1
 
 echo "Step 6: Remove temporary file"

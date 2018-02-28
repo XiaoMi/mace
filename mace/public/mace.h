@@ -73,12 +73,12 @@ enum DataType {
 class ConstTensor {
  public:
   ConstTensor(const std::string &name,
-              unsigned char *data,
+              const unsigned char *data,
               const std::vector<int64_t> &dims,
               const DataType data_type = DT_FLOAT,
               uint32_t node_id = 0);
   ConstTensor(const std::string &name,
-              unsigned char *data,
+              const unsigned char *data,
               const std::vector<int64_t> &dims,
               const int data_type,
               uint32_t node_id = 0);

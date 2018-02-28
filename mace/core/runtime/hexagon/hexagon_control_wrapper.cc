@@ -64,29 +64,29 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   std::thread const_thread([&]() {
     std::cout << "thread function\n";
     std::vector<hexagon_nn_const_node> const_node_list;
-    for (const ConstTensor &tensor_proto: net_def.tensors()) {
-      std::vector<int> tensor_shape(tensor_proto.dims().begin(),
-                               tensor_proto.dims().end());
+    for (const ConstTensor &const_tensor: net_def.tensors()) {
+      std::vector<int> tensor_shape(const_tensor.dims().begin(),
+                               const_tensor.dims().end());
       while (tensor_shape.size() < 4) {
         tensor_shape.insert(tensor_shape.begin(), 1);
       }
 
       hexagon_nn_const_node const_node;
-      const_node.node_id = node_id(tensor_proto.node_id());
+      const_node.node_id = node_id(const_tensor.node_id());
       const_node.tensor.batches = tensor_shape[0];
       const_node.tensor.height = tensor_shape[1];
       const_node.tensor.width = tensor_shape[2];
       const_node.tensor.depth = tensor_shape[3];
 
-      if (tensor_proto.data_type() == DataType::DT_INT32
-        && tensor_proto.data_size() == 0) {
+      if (const_tensor.data_type() == DataType::DT_INT32
+        && const_tensor.data_size() == 0) {
         const_node.tensor.data = NULL;
         const_node.tensor.dataLen = 0;
       } else {
         const_node.tensor.data =
-          const_cast<unsigned char *>(tensor_proto.data());
+          const_cast<unsigned char *>(const_tensor.data());
         const_node.tensor.dataLen =
-          tensor_proto.data_size() * GetEnumTypeSize(tensor_proto.data_type());
+          const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
       }
       const_node_list.push_back(const_node);
       // 255 is magic number: why fastrpc limits sequence length to that?
