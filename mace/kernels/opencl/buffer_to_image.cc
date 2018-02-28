@@ -48,6 +48,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
       kernel_name = i2b_ ? "arg_image_to_buffer" : "arg_buffer_to_image";
       break;
     case IN_OUT_HEIGHT:
+    case WEIGHT_HEIGHT:
       kernel_name = i2b_ ? "in_out_height_image_to_buffer" : "in_out_height_buffer_to_image";
       break;
     case IN_OUT_WIDTH:
@@ -80,6 +81,10 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
   b2f_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(buffer->buffer())));
   if (type == ARGUMENT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
+  } else if(type == WEIGHT_HEIGHT) {
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+    b2f_kernel.setArg(idx++, 1);
   } else {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));

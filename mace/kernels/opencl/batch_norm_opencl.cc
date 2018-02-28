@@ -59,7 +59,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      defeult:
+      default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 

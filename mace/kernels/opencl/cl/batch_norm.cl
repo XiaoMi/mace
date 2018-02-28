@@ -9,8 +9,8 @@ __kernel void batch_norm(__read_only image2d_t input,
                          __private const float epsilon,
 #endif
                          __write_only image2d_t output,
-                         __private const DATA_TYPE relux_max_limit,
-                         __private const DATA_TYPE prelu_alpha) {
+                         __private const float relux_max_limit,
+                         __private const float prelu_alpha) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);

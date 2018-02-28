@@ -66,7 +66,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
       case SIGMOID:
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      defeult:
+      default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
