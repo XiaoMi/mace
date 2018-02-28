@@ -4,8 +4,8 @@
 
 #include "CL/opencl.h"
 
-#include "mace/utils/logging.h"
 #include "mace/core/runtime/opencl/opencl_wrapper.h"
+#include "mace/utils/logging.h"
 
 #include <dlfcn.h>
 
@@ -216,7 +216,9 @@ class OpenCLLibraryImpl final {
 };
 
 bool OpenCLLibraryImpl::Load() {
-  if (handle_ != nullptr) { return true; }
+  if (handle_ != nullptr) {
+    return true;
+  }
 
   const std::vector<std::string> paths = {
     "libOpenCL.so",
@@ -355,6 +357,7 @@ cl_int clGetPlatformIDs(cl_uint num_entries,
                         cl_platform_id *platforms,
                         cl_uint *num_platforms) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetPlatformIDs");
   auto func = mace::openclLibraryImpl->clGetPlatformIDs;
   MACE_CHECK_NOTNULL(func);
   return func(num_entries, platforms, num_platforms);
@@ -365,6 +368,7 @@ cl_int clGetPlatformInfo(cl_platform_id platform,
                          void *param_value,
                          size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetPlatformInfo");
   auto func = mace::openclLibraryImpl->clGetPlatformInfo;
   MACE_CHECK_NOTNULL(func);
   return func(platform, param_name, param_value_size, param_value,
@@ -379,6 +383,7 @@ cl_int clBuildProgram(cl_program program,
                                                     void *user_data),
                       void *user_data) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clBuildProgram");
   auto func = mace::openclLibraryImpl->clBuildProgram;
   MACE_CHECK_NOTNULL(func);
   return func(program, num_devices, device_list, options, pfn_notify,
@@ -395,6 +400,7 @@ cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
                               const cl_event *event_wait_list,
                               cl_event *event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueNDRangeKernel");
   auto func = mace::openclLibraryImpl->clEnqueueNDRangeKernel;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, kernel, work_dim, global_work_offset,
@@ -407,6 +413,7 @@ cl_int clSetKernelArg(cl_kernel kernel,
                       size_t arg_size,
                       const void *arg_value) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clSetKernelArg");
   auto func = mace::openclLibraryImpl->clSetKernelArg;
   MACE_CHECK_NOTNULL(func);
   return func(kernel, arg_index, arg_size, arg_value);
@@ -414,6 +421,7 @@ cl_int clSetKernelArg(cl_kernel kernel,
 
 cl_int clRetainMemObject(cl_mem memobj) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainMemObject");
   auto func = mace::openclLibraryImpl->clRetainMemObject;
   MACE_CHECK_NOTNULL(func);
   return func(memobj);
@@ -421,6 +429,7 @@ cl_int clRetainMemObject(cl_mem memobj) {
 
 cl_int clReleaseMemObject(cl_mem memobj) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseMemObject");
   auto func = mace::openclLibraryImpl->clReleaseMemObject;
   MACE_CHECK_NOTNULL(func);
   return func(memobj);
@@ -433,6 +442,7 @@ cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
                                const cl_event *event_wait_list,
                                cl_event *event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueUnmapMemObject");
   auto func = mace::openclLibraryImpl->clEnqueueUnmapMemObject;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, memobj, mapped_ptr, num_events_in_wait_list,
@@ -441,6 +451,7 @@ cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
 
 cl_int clRetainCommandQueue(cl_command_queue command_queue) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainCommandQueue");
   auto func = mace::openclLibraryImpl->clRetainCommandQueue;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue);
@@ -454,6 +465,7 @@ cl_context clCreateContext(
     void *user_data,
     cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateContext");
   auto func = mace::openclLibraryImpl->clCreateContext;
   MACE_CHECK_NOTNULL(func);
   return func(properties, num_devices, devices, pfn_notify, user_data,
@@ -467,6 +479,7 @@ cl_context clCreateContextFromType(
     void *user_data,
     cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateContextFromType");
   auto func = mace::openclLibraryImpl->clCreateContextFromType;
   MACE_CHECK_NOTNULL(func);
   return func(properties, device_type, pfn_notify, user_data, errcode_ret);
@@ -474,6 +487,7 @@ cl_context clCreateContextFromType(
 
 cl_int clReleaseContext(cl_context context) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseContext");
   auto func = mace::openclLibraryImpl->clReleaseContext;
   MACE_CHECK_NOTNULL(func);
   return func(context);
@@ -481,6 +495,7 @@ cl_int clReleaseContext(cl_context context) {
 
 cl_int clWaitForEvents(cl_uint num_events, const cl_event *event_list) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clWaitForEvents");
   auto func = mace::openclLibraryImpl->clWaitForEvents;
   MACE_CHECK_NOTNULL(func);
   return func(num_events, event_list);
@@ -488,6 +503,7 @@ cl_int clWaitForEvents(cl_uint num_events, const cl_event *event_list) {
 
 cl_int clReleaseEvent(cl_event event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseEvent");
   auto func = mace::openclLibraryImpl->clReleaseEvent;
   MACE_CHECK_NOTNULL(func);
   return func(event);
@@ -503,6 +519,7 @@ cl_int clEnqueueWriteBuffer(cl_command_queue command_queue,
                             const cl_event *event_wait_list,
                             cl_event *event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueWriteBuffer");
   auto func = mace::openclLibraryImpl->clEnqueueWriteBuffer;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, buffer, blocking_write, offset, size, ptr,
@@ -519,6 +536,7 @@ cl_int clEnqueueReadBuffer(cl_command_queue command_queue,
                            const cl_event *event_wait_list,
                            cl_event *event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueReadBuffer");
   auto func = mace::openclLibraryImpl->clEnqueueReadBuffer;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, buffer, blocking_read, offset, size, ptr,
@@ -532,6 +550,7 @@ cl_int clGetProgramBuildInfo(cl_program program,
                              void *param_value,
                              size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetProgramBuildInfo");
   auto func = mace::openclLibraryImpl->clGetProgramBuildInfo;
   MACE_CHECK_NOTNULL(func);
   return func(program, device, param_name, param_value_size, param_value,
@@ -540,6 +559,7 @@ cl_int clGetProgramBuildInfo(cl_program program,
 
 cl_int clRetainProgram(cl_program program) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainProgram");
   auto func = mace::openclLibraryImpl->clRetainProgram;
   MACE_CHECK_NOTNULL(func);
   return func(program);
@@ -556,6 +576,7 @@ void *clEnqueueMapBuffer(cl_command_queue command_queue,
                          cl_event *event,
                          cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueMapBuffer");
   auto func = mace::openclLibraryImpl->clEnqueueMapBuffer;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, buffer, blocking_map, map_flags, offset, size,
@@ -575,6 +596,7 @@ void *clEnqueueMapImage(cl_command_queue command_queue,
                         cl_event *event,
                         cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clEnqueueMapImage");
   auto func = mace::openclLibraryImpl->clEnqueueMapImage;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue, image, blocking_map, map_flags, origin, region,
@@ -588,6 +610,7 @@ cl_command_queue clCreateCommandQueueWithProperties(
     const cl_queue_properties *properties,
     cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateCommandQueueWithProperties");
   auto func = mace::openclLibraryImpl->clCreateCommandQueueWithProperties;
   MACE_CHECK_NOTNULL(func);
   return func(context, device, properties, errcode_ret);
@@ -595,6 +618,7 @@ cl_command_queue clCreateCommandQueueWithProperties(
 
 cl_int clReleaseCommandQueue(cl_command_queue command_queue) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseCommandQueue");
   auto func = mace::openclLibraryImpl->clReleaseCommandQueue;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue);
@@ -608,6 +632,7 @@ cl_program clCreateProgramWithBinary(cl_context context,
                                      cl_int *binary_status,
                                      cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateProgramWithBinary");
   auto func = mace::openclLibraryImpl->clCreateProgramWithBinary;
   MACE_CHECK_NOTNULL(func);
   return func(context, num_devices, device_list, lengths, binaries,
@@ -616,6 +641,7 @@ cl_program clCreateProgramWithBinary(cl_context context,
 
 cl_int clRetainContext(cl_context context) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainContext");
   auto func = mace::openclLibraryImpl->clRetainContext;
   MACE_CHECK_NOTNULL(func);
   return func(context);
@@ -627,6 +653,7 @@ cl_int clGetContextInfo(cl_context context,
                         void *param_value,
                         size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetContextInfo");
   auto func = mace::openclLibraryImpl->clGetContextInfo;
   MACE_CHECK_NOTNULL(func);
   return func(context, param_name, param_value_size, param_value,
@@ -635,6 +662,7 @@ cl_int clGetContextInfo(cl_context context,
 
 cl_int clReleaseProgram(cl_program program) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseProgram");
   auto func = mace::openclLibraryImpl->clReleaseProgram;
   MACE_CHECK_NOTNULL(func);
   return func(program);
@@ -642,6 +670,7 @@ cl_int clReleaseProgram(cl_program program) {
 
 cl_int clFlush(cl_command_queue command_queue) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clFlush");
   auto func = mace::openclLibraryImpl->clFlush;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue);
@@ -649,6 +678,7 @@ cl_int clFlush(cl_command_queue command_queue) {
 
 cl_int clFinish(cl_command_queue command_queue) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clFinish");
   auto func = mace::openclLibraryImpl->clFinish;
   MACE_CHECK_NOTNULL(func);
   return func(command_queue);
@@ -660,6 +690,7 @@ cl_int clGetProgramInfo(cl_program program,
                         void *param_value,
                         size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetProgramInfo");
   auto func = mace::openclLibraryImpl->clGetProgramInfo;
   MACE_CHECK_NOTNULL(func);
   return func(program, param_name, param_value_size, param_value,
@@ -670,6 +701,7 @@ cl_kernel clCreateKernel(cl_program program,
                          const char *kernel_name,
                          cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateKernel");
   auto func = mace::openclLibraryImpl->clCreateKernel;
   MACE_CHECK_NOTNULL(func);
   return func(program, kernel_name, errcode_ret);
@@ -677,6 +709,7 @@ cl_kernel clCreateKernel(cl_program program,
 
 cl_int clRetainKernel(cl_kernel kernel) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainKernel");
   auto func = mace::openclLibraryImpl->clRetainKernel;
   MACE_CHECK_NOTNULL(func);
   return func(kernel);
@@ -688,6 +721,7 @@ cl_mem clCreateBuffer(cl_context context,
                       void *host_ptr,
                       cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateBuffer");
   auto func = mace::openclLibraryImpl->clCreateBuffer;
   MACE_CHECK_NOTNULL(func);
   return func(context, flags, size, host_ptr, errcode_ret);
@@ -700,6 +734,7 @@ cl_mem clCreateImage(cl_context context,
                      void *host_ptr,
                      cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateImage");
   auto func = mace::openclLibraryImpl->clCreateImage;
   MACE_CHECK_NOTNULL(func);
   return func(context, flags, image_format, image_desc, host_ptr, errcode_ret);
@@ -711,6 +746,7 @@ cl_program clCreateProgramWithSource(cl_context context,
                                      const size_t *lengths,
                                      cl_int *errcode_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clCreateProgramWithSource");
   auto func = mace::openclLibraryImpl->clCreateProgramWithSource;
   MACE_CHECK_NOTNULL(func);
   return func(context, count, strings, lengths, errcode_ret);
@@ -718,6 +754,7 @@ cl_program clCreateProgramWithSource(cl_context context,
 
 cl_int clReleaseKernel(cl_kernel kernel) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseKernel");
   auto func = mace::openclLibraryImpl->clReleaseKernel;
   MACE_CHECK_NOTNULL(func);
   return func(kernel);
@@ -729,6 +766,7 @@ cl_int clGetDeviceIDs(cl_platform_id platform,
                       cl_device_id *devices,
                       cl_uint *num_devices) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetDeviceIDs");
   auto func = mace::openclLibraryImpl->clGetDeviceIDs;
   MACE_CHECK_NOTNULL(func);
   return func(platform, device_type, num_entries, devices, num_devices);
@@ -740,6 +778,7 @@ cl_int clGetDeviceInfo(cl_device_id device,
                        void *param_value,
                        size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetDeviceInfo");
   auto func = mace::openclLibraryImpl->clGetDeviceInfo;
   MACE_CHECK_NOTNULL(func);
   return func(device, param_name, param_value_size, param_value,
@@ -748,6 +787,7 @@ cl_int clGetDeviceInfo(cl_device_id device,
 
 cl_int clRetainDevice(cl_device_id device) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainDevice");
   auto func = mace::openclLibraryImpl->clRetainDevice;
   MACE_CHECK_NOTNULL(func);
   return func(device);
@@ -755,6 +795,7 @@ cl_int clRetainDevice(cl_device_id device) {
 
 cl_int clReleaseDevice(cl_device_id device) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clReleaseDevice");
   auto func = mace::openclLibraryImpl->clReleaseDevice;
   MACE_CHECK_NOTNULL(func);
   return func(device);
@@ -762,6 +803,7 @@ cl_int clReleaseDevice(cl_device_id device) {
 
 cl_int clRetainEvent(cl_event event) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clRetainEvent");
   auto func = mace::openclLibraryImpl->clRetainEvent;
   MACE_CHECK_NOTNULL(func);
   return func(event);
@@ -774,6 +816,7 @@ cl_int clGetKernelWorkGroupInfo(cl_kernel kernel,
                                 void *param_value,
                                 size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetKernelWorkGroupInfo");
   auto func = mace::openclLibraryImpl->clGetKernelWorkGroupInfo;
   MACE_CHECK_NOTNULL(func);
   return func(kernel, device, param_name, param_value_size, param_value,
@@ -786,6 +829,7 @@ cl_int clGetEventProfilingInfo(cl_event event,
                                void *param_value,
                                size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetEventProfilingInfo");
   auto func = mace::openclLibraryImpl->clGetEventProfilingInfo;
   MACE_CHECK_NOTNULL(func);
   return func(event, param_name, param_value_size, param_value,
@@ -798,6 +842,7 @@ cl_int clGetImageInfo(cl_mem image,
                       void *param_value,
                       size_t *param_value_size_ret) {
   MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  MACE_LATENCY_LOGGER(3, "clGetImageInfo");
   auto func = mace::openclLibraryImpl->clGetImageInfo;
   MACE_CHECK_NOTNULL(func);
   return func(image, param_name, param_value_size, param_value,

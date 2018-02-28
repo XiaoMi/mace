@@ -134,7 +134,7 @@ class LatencyLogger {
 
 #define MACE_LATENCY_LOGGER(vlog_level, ...)              \
   mace::logging::LatencyLogger latency_logger_##__line__( \
-      vlog_level, VLOG_IS_ON(vlog_level) ? MakeString(__VA_ARGS__) : "")
+      vlog_level, VLOG_IS_ON(vlog_level) ? mace::MakeString(__VA_ARGS__) : "")
 
 }  // namespace logging
 }  // namespace mace
