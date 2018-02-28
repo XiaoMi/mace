@@ -113,6 +113,7 @@ class LatencyLogger {
       : vlog_level_(vlog_level), message_(message) {
     if (VLOG_IS_ON(vlog_level_)) {
       start_micros_ = NowMicros();
+      VLOG(vlog_level_) << message_ << " started";
     }
   }
   ~LatencyLogger() {

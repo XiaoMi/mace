@@ -22,7 +22,7 @@ SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
                      const NetMode mode)
     :  NetBase(op_registry, net_def, ws, type),
       device_type_(type) {
-  VLOG(1) << "Constructing SimpleNet " << net_def->name();
+  MACE_LATENCY_LOGGER(1, "Constructing SimpleNet ", net_def->name());
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
     VLOG(3) << "Creating operator " << operator_def.name() << "("
@@ -41,10 +41,8 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
   MACE_LATENCY_LOGGER(1, "Running net");
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
-    VLOG(3) << "Running operator " << op->debug_def().name() << "("
-            << op->debug_def().type() << ").";
-    MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name());
-
+    MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(),
+                        "(", op->debug_def().type(), ")");
     bool future_wait = (device_type_ == DeviceType::OPENCL &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
