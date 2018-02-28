@@ -108,7 +108,7 @@ namespace {{tag}} {
 {% for i in range(start, end) %}
 
 void CreateOperator{{i}}(mace::OperatorDef &op) {
-  MACE_LATENCY_LOGGER(2, "Create operator ", op.name());
+  MACE_LATENCY_LOGGER(2, "Create operator {{ net.op[i].name }}");
 
   mace::Argument *arg = nullptr;
   {% for arg in net.op[i].arg %}
@@ -295,7 +295,7 @@ void CreateMemoryArena(mace::MemoryArena &mem_arena) {
 namespace {{tag}} {
 
 NetDef CreateNet(const unsigned char *model_data) {
-  MACE_LATENCY_LOGGER(1, "Create net {{ net.name}}");
+  MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
   NetDef net_def;
   net_def.set_name("{{ net.name}}");
   net_def.set_version("{{ net.version }}");
