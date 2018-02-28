@@ -5,9 +5,8 @@
 #ifndef MACE_CORE_SERIALIZER_H_
 #define MACE_CORE_SERIALIZER_H_
 
-#include "mace/core/common.h"
 #include "mace/core/tensor.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -16,9 +15,9 @@ class Serializer {
   Serializer() {}
   ~Serializer() {}
 
-  unique_ptr<ConstTensor> Serialize(const Tensor &tensor, const string &name);
+  std::unique_ptr<ConstTensor> Serialize(const Tensor &tensor, const std::string &name);
 
-  unique_ptr<Tensor> Deserialize(const ConstTensor &proto, DeviceType type);
+  std::unique_ptr<Tensor> Deserialize(const ConstTensor &proto, DeviceType type);
 
   DISABLE_COPY_AND_ASSIGN(Serializer);
 };

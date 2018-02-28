@@ -183,7 +183,6 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
                                const int *paddings,
                                Tensor *output_tensor,
                                bool padding_same_value) {
-  VLOG(1) << "input: " << input_tensor->NumElements();
   Tensor::MappingGuard input_mapper(input_tensor);
   const float *input = input_tensor->data<float>();
   const index_t *input_shape = input_tensor->shape().data();
@@ -255,7 +254,6 @@ void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
                                    const int *paddings,
                                    Tensor *output_tensor,
                                    bool padding_same_value) {
-  VLOG(1) << "input: " << input_tensor->NumElements();
   Tensor::MappingGuard input_mapper(input_tensor);
   const float *input = input_tensor->data<float>();
   const index_t *input_shape = input_tensor->shape().data();

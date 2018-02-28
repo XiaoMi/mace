@@ -44,7 +44,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    built_options.emplace("-DSTRIDE=" + ToString(stride));
+    built_options.emplace(MakeString("-DSTRIDE=", stride));
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }

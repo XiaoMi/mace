@@ -5,10 +5,9 @@
 #ifndef MACE_KERNELS_CONCAT_H_
 #define MACE_KERNELS_CONCAT_H_
 
-#include "mace/core/common.h"
 #include "mace/core/future.h"
 #include "mace/core/types.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 

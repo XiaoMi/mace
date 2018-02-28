@@ -6,17 +6,17 @@
 
 namespace mace {
 
-unique_ptr<ConstTensor> Serializer::Serialize(const Tensor &tensor,
-                                              const string &name) {
+std::unique_ptr<ConstTensor> Serializer::Serialize(const Tensor &tensor,
+                                                   const std::string &name) {
   MACE_NOT_IMPLEMENTED;
   return nullptr;
 }
 
-unique_ptr<Tensor> Serializer::Deserialize(const ConstTensor &proto,
-                                           DeviceType type) {
-  unique_ptr<Tensor> tensor(
+std::unique_ptr<Tensor> Serializer::Deserialize(const ConstTensor &proto,
+                                                DeviceType type) {
+  std::unique_ptr<Tensor> tensor(
       new Tensor(GetDeviceAllocator(type), proto.data_type()));
-  vector<index_t> dims;
+  std::vector<index_t> dims;
   for (const index_t d : proto.dims()) {
     dims.push_back(d);
   }

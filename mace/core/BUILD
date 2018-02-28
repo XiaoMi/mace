@@ -37,26 +37,23 @@ cc_library(
     ]),
     hdrs = glob([
         "*.h",
-        "public/*.h",
         "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
-    linkopts = ["-ldl",] + if_android([
+    linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",
     ]),
     deps = [
         ":opencl_headers",
-        "//mace/utils:logging",
-        "//mace/utils:tuner",
-        "//mace/utils:utils_hdrs",
+        "//mace/utils",
         "//mace/codegen:generated_version",
     ] + if_production_mode([
-        "//mace/utils:tuner_prod",
+        "//mace/utils:utils_prod",
         "//mace/core:opencl_prod",
     ]) + if_not_production_mode([
-        "//mace/utils:tuner_dev",
+        "//mace/utils:utils_dev",
         "//mace/core:opencl_dev",
     ]),
 )
@@ -84,7 +81,7 @@ cc_library(
     ],
     deps = [
         ":core",
-        "//mace/utils:utils_hdrs",
+        "//mace/utils",
     ],
     alwayslink = 1,
 )
@@ -96,8 +93,7 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_dev",
-        "//mace/utils:logging",
-        "//mace/utils:utils_hdrs",
+        "//mace/utils",
     ],
 )
 
@@ -108,6 +104,6 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_prod",
-        "//mace/utils:logging",
+        "//mace/utils",
     ],
 )

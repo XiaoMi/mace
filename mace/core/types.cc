@@ -2,7 +2,11 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <map>
+#include <cstdint>
+
 #include "mace/core/types.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 

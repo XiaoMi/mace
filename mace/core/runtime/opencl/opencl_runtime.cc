@@ -8,7 +8,7 @@
 #include <mutex>
 
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
 
 namespace mace {

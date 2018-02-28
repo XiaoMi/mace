@@ -6,10 +6,9 @@
 #define MACE_CORE_TENSOR_H_
 
 #include "mace/core/allocator.h"
-#include "mace/core/common.h"
 #include "mace/utils/logging.h"
 #include "mace/core/types.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 #include "preallocated_pooled_allocator.h"
 
 namespace mace {
@@ -32,7 +31,7 @@ namespace mace {
     CASE(uint16_t, SINGLE_ARG(STMTS))                          \
     CASE(int16_t, SINGLE_ARG(STMTS))                           \
     CASE(int8_t, SINGLE_ARG(STMTS))                            \
-    CASE(string, SINGLE_ARG(STMTS))                            \
+    CASE(std::string, SINGLE_ARG(STMTS))                       \
     CASE(int64_t, SINGLE_ARG(STMTS))                           \
     CASE(bool, SINGLE_ARG(STMTS))                              \
     case DT_INVALID:                                           \
@@ -92,9 +91,9 @@ class Tensor {
 
   inline void SetDtype(DataType dtype) { dtype_ = dtype; }
 
-  inline const vector<index_t> &shape() const { return shape_; }
+  inline const std::vector<index_t> &shape() const { return shape_; }
 
-  inline const vector<size_t> &image_shape() const { return image_shape_; }
+  inline const std::vector<size_t> &image_shape() const { return image_shape_; }
 
   inline const bool is_image() const { return is_image_; }
 
@@ -174,7 +173,7 @@ class Tensor {
     return static_cast<T *>(raw_mutable_data());
   }
 
-  inline void Resize(const vector<index_t> &shape) {
+  inline void Resize(const std::vector<index_t> &shape) {
     MACE_CHECK(!is_image_ || buffer_ == nullptr,
                "Resize is not for image, use ResizeImage instead.");
     is_image_ = false;
@@ -194,7 +193,7 @@ class Tensor {
     }
   }
 
-  inline void ResizeImage(const vector<index_t> &shape,
+  inline void ResizeImage(const std::vector<index_t> &shape,
                           const std::vector<size_t> &image_shape) {
     MACE_CHECK(is_image_ || buffer_ == nullptr,
                "ResizeImage is not for buffer, use Resize instead.");
@@ -260,7 +259,7 @@ class Tensor {
   inline void CopyWithCast(const SrcType *src, size_t size) {
     MACE_CHECK(static_cast<index_t>(size) == size_,
                "copy src and dst with different size.");
-    unique_ptr<DstType[]> buffer(new DstType[size]);
+    std::unique_ptr<DstType[]> buffer(new DstType[size]);
     for (size_t i = 0; i < size; ++i) {
       buffer[i] = static_cast<DstType>(src[i]);
     }
@@ -335,7 +334,7 @@ class Tensor {
       if (tensor_ != nullptr) tensor_->Unmap();
     }
 
-    inline const vector<size_t> &mapped_image_pitch() const { return mapped_image_pitch_; }
+    inline const std::vector<size_t> &mapped_image_pitch() const { return mapped_image_pitch_; }
 
    private:
     const Tensor *tensor_;
@@ -358,7 +357,7 @@ class Tensor {
   std::unique_ptr<void, std::function<void(void*)>> buffer_;
   // Mapped buffer
   mutable void *data_;
-  vector<index_t> shape_;
+  std::vector<index_t> shape_;
   // Image for opencl
   bool unused_;
   bool is_image_;

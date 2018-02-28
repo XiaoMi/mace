@@ -5,7 +5,14 @@
 #ifndef MACE_CORE_REGISTRY_H_
 #define MACE_CORE_REGISTRY_H_
 
+#include <map>
+#include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
+
+#include "mace/public/mace.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
@@ -17,7 +24,7 @@ class Registry {
   Registry() : registry_() {}
 
   void Register(const SrcType &key, Creator creator) {
-    VLOG(2) << "Registering: " << key;
+    VLOG(3) << "Registering: " << key;
     std::lock_guard<std::mutex> lock(register_mutex_);
     MACE_CHECK(registry_.count(key) == 0, "Key already registered: ", key);
     registry_[key] = creator;
@@ -27,7 +34,7 @@ class Registry {
     return registry_.count(key) != 0;
   }
 
-  unique_ptr<ObjectType> Create(const SrcType &key, Args... args) const {
+  std::unique_ptr<ObjectType> Create(const SrcType &key, Args... args) const {
     if (registry_.count(key) == 0) {
       LOG(FATAL) << "Key not registered: " << key;
     }
@@ -37,8 +44,8 @@ class Registry {
   /**
    * Returns the keys currently registered as a vector.
    */
-  vector<SrcType> Keys() const {
-    vector<SrcType> keys;
+  std::vector<SrcType> Keys() const {
+    std::vector<SrcType> keys;
     for (const auto &it : registry_) {
       keys.push_back(it.first);
     }
@@ -62,7 +69,7 @@ class Registerer {
   }
 
   template <class DerivedType>
-  static unique_ptr<ObjectType> DefaultCreator(Args... args) {
+  static std::unique_ptr<ObjectType> DefaultCreator(Args... args) {
     return std::unique_ptr<ObjectType>(new DerivedType(args...));
   }
 };

@@ -95,7 +95,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   OpsTestNet net;
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
-    builder = builder.Input(("Input" + ToString(i)).c_str());
+    builder = builder.Input(MakeString("Input", i));
   }
   builder.AddIntArg("axis", axis)
       .Output("Output")
@@ -113,7 +113,7 @@ TEST_F(ConcatOpTest, CPURandom) {
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
     net.AddInputFromArray<DeviceType::CPU, float>(
-        ("Input" + ToString(i)).c_str(), input_shapes[i], inputs[i]);
+        MakeString("Input", i), input_shapes[i], inputs[i]);
   }
 
   // Run
@@ -148,8 +148,8 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   // Construct graph
   OpsTestNet net;
   for (int i = 0; i < num_inputs; ++i) {
-    const std::string input_name = ("Input" + ToString(i)).c_str();
-    const std::string image_name = ("InputImage" + ToString(i)).c_str();
+    const std::string input_name = MakeString("Input", i);
+    const std::string image_name = MakeString("InputImage", i);
     concat_axis_size += shapes[i][axis];
     net.AddRandomInput<DeviceType::OPENCL, float>(input_name, shapes[i]);
     BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name,
@@ -158,7 +158,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
   for (int i = 0; i < num_inputs; ++i) {
-    const std::string image_name = ("InputImage" + ToString(i)).c_str();
+    const std::string image_name = MakeString("InputImage", i);
     builder = builder.Input(image_name);
   }
   builder.AddIntArg("axis", axis)
@@ -188,7 +188,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
           std::accumulate(shapes[i].begin() + axis, shapes[i].end(), 1,
                           std::multiplies<index_t>());
 
-      const std::string input_name = ("Input" + ToString(i)).c_str();
+      const std::string input_name = MakeString("Input", i);
       const Tensor *input_tensor = net.GetTensor(input_name.data());
       Tensor::MappingGuard input_guard(input_tensor);
       const float *input_ptr = input_tensor->data<float>() + k * num_elements;

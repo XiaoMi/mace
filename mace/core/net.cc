@@ -4,6 +4,7 @@
 
 #include "mace/core/net.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/timer.h"
 #include "mace/utils/memory_logging.h"
 
 namespace mace {
@@ -24,11 +25,11 @@ SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
   VLOG(1) << "Constructing SimpleNet " << net_def->name();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
-    VLOG(1) << "Creating operator " << operator_def.name() << ":"
-            << operator_def.type();
-    std::unique_ptr<OperatorBase> op{nullptr};
+    VLOG(3) << "Creating operator " << operator_def.name() << "("
+            << operator_def.type() << ")";
     OperatorDef temp_def(operator_def);
-    op = op_registry->CreateOperator(temp_def, ws, type, mode);
+    std::unique_ptr<OperatorBase> op(
+        op_registry->CreateOperator(temp_def, ws, type, mode));
     if (op) {
       operators_.emplace_back(std::move(op));
     }
@@ -37,14 +38,16 @@ SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
 
 bool SimpleNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
-  VLOG(1) << "Running net " << name_;
+  MACE_LATENCY_LOGGER(1, "Running net");
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
+    auto &op = *iter;
+    VLOG(3) << "Running operator " << op->debug_def().name() << "("
+            << op->debug_def().type() << ").";
+    MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name());
+
     bool future_wait = (device_type_ == DeviceType::OPENCL &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
-    auto &op = *iter;
-    VLOG(1) << "Running operator " << op->debug_def().name() << "("
-            << op->debug_def().type() << ").";
 
     bool ret;
     CallStats call_stats;
@@ -57,9 +60,9 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
         future.wait_fn(nullptr);
       }
     } else if (run_metadata != nullptr) {
-      call_stats.start_micros = NowInMicroSec();
+      call_stats.start_micros = NowMicros();
       ret = op->Run(nullptr);
-      call_stats.end_micros = NowInMicroSec();
+      call_stats.end_micros = NowMicros();
     } else {
       ret = op->Run(nullptr);
     }
@@ -75,8 +78,8 @@ bool SimpleNet::Run(RunMetadata *run_metadata) {
       return false;
     }
 
-    VLOG(1) << "Op " << op->debug_def().name()
-            << " has shape: " << internal::MakeString(op->Output(0)->shape());
+    VLOG(3) << "Operator " << op->debug_def().name()
+            << " has shape: " << MakeString(op->Output(0)->shape());
   }
 
   return true;
@@ -98,8 +101,8 @@ std::unique_ptr<NetBase> CreateNet(
     Workspace *ws,
     DeviceType type,
     const NetMode mode) {
-  unique_ptr<NetBase> net(new SimpleNet(op_registry, net_def, ws, type, mode));
+  std::unique_ptr<NetBase> net(new SimpleNet(op_registry, net_def, ws, type, mode));
   return net;
 }
 
-}  //  namespace mace
+}  // namespace mace

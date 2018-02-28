@@ -7,8 +7,7 @@
 
 #include <map>
 
-#include "mace/core/common.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -42,7 +41,7 @@ class ArgumentHelper {
   }
 
   template <typename Def, typename T>
-  static vector<T> GetRepeatedArgument(
+  static std::vector<T> GetRepeatedArgument(
       const Def &def,
       const string &name,
       const std::vector<T> &default_value = std::vector<T>()) {
@@ -58,7 +57,7 @@ class ArgumentHelper {
   template <typename T>
   bool HasSingleArgumentOfType(const string &name) const;
   template <typename T>
-  vector<T> GetRepeatedArgument(
+  std::vector<T> GetRepeatedArgument(
       const string &name,
       const std::vector<T> &default_value = std::vector<T>()) const;
 

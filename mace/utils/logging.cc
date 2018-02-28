@@ -12,7 +12,7 @@
 #endif
 
 namespace mace {
-namespace internal {
+namespace logging {
 
 LogMessage::LogMessage(const char *fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
@@ -77,7 +77,7 @@ int64_t LogLevelStrToInt(const char *mace_env_var_val) {
   // Ideally we would use env_var / safe_strto64, but it is
   // hard to use here without pulling in a lot of dependencies,
   // so we use std:istringstream instead
-  string min_log_level(mace_env_var_val);
+  std::string min_log_level(mace_env_var_val);
   std::istringstream ss(min_log_level);
   int64_t level;
   if (!(ss >> level)) {
@@ -120,5 +120,5 @@ LogMessageFatal::~LogMessageFatal() {
   abort();
 }
 
-}  // namespace internal
+}  // namespace logging
 }  // namespace mace

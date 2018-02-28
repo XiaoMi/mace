@@ -120,7 +120,7 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
   int64_t iters = kMinIters;
   while (true) {
     accum_time = 0;
-    start_time = utils::NowMicros();
+    start_time = NowMicros();
     bytes_processed = -1;
     macc_processed = -1;
     label.clear();
@@ -152,11 +152,11 @@ void Benchmark::Run(int arg1, int arg2, int *run_count, double *run_seconds) {
 void BytesProcessed(int64_t n) { bytes_processed = n; }
 void MaccProcessed(int64_t n) { macc_processed = n; }
 void StartTiming() {
-  if (start_time == 0) start_time = utils::NowMicros();
+  if (start_time == 0) start_time = NowMicros();
 }
 void StopTiming() {
   if (start_time != 0) {
-    accum_time += (utils::NowMicros() - start_time);
+    accum_time += (NowMicros() - start_time);
     start_time = 0;
   }
 }

@@ -52,7 +52,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-Daddn=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    built_options.emplace("-DINPUT_NUM=" + ToString(input_tensors.size()));
+    built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
     kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
 
     uint32_t idx = 0;

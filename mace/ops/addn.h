@@ -5,6 +5,8 @@
 #ifndef MACE_OPS_ADDN_H_
 #define MACE_OPS_ADDN_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/addn.h"
 
@@ -19,7 +21,7 @@ class AddNOp : public Operator<D, T> {
   bool Run(StatsFuture *future) override {
     Tensor *output_tensor = this->Output(0);
     int n = this->inputs_.size();
-    vector<const Tensor *> inputs(n, nullptr);
+    std::vector<const Tensor *> inputs(n, nullptr);
     inputs[0] = this->Input(0);
     for (int i = 1; i < n; ++i) {
       inputs[i] = this->Input(i);

@@ -51,15 +51,15 @@ class Tuner {
       // tune
       std::vector<param_type> opt_param = default_param;
       RetType res = Tune<RetType>(param_generator, func, timer, &opt_param);
-      VLOG(1) << "Tuning result. "
-              << param_key << ": " << internal::MakeString(opt_param);
+      VLOG(3) << "Tuning result. "
+              << param_key << ": " << MakeString(opt_param);
       param_table_[obfucated_param_key] = opt_param;
       return res;
     } else {
       // run
       if (param_table_.find(obfucated_param_key) != param_table_.end()) {
-        VLOG(1) << param_key << ": "
-                << internal::MakeString(param_table_[obfucated_param_key]);
+        VLOG(3) << param_key << ": "
+                << MakeString(param_table_[obfucated_param_key]);
         return func(param_table_[obfucated_param_key], nullptr, nullptr);
       } else {
 #ifndef MACE_DISABLE_NO_TUNING_WARNING
@@ -82,7 +82,7 @@ class Tuner {
   Tuner &operator=(const Tuner &) = delete;
 
   inline void WriteRunParameters() {
-    VLOG(1) << path_;
+    VLOG(3) << path_;
     if (path_ != nullptr) {
       std::ofstream ofs(path_, std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
@@ -92,7 +92,7 @@ class Tuner {
           int32_t key_size = kp.first.size();
           ofs.write(reinterpret_cast<char *>(&key_size), sizeof(key_size));
           ofs.write(kp.first.c_str(), key_size);
-          VLOG(1) << "Write tuning param: " << kp.first.c_str();
+          VLOG(3) << "Write tuning param: " << kp.first.c_str();
 
           auto &params = kp.second;
           int32_t params_size = params.size() * sizeof(param_type);
@@ -100,7 +100,7 @@ class Tuner {
                     sizeof(params_size));
           for (auto &param : params) {
             ofs.write(reinterpret_cast<char *>(&param), sizeof(params_size));
-            VLOG(1) << param;
+            VLOG(3) << param;
           }
         }
         ofs.close();

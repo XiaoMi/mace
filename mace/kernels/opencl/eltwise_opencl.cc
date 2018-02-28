@@ -33,7 +33,7 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     built_options.emplace("-Deltwise=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    built_options.emplace("-DELTWISE_TYPE=" + ToString(type_));
+    built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
     kernel_ = runtime->BuildKernel("eltwise", kernel_name, built_options);
 

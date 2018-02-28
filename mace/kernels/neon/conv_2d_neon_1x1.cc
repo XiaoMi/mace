@@ -3,7 +3,6 @@
 //
 
 #include <arm_neon.h>
-#include "mace/core/common.h"
 #include "mace/utils/utils.h"
 
 namespace mace {

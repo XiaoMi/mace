@@ -5,9 +5,8 @@
 #ifndef MACE_CORE_NET_H_
 #define MACE_CORE_NET_H_
 
-#include "mace/core/common.h"
 #include "mace/core/operator.h"
-#include "mace/core/public/mace.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -45,7 +44,7 @@ class SimpleNet : public NetBase {
   bool Run(RunMetadata *run_metadata = nullptr) override;
 
  protected:
-  vector<unique_ptr<OperatorBase> > operators_;
+  std::vector<std::unique_ptr<OperatorBase> > operators_;
   DeviceType device_type_;
 
   DISABLE_COPY_AND_ASSIGN(SimpleNet);

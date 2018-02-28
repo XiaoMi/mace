@@ -15,19 +15,19 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   OpsTestNet net;
   // Add input data
   for (int i = 0; i < inputs; ++i) {
-    net.AddRandomInput<D, float>(internal::MakeString("Input", i).c_str(),
+    net.AddRandomInput<D, float>(MakeString("Input", i).c_str(),
                                  {n, h, w, c});
   }
 
   if (D == DeviceType::OPENCL) {
     for (int i = 0; i < inputs; ++i) {
-      BufferToImage<D, T>(net, internal::MakeString("Input", i).c_str(),
-                          internal::MakeString("InputImage", i).c_str(),
+      BufferToImage<D, T>(net, MakeString("Input", i).c_str(),
+                          MakeString("InputImage", i).c_str(),
                           kernels::BufferType::IN_OUT_CHANNEL);
     }
     OpDefBuilder op_def_builder("AddN", "AddNBM");
     for (int i = 0; i < inputs; ++i) {
-      op_def_builder.Input(internal::MakeString("InputImage", i).c_str());
+      op_def_builder.Input(MakeString("InputImage", i).c_str());
     }
     op_def_builder.Output("OutputImage")
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
@@ -35,7 +35,7 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   } else {
     OpDefBuilder op_def_builder("AddN", "AddNBM");
     for (int i = 0; i < inputs; ++i) {
-      op_def_builder.Input(internal::MakeString("Input", i).c_str());
+      op_def_builder.Input(MakeString("Input", i).c_str());
     }
     op_def_builder.Output("Output")
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))

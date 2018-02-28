@@ -3,6 +3,7 @@
 //
 
 #include "mace/core/arg_helper.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
@@ -43,7 +44,7 @@ bool SupportsLosslessConversion(const InputType &value) {
   T ArgumentHelper::GetSingleArgument<T>(const string &name,                  \
                                          const T &default_value) const {      \
     if (arg_map_.count(name) == 0) {                                          \
-      VLOG(1) << "Using default parameter value " << default_value            \
+      VLOG(3) << "Using default parameter value " << default_value            \
               << " for parameter " << name;                                   \
       return default_value;                                                   \
     }                                                                         \
@@ -82,12 +83,12 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
 #define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                   \
                                           enforce_lossless_conversion)    \
   template <>                                                             \
-  vector<T> ArgumentHelper::GetRepeatedArgument<T>(                       \
+  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                       \
       const string &name, const std::vector<T> &default_value) const {    \
     if (arg_map_.count(name) == 0) {                                      \
       return default_value;                                               \
     }                                                                     \
-    vector<T> values;                                                     \
+    std::vector<T> values;                                                     \
     for (const auto &v : arg_map_.at(name).fieldname()) {                 \
       if (enforce_lossless_conversion) {                                  \
         auto supportsConversion =                                         \

@@ -8,7 +8,6 @@
 #include <type_traits>
 
 #include "gtest/gtest.h"
-#include "mace/core/common.h"
 #include "mace/core/net.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
@@ -239,9 +238,9 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
 }
 
 template <typename T>
-unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
+std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                 const std::vector<T> &data) {
-  unique_ptr<Tensor> res(
+  std::unique_ptr<Tensor> res(
       new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
   T *input_data = res->mutable_data<T>();

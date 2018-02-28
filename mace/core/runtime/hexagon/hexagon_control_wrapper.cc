@@ -2,10 +2,12 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
-#include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
+#include <vector>
 #include <thread>
 #include <sys/time.h>
+
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
 
 namespace {
   inline int64_t NowMicros() {
@@ -61,9 +63,9 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   // const node
   std::thread const_thread([&]() {
     std::cout << "thread function\n";
-    vector<hexagon_nn_const_node> const_node_list;
+    std::vector<hexagon_nn_const_node> const_node_list;
     for (const ConstTensor &tensor_proto: net_def.tensors()) {
-      vector<int> tensor_shape(tensor_proto.dims().begin(),
+      std::vector<int> tensor_shape(tensor_proto.dims().begin(),
                                tensor_proto.dims().end());
       while (tensor_shape.size() < 4) {
         tensor_shape.insert(tensor_shape.begin(), 1);
@@ -110,11 +112,11 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   std::thread op_thread([&]() {
     OpMap op_map;
     op_map.Init();
-    vector<hexagon_nn_op_node> op_node_list;
-    vector<vector<hexagon_nn_input>> cached_inputs;
-    vector<vector<hexagon_nn_output>> cached_outputs;
-    vector<hexagon_nn_input> inputs;
-    vector<hexagon_nn_output> outputs;
+    std::vector<hexagon_nn_op_node> op_node_list;
+    std::vector<std::vector<hexagon_nn_input>> cached_inputs;
+    std::vector<std::vector<hexagon_nn_output>> cached_outputs;
+    std::vector<hexagon_nn_input> inputs;
+    std::vector<hexagon_nn_output> outputs;
 
     for (const OperatorDef &op: net_def.op()) {
       int op_id = op_map.GetOpId(op.type());
@@ -172,7 +174,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   // input info
   num_inputs_ = 0;
   for (const InputInfo &input_info: net_def.input_info()) {
-    vector<index_t> input_shape;
+    std::vector<index_t> input_shape;
     input_shape.insert(input_shape.begin(),
                        input_info.dims().begin(), input_info.dims().end());
     while (input_shape.size() < 4) {
@@ -186,7 +188,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   // output info
   num_outputs_ = 0;
   for (const OutputInfo &output_info: net_def.output_info()) {
-    vector<index_t> output_shape;
+    std::vector<index_t> output_shape;
     output_shape.insert(output_shape.begin(),
                         output_info.dims().begin(), output_info.dims().end());
     while (output_shape.size() < 4) {
@@ -207,7 +209,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
 
   int64_t t2 = NowMicros();
 
-  VLOG(0) << "Setup time: " << t1 - t0 << " " << t2 - t1;
+  VLOG(1) << "Setup time: " << t1 - t0 << " " << t2 - t1;
 
   return res == 0;
 }
@@ -225,7 +227,7 @@ void HexagonControlWrapper::PrintLog() {
   MACE_CHECK(hexagon_nn_getlog(nn_id_,
                                reinterpret_cast<unsigned char *>(buf),
                                PRINT_BUFSIZE) == 0, "print log error");
-  LOG(INFO) << string(buf);
+  LOG(INFO) << std::string(buf);
   delete[]buf;
 }
 
@@ -236,7 +238,7 @@ void HexagonControlWrapper::PrintGraph() {
   MACE_CHECK(hexagon_nn_snpprint(nn_id_,
                                  reinterpret_cast<unsigned char *>(buf),
                                  PRINT_BUFSIZE) == 0, "print graph error");
-  LOG(INFO) << string(buf);
+  LOG(INFO) << std::string(buf);
   delete[]buf;
 }
 
@@ -253,7 +255,7 @@ void HexagonControlWrapper::SetGraphMode(int mode) {
 
 void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
-  vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
+  std::vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
   unsigned int n_items = 0;
   MACE_CHECK(
     hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE, &n_items) == 0,
@@ -263,7 +265,7 @@ void HexagonControlWrapper::GetPerfInfo() {
   std::unordered_map<std::string, std::pair<int, float>> node_type_counters;
   float total_duration = 0.0;
 
-  VLOG(0) << "items: " << n_items;
+  VLOG(1) << "items: " << n_items;
   for (int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
@@ -309,7 +311,7 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
   MACE_ASSERT(num_outputs_ == 1, "Wrong outputs num");
   output_tensor->SetDtype(output_data_types_[0]);
   output_tensor->Resize(output_shapes_[0]);
-  vector<uint32_t> output_shape(4);
+  std::vector<uint32_t> output_shape(4);
   uint32_t output_bytes;
   int res = hexagon_nn_execute(nn_id_,
                                input_tensor.shape()[0],
@@ -336,8 +338,8 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
   return res == 0;
 };
 
-bool HexagonControlWrapper::ExecuteGraphNew(const vector<Tensor> &input_tensors,
-                                            vector<Tensor> *output_tensors) {
+bool HexagonControlWrapper::ExecuteGraphNew(const std::vector<Tensor> &input_tensors,
+                                            std::vector<Tensor> *output_tensors) {
   LOG(INFO) << "Execute graph new: " << nn_id_;
   int num_inputs = input_tensors.size();
   int num_outputs = output_tensors->size();
@@ -348,7 +350,7 @@ bool HexagonControlWrapper::ExecuteGraphNew(const vector<Tensor> &input_tensors,
   hexagon_nn_tensordef *outputs = new hexagon_nn_tensordef[num_outputs];
 
   for (int i = 0; i < num_inputs; ++i) {
-    vector<index_t> input_shape = input_tensors[i].shape();
+    std::vector<index_t> input_shape = input_tensors[i].shape();
     inputs[i].batches = input_shape[0];
     inputs[i].height = input_shape[1];
     inputs[i].width = input_shape[2];
@@ -372,7 +374,7 @@ bool HexagonControlWrapper::ExecuteGraphNew(const vector<Tensor> &input_tensors,
                                    outputs, num_outputs);
 
   for (int i = 0; i < num_outputs; ++i) {
-    vector<uint32_t> output_shape{outputs[i].batches, outputs[i].height,
+    std::vector<uint32_t> output_shape{outputs[i].batches, outputs[i].height,
                                   outputs[i].width, outputs[i].depth};
     MACE_ASSERT(output_shape == output_shapes_[i],
                 "wrong output shape inferred");
@@ -387,8 +389,8 @@ bool HexagonControlWrapper::ExecuteGraphNew(const vector<Tensor> &input_tensors,
 
 bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
                                                     Tensor *output_tensor) {
-  vector<Tensor> input_tensors(3);
-  vector<Tensor> output_tensors(3);
+  std::vector<Tensor> input_tensors(3);
+  std::vector<Tensor> output_tensors(3);
   input_tensors[0].SetDtype(DT_UINT8);
   output_tensors[0].SetDtype(DT_UINT8);
   input_tensors[0].ResizeLike(input_tensor);

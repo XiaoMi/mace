@@ -39,18 +39,18 @@ libmace_targets=(
   "//mace/kernels:kernels"
   "//mace/codegen:generated_version"
   "//mace/core:core"
-  "//mace/utils:logging"
+  "//mace/utils:utils"
 )
 
 libmace_dev_targets=(
   "//mace/codegen:generated_opencl_dev"
   "//mace/core:opencl_dev"
-  "//mace/utils:tuner_dev"
+  "//mace/utils:utils_dev"
 )
 
 libmace_prod_targets=(
   "//mace/core:opencl_prod"
-  "//mace/utils:tuner_prod"
+  "//mace/utils:utils_prod"
 )
 
 all_targets=(${libmace_targets[*]} ${libmace_dev_targets[*]} ${libmace_prod_targets[*]})
@@ -155,11 +155,14 @@ merge_libs "libmace_prod" "${libmace_prod_targets[*]}"
 
 echo "Step 5: Export lib"
 rm -rf ${EXPORT_INCLUDE_DIR}
-mkdir -p ${EXPORT_INCLUDE_DIR}/mace/core/public
+mkdir -p ${EXPORT_INCLUDE_DIR}/mace/public
+mkdir -p ${EXPORT_INCLUDE_DIR}/mace/utils
 rm -rf ${EXPORT_LIB_DIR}
 mkdir -p ${EXPORT_LIB_DIR}
 
-cp ${MACE_SOURCE_DIR}/mace/core/public/* ${EXPORT_INCLUDE_DIR}/mace/core/public || exit 1
+cp ${MACE_SOURCE_DIR}/mace/public/*.h ${EXPORT_INCLUDE_DIR}/mace/public/ || exit 1
+# utils is noti part of public API
+cp ${MACE_SOURCE_DIR}/mace/utils/*.h ${EXPORT_INCLUDE_DIR}/mace/utils/ || exit 1
 cp ${LIBMACE_TEMP_DIR}/libmace.a ${LIBMACE_TEMP_DIR}/libmace_dev.a ${LIBMACE_TEMP_DIR}/libmace_prod.a ${EXPORT_LIB_DIR}/ || exit 1
 
 echo "Step 6: Remove temporary file"

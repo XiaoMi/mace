@@ -23,7 +23,7 @@ cc_library(
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
-        "//mace/utils:utils_hdrs",
+        "//mace/utils",
     ],
 )
 

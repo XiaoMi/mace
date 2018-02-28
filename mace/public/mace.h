@@ -4,6 +4,7 @@
 
 #ifndef MACE_CORE_MACE_H_
 #define MACE_CORE_MACE_H_
+
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -32,6 +33,14 @@ inline const char *MaceVersion() {
 }
 
 extern const char *MaceGitVersion();
+
+// Disable the copy and assignment operator for a class.
+#ifndef DISABLE_COPY_AND_ASSIGN
+#define DISABLE_COPY_AND_ASSIGN(classname) \
+ private:                                  \
+  classname(const classname &) = delete;   \
+  classname &operator=(const classname &) = delete
+#endif
 
 enum NetMode {
   INIT = 0,
@@ -378,5 +387,6 @@ class MaceEngine {
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 };
 
-} //  namespace mace
-#endif //  MACE_CORE_MACE_H_
+}  // namespace mace
+
+#endif  // MACE_CORE_MACE_H_

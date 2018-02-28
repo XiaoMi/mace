@@ -40,19 +40,6 @@ Integer CeilQuotient(Integer a, Integer b) {
   return (a + b - 1) / b;
 }
 
-inline int64_t NowInMicroSec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return static_cast<int64_t>(tv.tv_sec * 1000000 + tv.tv_usec);
-}
-
-template <typename T>
-inline std::string ToString(T v) {
-  std::ostringstream ss;
-  ss << v;
-  return ss.str();
-}
-
 inline std::string ObfuscateString(const std::string &src,
                                    const std::string &lookup_table) {
   std::string dest;
