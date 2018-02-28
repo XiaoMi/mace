@@ -72,15 +72,15 @@ Tensor *Workspace::GetTensor(const std::string &name) {
 void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   Serializer serializer;
-  for (auto &tensor_proto : net_def.tensors()) {
-    MACE_LATENCY_LOGGER(2, "Load tensor ", tensor_proto.name());
-    VLOG(3) << "Tensor name: " << tensor_proto.name()
-            << ", data type: " << tensor_proto.data_type()
+  for (auto &const_tensor : net_def.tensors()) {
+    MACE_LATENCY_LOGGER(2, "Load tensor ", const_tensor.name());
+    VLOG(3) << "Tensor name: " << const_tensor.name()
+            << ", data type: " << const_tensor.data_type()
             << ", shape: "
-            << MakeString(std::vector<index_t>(tensor_proto.dims().begin(),
-                                               tensor_proto.dims().end()));
-    tensor_map_[tensor_proto.name()] =
-        serializer.Deserialize(tensor_proto, type);
+            << MakeString(std::vector<index_t>(const_tensor.dims().begin(),
+                                               const_tensor.dims().end()));
+    tensor_map_[const_tensor.name()] =
+        serializer.Deserialize(const_tensor, type);
   }
   if (type == DeviceType::OPENCL) {
     CreateImageOutputTensor(net_def);
