@@ -237,20 +237,23 @@ void DepthwiseConv2dNoOOBCheckKernel(const T *input_ptr,
 
 struct DepthwiseConv2dFunctorBase {
   DepthwiseConv2dFunctorBase(const int *strides,
-                             const Padding padding,
+                             const Padding padding_type,
+                             const std::vector<int> &paddings,
                              const int *dilations,
                              const ActivationType activation,
                              const float relux_max_limit,
                              const float prelu_alpha)
       : strides_(strides),
-        padding_(padding),
+        padding_type_(padding_type),
+        paddings_(paddings),
         dilations_(dilations),
         activation_(activation),
         relux_max_limit_(relux_max_limit),
         prelu_alpha_(prelu_alpha) {}
 
   const int *strides_;  // [stride_h, stride_w]
-  const Padding padding_;
+  const Padding padding_type_;
+  std::vector<int> paddings_;
   const int *dilations_;  // [dilation_h, dilation_w]
   const ActivationType activation_;
   const float relux_max_limit_;
@@ -260,13 +263,15 @@ struct DepthwiseConv2dFunctorBase {
 template <DeviceType D, typename T>
 struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
   DepthwiseConv2dFunctor(const int *strides,
-                         const Padding padding,
+                         const Padding padding_type,
+                         const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit,
                          const float prelu_alpha)
       : DepthwiseConv2dFunctorBase(strides,
-                                   padding,
+                                   padding_type,
+                                   paddings,
                                    dilations,
                                    activation,
                                    relux_max_limit,
@@ -289,10 +294,12 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     fake_filter_shape[3] = 1;
 
     std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-        padding_, output_shape.data(), paddings.data());
+    if (paddings_.empty()) {
+      paddings_.resize(2);
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+          padding_type_, output_shape.data(), paddings_.data());
+    }
     auto input_shape = fake_filter_shape;
     output->Resize(output_shape);
 
@@ -322,10 +329,10 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
     // The left-upper most offset of the padded input
-    int paddings_top = paddings[0] / 2;
-    int paddings_bottom = paddings[0] - paddings_top;
-    int paddings_left = paddings[1] / 2;
-    int paddings_right = paddings[1] - paddings_left;
+    int paddings_top = paddings_[0] / 2;
+    int paddings_bottom = paddings_[0] - paddings_top;
+    int paddings_left = paddings_[1] / 2;
+    int paddings_right = paddings_[1] - paddings_left;
 
     int padded_h_start = 0 - paddings_top;
     int padded_w_start = 0 - paddings_left;
@@ -413,13 +420,15 @@ template <typename T>
 struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
     : DepthwiseConv2dFunctorBase {
   DepthwiseConv2dFunctor(const int *strides,
-                         const Padding padding,
+                         const Padding padding_type,
+                         const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit,
                          const float prelu_alpha)
       : DepthwiseConv2dFunctorBase(strides,
-                                   padding,
+                                   padding_type,
+                                   paddings,
                                    dilations,
                                    activation,
                                    relux_max_limit,

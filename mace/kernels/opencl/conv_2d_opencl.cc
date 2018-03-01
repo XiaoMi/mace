@@ -80,10 +80,12 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   std::vector<index_t> output_shape(4);
-  std::vector<int> paddings(2);
-  kernels::CalcNHWCPaddingAndOutputSize(
-      input->shape().data(), filter->shape().data(), dilations_, strides_,
-      paddings_, output_shape.data(), paddings.data());
+  if (paddings_.empty()) {
+    paddings_.resize(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), filter->shape().data(), dilations_, strides_,
+        padding_type_, output_shape.data(), paddings_.data());
+  }
 
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
@@ -93,11 +95,11 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       selector[kernel_h - 1] != nullptr &&
       0 < strides_[0] && strides_[0] < 3 ) {
     auto conv2d_func = selector[kernel_h - 1];
-    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_, activation_,
+    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings_.data(), dilations_, activation_,
                 relux_max_limit_, prelu_alpha_, DataTypeToEnum<T>::value,
                 output, future);
   } else {
-    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
+    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings_.data(), dilations_,
                  activation_, relux_max_limit_, prelu_alpha_,
                  DataTypeToEnum<T>::value, output, future);
   }

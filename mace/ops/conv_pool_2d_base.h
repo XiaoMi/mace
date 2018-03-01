@@ -16,14 +16,16 @@ class ConvPool2dOpBase : public Operator<D, T> {
   ConvPool2dOpBase(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         strides_(OperatorBase::GetRepeatedArgument<int>("strides")),
-        padding_(static_cast<Padding>(OperatorBase::GetSingleArgument<int>(
+        padding_type_(static_cast<Padding>(OperatorBase::GetSingleArgument<int>(
             "padding", static_cast<int>(SAME)))),
+        paddings_(OperatorBase::GetRepeatedArgument<int>("padding_values")),
         dilations_(
             OperatorBase::GetRepeatedArgument<int>("dilations", {1, 1})) {}
 
  protected:
   std::vector<int> strides_;
-  Padding padding_;
+  Padding padding_type_;
+  std::vector<int> paddings_;
   std::vector<int> dilations_;
 };
 
