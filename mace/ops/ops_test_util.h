@@ -405,4 +405,4 @@ void ImageToBuffer(OpsTestNet &net,
 
 }  // namespace mace
 
-#endif  //  MACE_OPS_TEST_UTIL_H_
+#endif  // MACE_OPS_TEST_UTIL_H_

@@ -57,4 +57,4 @@ class BatchNormOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_OPS_BATCH_NORM_H_
+#endif  // MACE_OPS_BATCH_NORM_H_

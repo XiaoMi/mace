@@ -42,4 +42,4 @@ class BiasAddOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_BIAS_ADD_H_
+#endif  // MACE_BIAS_ADD_H_

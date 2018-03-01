@@ -37,4 +37,4 @@ class SoftmaxOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_SOFTMAX_H_
+#endif  // MACE_SOFTMAX_H_

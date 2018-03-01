@@ -42,4 +42,4 @@ struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase{
 }  //  namepsace kernels
 }  //  namespace mace
 
-#endif  //  MACE_KERNELS_BUFFER_TO_IMAGE_H_
+#endif  // MACE_KERNELS_BUFFER_TO_IMAGE_H_

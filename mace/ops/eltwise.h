@@ -44,4 +44,4 @@ class EltwiseOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_OPS_RESHAPE_H_
+#endif  // MACE_OPS_RESHAPE_H_

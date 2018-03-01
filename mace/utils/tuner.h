@@ -181,4 +181,4 @@ class Tuner {
 };
 
 }  //  namespace mace
-#endif  //  MACE_UTILS_TUNER_H_
+#endif  // MACE_UTILS_TUNER_H_

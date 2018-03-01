@@ -106,4 +106,4 @@ template
 struct ConcatFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
-} //  namespace mace
+}  // namespace mace

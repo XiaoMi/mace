@@ -69,4 +69,4 @@ struct BiasAddFunctor<DeviceType::OPENCL, T> {
 }  //  namepsace kernels
 }  //  namespace mace
 
-#endif  //  MACE_KERNELS_BIAS_ADD_H_
+#endif  // MACE_KERNELS_BIAS_ADD_H_

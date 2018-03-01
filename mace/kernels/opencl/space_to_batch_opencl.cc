@@ -75,6 +75,6 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
 template struct SpaceToBatchFunctor<DeviceType::OPENCL, float>;
 template struct SpaceToBatchFunctor<DeviceType::OPENCL, half>;
 
-} //  namespace kernels
-} //  namespace mace
-#endif //  MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_
+}  // namespace kernels
+}  // namespace mace
+#endif  // MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_

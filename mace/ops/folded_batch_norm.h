@@ -51,4 +51,4 @@ class FoldedBatchNormOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_OPS_FOLDED_BATCH_NORM_H_
+#endif  // MACE_OPS_FOLDED_BATCH_NORM_H_

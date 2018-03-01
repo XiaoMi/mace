@@ -62,4 +62,4 @@ struct SoftmaxFunctor<DeviceType::OPENCL, T> {
 }  //  namepsace kernels
 }  //  namespace mace
 
-#endif  //  MACE_KERNELS_SOFTMAX_H_
+#endif  // MACE_KERNELS_SOFTMAX_H_

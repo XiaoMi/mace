@@ -42,4 +42,4 @@ class ConcatOp : public Operator<D, T> {
 
 }  //  namespace mace
 
-#endif  //  MACE_OPS_CONCAT_H_
+#endif  // MACE_OPS_CONCAT_H_

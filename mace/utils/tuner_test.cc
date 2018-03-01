@@ -81,4 +81,4 @@ TEST_F(TunerTest, SimpleTune) {
   EXPECT_EQ(expect, res);
 }
 
-} //  namespace mace
+}  // namespace mace
