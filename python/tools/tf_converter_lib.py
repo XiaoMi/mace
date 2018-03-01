@@ -641,6 +641,7 @@ class TFConverter(object):
     conv_op = self.tf_graph[op.name][0]
     op_def.name = conv_op.name
     op_def.type = conv_op.type
+    self.transpose_filter_tensor[get_input_tensor(conv_op, 1).name] = (0, 1, 3, 2)
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
       output_name = self.add_buffer_to_image(get_input_tensor(conv_op, 1).name, "CONV2D_FILTER")

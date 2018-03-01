@@ -15,8 +15,8 @@
 namespace mace {
 namespace {{tag}} {
 
-void Create{{tensor.name}}(std::vector<mace::ConstTensor> &tensors,
-                           const unsigned char *model_data) {
+void CreateTensor{{tensor_info.id}}(std::vector<mace::ConstTensor> &tensors,
+                               const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(2, "Create tensor {{ tensor.name }}");
   tensors.emplace_back(mace::ConstTensor(
       {{ tensor.name|tojson }}, model_data + {{ offset }},
@@ -189,8 +189,8 @@ namespace mace {
 namespace {{tag}} {
 
 {% for tensor in tensors %}
-extern void Create{{ tensor.name }}(std::vector<mace::ConstTensor> &tensors,
-                                    const unsigned char *model_data);
+extern void CreateTensor{{ tensor.id }}(std::vector<mace::ConstTensor> &tensors,
+                                        const unsigned char *model_data);
 {% endfor %}
 
 
@@ -269,9 +269,9 @@ void CreateTensors(std::vector<mace::ConstTensor> &tensors,
   MACE_LATENCY_LOGGER(1, "Create tensors");
   tensors.reserve({{ net.tensors|length }});
 
-  {% for tensor in net.tensors %}
+  {% for tensor in tensors %}
 
-  mace::{{tag}}::Create{{tensor.name}}(tensors, model_data);
+  mace::{{tag}}::CreateTensor{{tensor.id}}(tensors, model_data);
   {% endfor %}
 }
 

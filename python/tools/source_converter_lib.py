@@ -73,7 +73,8 @@ def rename_tensor(net_def):
         op.output[i] = tensor_map[op.output[i]]
 
 class TensorInfo:
-  def __init__(self, t, runtime):
+  def __init__(self, id, t, runtime):
+    self.id = id
     self.name = t.name
     self.data_type = mace_pb2.DataType.Name(t.data_type)
     if t.data_type == mace_pb2.DT_FLOAT:
@@ -106,20 +107,20 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
   j2_env = Environment(loader=FileSystemLoader(template_dir),
     trim_blocks=True)
   j2_env.filters['stringfy'] = stringfy
-  counter = 0
   output_dir = os.path.dirname(output) + '/'
   # generate tensor source files
   model_data = []
   offset = 0
+  counter = 0
   for t in net_def.tensors:
-    tensor_info = TensorInfo(t, runtime)
+    tensor_info = TensorInfo(counter, t, runtime)
     # align
     if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
       padding = 4 - offset % 4
       model_data.extend(bytearray([0] * padding))
       offset += padding
     source = j2_env.get_template(template_name).render(
-      tensor_info = TensorInfo(t, runtime),
+      tensor_info = tensor_info,
       tensor = t,
       tag = model_tag,
       mode = 0,
@@ -164,7 +165,7 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
     counter += 1
 
   # generate model source files
-  tensors = [TensorInfo(t, runtime) for t in net_def.tensors]
+  tensors = [TensorInfo(i, net_def.tensors[i], runtime) for i in range(len(net_def.tensors))]
   source = j2_env.get_template(template_name).render(
     tensors = tensors,
     net = net_def,
