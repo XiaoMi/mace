@@ -64,13 +64,13 @@ struct PoolingFunctor : PoolingFunctorBase {
         input_tensor->dim(3), input_tensor->dim(3)
     };
 
-    if (paddings_.empty()) {
-      paddings_.resize(2);
-      kernels::CalcNHWCPaddingAndOutputSize(
-          input_tensor->shape().data(), filter_shape.data(),
-          dilations_, strides_, this->padding_type_,
-          output_shape.data(), paddings_.data());
-
+    std::vector<int> paddings(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input_tensor->shape().data(), filter_shape.data(),
+        dilations_, strides_, this->padding_type_,
+        output_shape.data(), paddings.data());
+    if (!paddings_.empty()) {
+      paddings = paddings_;
     }
     output_tensor->Resize(output_shape);
 
@@ -99,8 +99,8 @@ struct PoolingFunctor : PoolingFunctorBase {
     int dilation_w = dilations_[1];
 
     // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings_[0] / 2;
-    int padded_w_start = 0 - paddings_[1] / 2;
+    int padded_h_start = 0 - paddings[0] / 2;
+    int padded_w_start = 0 - paddings[1] / 2;
 
     if (pooling_type_ == MAX) {
 #pragma omp parallel for collapse(4)

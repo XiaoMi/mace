@@ -228,11 +228,12 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     MACE_CHECK_NOTNULL(output);
 
     std::vector<index_t> output_shape(4);
-    if (paddings_.empty()) {
-      paddings_.resize(2);
-      kernels::CalcNHWCPaddingAndOutputSize(
-          input->shape().data(), filter->shape().data(), dilations_, strides_,
-          padding_type_, output_shape.data(), paddings_.data());
+    std::vector<int> paddings(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), filter->shape().data(), dilations_, strides_,
+        padding_type_, output_shape.data(), paddings.data());
+    if (!paddings_.empty()) {
+      paddings = paddings_;
     }
     output->Resize(output_shape);
 
@@ -260,13 +261,13 @@ struct Conv2dFunctor : Conv2dFunctorBase {
 
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
-    int padded_height = input_height + paddings_[0];
-    int padded_width = input_width + paddings_[1];
+    int padded_height = input_height + paddings[0];
+    int padded_width = input_width + paddings[1];
 
     Tensor padded_input;
     // Keep this alive during kernel execution
-    if (paddings_[0] > 0 || paddings_[1] > 0) {
-      ConstructNHWCInputWithPadding(input, paddings_.data(), &padded_input);
+    if (paddings[0] > 0 || paddings[1] > 0) {
+      ConstructNHWCInputWithPadding(input, paddings.data(), &padded_input);
       input = &padded_input;
     }
 
