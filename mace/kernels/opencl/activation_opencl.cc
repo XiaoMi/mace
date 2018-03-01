@@ -54,7 +54,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
         tuning_key_prefix = "sigmoid_opencl_kernel_";
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      defeult:
+      default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
     kernel_ =

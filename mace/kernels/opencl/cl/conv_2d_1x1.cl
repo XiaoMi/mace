@@ -6,8 +6,8 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
                           __write_only image2d_t output,
-                          __private const DATA_TYPE relux_max_limit,
-                          __private const DATA_TYPE prelu_alpha,
+                          __private const float relux_max_limit,
+                          __private const float prelu_alpha,
                           __private const int in_height,
                           __private const int in_width,
                           __private const int in_ch_blks,

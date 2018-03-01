@@ -7,8 +7,8 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
     __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
                                __write_only image2d_t output,
-                               __private const DATA_TYPE relux_max_limit,
-                               __private const DATA_TYPE prelu_alpha,
+                               __private const float relux_max_limit,
+                               __private const float prelu_alpha,
                                __private const short in_height,
                                __private const short in_width,
                                __private const short in_ch_blks,

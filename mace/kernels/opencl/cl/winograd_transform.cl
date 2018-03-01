@@ -115,8 +115,8 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-                                             __private const DATA_TYPE relux_max_limit,
-                                             __private const DATA_TYPE prelu_alpha) {
+                                             __private const float relux_max_limit,
+                                             __private const float prelu_alpha) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
   const int out_channel = get_global_size(1);

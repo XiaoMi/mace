@@ -22,8 +22,8 @@ __constant sampler_t SAMPLER = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP |
 
 
 inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
-                                __private const DATA_TYPE relux_max_limit,
-                                __private const DATA_TYPE prelu_alpha) {
+                                __private const float relux_max_limit,
+                                __private const float prelu_alpha) {
   DATA_TYPE4 out;
 #ifdef USE_RELU
   out = fmax(in, 0);
