@@ -264,7 +264,6 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
                 bias ? bias[i] : 0);
     }
   }
-// benchmark omp collapsed(2)
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < round_up_channels; c += kOutputChannelBlockSize) {
@@ -326,7 +325,6 @@ void Conv2dNeonPixelK1x1S1(
   const index_t total_loops = total_pixels >> 3;
   const index_t loop_remaining = total_pixels & 7;
 
-// benchmark omp collapsed(2)
 #pragma omp parallel for collapse(2)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {

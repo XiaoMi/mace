@@ -46,12 +46,13 @@ static void SoftmaxBenchmark(
   net.Sync();
 }
 
-#define BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                      \
-  static void BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) {  \
+#define BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
+  static void BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
+      int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::MaccProcessed(tot);                              \
+    mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    SoftmaxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                  \
+    SoftmaxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);               \
   }                                                                  \
   BENCHMARK(BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
@@ -60,9 +61,9 @@ static void SoftmaxBenchmark(
   BM_SOFTMAX_MACRO(N, C, H, W, float, OPENCL); \
   BM_SOFTMAX_MACRO(N, C, H, W, half, OPENCL);
 
-BM_SOFTMAX(1, 1, 512, 512);
-BM_SOFTMAX(1, 3, 128, 128);
+BM_SOFTMAX(1, 2, 512, 512);
 BM_SOFTMAX(1, 3, 512, 512);
-BM_SOFTMAX(1, 32, 112, 112);
-BM_SOFTMAX(1, 64, 256, 256);
+BM_SOFTMAX(1, 4, 512, 512);
+BM_SOFTMAX(1, 10, 256, 256);
+BM_SOFTMAX(1, 1024, 7, 7);
 }  // namespace mace
