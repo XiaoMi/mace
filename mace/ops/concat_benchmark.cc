@@ -91,13 +91,13 @@ static void OpenclConcatHelper(int iters,
 }
 
 
-#define BM_CONCAT_OPENCL_MACRO(N, C, H, W, TYPE) \
-  static void BM_CONCAT_OPENCL_##N##_##C##_##H##_##W##_##TYPE( \
+#define BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE) \
+  static void BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE( \
       int iters) { \
     std::vector<index_t> shape = {N, H, W, C}; \
     OpenclConcatHelper<TYPE>(iters, shape, shape, 3); \
   } \
-  BENCHMARK(BM_CONCAT_OPENCL_##N##_##C##_##H##_##W##_##TYPE)
+  BENCHMARK(BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE)
 
 BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, float);
 BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, float);
