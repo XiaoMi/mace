@@ -5,18 +5,18 @@ target_abi: armeabi-v7a # arm64-v8a
 embed_model_data: 1
 models:
   preview_net:
-    tf_model_file_path: path/to/model64.pb
-    tf_input_node: input
-    tf_output_node: softmax/Reshape_1
+    model_file_path: path/to/model64.pb
+    input_node: input
+    output_node: softmax/Reshape_1
     input_shape: 1,64,64,3
     output_shape: 1,64,64,2
     runtime: gpu
     limit_opencl_kernel_time: 0
     dsp_mode: 0
   capture_net:
-    tf_model_file_path: path/to/model256.pb
-    tf_input_node: input_node
-    tf_output_node: softmax/Reshape_1
+    model_file_path: path/to/model256.pb
+    input_node: input_node
+    output_node: softmax/Reshape_1
     input_shape: 1,256,256,3
     output_shape: 1,256,256,2
     runtime: gpu

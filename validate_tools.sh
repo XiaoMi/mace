@@ -23,12 +23,12 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
 else
   rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
   adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
-  python tools/validate.py --model_file ${TF_MODEL_FILE_PATH} \
+  python tools/validate.py --model_file ${MODEL_FILE_PATH} \
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
       --mace_runtime ${RUNTIME} \
-      --input_node ${TF_INPUT_NODE} \
-      --output_node ${TF_OUTPUT_NODE} \
+      --input_node ${INPUT_NODE} \
+      --output_node ${OUTPUT_NODE} \
       --input_shape ${INPUT_SHAPE} \
       --output_shape ${OUTPUT_SHAPE}
 fi

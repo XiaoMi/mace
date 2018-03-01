@@ -2,7 +2,7 @@
 
 # Must run at root dir of libmace project.
 # python tools/mace_tools.py \
-#     --config=models/config \
+#     --config=tools/example.yaml \
 #     --round=100 \
 #     --mode=all
 
@@ -14,8 +14,6 @@ import sys
 import yaml
 
 from ConfigParser import ConfigParser
-
-tf_model_file_dir_key = "TF_MODEL_FILE_DIR"
 
 
 def run_command(command):
@@ -204,7 +202,7 @@ def main(unused_args):
       os.environ[key.upper()] = str(model_config[key])
 
     model_output_dir = FLAGS.output_dir + "/" + target_abi + "/" + os.path.splitext(
-        model_config["tf_model_file_path"])[0]
+        model_config["model_file_path"])[0]
     model_output_dirs.append(model_output_dir)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":

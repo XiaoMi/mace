@@ -15,10 +15,10 @@ if [ "${BENCHMARK_FLAG}" = "1" ]; then
   OBFUSCATE=False
 fi
 
-bazel-bin/lib/python/tools/tf_converter --input=${TF_MODEL_FILE_PATH} \
+bazel-bin/lib/python/tools/tf_converter --input=${MODEL_FILE_PATH} \
                                         --output=${MODEL_CODEGEN_DIR}/model.cc \
-                                        --input_node=${TF_INPUT_NODE} \
-                                        --output_node=${TF_OUTPUT_NODE} \
+                                        --input_node=${INPUT_NODE} \
+                                        --output_node=${OUTPUT_NODE} \
                                         --data_type=${DATA_TYPE} \
                                         --runtime=${RUNTIME} \
                                         --output_type=source \
