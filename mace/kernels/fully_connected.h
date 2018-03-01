@@ -26,12 +26,12 @@ struct FullyConnectedBase {
   const float prelu_alpha_;
 };
 
-template <DeviceType D, typename T>
-struct FullyConnectedFunctor : FullyConnectedBase{
+template<DeviceType D, typename T>
+struct FullyConnectedFunctor : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
-                     const float relux_max_limit,
-                     const float prelu_alpha) :
-      FullyConnectedBase(activation, relux_max_limit, prelu_alpha){}
+                        const float relux_max_limit,
+                        const float prelu_alpha) :
+      FullyConnectedBase(activation, relux_max_limit, prelu_alpha) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
@@ -74,13 +74,12 @@ struct FullyConnectedFunctor : FullyConnectedBase{
   }
 };
 
-
-template <typename T>
-struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase{
+template<typename T>
+struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
                         const float relux_max_limit,
                         const float prelu_alpha) :
-      FullyConnectedBase(activation, relux_max_limit, prelu_alpha){}
+      FullyConnectedBase(activation, relux_max_limit, prelu_alpha) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
