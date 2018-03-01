@@ -20,30 +20,22 @@ namespace testing {
 
 class Benchmark {
  public:
-  Benchmark(const char *name, void (*fn)(int));
-  Benchmark(const char *name, void (*fn)(int, int));
-  Benchmark(const char *name, void (*fn)(int, int, int));
-  Benchmark *Arg(int x);
-  Benchmark *ArgPair(int x, int y);
+  Benchmark(const char *name, void (*benchmark_func)(int));
 
   static void Run();
   static void Run(const char *pattern);
 
  private:
   std::string name_;
-  int num_args_;
-  std::vector<std::pair<int, int>> args_;
-  void (*fn0_)(int) = nullptr;
-  void (*fn1_)(int, int) = nullptr;
-  void (*fn2_)(int, int, int) = nullptr;
+  void (*benchmark_func_)(int iters) = nullptr;
 
   void Register();
-  void Run(int arg1, int arg2, int *run_count, double *run_seconds);
+  void Run(int *run_count, double *run_seconds);
 };
 
-void RunBenchmarks();
 void BytesProcessed(int64_t);
 void MaccProcessed(int64_t);
+void RestartTiming();
 void StartTiming();
 void StopTiming();
 
