@@ -2,7 +2,7 @@
 
 # Must run at root dir of libmace project.
 # python tools/mace_tools.py \
-#     --global_config=models/config \
+#     --config=models/config \
 #     --round=100 \
 #     --mode=all
 
@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import sys
+import yaml
 
 from ConfigParser import ConfigParser
 
@@ -33,17 +34,13 @@ def run_command(command):
         result.returncode, command))
 
 
-def get_libs(configs):
-  global_target_abi = ""
-  global_runtime = ""
+def get_libs(target_abi, configs):
   runtime_list = []
-  for config in configs:
-    if global_target_abi == "":
-      global_target_abi = config["TARGET_ABI"]
-    elif global_target_abi != config["TARGET_ABI"]:
-      raise Exception("Multiple TARGET_ABI found in config files!")
-    runtime_list.append(config["RUNTIME"])
+  for model_name in configs["models"]:
+    model_runtime = configs["models"][model_name]["runtime"]
+    runtime_list.append(model_runtime.lower())
 
+  global_runtime = ""
   if "dsp" in runtime_list:
     global_runtime = "dsp"
   elif "gpu" in runtime_list:
@@ -53,7 +50,7 @@ def get_libs(configs):
   else:
     raise Exception("Not found available RUNTIME in config files!")
 
-  libmace_name = "libmace-{}-{}".format(global_target_abi, global_runtime)
+  libmace_name = "libmace-{}-{}".format(target_abi, global_runtime)
 
   command = "bash tools/download_and_link_lib.sh " + libmace_name
   run_command(command)
@@ -89,9 +86,11 @@ def tuning_run(model_output_dir, running_round, tuning, production_mode):
       model_output_dir, running_round, int(tuning), int(production_mode))
   run_command(command)
 
+
 def benchmark_model(model_output_dir):
   command = "bash tools/benchmark.sh {}".format(model_output_dir)
   run_command(command)
+
 
 def run_model(model_output_dir, running_round):
   tuning_run(model_output_dir, running_round, False, False)
@@ -150,79 +149,10 @@ def merge_libs_and_tuning_results(output_dir, model_output_dirs):
   run_command(command)
 
 
-def parse_sub_model_configs(model_dirs, global_configs):
-  model_configs = []
-  for model_dir in model_dirs:
-    model_config = {}
-
-    model_config_path = os.path.join(model_dir, "config")
-    if os.path.exists(model_config_path):
-      cf = ConfigParser()
-      # Preserve character case
-      cf.optionxform = str
-      cf.read(model_config_path)
-      if "configs" in cf.sections():
-        config_list = cf.items("configs")
-        for config_map in config_list:
-          model_config[config_map[0]] = config_map[1]
-      else:
-        raise Exception("No config msg found in {}".format(model_config_path))
-    else:
-      raise Exception("Config file '{}' not found".format(model_config_path))
-
-    model_config[tf_model_file_dir_key] = model_dir
-
-    for config_map in global_configs:
-      model_config[config_map[0]] = config_map[1]
-
-    model_configs.append(model_config)
-
-  return model_configs
-
-
 def parse_model_configs():
-  config_parser = ConfigParser()
-  # Preserve character case
-  config_parser.optionxform = str
-
-  global_config_dir = os.path.dirname(FLAGS.global_config)
-
-  try:
-    config_parser.read(FLAGS.global_config)
-    config_sections = config_parser.sections()
-
-    model_dirs = []
-    model_output_map = {}
-    if ("models" in config_sections) and (config_parser.items("models")):
-      model_dirs_str = config_parser.get(
-          "models", "DIRECTORIES")
-      model_dirs_str = model_dirs_str.rstrip(
-          ",")
-
-      # Remove repetition element
-      model_dirs = list(
-          set(model_dirs_str.split(",")))
-
-      for model_dir in model_dirs:
-        # Create output dirs
-        model_output_dir = FLAGS.output_dir + "/" + model_dir
-
-        model_output_map[model_dir] = model_output_dir
-    else:
-      model_dirs = [global_config_dir]
-
-      # Create output dirs
-      model_output_dir = FLAGS.output_dir + "/" + global_config_dir
-      model_output_map[global_config_dir] = model_output_dir
-  except Exception as e:
-    print("Error in read model path msg. Exception: {}".format(e))
-    return
-
-  global_configs = []
-  if "configs" in config_sections:
-    global_configs = config_parser.items("configs")
-
-  return parse_sub_model_configs(model_dirs, global_configs), model_output_map
+  with open(FLAGS.config) as f:
+    configs = yaml.load(f)
+    return configs
 
 
 def parse_args():
@@ -230,7 +160,7 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.register("type", "bool", lambda v: v.lower() == "true")
   parser.add_argument(
-      "--global_config",
+      "--config",
       type=str,
       default="./tool/config",
       help="The global config file of models.")
@@ -246,7 +176,7 @@ def parse_args():
 
 
 def main(unused_args):
-  configs, model_output_map = parse_model_configs()
+  configs = parse_model_configs()
 
   if FLAGS.mode == "build" or FLAGS.mode == "all":
     # Remove previous output dirs
@@ -258,14 +188,23 @@ def main(unused_args):
   if FLAGS.mode == "validate":
     FLAGS.round = 1
 
-  libmace_name = get_libs(configs)
+  target_abi = configs["target_abi"]
+  libmace_name = get_libs(target_abi, configs)
+  # Transfer params by environment
+  os.environ["TARGET_ABI"] = target_abi
+  os.environ["EMBED_MODEL_DATA"] = str(configs["embed_model_data"])
+  os.environ["PROJECT_NAME"] = os.path.splitext(FLAGS.config)[0]
 
   model_output_dirs = []
-  for config in configs:
+  for model_name in configs["models"]:
     # Transfer params by environment
-    for key in config:
-      os.environ[key] = config[key]
-    model_output_dir = model_output_map[config[tf_model_file_dir_key]]
+    os.environ["MODEL_TAG"] = model_name
+    model_config = configs["models"][model_name]
+    for key in model_config:
+      os.environ[key.upper()] = str(model_config[key])
+
+    model_output_dir = FLAGS.output_dir + "/" + target_abi + "/" + os.path.splitext(
+        model_config["tf_model_file_path"])[0]
     model_output_dirs.append(model_output_dir)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -291,9 +230,10 @@ def main(unused_args):
       validate_model(model_output_dir)
 
   if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
-    merge_libs_and_tuning_results(FLAGS.output_dir, model_output_dirs)
+    merge_libs_and_tuning_results(FLAGS.output_dir + "/" + target_abi,
+                                  model_output_dirs)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   FLAGS, unparsed = parse_args()
   main(unused_args=[sys.argv[0]] + unparsed)
