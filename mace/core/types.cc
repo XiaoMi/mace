@@ -74,4 +74,4 @@ size_t GetEnumTypeSize(const DataType dt) {
   }
 }
 
-}  //  namespace mace
+}  // namespace mace

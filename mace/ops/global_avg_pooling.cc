@@ -14,4 +14,4 @@ void Register_GlobalAvgPooling(OperatorRegistry *op_registry) {
                     GlobalAvgPoolingOp<DeviceType::CPU, float>);
 }
 
-}  //  namespace mace
+}  // namespace mace

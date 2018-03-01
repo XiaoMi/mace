@@ -65,4 +65,4 @@ BM_SOFTMAX(1, 3, 128, 128);
 BM_SOFTMAX(1, 3, 512, 512);
 BM_SOFTMAX(1, 32, 112, 112);
 BM_SOFTMAX(1, 64, 256, 256);
-}  //  namespace mace
+}  // namespace mace

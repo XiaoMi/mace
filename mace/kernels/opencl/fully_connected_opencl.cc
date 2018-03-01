@@ -103,4 +103,4 @@ template
 struct FullyConnectedFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
-}  //  namespace mace
+}  // namespace mace

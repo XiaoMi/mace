@@ -598,4 +598,4 @@ bool MaceEngine::Run(const float *input,
   }
 }
 
-} //  namespace mace
+}  // namespace mace

@@ -106,5 +106,5 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                    bias_data, output_data, output_shape);
 }
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace

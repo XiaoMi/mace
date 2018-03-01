@@ -180,5 +180,5 @@ class Tuner {
   std::unordered_map<std::string, std::vector<param_type>> param_table_;
 };
 
-}  //  namespace mace
-#endif  //  MACE_UTILS_TUNER_H_
+}  // namespace mace
+#endif  // MACE_UTILS_TUNER_H_

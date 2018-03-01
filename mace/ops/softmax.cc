@@ -26,4 +26,4 @@ void Register_Softmax(OperatorRegistry *op_registry) {
                     SoftmaxOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

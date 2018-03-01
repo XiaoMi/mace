@@ -95,5 +95,5 @@ std::string Concat(Args... args) {
 }
 
 }  // namespace kernels
-} //  namespace mace
-#endif //  MACE_KERNELS_OPENCL_HELPER_H_
+}  // namespace mace
+#endif  // MACE_KERNELS_OPENCL_HELPER_H_

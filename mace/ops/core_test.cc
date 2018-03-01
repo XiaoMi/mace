@@ -56,4 +56,4 @@ TEST(CoreTest, INIT_MODE) {
                           1e-5);
 }
 
-}  //  namespace mace
+}  // namespace mace

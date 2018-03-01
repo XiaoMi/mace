@@ -14,4 +14,4 @@ void Register_Reshape(OperatorRegistry *op_registry) {
                     ReshapeOp<DeviceType::CPU, float>);
 }
 
-}  //  namespace mace
+}  // namespace mace

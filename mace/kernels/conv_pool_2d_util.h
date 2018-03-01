@@ -50,7 +50,7 @@ void ConstructNHWCInputWithPadding(const Tensor *input,
                                    Tensor *output_tensor,
                                    bool padding_same_value = false);
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_CONV_POOL_2D_UTIL_H_

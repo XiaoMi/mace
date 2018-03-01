@@ -77,5 +77,5 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
                    output_shape);
 }
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace

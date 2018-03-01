@@ -63,6 +63,6 @@ std::unique_ptr<NetBase> CreateNet(
     DeviceType type,
     const NetMode mode = NetMode::NORMAL);
 
-}  //  namespace mace
+}  // namespace mace
 
 #endif  // MACE_CORE_NET_H_

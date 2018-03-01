@@ -26,4 +26,4 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
                     BiasAddOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

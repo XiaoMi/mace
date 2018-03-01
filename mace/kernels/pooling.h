@@ -175,7 +175,7 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
   cl::Kernel kernel_;
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_POOLING_H

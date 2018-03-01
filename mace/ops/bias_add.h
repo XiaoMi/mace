@@ -40,6 +40,6 @@ class BiasAddOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
-}  //  namespace mace
+}  // namespace mace
 
-#endif  //  MACE_BIAS_ADD_H_
+#endif  // MACE_BIAS_ADD_H_

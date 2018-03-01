@@ -84,4 +84,4 @@ template
 struct AddNFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
-}  //  namespace mace
+}  // namespace mace

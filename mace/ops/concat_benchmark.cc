@@ -101,4 +101,4 @@ static void BM_CONCATOPENCLHalf(int iters, int dim1) {
 BENCHMARK(BM_CONCATOPENCLFloat)->Arg(32)->Arg(64)->Arg(128)->Arg(256);
 BENCHMARK(BM_CONCATOPENCLHalf)->Arg(32)->Arg(64)->Arg(128)->Arg(256);
 
-}  //  namespace mace
+}  // namespace mace
