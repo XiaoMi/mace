@@ -135,15 +135,16 @@ int main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  LOG(INFO) << "mace version: " << MaceVersion()
-            << "mace git version: " << MaceGitVersion()
-            << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum()
-            << "input_shape: " << FLAGS_input_shape
-            << "output_shape: " << FLAGS_output_shape
-            << "input_file: " << FLAGS_input_file
-            << "output_file: " << FLAGS_output_file
-            << "model_data_file: " << FLAGS_model_data_file
-            << "device: " << FLAGS_device << "round: " << FLAGS_round;
+  LOG(INFO) << "mace version: " << MaceVersion();
+  LOG(INFO) << "mace git version: " << MaceGitVersion();
+  LOG(INFO) << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum();
+  LOG(INFO) << "input_shape: " << FLAGS_input_shape;
+  LOG(INFO) << "output_shape: " << FLAGS_output_shape;
+  LOG(INFO) << "input_file: " << FLAGS_input_file;
+  LOG(INFO) << "output_file: " << FLAGS_output_file;
+  LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
+  LOG(INFO) << "device: " << FLAGS_device;
+  LOG(INFO) << "round: " << FLAGS_round;
 
   vector<int64_t> input_shape_vec;
   vector<int64_t> output_shape_vec;
