@@ -19,7 +19,8 @@ class FusedConv2dOp : public ConvPool2dOpBase<D, T> {
   FusedConv2dOp(const OperatorDef &op_def, Workspace *ws)
       : ConvPool2dOpBase<D, T>(op_def, ws),
         functor_(this->strides_.data(),
-                 this->padding_,
+                 this->padding_type_,
+                 this->paddings_,
                  this->dilations_.data(),
                  kernels::StringToActivationType(
                      OperatorBase::GetSingleArgument<std::string>("activation",

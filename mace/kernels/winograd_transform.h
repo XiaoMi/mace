@@ -15,18 +15,22 @@ namespace mace {
 namespace kernels {
 
 struct WinogradTransformFunctorBase {
-  WinogradTransformFunctorBase(const Padding &paddings)
-      : strides_({1, 1}), dilations_({1, 1}), paddings_(paddings) {}
+  WinogradTransformFunctorBase(const Padding &padding_type,
+                               const std::vector<int> &paddings)
+      : strides_({1, 1}), dilations_({1, 1}),
+        padding_type_(padding_type), paddings_(paddings) {}
 
   const std::vector<int> strides_;         // [stride_h, stride_w]
   const std::vector<int> dilations_;       // [dilation_h, dilation_w]
-  Padding paddings_;
+  Padding padding_type_;
+  std::vector<int> paddings_;
 };
 
 template<DeviceType D, typename T>
 struct WinogradTransformFunctor : WinogradTransformFunctorBase {
-  WinogradTransformFunctor(const Padding &paddings)
-      : WinogradTransformFunctorBase(paddings) {}
+  WinogradTransformFunctor(const Padding &padding_type,
+                           const std::vector<int> &paddings)
+      : WinogradTransformFunctorBase(padding_type, paddings) {}
 
   void operator()(const Tensor *input,
                   Tensor *output,
@@ -38,8 +42,9 @@ struct WinogradTransformFunctor : WinogradTransformFunctorBase {
 
 template<typename T>
 struct WinogradTransformFunctor<DeviceType::OPENCL, T> : WinogradTransformFunctorBase {
-  WinogradTransformFunctor(const Padding &paddings)
-      : WinogradTransformFunctorBase(paddings) {}
+  WinogradTransformFunctor(const Padding &padding_type,
+                           const std::vector<int> &paddings)
+      : WinogradTransformFunctorBase(padding_type, paddings) {}
 
   void operator()(const Tensor *input,
                   Tensor *output,

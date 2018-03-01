@@ -24,18 +24,21 @@ struct PoolingFunctorBase {
   PoolingFunctorBase(const PoolingType pooling_type,
                      const int *kernels,
                      const int *strides,
-                     const Padding padding,
+                     const Padding padding_type,
+                     const std::vector<int> &paddings,
                      const int *dilations)
       : pooling_type_(pooling_type),
         kernels_(kernels),
         strides_(strides),
-        padding_(padding),
+        padding_type_(padding_type),
+        paddings_(paddings),
         dilations_(dilations) {}
 
   const PoolingType pooling_type_;
   const int *kernels_;
   const int *strides_;
-  const Padding padding_;
+  const Padding padding_type_;
+  std::vector<int> paddings_;
   const int *dilations_;
 };
 
@@ -44,27 +47,31 @@ struct PoolingFunctor : PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
-                 const Padding padding,
+                 const Padding padding_type,
+                 const std::vector<int> &paddings,
                  const int *dilations)
       : PoolingFunctorBase(pooling_type, kernels,
-                           strides, padding,
-                           dilations) {}
+                           strides, padding_type,
+                           paddings, dilations) {}
 
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future) {
 
     std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
     std::vector<index_t> filter_shape = {
         kernels_[0], kernels_[1],
         input_tensor->dim(3), input_tensor->dim(3)
     };
 
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input_tensor->shape().data(), filter_shape.data(),
-        dilations_, strides_, this->padding_,
-        output_shape.data(), paddings.data());
+    if (paddings_.empty()) {
+      paddings_.resize(2);
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input_tensor->shape().data(), filter_shape.data(),
+          dilations_, strides_, this->padding_type_,
+          output_shape.data(), paddings_.data());
+
+    }
     output_tensor->Resize(output_shape);
 
     Tensor::MappingGuard in_guard(input_tensor);
@@ -92,8 +99,8 @@ struct PoolingFunctor : PoolingFunctorBase {
     int dilation_w = dilations_[1];
 
     // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings[0] / 2;
-    int padded_w_start = 0 - paddings[1] / 2;
+    int padded_h_start = 0 - paddings_[0] / 2;
+    int padded_w_start = 0 - paddings_[1] / 2;
 
     if (pooling_type_ == MAX) {
 #pragma omp parallel for collapse(4)
@@ -163,11 +170,12 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
-                 const Padding padding,
+                 const Padding padding_type,
+                 const std::vector<int> &paddings,
                  const int *dilations)
       : PoolingFunctorBase(pooling_type, kernels,
-                           strides, padding,
-                           dilations) {}
+                           strides, padding_type,
+                           paddings, dilations) {}
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future);

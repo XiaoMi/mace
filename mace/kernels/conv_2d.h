@@ -178,12 +178,14 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
 
 struct Conv2dFunctorBase {
   Conv2dFunctorBase(const int *strides,
-                    const Padding &paddings,
+                    const Padding &padding_type,
+                    const std::vector<int> &paddings,
                     const int *dilations,
                     const ActivationType activation,
                     const float relux_max_limit,
                     const float prelu_alpha)
       : strides_(strides),
+        padding_type_(padding_type),
         paddings_(paddings),
         dilations_(dilations),
         activation_(activation),
@@ -191,7 +193,8 @@ struct Conv2dFunctorBase {
         prelu_alpha_(prelu_alpha) {}
 
   const int *strides_;  // [stride_h, stride_w]
-  const Padding paddings_;
+  const Padding padding_type_;
+  std::vector<int> paddings_;
   const int *dilations_;  // [dilation_h, dilation_w]
   const ActivationType activation_;
   const float relux_max_limit_;
@@ -201,12 +204,14 @@ struct Conv2dFunctorBase {
 template <DeviceType D, typename T>
 struct Conv2dFunctor : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
-                const Padding &paddings,
+                const Padding &padding_type,
+                const std::vector<int> &paddings,
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
                 const float prelu_alpha)
       : Conv2dFunctorBase(strides,
+                          padding_type,
                           paddings,
                           dilations,
                           activation,
@@ -223,10 +228,12 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     MACE_CHECK_NOTNULL(output);
 
     std::vector<index_t> output_shape(4);
-    std::vector<int> paddings(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), filter->shape().data(), dilations_, strides_,
-        paddings_, output_shape.data(), paddings.data());
+    if (paddings_.empty()) {
+      paddings_.resize(2);
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input->shape().data(), filter->shape().data(), dilations_, strides_,
+          padding_type_, output_shape.data(), paddings_.data());
+    }
     output->Resize(output_shape);
 
     int batch = output->dim(0);
@@ -253,13 +260,13 @@ struct Conv2dFunctor : Conv2dFunctorBase {
 
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
-    int padded_height = input_height + paddings[0];
-    int padded_width = input_width + paddings[1];
+    int padded_height = input_height + paddings_[0];
+    int padded_width = input_width + paddings_[1];
 
     Tensor padded_input;
     // Keep this alive during kernel execution
-    if (paddings[0] > 0 || paddings[1] > 0) {
-      ConstructNHWCInputWithPadding(input, paddings.data(), &padded_input);
+    if (paddings_[0] > 0 || paddings_[1] > 0) {
+      ConstructNHWCInputWithPadding(input, paddings_.data(), &padded_input);
       input = &padded_input;
     }
 
@@ -625,12 +632,14 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
 template <typename T>
 struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
-                const Padding &paddings,
+                const Padding &padding_type,
+                const std::vector<int> &paddings,
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
                 const float prelu_alpha)
       : Conv2dFunctorBase(strides,
+                          padding_type,
                           paddings,
                           dilations,
                           activation,

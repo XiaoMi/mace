@@ -26,7 +26,12 @@ class AddNOp : public Operator<D, T> {
     for (int i = 1; i < n; ++i) {
       inputs[i] = this->Input(i);
       MACE_CHECK(inputs[0]->dim_size() == inputs[i]->dim_size());
-      MACE_CHECK(inputs[0]->size() == inputs[i]->size());
+      MACE_CHECK(inputs[0]->size() == inputs[i]->size()) << "Input 0: "
+                                                         << MakeString(inputs[0]->shape())
+                                                         << ", size: " << inputs[0]->size()
+                                                         << ". Input " << i << ": "
+                                                         << MakeString(inputs[i]->shape())
+                                                         << ", size: " << inputs[i]->size();
     }
 
     functor_(inputs, output_tensor, future);

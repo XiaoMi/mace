@@ -140,7 +140,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
                  << " is not implemented yet, using slow version";
     // TODO(heliangliang) The CPU/NEON kernel should map the buffer
     DepthwiseConv2dFunctor<DeviceType::CPU, float>(
-        strides_, padding_, dilations_, activation_, relux_max_limit_,
+        strides_, padding_type_, paddings_, dilations_, activation_, relux_max_limit_,
         prelu_alpha_)(input, filter, bias, output, future);
     return;
   }
@@ -153,16 +153,18 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
   fake_filter_shape[3] = 1;
 
   std::vector<index_t> output_shape(4);
-  std::vector<int> paddings(2);
-  kernels::CalcNHWCPaddingAndOutputSize(
-      input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-      padding_, output_shape.data(), paddings.data());
+  if (paddings_.empty()) {
+    paddings_.resize(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+        padding_type_, output_shape.data(), paddings_.data());
+  }
 
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
-  DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
+  DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings_.data(), dilations_,
                   activation_, relux_max_limit_, prelu_alpha_,
                   DataTypeToEnum<T>::value, output, future);
 }

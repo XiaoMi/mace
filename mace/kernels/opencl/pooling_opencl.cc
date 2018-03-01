@@ -18,16 +18,18 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1)
     << "Pooling opencl kernel not support dilation yet";
   std::vector<index_t> output_shape(4);
-  std::vector<int> paddings(2);
   std::vector<index_t> filter_shape = {
       kernels_[0], kernels_[1],
       input->dim(3), input->dim(3)
   };
 
-  kernels::CalcNHWCPaddingAndOutputSize(
-      input->shape().data(), filter_shape.data(),
-      dilations_, strides_, this->padding_,
-      output_shape.data(), paddings.data());
+  if (paddings_.empty()) {
+    paddings_.resize(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), filter_shape.data(),
+        dilations_, strides_, this->padding_type_,
+        output_shape.data(), paddings_.data());
+  }
 
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
@@ -64,8 +66,8 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
-    kernel_.setArg(idx++, paddings[0] / 2);
-    kernel_.setArg(idx++, paddings[1] / 2);
+    kernel_.setArg(idx++, paddings_[0] / 2);
+    kernel_.setArg(idx++, paddings_[1] / 2);
     kernel_.setArg(idx++, strides_[0]);
     kernel_.setArg(idx++, kernels_[0]);
     kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
