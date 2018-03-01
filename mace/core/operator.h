@@ -169,6 +169,6 @@ MACE_DECLARE_REGISTRY(OpRegistry,
 #define REGISTER_OPERATOR(op_registry, name, ...) \
   MACE_REGISTER_CLASS(OpRegistry, op_registry->registry(), name, __VA_ARGS__)
 
-}  //  namespace mace
+}  // namespace mace
 
 #endif  // MACE_CORE_OPERATOR_H

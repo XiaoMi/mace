@@ -26,4 +26,4 @@ void Register_AddN(OperatorRegistry *op_registry) {
                     AddNOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

@@ -413,7 +413,7 @@ void Conv2dNeonK5x5S1(const float *input,  // NCHW
   }
 }
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_NEON_CONV_2D_NEON_5X5_H_

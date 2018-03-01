@@ -81,4 +81,4 @@ BM_ELTWISE(0, 1, 240, 240, 256);
 BM_ELTWISE(1, 1, 240, 240, 256);
 BM_ELTWISE(2, 1, 240, 240, 256);
 
-}  //  namespace mace
+}  // namespace mace

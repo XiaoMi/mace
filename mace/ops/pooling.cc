@@ -30,4 +30,4 @@ void Register_Pooling(OperatorRegistry *op_registry) {
                     PoolingOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

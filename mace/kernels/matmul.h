@@ -63,7 +63,7 @@ struct MatMulFunctor<DeviceType::OPENCL, T> {
   cl::Kernel kernel_;
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_MATMUL_H_

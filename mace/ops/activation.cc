@@ -26,4 +26,4 @@ void Register_Activation(OperatorRegistry *op_registry) {
                     ActivationOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

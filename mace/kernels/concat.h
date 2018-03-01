@@ -85,7 +85,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase{
 
 };
 
-}  //  namepsace kernels
-}  //  namespace mace
+}  // namepsace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_CONCAT_H_

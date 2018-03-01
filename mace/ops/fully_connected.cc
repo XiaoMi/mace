@@ -26,4 +26,4 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                     FullyConnectedOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

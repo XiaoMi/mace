@@ -29,4 +29,4 @@ void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
                     FoldedBatchNormOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

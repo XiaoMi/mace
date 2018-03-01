@@ -26,4 +26,4 @@ void Register_MatMul(OperatorRegistry *op_registry) {
                     MatMulOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

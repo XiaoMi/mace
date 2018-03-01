@@ -20,6 +20,6 @@ struct StatsFuture {
   };
 };
 
-}  //  namespace mace
+}  // namespace mace
 
 #endif  // MACE_CORE_FUTURE_H_

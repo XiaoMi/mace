@@ -19,4 +19,4 @@ void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
                     BatchToSpaceNDOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

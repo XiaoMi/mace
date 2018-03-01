@@ -42,7 +42,7 @@ void GlobalAvgPoolingFunctor<DeviceType::NEON, float>::operator()(
     const float *input, const index_t *input_shape,
     float *output, StatsFuture *future);
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_GLOBAL_AVG_POOLING_H_

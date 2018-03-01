@@ -90,7 +90,7 @@ struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   cl::Kernel kernel_;
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_FULLY_CONNECTED_H_

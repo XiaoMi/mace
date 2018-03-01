@@ -19,4 +19,4 @@ void Register_WinogradInverseTransform(OperatorRegistry *op_registry) {
                     WinogradInverseTransformOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

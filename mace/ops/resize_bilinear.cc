@@ -26,4 +26,4 @@ void Register_ResizeBilinear(OperatorRegistry *op_registry) {
                     ResizeBilinearOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

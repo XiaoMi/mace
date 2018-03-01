@@ -94,5 +94,5 @@ inline std::string ObfuscateSymbol(const std::string &src) {
 #define MACE_OBFUSCATE_SYMBOL(str) (str)
 #endif
 
-}  //  namespace mace
+}  // namespace mace
 #endif  // MACE_UTILS_UTILS_H_

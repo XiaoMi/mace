@@ -26,4 +26,4 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                     EltwiseOp<DeviceType::OPENCL, half>);
 }
 
-}  //  namespace mace
+}  // namespace mace

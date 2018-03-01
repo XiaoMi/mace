@@ -74,4 +74,4 @@ template
 struct MatMulFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
-}  //  namespace mace
+}  // namespace mace

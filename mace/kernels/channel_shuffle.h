@@ -43,7 +43,7 @@ class ChannelShuffleFunctor {
   const int group_;
 };
 
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
 #endif  // MACE_KERNELS_CHANNEL_SHUFFLE_H_

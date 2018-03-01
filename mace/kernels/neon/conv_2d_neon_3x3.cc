@@ -331,5 +331,5 @@ void Conv2dNeonK3x3S2(const float *input,  // NCHW
     }
   }
 }
-}  //  namespace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
