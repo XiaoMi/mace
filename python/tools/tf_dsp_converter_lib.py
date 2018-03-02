@@ -1,5 +1,6 @@
 from lib.proto import mace_pb2
 import tensorflow as tf
+from tensorflow import gfile
 from operator import mul
 from dsp_ops import DspOps
 from lib.python.tools import graph_util
@@ -359,12 +360,17 @@ def fuse_quantize(net_def, input_node, output_node):
   new_net_def.op.extend(new_ops)
   return new_net_def
 
-def convert_to_mace_pb(input_graph_def, input_node, output_node, dsp_mode):
+def convert_to_mace_pb(model_file, input_node, output_node, dsp_mode):
   """
     nnlib does not have batch norm, so use tensorflow optimizer to fold
      batch norm with convolution. The fold optimization reorders ops, so
      we sort ops first by topology.
   """
+  input_graph_def = tf.GraphDef()
+  with gfile.Open(model_file, "rb") as f:
+    data = f.read()
+    input_graph_def.ParseFromString(data)
+
   input_graph_def = graph_util.sort_tf_graph(input_graph_def)
   net_def = mace_pb2.NetDef()
 

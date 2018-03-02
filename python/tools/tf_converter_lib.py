@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 import math
 import copy
+from tensorflow import gfile
 from lib.python.tools import memory_optimizer
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.framework import tensor_shape_pb2
@@ -958,9 +959,14 @@ def add_shape_info(input_graph_def, input_node, input_shape):
   return inputs_replaced_graph
 
 
-def convert_to_mace_pb(input_graph_def, input_node, input_shape, output_node, data_type, device, winograd):
+def convert_to_mace_pb(model_file, input_node, input_shape, output_node, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
+
+  input_graph_def = tf.GraphDef()
+  with gfile.Open(model_file, "rb") as f:
+    data = f.read()
+    input_graph_def.ParseFromString(data)
 
   input_graph_def = add_shape_info(input_graph_def, input_node, input_shape)
   with tf.Session() as session:
@@ -971,7 +977,7 @@ def convert_to_mace_pb(input_graph_def, input_node, input_shape, output_node, da
       converter.convert(input_node, output_node)
       optimizer = Optimizer(net_def, device)
       net_def = optimizer.optimize()
-      print "PB Converted."
+      print "Model Converted."
       if device == 'gpu':
         print "start optimize memory."
         mem_optimizer = memory_optimizer.MemoryOptimizer(net_def)

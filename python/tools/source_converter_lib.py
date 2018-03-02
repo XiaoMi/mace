@@ -1,10 +1,8 @@
-import struct
 import os
 import uuid
 import numpy as np
 import hashlib
 
-from tensorflow import gfile
 from lib.proto import mace_pb2
 from jinja2 import Environment, FileSystemLoader
 
@@ -82,7 +80,6 @@ def rename_tensor(net_def):
 class TensorInfo:
   def __init__(self, id, t, runtime):
     self.id = id
-    self.name = t.name
     self.data_type = mace_pb2.DataType.Name(t.data_type)
     if t.data_type == mace_pb2.DT_FLOAT:
       if runtime == 'gpu':
@@ -136,7 +133,7 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
     )
     model_data.extend(tensor_info.data)
     offset += len(tensor_info.data)
-    with gfile.GFile(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
+    with open(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
       f.write(source)
     counter += 1
 
@@ -148,7 +145,7 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
     model_data_size = offset,
     model_data = model_data
   )
-  with gfile.GFile(output_dir + 'tensor_data' + '.cc', "wb") as f:
+  with open(output_dir + 'tensor_data' + '.cc', "wb") as f:
     f.write(source)
   if not embed_model_data:
     f = open(output_dir + model_tag + '.data', "wb")
@@ -167,7 +164,7 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
       mode = 2,
       runtime = runtime,
     )
-    with gfile.GFile(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
+    with open(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
       f.write(source)
     counter += 1
 
@@ -181,5 +178,5 @@ def convert_to_source(net_def, mode_pb_checksum, template, obfuscate, model_tag,
     runtime = runtime,
     model_pb_checksum = mode_pb_checksum
   )
-  with gfile.GFile(output, "wb") as f:
+  with open(output, "wb") as f:
     f.write(source)
