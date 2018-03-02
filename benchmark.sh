@@ -63,6 +63,7 @@ else
     MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
     MACE_OPENCL_PROFILING=1 \
     ${PHONE_DATA_DIR}/benchmark_model \
+    --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE} \
     --input_shape="${INPUT_SHAPE}"\
     --output_shape="${OUTPUT_SHAPE}"\
