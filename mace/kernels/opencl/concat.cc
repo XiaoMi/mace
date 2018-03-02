@@ -63,21 +63,71 @@ static void Concat2(cl::Kernel *kernel,
   TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
 }
 
+static void ConcatN(cl::Kernel *kernel,
+                    const std::vector<const Tensor *> &input_list,
+                    const DataType dt,
+                    Tensor *output,
+                    StatsFuture *future) {
+  const index_t batch = output->dim(0);
+  const index_t height = output->dim(1);
+  const index_t width = output->dim(2);
+  const index_t channel = output->dim(3);
+
+  const int channel_blk = RoundUpDiv4(channel);
+
+  if (kernel->get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
+    built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
+  }
+
+  const int inputs_count = input_list.size();
+  index_t chan_blk_offset = 0;
+  for (int i = 0; i < inputs_count; ++i) {
+    const Tensor *input = input_list[i];
+    uint32_t idx = 0;
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
+    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+
+    index_t input_channel_blk = input->dim(3) / 4;
+    chan_blk_offset += input_channel_blk;
+    const uint32_t gws[3] = {
+        static_cast<uint32_t>(input_channel_blk),
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(batch * height),
+    };
+    const std::vector<uint32_t> lws = {8, 16, 8, 1};
+    std::stringstream ss;
+    ss << "concat_n_opencl_kernel_"
+       << input_channel_blk << "_"
+       << width << "_"
+       << batch * height;
+    TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
+  }
+}
+
 template<typename T>
 void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Tensor *> &input_list,
                                                       Tensor *output,
                                                       StatsFuture *future) {
   const int inputs_count = input_list.size();
-  MACE_CHECK(inputs_count == 2 && axis_ == 3)
-    << "Concat opencl kernel only support two elements with axis == 3";
+  MACE_CHECK(inputs_count >= 2 && axis_ == 3)
+    << "Concat opencl kernel only support >=2 elements with axis == 3";
 
   const Tensor *input0 = input_list[0];
+  bool divisible_four = input0->dim(axis_) % 4 == 0;
 
   std::vector<index_t> output_shape(input0->shape());
   for (int i = 1; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
     MACE_CHECK(input->dim_size() == input0->dim_size(),
                "Ranks of all input tensors must be same.");
+    divisible_four &= input->dim(axis_) % 4 == 0;
     for (int j = 0; j < input->dim_size(); ++j) {
       if (j == axis_) {
         continue;
@@ -87,6 +137,8 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     }
     output_shape[axis_] += input->dim(axis_);
   }
+  MACE_CHECK(inputs_count == 2 || divisible_four,
+             "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
   output->ResizeImage(output_shape, image_shape);
@@ -96,7 +148,13 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
       Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
               output, future);
       break;
-    default:MACE_NOT_IMPLEMENTED;
+    default:
+      if (divisible_four) {
+        ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future);
+      }
+      else {
+        MACE_NOT_IMPLEMENTED;
+      }
   }
 };
 

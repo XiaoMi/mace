@@ -143,7 +143,7 @@ template <typename T>
 void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
                       const int axis) {
   srand(time(nullptr));
-  int num_inputs = 2;
+  int num_inputs = shapes.size();
   int concat_axis_size = 0;
   // Construct graph
   OpsTestNet net;
@@ -211,4 +211,9 @@ TEST_F(ConcatOpTest, OPENCLHalfAligned) {
 
 TEST_F(ConcatOpTest, OPENCLUnAligned) {
   OpenclRandomTest<float>({{3, 32, 32, 13}, {3, 32, 32, 17}}, 3);
+}
+
+TEST_F(ConcatOpTest, OPENCLAlignedMultiInput) {
+  OpenclRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 32},
+                           {3, 32, 32, 32}, {3, 32, 32, 32}}, 3);
 }
