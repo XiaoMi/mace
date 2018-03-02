@@ -4,19 +4,23 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
+#include "mace/utils/logging.h"
 #include "benchmark/stat_summarizer.h"
 
 #include <cstdlib>
 #include <fstream>
 #include <thread>
-#include <iostream>
 #include <numeric>
 #include <sys/time.h>
 
 namespace mace {
 namespace MACE_MODEL_TAG {
 
-extern NetDef CreateNet();
+extern const unsigned char *LoadModelData(const char *model_data_file);
+
+extern void UnloadModelData(const unsigned char *model_data);
+
+extern NetDef CreateNet(const unsigned char *model_data);
 
 extern const std::string ModelChecksum();
 
@@ -84,7 +88,7 @@ bool RunInference(MaceEngine *engine,
   const int64_t end_time = NowMicros();
 
   if (!s) {
-    std::cerr << "Error during inference." << std::endl;
+    LOG(ERROR) << "Error during inference.";
     return s;
   }
   *inference_time_us = end_time - start_time;
@@ -108,11 +112,11 @@ bool Run(MaceEngine *engine,
          int64_t *actual_num_runs) {
   *total_time_us = 0;
 
-  std::cout << "Running benchmark for max " << num_runs << " iterators, max ";
-  std::cout << max_time_sec << " seconds ";
-  std::cout << (summarizer != nullptr ? "with " : "without ");
-  std::cout << "detailed stat logging, with " << sleep_sec;
-  std::cout << "s sleep between inferences" << std::endl;
+  LOG(INFO) << "Running benchmark for max " << num_runs << " iterators, max ";
+  LOG(INFO) << max_time_sec << " seconds ";
+  LOG(INFO) << (summarizer != nullptr ? "with " : "without ");
+  LOG(INFO) << "detailed stat logging, with " << sleep_sec;
+  LOG(INFO) << "s sleep between inferences";
 
   Stat<int64_t> stat;
 
@@ -129,7 +133,7 @@ bool Run(MaceEngine *engine,
     }
 
     if (!s) {
-      std::cout << "Failed on run " << i << std::endl;
+      LOG(INFO) << "Failed on run " << i;
       return s;
     }
 
@@ -140,11 +144,14 @@ bool Run(MaceEngine *engine,
 
   std::stringstream stream;
   stat.OutputToStream(&stream);
-  std::cout << stream.str() << std::endl;
+  LOG(INFO) << stream.str();
 
   return true;
 }
 
+DEFINE_string(model_data_file,
+              "",
+              "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(device, "CPU", "Device [CPU|OPENCL]");
 DEFINE_string(input_shape, "", "input shape, separated by comma");
 DEFINE_string(output_shape, "", "output shape, separated by comma");
@@ -178,14 +185,14 @@ int Main(int argc, char **argv) {
   std::vector<int64_t> output_shape;
   mace::str_util::SplitAndParseToInts(FLAGS_input_shape, ',', &output_shape);
 
-  std::cout << "Benchmark name: [" << FLAGS_benchmark_name << "]" << std::endl;
-  std::cout << "Device: [" << FLAGS_device << "]" << std::endl;
-  std::cout << "Input shapes: [" << FLAGS_input_shape << "]" << std::endl;
-  std::cout << "output shapes: [" << FLAGS_output_shape << "]" << std::endl;
-  std::cout << "Warmup runs: [" << FLAGS_warmup_runs << "]" << std::endl;
-  std::cout << "Num runs: [" << FLAGS_max_num_runs << "]" << std::endl;
-  std::cout << "Inter-inference delay (seconds): [" << FLAGS_inference_delay << "]" << std::endl;
-  std::cout << "Inter-benchmark delay (seconds): [" << FLAGS_inter_benchmark_delay << "]" << std::endl;
+  LOG(INFO) << "Benchmark name: [" << FLAGS_benchmark_name << "]";
+  LOG(INFO) << "Device: [" << FLAGS_device << "]";
+  LOG(INFO) << "Input shapes: [" << FLAGS_input_shape << "]";
+  LOG(INFO) << "output shapes: [" << FLAGS_output_shape << "]";
+  LOG(INFO) << "Warmup runs: [" << FLAGS_warmup_runs << "]";
+  LOG(INFO) << "Num runs: [" << FLAGS_max_num_runs << "]";
+  LOG(INFO) << "Inter-inference delay (seconds): [" << FLAGS_inference_delay << "]";
+  LOG(INFO) << "Inter-benchmark delay (seconds): [" << FLAGS_inter_benchmark_delay << "]";
 
   const long int inter_inference_sleep_seconds =
       std::strtol(FLAGS_inference_delay.c_str(), nullptr, 10);
@@ -212,7 +219,9 @@ int Main(int argc, char **argv) {
     device_type = OPENCL;
   }
 
-  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet();
+  const unsigned char *model_data =
+      mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
+  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
 
   int64_t input_size = std::accumulate(input_shape.begin(),
                                        input_shape.end(), 1, std::multiplies<int64_t>());
@@ -228,15 +237,15 @@ int Main(int argc, char **argv) {
                  input_size * sizeof(float));
     in_file.close();
   } else {
-    std::cout << "Open input file failed" << std::endl;
+    LOG(INFO) << "Open input file failed";
     return -1;
   }
 
   // Init model
-  std::cout << "Run init" << std::endl;
+  LOG(INFO) << "Run init";
   mace::MaceEngine engine(&net_def, device_type);
 
-  std::cout << "Warm up" << std::endl;
+  LOG(INFO) << "Warm up";
 
   int64_t warmup_time_us = 0;
   int64_t num_warmup_runs = 0;
@@ -246,7 +255,7 @@ int Main(int argc, char **argv) {
             nullptr, FLAGS_warmup_runs, -1.0,
             inter_inference_sleep_seconds, &warmup_time_us, &num_warmup_runs);
     if (!status) {
-      std::cerr << "Failed at warm up run" << std::endl;
+      LOG(ERROR) << "Failed at warm up run";
     }
   }
 
@@ -261,7 +270,7 @@ int Main(int argc, char **argv) {
           nullptr, FLAGS_max_num_runs, max_benchmark_time_seconds,
           inter_inference_sleep_seconds, &no_stat_time_us, &no_stat_runs);
   if (!status) {
-    std::cerr << "Failed at normal no-stat run" << std::endl;
+    LOG(ERROR) << "Failed at normal no-stat run";
   }
 
   int64_t stat_time_us = 0;
@@ -270,14 +279,14 @@ int Main(int argc, char **argv) {
                stats.get(), FLAGS_max_num_runs, max_benchmark_time_seconds,
                inter_inference_sleep_seconds, &stat_time_us, &stat_runs);
   if (!status) {
-    std::cerr << "Failed at normal stat run" << std::endl;
+    LOG(ERROR) << "Failed at normal stat run";
   }
 
-  std::cout << "Average inference timings in us: ";
-  std::cout << "Warmup: ";
-  std::cout << (FLAGS_warmup_runs > 0 ? warmup_time_us / FLAGS_warmup_runs : 0) << ", ";
-  std::cout << "no stats: " << no_stat_time_us / no_stat_runs << ", ";
-  std::cout << "with stats: " << stat_time_us / stat_runs << std::endl;
+  LOG(INFO) << "Average inference timings in us: ";
+  LOG(INFO) << "Warmup: ";
+  LOG(INFO) << (FLAGS_warmup_runs > 0 ? warmup_time_us / FLAGS_warmup_runs : 0) << ", ";
+  LOG(INFO) << "no stats: " << no_stat_time_us / no_stat_runs << ", ";
+  LOG(INFO) << "with stats: " << stat_time_us / stat_runs;
 
   stats->PrintOperatorStats();
 
