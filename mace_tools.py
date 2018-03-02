@@ -7,10 +7,12 @@
 #     --mode=all
 
 import argparse
+import base64
 import os
 import shutil
 import subprocess
 import sys
+import urllib
 import yaml
 
 from ConfigParser import ConfigParser
@@ -206,8 +208,8 @@ def main(unused_args):
       for key in model_config:
         os.environ[key.upper()] = str(model_config[key])
 
-      model_output_dir = FLAGS.output_dir + "/" + target_abi + "/" + os.path.splitext(
-          model_config["model_file_path"])[0]
+      model_output_dir = FLAGS.output_dir + "/" + target_abi + "/" + model_name + "/" + base64.b16encode(
+          model_config["model_file_path"])
       model_output_dirs.append(model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -215,6 +217,12 @@ def main(unused_args):
           shutil.rmtree(model_output_dir)
         os.makedirs(model_output_dir)
         clear_env()
+
+      # Support http:// and https://
+      if model_config["model_file_path"].startswith(
+          "http://") or model_config["model_file_path"].startswith("https://"):
+        os.environ["MODEL_FILE_PATH"] = model_output_dir + "/model.pb"
+        urllib.urlretrieve(model_config["model_file_path"], os.environ["MODEL_FILE_PATH"])
 
       if FLAGS.mode == "build" or FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
         generate_random_input(model_output_dir)

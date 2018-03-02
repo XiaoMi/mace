@@ -7,7 +7,7 @@ embed_model_data: 1
 vlog_level: 0
 models:
   preview_net:
-    model_file_path: path/to/model64.pb
+    model_file_path: path/to/model64.pb # also support http:// and https://
     input_node: input_node
     output_node: output_node
     input_shape: 1,64,64,3
