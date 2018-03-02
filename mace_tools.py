@@ -17,7 +17,6 @@ import yaml
 
 from ConfigParser import ConfigParser
 
-
 def run_command(command):
   print("Run command: {}".format(command))
   result = subprocess.Popen(
