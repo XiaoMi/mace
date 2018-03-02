@@ -294,11 +294,12 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     fake_filter_shape[3] = 1;
 
     std::vector<index_t> output_shape(4);
-    if (paddings_.empty()) {
-      paddings_.resize(2);
-      kernels::CalcNHWCPaddingAndOutputSize(
-          input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-          padding_type_, output_shape.data(), paddings_.data());
+    std::vector<int> paddings(2);
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+        padding_type_, output_shape.data(), paddings.data());
+    if (!paddings_.empty()) {
+      paddings = paddings_;
     }
     auto input_shape = fake_filter_shape;
     output->Resize(output_shape);
@@ -329,10 +330,10 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 
     // The left-upper most offset of the padded input
-    int paddings_top = paddings_[0] / 2;
-    int paddings_bottom = paddings_[0] - paddings_top;
-    int paddings_left = paddings_[1] / 2;
-    int paddings_right = paddings_[1] - paddings_left;
+    int paddings_top = paddings[0] / 2;
+    int paddings_bottom = paddings[0] - paddings_top;
+    int paddings_left = paddings[1] / 2;
+    int paddings_right = paddings[1] - paddings_left;
 
     int padded_h_start = 0 - paddings_top;
     int padded_w_start = 0 - paddings_left;

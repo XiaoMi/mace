@@ -17,11 +17,12 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
                                                                  StatsFuture *future) {
   std::vector<index_t> output_shape(4);
   std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
-  if (paddings_.empty()) {
-    paddings_.resize(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
-        strides_.data(), padding_type_, output_shape.data(), paddings_.data());
+  std::vector<int> paddings(2);
+  kernels::CalcNHWCPaddingAndOutputSize(
+      input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
+      strides_.data(), padding_type_, output_shape.data(), paddings.data());
+  if (!paddings_.empty()) {
+    paddings = paddings_;
   }
 
   const index_t round_h = (output_shape[1] + 1) / 2;
@@ -52,8 +53,8 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
-    kernel_.setArg(idx++, static_cast<uint32_t>(paddings_[0] / 2));
-    kernel_.setArg(idx++, static_cast<uint32_t>(paddings_[1] / 2));
+    kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
+    kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(out_width),

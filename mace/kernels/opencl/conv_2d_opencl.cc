@@ -68,7 +68,8 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   index_t kernel_h = filter->dim(0);
   index_t kernel_w = filter->dim(1);
-  if (!input->is_image() || strides_[0] != strides_[1] || strides_[0] > 2 ||
+  if (!input->is_image() || strides_[0] != strides_[1] ||
+      ((kernel_h == 1 || kernel_h == 3) && strides_[0] > 2) ||
       (dilations_[0] > 1 && (strides_[0] > 1 || kernel_h == 1))) {
     LOG(WARNING) << "OpenCL conv2d kernel with "
                  << "filter" << kernel_h << "x" << kernel_w << ","
@@ -80,11 +81,12 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   std::vector<index_t> output_shape(4);
-  if (paddings_.empty()) {
-    paddings_.resize(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), filter->shape().data(), dilations_, strides_,
-        padding_type_, output_shape.data(), paddings_.data());
+  std::vector<int> paddings(2);
+  kernels::CalcNHWCPaddingAndOutputSize(
+      input->shape().data(), filter->shape().data(), dilations_, strides_,
+      padding_type_, output_shape.data(), paddings.data());
+  if (!paddings_.empty()) {
+    paddings = paddings_;
   }
 
   std::vector<size_t> output_image_shape;
@@ -95,11 +97,11 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       selector[kernel_h - 1] != nullptr &&
       0 < strides_[0] && strides_[0] < 3 ) {
     auto conv2d_func = selector[kernel_h - 1];
-    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings_.data(), dilations_, activation_,
+    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_, activation_,
                 relux_max_limit_, prelu_alpha_, DataTypeToEnum<T>::value,
                 output, future);
   } else {
-    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings_.data(), dilations_,
+    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
                  activation_, relux_max_limit_, prelu_alpha_,
                  DataTypeToEnum<T>::value, output, future);
   }
