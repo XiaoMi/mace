@@ -191,6 +191,7 @@ def main(unused_args):
   # Transfer params by environment
   os.environ["TARGET_ABI"] = target_abi
   os.environ["EMBED_MODEL_DATA"] = str(configs["embed_model_data"])
+  os.environ["VLOG_LEVEL"] = str(configs["vlog_level"])
   os.environ["PROJECT_NAME"] = os.path.splitext(FLAGS.config)[0]
 
   model_output_dirs = []

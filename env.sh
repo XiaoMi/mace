@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
-VLOG_LEVEL=0
 LIBMACE_SOURCE_DIR=`/bin/pwd`
 INPUT_FILE_NAME="model_input"
 OUTPUT_FILE_NAME="model.out"
