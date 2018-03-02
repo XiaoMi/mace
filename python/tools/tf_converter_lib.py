@@ -560,14 +560,14 @@ class TFConverter(object):
     arg.i = self.dt
     op_def.name = op.name
     op_def.type = "Concat"
-    op_def.input.extend([op.inputs[i].name for i in xrange(2)])
+    op_def.input.extend([input.name for input in op.inputs[:-1]])
     op_def.output.extend([output.name for output in op.outputs])
     axis_arg = op_def.arg.add()
     axis_arg.name = 'axis'
-    axis_arg.i = get_input_tensor(op, 2).eval().astype(np.int32)
+    axis_arg.i = get_input_tensor(op, len(op.inputs) - 1).eval().astype(np.int32)
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
-    self.unused_tensor.add(get_input_tensor(op, 2).name)
+    self.unused_tensor.add(get_input_tensor(op, len(op.inputs) - 1).name)
 
   def convert_resize_bilinear(self, op):
     op_def = self.net_def.op.add()
@@ -719,9 +719,23 @@ class TFConverter(object):
 
     # deal with first Reshape op
     parent_reshape_op = self.tf_parents[softmax_op.name][0]
-    op_def.input.extend([parent_reshape_op.inputs[0].name])
     self.unused_tensor.add(get_input_tensor(parent_reshape_op, 1).name)
     self.resolved_ops[parent_reshape_op.name] = 1
+
+    # FIXME: hardcode for inception_v3
+    # remove squeeze if exist
+    squeeze_op = self.tf_parents[parent_reshape_op.name][0]
+    if squeeze_op.type == 'Squeeze':
+      op_def.input.extend([squeeze_op.inputs[0].name])
+      self.resolved_ops[squeeze_op.name] = 1
+      # remove shape if exist
+      children_ops = self.tf_graph[squeeze_op.name]
+      print children_ops
+      if len(children_ops) > 1 and children_ops[0].type == 'Shape':
+        self.unused_tensor.add(get_input_tensor(children_ops[1], 0).name)
+        self.resolved_ops[children_ops[1].name] = 1
+    else:
+      op_def.input.extend([parent_reshape_op.inputs[0].name])
 
     # deal with Softmax op
     op_def.name = softmax_op.name
@@ -732,6 +746,10 @@ class TFConverter(object):
     reshape_op = self.tf_graph[softmax_op.name][0]
     self.unused_tensor.add(get_input_tensor(reshape_op, 1).name)
 
+    if reshape_op.outputs[0].shape.ndims == 2:
+      shape = reshape_op.outputs[0].shape
+      from tensorflow.python.framework.tensor_shape import as_shape
+      reshape_op.outputs[0]._shape = as_shape([1, 1, shape[0], shape[1]])
     op_def.output.extend([output.name for output in reshape_op.outputs])
     self.add_output_shape(reshape_op.outputs, op_def)
     self.resolved_ops[reshape_op.name] = 1
@@ -803,6 +821,9 @@ class TFConverter(object):
         self.convert_softmax(op)
       elif op.type in ['Relu', 'Sigmoid', 'Tanh']:
         self.convert_activation(op)
+      # FIXME: hardcode for inception_v3
+      elif op.type in ['Squeeze', 'Shape']:
+        self.resolved_ops[op.name] = 1
       #elif op.type in ['']:
       #  self.convert_normal_op(op)
       else:
