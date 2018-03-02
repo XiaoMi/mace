@@ -2,6 +2,7 @@ import struct
 import os
 import uuid
 import numpy as np
+import hashlib
 
 from tensorflow import gfile
 from lib.proto import mace_pb2
@@ -10,10 +11,16 @@ from jinja2 import Environment, FileSystemLoader
 
 GENERATED_NAME = set()
 
-def generate_random_name():
-  name = '_' + uuid.uuid4().hex[:7].upper()
+def generate_obfuscated_name(namespace, name):
+  md5 = hashlib.md5()
+  md5.update(namespace)
+  md5.update(name)
+  md5_digest = md5.hexdigest()
+
+  name = md5_digest[:8]
   while name in GENERATED_NAME:
-    name = '_' + uuid.uuid4().hex[:7].upper()
+    name = md5_digest
+    assert name not in GENERATED_NAME
   GENERATED_NAME.add(name)
   return name
 
@@ -21,25 +28,25 @@ def generate_tensor_map(tensors):
   tensor_map = {}
   for t in tensors:
     if not tensor_map.has_key(t.name):
-      tensor_map[t.name] = generate_random_name()
+        tensor_map[t.name] = generate_obfuscated_name("tensor", t.name)
   return tensor_map
 
 def generate_in_out_map(ops, tensor_map):
   in_out_map = {}
   for op in ops:
-    op.name = generate_random_name()
+    op.name = generate_obfuscated_name("op", op.name)
     for input_name in op.input:
         if not in_out_map.has_key(input_name):
           if tensor_map.has_key(input_name):
             in_out_map[input_name] = tensor_map[input_name]
           else:
-            in_out_map[input_name] = generate_random_name()
+            in_out_map[input_name] = generate_obfuscated_name("in", input_name)
     for output_name in op.output:
       if not in_out_map.has_key(output_name):
         if tensor_map.has_key(output_name):
           in_out_map[output_name] = tensor_map[output_name]
         else:
-          in_out_map[output_name] = generate_random_name()
+          in_out_map[output_name] = generate_obfuscated_name("out", output_name)
   return in_out_map
 
 def obfuscate_name(net_def):
