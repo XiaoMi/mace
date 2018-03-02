@@ -135,6 +135,7 @@ class ActivationFunctor<DeviceType::OPENCL, T> {
   T relux_max_limit_;
   T prelu_alpha_;
   cl::Kernel kernel_;
+  std::string tuning_key_prefix_;
 };
 
 }  // namespace kernels
