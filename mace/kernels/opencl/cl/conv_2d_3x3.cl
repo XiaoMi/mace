@@ -13,6 +13,7 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __private const int in_ch_blks,
                           __private const int out_height,
                           __private const int out_width,
+                          __private const int stride,
                           __private const int padding_top,
                           __private const int padding_left,
                           __private const int dilation_h,
@@ -38,21 +39,13 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   DATA_TYPE4 out4 = 0;
 #endif
 
-#if STRIDE == 1
-  int in_width0 = out_w_blk - padding_left;
-  int in_width1 = in_width0 + out_w_blks;
-  int in_width2 = in_width1 + out_w_blks;
-  int in_width3 = in_width2 + out_w_blks;
-  int in_width4 = in_width3 + out_w_blks;
-  const int height_idx = (out_hb % out_height) - padding_top;
-#elif STRIDE == 2
-  int in_width0 = (out_w_blk << 1) - padding_left;
-  int in_width1 = ((out_w_blk + out_w_blks) << 1) - padding_left;
-  int in_width2 = ((out_w_blk + (out_w_blks << 1)) << 1) - padding_left;
-  int in_width3 = ((out_w_blk + (out_w_blks << 1) + out_w_blks) << 1) - padding_left;
-  int in_width4 = ((out_w_blk + (out_w_blks << 2)) << 1) - padding_left;
-  const int height_idx = ((out_hb % out_height) << 1) - padding_top;
-#endif
+  int in_width_stride = mul24(out_w_blks, stride);
+  int in_width0 = mad24(out_w_blk, stride, -padding_left);
+  int in_width1 = in_width0 + in_width_stride;
+  int in_width2 = in_width1 + in_width_stride;
+  int in_width3 = in_width2 + in_width_stride;
+  int in_width4 = in_width3 + in_width_stride;
+  const int height_idx = mad24((out_hb % out_height), stride, -padding_top);
 
   const int batch_idx = mul24((out_hb / out_height), in_height);
   const int rounded_in_ch_x_3 = (rounded_in_ch << 1) + rounded_in_ch;

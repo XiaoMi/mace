@@ -342,7 +342,7 @@ TEST_F(Conv2dOpTest, CPUConv1x1) { TestConv1x1<DeviceType::CPU>(); }
 TEST_F(Conv2dOpTest, OPENCLConv1x1) { TestConv1x1<DeviceType::OPENCL>(); }
 
 template <DeviceType D, typename T>
-static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
+static void TestComplexConvNxNS12(const std::vector<index_t> &shape, const int stride) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -405,20 +405,31 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
   };
 
-  for (int kernel_size : {1, 3}) {
-    for (int stride : {1, 2}) {
-      func(kernel_size, kernel_size, stride, stride, VALID);
-      func(kernel_size, kernel_size, stride, stride, SAME);
-    }
+  for (int kernel_size : {1, 3, 7}) {
+    func(kernel_size, kernel_size, stride, stride, VALID);
+    func(kernel_size, kernel_size, stride, stride, SAME);
   }
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 32, 32, 64});
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32}, 
+                                                   1);
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32}, 
+                                                   2);
 }
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::OPENCL, float>({107, 113, 5, 7});
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({17, 113, 5, 7},
+                                                   1);
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({17, 113, 5, 7},
+                                                   2);
+}
+
+TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS34) {
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({31, 113, 13, 17},
+                                                   3);
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 32, 13, 17},
+                                                   4);
 }
 
 template<DeviceType D>
@@ -650,3 +661,81 @@ TEST_F(Conv2dOpTest, OPENCLUnalignedDilation4) {
                                                  4);
 }
 
+template<DeviceType D, typename T>
+static void TestArbitraryPadConvNxN(const std::vector<index_t> &shape, const std::vector<int> &paddings) {
+  testing::internal::LogToStderr();
+  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w) {
+    srand(time(NULL));
+
+    // generate random input
+    index_t batch = 1;
+    index_t height = shape[0];
+    index_t width = shape[1];
+    index_t input_channels = shape[2];
+    index_t output_channels = shape[3];
+    // Construct graph
+    OpsTestNet net;
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("Input")
+        .Input("Filter")
+        .Input("Bias")
+        .Output("Output")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntsArg("padding_values", paddings)
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+
+    // Add input data
+    net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
+    net.AddRandomInput<D, T>(
+        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+    net.AddRandomInput<D, T>("Bias", {output_channels});
+
+    // run on cpu
+    net.RunOp();
+    // Check
+    Tensor expected;
+    expected.Copy(*net.GetOutput("Output"));
+
+    // run on gpu
+    BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, T>(net, "Filter", "FilterImage", kernels::BufferType::CONV2D_FILTER);
+    BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+
+    OpDefBuilder("Conv2D", "Conv2dTest")
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Input("BiasImage")
+        .Output("OutputImage")
+        .AddIntsArg("strides", {stride_h, stride_w})
+        .AddIntsArg("padding_values", paddings)
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .Finalize(net.NewOperatorDef());
+    // Run on device
+    net.RunOp(D);
+
+    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput", kernels::BufferType::IN_OUT_CHANNEL);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+  };
+
+  for (int kernel_size : {3, 5}) {
+    for (int stride : {2, 3}) {
+      func(kernel_size, kernel_size, stride, stride);
+    }
+  }
+}
+
+TEST_F(Conv2dOpTest, OPENCLAlignedPad1) {
+  TestArbitraryPadConvNxN<DeviceType::OPENCL, float>({32, 32, 32, 64},
+                                                     {1, 1});
+}
+
+TEST_F(Conv2dOpTest, OPENCLAlignedPad2) {
+  TestArbitraryPadConvNxN<DeviceType::OPENCL, float>({128, 128, 16, 16},
+                                                     {2, 2});
+}
+
+TEST_F(Conv2dOpTest, OPENCLUnalignedPad4) {
+  TestArbitraryPadConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7},
+                                                     {4, 4});
+}

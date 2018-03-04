@@ -18,11 +18,14 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
   std::vector<index_t> output_shape(4);
   std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
   std::vector<int> paddings(2);
-  kernels::CalcNHWCPaddingAndOutputSize(
-      input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
-      strides_.data(), padding_type_, output_shape.data(), paddings.data());
-  if (!paddings_.empty()) {
+  if (paddings_.empty()) {
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input_tensor->shape().data(), filter_shape.data(), dilations_.data(), strides_.data(),
+        padding_type_, output_shape.data(), paddings.data());
+  } else {
     paddings = paddings_;
+    CalcOutputSize(input_tensor->shape().data(), filter_shape.data(), paddings_.data(),
+                   dilations_.data(), strides_.data(), RoundType::FLOOR, output_shape.data());
   }
 
   const index_t round_h = (output_shape[1] + 1) / 2;

@@ -42,7 +42,6 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    built_options.emplace(MakeString("-DSTRIDE=", stride));
     switch (activation) {
       case NOOP:
         break;
@@ -87,6 +86,7 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
+    kernel->setArg(idx++, stride);
     kernel->setArg(idx++, padding[0] / 2);
     kernel->setArg(idx++, padding[1] / 2);
     kernel->setArg(idx++, dilations[0]);

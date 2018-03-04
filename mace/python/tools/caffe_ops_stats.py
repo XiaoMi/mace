@@ -5,10 +5,14 @@ import functools
 import argparse
 import sys
 import six
+import os.path
 
 FLAGS = None
 
 def main(unused_args):
+  if not os.path.isfile(FLAGS.input):
+    print 'input model file not exist'
+    return -1
   net = caffe_pb2.NetParameter()
   with open(FLAGS.input) as f:
     google.protobuf.text_format.Merge(str(f.read()), net)

@@ -295,11 +295,14 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-        padding_type_, output_shape.data(), paddings.data());
-    if (!paddings_.empty()) {
+    if (paddings_.empty()) {
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+          padding_type_, output_shape.data(), paddings.data());
+    } else {
       paddings = paddings_;
+      CalcOutputSize(input->shape().data(), fake_filter_shape.data(), paddings_.data(),
+                     dilations_, strides_, RoundType::FLOOR, output_shape.data());
     }
     auto input_shape = fake_filter_shape;
     output->Resize(output_shape);
