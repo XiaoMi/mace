@@ -20,6 +20,7 @@ static void Conv2d(int iters,
                    int kernel_h,
                    int kernel_w,
                    int stride,
+                   int dilation,
                    Padding padding,
                    int output_channels) {
   mace::testing::StopTiming();
@@ -46,7 +47,7 @@ static void Conv2d(int iters,
         .Output("Output")
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
+        .AddIntsArg("dilations", {dilation, dilation})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
@@ -57,7 +58,7 @@ static void Conv2d(int iters,
         .Output("Output")
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
+        .AddIntsArg("dilations", {dilation, dilation})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   }
@@ -79,71 +80,81 @@ static void Conv2d(int iters,
 // approximate the amortized latency. The OpenCL runtime for Mali/Adreno is
 // in-order.
 
-#define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, OC, TYPE, DEVICE)                          \
-  static void                                                                                      \
-      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE( \
-          int iters) {                                                                             \
-    const int64_t dilation = 1;                                                                    \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                               \
-    int64_t pad_h = 0, pad_w = 0;                                                                  \
-    if (P == SAME) {                                                                               \
-      pad_h = KH / 2;                                                                              \
-      pad_w = KW / 2;                                                                              \
-    }                                                                                              \
-    int64_t oh =                                                                                   \
-        (H + 2 * pad_h - KH - (KH - 1) * (dilation - 1)) / STRIDE + 1;                             \
-    int64_t ow =                                                                                   \
-        (W + 2 * pad_w - KW - (KW - 1) * (dilation - 1)) / STRIDE + 1;                             \
-    const int64_t macc =                                                                           \
-        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);                        \
-    mace::testing::MaccProcessed(macc);                                                            \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                            \
-    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, mace::Padding::P,                      \
-                         OC);                                                                      \
-  }                                                                                                \
-  BENCHMARK(                                                                                       \
-      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##_##P##_##OC##_##TYPE##_##DEVICE)
+#define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, DILATION, P, OC, TYPE,                                     \
+                         DEVICE)                                                                                \
+  static void                                                                                                   \
+      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION##_##P##_##OC##_##TYPE##_##DEVICE( \
+          int iters) {                                                                                          \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                                            \
+    int64_t pad_h = 0, pad_w = 0;                                                                               \
+    if (P == SAME) {                                                                                            \
+      pad_h = KH / 2;                                                                                           \
+      pad_w = KW / 2;                                                                                           \
+    }                                                                                                           \
+    int64_t oh =                                                                                                \
+        (H + 2 * pad_h - KH - (KH - 1) * (DILATION - 1)) / STRIDE + 1;                                          \
+    int64_t ow =                                                                                                \
+        (W + 2 * pad_w - KW - (KW - 1) * (DILATION - 1)) / STRIDE + 1;                                          \
+    const int64_t macc =                                                                                        \
+        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);                                     \
+    mace::testing::MaccProcessed(macc);                                                                         \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                                         \
+    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, DILATION,                                           \
+                         mace::Padding::P, OC);                                                                 \
+  }                                                                                                             \
+  BENCHMARK(                                                                                                    \
+      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION##_##P##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_CONV_2D(N, C, H, W, KH, KW, S, P, OC)                 \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, float, CPU);    \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, float, OPENCL); \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, OC, half, OPENCL);
+#define BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, OPENCL); \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);
 
-BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, VALID, 1024);
-BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, VALID, 128);
-BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 256, 64, 64, 3, 3, 1, 1, VALID, 256);
 
-BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, VALID, 128);
-BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, SAME, 32);
-BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, SAME, 64);
-BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, SAME, 256);
+BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, 1, VALID, 1024);
+BM_CONV_2D(1, 64, 60, 60, 1, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 32, 60, 60, 1, 1, 1, 1, VALID, 128);
 
-BM_CONV_2D(1, 128, 16, 16, 3, 3, 1, VALID, 32);
-BM_CONV_2D(1, 128, 64, 64, 3, 3, 1, VALID, 32);
-BM_CONV_2D(1, 128, 128, 128, 3, 3, 1, VALID, 32);
+BM_CONV_2D(1, 128, 60, 60, 3, 3, 1, 1, VALID, 128);
+BM_CONV_2D(1, 32, 60, 60, 3, 3, 1, 1, SAME, 32);
+BM_CONV_2D(1, 3, 512, 512, 7, 7, 2, 1, SAME, 64);
+BM_CONV_2D(1, 512, 64, 64, 1, 1, 1, 1, SAME, 256);
 
-BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, VALID, 3);
+BM_CONV_2D(1, 128, 16, 16, 3, 3, 1, 1, VALID, 32);
+BM_CONV_2D(1, 128, 64, 64, 3, 3, 1, 1, VALID, 32);
+BM_CONV_2D(1, 128, 128, 128, 3, 3, 1, 1, VALID, 32);
 
-BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, VALID, 128);
-BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, VALID, 128);  // Test bad alignments
-BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, VALID, 3);
-BM_CONV_2D(1, 32, 112, 112, 1, 1, 1, VALID, 64);
-BM_CONV_2D(1, 64, 56, 56, 1, 1, 1, VALID, 128);
-BM_CONV_2D(1, 256, 28, 28, 1, 1, 1, VALID, 256);
-BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, VALID, 1024);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 128);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 128);
-BM_CONV_2D(1, 3, 512, 512, 3, 3, 1, VALID, 3);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 128);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, SAME, 128);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, VALID, 128);
-BM_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 3);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, VALID, 128);
-BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 128);
-BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 128);
-BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, VALID, 128);
-BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, VALID, 128);
-BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, SAME, 128);
-BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, SAME, 128);
+BM_CONV_2D(1, 3, 480, 480, 1, 1, 1, 1, VALID, 3);
+
+BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, 1, VALID, 128);  // Test bad alignments
+BM_CONV_2D(1, 3, 512, 512, 1, 1, 1, 1, VALID, 3);
+BM_CONV_2D(1, 32, 112, 112, 1, 1, 1, 1, VALID, 64);
+BM_CONV_2D(1, 64, 56, 56, 1, 1, 1, 1, VALID, 128);
+BM_CONV_2D(1, 256, 28, 28, 1, 1, 1, 1, VALID, 256);
+BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, 1, VALID, 1024);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, 1, VALID, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, 1, VALID, 128);
+BM_CONV_2D(1, 3, 512, 512, 3, 3, 1, 1, VALID, 3);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 1, 1, SAME, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 1, 1, SAME, 128);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, 1, VALID, 128);
+BM_CONV_2D(1, 3, 512, 512, 3, 3, 2, 1, VALID, 3);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, 1, VALID, 128);
+BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, 1, SAME, 128);
+BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, 1, SAME, 128);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, 1, VALID, 128);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, 1, VALID, 128);
+BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, 1, SAME, 128);
+BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, 1, SAME, 128);
+
+// Dilation
+BM_CONV_2D(1, 32, 256, 256, 3, 3, 1, 2, VALID, 32);
+BM_CONV_2D(1, 32, 256, 256, 3, 3, 1, 4, VALID, 32);
+
+// MobileNet
+BM_CONV_2D(1, 128, 56, 56, 1, 1, 1, 1, SAME, 128);
+BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, 1, SAME, 1024);
 
 }  // namespace mace
