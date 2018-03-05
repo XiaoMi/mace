@@ -412,9 +412,9 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape, const int s
 }
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
-  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32}, 
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32},
                                                    1);
-  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32}, 
+  TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32},
                                                    2);
 }
 

@@ -23,7 +23,6 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  this->paddings_,
                  this->dilations_.data(),
                  kernels::ActivationType::NOOP,
-                 0.0f,
                  0.0f) {}
 
   bool Run(StatsFuture *future) override {

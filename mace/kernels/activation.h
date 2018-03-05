@@ -46,8 +46,7 @@ void DoActivation(const T *input_ptr,
                   T *output_ptr,
                   const index_t size,
                   const ActivationType type,
-                  const float relux_max_limit,
-                  const float prelu_alpha) {
+                  const float relux_max_limit) {
   MACE_CHECK(DataTypeToEnum<T>::value != DataType::DT_HALF);
 
   switch (type) {
@@ -64,17 +63,6 @@ void DoActivation(const T *input_ptr,
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)),
                                  static_cast<T>(relux_max_limit));
-      }
-      break;
-    case PRELU:
-#pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        T in = input_ptr[i];
-        if (in < 0) {
-          output_ptr[i] = in * prelu_alpha;
-        } else {
-          output_ptr[i] = in;
-        }
       }
       break;
     case TANH:
@@ -95,45 +83,70 @@ void DoActivation(const T *input_ptr,
   }
 }
 
+template <typename T>
+void PReLUActivation(const T *input_ptr,
+                     const index_t size,
+                     const index_t input_chan,
+                     const T *alpha_ptr,
+                     T *output_ptr) {
+#pragma omp parallel for
+  for (index_t i = 0; i < size; ++i) {
+    const index_t chan_idx = i % input_chan;
+    T in = input_ptr[i];
+    if (in < 0) {
+      output_ptr[i] = in * alpha_ptr[chan_idx];
+    } else {
+      output_ptr[i] = in;
+    }
+  }
+
+}
+
 template <DeviceType D, typename T>
 class ActivationFunctor {
  public:
-  ActivationFunctor(ActivationType type, T relux_max_limit, T prelu_alpha)
+  ActivationFunctor(ActivationType type, T relux_max_limit)
       : activation_(type),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit){}
 
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+  void operator()(const Tensor *input, 
+                  const Tensor *alpha,
+                  Tensor *output,
+                  StatsFuture *future) {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
-    DoActivation(input_ptr, output_ptr, output->size(), activation_, relux_max_limit_,
-                 prelu_alpha_);
+    if (activation_ == PRELU) {
+      const T *alpha_ptr = alpha == nullptr ? nullptr : alpha->data<T>();
+      PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr, output_ptr); 
+    } else {
+      DoActivation(input_ptr, output_ptr, output->size(), activation_, relux_max_limit_);
+    }
   }
 
  private:
   ActivationType activation_;
   T relux_max_limit_;
-  T prelu_alpha_;
 };
 
 template <>
 void ActivationFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input, Tensor *output, StatsFuture *future);
+    const Tensor *input, const Tensor *alpha, Tensor *output, StatsFuture *future);
 
 template <typename T>
 class ActivationFunctor<DeviceType::OPENCL, T> {
  public:
-  ActivationFunctor(ActivationType type, T relux_max_limit, T prelu_alpha)
+  ActivationFunctor(ActivationType type, T relux_max_limit)
       : activation_(type),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit){}
 
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
+  void operator()(const Tensor *input,
+                  const Tensor *alpha,
+                  Tensor *output,
+                  StatsFuture *future);
 
  private:
   ActivationType activation_;
   T relux_max_limit_;
-  T prelu_alpha_;
   cl::Kernel kernel_;
   std::string tuning_key_prefix_;
 };

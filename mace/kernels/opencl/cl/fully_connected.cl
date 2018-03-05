@@ -10,8 +10,7 @@ __kernel void fully_connected(__read_only image2d_t input,
                               __private const int input_height,
                               __private const int input_width,
                               __private const int input_channel,
-                              __private const float relux_max_limit,
-                              __private const float prelu_alpha) {
+                              __private const float relux_max_limit) {
   const int batch_idx = get_global_id(0);
   const int out_blk_idx = get_global_id(1);
   const int input_chan_blk = (input_channel + 3) >> 2;
@@ -51,8 +50,8 @@ __kernel void fully_connected(__read_only image2d_t input,
     input_coord.y++;
   }
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  result = do_activation(result, relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  result = do_activation(result, relux_max_limit);
 #endif
   WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
 }

@@ -17,7 +17,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              const int *dilations,
                              const ActivationType activation,
                              const float relux_max_limit,
-                             const float prelu_alpha,
                              const DataType dt,
                              Tensor *output,
                              StatsFuture *future);
@@ -31,7 +30,6 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              const int *dilations,
                              const ActivationType activation,
                              const float relux_max_limit,
-                             const float prelu_alpha,
                              const DataType dt,
                              Tensor *output,
                              StatsFuture *future);
@@ -45,7 +43,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit,
-                         const float prelu_alpha,
                          const DataType dt,
                          Tensor *output,
                          StatsFuture *future);
@@ -60,7 +57,7 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       cl::Kernel *kernel,
       const Tensor *input, const Tensor *filter, const Tensor *bias, const int stride,
       const int *padding, const int *dilations, const ActivationType activation,
-      const float relux_max_limit, const float prelu_alpha, const DataType dt,
+      const float relux_max_limit, const DataType dt,
       Tensor *output, StatsFuture *future);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[5] =
@@ -99,12 +96,10 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       selector[kernel_h - 1] != nullptr) {
     auto conv2d_func = selector[kernel_h - 1];
     conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_, activation_,
-                relux_max_limit_, prelu_alpha_, DataTypeToEnum<T>::value,
-                output, future);
+                relux_max_limit_, DataTypeToEnum<T>::value, output, future);
   } else {
     Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
-                 activation_, relux_max_limit_, prelu_alpha_,
-                 DataTypeToEnum<T>::value, output, future);
+                 activation_, relux_max_limit_, DataTypeToEnum<T>::value, output, future);
   }
 }
 

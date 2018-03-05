@@ -48,9 +48,6 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
       case RELUX:
         built_options.emplace("-DUSE_RELUX");
         break;
-      case PRELU:
-        built_options.emplace("-DUSE_PRELU");
-        break;
       case TANH:
         built_options.emplace("-DUSE_TANH");
         break;
@@ -78,7 +75,6 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int>(input->dim(3)));
     // FIXME handle flexable data type: half not supported
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, prelu_alpha_);
   }
 
   const uint32_t gws[2] = {

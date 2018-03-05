@@ -24,8 +24,7 @@ class WinogradInverseTransformOp : public Operator<D, T> {
                  kernels::StringToActivationType(
                      OperatorBase::GetSingleArgument<std::string>("activation",
                                                                   "NOOP")),
-                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f),
-                 OperatorBase::GetSingleArgument<float>("alpha", 0.0f)) {}
+                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

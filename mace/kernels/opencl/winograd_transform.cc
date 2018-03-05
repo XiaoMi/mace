@@ -129,7 +129,6 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, prelu_alpha_);
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(input_tensor->dim(2)),

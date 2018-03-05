@@ -7,7 +7,6 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 #endif
                           __write_only image2d_t output,
                           __private const float relux_max_limit,
-                          __private const float prelu_alpha,
                           __private const int in_height,
                           __private const int in_width,
                           __private const int in_ch_blks,
@@ -120,12 +119,12 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     }
   }
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, prelu_alpha);
-  out1 = do_activation(out1, relux_max_limit, prelu_alpha);
-  out2 = do_activation(out2, relux_max_limit, prelu_alpha);
-  out3 = do_activation(out3, relux_max_limit, prelu_alpha);
-  out4 = do_activation(out4, relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0 = do_activation(out0, relux_max_limit);
+  out1 = do_activation(out1, relux_max_limit);
+  out2 = do_activation(out2, relux_max_limit);
+  out3 = do_activation(out3, relux_max_limit);
+  out4 = do_activation(out4, relux_max_limit);
 #endif
 
   const int out_x_base = mul24(out_ch_blk, out_width);
