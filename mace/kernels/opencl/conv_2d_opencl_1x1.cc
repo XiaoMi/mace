@@ -19,7 +19,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              const int *dilations,
                              const ActivationType activation,
                              const float relux_max_limit,
-                             const float prelu_alpha,
                              const DataType dt,
                              Tensor *output,
                              StatsFuture *future) {
@@ -44,7 +43,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    built_options.emplace(MakeString("-DSTRIDE=", stride));
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }
@@ -56,9 +54,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
         break;
       case RELUX:
         built_options.emplace("-DUSE_RELUX");
-        break;
-      case PRELU:
-        built_options.emplace("-DUSE_PRELU");
         break;
       case TANH:
         built_options.emplace("-DUSE_TANH");
@@ -87,12 +82,12 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                           *(static_cast<const cl::Image2D *>(output->buffer())));
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, prelu_alpha);
     kernel->setArg(idx++, static_cast<int>(input_height));
     kernel->setArg(idx++, static_cast<int>(input_width));
     kernel->setArg(idx++, static_cast<int>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
+    kernel->setArg(idx++, stride);
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

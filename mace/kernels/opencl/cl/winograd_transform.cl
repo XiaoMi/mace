@@ -115,8 +115,7 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-                                             __private const float relux_max_limit,
-                                             __private const float prelu_alpha) {
+                                             __private const float relux_max_limit) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
   const int out_channel = get_global_size(1);
@@ -183,11 +182,11 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
 #endif
 
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  in0[0] = do_activation(in0[0], relux_max_limit, prelu_alpha);
-  in0[1] = do_activation(in0[1], relux_max_limit, prelu_alpha);
-  in1[0] = do_activation(in1[0], relux_max_limit, prelu_alpha);
-  in1[1] = do_activation(in1[1], relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  in0[0] = do_activation(in0[0], relux_max_limit);
+  in0[1] = do_activation(in0[1], relux_max_limit);
+  in1[0] = do_activation(in1[0], relux_max_limit);
+  in1[1] = do_activation(in1[1], relux_max_limit);
 #endif
 
   WRITE_IMAGET(output, (int2)(coord_x, coord_y), in0[0]);
@@ -204,7 +203,5 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
   if (t == 2) {
     WRITE_IMAGET(output, (int2)(coord_x + 1, coord_y + 1), in1[1]);
   }
-
-
 
 }

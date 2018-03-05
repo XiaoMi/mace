@@ -50,9 +50,6 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       case RELUX:
         built_options.emplace("-DUSE_RELUX");
         break;
-      case PRELU:
-        built_options.emplace("-DUSE_PRELU");
-        break;
       case TANH:
         built_options.emplace("-DUSE_TANH");
         break;
@@ -79,7 +76,6 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
     kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, prelu_alpha_);
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

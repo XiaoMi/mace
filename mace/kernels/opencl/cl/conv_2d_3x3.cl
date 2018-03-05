@@ -7,12 +7,12 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 #endif
                           __write_only image2d_t output,
                           __private const float relux_max_limit,
-                          __private const float prelu_alpha,
                           __private const int in_height,
                           __private const int in_width,
                           __private const int in_ch_blks,
                           __private const int out_height,
                           __private const int out_width,
+                          __private const int stride,
                           __private const int padding_top,
                           __private const int padding_left,
                           __private const int dilation_h,
@@ -38,21 +38,13 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   DATA_TYPE4 out4 = 0;
 #endif
 
-#if STRIDE == 1
-  int in_width0 = out_w_blk - padding_left;
-  int in_width1 = in_width0 + out_w_blks;
-  int in_width2 = in_width1 + out_w_blks;
-  int in_width3 = in_width2 + out_w_blks;
-  int in_width4 = in_width3 + out_w_blks;
-  const int height_idx = (out_hb % out_height) - padding_top;
-#elif STRIDE == 2
-  int in_width0 = (out_w_blk << 1) - padding_left;
-  int in_width1 = ((out_w_blk + out_w_blks) << 1) - padding_left;
-  int in_width2 = ((out_w_blk + (out_w_blks << 1)) << 1) - padding_left;
-  int in_width3 = ((out_w_blk + (out_w_blks << 1) + out_w_blks) << 1) - padding_left;
-  int in_width4 = ((out_w_blk + (out_w_blks << 2)) << 1) - padding_left;
-  const int height_idx = ((out_hb % out_height) << 1) - padding_top;
-#endif
+  int in_width_stride = mul24(out_w_blks, stride);
+  int in_width0 = mad24(out_w_blk, stride, -padding_left);
+  int in_width1 = in_width0 + in_width_stride;
+  int in_width2 = in_width1 + in_width_stride;
+  int in_width3 = in_width2 + in_width_stride;
+  int in_width4 = in_width3 + in_width_stride;
+  const int height_idx = mad24((out_hb % out_height), stride, -padding_top);
 
   const int batch_idx = mul24((out_hb / out_height), in_height);
   const int rounded_in_ch_x_3 = (rounded_in_ch << 1) + rounded_in_ch;
@@ -127,12 +119,12 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
     }
   }
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, prelu_alpha);
-  out1 = do_activation(out1, relux_max_limit, prelu_alpha);
-  out2 = do_activation(out2, relux_max_limit, prelu_alpha);
-  out3 = do_activation(out3, relux_max_limit, prelu_alpha);
-  out4 = do_activation(out4, relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0 = do_activation(out0, relux_max_limit);
+  out1 = do_activation(out1, relux_max_limit);
+  out2 = do_activation(out2, relux_max_limit);
+  out3 = do_activation(out3, relux_max_limit);
+  out4 = do_activation(out4, relux_max_limit);
 #endif
 
   const int out_x_base = mul24(out_ch_blk, out_width);

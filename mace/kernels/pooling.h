@@ -65,12 +65,14 @@ struct PoolingFunctor : PoolingFunctorBase {
     };
 
     std::vector<int> paddings(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input_tensor->shape().data(), filter_shape.data(),
-        dilations_, strides_, this->padding_type_,
-        output_shape.data(), paddings.data());
-    if (!paddings_.empty()) {
+    if (paddings_.empty()) {
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input_tensor->shape().data(), filter_shape.data(), dilations_, strides_,
+          padding_type_, output_shape.data(), paddings.data());
+    } else {
       paddings = paddings_;
+      CalcOutputSize(input_tensor->shape().data(), filter_shape.data(), paddings_.data(),
+                     dilations_, strides_, RoundType::CEIL, output_shape.data());
     }
     output_tensor->Resize(output_shape);
 

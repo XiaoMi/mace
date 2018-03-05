@@ -18,15 +18,15 @@ class ActivationOp : public Operator<D, T> {
         functor_(kernels::StringToActivationType(
                      OperatorBase::GetSingleArgument<std::string>("activation",
                                                                   "NOOP")),
-                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f),
-                 OperatorBase::GetSingleArgument<float>("alpha", 0.0f)) {}
+                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
-    const Tensor *input_tensor = this->inputs_[0];
+    const Tensor *input_tensor = this->Input(0);
+    const Tensor *alpha_tensor = this->InputSize() >= 2 ? this->Input(1) : nullptr;
     Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(input_tensor);
 
-    functor_(input_tensor, output_tensor, future);
+    functor_(input_tensor, alpha_tensor, output_tensor, future);
     return true;
   }
 

@@ -21,27 +21,23 @@ namespace kernels {
 struct BatchNormFunctorBase {
   BatchNormFunctorBase(bool folded_constant,
                        const ActivationType activation,
-                       const float relux_max_limit,
-                       const float prelu_alpha)
+                       const float relux_max_limit)
       : folded_constant_(folded_constant),
         activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit){}
 
   const bool folded_constant_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float prelu_alpha_;
 };
 
 template <DeviceType D, typename T>
 struct BatchNormFunctor : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
-                   const float relux_max_limit,
-                   const float prelu_alpha)
+                   const float relux_max_limit)
       : BatchNormFunctorBase(
-            folded_constant, activation, relux_max_limit, prelu_alpha) {}
+            folded_constant, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *scale,
@@ -132,7 +128,7 @@ struct BatchNormFunctor : BatchNormFunctorBase {
       }
     }
     DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
-                 relux_max_limit_, prelu_alpha_);
+                 relux_max_limit_);
   }
 };
 
@@ -150,10 +146,9 @@ template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
-                   const float relux_max_limit,
-                   const float prelu_alpha)
+                   const float relux_max_limit)
       : BatchNormFunctorBase(
-            folded_constant, activation, relux_max_limit, prelu_alpha) {}
+            folded_constant, activation, relux_max_limit) {}
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,

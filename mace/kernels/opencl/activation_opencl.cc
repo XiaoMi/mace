@@ -14,6 +14,7 @@ namespace kernels {
 
 template <typename T>
 void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
+                                                          const Tensor *alpha,
                                                           Tensor *output,
                                                           StatsFuture *future) {
   const index_t batch = input->dim(0);
@@ -60,8 +61,10 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
         runtime->BuildKernel("activation", kernel_name, built_options);
     int idx = 0;
     kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    if (activation_ == PRELU) {
+      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(alpha->buffer())));
+    }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
-    kernel_.setArg(idx++, static_cast<float>(prelu_alpha_));
     kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
   }
 

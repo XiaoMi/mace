@@ -20,7 +20,6 @@ void DepthwiseConv2d(cl::Kernel *kernel,
                      const int *dilations,
                      const ActivationType activation,
                      const float relux_max_limit,
-                     const float prelu_alpha,
                      const DataType dt,
                      Tensor *output,
                      StatsFuture *future) {
@@ -69,9 +68,6 @@ void DepthwiseConv2d(cl::Kernel *kernel,
       case RELUX:
         built_options.emplace("-DUSE_RELUX");
         break;
-      case PRELU:
-        built_options.emplace("-DUSE_PRELU");
-        break;
       case TANH:
         built_options.emplace("-DUSE_TANH");
         break;
@@ -96,7 +92,6 @@ void DepthwiseConv2d(cl::Kernel *kernel,
     kernel->setArg(
         idx++, *(static_cast<const cl::Image2D *>(output->buffer())));
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, prelu_alpha);
     kernel->setArg(idx++, static_cast<short>(input_height));
     kernel->setArg(idx++, static_cast<short>(input_width));
     kernel->setArg(idx++, static_cast<short>(input_channel_blocks));
@@ -140,8 +135,8 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
                  << " is not implemented yet, using slow version";
     // TODO(heliangliang) The CPU/NEON kernel should map the buffer
     DepthwiseConv2dFunctor<DeviceType::CPU, float>(
-        strides_, padding_type_, paddings_, dilations_, activation_, relux_max_limit_,
-        prelu_alpha_)(input, filter, bias, output, future);
+        strides_, padding_type_, paddings_, dilations_, activation_,
+        relux_max_limit_)(input, filter, bias, output, future);
     return;
   }
 
@@ -154,11 +149,14 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
 
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);
-  kernels::CalcNHWCPaddingAndOutputSize(
-      input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-      padding_type_, output_shape.data(), paddings.data());
-  if (!paddings_.empty()) {
+  if (paddings_.empty()) {
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+        padding_type_, output_shape.data(), paddings.data());
+  } else {
     paddings = paddings_;
+    CalcOutputSize(input->shape().data(), fake_filter_shape.data(), paddings_.data(),
+                   dilations_, strides_, RoundType::FLOOR, output_shape.data());
   }
 
   std::vector<size_t> output_image_shape;
@@ -166,7 +164,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
   output->ResizeImage(output_shape, output_image_shape);
 
   DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
-                  activation_, relux_max_limit_, prelu_alpha_,
+                  activation_, relux_max_limit_, 
                   DataTypeToEnum<T>::value, output, future);
 }
 

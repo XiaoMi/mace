@@ -58,21 +58,18 @@ struct WinogradInverseTransformFunctorBase {
                                       const int height,
                                       const int width,
                                       const ActivationType activation,
-                                      const float relux_max_limit,
-                                      const float prelu_alpha)
+                                      const float relux_max_limit)
       : batch_(batch),
         height_(height),
         width_(width),
         activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit) {}
 
   const int batch_;
   const int height_;
   const int width_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float prelu_alpha_;
 };
 
 template<DeviceType D, typename T>
@@ -81,9 +78,8 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
                                   const int height,
                                   const int width,
                                   const ActivationType activation,
-                                  const float relux_max_limit,
-                                  const float prelu_alpha)
-      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit, prelu_alpha) {}
+                                  const float relux_max_limit)
+      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *bias,
@@ -100,9 +96,8 @@ struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T> : WinogradInverseT
                                   const int height,
                                   const int width,
                                   const ActivationType activation,
-                                  const float relux_max_limit,
-                                  const float prelu_alpha)
-      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit, prelu_alpha) {}
+                                  const float relux_max_limit)
+      : WinogradInverseTransformFunctorBase(batch, height, width, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *bias,

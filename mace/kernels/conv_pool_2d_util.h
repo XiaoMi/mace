@@ -15,6 +15,11 @@ enum Padding {
   FULL = 2,   // Pads with one less than the filter size on both sides
 };
 
+enum RoundType{
+  FLOOR = 0,
+  CEIL = 1,
+};
+
 namespace kernels {
 
 void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
@@ -32,6 +37,14 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NCHW
                                   Padding padding,
                                   index_t *output_shape,
                                   int *padding_size);
+
+void CalcOutputSize(const index_t *input_shape,   // NHWC
+                    const index_t *filter_shape,  // HWOI
+                    const int *padding_size,
+                    const int *dilations,
+                    const int *strides,
+                    const RoundType round_type,
+                    index_t *output_shape);
 
 void CalPaddingSize(const index_t *input_shape,   // NCHW
                     const index_t *filter_shape,  // OIHW

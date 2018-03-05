@@ -21,7 +21,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit,
-                         const float prelu_alpha,
                          const DataType dt,
                          Tensor *output,
                          StatsFuture *future) {
@@ -42,7 +41,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    built_options.emplace(MakeString("-DSTRIDE=", stride));
     switch (activation) {
       case NOOP:
         break;
@@ -51,9 +49,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
         break;
       case RELUX:
         built_options.emplace("-DUSE_RELUX");
-        break;
-      case PRELU:
-        built_options.emplace("-DUSE_PRELU");
         break;
       case TANH:
         built_options.emplace("-DUSE_TANH");
@@ -81,7 +76,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     kernel->setArg(idx++,
                           *(static_cast<const cl::Image2D *>(output->buffer())));
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, prelu_alpha);
     kernel->setArg(idx++, static_cast<uint32_t>(input->dim(1)));
     kernel->setArg(idx++, static_cast<uint32_t>(input->dim(2)));
     kernel->setArg(idx++, static_cast<uint32_t>(input_channel_blocks));

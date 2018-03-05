@@ -15,23 +15,19 @@ namespace kernels {
 
 struct FullyConnectedBase {
   FullyConnectedBase(const ActivationType activation,
-                     const float relux_max_limit,
-                     const float prelu_alpha)
+                     const float relux_max_limit)
       : activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit){}
 
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float prelu_alpha_;
 };
 
 template<DeviceType D, typename T>
 struct FullyConnectedFunctor : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
-                        const float relux_max_limit,
-                        const float prelu_alpha) :
-      FullyConnectedBase(activation, relux_max_limit, prelu_alpha) {}
+                        const float relux_max_limit) :
+      FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
@@ -70,16 +66,15 @@ struct FullyConnectedFunctor : FullyConnectedBase {
     }
 
     DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
-                 relux_max_limit_, prelu_alpha_);
+                 relux_max_limit_);
   }
 };
 
 template<typename T>
 struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
-                        const float relux_max_limit,
-                        const float prelu_alpha) :
-      FullyConnectedBase(activation, relux_max_limit, prelu_alpha) {}
+                        const float relux_max_limit) :
+      FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,

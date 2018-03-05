@@ -16,7 +16,7 @@ class BatchNormOp : public Operator<D, T> {
  public:
   BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(false, kernels::ActivationType::NOOP, 0.0f, 0.0f) {
+        functor_(false, kernels::ActivationType::NOOP, 0.0f) {
     epsilon_ = OperatorBase::GetSingleArgument<float>("epsilon",
                                                       static_cast<float>(1e-4));
   }

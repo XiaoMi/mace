@@ -8,7 +8,6 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
 #endif
                                __write_only image2d_t output,
                                __private const float relux_max_limit,
-                               __private const float prelu_alpha,
                                __private const short in_height,
                                __private const short in_width,
                                __private const short in_ch_blks,
@@ -103,11 +102,11 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
     in_hb_idx += dilation_h;
   }
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, prelu_alpha);
-  out1 = do_activation(out1, relux_max_limit, prelu_alpha);
-  out2 = do_activation(out2, relux_max_limit, prelu_alpha);
-  out3 = do_activation(out3, relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0 = do_activation(out0, relux_max_limit);
+  out1 = do_activation(out1, relux_max_limit);
+  out2 = do_activation(out2, relux_max_limit);
+  out3 = do_activation(out3, relux_max_limit);
 #endif
 
   const short out_x_base = mul24(out_ch_blk, out_width);
@@ -134,7 +133,6 @@ __kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4
 #endif
                                   __write_only image2d_t output,
                                   __private const DATA_TYPE relux_max_limit,
-                                  __private const DATA_TYPE prelu_alpha,
                                   __private const short in_height,
                                   __private const short in_width,
                                   __private const short in_ch_blks,
@@ -220,11 +218,11 @@ __kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4
     in_hb_idx += 1;
   }
 
-#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_PRELU) || defined(USE_TANH) || defined(USE_SIGMOID)
-  out0 = do_activation(out0, relux_max_limit, prelu_alpha);
-  out1 = do_activation(out1, relux_max_limit, prelu_alpha);
-  out2 = do_activation(out2, relux_max_limit, prelu_alpha);
-  out3 = do_activation(out3, relux_max_limit, prelu_alpha);
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+  out0 = do_activation(out0, relux_max_limit);
+  out1 = do_activation(out1, relux_max_limit);
+  out2 = do_activation(out2, relux_max_limit);
+  out3 = do_activation(out3, relux_max_limit);
 #endif
 
   const short out_x_base = mul24(out_ch_blk, out_width);

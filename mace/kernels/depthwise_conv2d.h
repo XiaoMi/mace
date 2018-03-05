@@ -241,15 +241,13 @@ struct DepthwiseConv2dFunctorBase {
                              const std::vector<int> &paddings,
                              const int *dilations,
                              const ActivationType activation,
-                             const float relux_max_limit,
-                             const float prelu_alpha)
+                             const float relux_max_limit)
       : strides_(strides),
         padding_type_(padding_type),
         paddings_(paddings),
         dilations_(dilations),
         activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        prelu_alpha_(prelu_alpha) {}
+        relux_max_limit_(relux_max_limit){}
 
   const int *strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
@@ -257,7 +255,6 @@ struct DepthwiseConv2dFunctorBase {
   const int *dilations_;  // [dilation_h, dilation_w]
   const ActivationType activation_;
   const float relux_max_limit_;
-  const float prelu_alpha_;
 };
 
 template <DeviceType D, typename T>
@@ -267,15 +264,13 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
-                         const float relux_max_limit,
-                         const float prelu_alpha)
+                         const float relux_max_limit)
       : DepthwiseConv2dFunctorBase(strides,
                                    padding_type,
                                    paddings,
                                    dilations,
                                    activation,
-                                   relux_max_limit,
-                                   prelu_alpha) {}
+                                   relux_max_limit) {}
 
   void operator()(const Tensor *input,   // NHWC
                   const Tensor *filter,  // HWIM
@@ -295,11 +290,14 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-        padding_type_, output_shape.data(), paddings.data());
-    if (!paddings_.empty()) {
+    if (paddings_.empty()) {
+      kernels::CalcNHWCPaddingAndOutputSize(
+          input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
+          padding_type_, output_shape.data(), paddings.data());
+    } else {
       paddings = paddings_;
+      CalcOutputSize(input->shape().data(), fake_filter_shape.data(), paddings_.data(),
+                     dilations_, strides_, RoundType::FLOOR, output_shape.data());
     }
     auto input_shape = fake_filter_shape;
     output->Resize(output_shape);
@@ -405,7 +403,7 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
 
     output_ptr = output->mutable_data<T>();
     DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
-                 relux_max_limit_, prelu_alpha_);
+                 relux_max_limit_);
   }
 };
 
@@ -425,15 +423,13 @@ struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
-                         const float relux_max_limit,
-                         const float prelu_alpha)
+                         const float relux_max_limit)
       : DepthwiseConv2dFunctorBase(strides,
                                    padding_type,
                                    paddings,
                                    dilations,
                                    activation,
-                                   relux_max_limit,
-                                   prelu_alpha) {}
+                                   relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
