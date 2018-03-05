@@ -18,6 +18,10 @@ if [ -f "$MODEL_OUTPUT_DIR/benchmark_model" ]; then
   rm -rf $MODEL_OUTPUT_DIR/benchmark_model
 fi
 
+if [ "$EMBED_MODEL_DATA" = 0 ]; then
+  cp codegen/models/${MODEL_TAG}/${MODEL_TAG}.data $MODEL_OUTPUT_DIR
+fi
+
 if [ x"$RUNTIME" = x"host" ]; then
   bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
     --copt="-std=c++11" \
@@ -26,6 +30,7 @@ if [ x"$RUNTIME" = x"host" ]; then
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --copt="-O3" \
     --define openmp=true \
+    --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
     --define production=true || exit 1
 
   cp bazel-bin/benchmark/benchmark_model $MODEL_OUTPUT_DIR
@@ -55,6 +60,9 @@ else
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
   adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit 1
   adb push ${MODEL_OUTPUT_DIR}/benchmark_model ${PHONE_DATA_DIR} || exit 1
+  if [ "$EMBED_MODEL_DATA" = 0 ]; then
+    adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} || exit 1
+  fi
 
   adb </dev/null shell \
     LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
