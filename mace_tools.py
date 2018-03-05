@@ -194,7 +194,7 @@ def main(unused_args):
   # os.environ["TARGET_ABI"] = target_abi
   os.environ["EMBED_MODEL_DATA"] = str(configs["embed_model_data"])
   os.environ["VLOG_LEVEL"] = str(configs["vlog_level"])
-  os.environ["PROJECT_NAME"] = os.path.splitext(FLAGS.config)[0]
+  os.environ["PROJECT_NAME"] = os.path.splitext(os.path.basename(FLAGS.config))[0]
 
   for target_abi in configs["target_abis"]:
     libmace_name = get_libs(target_abi, configs)
