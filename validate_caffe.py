@@ -2,11 +2,11 @@ import argparse
 import sys
 import os
 import os.path
-import tensorflow as tf
 import numpy as np
 from scipy import spatial
 
-from tensorflow import gfile
+os.environ['GLOG_minloglevel'] = '1' # suprress Caffe verbose prints
+import caffe
 
 # Validation Flow:
 # 1. Generate input data
@@ -38,11 +38,14 @@ def load_data(file):
   else:
     return np.empty([0])
 
-def valid_output(out_shape, mace_out_file, tf_out_value):
+def valid_output(out_shape, mace_out_file, out_value):
   mace_out_value = load_data(mace_out_file)
   if mace_out_value.size != 0:
-    similarity = (1 - spatial.distance.cosine(tf_out_value.flat, mace_out_value))
-    print 'MACE VS TF similarity: ', similarity
+    mace_out_value = mace_out_value.reshape(out_shape)
+    out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[1], out_shape[2]
+    out_value = out_value.reshape(out_shape).transpose((0, 2, 3, 1))
+    similarity = (1 - spatial.distance.cosine(out_value.flat, mace_out_value.flat))
+    print 'MACE VS Caffe similarity: ', similarity
     if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
         (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
         (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
@@ -54,28 +57,26 @@ def valid_output(out_shape, mace_out_file, tf_out_value):
 
 
 def run_model(input_shape):
-  if not gfile.Exists(FLAGS.model_file):
+  if not os.path.isfile(FLAGS.model_file):
     print("Input graph file '" + FLAGS.model_file + "' does not exist!")
     sys.exit(-1)
+  if not os.path.isfile(FLAGS.weight_file):
+    print("Input weight file '" + FLAGS.weight_file + "' does not exist!")
+    sys.exit(-1)
 
-  input_graph_def = tf.GraphDef()
-  with gfile.Open(FLAGS.model_file, "rb") as f:
-    data = f.read()
-    input_graph_def.ParseFromString(data)
-    tf.import_graph_def(input_graph_def, name="")
+  caffe.set_mode_cpu()
 
-    with tf.Session() as session:
-      with session.graph.as_default() as graph:
-        tf.import_graph_def(input_graph_def, name="")
-        input_node = graph.get_tensor_by_name(FLAGS.input_node + ':0')
-        output_node = graph.get_tensor_by_name(FLAGS.output_node + ':0')
+  net = caffe.Net(FLAGS.model_file, caffe.TEST, weights=FLAGS.weight_file)
 
-        input_value = load_data(FLAGS.input_file)
-        input_value = input_value.reshape(input_shape)
-        
-        output_value = session.run(output_node, feed_dict={input_node: input_value})
-        output_value.astype(np.float32).tofile( os.path.dirname(FLAGS.input_file) + '/tf_out')
-        return output_value
+  input_value = load_data(FLAGS.input_file)
+  input_value = input_value.reshape(input_shape).transpose((0, 3, 1, 2))
+  net.blobs[FLAGS.input_node].data[0] = input_value
+  net.forward(start=FLAGS.input_node, end=FLAGS.output_node)
+
+  result = net.blobs[FLAGS.output_node].data[0]
+
+  return result
+
 
 def main(unused_args):
   input_shape = [int(x) for x in FLAGS.input_shape.split(',')]
@@ -95,7 +96,12 @@ def parse_args():
     "--model_file",
     type=str,
     default="",
-    help="TensorFlow \'GraphDef\' file to load.")
+    help="caffe prototxt file to load.")
+  parser.add_argument(
+    "--weight_file",
+    type=str,
+    default="",
+    help="caffe model file to load.")
   parser.add_argument(
     "--input_file",
     type=str,

@@ -17,7 +17,6 @@ import yaml
 
 from ConfigParser import ConfigParser
 
-
 def run_command(command):
   print("Run command: {}".format(command))
   result = subprocess.Popen(
@@ -225,6 +224,11 @@ def main(unused_args):
           "http://") or model_config["model_file_path"].startswith("https://"):
         os.environ["MODEL_FILE_PATH"] = model_output_dir + "/model.pb"
         urllib.urlretrieve(model_config["model_file_path"], os.environ["MODEL_FILE_PATH"])
+
+      if model_config["platform"] == "caffe" and (model_config["weight_file_path"].startswith(
+          "http://") or model_config["weight_file_path"].startswith("https://")):
+        os.environ["WEIGHT_FILE_PATH"] = model_output_dir + "/model.caffemodel"
+        urllib.urlretrieve(model_config["weight_file_path"], os.environ["WEIGHT_FILE_PATH"])
 
       if FLAGS.mode == "build" or FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
         generate_random_input(model_output_dir)
