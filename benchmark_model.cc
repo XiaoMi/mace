@@ -171,6 +171,9 @@ DEFINE_bool(show_type, true, "whether to list stats by op type");
 DEFINE_bool(show_summary, true, "whether to show a summary of the stats");
 DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
+DEFINE_string(model_data_file,
+              "",
+              "model data file name, used when EMBED_MODEL_DATA set to 0");
 
 int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
@@ -244,6 +247,9 @@ int Main(int argc, char **argv) {
   // Init model
   LOG(INFO) << "Run init";
   mace::MaceEngine engine(&net_def, device_type);
+  if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
+    mace::MACE_MODEL_TAG::UnloadModelData(model_data);
+  }
 
   LOG(INFO) << "Warm up";
 
