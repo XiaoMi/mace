@@ -52,6 +52,11 @@ elif [ "$PLATFORM" = "caffe" ];then
     docker run -d -it --name ${CONTAINER_NAME} ${IMAGE_NAME} /bin/bash || exit 1
   fi
 
+  if [ "$(docker inspect -f {{.State.Running}} ${CONTAINER_NAME})" == "false" ];then
+    echo "Start caffe container"
+    docker start ${CONTAINER_NAME}
+  fi
+
   rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
   adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
 
