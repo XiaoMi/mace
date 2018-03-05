@@ -1,14 +1,10 @@
 import argparse
 import sys
 import hashlib
-import tensorflow as tf
-from tensorflow import gfile
-from lib.proto import mace_pb2
-from lib.python.tools import tf_converter_lib
-from lib.python.tools import tf_dsp_converter_lib
+import os.path
 from lib.python.tools import source_converter_lib
 
-# ./bazel-bin/mace/python/tools/tf_converter --input quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
+# ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
 
 FLAGS = None
 
@@ -20,38 +16,57 @@ def file_checksum(fname):
   return hash_func.hexdigest()
 
 def main(unused_args):
-  if not gfile.Exists(FLAGS.input):
-    print("Input graph file '" + FLAGS.input + "' does not exist!")
+  if not os.path.isfile(FLAGS.model_file):
+    print("Input graph file '" + FLAGS.model_file + "' does not exist!")
     return -1
 
-  model_checksum = file_checksum(FLAGS.input)
+  model_checksum = file_checksum(FLAGS.model_file)
   if FLAGS.model_checksum != "" and FLAGS.model_checksum != model_checksum:
     print("Model checksum mismatch: %s != %s" % (model_checksum, FLAGS.model_checksum))
     return -1
 
-  input_graph_def = tf.GraphDef()
-  with gfile.Open(FLAGS.input, "rb") as f:
-    data = f.read()
-    input_graph_def.ParseFromString(data)
+  if FLAGS.platform == 'caffe':
+    if not os.path.isfile(FLAGS.weight_file):
+      print("Input weight file '" + FLAGS.weight_file + "' does not exist!")
+      return -1
 
-  if FLAGS.runtime == 'dsp':
-    output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
-  else:
+    weight_checksum = file_checksum(FLAGS.weight_file)
+    if FLAGS.weight_checksum != "" and FLAGS.weight_checksum != weight_checksum:
+      print("Weight checksum mismatch: %s != %s" % (weight_checksum, FLAGS.weight_checksum))
+      return -1
+
+    if FLAGS.runtime == 'dsp':
+      print("DSP not support caffe model yet.")
+      return -1
+
     input_shape = []
     if FLAGS.input_shape != "":
       input_shape.extend([int(x) for x in FLAGS.input_shape.split(',')])
-    output_graph_def = tf_converter_lib.convert_to_mace_pb(
-      input_graph_def, FLAGS.input_node, input_shape, FLAGS.output_node,
+    from lib.python.tools import caffe_converter_lib
+    output_graph_def = caffe_converter_lib.convert_to_mace_pb(
+      FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, input_shape, FLAGS.output_node,
       FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
+  elif FLAGS.platform == 'tensorflow':
+    if FLAGS.runtime == 'dsp':
+      from lib.python.tools import tf_dsp_converter_lib
+      output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
+        FLAGS.model_file, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
+    else:
+      input_shape = []
+      if FLAGS.input_shape != "":
+        input_shape.extend([int(x) for x in FLAGS.input_shape.split(',')])
+      from lib.python.tools import tf_converter_lib
+      output_graph_def = tf_converter_lib.convert_to_mace_pb(
+        FLAGS.model_file, FLAGS.input_node, input_shape, FLAGS.output_node,
+        FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
     source_converter_lib.convert_to_source(output_graph_def, model_checksum, FLAGS.template, FLAGS.obfuscate,
       FLAGS.model_tag, FLAGS.output, FLAGS.runtime, FLAGS.embed_model_data)
   else:
-    with gfile.GFile(FLAGS.output, "wb") as f:
+    with open(FLAGS.output, "wb") as f:
       f.write(output_graph_def.SerializeToString())
-    with gfile.GFile(FLAGS.output + '_txt', "wb") as f:
+    with open(FLAGS.output + '_txt', "wb") as f:
       # output_graph_def.ClearField('tensors')
       f.write(str(output_graph_def))
   print("Model conversion is completed.")
@@ -69,15 +84,25 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.register("type", "bool", lambda v: v.lower() == "true")
   parser.add_argument(
-    "--input",
+    "--model_file",
     type=str,
     default="",
-    help="TensorFlow \'GraphDef\' file to load.")
+    help="TensorFlow \'GraphDef\' file to load, Caffe prototxt file to load.")
+  parser.add_argument(
+    "--weight_file",
+    type=str,
+    default="",
+    help="Caffe data file to load.")
   parser.add_argument(
     "--model_checksum",
     type=str,
     default="",
     help="Model file sha256 checksum")
+  parser.add_argument(
+    "--weight_checksum",
+    type=str,
+    default="",
+    help="Weight file sha256 checksum")
   parser.add_argument(
     "--output",
     type=str,
@@ -142,6 +167,11 @@ def parse_args():
     type=str,
     default="",
     help="input shape.")
+  parser.add_argument(
+    "--platform",
+    type=str,
+    default="tensorflow",
+    help="tensorflow/caffe")
   parser.add_argument(
     "--embed_model_data",
     type=str2bool,
