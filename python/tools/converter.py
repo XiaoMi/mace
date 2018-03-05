@@ -38,7 +38,7 @@ def main(unused_args):
     elif FLAGS.platform == 'caffe':
       from lib.python.tools import caffe_converter_lib
       output_graph_def = caffe_converter_lib.convert_to_mace_pb(
-        FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, FLAGS.output_node,
+        FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, input_shape, FLAGS.output_node,
         FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':

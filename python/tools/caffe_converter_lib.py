@@ -5,12 +5,6 @@ import google.protobuf.text_format
 import numpy as np
 import math
 
-# TODO: support NCHW formt, now only support NHWC.
-padding_mode = {
-  'VALID': 0,
-  'SAME': 1,
-  'FULL': 2
-}
 pooling_type_mode = {
   'AvgPool': 1,
   'MaxPool': 2
@@ -34,7 +28,6 @@ data_type_map = {
 
 activation_name_map = {
   'ReLU' : 'RELU',
-  'PReLU' : 'PRELU',
   'Sigmoid' : 'SIGMOID',
   'TanH' : 'TANH',
 }
@@ -52,6 +45,7 @@ class Operator(object):
     self.parents = []
     self.children = []
     self.data = []
+    self.output_shape = []
 
   def add_parent(self, parent_op):
     assert parent_op not in self.parents
@@ -64,6 +58,12 @@ class Operator(object):
     self.children.append(child_op)
     if self not in child_op.parents:
       child_op.parents.append(self)
+
+  def get_single_parent(self):
+    if len(self.parents) != 1:
+      raise Exception('Operation %s expected single parent, but got %s'
+                      % (self.name, len(self.parents)))
+    return self.parents[0]
 
 def BlobToNPArray(blob):
   if blob.num != 0:
@@ -84,6 +84,32 @@ def CommonConvert(op, mace_type, dt):
   op_def.type = mace_type
   op_def.input.extend([parent.name+':0' for parent in op.parents])
   return op_def
+
+class Shapes(object):
+  @staticmethod
+  def conv_pool_shape(input_shape, filter_shape, paddings, strides, dilations, round_func):
+    output_shape = np.zeros_like(input_shape)
+    output_shape[0] = input_shape[0]
+    output_shape[1] = int(round_func((input_shape[1] + paddings[0] - filter_shape[0]
+                       - (filter_shape[0] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
+    output_shape[2] = int(round_func((input_shape[2] + paddings[1] - filter_shape[1]
+                       - (filter_shape[1] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
+    output_shape[3] = filter_shape[2]
+    return output_shape
+
+  @staticmethod
+  def fully_connected_shape(input_shape, weight_shape):
+    return [input_shape[0], 1, 1, weight_shape[0]]
+
+  @staticmethod
+  def concat_shape(input_shapes, axis):
+    output_shape = None
+    for input_shape in input_shapes:
+      if output_shape is None:
+        output_shape = list(input_shape)
+      else:
+        output_shape[axis] += input_shape[axis]
+    return output_shape
 
 class CaffeConverter(object):
   def __init__(self, caffe_net, weights, net_def, dt, device, winograd):
@@ -171,7 +197,6 @@ class CaffeConverter(object):
 
     return sorted_ops
 
-
   def add_buffer_to_image(self, input_name, input_type):
     output_name = input_name[:-2] + "_b2i" + input_name[-2:]
     op_def = self.net_def.op.add()
@@ -248,39 +273,43 @@ class CaffeConverter(object):
     tensor.data_type = mace_pb2.DT_FLOAT
     tensor.float_data.extend(value.flat)
 
+  @staticmethod
+  def add_output_shape(op_def, output_shape):
+    mace_output_shape = mace_pb2.OutputShape()
+    mace_output_shape.dims.extend(output_shape)
+    op_def.output_shape.extend([mace_output_shape])
+
   def add_stride_pad_kernel_arg(self, param, op_def):
     try:
       if len(param.stride) > 1 or len(param.kernel_size) > 1 or len(param.pad) > 1:
         raise Exception('Mace does not support multiple stride/kernel_size/pad')
-      stride = param.stride[0] if len(param.stride) else 1
-      pad = param.pad[0] if len(param.pad) else 0
-      kernel = param.kernel_size[0] if len(param.kernel_size) else 0
+      stride = [param.stride[0], param.stride[0]] if len(param.stride) else [1, 1]
+      pad = [param.pad[0] * 2, param.pad[0] * 2] if len(param.pad) else [0, 0]
+      kernel = [param.kernel_size[0], param.kernel_size[0]] if len(param.kernel_size) else [0, 0]
     except TypeError:
-      stride = param.stride
-      pad = param.pad
-      kernel = param.kernel_size
+      stride = [param.stride, param.stride]
+      pad = [param.pad * 2, param.pad * 2]
+      kernel = [param.kernel_size, param.kernel_size]
 
     strides_arg = op_def.arg.add()
     strides_arg.name = 'strides'
     if param.HasField("stride_h") or param.HasField("stride_w"):
-      strides_arg.ints.extend([param.stride_h, param.stride_w])
-    else:
-      strides_arg.ints.extend([stride, stride])
+      stride = [param.stride_h, param.stride_w]
+    strides_arg.ints.extend(stride)
     # Pad
     padding_arg = op_def.arg.add()
     padding_arg.name = 'padding_values'
     if param.HasField("pad_h") or param.HasField("pad_w"):
-      padding_arg.ints.extend([param.pad_h, param.pad_w])
-    else:
-      padding_arg.ints.extend([pad, pad])
+      pad = [param.pad_h * 2, param.pad_w * 2]
+    padding_arg.ints.extend(pad)
     # kernel
     if op_def.type == 'Pooling':
       kernel_arg = op_def.arg.add()
       kernel_arg.name = 'kernels'
       if param.HasField("kernel_h") or param.HasField("kernel_w"):
-        kernel_arg.ints.extend([param.kernel_h, param.kernel_w])
-      else:
-        kernel_arg.ints.extend([kernel, kernel])
+        kernel = [param.kernel_h, param.kernel_w]
+      kernel_arg.ints.extend(kernel)
+    return pad, stride, kernel
 
   def convert_conv2d(self, op):
     op_def = CommonConvert(op, 'Conv2D', self.dt)
@@ -309,16 +338,24 @@ class CaffeConverter(object):
       else:
         op_def.input.extend([bias_tensor_name])
 
-    self.add_stride_pad_kernel_arg(param, op_def)
+    paddings, strides, _ = self.add_stride_pad_kernel_arg(param, op_def)
+    dilations = [1, 1]
     if len(param.dilation) > 0:
       dilation_arg = op_def.arg.add()
       dilation_arg.name = 'dilations'
       if len(param.dilation) == 1:
-        dilation_arg.ints.extend([param.dilation[0], param.dilation[0]])
+        dilations = [param.dilation[0], param.dilation[0]]
       elif len(param.dilation) == 2:
-        dilation_arg.ints.extend([param.dilation[0], param.dilation[1]])
+        dilations = [param.dilation[0], param.dilation[1]]
+      dilation_arg.ints.extend(dilations)
     final_op = op
     self.resolved_ops.add(op.name)
+
+    output_shape = Shapes.conv_pool_shape(op.get_single_parent().output_shape,
+                                          weight_data.shape,
+                                          paddings, strides, dilations,
+                                          math.floor)
+    op.output_shape = output_shape
 
     if len(self.ops_map[final_op.name].children) == 1 \
         and self.ops_map[final_op.name].children[0].type in activation_name_map:
@@ -327,14 +364,12 @@ class CaffeConverter(object):
       fused_act_arg = op_def.arg.add()
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
-      if activation_op.type == 'PReLU':
-        alpha_arg = op_def.arg.add()
-        alpha_arg.name = 'alpha'
-        alpha_arg.f = activation_op.data[0][0]
       final_op = activation_op
+      final_op.output_shape = output_shape
       self.resolved_ops.add(activation_op.name)
 
     op_def.output.extend([final_op.name+':0'])
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
 
   def convert_batchnorm(self, op):
@@ -374,20 +409,20 @@ class CaffeConverter(object):
     self.resolved_ops.add(scale_op.name)
     final_op = scale_op
 
+    output_shape = op.get_single_parent().output_shape
+
     if len(self.ops_map[final_op.name].children) == 1 \
         and self.ops_map[final_op.name].children[0].type in activation_name_map:
       activation_op = self.ops_map[final_op.name].children[0]
       fused_act_arg = op_def.arg.add()
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
-      if activation_op.type == 'PReLU':
-        alpha_arg = op_def.arg.add()
-        alpha_arg.name = 'alpha'
-        alpha_arg.f = activation_op.data[0][0]
       final_op = activation_op
+      final_op.output_shape = output_shape
       self.resolved_ops.add(activation_op.name)
 
     op_def.output.extend([final_op.name + ':0'])
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
 
   def convert_inner_product(self, op):
@@ -405,7 +440,11 @@ class CaffeConverter(object):
       raise ValueError('Unexpected weigth ndim.')
     if op.data[0].ndim == 4 and list(op.data[0].shape[:2] != [1, 1]):
       raise ValueError('Do not support 4D weight with shape [1, 1, *, *]')
+    input_shape = op.get_single_parent().output_shape
     weight_data = op.data[0].reshape(-1, op.data[0].shape[-1])
+    assert weight_data.shape[1] == (input_shape[1] * input_shape[2] * input_shape[3])
+    weight_data = weight_data.reshape(-1, input_shape[3], input_shape[1], input_shape[2])
+    weight_data = weight_data.transpose((0, 2, 3, 1)).reshape(weight_data.shape[0], -1)
     self.add_tensor(weight_tensor_name, weight_data)
     if self.device == 'gpu':
       buffer_type = "WEIGHT_HEIGHT"
@@ -425,15 +464,19 @@ class CaffeConverter(object):
       else:
         op_def.input.extend([bias_tensor_name])
 
+    output_shape = Shapes.fully_connected_shape(input_shape, weight_data.shape)
+    op.output_shape = output_shape
+
     self.resolved_ops.add(op.name)
     op_def.output.extend([op.name + ':0'])
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
 
   def convert_pooling(self, op):
     op_def = CommonConvert(op, 'Pooling', self.dt)
 
     param = op.layer.pooling_param
-    self.add_stride_pad_kernel_arg(param, op_def)
+    paddings, strides, kernels = self.add_stride_pad_kernel_arg(param, op_def)
     if param.pool == caffe_pb2.PoolingParameter.MAX:
       pooling_type = "MaxPool"
     elif param.pool == caffe_pb2.PoolingParameter.AVE:
@@ -442,7 +485,14 @@ class CaffeConverter(object):
     pooling_type_arg.name = 'pooling_type'
     pooling_type_arg.i = pooling_type_mode[pooling_type]
 
+    input_shape = op.get_single_parent().output_shape
+    filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]]
+    output_shape = Shapes.conv_pool_shape(input_shape, filter_shape,
+                                          paddings, strides, [1, 1], math.ceil)
+    op.output_shape = output_shape
+
     op_def.output.extend([op.name + ':0'])
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
@@ -452,6 +502,9 @@ class CaffeConverter(object):
     activation_arg.name = 'activation'
     activation_arg.s = activation_name_map[op.type]
     op_def.output.extend([op.name + ':0'])
+    output_shape = op.get_single_parent().output_shape
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
@@ -459,17 +512,28 @@ class CaffeConverter(object):
     op_def = CommonConvert(op, 'Activation', self.dt)
     activation_arg = op_def.arg.add()
     activation_arg.name = 'activation'
-    activation_arg.s = activation_name_map[op.type]
-    max_limit_arg = op_def.arg.add()
-    max_limit_arg.name = 'alpha'
-    max_limit_arg.f = op.data[0][0]
+    activation_arg.s = 'PRELU'
+    alpha_tensor_name = op.name + '_alpha:0'
+    alpha_data = op.data[0]
+    self.add_tensor(alpha_tensor_name, alpha_data)
+    if self.device == 'gpu':
+      output_name = self.add_buffer_to_image(alpha_tensor_name, "ARGUMENT")
+      op_def.input.extend([output_name])
+    else:
+      op_def.input.extend([alpha_tensor_name])
     op_def.output.extend([op.name + ':0'])
+    output_shape = op.get_single_parent().output_shape
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_add(self, op):
     op_def = CommonConvert(op, 'AddN', self.dt)
     op_def.output.extend([op.name + ':0'])
+    output_shape = op.parents[0].output_shape
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
@@ -486,6 +550,12 @@ class CaffeConverter(object):
     except AttributeError:
       pass
 
+    input_shapes = []
+    for parent in op.parents:
+      input_shapes.append(parent.output_shape)
+    output_shape = Shapes.concat_shape(input_shapes, axis_arg.i)
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
@@ -501,12 +571,18 @@ class CaffeConverter(object):
       coeff_arg.name = 'coeff'
       coeff_arg.ints.extend(list(param.coeff))
 
+    output_shape = op.parents[0].output_shape
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_normal_op(self, op):
     op_def = CommonConvert(op, op.type, self.dt)
+    output_shape = op.parents[0].output_shape
+    op.output_shape = output_shape
+    self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
@@ -520,11 +596,24 @@ class CaffeConverter(object):
       if len(op.output) > 0 and op.output[0] == output_name:
         op.output[0] = MACE_OUTPUT_NODE_NAME + ":0"
 
-  def convert(self, input_node, output_node):
+  def add_input_op_shape(self, input_node, input_shape):
+    if not input_shape:
+      input_shape = []
+      if self.caffe_net.input_dim:
+        input_shape = self.caffe_net.input_dim
+      elif self.caffe_net.input_shape:
+        input_shape = self.caffe_net.input_shape[0].dim
+      elif self.caffe_net.layer[0].input_param.shape:
+        input_shape = self.caffe_net.layer[0].input_param.shape[0].dim
+    input_op = self.ops_map[input_node]
+    input_op.output_shape = input_shape
+
+  def convert(self, input_node, input_shape, output_node):
     if self.device == 'gpu':
       self.add_input_transform(input_node)
 
     assert self.ops[0].type == 'Input'
+    self.add_input_op_shape(input_node, input_shape)
 
     for op in self.ops:
       if op.name in self.resolved_ops:
@@ -565,7 +654,7 @@ class CaffeConverter(object):
         print 'Unresolve Op: %s with type %s' % (op.name, op.type)
 
 
-def convert_to_mace_pb(model_file, weight_file, input_node, output_node, data_type, device, winograd):
+def convert_to_mace_pb(model_file, weight_file, input_node, input_shape, output_node, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
 
@@ -578,7 +667,7 @@ def convert_to_mace_pb(model_file, weight_file, input_node, output_node, data_ty
     weights.MergeFromString(f.read())
 
   converter = CaffeConverter(caffe_net, weights, net_def, dt, device, winograd)
-  converter.convert(input_node, output_node)
+  converter.convert(input_node, input_shape, output_node)
   print "PB Converted."
   if device == 'gpu':
     print "start optimize memory."
