@@ -9,6 +9,7 @@ models:
   preview_net:
     platform: tensorflow
     model_file_path: path/to/model64.pb # also support http:// and https://
+    model_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
     input_node: input_node
     output_node: output_node
     input_shape: 1,64,64,3
@@ -21,6 +22,8 @@ models:
     platform: caffe
     model_file_path: path/to/model.prototxt
     weight_file_path: path/to/weight.caffemodel
+    model_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    weight_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
     input_node: input_node
     output_node: output_node
     input_shape: 1,256,256,3
