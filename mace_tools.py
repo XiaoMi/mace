@@ -7,7 +7,7 @@
 #     --mode=all
 
 import argparse
-import base64
+import hashlib
 import os
 import shutil
 import subprocess
@@ -165,7 +165,7 @@ def parse_args():
       default="./tool/config",
       help="The global config file of models.")
   parser.add_argument(
-      "--output_dir", type=str, default="./build/", help="The output dir.")
+      "--output_dir", type=str, default="build", help="The output dir.")
   parser.add_argument(
       "--round", type=int, default=1, help="The model running round.")
   parser.add_argument(
@@ -208,8 +208,10 @@ def main(unused_args):
       for key in model_config:
         os.environ[key.upper()] = str(model_config[key])
 
-      model_output_dir = FLAGS.output_dir + "/" + target_abi + "/" + model_name + "/" + base64.b16encode(
-          model_config["model_file_path"])
+      md5 = hashlib.md5()
+      md5.update(model_config["model_file_path"])
+      model_path_digest = md5.hexdigest()
+      model_output_dir = "%s/%s/%s/%s" % (FLAGS.output_dir, model_name, model_path_digest, target_abi)
       model_output_dirs.append(model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "all":
