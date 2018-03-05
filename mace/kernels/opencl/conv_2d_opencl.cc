@@ -65,13 +65,12 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   index_t kernel_h = filter->dim(0);
   index_t kernel_w = filter->dim(1);
-  if (!input->is_image() || strides_[0] != strides_[1] ||
+  if (strides_[0] != strides_[1] ||
       (dilations_[0] > 1 && (strides_[0] > 1 || kernel_h == 1))) {
     LOG(WARNING) << "OpenCL conv2d kernel with "
                  << "filter" << kernel_h << "x" << kernel_w << ","
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << ",dilations " << dilations_[0] << "x" << dilations_[1]
-                 << " and input image: " << input->is_image()
                  << " is not implemented yet.";
     MACE_NOT_IMPLEMENTED;
   }

@@ -6,20 +6,10 @@
 #include <vector>
 
 #include "mace/core/workspace.h"
-#include "mace/core/serializer.h"
 #include "mace/core/arg_helper.h"
-#include "mace/core/runtime/opencl/opencl_preallocated_pooled_allocator.h"
 #include "mace/utils/timer.h"
 
 namespace mace {
-
-std::vector<std::string> Workspace::Tensors() const {
-  std::vector<std::string> names;
-  for (auto &entry : tensor_map_) {
-    names.push_back(entry.first);
-  }
-  return names;
-}
 
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
@@ -28,19 +18,10 @@ Tensor *Workspace::CreateTensor(const std::string &name,
     VLOG(3) << "Tensor " << name << " already exists. Skipping.";
   } else {
     VLOG(3) << "Creating Tensor " << name;
-    tensor_map_[name] = std::move(std::unique_ptr<Tensor>(new Tensor(alloc, type)));
+    tensor_map_[name] =
+      std::move(std::unique_ptr<Tensor>(new Tensor(alloc, type)));
   }
   return GetTensor(name);
-}
-
-bool Workspace::RemoveTensor(const std::string &name) {
-  auto it = tensor_map_.find(name);
-  if (it != tensor_map_.end()) {
-    VLOG(3) << "Removing blob " << name << " from this workspace.";
-    tensor_map_.erase(it);
-    return true;
-  }
-  return false;
 }
 
 const Tensor *Workspace::GetTensor(const std::string &name) const {
@@ -52,26 +33,51 @@ const Tensor *Workspace::GetTensor(const std::string &name) const {
   return nullptr;
 }
 
-
-void Workspace::RemoveUnsedTensor() {
-  auto iter = tensor_map_.begin();
-  auto end_iter = tensor_map_.end();
-  while(iter != end_iter) {
-    auto old_iter = iter++;
-    if(old_iter->second->unused()) {
-      tensor_map_.erase(old_iter);
-    }
-  }
-}
-
 Tensor *Workspace::GetTensor(const std::string &name) {
   return const_cast<Tensor *>(
-      static_cast<const Workspace *>(this)->GetTensor(name));
+    static_cast<const Workspace *>(this)->GetTensor(name));
+}
+
+std::vector<std::string> Workspace::Tensors() const {
+  std::vector<std::string> names;
+  for (auto &entry : tensor_map_) {
+    names.push_back(entry.first);
+  }
+  return names;
 }
 
 void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
-  Serializer serializer;
+  index_t model_data_size = 0;
+  unsigned char *model_data_ptr = nullptr;
+  for (auto &const_tensor : net_def.tensors()) {
+    if (model_data_ptr == nullptr
+      || reinterpret_cast<long long>(const_tensor.data())
+        < reinterpret_cast<long long>(model_data_ptr)) {
+      model_data_ptr = const_cast<unsigned char *>(const_tensor.data());
+    }
+  }
+  for (auto &const_tensor : net_def.tensors()) {
+    model_data_size = std::max(model_data_size,
+                               static_cast<index_t>(
+                                 (reinterpret_cast<long long>(const_tensor.data())
+                                   - reinterpret_cast<long long>(model_data_ptr))
+                                   + const_tensor.data_size()
+                                     * GetEnumTypeSize(const_tensor.data_type())));
+  }
+  VLOG(3) << "Model data size: " << model_data_size;
+
+  if (type == DeviceType::CPU) {
+    tensor_buffer_ = std::move(std::unique_ptr<Buffer>(
+      new Buffer(GetDeviceAllocator(type), model_data_ptr, model_data_size)));
+  } else {
+    tensor_buffer_ = std::move(std::unique_ptr<Buffer>(
+      new Buffer(GetDeviceAllocator(type), model_data_size)));
+    tensor_buffer_->Map(nullptr);
+    tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
+    tensor_buffer_->UnMap();
+  }
+
   for (auto &const_tensor : net_def.tensors()) {
     MACE_LATENCY_LOGGER(2, "Load tensor ", const_tensor.name());
     VLOG(3) << "Tensor name: " << const_tensor.name()
@@ -79,9 +85,24 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
             << ", shape: "
             << MakeString(std::vector<index_t>(const_tensor.dims().begin(),
                                                const_tensor.dims().end()));
-    tensor_map_[const_tensor.name()] =
-        serializer.Deserialize(const_tensor, type);
+    std::vector<index_t> dims;
+    for (const index_t d : const_tensor.dims()) {
+      dims.push_back(d);
+    }
+
+    index_t
+      offset = (long long) const_tensor.data() - (long long) model_data_ptr;
+    std::unique_ptr<Tensor> tensor(
+      new Tensor(BufferSlice(tensor_buffer_.get(),
+                             offset,
+                             const_tensor.data_size()
+                               * GetEnumTypeSize(const_tensor.data_type())),
+                 const_tensor.data_type()));
+
+    tensor->Reshape(dims);
+    tensor_map_[const_tensor.name()] = std::move(tensor);
   }
+
   if (type == DeviceType::OPENCL) {
     CreateImageOutputTensor(net_def);
   }
@@ -91,9 +112,6 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
     return;
   }
-  preallocated_allocator_ =
-    std::move(std::unique_ptr<PreallocatedPooledAllocator>(
-      new OpenCLPreallocatedPooledAllocator));
 
   DataType dtype = DataType::DT_INVALID;
   // We use the data type of the first op (with mem id, must be image),
@@ -116,18 +134,16 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   }
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
   for (auto &mem_block: net_def.mem_arena().mem_block()) {
-    preallocated_allocator_->PreallocateImage(mem_block.mem_id(),
-                                              {mem_block.x(), mem_block.y()},
-                                              dtype);
+    std::unique_ptr<BufferBase>
+      image_buf(new Image({mem_block.x(), mem_block.y()}, dtype));
+    preallocated_allocator_.SetBuffer(mem_block.mem_id(), std::move(image_buf));
   }
   VLOG(3) << "Preallocate image to tensors";
-  auto allocator = GetDeviceAllocator(DeviceType::OPENCL);
   for (auto &op: net_def.op()) {
     if (op.has_mem_id()) {
-      CreateTensor(op.output(0), allocator, dtype);
-      tensor_map_[op.output(0)]->PreallocateImage(
-        preallocated_allocator_->GetImage(op.mem_id()),
-        preallocated_allocator_->GetImageSize(op.mem_id()));
+      std::unique_ptr<Tensor> tensor
+        (new Tensor(preallocated_allocator_.GetBuffer(op.mem_id()), dtype));
+      tensor_map_[op.output(0)] = std::move(tensor);
     }
   }
 }

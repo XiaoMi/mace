@@ -11,7 +11,6 @@
 #include "mace/core/runtime/hexagon/quantize.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
-#include "mace/core/serializer.h"
 
 namespace mace {
 
@@ -37,7 +36,6 @@ class HexagonControlWrapper {
   void SetGraphMode(int mode);
 
  private:
-  // CAVEAT: Need offset as HVX library reserves some ids
   static constexpr int NODE_ID_OFFSET = 10000;
 
   inline uint32_t node_id(uint32_t nodeid) {
@@ -45,7 +43,6 @@ class HexagonControlWrapper {
   }
 
   int nn_id_;
-  Serializer serializer_;
   Quantizer quantizer_;
 
   std::vector<std::vector<index_t>> input_shapes_;

@@ -65,7 +65,7 @@ struct FullyConnectedFunctor : FullyConnectedBase {
       }
     }
 
-    DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
+    DoActivation(output_ptr, output_ptr, output->size(), activation_,
                  relux_max_limit_);
   }
 };

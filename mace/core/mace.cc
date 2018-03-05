@@ -542,7 +542,6 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type) :
     if (!net->Run()) {
       LOG(FATAL) << "Net init run failed";
     }
-    ws_->RemoveUnsedTensor();
     net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
   }
 }

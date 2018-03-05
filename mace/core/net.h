@@ -33,9 +33,9 @@ class NetBase {
   DISABLE_COPY_AND_ASSIGN(NetBase);
 };
 
-class SimpleNet : public NetBase {
+class SerialNet : public NetBase {
  public:
-  SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
+  SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
             const std::shared_ptr<const NetDef> net_def,
             Workspace *ws,
             DeviceType type,
@@ -47,7 +47,7 @@ class SimpleNet : public NetBase {
   std::vector<std::unique_ptr<OperatorBase> > operators_;
   DeviceType device_type_;
 
-  DISABLE_COPY_AND_ASSIGN(SimpleNet);
+  DISABLE_COPY_AND_ASSIGN(SerialNet);
 };
 
 std::unique_ptr<NetBase> CreateNet(
