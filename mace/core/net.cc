@@ -15,14 +15,14 @@ NetBase::NetBase(const std::shared_ptr<const OperatorRegistry> op_registry,
                  DeviceType type)
     : op_registry_(op_registry), name_(net_def->name()) {}
 
-SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
+SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
                      const std::shared_ptr<const NetDef> net_def,
                      Workspace *ws,
                      DeviceType type,
                      const NetMode mode)
     :  NetBase(op_registry, net_def, ws, type),
       device_type_(type) {
-  MACE_LATENCY_LOGGER(1, "Constructing SimpleNet ", net_def->name());
+  MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
     VLOG(3) << "Creating operator " << operator_def.name() << "("
@@ -36,7 +36,7 @@ SimpleNet::SimpleNet(const std::shared_ptr<const OperatorRegistry> op_registry,
   }
 }
 
-bool SimpleNet::Run(RunMetadata *run_metadata) {
+bool SerialNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
@@ -99,7 +99,7 @@ std::unique_ptr<NetBase> CreateNet(
     Workspace *ws,
     DeviceType type,
     const NetMode mode) {
-  std::unique_ptr<NetBase> net(new SimpleNet(op_registry, net_def, ws, type, mode));
+  std::unique_ptr<NetBase> net(new SerialNet(op_registry, net_def, ws, type, mode));
   return net;
 }
 

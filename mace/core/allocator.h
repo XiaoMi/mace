@@ -26,17 +26,17 @@ class Allocator {
  public:
   Allocator() {}
   virtual ~Allocator() noexcept {}
-  virtual void *New(size_t nbytes) = 0;
+  virtual void *New(size_t nbytes) const = 0;
   virtual void *NewImage(const std::vector<size_t> &image_shape,
-                         const DataType dt) = 0;
-  virtual void Delete(void *data) = 0;
-  virtual void DeleteImage(void *data) = 0;
-  virtual void *Map(void *buffer, size_t nbytes) = 0;
+                         const DataType dt) const = 0;
+  virtual void Delete(void *data) const = 0;
+  virtual void DeleteImage(void *data) const = 0;
+  virtual void *Map(void *buffer, size_t offset, size_t nbytes) const = 0;
   virtual void *MapImage(void *buffer,
                          const std::vector<size_t> &image_shape,
-                         std::vector<size_t> &mapped_image_pitch) = 0;
-  virtual void Unmap(void *buffer, void *mapper_ptr) = 0;
-  virtual bool OnHost() = 0;
+                         std::vector<size_t> *mapped_image_pitch) const = 0;
+  virtual void Unmap(void *buffer, void *mapper_ptr) const = 0;
+  virtual bool OnHost() const = 0;
 
   template <typename T>
   T *New(size_t num_elements) {
@@ -52,7 +52,7 @@ class Allocator {
 class CPUAllocator : public Allocator {
  public:
   ~CPUAllocator() override {}
-  void *New(size_t nbytes) override {
+  void *New(size_t nbytes) const override {
     VLOG(3) << "Allocate CPU buffer: " << nbytes;
     void *data = nullptr;
 #ifdef __ANDROID__
@@ -67,27 +67,29 @@ class CPUAllocator : public Allocator {
   }
 
   void *NewImage(const std::vector<size_t> &shape,
-                 const DataType dt) override {
+                 const DataType dt) const override {
     LOG(FATAL) << "Allocate CPU image";
     return nullptr;
   }
 
-  void Delete(void *data) override {
+  void Delete(void *data) const override {
     VLOG(3) << "Free CPU buffer";
     free(data);
   }
-  void DeleteImage(void *data) override {
+  void DeleteImage(void *data) const override {
     LOG(FATAL) << "Free CPU image";
     free(data);
   };
-  void *Map(void *buffer, size_t nbytes) override { return buffer; }
+  void *Map(void *buffer, size_t offset, size_t nbytes) const override {
+    return (char*)buffer + offset;
+  }
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,
-                 std::vector<size_t> &mapped_image_pitch) override {
+                 std::vector<size_t> *mapped_image_pitch) const override {
     return buffer;
   }
-  void Unmap(void *buffer, void *mapper_ptr) override {}
-  bool OnHost() override { return true; }
+  void Unmap(void *buffer, void *mapper_ptr) const override {}
+  bool OnHost() const override { return true; }
 };
 
 std::map<int32_t, Allocator *> *gAllocatorRegistry();

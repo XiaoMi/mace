@@ -14,7 +14,6 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                                                              const BufferType type,
                                                              Tensor *image,
                                                              StatsFuture *future) {
-  MACE_CHECK(!buffer->is_image()) << "buffer must be buffer-type";
   std::vector<size_t> image_shape;
   if (!i2b_) {
     CalImage2DShape(buffer->shape(), type, image_shape);
@@ -25,9 +24,9 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     } else {
       image->ResizeImage(buffer->shape(), image_shape);
     }
-    buffer->MarkUnused();
   } else {
-    image_shape = image->image_shape();
+    Image *image_buf = dynamic_cast<Image*>(image->UnderlyingBuffer());
+    image_shape = image_buf->image_shape();
     buffer->Resize(image->shape());
   }
 
@@ -78,7 +77,11 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                                          built_options);
 
   uint32_t idx = 0;
-  b2f_kernel.setArg(idx++, *(static_cast<const cl::Image2D *>(buffer->buffer())));
+  b2f_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(buffer->buffer())));
+  if (!i2b_) {
+    MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0, "buffer offset not aligned");
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->buffer_offset() / GetEnumTypeSize(buffer->dtype())));
+  }
   if (type == ARGUMENT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
   } else if(type == WEIGHT_HEIGHT) {

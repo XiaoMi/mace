@@ -1,6 +1,7 @@
 #include <common.h>
 
 __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, oc, ic */
+                                     __private const int input_offset,
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
@@ -13,7 +14,7 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
   const int in_channel_idx = w % rounded_in_channel;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
+  const int offset = input_offset + ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
                            + in_channel_idx;
 
   VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
@@ -79,6 +80,7 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
 }
 
 __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, m */
+                                        __private const int input_offset,
                                         __private const int filter_w,
                                         __private const int in_channel,
                                         __private const int multiplier,
@@ -92,7 +94,7 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
     const int h_idx = w / filter_w;
     const int w_idx = w % filter_w;
 
-    const int offset = mad24(mad24(h_idx, filter_w, w_idx),
+    const int offset = input_offset + mad24(mad24(h_idx, filter_w, w_idx),
                              in_channel, in_channel_idx);
 
     const int size = in_channel - in_channel_idx;
@@ -117,7 +119,7 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
     const int h_idx = hw_idx / filter_w;
     const int w_idx = hw_idx % filter_w;
 
-    const int offset = mad24(mad24(mad24(h_idx, filter_w, w_idx),
+    const int offset = input_offset + mad24(mad24(mad24(h_idx, filter_w, w_idx),
                 in_channel, in_channel_idx),
             multiplier, m);
     // TODO support multiplier > 1
@@ -128,6 +130,7 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
 }
 
 __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+                                     __private const int input_offset,
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
@@ -138,7 +141,7 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   const int height_idx = h % height;
   const int width_idx = w % width;
   const int channel_idx = w / width * 4;
-  const int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
+  const int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
                            + channel_idx;
 
   const int size = channels - channel_idx;
@@ -191,13 +194,16 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
 }
 
 __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+                                  __private const int input_offset,
                                   __private const int count,
                                   __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
-  const int offset = w * 4;
 
-  const int size = count - offset;
+  const int offset = input_offset + w * 4;
+  const int size = count - w * 4;
+
+
   VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
   if (size < 4) {
     switch(size) {
@@ -241,6 +247,7 @@ __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
 
 
 __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //nhwc
+                                            __private const int input_offset,
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
@@ -253,7 +260,7 @@ __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //n
   const int height_idx = (h % height_blks) << 2;
   const int width_idx = w % width;
   const int channel_idx = w / width;
-  int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
+  int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
       + channel_idx;
 
   int size = height - height_idx;
@@ -304,6 +311,7 @@ __kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
 
 
 __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+                                           __private const int input_offset,
                                            __private const int height,
                                            __private const int width,
                                            __private const int channels,
@@ -314,7 +322,7 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
   const int height_idx = h % height;
   const int width_idx = (w % width) << 2;
   const int channel_idx = w / width;
-  const int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
+  const int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
       + channel_idx;
 
   int size = width - width_idx;
@@ -336,6 +344,7 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
 
 // only support 3x3 now
 __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, //Oc, Ic, H, W
+                                              __private const int input_offset,
                                               __private const int in_channels,
                                               __private const int height,
                                               __private const int width,
@@ -345,7 +354,7 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
   const int out_channels = get_global_size(1);
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
-  const int offset = (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
   const int length = min((in_channels - in_channel_idx) * 9, 36);
   DATA_TYPE in[36] = {0};
   DATA_TYPE4 tt;
@@ -390,7 +399,7 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
   tu3[3] = tu3[2];
   tu3[2] = tt - tu3[1] / 2;
   tu3[1] = tt + tu3[1] / 2;
-  
+
   int2 coord = (int2)(w, h);
 #pragma unroll
   for (short i = 0; i < 4; ++i) {

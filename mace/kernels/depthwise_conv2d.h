@@ -402,7 +402,7 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
         valid_h_stop, valid_w_start, valid_w_stop);
 
     output_ptr = output->mutable_data<T>();
-    DoActivation(output_ptr, output_ptr, output->NumElements(), activation_,
+    DoActivation(output_ptr, output_ptr, output->size(), activation_,
                  relux_max_limit_);
   }
 };

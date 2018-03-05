@@ -616,7 +616,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
         }
       }
     }
-    DoActivation(output_data, output_data, output->NumElements(), activation_,
+    DoActivation(output_data, output_data, output->size(), activation_,
                  relux_max_limit_);
   }
 };

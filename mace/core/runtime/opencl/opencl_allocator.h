@@ -15,7 +15,7 @@ class OpenCLAllocator : public Allocator {
 
   ~OpenCLAllocator() override;
 
-  void *New(size_t nbytes) override;
+  void *New(size_t nbytes) const override;
 
   /*
    * Use Image2D with RGBA (128-bit) format to represent the image.
@@ -23,21 +23,21 @@ class OpenCLAllocator : public Allocator {
    * @ shape : [depth, ..., height, width ].
    */
   void *NewImage(const std::vector<size_t> &image_shape,
-                 const DataType dt) override;
+                 const DataType dt) const override;
 
-  void Delete(void *buffer) override;
+  void Delete(void *buffer) const override;
 
-  void DeleteImage(void *buffer) override;
+  void DeleteImage(void *buffer) const override;
 
-  void *Map(void *buffer, size_t nbytes) override;
+  void *Map(void *buffer, size_t offset, size_t nbytes) const override;
 
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,
-                 std::vector<size_t> &mapped_image_pitch) override;
+                 std::vector<size_t> *mapped_image_pitch) const override;
 
-  void Unmap(void *buffer, void *mapped_ptr) override;
+  void Unmap(void *buffer, void *mapped_ptr) const override;
 
-  bool OnHost() override;
+  bool OnHost() const override;
 };
 
 }  // namespace mace

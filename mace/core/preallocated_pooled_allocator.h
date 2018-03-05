@@ -5,6 +5,7 @@
 #ifndef MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_
 #define MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_
 
+#include <unordered_map>
 #include "mace/core/allocator.h"
 
 namespace mace {
@@ -13,17 +14,26 @@ class PreallocatedPooledAllocator {
  public:
   PreallocatedPooledAllocator() {}
 
-  virtual ~PreallocatedPooledAllocator() noexcept {}
+  ~PreallocatedPooledAllocator() noexcept {}
 
-  virtual void PreallocateImage(int mem_id,
-                                const std::vector<size_t> &image_shape,
-                                DataType data_type) = 0;
+  void SetBuffer(int mem_id, std::unique_ptr<BufferBase> &&buffer) {
+    buffers_[mem_id] = std::move(buffer);
+  }
 
-  virtual void *GetImage(int mem_id) = 0;
+  BufferBase *GetBuffer(int mem_id) {
+    if (buffers_.find(mem_id) != buffers_.end()) {
+      return buffers_[mem_id].get();
+    } else {
+      return nullptr;
+    }
+  }
 
-  virtual bool HasImage(int mem_id) = 0;
+  virtual bool HasBuffer(int mem_id) {
+    return buffers_.find(mem_id) != buffers_.end();
+  }
 
-  virtual std::vector<size_t> GetImageSize(int mem_id) = 0;
+ private:
+  std::unordered_map<int, std::unique_ptr<BufferBase>> buffers_;
 };
 
 } // namespace mace

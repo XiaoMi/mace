@@ -35,7 +35,7 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
 OpenCLAllocator::OpenCLAllocator() {}
 
 OpenCLAllocator::~OpenCLAllocator() {}
-void *OpenCLAllocator::New(size_t nbytes) {
+void *OpenCLAllocator::New(size_t nbytes) const {
   VLOG(3) << "Allocate OpenCL buffer: " << nbytes;
   cl_int error;
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
@@ -47,7 +47,7 @@ void *OpenCLAllocator::New(size_t nbytes) {
 }
 
 void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
-                                const DataType dt) {
+                                const DataType dt) const {
   MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
   VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", " << image_shape[1];
 
@@ -67,7 +67,7 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   return cl_image;
 }
 
-void OpenCLAllocator::Delete(void *buffer) {
+void OpenCLAllocator::Delete(void *buffer) const {
   VLOG(3) << "Free OpenCL buffer";
   if (buffer != nullptr) {
     cl::Buffer *cl_buffer = static_cast<cl::Buffer *>(buffer);
@@ -75,7 +75,7 @@ void OpenCLAllocator::Delete(void *buffer) {
   }
 }
 
-void OpenCLAllocator::DeleteImage(void *buffer) {
+void OpenCLAllocator::DeleteImage(void *buffer) const {
   VLOG(3) << "Free OpenCL image";
   if (buffer != nullptr) {
     cl::Image2D *cl_image = static_cast<cl::Image2D *>(buffer);
@@ -83,13 +83,13 @@ void OpenCLAllocator::DeleteImage(void *buffer) {
   }
 }
 
-void *OpenCLAllocator::Map(void *buffer, size_t nbytes) {
+void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = OpenCLRuntime::Global()->command_queue();
   // TODO(heliangliang) Non-blocking call
   cl_int error;
   void *mapped_ptr =
-      queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, 0,
+      queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, offset,
                              nbytes, nullptr, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS);
   return mapped_ptr;
@@ -98,33 +98,33 @@ void *OpenCLAllocator::Map(void *buffer, size_t nbytes) {
 // TODO : there is something wrong with half type.
 void *OpenCLAllocator::MapImage(void *buffer,
                                 const std::vector<size_t> &image_shape,
-                                std::vector<size_t> &mapped_image_pitch) {
+                                std::vector<size_t> *mapped_image_pitch) const {
   MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
   auto cl_image = static_cast<cl::Image2D *>(buffer);
   std::array<size_t, 3> origin = {0, 0, 0};
   std::array<size_t, 3> region = {image_shape[0], image_shape[1], 1};
 
-  mapped_image_pitch.resize(2);
+  mapped_image_pitch->resize(2);
   cl_int error;
   void *mapped_ptr =
       OpenCLRuntime::Global()->command_queue().enqueueMapImage(*cl_image,
                                                             CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                                                             origin, region,
-                                                            &mapped_image_pitch[0],
-                                                            &mapped_image_pitch[1],
+                                                            mapped_image_pitch->data(),
+                                                            mapped_image_pitch->data() + 1,
                                                             nullptr, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS) << error;
 
   return mapped_ptr;
 }
 
-void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) {
+void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) const {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = OpenCLRuntime::Global()->command_queue();
   MACE_CHECK(queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr, nullptr,
                                          nullptr) == CL_SUCCESS);
 }
 
-bool OpenCLAllocator::OnHost() { return false; }
+bool OpenCLAllocator::OnHost() const { return false; }
 
 }  // namespace mace

@@ -15,25 +15,22 @@ class Workspace {
  public:
   typedef std::map<std::string, std::unique_ptr<Tensor>> TensorMap;
 
-  Workspace()
-    : preallocated_allocator_(nullptr) {}
+  Workspace() {}
   ~Workspace() {}
 
-  std::vector<std::string> Tensors() const;
-
-  Tensor *CreateTensor(const std::string &name, Allocator *alloc, DataType type);
-
-  bool RemoveTensor(const std::string &name);
-
-  void RemoveUnsedTensor();
+  Tensor *CreateTensor(const std::string &name,
+                       Allocator *alloc,
+                       DataType type);
 
   inline bool HasTensor(const std::string &name) const {
-    return tensor_map_.count(name);
+    return tensor_map_.find(name) != tensor_map_.end();
   }
 
   const Tensor *GetTensor(const std::string &name) const;
 
   Tensor *GetTensor(const std::string &name);
+
+  std::vector<std::string> Tensors() const;
 
   void LoadModelTensor(const NetDef &net_def, DeviceType type);
 
@@ -42,9 +39,11 @@ class Workspace {
 
   TensorMap tensor_map_;
 
-  std::unique_ptr<PreallocatedPooledAllocator> preallocated_allocator_;
+  std::unique_ptr<BufferBase> tensor_buffer_;
 
-  DISABLE_COPY_AND_ASSIGN(Workspace);
+  PreallocatedPooledAllocator preallocated_allocator_;
+
+ DISABLE_COPY_AND_ASSIGN(Workspace);
 };
 
 }  // namespace mace
