@@ -24,7 +24,7 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
   exit 0
 fi
 
-if [ "$PLATFORM" = "tensorflow" ];then
+if [ "$PLATFORM" == "tensorflow" ];then
 
   rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
   adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
@@ -37,7 +37,7 @@ if [ "$PLATFORM" = "tensorflow" ];then
       --input_shape ${INPUT_SHAPE} \
       --output_shape ${OUTPUT_SHAPE} || exit 1
 
-elif [ "$PLATFORM" = "caffe" ];then
+elif [ "$PLATFORM" == "caffe" ];then
   IMAGE_NAME=mace-caffe:latest
   CONTAINER_NAME=mace_caffe_validator
   RES_FILE=validation.result
@@ -60,13 +60,15 @@ elif [ "$PLATFORM" = "caffe" ];then
   rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
   adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
 
+  MODEL_FILE_NAME=$(basename ${MODEL_FILE_PATH})
+  WEIGHT_FILE_NAME=$(basename ${WEIGHT_FILE_PATH})
   docker cp tools/validate_caffe.py ${CONTAINER_NAME}:/mace
   docker cp ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${CONTAINER_NAME}:/mace
   docker cp ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} ${CONTAINER_NAME}:/mace
   docker cp ${MODEL_FILE_PATH} ${CONTAINER_NAME}:/mace
   docker cp ${WEIGHT_FILE_PATH} ${CONTAINER_NAME}:/mace
-  docker exec -it ${CONTAINER_NAME} python /mace/validate_caffe.py --model_file /mace/${MODEL_NAME} \
-    --weight_file /mace/${WEIGHT_NAME} \
+  docker exec -it ${CONTAINER_NAME} python /mace/validate_caffe.py --model_file /mace/${MODEL_FILE_NAME} \
+    --weight_file /mace/${WEIGHT_FILE_NAME} \
     --input_file /mace/${INPUT_FILE_NAME} \
     --mace_out_file /mace/${OUTPUT_FILE_NAME} \
     --mace_runtime ${RUNTIME} \

@@ -59,10 +59,10 @@ def valid_output(out_shape, mace_out_file, out_value):
 def run_model(input_shape):
   if not os.path.isfile(FLAGS.model_file):
     print("Input graph file '" + FLAGS.model_file + "' does not exist!")
-    return -1
+    sys.exit(-1)
   if not os.path.isfile(FLAGS.weight_file):
     print("Input weight file '" + FLAGS.weight_file + "' does not exist!")
-    return -1
+    sys.exit(-1)
 
   caffe.set_mode_cpu()
 

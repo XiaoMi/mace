@@ -56,7 +56,7 @@ def valid_output(out_shape, mace_out_file, tf_out_value):
 def run_model(input_shape):
   if not gfile.Exists(FLAGS.model_file):
     print("Input graph file '" + FLAGS.model_file + "' does not exist!")
-    return -1
+    sys.exit(-1)
 
   input_graph_def = tf.GraphDef()
   with gfile.Open(FLAGS.model_file, "rb") as f:
