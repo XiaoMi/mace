@@ -12,19 +12,23 @@ from lib.python.tools import source_converter_lib
 
 FLAGS = None
 
-def md5(fname):
-  hash_md5 = hashlib.md5()
+def file_checksum(fname):
+  hash_func = hashlib.sha256()
   with open(fname, "rb") as f:
     for chunk in iter(lambda: f.read(4096), b""):
-      hash_md5.update(chunk)
-  return hash_md5.hexdigest()
+      hash_func.update(chunk)
+  return hash_func.hexdigest()
 
 def main(unused_args):
   if not gfile.Exists(FLAGS.input):
     print("Input graph file '" + FLAGS.input + "' does not exist!")
     return -1
 
-  mode_pb_checksum = md5(FLAGS.input)
+  model_checksum = file_checksum(FLAGS.input)
+  if FLAGS.model_checksum != "" and FLAGS.model_checksum != model_checksum:
+    print("Model checksum mismatch: %s != %s" % (model_checksum, FLAGS.model_checksum))
+    return -1
+
   input_graph_def = tf.GraphDef()
   with gfile.Open(FLAGS.input, "rb") as f:
     data = f.read()
@@ -42,7 +46,7 @@ def main(unused_args):
       FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
-    source_converter_lib.convert_to_source(output_graph_def, mode_pb_checksum, FLAGS.template, FLAGS.obfuscate,
+    source_converter_lib.convert_to_source(output_graph_def, model_checksum, FLAGS.template, FLAGS.obfuscate,
       FLAGS.model_tag, FLAGS.output, FLAGS.runtime, FLAGS.embed_model_data)
   else:
     with gfile.GFile(FLAGS.output, "wb") as f:
@@ -69,6 +73,11 @@ def parse_args():
     type=str,
     default="",
     help="TensorFlow \'GraphDef\' file to load.")
+  parser.add_argument(
+    "--model_checksum",
+    type=str,
+    default="",
+    help="Model file sha256 checksum")
   parser.add_argument(
     "--output",
     type=str,
