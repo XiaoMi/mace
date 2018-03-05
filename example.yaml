@@ -1,0 +1,26 @@
+# example.yaml
+# Each yaml file describes a exported library (could be named [target_abi]/libmace-${filename}.a), 
+# which can contains more than one models
+target_abis: [armeabi-v7a, arm64-v8a]
+target_socs: [MSM8953] # target_socs not enabled yet
+embed_model_data: 1
+vlog_level: 0
+models:
+  preview_net:
+    model_file_path: path/to/model64.pb # also support http:// and https://
+    input_node: input_node
+    output_node: output_node
+    input_shape: 1,64,64,3
+    output_shape: 1,64,64,2
+    runtime: gpu
+    limit_opencl_kernel_time: 0
+    dsp_mode: 0
+  capture_net:
+    model_file_path: path/to/model256.pb
+    input_node: input_node
+    output_node: output_node
+    input_shape: 1,256,256,3
+    output_shape: 1,256,256,2
+    runtime: gpu
+    limit_opencl_kernel_time: 1
+    dsp_mode: 0
