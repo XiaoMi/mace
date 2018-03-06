@@ -5,12 +5,12 @@
 #ifndef MACE_CORE_TENSOR_H_
 #define MACE_CORE_TENSOR_H_
 
-#include "mace/core/runtime/opencl/cl2.hpp"
 #include "mace/core/buffer.h"
-#include "mace/utils/logging.h"
+#include "mace/core/preallocated_pooled_allocator.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
-#include "preallocated_pooled_allocator.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
