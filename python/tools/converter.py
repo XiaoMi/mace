@@ -39,12 +39,9 @@ def main(unused_args):
       print("DSP not support caffe model yet.")
       return -1
 
-    input_shape = []
-    if FLAGS.input_shape != "":
-      input_shape.extend([int(x) for x in FLAGS.input_shape.split(',')])
     from lib.python.tools import caffe_converter_lib
     output_graph_def = caffe_converter_lib.convert_to_mace_pb(
-      FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, input_shape, FLAGS.output_node,
+      FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, FLAGS.input_shape, FLAGS.output_node,
       FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
   elif FLAGS.platform == 'tensorflow':
     if FLAGS.runtime == 'dsp':

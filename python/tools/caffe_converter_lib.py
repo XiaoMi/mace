@@ -120,16 +120,22 @@ class CaffeConverter(object):
     self.device = device
     self.winograd = winograd
     self.resolved_ops = set()
+    self.ops = []
+
+    # Add Input operations
+    inputs = caffe_net.input
+    for input in inputs:
+      self.ops.extend([Operator(input, 'Input', None)])
 
     layers = caffe_net.layer
-
     # remove train layers and dropout
     layers = self.remove_unused_layers(layers)
 
     # Construct graph
     # Only support single-output layer
     # layer with single output often use the same top name.
-    self.ops = [Operator(layer.name, layer.type, layer) for layer in layers]
+    self.ops.extend([Operator(layer.name, layer.type, layer) for layer in layers])
+
     self.ops_map = {op.name : op for op in self.ops}
     output_op = {}
     for layer in layers:
@@ -232,36 +238,43 @@ class CaffeConverter(object):
     arg.i = self.dt
     return output_name
 
-  def add_input_transform(self, name):
-    new_input_name = MACE_INPUT_NODE_NAME + ":0"
-    op_def = self.net_def.op.add()
-    op_def.name = name
-    op_def.type = 'BufferToImage'
-    op_def.input.extend([new_input_name])
-    if name not in self.ops_map:
-      raise Exception("Input name not in the model")
-    top_name = self.ops_map[name].layer.top[0]
-    op_def.output.extend([top_name+':0'])
+  def add_input_transform(self, names, is_single):
+    for name in names:
+      if is_single:
+        new_input_name = MACE_INPUT_NODE_NAME + ":0"
+      else:
+        new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = name
+      op_def.type = 'BufferToImage'
+      op_def.input.extend([new_input_name])
+      if name not in self.ops_map:
+        raise Exception("Input name not in the model")
+      op_def.output.extend([name+':0'])
 
-    epsilon_arg = op_def.arg.add()
-    epsilon_arg.name = 'buffer_type'
-    epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
+      epsilon_arg = op_def.arg.add()
+      epsilon_arg.name = 'buffer_type'
+      epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
 
-    arg = op_def.arg.add()
-    arg.name = 'T'
-    arg.i = self.dt
+      arg = op_def.arg.add()
+      arg.name = 'T'
+      arg.i = self.dt
 
-  def add_output_transform(self, name):
-    output_name = MACE_OUTPUT_NODE_NAME + ":0"
-    op_def = self.net_def.op.add()
-    op_def.name = output_name[:-2]
-    op_def.type = 'ImageToBuffer'
-    op_def.input.extend([name+':0'])
-    op_def.output.extend([output_name])
+  def add_output_transform(self, names, is_single):
+    for name in names:
+      if is_single:
+        output_name = MACE_OUTPUT_NODE_NAME + ":0"
+      else:
+        output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = output_name[:-2]
+      op_def.type = 'ImageToBuffer'
+      op_def.input.extend([name+':0'])
+      op_def.output.extend([output_name])
 
-    epsilon_arg = op_def.arg.add()
-    epsilon_arg.name = 'buffer_type'
-    epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
+      epsilon_arg = op_def.arg.add()
+      epsilon_arg.name = 'buffer_type'
+      epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
 
   def add_tensor(self, name, value):
     tensor = self.net_def.tensors.add()
@@ -587,33 +600,35 @@ class CaffeConverter(object):
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
-  def replace_in_out_name(self, input_name, output_name):
-    input_name = input_name + ":0"
-    output_name = output_name + ":0"
-    for op in self.net_def.op:
-      if len(op.input) > 0 and op.input[0] == input_name:
-        op.input[0] = MACE_INPUT_NODE_NAME + ":0"
-      if len(op.output) > 0 and op.output[0] == output_name:
-        op.output[0] = MACE_OUTPUT_NODE_NAME + ":0"
+  def replace_in_out_name(self, input_names, output_names, is_single):
+    in_names = set([input_name + ":0" for input_name in input_names])
+    out_names = set([output_name + ":0" for output_name in output_names])
+    if is_single:
+      for op in self.net_def.op:
+        if len(op.input) > 0 and op.input[0] in in_names:
+          op.input[0] = MACE_INPUT_NODE_NAME + ':0'
+        if len(op.output) > 0 and op.output[0] in out_names:
+          op.output[0] = MACE_OUTPUT_NODE_NAME + ':0'
+    else:
+      for op in self.net_def.op:
+        if len(op.input) > 0 and op.input[0] in in_names:
+          op.input[0] = MACE_INPUT_NODE_NAME + '_' + op.input[0]
+        if len(op.output) > 0 and op.output[0] in out_names:
+          op.output[0] = MACE_OUTPUT_NODE_NAME + '_' + op.output[0]
 
-  def add_input_op_shape(self, input_node, input_shape):
-    if not input_shape:
-      input_shape = []
-      if self.caffe_net.input_dim:
-        input_shape = self.caffe_net.input_dim
-      elif self.caffe_net.input_shape:
-        input_shape = self.caffe_net.input_shape[0].dim
-      elif self.caffe_net.layer[0].input_param.shape:
-        input_shape = self.caffe_net.layer[0].input_param.shape[0].dim
-    input_op = self.ops_map[input_node]
-    input_op.output_shape = input_shape
+  def add_input_op_shape(self, input_nodes, input_shapes):
+    assert len(input_nodes) == len(input_shapes)
+    for i in range(len(input_nodes)):
+      input_op = self.ops_map[input_nodes[i]]
+      input_op.output_shape = input_shapes[i]
 
-  def convert(self, input_node, input_shape, output_node):
+  def convert(self, input_nodes, input_shapes, output_nodes):
+    is_single = len(input_nodes) == 1 and len(output_nodes) == 1
     if self.device == 'gpu':
-      self.add_input_transform(input_node)
+      self.add_input_transform(input_nodes, is_single)
 
     assert self.ops[0].type == 'Input'
-    self.add_input_op_shape(input_node, input_shape)
+    self.add_input_op_shape(input_nodes, input_shapes)
 
     for op in self.ops:
       if op.name in self.resolved_ops:
@@ -644,17 +659,17 @@ class CaffeConverter(object):
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 
     if self.device == 'gpu':
-      self.add_output_transform(output_node)
+      self.add_output_transform(output_nodes, is_single)
 
     if self.device == 'cpu':
-      self.replace_in_out_name(input_node, output_node)
+      self.replace_in_out_name(input_nodes, output_nodes, is_single)
 
     for op in self.ops:
       if op.name not in self.resolved_ops:
         print 'Unresolve Op: %s with type %s' % (op.name, op.type)
 
 
-def convert_to_mace_pb(model_file, weight_file, input_node, input_shape, output_node, data_type, device, winograd):
+def convert_to_mace_pb(model_file, weight_file, input_node_str, input_shape_str, output_node_str, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
 
@@ -666,8 +681,17 @@ def convert_to_mace_pb(model_file, weight_file, input_node, input_shape, output_
   with open(weight_file, "rb") as f:
     weights.MergeFromString(f.read())
 
+  input_nodes = [x for x in input_node_str.split(',')]
+  input_shapes = []
+  if input_shape_str != "":
+    input_shape_strs = [x for x in input_shape_str.split(':')]
+    for shape_str in input_shape_strs:
+      input_shapes.extend([[int(x) for x in shape_str.split(',')]])
+  output_nodes = [x for x in output_node_str.split(',')]
+  assert len(input_nodes) == len(input_shapes)
+
   converter = CaffeConverter(caffe_net, weights, net_def, dt, device, winograd)
-  converter.convert(input_node, input_shape, output_node)
+  converter.convert(input_nodes, input_shapes, output_nodes)
   print "PB Converted."
   if device == 'gpu':
     print "start optimize memory."
