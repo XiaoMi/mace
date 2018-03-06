@@ -25,9 +25,10 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
 fi
 
 if [ "$PLATFORM" == "tensorflow" ];then
-
-  rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
-  adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+  if [[ x"$TARGET_ABI" -ne x"host" ]]; then
+    rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
+    adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+  fi
   python tools/validate.py --model_file ${MODEL_FILE_PATH} \
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
@@ -57,8 +58,10 @@ elif [ "$PLATFORM" == "caffe" ];then
     docker start ${CONTAINER_NAME}
   fi
 
-  rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
-  adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+  if [[ x"$TARGET_ABI" -ne x"host" ]]; then
+    rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
+    adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+  fi
 
   MODEL_FILE_NAME=$(basename ${MODEL_FILE_PATH})
   WEIGHT_FILE_NAME=$(basename ${WEIGHT_FILE_PATH})
