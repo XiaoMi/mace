@@ -68,17 +68,20 @@ class Tensor {
     : allocator_(alloc),
       dtype_(type),
       buffer_(nullptr),
-      is_buffer_owner_(true) {};
+      is_buffer_owner_(true),
+      name_("") {};
 
   Tensor(BufferBase *buffer, DataType dtype)
     : dtype_(dtype),
       buffer_(buffer),
-      is_buffer_owner_(false) {}
+      is_buffer_owner_(false),
+      name_("") {}
 
   Tensor(const BufferSlice &buffer_slice, DataType dtype)
     : dtype_(dtype),
       buffer_slice_(buffer_slice),
-      is_buffer_owner_(false) {
+      is_buffer_owner_(false),
+      name_("") {
     buffer_ = &buffer_slice_;
   }
 
@@ -184,8 +187,18 @@ class Tensor {
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
       Image *image = dynamic_cast<Image*>(buffer_);
-      MACE_CHECK(image_shape[0] <= image->image_shape()[0]
-                   && image_shape[1] <= image->image_shape()[1]);
+      MACE_CHECK(shape[0] <= image->image_shape()[0]
+                   && shape[1] <= image->image_shape()[1],
+                 "tensor (source op ",
+                 name_,
+                 "): current image shape: ",
+                 image->image_shape()[0],
+                 ", ",
+                 image->image_shape()[1],
+                 " < resize tensor shape: ",
+                 shape[0],
+                 ", ",
+                 shape[1]);
     }
   }
 
@@ -236,6 +249,10 @@ class Tensor {
 
   inline BufferBase *UnderlyingBuffer() const {
     return buffer_;
+  }
+
+  inline void SetSourceOpName(const std::string name) {
+    name_ = name;
   }
 
   inline void DebugPrint() const {
@@ -293,6 +310,7 @@ class Tensor {
   BufferBase *buffer_;
   BufferSlice buffer_slice_;
   bool is_buffer_owner_;
+  std::string name_;
 
  DISABLE_COPY_AND_ASSIGN(Tensor);
 };

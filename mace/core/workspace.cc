@@ -143,6 +143,12 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
     if (op.has_mem_id()) {
       std::unique_ptr<Tensor> tensor
         (new Tensor(preallocated_allocator_.GetBuffer(op.mem_id()), dtype));
+      tensor->SetSourceOpName(op.name());
+      VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")" << "; Mem: "
+              << op.mem_id() << "; Image shape: "
+              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[0]
+              << ", "
+              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[1];
       tensor_map_[op.output(0)] = std::move(tensor);
     }
   }
