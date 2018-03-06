@@ -116,7 +116,8 @@ class ActivationFunctor {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
     if (activation_ == PRELU) {
-      const T *alpha_ptr = alpha == nullptr ? nullptr : alpha->data<T>();
+      MACE_CHECK(alpha != nullptr) << "PReLU's alpha parameter shouldn't be null";
+      const T *alpha_ptr = alpha->data<T>();
       PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr, output_ptr); 
     } else {
       DoActivation(input_ptr, output_ptr, output->size(), activation_, relux_max_limit_);
