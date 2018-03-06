@@ -15,21 +15,31 @@ source ${CURRENT_DIR}/env.sh
 MODEL_OUTPUT_DIR=$1
 GENERATE_DATA_OR_NOT=$2
 
+IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODE}"
+IFS=',' read -r -a OUTPUT_NAMES <<< "${OUTPUT_NODE}"
+
 echo $MODEL_OUTPUT_DIR
 if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
-  rm -rf ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}
-  python tools/validate.py --generate_data true \
-     --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
-     --input_shape="${INPUT_SHAPE}" || exit 1
+  for NAME in "${INPUT_NAMES[@]}";do
+    FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+    rm -rf ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME}
+  done
+  python tools/generate_data.py --input_node=${INPUT_NODE} \
+    --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
+    --input_shape="${INPUT_SHAPE}" || exit 1
   exit 0
 fi
 
 if [ "$PLATFORM" == "tensorflow" ];then
   if [[ x"$TARGET_ABI" -ne x"host" ]]; then
-    rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
-    adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+    for NAME in "${OUTPUT_NAMES[@]}";do
+      FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+      rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
+      adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
+    done
   fi
-  python tools/validate.py --model_file ${MODEL_FILE_PATH} \
+  python tools/validate.py --platform=tensorflow \
+      --model_file ${MODEL_FILE_PATH} \
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
       --mace_runtime ${RUNTIME} \
@@ -58,19 +68,27 @@ elif [ "$PLATFORM" == "caffe" ];then
     docker start ${CONTAINER_NAME}
   fi
 
+  for NAME in "${INPUT_NAMES[@]}";do
+    FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+    docker cp ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${CONTAINER_NAME}:/mace
+  done
+
   if [[ x"$TARGET_ABI" -ne x"host" ]]; then
-    rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}
-    adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} ${MODEL_OUTPUT_DIR}
+    for NAME in "${OUTPUT_NAMES[@]}";do
+      FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+      rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
+      adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
+      docker cp ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${CONTAINER_NAME}:/mace
+    done
   fi
 
   MODEL_FILE_NAME=$(basename ${MODEL_FILE_PATH})
   WEIGHT_FILE_NAME=$(basename ${WEIGHT_FILE_PATH})
-  docker cp tools/validate_caffe.py ${CONTAINER_NAME}:/mace
-  docker cp ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${CONTAINER_NAME}:/mace
-  docker cp ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} ${CONTAINER_NAME}:/mace
+  docker cp tools/validate.py ${CONTAINER_NAME}:/mace
   docker cp ${MODEL_FILE_PATH} ${CONTAINER_NAME}:/mace
   docker cp ${WEIGHT_FILE_PATH} ${CONTAINER_NAME}:/mace
-  docker exec -it ${CONTAINER_NAME} python /mace/validate_caffe.py --model_file /mace/${MODEL_FILE_NAME} \
+  docker exec -it ${CONTAINER_NAME} python /mace/validate.py  --platform=caffe \
+    --model_file /mace/${MODEL_FILE_NAME} \
     --weight_file /mace/${WEIGHT_FILE_NAME} \
     --input_file /mace/${INPUT_FILE_NAME} \
     --mace_out_file /mace/${OUTPUT_FILE_NAME} \

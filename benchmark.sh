@@ -58,7 +58,11 @@ else
   cp bazel-bin/benchmark/benchmark_model $MODEL_OUTPUT_DIR
 
   adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
-  adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} ${PHONE_DATA_DIR} || exit 1
+  IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODE}"
+  for NAME in "${INPUT_NAMES[@]}";do
+    FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+    adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} || exit 1
+  done
   adb push ${MODEL_OUTPUT_DIR}/benchmark_model ${PHONE_DATA_DIR} || exit 1
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
     adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} || exit 1
@@ -73,7 +77,9 @@ else
     ${PHONE_DATA_DIR}/benchmark_model \
     --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE} \
+    --input_node="${INPUT_NODE}" \
     --input_shape="${INPUT_SHAPE}"\
+    --output_node="${OUTPUT_NODE}" \
     --output_shape="${OUTPUT_SHAPE}"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} || exit 1
 fi
