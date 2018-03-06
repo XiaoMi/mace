@@ -139,23 +139,26 @@ static void PreluBenchmark(
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  net.AddRandomInput<D, float>("Alpha", {channels});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, float>(net, "Alpha", "AlphaImage",
+                            kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("Activation", "PreluBM")
         .Input("InputImage")
+        .Input("AlphaImage")
         .Output("Output")
         .AddStringArg("activation", "PRELU")
-        .AddFloatArg("alpha", 2.0)
         .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("Activation", "PreluBM")
         .Input("Input")
+        .Input("Alpha")
         .Output("Output")
         .AddStringArg("activation", "PRELU")
-        .AddFloatArg("alpha", 2.0)
         .Finalize(net.NewOperatorDef());
   }
 
