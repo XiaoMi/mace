@@ -62,6 +62,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     int idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     if (activation_ == PRELU) {
+      MACE_CHECK(alpha != nullptr) << "PReLU's alpha parameter shouldn't be null";
       kernel_.setArg(idx++, *(alpha->opencl_image()));
     }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
