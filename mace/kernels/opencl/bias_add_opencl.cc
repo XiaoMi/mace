@@ -35,9 +35,9 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ = runtime->BuildKernel("bias_add", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(bias->opencl_image()));
+    kernel_.setArg(idx++, *(output->opencl_image()));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

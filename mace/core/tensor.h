@@ -5,6 +5,7 @@
 #ifndef MACE_CORE_TENSOR_H_
 #define MACE_CORE_TENSOR_H_
 
+#include "mace/core/runtime/opencl/cl2.hpp"
 #include "mace/core/buffer.h"
 #include "mace/utils/logging.h"
 #include "mace/core/types.h"
@@ -112,10 +113,24 @@ class Tensor {
     return size() * SizeOfType();
   }
 
-  inline void *buffer() const {
-    MACE_CHECK(buffer_ != nullptr && buffer_->buffer() != nullptr,
-               "buffer is null");
-    return buffer_->buffer();
+  inline bool has_opencl_image() const {
+    return buffer_ != nullptr && !buffer_->OnHost()
+      && typeid(*buffer_) == typeid(Image);
+  }
+
+  inline bool has_opencl_buffer() const {
+    return buffer_ != nullptr && !buffer_->OnHost()
+      && !has_opencl_image();
+  }
+
+  inline cl::Image *opencl_image() const {
+    MACE_CHECK(has_opencl_image(), "do not have image");
+    return static_cast<cl::Image*>(buffer_->buffer());
+  }
+
+  inline cl::Buffer *opencl_buffer() const {
+    MACE_CHECK(has_opencl_buffer(), "do not have opencl buffer");
+    return static_cast<cl::Buffer*>(buffer_->buffer());
   }
 
   inline index_t buffer_offset() const {
@@ -152,19 +167,12 @@ class Tensor {
   inline void Resize(const std::vector<index_t> &shape) {
     shape_ = shape;
     if (buffer_ != nullptr) {
+      MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
       buffer_->Resize(raw_size());
     } else {
       buffer_ = new Buffer(allocator_, raw_size());
       is_buffer_owner_ = true;
     }
-  }
-
-  inline void ResizeLike(const Tensor &other) {
-    Resize(other.shape());
-  }
-
-  inline void ResizeLike(const Tensor *other) {
-    Resize(other->shape());
   }
 
   inline void ResizeImage(const std::vector<index_t> &shape,
@@ -173,6 +181,32 @@ class Tensor {
     if (buffer_ == nullptr) {
       buffer_ = new Image(image_shape, dtype_);
       is_buffer_owner_ = true;
+    } else {
+      MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
+      Image *image = dynamic_cast<Image*>(buffer_);
+      MACE_CHECK(image_shape[0] <= image->image_shape()[0]
+                   && image_shape[1] <= image->image_shape()[1]);
+    }
+  }
+
+  inline void ResizeLike(const Tensor &other) {
+    ResizeLike(&other);
+  }
+
+  inline void ResizeLike(const Tensor *other) {
+    if (other->has_opencl_image()) {
+      if (is_buffer_owner_ && buffer_ != nullptr && !has_opencl_image()) {
+        delete buffer_;
+        buffer_ = nullptr;
+      }
+      ResizeImage(other->shape(),
+                  dynamic_cast<Image *>(other->UnderlyingBuffer())->image_shape());
+    } else {
+      if (is_buffer_owner_ && buffer_ != nullptr && has_opencl_image()) {
+        delete buffer_;
+        buffer_ = nullptr;
+      }
+      Resize(other->shape());
     }
   }
 

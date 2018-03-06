@@ -77,7 +77,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
                                          built_options);
 
   uint32_t idx = 0;
-  b2f_kernel.setArg(idx++, *(static_cast<const cl::Buffer *>(buffer->buffer())));
+  b2f_kernel.setArg(idx++, *(buffer->opencl_buffer()));
   if (!i2b_) {
     MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0, "buffer offset not aligned");
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->buffer_offset() / GetEnumTypeSize(buffer->dtype())));
@@ -93,8 +93,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(Tensor *buffer,
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
   }
-  b2f_kernel.setArg(idx++, *(static_cast<cl::Image2D *>(image->buffer())));
-
+  b2f_kernel.setArg(idx++, *(image->opencl_image()));
   const std::vector<uint32_t> lws = {16, 64};
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(

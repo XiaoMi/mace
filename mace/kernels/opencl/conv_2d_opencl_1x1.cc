@@ -71,15 +71,15 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
     uint32_t idx = 0;
     kernel->setArg(idx++,
-                          *(static_cast<const cl::Image2D *>(input->buffer())));
+                          *(input->opencl_image()));
     kernel->setArg(idx++,
-                          *(static_cast<const cl::Image2D *>(filter->buffer())));
+                          *(filter->opencl_image()));
     if (bias != nullptr) {
       kernel->setArg(idx++,
-                            *(static_cast<const cl::Image2D *>(bias->buffer())));
+                            *(bias->opencl_image()));
     }
     kernel->setArg(idx++,
-                          *(static_cast<const cl::Image2D *>(output->buffer())));
+                          *(output->opencl_image()));
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, static_cast<int>(input_height));

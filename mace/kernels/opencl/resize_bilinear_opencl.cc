@@ -48,8 +48,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ = runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, height_scale);
     kernel_.setArg(idx++, width_scale);
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));

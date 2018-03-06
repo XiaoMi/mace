@@ -35,10 +35,10 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(logits->buffer())));
+    kernel_.setArg(idx++, *(logits->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(output->opencl_image()));
   }
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),

@@ -61,15 +61,15 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
 
     uint32_t idx = 0;
     kernel_.setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(input->buffer())));
+                   *(input->opencl_image()));
     kernel_.setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(weight->buffer())));
+                   *(weight->opencl_image()));
     if (bias != nullptr) {
       kernel_.setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(bias->buffer())));
+                     *(bias->opencl_image()));
     }
     kernel_.setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(output->buffer())));
+                   *(output->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int>(input->dim(3)));

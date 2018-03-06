@@ -81,16 +81,15 @@ void DepthwiseConv2d(cl::Kernel *kernel,
     *kernel = runtime->BuildKernel("depthwise_conv2d", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel->setArg(idx++,
-                            *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(
-        idx++, *(static_cast<const cl::Image2D *>(filter->buffer())));
+        idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
       kernel->setArg(
-          idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
+          idx++, *(bias->opencl_image()));
     }
     kernel->setArg(
-        idx++, *(static_cast<const cl::Image2D *>(output->buffer())));
+        idx++, *(output->opencl_image()));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, static_cast<short>(input_height));
     kernel->setArg(idx++, static_cast<short>(input_width));
