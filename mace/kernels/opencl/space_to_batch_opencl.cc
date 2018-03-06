@@ -42,11 +42,11 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(Tensor *space_tensor
 
     uint32_t idx = 0;
     if (b2s_) {
-      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(batch_tensor->buffer())));
-      kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(space_tensor->buffer())));
+      kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
+      kernel_.setArg(idx++, *(space_tensor->opencl_image()));
     } else {
-      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(space_tensor->buffer())));
-      kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(batch_tensor->buffer())));
+      kernel_.setArg(idx++, *(space_tensor->opencl_image()));
+      kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
     }
     kernel_.setArg(idx++, block_shape_[0]);
     kernel_.setArg(idx++, block_shape_[1]);

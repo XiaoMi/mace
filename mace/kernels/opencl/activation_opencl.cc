@@ -60,12 +60,12 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_ =
         runtime->BuildKernel("activation", kernel_name, built_options);
     int idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
     if (activation_ == PRELU) {
-      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(alpha->buffer())));
+      kernel_.setArg(idx++, *(alpha->opencl_image()));
     }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(output->opencl_image()));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

@@ -58,9 +58,9 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     uint32_t idx = 0;
     for (auto input : input_tensors) {
       kernel_.setArg(idx++,
-                         *(static_cast<const cl::Image2D *>(input->buffer())));
+                         *(input->opencl_image()));
     }
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
+    kernel_.setArg(idx++, *(output_tensor->opencl_image()));
   }
 
   const uint32_t gws[2] = {

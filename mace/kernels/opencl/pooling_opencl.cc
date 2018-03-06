@@ -65,7 +65,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
@@ -73,7 +73,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, paddings[1] / 2);
     kernel_.setArg(idx++, strides_[0]);
     kernel_.setArg(idx++, kernels_[0]);
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(output->opencl_image()));
   }
 
   const uint32_t gws[3] = {

@@ -39,14 +39,14 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
 
     uint32_t idx = 0;
     kernel_.setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(input0->buffer())));
+                   *(input0->opencl_image()));
     kernel_.setArg(idx++,
-                   *(static_cast<const cl::Image2D *>(input1->buffer())));
+                   *(input1->opencl_image()));
     if (!coeff_.empty()) {
       kernel_.setArg(idx++, coeff_[0]);
       kernel_.setArg(idx++, coeff_[1]);
     }
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(output->opencl_image()));
   }
 
   const uint32_t gws[2] = {

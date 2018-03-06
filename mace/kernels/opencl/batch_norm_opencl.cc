@@ -64,17 +64,17 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
         runtime->BuildKernel("batch_norm", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(scale->buffer())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(scale->opencl_image()));
     kernel_.setArg(idx++,
-                     *(static_cast<const cl::Image2D *>(offset->buffer())));
+                     *(offset->opencl_image()));
     if (!folded_constant_) {
       kernel_.setArg(idx++,
-                       *(static_cast<const cl::Image2D *>(mean->buffer())));
-      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(var->buffer())));
+                       *(mean->opencl_image()));
+      kernel_.setArg(idx++, *(var->opencl_image()));
       kernel_.setArg(idx++, epsilon);
     }
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit_);
   }
 

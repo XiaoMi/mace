@@ -241,7 +241,9 @@ class Image : public BufferBase {
     mapped_buf_ = nullptr;
   };
 
-  void Resize(index_t size) {}
+  void Resize(index_t size) {
+    MACE_NOT_IMPLEMENTED;
+  }
 
   void Copy(void *src, index_t offset, index_t length) {
     MACE_NOT_IMPLEMENTED;
@@ -263,7 +265,11 @@ class Image : public BufferBase {
 
 class BufferSlice : public BufferBase {
  public:
-  BufferSlice() {}
+  BufferSlice()
+    : buffer_(nullptr),
+      mapped_buf_(nullptr),
+      offset_(0),
+      length_(0) {}
   BufferSlice(BufferBase *buffer, index_t offset, index_t length)
     : BufferBase(buffer->size()),
       buffer_(buffer),
@@ -284,12 +290,13 @@ class BufferSlice : public BufferBase {
                                                       other.length_) {}
 
   ~BufferSlice() {
-    if (mapped_buf_ != nullptr) {
+    if (buffer_ != nullptr && mapped_buf_ != nullptr) {
       UnMap();
     }
   }
 
   void *buffer() {
+    MACE_CHECK_NOTNULL(buffer_);
     return buffer_->buffer();
   };
 
@@ -330,6 +337,7 @@ class BufferSlice : public BufferBase {
   };
 
   void Resize(index_t size) {
+    MACE_NOT_IMPLEMENTED;
   }
 
   void Copy(void *src, index_t offset, index_t length) {

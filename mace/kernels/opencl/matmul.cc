@@ -40,11 +40,10 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ = runtime->BuildKernel("matmul", kernel_name, built_options);
 
     uint32_t idx = 0;
+    kernel_.setArg(idx++, *(A->opencl_image()));
     kernel_.setArg(idx++,
-                         *(static_cast<const cl::Image2D *>(A->buffer())));
-    kernel_.setArg(idx++,
-                         *(static_cast<const cl::Image2D *>(B->buffer())));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(C->buffer())));
+                         *(B->opencl_image()));
+    kernel_.setArg(idx++, *(C->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(height));
     kernel_.setArg(idx++, static_cast<int>(width));
     kernel_.setArg(idx++, static_cast<int>(A->dim(2)));

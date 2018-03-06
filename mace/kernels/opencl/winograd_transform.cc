@@ -49,8 +49,8 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *i
                                    built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
+    kernel_.setArg(idx++, *(input_tensor->opencl_image()));
+    kernel_.setArg(idx++, *(output_tensor->opencl_image()));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(1)));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
@@ -119,11 +119,11 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(const Te
     const uint32_t round_h = (height_ + 1) / 2;
     const uint32_t round_w = (width_ + 1) / 2;
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->buffer())));
+    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input_tensor->opencl_image())));
     if (bias != nullptr) {
-      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->buffer())));
+      kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(bias->opencl_image())));
     }
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->buffer())));
+    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_tensor->opencl_image())));
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));

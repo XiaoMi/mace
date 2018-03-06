@@ -42,10 +42,10 @@ static void Concat2(cl::Kernel *kernel,
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input0->buffer())));
-    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input1->buffer())));
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input0->opencl_image())));
+    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input1->opencl_image())));
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
-    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->opencl_image())));
   }
 
   const uint32_t gws[3] = {
@@ -90,9 +90,9 @@ static void ConcatN(cl::Kernel *kernel,
   for (int i = 0; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
     uint32_t idx = 0;
-    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input->buffer())));
+    kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
-    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->buffer())));
+    kernel->setArg(idx++, *(output->opencl_image()));
 
     index_t input_channel_blk = input->dim(3) / 4;
     chan_blk_offset += input_channel_blk;
