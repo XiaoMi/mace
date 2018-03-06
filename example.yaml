@@ -18,6 +18,7 @@ models:
     limit_opencl_kernel_time: 0
     dsp_mode: 0
     obfuscate: 1
+    extreme: 0
   capture_net:
     platform: caffe
     model_file_path: path/to/model.prototxt
@@ -32,3 +33,4 @@ models:
     limit_opencl_kernel_time: 1
     dsp_mode: 0
     obfuscate: 1
+    extreme: 0
