@@ -62,7 +62,6 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
 
   // const node
   std::thread const_thread([&]() {
-    std::cout << "thread function\n";
     std::vector<hexagon_nn_const_node> const_node_list;
     for (const ConstTensor &const_tensor: net_def.tensors()) {
       std::vector<int> tensor_shape(const_tensor.dims().begin(),

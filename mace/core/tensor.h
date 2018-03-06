@@ -169,6 +169,7 @@ class Tensor {
 
   inline void Resize(const std::vector<index_t> &shape) {
     shape_ = shape;
+    image_shape_.clear();
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
       buffer_->Resize(raw_size());
@@ -181,24 +182,25 @@ class Tensor {
   inline void ResizeImage(const std::vector<index_t> &shape,
                           const std::vector<size_t> &image_shape) {
     shape_ = shape;
+    image_shape_ = image_shape;
     if (buffer_ == nullptr) {
       buffer_ = new Image(image_shape, dtype_);
       is_buffer_owner_ = true;
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
       Image *image = dynamic_cast<Image*>(buffer_);
-      MACE_CHECK(shape[0] <= image->image_shape()[0]
-                   && shape[1] <= image->image_shape()[1],
+      MACE_CHECK(image_shape[0] <= image->image_shape()[0]
+                   && image_shape[1] <= image->image_shape()[1],
                  "tensor (source op ",
                  name_,
-                 "): current image shape: ",
+                 "): current physical image shape: ",
                  image->image_shape()[0],
                  ", ",
                  image->image_shape()[1],
-                 " < resize tensor shape: ",
-                 shape[0],
+                 " < logical image shape: ",
+                 image_shape[0],
                  ", ",
-                 shape[1]);
+                 image_shape[1]);
     }
   }
 
@@ -212,8 +214,7 @@ class Tensor {
         delete buffer_;
         buffer_ = nullptr;
       }
-      ResizeImage(other->shape(),
-                  dynamic_cast<Image *>(other->UnderlyingBuffer())->image_shape());
+      ResizeImage(other->shape(), other->image_shape_);
     } else {
       if (is_buffer_owner_ && buffer_ != nullptr && has_opencl_image()) {
         delete buffer_;
@@ -307,6 +308,7 @@ class Tensor {
   Allocator *allocator_;
   DataType dtype_;
   std::vector<index_t> shape_;
+  std::vector<size_t > image_shape_;
   BufferBase *buffer_;
   BufferSlice buffer_slice_;
   bool is_buffer_owner_;
