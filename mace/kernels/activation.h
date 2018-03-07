@@ -116,7 +116,7 @@ class ActivationFunctor {
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
     if (activation_ == PRELU) {
-      MACE_CHECK(alpha != nullptr) << "PReLU's alpha parameter shouldn't be null";
+      MACE_CHECK_NOTNULL(alpha);
       const T *alpha_ptr = alpha->data<T>();
       PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr, output_ptr); 
     } else {
