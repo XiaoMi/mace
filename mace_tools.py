@@ -205,7 +205,12 @@ def main(unused_args):
       os.environ["MODEL_TAG"] = model_name
       model_config = configs["models"][model_name]
       for key in model_config:
-        os.environ[key.upper()] = str(model_config[key])
+        if key in ['input_node', 'output_node'] and isinstance(model_config[key], list):
+            os.environ[key.upper()] = ",".join(model_config[key])
+        elif key in ['input_shape', 'output_shape'] and isinstance(model_config[key], list):
+            os.environ[key.upper()] = ":".join(model_config[key])
+        else:
+          os.environ[key.upper()] = str(model_config[key])
 
       md5 = hashlib.md5()
       md5.update(model_config["model_file_path"])
