@@ -5,13 +5,13 @@ stages:
 ops_test:
   stage: ops_test
   only:
-    - gitlab_ci
+    - master
   script:
     - tools/bazel-adb-run.sh //mace/ops:ops_test
 
 ops_benchmark:
   stage: ops_benchmark
   only:
-    - gitlab_ci
+    - master
   script:
     - tools/bazel-adb-run.sh //mace/ops:ops_benchmark
