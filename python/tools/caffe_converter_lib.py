@@ -477,11 +477,22 @@ class CaffeConverter(object):
       else:
         op_def.input.extend([bias_tensor_name])
 
+    self.resolved_ops.add(op.name)
     output_shape = Shapes.fully_connected_shape(input_shape, weight_data.shape)
     op.output_shape = output_shape
+    final_op = op
 
-    self.resolved_ops.add(op.name)
-    op_def.output.extend([op.name + ':0'])
+    if len(self.ops_map[final_op.name].children) == 1 \
+        and self.ops_map[final_op.name].children[0].type in activation_name_map:
+      activation_op = self.ops_map[final_op.name].children[0]
+      fused_act_arg = op_def.arg.add()
+      fused_act_arg.name = 'activation'
+      fused_act_arg.s = activation_name_map[activation_op.type]
+      final_op = activation_op
+      final_op.output_shape = output_shape
+      self.resolved_ops.add(activation_op.name)
+
+    op_def.output.extend([final_op.name + ':0'])
     self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
 
