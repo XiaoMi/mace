@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <map>
 
 namespace mace {
 
@@ -364,18 +365,36 @@ class NetBase;
 class OperatorRegistry;
 class HexagonControlWrapper;
 
+struct MaceInputInfo {
+  std::string name;
+  std::vector<int64_t> shape;
+  const float *data;
+};
+
 class MaceEngine {
  public:
+  // Single input and output
   explicit MaceEngine(const NetDef *net_def,
                       DeviceType device_type);
+  // Multiple input or output
+  explicit MaceEngine(const NetDef *net_def,
+                      DeviceType device_type,
+                      const std::vector<std::string> &input_nodes,
+                      const std::vector<std::string> &output_nodes);
   ~MaceEngine();
+  // Single input and output
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
            float *output);
+  // Single input and output for benchmark
   bool Run(const float *input,
            const std::vector<int64_t> &input_shape,
            float *output,
            RunMetadata *run_metadata);
+  // Multiple input or output
+  bool Run(const std::vector<MaceInputInfo> &input,
+           std::map<std::string, float *> &output,
+           RunMetadata *run_metadata=nullptr);
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 
