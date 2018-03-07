@@ -49,12 +49,9 @@ def main(unused_args):
       output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
         FLAGS.model_file, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
     else:
-      input_shape = []
-      if FLAGS.input_shape != "":
-        input_shape.extend([int(x) for x in FLAGS.input_shape.split(',')])
       from lib.python.tools import tf_converter_lib
       output_graph_def = tf_converter_lib.convert_to_mace_pb(
-        FLAGS.model_file, FLAGS.input_node, input_shape, FLAGS.output_node,
+        FLAGS.model_file, FLAGS.input_node, FLAGS.input_shape, FLAGS.output_node,
         FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
