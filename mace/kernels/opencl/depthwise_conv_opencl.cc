@@ -34,7 +34,7 @@ void DepthwiseConv2d(cl::Kernel *kernel,
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv4(width);
-  if(kernel->get() == nullptr) {
+  if (kernel->get() == nullptr) {
     const index_t input_batch = input->dim(0);
     const index_t input_height = input->dim(1);
     const index_t input_width = input->dim(2);
@@ -78,18 +78,16 @@ void DepthwiseConv2d(cl::Kernel *kernel,
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    *kernel = runtime->BuildKernel("depthwise_conv2d", kernel_name, built_options);
+    *kernel =
+        runtime->BuildKernel("depthwise_conv2d", kernel_name, built_options);
 
     uint32_t idx = 0;
     kernel->setArg(idx++, *(input->opencl_image()));
-    kernel->setArg(
-        idx++, *(filter->opencl_image()));
+    kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
-      kernel->setArg(
-          idx++, *(bias->opencl_image()));
+      kernel->setArg(idx++, *(bias->opencl_image()));
     }
-    kernel->setArg(
-        idx++, *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->opencl_image()));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, static_cast<short>(input_height));
     kernel->setArg(idx++, static_cast<short>(input_width));
@@ -154,16 +152,17 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
         padding_type_, output_shape.data(), paddings.data());
   } else {
     paddings = paddings_;
-    CalcOutputSize(input->shape().data(), fake_filter_shape.data(), paddings_.data(),
-                   dilations_, strides_, RoundType::FLOOR, output_shape.data());
+    CalcOutputSize(input->shape().data(), fake_filter_shape.data(),
+                   paddings_.data(), dilations_, strides_, RoundType::FLOOR,
+                   output_shape.data());
   }
 
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
-  DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
-                  activation_, relux_max_limit_, 
+  DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),
+                  dilations_, activation_, relux_max_limit_,
                   DataTypeToEnum<T>::value, output, future);
 }
 

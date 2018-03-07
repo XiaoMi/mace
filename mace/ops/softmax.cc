@@ -20,9 +20,9 @@ void Register_Softmax(OperatorRegistry *op_registry) {
                     SoftmaxOp<DeviceType::OPENCL, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Softmax")
-                                    .Device(DeviceType::OPENCL)
-                                    .TypeConstraint<half>("T")
-                                    .Build(),
+                                     .Device(DeviceType::OPENCL)
+                                     .TypeConstraint<half>("T")
+                                     .Build(),
                     SoftmaxOp<DeviceType::OPENCL, half>);
 }
 

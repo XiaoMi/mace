@@ -7,10 +7,10 @@
 
 namespace mace {
 
-  // These functions are not thread-safe.
-  void LoadOpenCLLibrary();
-  void UnloadOpenCLLibrary();
- 
+// These functions are not thread-safe.
+void LoadOpenCLLibrary();
+void UnloadOpenCLLibrary();
+
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_WRAPPER_H_

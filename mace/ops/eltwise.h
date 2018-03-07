@@ -18,15 +18,17 @@ class EltwiseOp : public Operator<D, T> {
         functor_(static_cast<kernels::EltwiseType>(
                      OperatorBase::GetSingleArgument<int>(
                          "type", static_cast<int>(kernels::EltwiseType::SUM))),
-                 OperatorBase::GetRepeatedArgument<float>("coeff")){}
+                 OperatorBase::GetRepeatedArgument<float>("coeff")) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input0 = this->Input(0);
     const Tensor *input1 = this->Input(1);
     Tensor *output = this->Output(OUTPUT);
-    MACE_CHECK(input0->dim_size() == input1->dim_size()) << "Inputs of Eltwise op must be same shape";
-    for(int i = 0; i < input0->dim_size(); ++i) {
-      MACE_CHECK(input0->dim(i) == input1->dim(i)) << "Inputs of Eltwise op must be same shape";
+    MACE_CHECK(input0->dim_size() == input1->dim_size())
+        << "Inputs of Eltwise op must be same shape";
+    for (int i = 0; i < input0->dim_size(); ++i) {
+      MACE_CHECK(input0->dim(i) == input1->dim(i))
+          << "Inputs of Eltwise op must be same shape";
     }
 
     output->ResizeLike(input0);

@@ -9,7 +9,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-
 namespace mace {
 
 inline int64_t NowMicros() {

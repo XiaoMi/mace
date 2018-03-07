@@ -12,11 +12,10 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
-    const Tensor *input,
-    const Tensor *bias,
-    Tensor *output,
-    StatsFuture *future) {
+void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
+                                                       const Tensor *bias,
+                                                       Tensor *output,
+                                                       StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -47,10 +46,8 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
 
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      kernel_, cl::NullRange,
-      cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]),
-      nullptr, &event);
+      kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+      cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
@@ -62,9 +59,7 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(
   }
 }
 
-template
-struct BiasAddFunctor<DeviceType::OPENCL, float>;
-template
-struct BiasAddFunctor<DeviceType::OPENCL, half>;
+template struct BiasAddFunctor<DeviceType::OPENCL, float>;
+template struct BiasAddFunctor<DeviceType::OPENCL, half>;
 }  // namespace kernels
 }  // namespace mace

@@ -5,9 +5,9 @@
 #ifndef MACE_CORE_WORKSPACE_H_
 #define MACE_CORE_WORKSPACE_H_
 
+#include "mace/core/preallocated_pooled_allocator.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
-#include "mace/core/preallocated_pooled_allocator.h"
 
 namespace mace {
 
@@ -43,7 +43,7 @@ class Workspace {
 
   PreallocatedPooledAllocator preallocated_allocator_;
 
- DISABLE_COPY_AND_ASSIGN(Workspace);
+  DISABLE_COPY_AND_ASSIGN(Workspace);
 };
 
 }  // namespace mace

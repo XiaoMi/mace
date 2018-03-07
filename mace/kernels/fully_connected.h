@@ -6,8 +6,8 @@
 #define MACE_KERNELS_FULLY_CONNECTED_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
 
 namespace mace {
@@ -16,25 +16,23 @@ namespace kernels {
 struct FullyConnectedBase {
   FullyConnectedBase(const ActivationType activation,
                      const float relux_max_limit)
-      : activation_(activation),
-        relux_max_limit_(relux_max_limit){}
+      : activation_(activation), relux_max_limit_(relux_max_limit) {}
 
   const ActivationType activation_;
   const float relux_max_limit_;
 };
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct FullyConnectedFunctor : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
-                        const float relux_max_limit) :
-      FullyConnectedBase(activation, relux_max_limit) {}
+                        const float relux_max_limit)
+      : FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
-
     std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
     output->Resize(output_shape);
     const index_t N = output->dim(0);
@@ -70,11 +68,11 @@ struct FullyConnectedFunctor : FullyConnectedBase {
   }
 };
 
-template<typename T>
+template <typename T>
 struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   FullyConnectedFunctor(const ActivationType activation,
-                        const float relux_max_limit) :
-      FullyConnectedBase(activation, relux_max_limit) {}
+                        const float relux_max_limit)
+      : FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,

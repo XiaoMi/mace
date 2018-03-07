@@ -3,9 +3,9 @@
 //
 
 #include "mace/core/net.h"
-#include "mace/utils/utils.h"
-#include "mace/utils/timer.h"
 #include "mace/utils/memory_logging.h"
+#include "mace/utils/timer.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 
@@ -20,8 +20,7 @@ SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
                      Workspace *ws,
                      DeviceType type,
                      const NetMode mode)
-    :  NetBase(op_registry, net_def, ws, type),
-      device_type_(type) {
+    : NetBase(op_registry, net_def, ws, type), device_type_(type) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
@@ -41,8 +40,8 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
   MACE_LATENCY_LOGGER(1, "Running net");
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
-    MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(),
-                        "(", op->debug_def().type(), ")");
+    MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(), "(",
+                        op->debug_def().type(), ")");
     bool future_wait = (device_type_ == DeviceType::OPENCL &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
@@ -99,7 +98,8 @@ std::unique_ptr<NetBase> CreateNet(
     Workspace *ws,
     DeviceType type,
     const NetMode mode) {
-  std::unique_ptr<NetBase> net(new SerialNet(op_registry, net_def, ws, type, mode));
+  std::unique_ptr<NetBase> net(
+      new SerialNet(op_registry, net_def, ws, type, mode));
   return net;
 }
 

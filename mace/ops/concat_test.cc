@@ -112,8 +112,8 @@ TEST_F(ConcatOpTest, CPURandom) {
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::CPU, float>(
-        MakeString("Input", i), input_shapes[i], inputs[i]);
+    net.AddInputFromArray<DeviceType::CPU, float>(MakeString("Input", i),
+                                                  input_shapes[i], inputs[i]);
   }
 
   // Run
@@ -214,6 +214,6 @@ TEST_F(ConcatOpTest, OPENCLUnAligned) {
 }
 
 TEST_F(ConcatOpTest, OPENCLAlignedMultiInput) {
-  OpenclRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 32},
-                           {3, 32, 32, 32}, {3, 32, 32, 32}}, 3);
+  OpenclRandomTest<float>(
+      {{3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}}, 3);
 }

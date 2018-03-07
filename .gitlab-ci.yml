@@ -1,6 +1,15 @@
 stages:
   - ops_test
   - ops_benchmark
+  - cpplint
+
+cpplint:
+  stage: cpplint
+  only:
+    - master
+  script:
+    - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py
+    - python cpplint.py --root=mace --linelength=80 --counting=detailed $(find mace -name *.h -or -name *.cc | grep -vE "half.h")
 
 ops_test:
   stage: ops_test

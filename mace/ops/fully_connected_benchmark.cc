@@ -17,16 +17,17 @@ static void FCBenchmark(
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, height, width, channel});
-  net.AddRandomInput<D, float>("Weight", {out_channel, height * width * channel});
+  net.AddRandomInput<D, float>("Weight",
+                               {out_channel, height * width * channel});
   net.AddRandomInput<D, float>("Bias", {out_channel});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                        kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Weight", "WeightImage",
-                            kernels::BufferType::WEIGHT_HEIGHT);
+                        kernels::BufferType::WEIGHT_HEIGHT);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
-                            kernels::BufferType::ARGUMENT);
+                        kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FC", "FullyConnectedTest")
         .Input("InputImage")
@@ -57,14 +58,17 @@ static void FCBenchmark(
   net.Sync();
 }
 
-#define BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                              \
-  static void BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE(int iters) { \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H * W * OC + OC;  \
-    const int64_t tot = static_cast<int64_t>(iters) * (N + OC) * C * H * W + OC; \
-    mace::testing::MaccProcessed(macc);                                          \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                          \
-    FCBenchmark<DEVICE, TYPE>(iters, N, H, W, C, OC);                            \
-  }                                                                              \
+#define BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
+  static void BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE( \
+      int iters) {                                                    \
+    const int64_t macc =                                              \
+        static_cast<int64_t>(iters) * N * C * H * W * OC + OC;        \
+    const int64_t tot =                                               \
+        static_cast<int64_t>(iters) * (N + OC) * C * H * W + OC;      \
+    mace::testing::MaccProcessed(macc);                               \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));               \
+    FCBenchmark<DEVICE, TYPE>(iters, N, H, W, C, OC);                 \
+  }                                                                   \
   BENCHMARK(BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE)
 
 #define BM_FC(N, H, W, C, OC)                 \

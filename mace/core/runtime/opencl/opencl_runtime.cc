@@ -48,11 +48,9 @@ double OpenCLProfilingTimer::ElapsedMicros() {
   return (stop_nanos_ - start_nanos_) / 1000.0;
 }
 
-double OpenCLProfilingTimer::AccumulatedMicros() {
-  return accumulated_micros_;
-}
+double OpenCLProfilingTimer::AccumulatedMicros() { return accumulated_micros_; }
 
-void OpenCLProfilingTimer::AccumulateTiming(){
+void OpenCLProfilingTimer::AccumulateTiming() {
   StopTiming();
   accumulated_micros_ += (stop_nanos_ - start_nanos_) / 1000.0;
 }
@@ -116,7 +114,8 @@ OpenCLRuntime::OpenCLRuntime() {
   cl::CommandQueue command_queue(context, gpu_device, properties);
 
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
-  this->kernel_path_ = std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+  this->kernel_path_ =
+      std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
 
   this->device_ = new cl::Device(gpu_device);
   this->context_ = new cl::Context(context);
@@ -163,18 +162,14 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
   MACE_CHECK_NOTNULL(program);
 
   std::string binary_file_name_prefix =
-    GenerateCLBinaryFilenamePrefix(built_program_key);
+      GenerateCLBinaryFilenamePrefix(built_program_key);
   std::vector<unsigned char> program_vec;
   bool is_opencl_binary;
-  const bool found = GetSourceOrBinaryProgram(program_name,
-                                              binary_file_name_prefix,
-                                              context(),
-                                              device(),
-                                              program,
-                                              &is_opencl_binary);
+  const bool found =
+      GetSourceOrBinaryProgram(program_name, binary_file_name_prefix, context(),
+                               device(), program, &is_opencl_binary);
   MACE_CHECK(found, "Program not found for ",
-                    is_opencl_binary ? "binary: " : "source: ",
-                    built_program_key);
+             is_opencl_binary ? "binary: " : "source: ", built_program_key);
 
   // Build program
   std::string build_options_str =
@@ -190,13 +185,13 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
     }
     LOG(FATAL) << "Build program from "
                << (is_opencl_binary ? "binary: " : "source: ")
-               << built_program_key
-               << " failed: " << ret;
+               << built_program_key << " failed: " << ret;
   }
 
   if (!is_opencl_binary) {
     // Write binary if necessary
-    std::string binary_filename = kernel_path_ + binary_file_name_prefix + ".bin";
+    std::string binary_filename =
+        kernel_path_ + binary_file_name_prefix + ".bin";
     size_t device_list_size = 1;
     std::unique_ptr<size_t[]> program_binary_sizes(
         new size_t[device_list_size]);
@@ -240,8 +235,8 @@ cl::Kernel OpenCLRuntime::BuildKernel(
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    this->BuildProgram(program_name, built_program_key,
-                       build_options_str, &program);
+    this->BuildProgram(program_name, built_program_key, build_options_str,
+                       &program);
     built_program_map_.emplace(built_program_key, program);
   }
   return cl::Kernel(program, kernel_name.c_str());
@@ -250,9 +245,9 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
   if (stats != nullptr) {
     stats->start_micros =
-      event.getProfilingInfo<CL_PROFILING_COMMAND_START>() / 1000;
+        event.getProfilingInfo<CL_PROFILING_COMMAND_START>() / 1000;
     stats->end_micros =
-      event.getProfilingInfo<CL_PROFILING_COMMAND_END>() / 1000;
+        event.getProfilingInfo<CL_PROFILING_COMMAND_END>() / 1000;
   }
 }
 

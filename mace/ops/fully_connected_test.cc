@@ -10,7 +10,7 @@ namespace mace {
 
 class FullyConnectedOpTest : public OpsTestBase {};
 
-template<DeviceType D>
+template <DeviceType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
             const std::vector<index_t> &weight_shape,
@@ -58,83 +58,52 @@ void Simple(const std::vector<index_t> &input_shape,
   }
 
   // Check
-  auto expected =
-      CreateTensor<float>(output_shape, output_value);
+  auto expected = CreateTensor<float>(output_shape, output_value);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 TEST_F(FullyConnectedOpTest, SimpleCPU) {
-  Simple<DeviceType::CPU>({1, 2, 2, 2},
-                          {1, 2, 3, 4, 5, 6, 7, 8},
-                          {1, 8},
-                          {1, 2, 3, 4, 5, 6, 7, 8},
-                          {1}, {2},
-                          {1, 1, 1, 1}, {206});
-  Simple<DeviceType::CPU>({1, 1, 2, 5},
-                          {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-                          {2, 10},
-                          {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                           10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-                          {2}, {2, 3},
-                          {1, 1, 1, 2}, {387, 3853});
-  Simple<DeviceType::CPU>({1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {5, 6},
-                          {1, 2, 3, 4, 5, 6,
-                           10, 20, 30, 40, 50, 60,
-                           1, 2, 3, 4, 5, 6,
-                           10, 20, 30, 40, 50, 60,
-                           1, 2, 3, 4, 5, 6},
-                          {5}, {1, 2, 3, 4, 5},
-                          {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+  Simple<DeviceType::CPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 8},
+                          {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
+                          {206});
+  Simple<DeviceType::CPU>(
+      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+  Simple<DeviceType::CPU>(
+      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
+      {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
+       4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
+      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
-  Simple<DeviceType::CPU>({2, 1, 2, 2},
-                          {1, 2, 3, 4, 5, 6, 7, 8},
-                          {1, 4},
-                          {1, 2, 3, 4},
-                          {1}, {2},
-                          {2, 1, 1, 1}, {32, 72});
+  Simple<DeviceType::CPU>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 4},
+                          {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
-  Simple<DeviceType::OPENCL>({1, 2, 2, 2},
-                             {1, 2, 3, 4, 5, 6, 7, 8},
-                             {1, 8},
-                             {1, 2, 3, 4, 5, 6, 7, 8},
-                             {1}, {2},
-                             {1, 1, 1, 1}, {206});
-  Simple<DeviceType::OPENCL>({1, 1, 2, 5},
-                             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-                             {2, 10},
-                             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                              10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-                             {2}, {2, 3},
-                             {1, 1, 1, 2}, {387, 3853});
-  Simple<DeviceType::OPENCL>({1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {5, 6},
-                             {1, 2, 3, 4, 5, 6,
-                              10, 20, 30, 40, 50, 60,
-                              1, 2, 3, 4, 5, 6,
-                              10, 20, 30, 40, 50, 60,
-                              1, 2, 3, 4, 5, 6},
-                             {5}, {1, 2, 3, 4, 5},
-                             {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+  Simple<DeviceType::OPENCL>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 8},
+                             {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
+                             {206});
+  Simple<DeviceType::OPENCL>(
+      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+  Simple<DeviceType::OPENCL>(
+      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
+      {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
+       4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
+      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
-  Simple<DeviceType::OPENCL>({2, 1, 2, 2},
-                             {1, 2, 3, 4, 5, 6, 7, 8},
-                             {1, 4},
-                             {1, 2, 3, 4},
-                             {1}, {2},
-                             {2, 1, 1, 1}, {32, 72});
+  Simple<DeviceType::OPENCL>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 4},
+                             {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
-template<typename T>
+template <typename T>
 void Complex(const index_t batch,
              const index_t height,
              const index_t width,
@@ -156,8 +125,7 @@ void Complex(const index_t batch,
       "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>(
       "Weight", {out_channel, height * width * channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Bias", {out_channel});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
 
   // run cpu
   net.RunOp();
@@ -215,6 +183,4 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(16, 13, 12, 31, 113);
   Complex<half>(31, 21, 11, 23, 103);
 }
-
 }
-

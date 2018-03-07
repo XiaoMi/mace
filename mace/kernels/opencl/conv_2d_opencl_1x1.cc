@@ -66,20 +66,15 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     }
 
     auto runtime = OpenCLRuntime::Global();
-    *kernel =
-        runtime->BuildKernel("conv_2d_1x1", kernel_name, built_options);
+    *kernel = runtime->BuildKernel("conv_2d_1x1", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel->setArg(idx++,
-                          *(input->opencl_image()));
-    kernel->setArg(idx++,
-                          *(filter->opencl_image()));
+    kernel->setArg(idx++, *(input->opencl_image()));
+    kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
-      kernel->setArg(idx++,
-                            *(bias->opencl_image()));
+      kernel->setArg(idx++, *(bias->opencl_image()));
     }
-    kernel->setArg(idx++,
-                          *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->opencl_image()));
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, static_cast<int>(input_height));
@@ -99,7 +94,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 }
-
 
 }  // namespace kernels
 }  // namespace mace

@@ -45,7 +45,7 @@ class Flags {
   // Return a usage message with command line cmdline, and the
   // usage_text strings in flag_list[].
   static std::string Usage(const std::string &cmdline,
-                      const std::vector<Flag> &flag_list);
+                           const std::vector<Flag> &flag_list);
 };
 
 }  // namespace mace

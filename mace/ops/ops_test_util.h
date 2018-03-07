@@ -95,7 +95,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistry()) {};
+  OpsTestNet() : op_registry_(new OperatorRegistry()){};
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -239,7 +239,7 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
 
 template <typename T>
 std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
-                                const std::vector<T> &data) {
+                                     const std::vector<T> &data) {
   std::unique_ptr<Tensor> res(
       new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
@@ -334,9 +334,8 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
         for (int h = 0; h < x.dim(1); ++h) {
           for (int w = 0; w < x.dim(2); ++w) {
             for (int c = 0; c < x.dim(3); ++c) {
-              EXPECT_NEAR(*a, *b, abs_err) << "with index = ["
-                                           << n << ", " << h << ", "
-                                           << w << ", " << c << "]";
+              EXPECT_NEAR(*a, *b, abs_err) << "with index = [" << n << ", " << h
+                                           << ", " << w << ", " << c << "]";
               a++;
               b++;
             }

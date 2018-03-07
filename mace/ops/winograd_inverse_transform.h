@@ -8,12 +8,12 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#include "mace/kernels/winograd_transform.h"
 #include "mace/kernels/activation.h"
+#include "mace/kernels/winograd_transform.h"
 
 namespace mace {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class WinogradInverseTransformOp : public Operator<D, T> {
  public:
   WinogradInverseTransformOp(const OperatorDef &op_def, Workspace *ws)

@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "mace/core/runtime/opencl/cl2_header.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 
@@ -16,7 +16,8 @@ bool GetSourceOrBinaryProgram(const std::string &program_name,
                               cl::Device &device,
                               cl::Program *program,
                               bool *is_binary) {
-  extern const std::map<std::string, std::vector<unsigned char>> kEncryptedProgramMap;
+  extern const std::map<std::string, std::vector<unsigned char>>
+      kEncryptedProgramMap;
   *is_binary = false;
   auto it_source = kEncryptedProgramMap.find(program_name);
   if (it_source == kEncryptedProgramMap.end()) {

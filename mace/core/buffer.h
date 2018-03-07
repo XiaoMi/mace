@@ -5,9 +5,9 @@
 #ifndef MACE_CORE_BUFFER_H_
 #define MACE_CORE_BUFFER_H_
 
-#include "mace/core/types.h"
-#include "mace/core/allocator.h"
 #include <vector>
+#include "mace/core/allocator.h"
+#include "mace/core/types.h"
 
 namespace mace {
 
@@ -39,23 +39,19 @@ class BufferBase {
 
   virtual bool OnHost() const = 0;
 
-  virtual index_t offset() const {
-    return 0;
-  };
+  virtual index_t offset() const { return 0; };
 
-  template<typename T>
+  template <typename T>
   const T *data() const {
     return reinterpret_cast<const T *>(raw_data());
   }
 
-  template<typename T>
+  template <typename T>
   T *mutable_data() {
     return reinterpret_cast<T *>(raw_mutable_data());
   }
 
-  index_t size() const {
-    return size_;
-  }
+  index_t size() const { return size_; }
 
  protected:
   index_t size_;
@@ -64,26 +60,26 @@ class BufferBase {
 class Buffer : public BufferBase {
  public:
   Buffer(Allocator *allocator)
-    : BufferBase(0),
-      allocator_(allocator),
-      buf_(nullptr),
-      mapped_buf_(nullptr),
-      is_data_owner_(true) {}
+      : BufferBase(0),
+        allocator_(allocator),
+        buf_(nullptr),
+        mapped_buf_(nullptr),
+        is_data_owner_(true) {}
 
   Buffer(Allocator *allocator, index_t size)
-    : BufferBase(size),
-      allocator_(allocator),
-      mapped_buf_(nullptr),
-      is_data_owner_(true) {
+      : BufferBase(size),
+        allocator_(allocator),
+        mapped_buf_(nullptr),
+        is_data_owner_(true) {
     buf_ = allocator->New(size);
   }
 
   Buffer(Allocator *allocator, void *data, index_t size)
-    : BufferBase(size),
-      allocator_(allocator),
-      buf_(data),
-      mapped_buf_(nullptr),
-      is_data_owner_(false) {}
+      : BufferBase(size),
+        allocator_(allocator),
+        buf_(data),
+        mapped_buf_(nullptr),
+        is_data_owner_(false) {}
 
   virtual ~Buffer() {
     if (mapped_buf_ != nullptr) {
@@ -155,12 +151,10 @@ class Buffer : public BufferBase {
   void Copy(void *src, index_t offset, index_t length) {
     MACE_CHECK_NOTNULL(mapped_buf_);
     MACE_CHECK(length <= size_, "out of buffer");
-    memcpy(mapped_buf_, (char *) src + offset, length);
+    memcpy(mapped_buf_, (char *)src + offset, length);
   }
 
-  bool OnHost() const {
-    return allocator_->OnHost();
-  }
+  bool OnHost() const { return allocator_->OnHost(); }
 
  private:
   Allocator *allocator_;
@@ -168,23 +162,24 @@ class Buffer : public BufferBase {
   void *mapped_buf_;
   bool is_data_owner_;
 
- DISABLE_COPY_AND_ASSIGN(Buffer);
+  DISABLE_COPY_AND_ASSIGN(Buffer);
 };
 
 class Image : public BufferBase {
  public:
   Image()
-    : BufferBase(0),
-      allocator_(GetDeviceAllocator(OPENCL)),
-      buf_(nullptr),
-      mapped_buf_(nullptr) {}
+      : BufferBase(0),
+        allocator_(GetDeviceAllocator(OPENCL)),
+        buf_(nullptr),
+        mapped_buf_(nullptr) {}
 
   Image(std::vector<size_t> shape, DataType data_type)
-    : BufferBase(std::accumulate(shape.begin(), shape.end(),
-                                 1, std::multiplies<index_t>())
-                   * GetEnumTypeSize(data_type)),
-      allocator_(GetDeviceAllocator(OPENCL)),
-      mapped_buf_(nullptr) {
+      : BufferBase(
+            std::accumulate(
+                shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
+            GetEnumTypeSize(data_type)),
+        allocator_(GetDeviceAllocator(OPENCL)),
+        mapped_buf_(nullptr) {
     shape_ = shape;
     data_type_ = data_type;
     buf_ = allocator_->NewImage(shape, data_type);
@@ -214,9 +209,7 @@ class Image : public BufferBase {
     return mapped_buf_;
   }
 
-  std::vector<size_t> image_shape() const {
-    return shape_;
-  }
+  std::vector<size_t> image_shape() const { return shape_; }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_NOT_IMPLEMENTED;
@@ -241,17 +234,11 @@ class Image : public BufferBase {
     mapped_buf_ = nullptr;
   };
 
-  void Resize(index_t size) {
-    MACE_NOT_IMPLEMENTED;
-  }
+  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
 
-  void Copy(void *src, index_t offset, index_t length) {
-    MACE_NOT_IMPLEMENTED;
-  }
+  void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
 
-  bool OnHost() const {
-    return allocator_->OnHost();
-  }
+  bool OnHost() const { return allocator_->OnHost(); }
 
  private:
   Allocator *allocator_;
@@ -260,34 +247,25 @@ class Image : public BufferBase {
   void *buf_;
   void *mapped_buf_;
 
- DISABLE_COPY_AND_ASSIGN(Image);
+  DISABLE_COPY_AND_ASSIGN(Image);
 };
 
 class BufferSlice : public BufferBase {
  public:
   BufferSlice()
-    : buffer_(nullptr),
-      mapped_buf_(nullptr),
-      offset_(0),
-      length_(0) {}
+      : buffer_(nullptr), mapped_buf_(nullptr), offset_(0), length_(0) {}
   BufferSlice(BufferBase *buffer, index_t offset, index_t length)
-    : BufferBase(buffer->size()),
-      buffer_(buffer),
-      mapped_buf_(nullptr),
-      offset_(offset),
-      length_(length) {
+      : BufferBase(buffer->size()),
+        buffer_(buffer),
+        mapped_buf_(nullptr),
+        offset_(offset),
+        length_(length) {
     MACE_CHECK(offset >= 0, "buffer slice offset should >= 0");
-    MACE_CHECK(offset + length <= size_,
-               "buffer slice offset + length (",
-               offset,
-               " + ",
-               length,
-               ") should <= ",
-               size_);
+    MACE_CHECK(offset + length <= size_, "buffer slice offset + length (",
+               offset, " + ", length, ") should <= ", size_);
   }
-  BufferSlice(const BufferSlice &other) : BufferSlice(other.buffer_,
-                                                      other.offset_,
-                                                      other.length_) {}
+  BufferSlice(const BufferSlice &other)
+      : BufferSlice(other.buffer_, other.offset_, other.length_) {}
 
   ~BufferSlice() {
     if (buffer_ != nullptr && mapped_buf_ != nullptr) {
@@ -303,7 +281,7 @@ class BufferSlice : public BufferBase {
   const void *raw_data() const {
     if (OnHost()) {
       MACE_CHECK_NOTNULL(buffer_);
-      return (char *) buffer_->raw_data() + offset_;
+      return (char *)buffer_->raw_data() + offset_;
     } else {
       MACE_CHECK_NOTNULL(mapped_buf_);
       return mapped_buf_;
@@ -320,9 +298,7 @@ class BufferSlice : public BufferBase {
     return nullptr;
   }
 
-  void UnMap(void *mapped_ptr) const {
-    MACE_NOT_IMPLEMENTED;
-  }
+  void UnMap(void *mapped_ptr) const { MACE_NOT_IMPLEMENTED; }
 
   void Map(std::vector<size_t> *pitch) {
     MACE_CHECK_NOTNULL(buffer_);
@@ -336,21 +312,13 @@ class BufferSlice : public BufferBase {
     mapped_buf_ = nullptr;
   };
 
-  void Resize(index_t size) {
-    MACE_NOT_IMPLEMENTED;
-  }
+  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
 
-  void Copy(void *src, index_t offset, index_t length) {
-    MACE_NOT_IMPLEMENTED;
-  }
+  void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
 
-  index_t offset() const {
-    return offset_;
-  }
+  index_t offset() const { return offset_; }
 
-  bool OnHost() const {
-    return buffer_->OnHost();
-  }
+  bool OnHost() const { return buffer_->OnHost(); }
 
  private:
   BufferBase *buffer_;
@@ -358,7 +326,6 @@ class BufferSlice : public BufferBase {
   index_t offset_;
   index_t length_;
 };
-
 }
 
-#endif // MACE_CORE_BUFFER_H_
+#endif  // MACE_CORE_BUFFER_H_

@@ -18,7 +18,7 @@ namespace mace {
 namespace kernels {
 
 namespace {
-  constexpr int kCostPerGroup = 1024;
+constexpr int kCostPerGroup = 1024;
 }  // namespace
 
 template <DeviceType D, typename T>

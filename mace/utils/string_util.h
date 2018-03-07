@@ -27,7 +27,7 @@ inline void MakeStringInternal(std::stringstream &ss,
   MakeStringInternal(ss, args...);
 }
 
-} // namespace
+}  // namespace
 
 template <typename... Args>
 std::string MakeString(const Args &... args) {

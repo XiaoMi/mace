@@ -13,7 +13,6 @@ class ReshapeTest : public OpsTestBase {};
 void TestReshape(const std::vector<index_t> &org_shape,
                  const std::vector<int> &output_shape,
                  const std::vector<index_t> &res_shape) {
-
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Reshape", "ReshapeTest")

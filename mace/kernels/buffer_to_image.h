@@ -17,10 +17,9 @@ struct BufferToImageFunctorBase {
   bool i2b_;
 };
 
-template<DeviceType D, typename T>
-struct BufferToImageFunctor : BufferToImageFunctorBase{
-  BufferToImageFunctor(bool i2b = false) :
-      BufferToImageFunctorBase(i2b) {}
+template <DeviceType D, typename T>
+struct BufferToImageFunctor : BufferToImageFunctorBase {
+  BufferToImageFunctor(bool i2b = false) : BufferToImageFunctorBase(i2b) {}
   void operator()(Tensor *input,
                   const BufferType type,
                   Tensor *output,
@@ -29,10 +28,9 @@ struct BufferToImageFunctor : BufferToImageFunctorBase{
   }
 };
 
-template<typename T>
-struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase{
-  BufferToImageFunctor(bool i2b = false) :
-      BufferToImageFunctorBase(i2b) {}
+template <typename T>
+struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase {
+  BufferToImageFunctor(bool i2b = false) : BufferToImageFunctorBase(i2b) {}
   void operator()(Tensor *input,
                   const BufferType type,
                   Tensor *output,

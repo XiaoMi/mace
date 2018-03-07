@@ -2,12 +2,12 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/kernels/resize_bilinear.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
-#include "mace/kernels/resize_bilinear.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -29,14 +29,14 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     std::vector<index_t> output_shape{batch, out_height, out_width, channels};
 
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape,
-                    BufferType::IN_OUT_CHANNEL,
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     output_image_shape);
     output->ResizeImage(output_shape, output_image_shape);
 
     float height_scale =
         CalculateResizeScale(in_height, out_height, align_corners_);
-    float width_scale = CalculateResizeScale(in_width, out_width, align_corners_);
+    float width_scale =
+        CalculateResizeScale(in_width, out_width, align_corners_);
 
     auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
@@ -45,7 +45,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    kernel_ = runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
+    kernel_ =
+        runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
 
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
@@ -62,11 +63,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
                            static_cast<uint32_t>(out_height * batch)};
   const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
-  ss << "resize_bilinear_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "resize_bilinear_opencl_kernel_" << output->dim(0) << "_"
+     << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 }
 

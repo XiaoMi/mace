@@ -6,9 +6,9 @@
 #define MACE_KERNELS_BIAS_ADD_H_
 
 #include "mace/core/future.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -32,7 +32,6 @@ struct BiasAddFunctor {
     const T *bias_ptr = bias->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
-
 #pragma omp parallel for collapse(4)
     for (index_t n = 0; n < batch; ++n) {
       for (index_t h = 0; h < height; ++h) {
@@ -44,7 +43,6 @@ struct BiasAddFunctor {
         }
       }
     }
-
   }
 };
 

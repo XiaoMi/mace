@@ -12,14 +12,14 @@
 
 namespace mace {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class WinogradTransformOp : public Operator<D, T> {
  public:
   WinogradTransformOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         functor_(static_cast<Padding>(OperatorBase::GetSingleArgument<int>(
-            "padding", static_cast<int>(VALID))),
-        OperatorBase::GetRepeatedArgument<int>("padding_values")) {}
+                     "padding", static_cast<int>(VALID))),
+                 OperatorBase::GetRepeatedArgument<int>("padding_values")) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

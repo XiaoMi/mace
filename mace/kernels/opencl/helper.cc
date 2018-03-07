@@ -3,8 +3,8 @@
 //
 
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -28,8 +28,9 @@ void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWOI */
 }
 
 // [H * W * M, (Ic + 3) / 4]
-void CalDepthwiseConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWIM */
-                                        std::vector<size_t> &image_shape) {
+void CalDepthwiseConv2dFilterImageShape(
+    const std::vector<index_t> &shape, /* HWIM */
+    std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape.resize(2);
   image_shape[0] = shape[0] * shape[1] * shape[3];
@@ -47,8 +48,9 @@ void CalArgImageShape(const std::vector<index_t> &shape,
 
 // Only support 3x3 now
 // [ (Ic + 3) / 4, 16 * Oc]
-void CalWinogradFilterImageShape(const std::vector<index_t> &shape, /* Oc, Ic, H, W*/
-                                 std::vector<size_t> &image_shape) {
+void CalWinogradFilterImageShape(
+    const std::vector<index_t> &shape, /* Oc, Ic, H, W*/
+    std::vector<size_t> &image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape.resize(2);
   image_shape[0] = RoundUpDiv4(shape[1]);
@@ -115,19 +117,16 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
   }
 }
 
-
 std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
                                       const BufferType type) {
   if (type == WINOGRAD_FILTER) {
     return {16, shape[0], shape[1], 1};
-  }else if (type == IN_OUT_HEIGHT) {
-    index_t out_width = shape[0] *
-                        ((shape[1] - 1) / 2) *
-                        ((shape[2] - 1) / 2);
+  } else if (type == IN_OUT_HEIGHT) {
+    index_t out_width = shape[0] * ((shape[1] - 1) / 2) * ((shape[2] - 1) / 2);
     return {16, shape[3], out_width, 1};
   } else {
     LOG(FATAL) << "Mace not supported yet.";
-  return std::vector<index_t>();
+    return std::vector<index_t>();
   }
 }
 
@@ -188,10 +187,10 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
     std::vector<uint32_t> local_ws(3, 0);
     local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
     local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    local_ws[2] = std::min<uint32_t>(gws[2],
-                                     kwg_size / (local_ws[0] * local_ws[1]));
+    local_ws[2] =
+        std::min<uint32_t>(gws[2], kwg_size / (local_ws[0] * local_ws[1]));
     return {
-      // TODO tuning these magic numbers
+        // TODO tuning these magic numbers
         {local_ws[0], local_ws[1], local_ws[2], 1},
         {kwg_size / 16, 4, 4, 1},
         {kwg_size / 32, 4, 8, 1},
@@ -217,20 +216,20 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
     };
   };
   cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params,
-                  Timer *timer,
+  auto func = [&](const std::vector<uint32_t> &params, Timer *timer,
                   std::vector<uint32_t> *tuning_result) -> cl_int {
-    MACE_CHECK(params.size() == 4) << "Tuning parameters of 3D kernel must be 4D";
+    MACE_CHECK(params.size() == 4)
+        << "Tuning parameters of 3D kernel must be 4D";
     cl_int error = CL_SUCCESS;
     if (timer == nullptr) {
       uint32_t num_blocks = params[3];
       const uint32_t block_size = gws[2] / num_blocks;
       if (gws[2] % num_blocks > 0) num_blocks++;
       for (uint32_t i = 0; i < num_blocks; ++i) {
-        uint32_t gws2 = (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
+        uint32_t gws2 =
+            (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
         error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel,
-            cl::NDRange(0, 0, i * block_size),
+            kernel, cl::NDRange(0, 0, i * block_size),
             cl::NDRange(gws[0], gws[1], gws2),
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
         MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
@@ -247,15 +246,16 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
       if (LimitKernelTime()) {
         double elapse_time = timer->AccumulatedMicros();
         timer->ClearTiming();
-        uint32_t num_blocks = std::min(static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[2]);
+        uint32_t num_blocks = std::min(
+            static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[2]);
         (*tuning_result)[3] = num_blocks;
         const uint32_t block_size = gws[2] / num_blocks;
         if (gws[2] % num_blocks > 0) num_blocks++;
         for (uint32_t i = 0; i < num_blocks; ++i) {
-          uint32_t gws2 = (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
+          uint32_t gws2 =
+              (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
           error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel,
-              cl::NDRange(0, 0, i * block_size),
+              kernel, cl::NDRange(0, 0, i * block_size),
               cl::NDRange(gws[0], gws[1], gws2),
               cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
           MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
@@ -300,34 +300,30 @@ void TuningOrRun2DKernel(cl::Kernel &kernel,
             {kwg_size / 256, 256, 1},
             {kwg_size / 512, 512, 1},
             {kwg_size, 1, 1},
-            {1, kwg_size, 1}
-    };
+            {1, kwg_size, 1}};
   };
   cl::Event event;
-  auto func = [&](const std::vector<uint32_t> &params,
-                  Timer *timer,
+  auto func = [&](const std::vector<uint32_t> &params, Timer *timer,
                   std::vector<uint32_t> *tuning_result) -> cl_int {
-    MACE_CHECK(params.size() == 3) << "Tuning parameters of 2D kernel must be 3d";
+    MACE_CHECK(params.size() == 3)
+        << "Tuning parameters of 2D kernel must be 3d";
     cl_int error = CL_SUCCESS;
     if (timer == nullptr) {
       uint32_t num_blocks = params[2];
       const uint32_t block_size = gws[1] / num_blocks;
       if (gws[1] % num_blocks > 0) num_blocks++;
       for (uint32_t i = 0; i < num_blocks; ++i) {
-        uint32_t gws1 = (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
+        uint32_t gws1 =
+            (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
         error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel,
-            cl::NDRange(0, i * block_size),
-            cl::NDRange(gws[0], gws1),
-            cl::NDRange(params[0], params[1]),
-            nullptr, &event);
+            kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
+            cl::NDRange(params[0], params[1]), nullptr, &event);
         MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       }
     } else {
       timer->ClearTiming();
       error = runtime->command_queue().enqueueNDRangeKernel(
-          kernel, cl::NullRange,
-          cl::NDRange(gws[0], gws[1]),
+          kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
           cl::NDRange(params[0], params[1]), nullptr, &event);
       MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       timer->AccumulateTiming();
@@ -336,16 +332,16 @@ void TuningOrRun2DKernel(cl::Kernel &kernel,
       if (LimitKernelTime()) {
         double elapse_time = timer->AccumulatedMicros();
         timer->ClearTiming();
-        uint32_t num_blocks = std::min(static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[1]);
+        uint32_t num_blocks = std::min(
+            static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[1]);
         (*tuning_result)[2] = num_blocks;
         const uint32_t block_size = gws[1] / num_blocks;
         if (gws[1] % num_blocks > 0) num_blocks++;
         for (uint32_t i = 0; i < num_blocks; ++i) {
-          uint32_t gws1 = (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
+          uint32_t gws1 =
+              (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
           error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel,
-              cl::NDRange(0, i * block_size),
-              cl::NDRange(gws[0], gws1),
+              kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
               cl::NDRange(params[0], params[1]), nullptr, &event);
           MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
           timer->AccumulateTiming();
@@ -355,11 +351,8 @@ void TuningOrRun2DKernel(cl::Kernel &kernel,
     return error;
   };
   OpenCLProfilingTimer timer(&event);
-  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(tuning_key,
-                                                     lws,
-                                                     params_generator,
-                                                     func,
-                                                     &timer);
+  Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(
+      tuning_key, lws, params_generator, func, &timer);
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
@@ -368,7 +361,6 @@ void TuningOrRun2DKernel(cl::Kernel &kernel,
       }
     };
   }
-
 }
 
 }  // namespace kernels

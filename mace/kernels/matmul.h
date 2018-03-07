@@ -6,12 +6,11 @@
 #define MACE_KERNELS_MATMUL_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
 namespace kernels {
-
 
 template <DeviceType D, typename T>
 struct MatMulFunctor {
@@ -19,7 +18,6 @@ struct MatMulFunctor {
                   const Tensor *B,
                   Tensor *C,
                   StatsFuture *future) {
-
     std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
     C->Resize(c_shape);
     const index_t N = C->dim(0);
@@ -51,7 +49,6 @@ struct MatMulFunctor {
     }
   }
 };
-
 
 template <typename T>
 struct MatMulFunctor<DeviceType::OPENCL, T> {

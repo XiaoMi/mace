@@ -15,7 +15,7 @@ class ReshapeOp : public Operator<D, T> {
  public:
   ReshapeOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        shape_(OperatorBase::GetRepeatedArgument<int64_t>("shape")){}
+        shape_(OperatorBase::GetRepeatedArgument<int64_t>("shape")) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -38,9 +38,11 @@ class ReshapeOp : public Operator<D, T> {
     }
 
     if (unknown_idx != -1) {
-      MACE_CHECK(product != 0) << "Cannot infer shape if there is zero shape size.";
+      MACE_CHECK(product != 0)
+          << "Cannot infer shape if there is zero shape size.";
       const index_t missing = input->size() / product;
-      MACE_CHECK(missing * product == input->size()) << "Input size not match reshaped tensor size";
+      MACE_CHECK(missing * product == input->size())
+          << "Input size not match reshaped tensor size";
       out_shape[unknown_idx] = missing;
     }
 

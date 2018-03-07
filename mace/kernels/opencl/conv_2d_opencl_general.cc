@@ -61,20 +61,15 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     }
 
     auto runtime = OpenCLRuntime::Global();
-    *kernel =
-        runtime->BuildKernel("conv_2d", kernel_name, built_options);
+    *kernel = runtime->BuildKernel("conv_2d", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel->setArg(idx++,
-                          *(input->opencl_image()));
-    kernel->setArg(idx++,
-                          *(filter->opencl_image()));
+    kernel->setArg(idx++, *(input->opencl_image()));
+    kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
-      kernel->setArg(idx++,
-                            *(bias->opencl_image()));
+      kernel->setArg(idx++, *(bias->opencl_image()));
     }
-    kernel->setArg(idx++,
-                          *(output->opencl_image()));
+    kernel->setArg(idx++, *(output->opencl_image()));
     kernel->setArg(idx++, relux_max_limit);
     kernel->setArg(idx++, static_cast<uint32_t>(input->dim(1)));
     kernel->setArg(idx++, static_cast<uint32_t>(input->dim(2)));

@@ -29,16 +29,16 @@ void Quantizer::Quantize(const Tensor &in_tensor,
                          float *max_out) {
   float stepsize;
   float recip_stepsize;
-  QuantizeAdjustRange(min_in, max_in,
-                      min_out, max_out,
-                      &stepsize, &recip_stepsize);
+  QuantizeAdjustRange(min_in, max_in, min_out, max_out, &stepsize,
+                      &recip_stepsize);
 
   const float *in = in_tensor.data<float>();
   uint8_t *out = out_tensor->mutable_data<uint8_t>();
 
   for (int i = 0; i < in_tensor.size(); i++) {
     const float inval = in[i];
-    float ival = static_cast<uint8_t>((inval - *min_out) * recip_stepsize + 0.5f);
+    float ival =
+        static_cast<uint8_t>((inval - *min_out) * recip_stepsize + 0.5f);
     if (ival < 0) ival = 0;
     if (ival > 255) ival = 255;
     out[i] = static_cast<uint8_t>(ival);
@@ -93,4 +93,4 @@ void Quantizer::DeQuantize(const Tensor &in_tensor,
   }
 }
 
-} // namespace mace
+}  // namespace mace

@@ -10,14 +10,13 @@
 namespace mace {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input,
     const Tensor *weight,
     const Tensor *bias,
     Tensor *output,
     StatsFuture *future) {
-
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
@@ -57,19 +56,16 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
-    kernel_ = runtime->BuildKernel("fully_connected", kernel_name, built_options);
+    kernel_ =
+        runtime->BuildKernel("fully_connected", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++,
-                   *(input->opencl_image()));
-    kernel_.setArg(idx++,
-                   *(weight->opencl_image()));
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, *(weight->opencl_image()));
     if (bias != nullptr) {
-      kernel_.setArg(idx++,
-                     *(bias->opencl_image()));
+      kernel_.setArg(idx++, *(bias->opencl_image()));
     }
-    kernel_.setArg(idx++,
-                   *(output->opencl_image()));
+    kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int>(input->dim(2)));
     kernel_.setArg(idx++, static_cast<int>(input->dim(3)));
@@ -78,25 +74,18 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
   }
 
   const uint32_t gws[2] = {
-      static_cast<uint32_t>(batch),
-      static_cast<uint32_t>(output_blocks),
+      static_cast<uint32_t>(batch), static_cast<uint32_t>(output_blocks),
   };
   const std::vector<uint32_t> lws = {16, 64, 1};
   std::stringstream ss;
-  ss << "fc_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "fc_opencl_kernel_" << output->dim(0) << "_" << output->dim(1) << "_"
+     << output->dim(2) << "_" << output->dim(3);
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
-
 };
 
-template
-struct FullyConnectedFunctor<DeviceType::OPENCL, float>;
+template struct FullyConnectedFunctor<DeviceType::OPENCL, float>;
 
-template
-struct FullyConnectedFunctor<DeviceType::OPENCL, half>;
+template struct FullyConnectedFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

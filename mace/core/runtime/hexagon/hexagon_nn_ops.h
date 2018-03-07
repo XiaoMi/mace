@@ -5,8 +5,8 @@
 #ifndef LIBMACE_HEXAGON_NN_OPS_H
 #define LIBMACE_HEXAGON_NN_OPS_H
 
-#include "mace/utils/logging.h"
 #include <unordered_map>
+#include "mace/utils/logging.h"
 
 namespace mace {
 
@@ -24,8 +24,7 @@ typedef enum op_type_enum {
 class OpMap {
  public:
   void Init() {
-#define DEF_OP(NAME) \
-    op_map_[#NAME] = OP_##NAME;
+#define DEF_OP(NAME) op_map_[#NAME] = OP_##NAME;
 
 #include "mace/core/runtime/hexagon/ops.h"
 
@@ -40,9 +39,10 @@ class OpMap {
       return OP_INVALID;
     }
   }
+
  private:
   std::unordered_map<std::string, int> op_map_;
 };
-} // namespace mace
+}  // namespace mace
 
-#endif // LIBMACE_HEXAGON_NN_OPS_H
+#endif  // LIBMACE_HEXAGON_NN_OPS_H

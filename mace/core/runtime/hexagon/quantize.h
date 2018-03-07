@@ -16,13 +16,17 @@ class Quantizer {
 
   void Quantize(const Tensor &in_tensor,
                 Tensor *out_tensor,
-                float *min_out, float *max_out);
+                float *min_out,
+                float *max_out);
   void Quantize(const Tensor &in_tensor,
-                const float min_in, const float max_in,
+                const float min_in,
+                const float max_in,
                 Tensor *out_tensor,
-                float *min_out, float *max_out);
+                float *min_out,
+                float *max_out);
   void DeQuantize(const Tensor &in_tensor,
-                  const float min_in, const float max_in,
+                  const float min_in,
+                  const float max_in,
                   Tensor *out_tensor);
 
  private:
@@ -33,9 +37,9 @@ class Quantizer {
                            float *stepsize,
                            float *recip_stepsize);
 
- DISABLE_COPY_AND_ASSIGN(Quantizer);
+  DISABLE_COPY_AND_ASSIGN(Quantizer);
 };
 
-} // mace
+}  // mace
 
-#endif // MACE_DSP_UTIL_QUANTIZE_H_
+#endif  // MACE_DSP_UTIL_QUANTIZE_H_

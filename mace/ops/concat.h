@@ -14,10 +14,11 @@ class ConcatOp : public Operator<D, T> {
  public:
   ConcatOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("axis", 3)){}
+        functor_(OperatorBase::GetSingleArgument<int>("axis", 3)) {}
 
   bool Run(StatsFuture *future) override {
-    MACE_CHECK(this->InputSize() >= 2) << "There must be at least two inputs to concat";
+    MACE_CHECK(this->InputSize() >= 2)
+        << "There must be at least two inputs to concat";
     const std::vector<const Tensor *> input_list = this->Inputs();
     const int32_t concat_axis = OperatorBase::GetSingleArgument<int>("axis", 3);
     const int32_t input_dims = input_list[0]->dim_size();

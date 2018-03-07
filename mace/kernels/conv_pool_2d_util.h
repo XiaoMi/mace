@@ -15,7 +15,7 @@ enum Padding {
   FULL = 2,   // Pads with one less than the filter size on both sides
 };
 
-enum RoundType{
+enum RoundType {
   FLOOR = 0,
   CEIL = 1,
 };

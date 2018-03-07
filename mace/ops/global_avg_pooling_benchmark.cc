@@ -40,13 +40,13 @@ static void GlobalAvgPooling(
   static void BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE( \
       int iters) {                                                    \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;  \
-    mace::testing::MaccProcessed(tot);                               \
+    mace::testing::MaccProcessed(tot);                                \
     mace::testing::BytesProcessed(tot *(sizeof(float)));              \
     GlobalAvgPooling<DEVICE>(iters, N, C, H, W);                      \
   }                                                                   \
   BENCHMARK(BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE)
 
-#define BM_GLOBAL_AVG_POOLING(N, C, H, W)       \
+#define BM_GLOBAL_AVG_POOLING(N, C, H, W) \
   BM_GLOBAL_AVG_POOLING_MACRO(N, C, H, W, CPU);
 //  BM_GLOBAL_AVG_POOLING_MACRO(N, C, H, W, NEON);
 

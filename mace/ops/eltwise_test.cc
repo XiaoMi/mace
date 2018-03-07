@@ -2,15 +2,15 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/kernels/eltwise.h"
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/kernels/eltwise.h"
 
 namespace mace {
 
 class EltwiseOpTest : public OpsTestBase {};
 
-template<DeviceType D>
+template <DeviceType D>
 void Simple(const kernels::EltwiseType type,
             const std::vector<index_t> &shape,
             const std::vector<float> &input0,
@@ -36,8 +36,10 @@ void Simple(const kernels::EltwiseType type,
     // Run
     net.RunOp(D);
   } else {
-    BufferToImage<D, half>(net, "Input1", "InputImg1", kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Input2", "InputImg2", kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, half>(net, "Input1", "InputImg1",
+                           kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, half>(net, "Input2", "InputImg2",
+                           kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg1")
         .Input("InputImg2")
@@ -49,7 +51,8 @@ void Simple(const kernels::EltwiseType type,
     // Run
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImg", "Output", kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(net, "OutputImg", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
   }
 
   auto expected = CreateTensor<float>(shape, output);
@@ -58,64 +61,42 @@ void Simple(const kernels::EltwiseType type,
 }
 
 TEST_F(EltwiseOpTest, CPUSimple) {
-  Simple<DeviceType::CPU>(kernels::EltwiseType::PROD,
-                          {1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {1, 2, 3, 4, 5, 6},
+  Simple<DeviceType::CPU>(kernels::EltwiseType::PROD, {1, 1, 2, 3},
+                          {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
                           {1, 4, 9, 16, 25, 36});
-  Simple<DeviceType::CPU>(kernels::EltwiseType::SUM,
-                          {1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {1, 2, 3, 4, 5, 6},
+  Simple<DeviceType::CPU>(kernels::EltwiseType::SUM, {1, 1, 2, 3},
+                          {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
                           {2, 4, 6, 8, 10, 12});
-  Simple<DeviceType::CPU>(kernels::EltwiseType::SUM,
-                          {1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {1, 2, 3, 4, 5, 6},
-                          {3, 6, 9, 12, 15, 18},
-                          {2, 1});
-  Simple<DeviceType::CPU>(kernels::EltwiseType::MAX,
-                          {1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {1, 1, 3, 3, 6, 6},
+  Simple<DeviceType::CPU>(kernels::EltwiseType::SUM, {1, 1, 2, 3},
+                          {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
+                          {3, 6, 9, 12, 15, 18}, {2, 1});
+  Simple<DeviceType::CPU>(kernels::EltwiseType::MAX, {1, 1, 2, 3},
+                          {1, 2, 3, 4, 5, 6}, {1, 1, 3, 3, 6, 6},
                           {1, 2, 3, 4, 6, 6});
-  Simple<DeviceType::CPU>(kernels::EltwiseType::MIN,
-                          {1, 1, 2, 3},
-                          {1, 2, 3, 4, 5, 6},
-                          {1, 1, 3, 3, 6, 6},
+  Simple<DeviceType::CPU>(kernels::EltwiseType::MIN, {1, 1, 2, 3},
+                          {1, 2, 3, 4, 5, 6}, {1, 1, 3, 3, 6, 6},
                           {1, 1, 3, 3, 5, 6});
 }
 
 TEST_F(EltwiseOpTest, GPUSimple) {
-  Simple<DeviceType::OPENCL>(kernels::EltwiseType::PROD,
-                             {1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {1, 2, 3, 4, 5, 6},
+  Simple<DeviceType::OPENCL>(kernels::EltwiseType::PROD, {1, 1, 2, 3},
+                             {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
                              {1, 4, 9, 16, 25, 36});
-  Simple<DeviceType::OPENCL>(kernels::EltwiseType::SUM,
-                             {1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {1, 2, 3, 4, 5, 6},
+  Simple<DeviceType::OPENCL>(kernels::EltwiseType::SUM, {1, 1, 2, 3},
+                             {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
                              {2, 4, 6, 8, 10, 12});
-  Simple<DeviceType::OPENCL>(kernels::EltwiseType::SUM,
-                             {1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {1, 2, 3, 4, 5, 6},
-                             {3, 6, 9, 12, 15, 18},
-                             {2, 1});
-  Simple<DeviceType::OPENCL>(kernels::EltwiseType::MAX,
-                             {1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {1, 1, 3, 3, 6, 6},
+  Simple<DeviceType::OPENCL>(kernels::EltwiseType::SUM, {1, 1, 2, 3},
+                             {1, 2, 3, 4, 5, 6}, {1, 2, 3, 4, 5, 6},
+                             {3, 6, 9, 12, 15, 18}, {2, 1});
+  Simple<DeviceType::OPENCL>(kernels::EltwiseType::MAX, {1, 1, 2, 3},
+                             {1, 2, 3, 4, 5, 6}, {1, 1, 3, 3, 6, 6},
                              {1, 2, 3, 4, 6, 6});
-  Simple<DeviceType::OPENCL>(kernels::EltwiseType::MIN,
-                             {1, 1, 2, 3},
-                             {1, 2, 3, 4, 5, 6},
-                             {1, 1, 3, 3, 6, 6},
+  Simple<DeviceType::OPENCL>(kernels::EltwiseType::MIN, {1, 1, 2, 3},
+                             {1, 2, 3, 4, 5, 6}, {1, 1, 3, 3, 6, 6},
                              {1, 1, 3, 3, 5, 6});
 }
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 void RandomTest(const kernels::EltwiseType type,
                 const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
@@ -139,8 +120,10 @@ void RandomTest(const kernels::EltwiseType type,
   // Run
   net.RunOp();
 
-  BufferToImage<D, T>(net, "Input1", "InputImg1", kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(net, "Input2", "InputImg2", kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<D, T>(net, "Input1", "InputImg1",
+                      kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<D, T>(net, "Input2", "InputImg2",
+                      kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg1")
       .Input("InputImg2")
@@ -153,12 +136,15 @@ void RandomTest(const kernels::EltwiseType type,
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(net, "OutputImg", "OPENCLOutput", kernels::BufferType::IN_OUT_CHANNEL);
+  ImageToBuffer<D, float>(net, "OutputImg", "OPENCLOutput",
+                          kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(*net.GetTensor("Output"), *net.GetOutput("OPENCLOutput"), 1e-3);
+    ExpectTensorNear<float>(*net.GetTensor("Output"),
+                            *net.GetOutput("OPENCLOutput"), 1e-3);
   } else {
-    ExpectTensorNear<float>(*net.GetTensor("Output"), *net.GetOutput("OPENCLOutput"), 1e-1);
+    ExpectTensorNear<float>(*net.GetTensor("Output"),
+                            *net.GetOutput("OPENCLOutput"), 1e-1);
   }
 }
 

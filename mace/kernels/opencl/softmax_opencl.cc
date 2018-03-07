@@ -6,13 +6,13 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
                                                        Tensor *output,
                                                        StatsFuture *future) {
@@ -45,17 +45,12 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
                            static_cast<uint32_t>(height * batch)};
   const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
-  ss << "softmax_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "softmax_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
+     << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 }
 
-template
-struct SoftmaxFunctor<DeviceType::OPENCL, float>;
-template
-struct SoftmaxFunctor<DeviceType::OPENCL, half>;
+template struct SoftmaxFunctor<DeviceType::OPENCL, float>;
+template struct SoftmaxFunctor<DeviceType::OPENCL, half>;
 }  // namespace kernels
 }  // namespace mace

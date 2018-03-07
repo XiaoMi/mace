@@ -11,17 +11,18 @@
 namespace mace {
 
 template <DeviceType D, typename T>
-class ImageToBufferOp: public Operator<D, T> {
+class ImageToBufferOp : public Operator<D, T> {
  public:
   ImageToBufferOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws), functor_(true)  {}
+      : Operator<D, T>(op_def, ws), functor_(true) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
-    kernels::BufferType type = static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
-        "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
+    kernels::BufferType type =
+        static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
+            "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
     functor_(output, type, const_cast<Tensor *>(input_tensor), future);
     return true;
   }

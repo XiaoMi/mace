@@ -11,12 +11,10 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
-    const Tensor *A,
-    const Tensor *B,
-    Tensor *C,
-    StatsFuture *future) {
-
+void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
+                                                      const Tensor *B,
+                                                      Tensor *C,
+                                                      StatsFuture *future) {
   std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
   CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, c_image_shape);
@@ -41,8 +39,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
 
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(A->opencl_image()));
-    kernel_.setArg(idx++,
-                         *(B->opencl_image()));
+    kernel_.setArg(idx++, *(B->opencl_image()));
     kernel_.setArg(idx++, *(C->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(height));
     kernel_.setArg(idx++, static_cast<int>(width));
@@ -57,20 +54,14 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(
   };
   const std::vector<uint32_t> lws = {16, 64, 1};
   std::stringstream ss;
-  ss << "matmul_opencl_kernel_"
-     << C->dim(0) << "_"
-     << C->dim(1) << "_"
-     << C->dim(2) << "_"
-     << C->dim(3);
+  ss << "matmul_opencl_kernel_" << C->dim(0) << "_" << C->dim(1) << "_"
+     << C->dim(2) << "_" << C->dim(3);
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
-
 };
 
-template
-struct MatMulFunctor<DeviceType::OPENCL, float>;
+template struct MatMulFunctor<DeviceType::OPENCL, float>;
 
-template
-struct MatMulFunctor<DeviceType::OPENCL, half>;
+template struct MatMulFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

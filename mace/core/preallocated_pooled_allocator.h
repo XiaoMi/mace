@@ -36,6 +36,6 @@ class PreallocatedPooledAllocator {
   std::unordered_map<int, std::unique_ptr<BufferBase>> buffers_;
 };
 
-} // namespace mace
+}  // namespace mace
 
-#endif // MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_
+#endif  // MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_

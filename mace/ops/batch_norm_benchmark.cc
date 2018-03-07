@@ -76,7 +76,7 @@ static void BatchNorm(
   static void BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \
       int iters) {                                                     \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;   \
-    mace::testing::MaccProcessed(tot);                                \
+    mace::testing::MaccProcessed(tot);                                 \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                \
     BatchNorm<DEVICE, TYPE>(iters, N, C, H, W);                        \
   }                                                                    \

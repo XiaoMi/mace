@@ -52,9 +52,8 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
                  << "filter" << kernel_h << "x" << kernel_w << ","
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
-    DepthwiseConv2dFunctor<DeviceType::CPU, float>(strides_, paddings_,
-                                                   dilations_)(
-        input, filter, bias, output, future);
+    DepthwiseConv2dFunctor<DeviceType::CPU, float>(
+        strides_, paddings_, dilations_)(input, filter, bias, output, future);
     return;
   }
 
@@ -73,8 +72,8 @@ void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
     input_shape = padded_input.shape().data();
   }
   auto conv2d_neon_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_neon_func(input_ptr, input_shape, filter_ptr, filter_shape, bias_ptr, output_ptr,
-                   output_shape);
+  conv2d_neon_func(input_ptr, input_shape, filter_ptr, filter_shape, bias_ptr,
+                   output_ptr, output_shape);
 }
 
 }  // namespace kernels

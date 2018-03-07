@@ -5,8 +5,8 @@
 #include "mace/kernels/concat.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -42,24 +42,23 @@ static void Concat2(cl::Kernel *kernel,
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input0->opencl_image())));
-    kernel->setArg(idx++, *(static_cast<const cl::Image2D *>(input1->opencl_image())));
+    kernel->setArg(idx++,
+                   *(static_cast<const cl::Image2D *>(input0->opencl_image())));
+    kernel->setArg(idx++,
+                   *(static_cast<const cl::Image2D *>(input1->opencl_image())));
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
-    kernel->setArg(idx++, *(static_cast<cl::Image2D *>(output->opencl_image())));
+    kernel->setArg(idx++,
+                   *(static_cast<cl::Image2D *>(output->opencl_image())));
   }
 
   const uint32_t gws[3] = {
-      static_cast<uint32_t>(channel_blk),
-      static_cast<uint32_t>(width),
+      static_cast<uint32_t>(channel_blk), static_cast<uint32_t>(width),
       static_cast<uint32_t>(batch * height),
   };
   const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
-  ss << "concat_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
+     << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
 }
 
@@ -97,27 +96,25 @@ static void ConcatN(cl::Kernel *kernel,
     index_t input_channel_blk = input->dim(3) / 4;
     chan_blk_offset += input_channel_blk;
     const uint32_t gws[3] = {
-        static_cast<uint32_t>(input_channel_blk),
-        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(input_channel_blk), static_cast<uint32_t>(width),
         static_cast<uint32_t>(batch * height),
     };
     const std::vector<uint32_t> lws = {8, 16, 8, 1};
     std::stringstream ss;
-    ss << "concat_n_opencl_kernel_"
-       << input_channel_blk << "_"
-       << width << "_"
+    ss << "concat_n_opencl_kernel_" << input_channel_blk << "_" << width << "_"
        << batch * height;
     TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
   }
 }
 
-template<typename T>
-void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Tensor *> &input_list,
-                                                      Tensor *output,
-                                                      StatsFuture *future) {
+template <typename T>
+void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
+    const std::vector<const Tensor *> &input_list,
+    Tensor *output,
+    StatsFuture *future) {
   const int inputs_count = input_list.size();
   MACE_CHECK(inputs_count >= 2 && axis_ == 3)
-    << "Concat opencl kernel only support >=2 elements with axis == 3";
+      << "Concat opencl kernel only support >=2 elements with axis == 3";
 
   const Tensor *input0 = input_list[0];
   bool divisible_four = input0->dim(axis_) % 4 == 0;
@@ -137,8 +134,9 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     }
     output_shape[axis_] += input->dim(axis_);
   }
-  MACE_CHECK(inputs_count == 2 || divisible_four,
-             "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
+  MACE_CHECK(
+      inputs_count == 2 || divisible_four,
+      "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
   output->ResizeImage(output_shape, image_shape);
@@ -151,17 +149,14 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(const std::vector<const Te
     default:
       if (divisible_four) {
         ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future);
-      }
-      else {
+      } else {
         MACE_NOT_IMPLEMENTED;
       }
   }
 };
 
-template
-struct ConcatFunctor<DeviceType::OPENCL, float>;
-template
-struct ConcatFunctor<DeviceType::OPENCL, half>;
+template struct ConcatFunctor<DeviceType::OPENCL, float>;
+template struct ConcatFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

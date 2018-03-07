@@ -60,17 +60,14 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 
-    kernel_ =
-        runtime->BuildKernel("batch_norm", kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("batch_norm", kernel_name, built_options);
 
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(scale->opencl_image()));
-    kernel_.setArg(idx++,
-                     *(offset->opencl_image()));
+    kernel_.setArg(idx++, *(offset->opencl_image()));
     if (!folded_constant_) {
-      kernel_.setArg(idx++,
-                       *(mean->opencl_image()));
+      kernel_.setArg(idx++, *(mean->opencl_image()));
       kernel_.setArg(idx++, *(var->opencl_image()));
       kernel_.setArg(idx++, epsilon);
     }

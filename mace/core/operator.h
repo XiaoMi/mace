@@ -7,10 +7,10 @@
 
 #include "mace/core/arg_helper.h"
 #include "mace/core/future.h"
-#include "mace/public/mace.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -147,7 +147,7 @@ OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
 class OperatorRegistry {
  public:
   typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *>
-    RegistryType;
+      RegistryType;
   OperatorRegistry();
   ~OperatorRegistry() = default;
   RegistryType *registry() { return &registry_; };

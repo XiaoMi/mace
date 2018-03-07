@@ -145,7 +145,7 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-      (dilations[1] == 1 || strides[1] == 1),
+                 (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
@@ -159,18 +159,29 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
   */
   output_shape[0] = input_shape[0];
   if (round_type == FLOOR) {
-    output_shape[1] = static_cast<index_t>(std::floor(1.0 * (input_shape[1] + padding_size[0]
-        - filter_shape[0] - (filter_shape[0] - 1) * (dilations[0] - 1)) / strides[0]) + 1);
-    output_shape[2] = static_cast<index_t>(std::floor(1.0 * (input_shape[2] + padding_size[1]
-        - filter_shape[1] - (filter_shape[1] - 1) * (dilations[1] - 1)) / strides[1]) + 1);
+    output_shape[1] = static_cast<index_t>(
+        std::floor(1.0 * (input_shape[1] + padding_size[0] - filter_shape[0] -
+                          (filter_shape[0] - 1) * (dilations[0] - 1)) /
+                   strides[0]) +
+        1);
+    output_shape[2] = static_cast<index_t>(
+        std::floor(1.0 * (input_shape[2] + padding_size[1] - filter_shape[1] -
+                          (filter_shape[1] - 1) * (dilations[1] - 1)) /
+                   strides[1]) +
+        1);
   } else {
-    output_shape[1] = static_cast<index_t>(std::ceil(1.0 * (input_shape[1] + padding_size[0]
-        - filter_shape[0] - (filter_shape[0] - 1) * (dilations[0] - 1)) / strides[0]) + 1);
-    output_shape[2] = static_cast<index_t>(std::ceil(1.0 * (input_shape[2] + padding_size[1]
-        - filter_shape[1] - (filter_shape[1] - 1) * (dilations[1] - 1)) / strides[1]) + 1);
+    output_shape[1] = static_cast<index_t>(
+        std::ceil(1.0 * (input_shape[1] + padding_size[0] - filter_shape[0] -
+                         (filter_shape[0] - 1) * (dilations[0] - 1)) /
+                  strides[0]) +
+        1);
+    output_shape[2] = static_cast<index_t>(
+        std::ceil(1.0 * (input_shape[2] + padding_size[1] - filter_shape[1] -
+                         (filter_shape[1] - 1) * (dilations[1] - 1)) /
+                  strides[1]) +
+        1);
   }
   output_shape[3] = filter_shape[2];
-
 }
 
 void CalPaddingSize(const index_t *input_shape,   // NCHW
