@@ -31,7 +31,7 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
 fi
 
 if [ "$PLATFORM" == "tensorflow" ];then
-  if [[ x"$TARGET_ABI" -ne x"host" ]]; then
+  if [[ x"$TARGET_ABI" != x"host" ]]; then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
@@ -73,14 +73,17 @@ elif [ "$PLATFORM" == "caffe" ];then
     docker cp ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${CONTAINER_NAME}:/mace
   done
 
-  if [[ x"$TARGET_ABI" -ne x"host" ]]; then
+  if [[ x"$TARGET_ABI" != x"host" ]]; then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
-      adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
-      docker cp ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${CONTAINER_NAME}:/mace
+      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
     done
   fi
+  for NAME in "${OUTPUT_NAMES[@]}";do
+    FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
+    docker cp ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${CONTAINER_NAME}:/mace
+  done
 
   MODEL_FILE_NAME=$(basename ${MODEL_FILE_PATH})
   WEIGHT_FILE_NAME=$(basename ${WEIGHT_FILE_PATH})

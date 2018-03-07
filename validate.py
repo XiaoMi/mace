@@ -28,10 +28,10 @@ def load_data(file):
 def format_output_name(name):
   return re.sub('[^0-9a-zA-Z]+', '_', name)
 
-def compare_output(mace_out_value, out_value):
+def compare_output(output_name, mace_out_value, out_value):
   if mace_out_value.size != 0:
     similarity = (1 - spatial.distance.cosine(out_value.flat, mace_out_value.flat))
-    print 'MACE VS TF similarity: ', similarity
+    print output_name, 'MACE VS', FLAGS.platform.upper(), 'similarity: ', similarity
     if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
         (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
         (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
@@ -71,7 +71,7 @@ def validate_tf_model(input_names, input_shapes, output_names):
         for i in range(len(output_names)):
           output_file_name = FLAGS.mace_out_file + "_" + format_output_name(output_names[i])
           mace_out_value = load_data(output_file_name)
-          compare_output(mace_out_value, output_values[i])
+          compare_output(output_names[i], mace_out_value, output_values[i])
 
 def validate_caffe_model(input_names, input_shapes, output_names, output_shapes):
   os.environ['GLOG_minloglevel'] = '1' # suprress Caffe verbose prints
@@ -101,7 +101,7 @@ def validate_caffe_model(input_names, input_shapes, output_names, output_shapes)
     value = value.reshape(out_shape).transpose((0, 2, 3, 1))
     output_file_name = FLAGS.mace_out_file + "_" + format_output_name(output_names[i])
     mace_out_value = load_data(output_file_name)
-    compare_output(mace_out_value, value)
+    compare_output(output_names[i], mace_out_value, value)
 
 def main(unused_args):
   input_names = [name for name in FLAGS.input_node.split(',')]
