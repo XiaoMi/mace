@@ -61,5 +61,13 @@ for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`
   adb -s ${device} shell "mkdir -p $DEVICE_PATH"
   adb -s ${device} shell "mkdir -p $DEVICE_PATH/cl"
   adb -s ${device} push $BAZEL_BIN_PATH/$BIN_NAME $DEVICE_PATH && \
-  adb -s ${device} shell "MACE_OPENCL_PROFILING=$PROFILING MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@"
+  TEST_LOG_FILE=`tempfile`
+  adb -s ${device} shell "MACE_OPENCL_PROFILING=$PROFILING MACE_KERNEL_PATH=$DEVICE_CL_PATH MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL $DEVICE_PATH/$BIN_NAME $@" | tee $TEST_LOG_FILE 
+  if [ ! -z "$FAILURE_PATTERN" ]; then
+    grep "$FAILURE_PATTERN" $TEST_LOG_FILE > /dev/null
+    if [ $? -eq 0 ]; then
+      exit 1
+    fi
+  fi
+  rm $TEST_LOG_FILE
 done

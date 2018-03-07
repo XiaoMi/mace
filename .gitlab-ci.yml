@@ -7,11 +7,11 @@ ops_test:
   only:
     - master
   script:
-    - tools/bazel-adb-run.sh //mace/ops:ops_test
+    - FAILURE_PATTERN="FAILED" tools/bazel-adb-run.sh //mace/ops:ops_test
 
 ops_benchmark:
   stage: ops_benchmark
   only:
     - master
   script:
-    - tools/bazel-adb-run.sh //mace/ops:ops_benchmark
+    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark
