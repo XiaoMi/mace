@@ -4,6 +4,7 @@
 
 #include "benchmark/stat_summarizer.h"
 #include "mace/public/mace.h"
+#include "mace/utils/logging.h"
 
 #include <iomanip>
 #include <queue>
@@ -202,7 +203,7 @@ std::string StatSummarizer::GetStatsByNodeType() const {
             "=============================="
          << std::endl;
 
-  std::cout << "Number of nodes executed: " << details_.size() << std::endl;
+  LOG(INFO) << "Number of nodes executed: " << details_.size() << std::endl;
 
   std::map<std::string, int64_t> node_type_map_count;
   std::map<std::string, int64_t> node_type_map_time;
@@ -312,7 +313,7 @@ void StatSummarizer::PrintOperatorStats() const {
   std::string output = GetOutputString();
   std::istringstream iss(output);
   for (std::string line; std::getline(iss, line);) {
-    std::cout << line << std::endl;
+    LOG(INFO) << line;
   }
 }
 
