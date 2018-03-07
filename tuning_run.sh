@@ -44,7 +44,6 @@ else
   IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODE}"
   for NAME in "${INPUT_NAMES[@]}";do
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
-    echo $FORMATTED_NAME
     adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} || exit 1
   done
 
