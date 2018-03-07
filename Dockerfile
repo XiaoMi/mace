@@ -30,6 +30,7 @@ RUN apt-get install -y --no-install-recommends \
     openjdk-8-jdk \
     openjdk-8-jre-headless \
     wget
+RUN pip install --upgrade pip
 
 ENV ANDROID_NDK_HOME /opt/android-ndk
 ENV ANDROID_NDK /opt/android-ndk
@@ -65,8 +66,7 @@ ENV BAZEL_VERSION 0.7.0
 WORKDIR /
 RUN mkdir /bazel && \
     cd /bazel && \
-    curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36" -fSsL -O https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh && \
-    curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36" -fSsL -o /bazel/LICENSE.txt https://raw.githubusercontent.com/bazelbuild/bazel/master/LICENSE && \
+    wget https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh && \
     chmod +x bazel-*.sh && \
     ./bazel-$BAZEL_VERSION-installer-linux-x86_64.sh && \
     cd / && \
@@ -107,11 +107,18 @@ RUN apt-get install -y --no-install-recommends \
     android-tools-adb
 
 # Install tools
-RUN pip install setuptools && \
-    pip install tensorflow==1.4.0 && \
-    pip install scipy && \
-    pip install jinja2
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.4.0 \
+    scipy \
+    jinja2 \
+    pyyaml
 
 # Download tensorflow tools
 RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \
     chmod +x transform_graph
+
+# Install gitlab runner
+RUN curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-ci-multi-runner/script.deb.sh | bash
+RUN apt-get install gitlab-ci-multi-runner
+
+ENTRYPOINT gitlab-runner run
