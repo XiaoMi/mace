@@ -22,7 +22,7 @@ if [ "$EMBED_MODEL_DATA" = 0 ]; then
   cp codegen/models/${MODEL_TAG}/${MODEL_TAG}.data $MODEL_OUTPUT_DIR
 fi
 
-if [ x"$RUNTIME" = x"host" ]; then
+if [ x"$TARGET_ABI" == x"host" ]; then
   bazel build --verbose_failures -c opt --strip always benchmark:benchmark_model \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
@@ -30,15 +30,17 @@ if [ x"$RUNTIME" = x"host" ]; then
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --copt="-O3" \
     --define openmp=true \
-    --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
     --define production=true || exit 1
 
   cp bazel-bin/benchmark/benchmark_model $MODEL_OUTPUT_DIR
 
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
   ${MODEL_OUTPUT_DIR}/benchmark_model \
+      --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
       --device=${DEVICE_TYPE} \
+      --input_node="${INPUT_NODE}" \
       --input_shape="${INPUT_SHAPE}"\
+      --output_node="${OUTPUT_NODE}" \
       --output_shape="${OUTPUT_SHAPE}"\
       --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} || exit 1
 
