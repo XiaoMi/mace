@@ -25,4 +25,5 @@ bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
                                      --input_shape=${INPUT_SHAPE} \
                                      ${DSP_MODE_FLAG} \
                                      --embed_model_data=${EMBED_MODEL_DATA} \
+                                     --winograd=${FAST_CONV} \
                                      --obfuscate=${OBFUSCATE} || exit 1
