@@ -17,7 +17,7 @@ cc_library(
     linkstatic = 1,
     deps = [
         "@mace//:mace_headers",
-    ]
+    ],
 )
 
 cc_binary(
@@ -33,11 +33,34 @@ cc_binary(
         "//external:gflags_nothreads",
     ] + if_hexagon_enabled([
         "//lib/hexagon:hexagon",
-    ])+ if_production_mode([
+    ]) + if_production_mode([
         "@mace//:mace_prod",
         "//codegen:generated_opencl_prod",
         "//codegen:generated_tuning_params",
     ]) + if_not_production_mode([
         "@mace//:mace_dev",
     ]),
+)
+
+cc_library(
+    name = "libmace_merged",
+    srcs = [
+        "libmace_merged.a",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+cc_binary(
+    name = "model_throughput_test",
+    srcs = ["model_throughput_test.cc"],
+    linkopts = if_openmp_enabled(["-fopenmp"]),
+    linkstatic = 1,
+    deps = [
+        ":libmace_merged",
+        "//external:gflags_nothreads",
+        "//lib/hexagon",
+        "@mace//:mace",
+        "@mace//:mace_headers",
+        "@mace//:mace_prod",
+    ],
 )
