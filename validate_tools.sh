@@ -15,8 +15,8 @@ source ${CURRENT_DIR}/env.sh
 MODEL_OUTPUT_DIR=$1
 GENERATE_DATA_OR_NOT=$2
 
-IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODE}"
-IFS=',' read -r -a OUTPUT_NAMES <<< "${OUTPUT_NODE}"
+IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
+IFS=',' read -r -a OUTPUT_NAMES <<< "${OUTPUT_NODES}"
 
 echo $MODEL_OUTPUT_DIR
 if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
@@ -24,9 +24,9 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
     rm -rf ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME}
   done
-  python tools/generate_data.py --input_node=${INPUT_NODE} \
+  python tools/generate_data.py --input_node=${INPUT_NODES} \
     --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
-    --input_shape="${INPUT_SHAPE}" || exit 1
+    --input_shape="${INPUT_SHAPES}" || exit 1
   exit 0
 fi
 
@@ -43,10 +43,10 @@ if [ "$PLATFORM" == "tensorflow" ];then
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
       --mace_runtime ${RUNTIME} \
-      --input_node ${INPUT_NODE} \
-      --output_node ${OUTPUT_NODE} \
-      --input_shape ${INPUT_SHAPE} \
-      --output_shape ${OUTPUT_SHAPE} || exit 1
+      --input_node ${INPUT_NODES} \
+      --output_node ${OUTPUT_NODES} \
+      --input_shape ${INPUT_SHAPES} \
+      --output_shape ${OUTPUT_SHAPES} || exit 1
 
 elif [ "$PLATFORM" == "caffe" ];then
   IMAGE_NAME=mace-caffe:latest
@@ -96,9 +96,9 @@ elif [ "$PLATFORM" == "caffe" ];then
     --input_file /mace/${INPUT_FILE_NAME} \
     --mace_out_file /mace/${OUTPUT_FILE_NAME} \
     --mace_runtime ${RUNTIME} \
-    --input_node ${INPUT_NODE} \
-    --output_node ${OUTPUT_NODE} \
-    --input_shape ${INPUT_SHAPE} \
-    --output_shape ${OUTPUT_SHAPE}
+    --input_node ${INPUT_NODES} \
+    --output_node ${OUTPUT_NODES} \
+    --input_shape ${INPUT_SHAPES} \
+    --output_shape ${OUTPUT_SHAPES}
 
 fi

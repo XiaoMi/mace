@@ -205,9 +205,9 @@ def main(unused_args):
       os.environ["MODEL_TAG"] = model_name
       model_config = configs["models"][model_name]
       for key in model_config:
-        if key in ['input_node', 'output_node'] and isinstance(model_config[key], list):
+        if key in ['input_nodes', 'output_nodes'] and isinstance(model_config[key], list):
             os.environ[key.upper()] = ",".join(model_config[key])
-        elif key in ['input_shape', 'output_shape'] and isinstance(model_config[key], list):
+        elif key in ['input_shapes', 'output_shapes'] and isinstance(model_config[key], list):
             os.environ[key.upper()] = ":".join(model_config[key])
         else:
           os.environ[key.upper()] = str(model_config[key])

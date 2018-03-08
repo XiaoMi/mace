@@ -20,10 +20,10 @@ PRODUCTION_MODE=$4
 if [ x"$TARGET_ABI" = x"host" ]; then
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
   ${MODEL_OUTPUT_DIR}/mace_run \
-    --input_node="${INPUT_NODE}" \
-    --input_shape="${INPUT_SHAPE}"\
-    --output_node="${OUTPUT_NODE}" \
-    --output_shape="${OUTPUT_SHAPE}"\
+    --input_node="${INPUT_NODES}" \
+    --input_shape="${INPUT_SHAPES}"\
+    --output_node="${OUTPUT_NODES}" \
+    --output_shape="${OUTPUT_SHAPES}"\
     --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
     --output_file=${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
     --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
@@ -41,7 +41,7 @@ else
     adb shell "mkdir -p ${KERNEL_DIR}" || exit 1
   fi
 
-  IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODE}"
+  IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
   for NAME in "${INPUT_NAMES[@]}";do
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
     adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} || exit 1
@@ -61,10 +61,10 @@ else
     MACE_KERNEL_PATH=$KERNEL_DIR \
     MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
     ${PHONE_DATA_DIR}/mace_run \
-    --input_node="${INPUT_NODE}" \
-    --input_shape="${INPUT_SHAPE}"\
-    --output_node="${OUTPUT_NODE}" \
-    --output_shape="${OUTPUT_SHAPE}"\
+    --input_node="${INPUT_NODES}" \
+    --input_shape="${INPUT_SHAPES}"\
+    --output_node="${OUTPUT_NODES}" \
+    --output_shape="${OUTPUT_SHAPES}"\
     --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
