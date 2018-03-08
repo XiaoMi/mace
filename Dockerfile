@@ -29,6 +29,7 @@ RUN apt-get install -y --no-install-recommends \
     zlib1g-dev \
     openjdk-8-jdk \
     openjdk-8-jre-headless \
+    openssh-server \
     wget
 RUN pip install --upgrade pip
 
