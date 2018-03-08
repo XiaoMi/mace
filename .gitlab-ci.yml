@@ -23,4 +23,7 @@ ops_benchmark:
   only:
     - master
   script:
-    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark ".*half_OPENCL"
+    - BENCHMARK_TEST_LOG=`tempfile`
+    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark > $BENCHMARK_TEST_LOG
+    - cat $BENCHMARK_TEST_LOG
+    - rm $BENCHMARK_TEST_LOG
