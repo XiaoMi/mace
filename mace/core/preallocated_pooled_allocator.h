@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 #include "mace/core/allocator.h"
+#include "mace/core/buffer.h"
 
 namespace mace {
 
