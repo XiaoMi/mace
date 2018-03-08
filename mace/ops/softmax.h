@@ -14,11 +14,10 @@ template <DeviceType D, class T>
 class SoftmaxOp : public Operator<D, T> {
  public:
   SoftmaxOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {
-  }
+      : Operator<D, T>(operator_def, ws) {}
 
   bool Run(StatsFuture *future) override {
-    const Tensor *logits= this->Input(LOGITS);
+    const Tensor *logits = this->Input(LOGITS);
 
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(logits);

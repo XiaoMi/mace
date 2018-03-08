@@ -2,19 +2,19 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include <vector>
-#include <thread>
 #include <sys/time.h>
+#include <thread>
+#include <vector>
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
 
 namespace {
-  inline int64_t NowMicros() {
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
-  }
+inline int64_t NowMicros() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return static_cast<int64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+}
 }
 
 namespace mace {
@@ -63,9 +63,9 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
   // const node
   std::thread const_thread([&]() {
     std::vector<hexagon_nn_const_node> const_node_list;
-    for (const ConstTensor &const_tensor: net_def.tensors()) {
+    for (const ConstTensor &const_tensor : net_def.tensors()) {
       std::vector<int> tensor_shape(const_tensor.dims().begin(),
-                               const_tensor.dims().end());
+                                    const_tensor.dims().end());
       while (tensor_shape.size() < 4) {
         tensor_shape.insert(tensor_shape.begin(), 1);
       }
@@ -77,32 +77,32 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
       const_node.tensor.width = tensor_shape[2];
       const_node.tensor.depth = tensor_shape[3];
 
-      if (const_tensor.data_type() == DataType::DT_INT32
-        && const_tensor.data_size() == 0) {
+      if (const_tensor.data_type() == DataType::DT_INT32 &&
+          const_tensor.data_size() == 0) {
         const_node.tensor.data = NULL;
         const_node.tensor.dataLen = 0;
       } else {
         const_node.tensor.data =
-          const_cast<unsigned char *>(const_tensor.data());
-        const_node.tensor.dataLen =
-          const_tensor.data_size() * GetEnumTypeSize(const_tensor.data_type());
+            const_cast<unsigned char *>(const_tensor.data());
+        const_node.tensor.dataLen = const_tensor.data_size() *
+                                    GetEnumTypeSize(const_tensor.data_type());
       }
       const_node_list.push_back(const_node);
       // 255 is magic number: why fastrpc limits sequence length to that?
       if (const_node_list.size() >= 250) {
-        MACE_CHECK(hexagon_nn_append_const_node_list(nn_id_,
-                                                     const_node_list.data(),
-                                                     const_node_list.size())
-                     == 0, "append const node error");
+        MACE_CHECK(
+            hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
+                                              const_node_list.size()) == 0,
+            "append const node error");
         const_node_list.clear();
       }
     }
 
     if (!const_node_list.empty()) {
-      MACE_CHECK(hexagon_nn_append_const_node_list(nn_id_,
-                                                   const_node_list.data(),
-                                                   const_node_list.size()) == 0,
-                 "append const node error");
+      MACE_CHECK(
+          hexagon_nn_append_const_node_list(nn_id_, const_node_list.data(),
+                                            const_node_list.size()) == 0,
+          "append const node error");
     }
     const_node_list.clear();
   });
@@ -117,7 +117,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
     std::vector<hexagon_nn_input> inputs;
     std::vector<hexagon_nn_output> outputs;
 
-    for (const OperatorDef &op: net_def.op()) {
+    for (const OperatorDef &op : net_def.op()) {
       int op_id = op_map.GetOpId(op.type());
       inputs.resize(op.node_input().size());
       for (size_t i = 0; i < op.node_input().size(); ++i) {
@@ -131,9 +131,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
       cached_inputs.push_back(inputs);
       cached_outputs.push_back(outputs);
 
-      hexagon_nn_padding_type
-        padding_type = static_cast<hexagon_nn_padding_type>(
-        op.padding());
+      hexagon_nn_padding_type padding_type =
+          static_cast<hexagon_nn_padding_type>(op.padding());
 
       hexagon_nn_op_node op_node;
       op_node.node_id = node_id(op.node_id());
@@ -146,8 +145,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
 
       op_node_list.push_back(op_node);
       if (op_node_list.size() >= 125) {
-        MACE_CHECK(hexagon_nn_append_node_list(nn_id_,
-                                               op_node_list.data(),
+        MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
                                                op_node_list.size()) == 0,
                    "append node error");
         op_node_list.clear();
@@ -157,8 +155,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
     }
 
     if (!op_node_list.empty()) {
-      MACE_CHECK(hexagon_nn_append_node_list(nn_id_,
-                                             op_node_list.data(),
+      MACE_CHECK(hexagon_nn_append_node_list(nn_id_, op_node_list.data(),
                                              op_node_list.size()) == 0,
                  "append node error");
     }
@@ -172,10 +169,10 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
 
   // input info
   num_inputs_ = 0;
-  for (const InputInfo &input_info: net_def.input_info()) {
+  for (const InputInfo &input_info : net_def.input_info()) {
     std::vector<index_t> input_shape;
-    input_shape.insert(input_shape.begin(),
-                       input_info.dims().begin(), input_info.dims().end());
+    input_shape.insert(input_shape.begin(), input_info.dims().begin(),
+                       input_info.dims().end());
     while (input_shape.size() < 4) {
       input_shape.insert(input_shape.begin(), 1);
     }
@@ -186,10 +183,10 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def) {
 
   // output info
   num_outputs_ = 0;
-  for (const OutputInfo &output_info: net_def.output_info()) {
+  for (const OutputInfo &output_info : net_def.output_info()) {
     std::vector<index_t> output_shape;
-    output_shape.insert(output_shape.begin(),
-                        output_info.dims().begin(), output_info.dims().end());
+    output_shape.insert(output_shape.begin(), output_info.dims().begin(),
+                        output_info.dims().end());
     while (output_shape.size() < 4) {
       output_shape.insert(output_shape.begin(), 1);
     }
@@ -218,27 +215,27 @@ bool HexagonControlWrapper::TeardownGraph() {
   return hexagon_nn_teardown(nn_id_) == 0;
 }
 
-#define PRINT_BUFSIZE (2*1024*1024)
+#define PRINT_BUFSIZE (2 * 1024 * 1024)
 
 void HexagonControlWrapper::PrintLog() {
   char *buf;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
-  MACE_CHECK(hexagon_nn_getlog(nn_id_,
-                               reinterpret_cast<unsigned char *>(buf),
-                               PRINT_BUFSIZE) == 0, "print log error");
+  MACE_CHECK(hexagon_nn_getlog(nn_id_, reinterpret_cast<unsigned char *>(buf),
+                               PRINT_BUFSIZE) == 0,
+             "print log error");
   LOG(INFO) << std::string(buf);
-  delete[]buf;
+  delete[] buf;
 }
 
 void HexagonControlWrapper::PrintGraph() {
   LOG(INFO) << "Print Graph";
   char *buf;
   if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
-  MACE_CHECK(hexagon_nn_snpprint(nn_id_,
-                                 reinterpret_cast<unsigned char *>(buf),
-                                 PRINT_BUFSIZE) == 0, "print graph error");
+  MACE_CHECK(hexagon_nn_snpprint(nn_id_, reinterpret_cast<unsigned char *>(buf),
+                                 PRINT_BUFSIZE) == 0,
+             "print graph error");
   LOG(INFO) << std::string(buf);
-  delete[]buf;
+  delete[] buf;
 }
 
 void HexagonControlWrapper::SetDebugLevel(int level) {
@@ -256,9 +253,9 @@ void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
   std::vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
   unsigned int n_items = 0;
-  MACE_CHECK(
-    hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE, &n_items) == 0,
-    "get perf info error");
+  MACE_CHECK(hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE,
+                                     &n_items) == 0,
+             "get perf info error");
 
   std::unordered_map<uint32_t, float> node_id_counters;
   std::unordered_map<std::string, std::pair<int, float>> node_type_counters;
@@ -269,8 +266,9 @@ void HexagonControlWrapper::GetPerfInfo() {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
     node_id_counters[node_id] =
-      ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32)
-        + perf_info[i].counter_lo) * 1.0f / perf_info[i].executions;
+        ((static_cast<uint64_t>(perf_info[i].counter_hi) << 32) +
+         perf_info[i].counter_lo) *
+        1.0f / perf_info[i].executions;
 
     char node_type_buf[MAX_NODE];
     hexagon_nn_op_id_to_name(node_type_id, node_type_buf, MAX_NODE);
@@ -288,7 +286,7 @@ void HexagonControlWrapper::GetPerfInfo() {
     total_duration += node_id_counters[node_id];
   }
 
-  for (auto &node_type_counter: node_type_counters) {
+  for (auto &node_type_counter : node_type_counters) {
     LOG(INFO) << "node type: " << node_type_counter.first
               << ", time: " << node_type_counter.second.first
               << ", duration: " << node_type_counter.second.second;
@@ -312,33 +310,25 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
   output_tensor->Resize(output_shapes_[0]);
   std::vector<uint32_t> output_shape(4);
   uint32_t output_bytes;
-  int res = hexagon_nn_execute(nn_id_,
-                               input_tensor.shape()[0],
-                               input_tensor.shape()[1],
-                               input_tensor.shape()[2],
-                               input_tensor.shape()[3],
-                               reinterpret_cast<const unsigned char *>(
-                                 input_tensor.raw_data()),
-                               input_tensor.raw_size(),
-                               &output_shape[0],
-                               &output_shape[1],
-                               &output_shape[2],
-                               &output_shape[3],
-                               reinterpret_cast<unsigned char *>(
-                                 output_tensor->raw_mutable_data()),
-                               output_tensor->raw_size(),
-                               &output_bytes);
+  int res = hexagon_nn_execute(
+      nn_id_, input_tensor.shape()[0], input_tensor.shape()[1],
+      input_tensor.shape()[2], input_tensor.shape()[3],
+      reinterpret_cast<const unsigned char *>(input_tensor.raw_data()),
+      input_tensor.raw_size(), &output_shape[0], &output_shape[1],
+      &output_shape[2], &output_shape[3],
+      reinterpret_cast<unsigned char *>(output_tensor->raw_mutable_data()),
+      output_tensor->raw_size(), &output_bytes);
   MACE_CHECK(res == 0, "execute error");
 
-  MACE_ASSERT(output_shape == output_shapes_[0],
-              "wrong output shape inferred");
+  MACE_ASSERT(output_shape == output_shapes_[0], "wrong output shape inferred");
   MACE_ASSERT(output_bytes == output_tensor->raw_size(),
               "wrong output bytes inferred.");
   return res == 0;
 };
 
-bool HexagonControlWrapper::ExecuteGraphNew(const std::vector<Tensor> &input_tensors,
-                                            std::vector<Tensor> *output_tensors) {
+bool HexagonControlWrapper::ExecuteGraphNew(
+    const std::vector<Tensor> &input_tensors,
+    std::vector<Tensor> *output_tensors) {
   LOG(INFO) << "Execute graph new: " << nn_id_;
   int num_inputs = input_tensors.size();
   int num_outputs = output_tensors->size();
@@ -355,7 +345,7 @@ bool HexagonControlWrapper::ExecuteGraphNew(const std::vector<Tensor> &input_ten
     inputs[i].width = input_shape[2];
     inputs[i].depth = input_shape[3];
     inputs[i].data = const_cast<unsigned char *>(
-      reinterpret_cast<const unsigned char *>(input_tensors[i].raw_data()));
+        reinterpret_cast<const unsigned char *>(input_tensors[i].raw_data()));
     inputs[i].dataLen = input_tensors[i].raw_size();
     inputs[i].data_valid_len = input_tensors[i].raw_size();
     inputs[i].unused = 0;
@@ -365,16 +355,16 @@ bool HexagonControlWrapper::ExecuteGraphNew(const std::vector<Tensor> &input_ten
     (*output_tensors)[i].SetDtype(output_data_types_[i]);
     (*output_tensors)[i].Resize(output_shapes_[i]);
     outputs[i].data = reinterpret_cast<unsigned char *>(
-      (*output_tensors)[i].raw_mutable_data());
+        (*output_tensors)[i].raw_mutable_data());
     outputs[i].dataLen = (*output_tensors)[i].raw_size();
   }
 
-  int res = hexagon_nn_execute_new(nn_id_, inputs, num_inputs,
-                                   outputs, num_outputs);
+  int res =
+      hexagon_nn_execute_new(nn_id_, inputs, num_inputs, outputs, num_outputs);
 
   for (int i = 0; i < num_outputs; ++i) {
     std::vector<uint32_t> output_shape{outputs[i].batches, outputs[i].height,
-                                  outputs[i].width, outputs[i].depth};
+                                       outputs[i].width, outputs[i].depth};
     MACE_ASSERT(output_shape == output_shapes_[i],
                 "wrong output shape inferred");
     MACE_ASSERT(outputs[i].data_valid_len == (*output_tensors)[i].raw_size(),
@@ -397,9 +387,7 @@ bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
   float *min_in_data = input_tensors[1].mutable_data<float>();
   input_tensors[2].Resize({1, 1, 1, 1});
   float *max_in_data = input_tensors[2].mutable_data<float>();
-  quantizer_.Quantize(input_tensor,
-                      &input_tensors[0],
-                      min_in_data,
+  quantizer_.Quantize(input_tensor, &input_tensors[0], min_in_data,
                       max_in_data);
   if (!ExecuteGraphNew(input_tensors, &output_tensors)) {
     return false;
@@ -409,11 +397,9 @@ bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
 
   const float *min_out_data = output_tensors[1].data<float>();
   const float *max_out_data = output_tensors[2].data<float>();
-  quantizer_.DeQuantize(output_tensors[0],
-                        *min_out_data,
-                        *max_out_data,
+  quantizer_.DeQuantize(output_tensors[0], *min_out_data, *max_out_data,
                         output_tensor);
   return true;
 }
 
-} // namespace mace
+}  // namespace mace

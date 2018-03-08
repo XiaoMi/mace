@@ -57,8 +57,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
-    kernel_ =
-        runtime->BuildKernel("activation", kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("activation", kernel_name, built_options);
     int idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     if (activation_ == PRELU) {
@@ -74,8 +73,8 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                            static_cast<uint32_t>(height * batch)};
   const std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::string tuning_key =
-      Concat(tuning_key_prefix_, output->dim(0), output->dim(1),
-             output->dim(2), output->dim(3));
+      Concat(tuning_key_prefix_, output->dim(0), output->dim(1), output->dim(2),
+             output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 }
 

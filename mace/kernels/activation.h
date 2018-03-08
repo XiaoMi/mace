@@ -6,9 +6,9 @@
 #define MACE_KERNELS_ACTIVATION_H_
 
 #include "mace/core/future.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 namespace kernels {
@@ -99,17 +99,15 @@ void PReLUActivation(const T *input_ptr,
       output_ptr[i] = in;
     }
   }
-
 }
 
 template <DeviceType D, typename T>
 class ActivationFunctor {
  public:
   ActivationFunctor(ActivationType type, T relux_max_limit)
-      : activation_(type),
-        relux_max_limit_(relux_max_limit){}
+      : activation_(type), relux_max_limit_(relux_max_limit) {}
 
-  void operator()(const Tensor *input, 
+  void operator()(const Tensor *input,
                   const Tensor *alpha,
                   Tensor *output,
                   StatsFuture *future) {
@@ -118,9 +116,11 @@ class ActivationFunctor {
     if (activation_ == PRELU) {
       MACE_CHECK_NOTNULL(alpha);
       const T *alpha_ptr = alpha->data<T>();
-      PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr, output_ptr); 
+      PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr,
+                      output_ptr);
     } else {
-      DoActivation(input_ptr, output_ptr, output->size(), activation_, relux_max_limit_);
+      DoActivation(input_ptr, output_ptr, output->size(), activation_,
+                   relux_max_limit_);
     }
   }
 
@@ -131,14 +131,16 @@ class ActivationFunctor {
 
 template <>
 void ActivationFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input, const Tensor *alpha, Tensor *output, StatsFuture *future);
+    const Tensor *input,
+    const Tensor *alpha,
+    Tensor *output,
+    StatsFuture *future);
 
 template <typename T>
 class ActivationFunctor<DeviceType::OPENCL, T> {
  public:
   ActivationFunctor(ActivationType type, T relux_max_limit)
-      : activation_(type),
-        relux_max_limit_(relux_max_limit){}
+      : activation_(type), relux_max_limit_(relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *alpha,

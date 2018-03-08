@@ -37,11 +37,10 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
   }
 }
 
-#define BM_CONCAT_CPU_MACRO(DIM0, DIM1) \
-  static void BM_CONCAT_CPU_##DIM0##_##DIM1( \
-      int iters) { \
+#define BM_CONCAT_CPU_MACRO(DIM0, DIM1)                      \
+  static void BM_CONCAT_CPU_##DIM0##_##DIM1(int iters) {     \
     ConcatHelper<DeviceType::CPU, float>(iters, DIM0, DIM1); \
-  } \
+  }                                                          \
   BENCHMARK(BM_CONCAT_CPU_##DIM0##_##DIM1)
 
 BM_CONCAT_CPU_MACRO(0, 1000);
@@ -90,13 +89,11 @@ static void OpenclConcatHelper(int iters,
   }
 }
 
-
-#define BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE) \
-  static void BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE( \
-      int iters) { \
-    std::vector<index_t> shape = {N, H, W, C}; \
-    OpenclConcatHelper<TYPE>(iters, shape, shape, 3); \
-  } \
+#define BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE)                           \
+  static void BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE(int iters) { \
+    std::vector<index_t> shape = {N, H, W, C};                             \
+    OpenclConcatHelper<TYPE>(iters, shape, shape, 3);                      \
+  }                                                                        \
   BENCHMARK(BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE)
 
 BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, float);

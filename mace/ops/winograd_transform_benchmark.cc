@@ -16,7 +16,7 @@ static void BMWinogradTransform(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   BufferToImage<D, T>(net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                      kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -36,17 +36,15 @@ static void BMWinogradTransform(
   net.Sync();
 }
 
-#define BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)             \
-  static void                                                         \
-      BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(    \
-          int iters) {                                                \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;  \
-    mace::testing::MaccProcessed(tot);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));               \
-    BMWinogradTransform<DEVICE, TYPE>(iters, N, H, W, C);                  \
-  }                                                                   \
-  BENCHMARK(                                                          \
-      BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
+#define BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)                  \
+  static void BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+      int iters) {                                                             \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
+    mace::testing::MaccProcessed(tot);                                         \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    BMWinogradTransform<DEVICE, TYPE>(iters, N, H, W, C);                      \
+  }                                                                            \
+  BENCHMARK(BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
 #define BM_WINOGRAD_TRANSFORM(N, H, W, C) \
   BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, half, OPENCL);
@@ -88,16 +86,16 @@ static void BMWinogradInverseTransform(
   net.Sync();
 }
 
-#define BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)             \
-  static void                                                         \
-      BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(    \
-          int iters) {                                                \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;  \
-    mace::testing::MaccProcessed(tot);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));               \
-    BMWinogradInverseTransform<DEVICE, TYPE>(iters, N, H, W, C);                  \
-  }                                                                   \
-  BENCHMARK(                                                          \
+#define BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)          \
+  static void                                                                  \
+      BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+          int iters) {                                                         \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
+    mace::testing::MaccProcessed(tot);                                         \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    BMWinogradInverseTransform<DEVICE, TYPE>(iters, N, H, W, C);               \
+  }                                                                            \
+  BENCHMARK(                                                                   \
       BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
 #define BM_WINOGRAD_INVERSE_TRANSFORM(N, H, W, C) \

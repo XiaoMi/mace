@@ -7,8 +7,9 @@
 
 using namespace mace;
 
-template<DeviceType D, typename T>
-void TestBidirectionTransform(const int type, const std::vector<index_t> &input_shape) {
+template <DeviceType D, typename T>
+void TestBidirectionTransform(const int type,
+                              const std::vector<index_t> &input_shape) {
   OpsTestNet net;
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input("Input")
@@ -34,7 +35,8 @@ void TestBidirectionTransform(const int type, const std::vector<index_t> &input_
   net.RunOp(D);
 
   // Check
-  ExpectTensorNear<T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-5);
+  ExpectTensorNear<T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
+                      1e-5);
 }
 
 TEST(BufferToImageTest, ArgSmall) {
@@ -54,51 +56,63 @@ TEST(BufferToImageTest, ArgLarge) {
 }
 
 TEST(BufferToImageTest, InputSmallSingleChannel) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL, {1, 2, 3, 1});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL,
+                                                      {1, 2, 3, 1});
 }
 
 TEST(BufferToImageTest, InputSmallMultipleChannel) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL, {1, 2, 3, 3});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL,
+                                                      {1, 2, 3, 3});
 }
 
 TEST(BufferToImageTest, InputSmallMultipleBatchAndChannel) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL, {3, 2, 3, 3});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL,
+                                                      {3, 2, 3, 3});
 }
 
 TEST(BufferToImageTest, InputMedia) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL, {3, 13, 17, 128});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL,
+                                                      {3, 13, 17, 128});
 }
 
 TEST(BufferToImageTest, InputLarge) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL, {3, 64, 64, 256});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::IN_OUT_CHANNEL,
+                                                      {3, 64, 64, 256});
 }
 
 TEST(BufferToImageTest, Filter1x1Small) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 3, 5});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {1, 1, 3, 5});
 }
 
 TEST(BufferToImageTest, Filter1x1Media) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 13, 17});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {1, 1, 13, 17});
 }
 
 TEST(BufferToImageTest, Filter1x1Large) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {1, 1, 128, 512});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {1, 1, 128, 512});
 }
 
 TEST(BufferToImageTest, Filter3x3Small) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 3, 5});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {3, 3, 3, 5});
 }
 
 TEST(BufferToImageTest, Filter3x3Meida) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 13, 17});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {3, 3, 13, 17});
 }
 
 TEST(BufferToImageTest, Filter3x3Large) {
-  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER, {3, 3, 128, 256});
+  TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::CONV2D_FILTER,
+                                                      {3, 3, 128, 256});
 }
 
-template<DeviceType D, typename T>
-void TestDiffTypeBidirectionTransform(const int type, const std::vector<index_t> &input_shape) {
+template <DeviceType D, typename T>
+void TestDiffTypeBidirectionTransform(const int type,
+                                      const std::vector<index_t> &input_shape) {
   OpsTestNet net;
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input("Input")
@@ -123,14 +137,16 @@ void TestDiffTypeBidirectionTransform(const int type, const std::vector<index_t>
   net.RunOp(D);
 
   // Check
-  ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-2);
+  ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
+                          1e-2);
 }
 
 TEST(BufferToImageTest, ArgFloatToHalfSmall) {
-  TestDiffTypeBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT, {11});
+  TestDiffTypeBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT,
+                                                             {11});
 }
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 void TestStringHalfBidirectionTransform(const int type,
                                         const std::vector<index_t> &input_shape,
                                         const unsigned char *input_data) {
@@ -142,9 +158,10 @@ void TestStringHalfBidirectionTransform(const int type,
       .AddIntArg("T", DataTypeToEnum<T>::value)
       .Finalize(net.NewOperatorDef());
 
-  const half *h_data = reinterpret_cast<const half*>(input_data);
+  const half *h_data = reinterpret_cast<const half *>(input_data);
 
-  net.AddInputFromArray<D, half>("Input", input_shape, std::vector<half>(h_data, h_data+2));
+  net.AddInputFromArray<D, half>("Input", input_shape,
+                                 std::vector<half>(h_data, h_data + 2));
 
   // Run
   net.RunOp(D);
@@ -160,12 +177,14 @@ void TestStringHalfBidirectionTransform(const int type,
   net.RunOp(D);
 
   // Check
-  ExpectTensorNear<half>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"), 1e-2);
+  ExpectTensorNear<half>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
+                         1e-2);
 }
 
 TEST(BufferToImageTest, ArgStringHalfToHalfSmall) {
-  const unsigned char input_data[] = {0xCD, 0x3C, 0x33, 0x40,};
-  TestStringHalfBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT,
-                                                               {2},
-                                                               input_data);
+  const unsigned char input_data[] = {
+      0xCD, 0x3C, 0x33, 0x40,
+  };
+  TestStringHalfBidirectionTransform<DeviceType::OPENCL, half>(
+      kernels::ARGUMENT, {2}, input_data);
 }

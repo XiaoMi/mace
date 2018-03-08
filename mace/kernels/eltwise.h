@@ -5,13 +5,13 @@
 #define MACE_KERNELS_ELTWISE_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
 namespace kernels {
 
-enum EltwiseType{
+enum EltwiseType {
   PROD = 0,
   SUM = 1,
   MAX = 2,
@@ -19,8 +19,7 @@ enum EltwiseType{
 };
 
 struct EltwiseFunctorBase {
-  EltwiseFunctorBase(const EltwiseType type,
-                     const std::vector<float> &coeff)
+  EltwiseFunctorBase(const EltwiseType type, const std::vector<float> &coeff)
       : type_(type), coeff_(coeff) {}
 
   EltwiseType type_;
@@ -29,8 +28,7 @@ struct EltwiseFunctorBase {
 
 template <DeviceType D, typename T>
 struct EltwiseFunctor : EltwiseFunctorBase {
-  EltwiseFunctor(const EltwiseType type,
-                     const std::vector<float> &coeff)
+  EltwiseFunctor(const EltwiseType type, const std::vector<float> &coeff)
       : EltwiseFunctorBase(type, coeff) {}
 
   void operator()(const Tensor *input0,
@@ -49,7 +47,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
     switch (type_) {
       case PROD:
 #pragma omp parallel for
-        for(index_t i = 0; i < size; ++i) {
+        for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = input0_ptr[i] * input1_ptr[i];
         }
         break;
@@ -62,19 +60,20 @@ struct EltwiseFunctor : EltwiseFunctorBase {
         } else {
 #pragma omp parallel for
           for (index_t i = 0; i < size; ++i) {
-            output_ptr[i] = coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
+            output_ptr[i] =
+                coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
           }
         }
         break;
       case MAX:
 #pragma omp parallel for
-        for(index_t i = 0; i < size; ++i) {
+        for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = std::max<T>(input0_ptr[i], input1_ptr[i]);
         }
         break;
       case MIN:
 #pragma omp parallel for
-        for(index_t i = 0; i < size; ++i) {
+        for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = std::min<T>(input0_ptr[i], input1_ptr[i]);
         }
         break;
@@ -84,11 +83,9 @@ struct EltwiseFunctor : EltwiseFunctorBase {
   }
 };
 
-
 template <typename T>
-struct EltwiseFunctor<DeviceType::OPENCL, T>: EltwiseFunctorBase {
-  EltwiseFunctor(const EltwiseType type,
-                 const std::vector<float> &coeff)
+struct EltwiseFunctor<DeviceType::OPENCL, T> : EltwiseFunctorBase {
+  EltwiseFunctor(const EltwiseType type, const std::vector<float> &coeff)
       : EltwiseFunctorBase(type, coeff) {}
 
   void operator()(const Tensor *input0,

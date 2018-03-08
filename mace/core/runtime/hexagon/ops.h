@@ -178,4 +178,3 @@ DEF_OP(QuantizedBiasAdd_8p8to8)
 #undef __SELF_DEF_OP_WREF
 #undef DEF_OP_WREF
 #endif
-

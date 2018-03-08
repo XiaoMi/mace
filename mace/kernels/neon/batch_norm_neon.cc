@@ -52,7 +52,8 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
 #pragma omp parallel for collapse(2)
   for (index_t i = 0; i < n; ++i) {
     for (index_t j = 0; j < sample_size; ++j) {
-      const float *input_sample_ptr = input_ptr + (i * sample_size + j) * channel;
+      const float *input_sample_ptr =
+          input_ptr + (i * sample_size + j) * channel;
       float *output_sample_ptr = output_ptr + (i * sample_size + j) * channel;
       const float *new_scale_ptr = new_scale.data();
       const float *new_offset_ptr = new_offset.data();

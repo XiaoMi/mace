@@ -19,7 +19,8 @@ namespace mace {
 
 class OpenCLProfilingTimer : public Timer {
  public:
-  explicit OpenCLProfilingTimer(const cl::Event *event) : event_(event), accumulated_micros_(0) {};
+  explicit OpenCLProfilingTimer(const cl::Event *event)
+      : event_(event), accumulated_micros_(0){};
   void StartTiming() override;
   void StopTiming() override;
   void AccumulateTiming() override;
@@ -48,6 +49,7 @@ class OpenCLRuntime {
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);
+
  private:
   OpenCLRuntime();
   ~OpenCLRuntime();

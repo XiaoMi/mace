@@ -22,7 +22,8 @@ class ActivationOp : public Operator<D, T> {
 
   bool Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(0);
-    const Tensor *alpha_tensor = this->InputSize() >= 2 ? this->Input(1) : nullptr;
+    const Tensor *alpha_tensor =
+        this->InputSize() >= 2 ? this->Input(1) : nullptr;
     Tensor *output_tensor = this->outputs_[0];
     output_tensor->ResizeLike(input_tensor);
 

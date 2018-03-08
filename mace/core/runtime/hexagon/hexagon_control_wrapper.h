@@ -16,16 +16,17 @@ namespace mace {
 
 class HexagonControlWrapper {
  public:
-  HexagonControlWrapper() {};
+  HexagonControlWrapper(){};
   int GetVersion();
   bool Config();
   bool Init();
   bool Finalize();
-  bool SetupGraph(const NetDef& net_def);
+  bool SetupGraph(const NetDef &net_def);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
-  bool ExecuteGraphNew(const std::vector<Tensor>& input_tensors,
+  bool ExecuteGraphNew(const std::vector<Tensor> &input_tensors,
                        std::vector<Tensor> *output_tensors);
-  bool ExecuteGraphPreQuantize(const Tensor &input_tensor, Tensor *output_tensor);
+  bool ExecuteGraphPreQuantize(const Tensor &input_tensor,
+                               Tensor *output_tensor);
 
   bool TeardownGraph();
   void PrintLog();
@@ -38,9 +39,7 @@ class HexagonControlWrapper {
  private:
   static constexpr int NODE_ID_OFFSET = 10000;
 
-  inline uint32_t node_id(uint32_t nodeid) {
-    return NODE_ID_OFFSET + nodeid;
-  }
+  inline uint32_t node_id(uint32_t nodeid) { return NODE_ID_OFFSET + nodeid; }
 
   int nn_id_;
   Quantizer quantizer_;
@@ -52,9 +51,8 @@ class HexagonControlWrapper {
   uint32_t num_inputs_;
   uint32_t num_outputs_;
 
- DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
+  DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };
-
 }
 
-#endif // MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
+#endif  // MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_

@@ -83,12 +83,12 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
 #define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                   \
                                           enforce_lossless_conversion)    \
   template <>                                                             \
-  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                       \
+  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                  \
       const string &name, const std::vector<T> &default_value) const {    \
     if (arg_map_.count(name) == 0) {                                      \
       return default_value;                                               \
     }                                                                     \
-    std::vector<T> values;                                                     \
+    std::vector<T> values;                                                \
     for (const auto &v : arg_map_.at(name).fieldname()) {                 \
       if (enforce_lossless_conversion) {                                  \
         auto supportsConversion =                                         \

@@ -24,13 +24,9 @@ class WallClockTimer : public Timer {
  public:
   WallClockTimer() : accumulated_micros_(0) {}
 
-  void StartTiming() override {
-    start_micros_ = NowMicros();
-  }
+  void StartTiming() override { start_micros_ = NowMicros(); }
 
-  void StopTiming() override {
-    stop_micros_ = NowMicros();
-  }
+  void StopTiming() override { stop_micros_ = NowMicros(); }
 
   void AccumulateTiming() override {
     StopTiming();
@@ -43,13 +39,9 @@ class WallClockTimer : public Timer {
     accumulated_micros_ = 0;
   }
 
-  double ElapsedMicros() override {
-    return stop_micros_ - start_micros_;
-  }
+  double ElapsedMicros() override { return stop_micros_ - start_micros_; }
 
-  double AccumulatedMicros() override {
-    return accumulated_micros_;
-  }
+  double AccumulatedMicros() override { return accumulated_micros_; }
 
  private:
   double start_micros_;

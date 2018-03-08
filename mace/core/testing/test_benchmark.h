@@ -6,9 +6,9 @@
 #ifndef MACE_CORE_TESTING_TEST_BENCHMARK_H_
 #define MACE_CORE_TESTING_TEST_BENCHMARK_H_
 
+#include <string>
 #include <utility>
 #include <vector>
-#include <string>
 
 #define MACE_BENCHMARK_CONCAT(a, b, c) a##b##c
 #define BENCHMARK(n)                                        \

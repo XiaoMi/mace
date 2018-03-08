@@ -62,9 +62,9 @@ inline std::string ObfuscateSymbol(const std::string &src) {
   if (dest.empty()) {
     return dest;
   }
-  dest[0] = src[0]; // avoid invalid symbol which starts from 0-9
+  dest[0] = src[0];  // avoid invalid symbol which starts from 0-9
   const std::string encode_dict =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
   for (size_t i = 1; i < src.size(); i++) {
     char ch = src[i];
     int idx;

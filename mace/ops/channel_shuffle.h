@@ -28,8 +28,8 @@ class ChannelShuffleOp : public Operator<D, T> {
                input->shape()[1]);
 
     output->ResizeLike(input);
-    functor_(input->data<T>(), input->shape().data(),
-             output->mutable_data<T>(), future);
+    functor_(input->data<T>(), input->shape().data(), output->mutable_data<T>(),
+             future);
 
     return true;
   }

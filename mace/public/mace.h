@@ -6,10 +6,10 @@
 #define MACE_CORE_MACE_H_
 
 #include <cstdint>
-#include <vector>
-#include <string>
-#include <memory>
 #include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace mace {
 
@@ -25,13 +25,11 @@ namespace mace {
 #define MACE_STR(x) MACE_STR_HELPER(x)
 
 // e.g. "0.5.0" or "0.6.0-alpha".
-#define MACE_VERSION_STRING                                            \
+#define MACE_VERSION_STRING                                                    \
   (MACE_STR(MACE_MAJOR_VERSION) "." MACE_STR(MACE_MINOR_VERSION) "." MACE_STR( \
       MACE_PATCH_VERSION) MACE_VERSION_SUFFIX)
 
-inline const char *MaceVersion() {
-  return MACE_VERSION_STRING;
-}
+inline const char *MaceVersion() { return MACE_VERSION_STRING; }
 
 extern const char *MaceGitVersion();
 
@@ -43,17 +41,9 @@ extern const char *MaceGitVersion();
   classname &operator=(const classname &) = delete
 #endif
 
-enum NetMode {
-  INIT = 0,
-  NORMAL = 1
-};
+enum NetMode { INIT = 0, NORMAL = 1 };
 
-enum DeviceType {
-  CPU = 0,
-  NEON = 1,
-  OPENCL = 2,
-  HEXAGON = 3
-};
+enum DeviceType { CPU = 0, NEON = 1, OPENCL = 2, HEXAGON = 3 };
 
 enum DataType {
   DT_INVALID = 0,
@@ -104,6 +94,7 @@ class Argument {
  public:
   Argument();
   void CopyFrom(const Argument &from);
+
  public:
   const std::string &name() const;
   void set_name(const std::string &value);
@@ -147,11 +138,13 @@ class NodeInput {
   NodeInput() {}
   NodeInput(int node_id, int output_port);
   void CopyFrom(const NodeInput &from);
+
  public:
   int node_id() const;
   void set_node_id(int node_id);
   int output_port() const;
   void set_output_port(int output_port);
+
  private:
   int node_id_;
   int output_port_;
@@ -162,8 +155,10 @@ class OutputShape {
   OutputShape();
   OutputShape(const std::vector<int64_t> &dims);
   void CopyFrom(const OutputShape &from);
+
  public:
   const std::vector<int64_t> &dims() const;
+
  private:
   std::vector<int64_t> dims_;
 };
@@ -240,10 +235,12 @@ class OperatorDef {
 class MemoryBlock {
  public:
   MemoryBlock(int mem_id, uint32_t x, uint32_t y);
+
  public:
   int mem_id() const;
   uint32_t x() const;
   uint32_t y() const;
+
  private:
   int mem_id_;
   uint32_t x_;
@@ -255,9 +252,9 @@ class MemoryArena {
   const std::vector<MemoryBlock> &mem_block() const;
   std::vector<MemoryBlock> &mutable_mem_block();
   int mem_block_size() const;
+
  private:
   std::vector<MemoryBlock> mem_block_;
-
 };
 
 // for hexagon mace-nnlib
@@ -268,10 +265,11 @@ class InputInfo {
   int32_t max_byte_size() const;
   DataType data_type() const;
   const std::vector<int32_t> &dims() const;
+
  private:
   std::string name_;
   int32_t node_id_;
-  int32_t max_byte_size_; // only support 32-bit len
+  int32_t max_byte_size_;  // only support 32-bit len
   DataType data_type_;
   std::vector<int32_t> dims_;
 };
@@ -285,10 +283,11 @@ class OutputInfo {
   void set_data_type(DataType data_type);
   const std::vector<int32_t> &dims() const;
   void set_dims(const std::vector<int32_t> &dims);
+
  private:
   std::string name_;
   int32_t node_id_;
-  int32_t max_byte_size_; // only support 32-bit len
+  int32_t max_byte_size_;  // only support 32-bit len
   DataType data_type_;
   std::vector<int32_t> dims_;
 };
@@ -299,6 +298,7 @@ class NetDef {
   int op_size() const;
 
   const OperatorDef &op(const int idx) const;
+
  public:
   const std::string &name() const;
   bool has_name() const;
@@ -359,7 +359,6 @@ struct RunMetadata {
   std::vector<OperatorStats> op_stats;
 };
 
-
 class Workspace;
 class NetBase;
 class OperatorRegistry;
@@ -374,8 +373,7 @@ struct MaceInputInfo {
 class MaceEngine {
  public:
   // Single input and output
-  explicit MaceEngine(const NetDef *net_def,
-                      DeviceType device_type);
+  explicit MaceEngine(const NetDef *net_def, DeviceType device_type);
   // Multiple input or output
   explicit MaceEngine(const NetDef *net_def,
                       DeviceType device_type,
@@ -394,7 +392,7 @@ class MaceEngine {
   // Multiple input or output
   bool Run(const std::vector<MaceInputInfo> &input,
            std::map<std::string, float *> &output,
-           RunMetadata *run_metadata=nullptr);
+           RunMetadata *run_metadata = nullptr);
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 

@@ -116,9 +116,8 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
               sum[sum_idx] += vaddvq_f32(tmp);
 #else
               for (int inci = 0; inci < inc_tile_size; ++inci) {
-                sum[sum_idx] +=
-                    in[in_idx * inc_tile_size + inci] *
-                    weights[weights_idx * inc_tile_size + inci];
+                sum[sum_idx] += in[in_idx * inc_tile_size + inci] *
+                                weights[weights_idx * inc_tile_size + inci];
               }
 #endif
             }
@@ -188,7 +187,7 @@ struct Conv2dFunctorBase {
         paddings_(paddings),
         dilations_(dilations),
         activation_(activation),
-        relux_max_limit_(relux_max_limit){}
+        relux_max_limit_(relux_max_limit) {}
 
   const int *strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
@@ -230,8 +229,9 @@ struct Conv2dFunctor : Conv2dFunctorBase {
           padding_type_, output_shape.data(), paddings.data());
     } else {
       paddings = paddings_;
-      CalcOutputSize(input->shape().data(), filter->shape().data(), paddings_.data(),
-                     dilations_, strides_, RoundType::FLOOR, output_shape.data());
+      CalcOutputSize(input->shape().data(), filter->shape().data(),
+                     paddings_.data(), dilations_, strides_, RoundType::FLOOR,
+                     output_shape.data());
     }
     output->Resize(output_shape);
 

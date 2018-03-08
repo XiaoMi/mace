@@ -15,8 +15,7 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   OpsTestNet net;
   // Add input data
   for (int i = 0; i < inputs; ++i) {
-    net.AddRandomInput<D, float>(MakeString("Input", i).c_str(),
-                                 {n, h, w, c});
+    net.AddRandomInput<D, float>(MakeString("Input", i).c_str(), {n, h, w, c});
   }
 
   if (D == DeviceType::OPENCL) {

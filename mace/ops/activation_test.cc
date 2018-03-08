@@ -214,9 +214,7 @@ void TestSimplePrelu() {
   net.AddInputFromArray<D, float>(
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
-  net.AddInputFromArray<D, float>(
-      "Alpha", {2},
-      {2.0, 3.0});
+  net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
@@ -250,7 +248,8 @@ void TestSimplePrelu() {
   }
 
   auto expected = CreateTensor<float>(
-      {2, 2, 2, 2}, {-14, 7, -12, 6, -10, -15, -8, -12, -6, 3, -4, 2, -2, -3, 0, 0});
+      {2, 2, 2, 2},
+      {-14, 7, -12, 6, -10, -15, -8, -12, -6, 3, -4, 2, -2, -3, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }

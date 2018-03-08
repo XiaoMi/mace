@@ -4,8 +4,8 @@
 
 #include <fstream>
 #include "mace/core/operator.h"
-#include "mace/ops/ops_test_util.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/ops_test_util.h"
 
 namespace mace {
 
@@ -21,7 +21,9 @@ void TransposeFilter(const std::vector<float> &input,
     for (index_t w = 0; w < input_shape[1]; ++w) {
       for (index_t oc = 0; oc < input_shape[2]; ++oc) {
         for (index_t ic = 0; ic < input_shape[3]; ++ic) {
-          int offset = ((oc * input_shape[3] + ic) * input_shape[0] + h) * input_shape[1] + w;
+          int offset = ((oc * input_shape[3] + ic) * input_shape[0] + h) *
+                           input_shape[1] +
+                       w;
           output[offset] = *input_ptr;
           ++input_ptr;
         }
@@ -30,7 +32,7 @@ void TransposeFilter(const std::vector<float> &input,
   }
 }
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 void WinogradConvolution(const index_t batch,
                          const index_t height,
                          const index_t width,
@@ -53,8 +55,7 @@ void WinogradConvolution(const index_t batch,
                       kernels::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(net, "Filter", "FilterImage",
                       kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(net, "Bias", "BiasImage",
-                      kernels::BufferType::ARGUMENT);
+  BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
@@ -78,8 +79,10 @@ void WinogradConvolution(const index_t batch,
   // transform filter
   std::vector<float> wino_filter_data;
   TransposeFilter(filter_data, filter_shape, wino_filter_data);
-  net.AddInputFromArray<D, float>("WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
-  BufferToImage<D, T>(net, "WinoFilterData", "WinoFilter", kernels::BufferType::WINOGRAD_FILTER);
+  net.AddInputFromArray<D, float>(
+      "WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
+  BufferToImage<D, T>(net, "WinoFilterData", "WinoFilter",
+                      kernels::BufferType::WINOGRAD_FILTER);
 
   // transform input
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
@@ -126,18 +129,23 @@ void WinogradConvolution(const index_t batch,
 }
 
 TEST_F(WinogradConvlutionTest, AlignedConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16, Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16, Padding::SAME);
+  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16,
+                                                 Padding::VALID);
+  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16,
+                                                 Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 31, 37, Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 37, 31, Padding::SAME);
+  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 31, 37,
+                                                 Padding::VALID);
+  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 37, 31,
+                                                 Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(3, 64, 64, 32, 32, Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(5, 61, 67, 37, 31, Padding::SAME);
+  WinogradConvolution<DeviceType::OPENCL, float>(3, 64, 64, 32, 32,
+                                                 Padding::VALID);
+  WinogradConvolution<DeviceType::OPENCL, float>(5, 61, 67, 37, 31,
+                                                 Padding::SAME);
 }
-
 }

@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_allocator.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
@@ -29,7 +29,6 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
       return 0;
   }
 }
-
 }
 
 OpenCLAllocator::OpenCLAllocator() {}
@@ -49,17 +48,16 @@ void *OpenCLAllocator::New(size_t nbytes) const {
 void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                 const DataType dt) const {
   MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
-  VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", " << image_shape[1];
+  VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", "
+          << image_shape[1];
 
   cl::ImageFormat img_format(CL_RGBA, DataTypeToCLChannelType(dt));
 
   cl_int error;
   cl::Image2D *cl_image =
       new cl::Image2D(OpenCLRuntime::Global()->context(),
-                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
-                      img_format,
-                      image_shape[0], image_shape[1],
-                      0, nullptr, &error);
+                      CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
+                      image_shape[0], image_shape[1], 0, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS) << error << " with image shape: ["
                                   << image_shape[0] << ", " << image_shape[1]
                                   << "]";
@@ -89,8 +87,8 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
   // TODO(heliangliang) Non-blocking call
   cl_int error;
   void *mapped_ptr =
-      queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, offset,
-                             nbytes, nullptr, nullptr, &error);
+      queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
+                             offset, nbytes, nullptr, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS);
   return mapped_ptr;
 }
@@ -106,13 +104,10 @@ void *OpenCLAllocator::MapImage(void *buffer,
 
   mapped_image_pitch->resize(2);
   cl_int error;
-  void *mapped_ptr =
-      OpenCLRuntime::Global()->command_queue().enqueueMapImage(*cl_image,
-                                                            CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
-                                                            origin, region,
-                                                            mapped_image_pitch->data(),
-                                                            mapped_image_pitch->data() + 1,
-                                                            nullptr, nullptr, &error);
+  void *mapped_ptr = OpenCLRuntime::Global()->command_queue().enqueueMapImage(
+      *cl_image, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
+      mapped_image_pitch->data(), mapped_image_pitch->data() + 1, nullptr,
+      nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS) << error;
 
   return mapped_ptr;

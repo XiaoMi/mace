@@ -65,23 +65,20 @@ inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
 class Tensor {
  public:
   Tensor(Allocator *alloc, DataType type)
-    : allocator_(alloc),
-      dtype_(type),
-      buffer_(nullptr),
-      is_buffer_owner_(true),
-      name_("") {};
+      : allocator_(alloc),
+        dtype_(type),
+        buffer_(nullptr),
+        is_buffer_owner_(true),
+        name_(""){};
 
   Tensor(BufferBase *buffer, DataType dtype)
-    : dtype_(dtype),
-      buffer_(buffer),
-      is_buffer_owner_(false),
-      name_("") {}
+      : dtype_(dtype), buffer_(buffer), is_buffer_owner_(false), name_("") {}
 
   Tensor(const BufferSlice &buffer_slice, DataType dtype)
-    : dtype_(dtype),
-      buffer_slice_(buffer_slice),
-      is_buffer_owner_(false),
-      name_("") {
+      : dtype_(dtype),
+        buffer_slice_(buffer_slice),
+        is_buffer_owner_(false),
+        name_("") {
     buffer_ = &buffer_slice_;
   }
 
@@ -102,8 +99,8 @@ class Tensor {
   inline index_t dim_size() const { return shape_.size(); }
 
   inline index_t dim(unsigned int index) const {
-    MACE_CHECK(index < shape_.size(), "Dim out of range: ",
-               index, " >= ", shape_.size());
+    MACE_CHECK(index < shape_.size(), "Dim out of range: ", index, " >= ",
+               shape_.size());
     return shape_[index];
   }
 
@@ -112,40 +109,35 @@ class Tensor {
                            std::multiplies<int64_t>());
   }
 
-  inline index_t raw_size() const {
-    return size() * SizeOfType();
-  }
+  inline index_t raw_size() const { return size() * SizeOfType(); }
 
   inline bool has_opencl_image() const {
-    return buffer_ != nullptr && !buffer_->OnHost()
-      && typeid(*buffer_) == typeid(Image);
+    return buffer_ != nullptr && !buffer_->OnHost() &&
+           typeid(*buffer_) == typeid(Image);
   }
 
   inline bool has_opencl_buffer() const {
-    return buffer_ != nullptr && !buffer_->OnHost()
-      && !has_opencl_image();
+    return buffer_ != nullptr && !buffer_->OnHost() && !has_opencl_image();
   }
 
   inline cl::Image *opencl_image() const {
     MACE_CHECK(has_opencl_image(), "do not have image");
-    return static_cast<cl::Image*>(buffer_->buffer());
+    return static_cast<cl::Image *>(buffer_->buffer());
   }
 
   inline cl::Buffer *opencl_buffer() const {
     MACE_CHECK(has_opencl_buffer(), "do not have opencl buffer");
-    return static_cast<cl::Buffer*>(buffer_->buffer());
+    return static_cast<cl::Buffer *>(buffer_->buffer());
   }
 
-  inline index_t buffer_offset() const {
-    return buffer_->offset();
-  }
+  inline index_t buffer_offset() const { return buffer_->offset(); }
 
   inline const void *raw_data() const {
     MACE_CHECK(buffer_ != nullptr, "buffer is null");
     return buffer_->raw_data();
   }
 
-  template<typename T>
+  template <typename T>
   inline const T *data() const {
     MACE_CHECK(buffer_ != nullptr, "buffer is null");
     return buffer_->data<T>();
@@ -156,7 +148,7 @@ class Tensor {
     return buffer_->raw_mutable_data();
   }
 
-  template<typename T>
+  template <typename T>
   inline T *mutable_data() {
     MACE_CHECK(buffer_ != nullptr, "buffer is null");
     return static_cast<T *>(buffer_->raw_mutable_data());
@@ -188,25 +180,17 @@ class Tensor {
       is_buffer_owner_ = true;
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
-      Image *image = dynamic_cast<Image*>(buffer_);
-      MACE_CHECK(image_shape[0] <= image->image_shape()[0]
-                   && image_shape[1] <= image->image_shape()[1],
-                 "tensor (source op ",
-                 name_,
-                 "): current physical image shape: ",
-                 image->image_shape()[0],
-                 ", ",
-                 image->image_shape()[1],
-                 " < logical image shape: ",
-                 image_shape[0],
-                 ", ",
-                 image_shape[1]);
+      Image *image = dynamic_cast<Image *>(buffer_);
+      MACE_CHECK(image_shape[0] <= image->image_shape()[0] &&
+                     image_shape[1] <= image->image_shape()[1],
+                 "tensor (source op ", name_,
+                 "): current physical image shape: ", image->image_shape()[0],
+                 ", ", image->image_shape()[1], " < logical image shape: ",
+                 image_shape[0], ", ", image_shape[1]);
     }
   }
 
-  inline void ResizeLike(const Tensor &other) {
-    ResizeLike(&other);
-  }
+  inline void ResizeLike(const Tensor &other) { ResizeLike(&other); }
 
   inline void ResizeLike(const Tensor *other) {
     if (other->has_opencl_image()) {
@@ -229,7 +213,7 @@ class Tensor {
     memcpy(buffer_->raw_mutable_data(), src, size);
   }
 
-  template<typename T>
+  template <typename T>
   inline void Copy(const T *src, index_t length) {
     MACE_CHECK(length == size(), "copy src and dst with different size.");
     CopyBytes(static_cast<const void *>(src), sizeof(T) * length);
@@ -248,13 +232,9 @@ class Tensor {
     return type_size;
   }
 
-  inline BufferBase *UnderlyingBuffer() const {
-    return buffer_;
-  }
+  inline BufferBase *UnderlyingBuffer() const { return buffer_; }
 
-  inline void SetSourceOpName(const std::string name) {
-    name_ = name;
-  }
+  inline void SetSourceOpName(const std::string name) { name_ = name; }
 
   inline void DebugPrint() const {
     using namespace numerical_chars;
@@ -272,8 +252,9 @@ class Tensor {
       }
       CASES(dtype_, (os << (this->data<T>()[i]) << ", "));
     }
-    LOG(INFO) << "Tensor size: [" << dim(0) << ", " << dim(1) << ", "
-              << dim(2) << ", " << dim(3) << "], content:\n" << os.str();
+    LOG(INFO) << "Tensor size: [" << dim(0) << ", " << dim(1) << ", " << dim(2)
+              << ", " << dim(3) << "], content:\n"
+              << os.str();
   }
 
   class MappingGuard {
@@ -301,20 +282,20 @@ class Tensor {
     const Tensor *tensor_;
     std::vector<size_t> mapped_image_pitch_;
 
-   DISABLE_COPY_AND_ASSIGN(MappingGuard);
+    DISABLE_COPY_AND_ASSIGN(MappingGuard);
   };
 
  private:
   Allocator *allocator_;
   DataType dtype_;
   std::vector<index_t> shape_;
-  std::vector<size_t > image_shape_;
+  std::vector<size_t> image_shape_;
   BufferBase *buffer_;
   BufferSlice buffer_slice_;
   bool is_buffer_owner_;
   std::string name_;
 
- DISABLE_COPY_AND_ASSIGN(Tensor);
+  DISABLE_COPY_AND_ASSIGN(Tensor);
 };
 
 }  // namespace tensor

@@ -14,7 +14,8 @@ void Simple() {
   // Construct graph
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<D, float>("Input", {1, 1, 2, 4}, {1, 1, 1, 1, 1, 2, 3, 4});
+  net.AddInputFromArray<D, float>("Input", {1, 1, 2, 4},
+                                  {1, 1, 1, 1, 1, 2, 3, 4});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(net, "Input", "InputImage",
@@ -41,18 +42,15 @@ void Simple() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 1, 2, 4}, {0.25, 0.25, 0.25, 0.25,
-                                                     0.0320586, 0.08714432, 0.23688282, 0.64391426});
+  auto expected = CreateTensor<float>(
+      {1, 1, 2, 4},
+      {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-7);
 }
 
-TEST_F(SoftmaxOpTest, CPUSimple) {
-  Simple<DeviceType::CPU>();
-}
-TEST_F(SoftmaxOpTest, OPENCLSimple) {
-  Simple<DeviceType::OPENCL>();
-}
+TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
+TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::OPENCL>(); }
 
 template <DeviceType D>
 void Complex(const std::vector<index_t> &logits_shape) {

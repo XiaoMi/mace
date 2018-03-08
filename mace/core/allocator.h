@@ -9,8 +9,8 @@
 #include <malloc.h>
 
 #include "mace/core/registry.h"
-#include "mace/public/mace.h"
 #include "mace/core/types.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -81,7 +81,7 @@ class CPUAllocator : public Allocator {
     free(data);
   };
   void *Map(void *buffer, size_t offset, size_t nbytes) const override {
-    return (char*)buffer + offset;
+    return (char *)buffer + offset;
   }
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,

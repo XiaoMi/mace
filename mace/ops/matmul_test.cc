@@ -10,7 +10,7 @@ namespace mace {
 
 class MatMulOpTest : public OpsTestBase {};
 
-template<DeviceType D>
+template <DeviceType D>
 void Simple(const std::vector<index_t> &A_shape,
             const std::vector<float> &A_value,
             const std::vector<index_t> &B_shape,
@@ -51,28 +51,23 @@ void Simple(const std::vector<index_t> &A_shape,
   }
 
   // Check
-  auto expected =
-      CreateTensor<float>(C_shape, C_value);
+  auto expected = CreateTensor<float>(C_shape, C_value);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 TEST_F(MatMulOpTest, SimpleCPU) {
-  Simple<DeviceType::CPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
-                          {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
-                          {1, 2, 2, 1}, {22, 28, 49, 64});
-  Simple<DeviceType::CPU>({1, 5, 5, 1},
-                          {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                           16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                          {1, 5, 5, 1},
-                          {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                           16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                          {1, 5, 5, 1},
-                          {215, 230, 245, 260, 275, 490, 530, 570, 610, 650,
-                           765, 830, 895, 960, 1025, 1040, 1130, 1220, 1310, 1400,
-                           1315, 1430, 1545, 1660, 1775});
+  Simple<DeviceType::CPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
+                          {1, 2, 3, 4, 5, 6}, {1, 2, 2, 1}, {22, 28, 49, 64});
+  Simple<DeviceType::CPU>(
+      {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+                     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+      {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+                     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+      {1, 5, 5, 1}, {215,  230,  245,  260,  275,  490,  530,  570,  610,
+                     650,  765,  830,  895,  960,  1025, 1040, 1130, 1220,
+                     1310, 1400, 1315, 1430, 1545, 1660, 1775});
 }
-
 
 TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
   Simple<DeviceType::CPU>({2, 2, 3, 1}, {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6},
@@ -81,19 +76,17 @@ TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
 }
 
 TEST_F(MatMulOpTest, SimpleOPENCL) {
-  Simple<DeviceType::OPENCL>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6},
-                             {1, 3, 2, 1}, {1, 2, 3, 4, 5, 6},
-                             {1, 2, 2, 1}, {22, 28, 49, 64});
-  Simple<DeviceType::OPENCL>({1, 5, 5, 1},
-                             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                              16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                             {1, 5, 5, 1},
-                             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                              16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
-                             {1, 5, 5, 1},
-                             {215, 230, 245, 260, 275, 490, 530, 570, 610, 650,
-                              765, 830, 895, 960, 1025, 1040, 1130, 1220, 1310, 1400,
-                              1315, 1430, 1545, 1660, 1775});
+  Simple<DeviceType::OPENCL>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
+                             {1, 2, 3, 4, 5, 6}, {1, 2, 2, 1},
+                             {22, 28, 49, 64});
+  Simple<DeviceType::OPENCL>(
+      {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+                     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+      {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+                     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+      {1, 5, 5, 1}, {215,  230,  245,  260,  275,  490,  530,  570,  610,
+                     650,  765,  830,  895,  960,  1025, 1040, 1130, 1220,
+                     1310, 1400, 1315, 1430, 1545, 1660, 1775});
 }
 
 TEST_F(MatMulOpTest, SimpleGPUWithBatch) {
@@ -118,8 +111,8 @@ void Complex(const index_t batch,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::OPENCL, float>(
-      "A", {batch, height, channels, 1});
+  net.AddRandomInput<DeviceType::OPENCL, float>("A",
+                                                {batch, height, channels, 1});
   net.AddRandomInput<DeviceType::OPENCL, float>(
       "B", {batch, channels, out_width, 1});
 
@@ -132,9 +125,9 @@ void Complex(const index_t batch,
 
   // Run on opencl
   BufferToImage<DeviceType::OPENCL, T>(net, "A", "AImage",
-                                           kernels::BufferType::IN_OUT_WIDTH);
+                                       kernels::BufferType::IN_OUT_WIDTH);
   BufferToImage<DeviceType::OPENCL, T>(net, "B", "BImage",
-                                           kernels::BufferType::IN_OUT_HEIGHT);
+                                       kernels::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("AImage")
@@ -177,5 +170,4 @@ TEST_F(MatMulOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(16, 32, 64, 64);
   Complex<half>(31, 31, 61, 67);
 }
-
 }

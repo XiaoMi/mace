@@ -16,8 +16,10 @@ class ChannelShuffleFunctor {
  public:
   ChannelShuffleFunctor(const int group) : group_(group) {}
 
-  void operator()(const T *input, const index_t *input_shape,
-                  T *output, StatsFuture *future) {
+  void operator()(const T *input,
+                  const index_t *input_shape,
+                  T *output,
+                  StatsFuture *future) {
     index_t batch = input_shape[0];
     index_t channels = input_shape[1];
     index_t height = input_shape[2];

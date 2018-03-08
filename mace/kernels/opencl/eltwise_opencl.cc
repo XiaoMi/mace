@@ -15,7 +15,6 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
                                                        const Tensor *input1,
                                                        Tensor *output,
                                                        StatsFuture *future) {
-
   const index_t batch = input0->dim(0);
   const index_t height = input0->dim(1);
   const index_t width = input0->dim(2);
@@ -38,10 +37,8 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     kernel_ = runtime->BuildKernel("eltwise", kernel_name, built_options);
 
     uint32_t idx = 0;
-    kernel_.setArg(idx++,
-                   *(input0->opencl_image()));
-    kernel_.setArg(idx++,
-                   *(input1->opencl_image()));
+    kernel_.setArg(idx++, *(input0->opencl_image()));
+    kernel_.setArg(idx++, *(input1->opencl_image()));
     if (!coeff_.empty()) {
       kernel_.setArg(idx++, coeff_[0]);
       kernel_.setArg(idx++, coeff_[1]);
@@ -49,17 +46,12 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     kernel_.setArg(idx++, *(output->opencl_image()));
   }
 
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(width_pixels),
-      static_cast<uint32_t>(batch_height_pixels)
-  };
+  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
+                           static_cast<uint32_t>(batch_height_pixels)};
   const std::vector<uint32_t> lws = {64, 16, 1};
   std::stringstream ss;
-  ss << "eltwise_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "eltwise_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
+     << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
 }
 

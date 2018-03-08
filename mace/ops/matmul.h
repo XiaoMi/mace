@@ -24,8 +24,8 @@ class MatMulOp : public Operator<D, T> {
         << "The dimension of A and B should be 4";
     MACE_CHECK(A->dim(0) == B->dim(0)) << "A and B must have same batch size";
     MACE_CHECK(A->dim(2) == B->dim(1))
-      << "the number of A's column " << A->dim(2)
-      << " must be equal to B's row " << B->dim(1);
+        << "the number of A's column " << A->dim(2)
+        << " must be equal to B's row " << B->dim(1);
 
     functor_(A, B, C, future);
     return true;

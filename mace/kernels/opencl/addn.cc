@@ -5,8 +5,8 @@
 #include "mace/kernels/addn.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -57,31 +57,23 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
 
     uint32_t idx = 0;
     for (auto input : input_tensors) {
-      kernel_.setArg(idx++,
-                         *(input->opencl_image()));
+      kernel_.setArg(idx++, *(input->opencl_image()));
     }
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
   }
 
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(width_pixels),
-      static_cast<uint32_t>(batch_height_pixels)
-  };
+  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
+                           static_cast<uint32_t>(batch_height_pixels)};
   const std::vector<uint32_t> lws = {64, 16, 1};
   std::stringstream ss;
-  ss << "addn_opencl_kernel_"
-     << output_shape[0] << "_"
-     << output_shape[1] << "_"
-     << output_shape[2] << "_"
-     << output_shape[3];
+  ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
+     << "_" << output_shape[2] << "_" << output_shape[3];
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
 };
 
-template
-struct AddNFunctor<DeviceType::OPENCL, float>;
+template struct AddNFunctor<DeviceType::OPENCL, float>;
 
-template
-struct AddNFunctor<DeviceType::OPENCL, half>;
+template struct AddNFunctor<DeviceType::OPENCL, half>;
 
 }  // namespace kernels
 }  // namespace mace

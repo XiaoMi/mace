@@ -99,9 +99,7 @@ void RestartTiming() {
   accum_time = 0;
   start_time = NowMicros();
 }
-void StartTiming() {
-  start_time = NowMicros();
-}
+void StartTiming() { start_time = NowMicros(); }
 void StopTiming() {
   if (start_time != 0) {
     accum_time += (NowMicros() - start_time);

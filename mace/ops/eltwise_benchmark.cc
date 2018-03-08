@@ -61,7 +61,7 @@ static void EltwiseBenchmark(
       BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
           int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
-    mace::testing::MaccProcessed(tot);                                  \
+    mace::testing::MaccProcessed(tot);                                   \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
     EltwiseBenchmark<DEVICE, TYPE>(                                      \
         iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C); \

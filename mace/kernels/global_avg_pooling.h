@@ -39,8 +39,10 @@ struct GlobalAvgPoolingFunctor {
 
 template <>
 void GlobalAvgPoolingFunctor<DeviceType::NEON, float>::operator()(
-    const float *input, const index_t *input_shape,
-    float *output, StatsFuture *future);
+    const float *input,
+    const index_t *input_shape,
+    float *output,
+    StatsFuture *future);
 
 }  // namespace kernels
 }  // namespace mace

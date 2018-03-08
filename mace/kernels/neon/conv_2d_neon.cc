@@ -50,12 +50,11 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
 
-
   std::vector<index_t> output_shape_vec(4);
   std::vector<int> paddings(2);
   kernels::CalcPaddingAndOutputSize(
-      input->shape().data(), filter->shape().data(), dilations_,
-      strides_, paddings_, output_shape_vec.data(), paddings.data());
+      input->shape().data(), filter->shape().data(), dilations_, strides_,
+      paddings_, output_shape_vec.data(), paddings.data());
   output->Resize(output_shape_vec);
 
   typedef void (*Conv2dNeonFunction)(
@@ -102,8 +101,8 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   auto output_shape = output->shape().data();
 
   auto conv2d_neon_func = selector[kernel_h - 1][strides_[0] - 1];
-  conv2d_neon_func(input_data, input_shape, filter_data, nullptr,
-                   bias_data, output_data, output_shape);
+  conv2d_neon_func(input_data, input_shape, filter_data, nullptr, bias_data,
+                   output_data, output_shape);
 }
 
 }  // namespace kernels

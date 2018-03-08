@@ -11,17 +11,15 @@
 namespace mace {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                                                        Tensor *output,
                                                        StatsFuture *future) {
   MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1)
-    << "Pooling opencl kernel not support dilation yet";
+      << "Pooling opencl kernel not support dilation yet";
   std::vector<index_t> output_shape(4);
-  std::vector<index_t> filter_shape = {
-      kernels_[0], kernels_[1],
-      input->dim(3), input->dim(3)
-  };
+  std::vector<index_t> filter_shape = {kernels_[0], kernels_[1], input->dim(3),
+                                       input->dim(3)};
 
   std::vector<int> paddings(2);
   if (paddings_.empty()) {
@@ -77,24 +75,17 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   const uint32_t gws[3] = {
-      static_cast<uint32_t>(channel_blocks),
-      static_cast<uint32_t>(out_width),
+      static_cast<uint32_t>(channel_blocks), static_cast<uint32_t>(out_width),
       static_cast<uint32_t>(batch * out_height),
   };
   std::vector<uint32_t> lws = {8, 16, 8, 1};
   std::stringstream ss;
-  ss << "pooling_opencl_kernel_"
-     << output->dim(0) << "_"
-     << output->dim(1) << "_"
-     << output->dim(2) << "_"
-     << output->dim(3);
+  ss << "pooling_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
+     << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
-
 }
 
-template
-struct PoolingFunctor<DeviceType::OPENCL, float>;
-template
-struct PoolingFunctor<DeviceType::OPENCL, half>;
+template struct PoolingFunctor<DeviceType::OPENCL, float>;
+template struct PoolingFunctor<DeviceType::OPENCL, half>;
 }  // namespace kernels
 }  // namespace mace

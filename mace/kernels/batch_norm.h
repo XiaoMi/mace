@@ -10,10 +10,10 @@
 #endif
 
 #include "mace/core/future.h"
-#include "mace/public/mace.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
@@ -24,7 +24,7 @@ struct BatchNormFunctorBase {
                        const float relux_max_limit)
       : folded_constant_(folded_constant),
         activation_(activation),
-        relux_max_limit_(relux_max_limit){}
+        relux_max_limit_(relux_max_limit) {}
 
   const bool folded_constant_;
   const ActivationType activation_;
@@ -36,8 +36,7 @@ struct BatchNormFunctor : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-      : BatchNormFunctorBase(
-            folded_constant, activation, relux_max_limit) {}
+      : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *scale,
@@ -147,8 +146,7 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-      : BatchNormFunctorBase(
-            folded_constant, activation, relux_max_limit) {}
+      : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,

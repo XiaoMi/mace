@@ -5,8 +5,8 @@
 #define MACE_KERNELS_RESHAPE_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
 namespace kernels {
@@ -24,7 +24,6 @@ struct ReshapeFunctor {
     output->CopyBytes(input->raw_data(), input->size() * sizeof(T));
   }
 };
-
 
 }  // namespace kernels
 }  // namespace mace

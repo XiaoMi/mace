@@ -198,7 +198,8 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<D, T>(net, "Input", "InputImage",
+                      kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -333,7 +334,8 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(net, "Input", "InputImage", kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<D, T>(net, "Input", "InputImage",
+                      kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")

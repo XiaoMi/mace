@@ -12,15 +12,14 @@
 
 namespace mace {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class BatchToSpaceNDOp : public Operator<D, T> {
  public:
   BatchToSpaceNDOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(
-            OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0}),
-            OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
-            true) {}
+        functor_(OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0}),
+                 OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
+                 true) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *batch_tensor = this->Input(INPUT);
@@ -28,7 +27,8 @@ class BatchToSpaceNDOp : public Operator<D, T> {
 
     std::vector<index_t> output_shape(4, 0);
     CalculateOutputShape(batch_tensor, space_tensor, output_shape.data());
-    functor_(space_tensor, output_shape, const_cast<Tensor *>(batch_tensor), future);
+    functor_(space_tensor, output_shape, const_cast<Tensor *>(batch_tensor),
+             future);
     return true;
   }
 
@@ -37,7 +37,8 @@ class BatchToSpaceNDOp : public Operator<D, T> {
                                    Tensor *output,
                                    index_t *output_shape) {
     auto crops = OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0});
-    auto block_shape = OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1});
+    auto block_shape =
+        OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1});
     MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
     MACE_CHECK(block_shape.size() == 2, "Block's shape should be 1D");
     MACE_CHECK(crops.size() == 4, "Crops' shape should be 2D");
@@ -45,13 +46,13 @@ class BatchToSpaceNDOp : public Operator<D, T> {
     const index_t block_dims = block_shape.size();
     index_t block_shape_product = 1;
     for (uint32_t block_dim = 0; block_dim < block_dims; ++block_dim) {
-      MACE_CHECK(block_shape[block_dim] > 1, "block_shape's value should be great to 1");
+      MACE_CHECK(block_shape[block_dim] > 1,
+                 "block_shape's value should be great to 1");
       const index_t block_shape_value = block_shape[block_dim];
-      const index_t cropped_input_size = input_tensor->dim(block_dim + 1) * block_shape_value
-          - crops[block_dim * 2]
-          - crops[block_dim * 2 + 1];
-      MACE_CHECK(cropped_input_size >= 0,
-                 "cropped size must be non-negative");
+      const index_t cropped_input_size =
+          input_tensor->dim(block_dim + 1) * block_shape_value -
+          crops[block_dim * 2] - crops[block_dim * 2 + 1];
+      MACE_CHECK(cropped_input_size >= 0, "cropped size must be non-negative");
       block_shape_product *= block_shape_value;
       output_shape[block_dim + 1] = cropped_input_size;
     }

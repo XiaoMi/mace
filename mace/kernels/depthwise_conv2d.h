@@ -10,9 +10,9 @@
 #endif
 
 #include "mace/core/future.h"
-#include "mace/public/mace.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
@@ -247,7 +247,7 @@ struct DepthwiseConv2dFunctorBase {
         paddings_(paddings),
         dilations_(dilations),
         activation_(activation),
-        relux_max_limit_(relux_max_limit){}
+        relux_max_limit_(relux_max_limit) {}
 
   const int *strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
@@ -296,8 +296,9 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
           padding_type_, output_shape.data(), paddings.data());
     } else {
       paddings = paddings_;
-      CalcOutputSize(input->shape().data(), fake_filter_shape.data(), paddings_.data(),
-                     dilations_, strides_, RoundType::FLOOR, output_shape.data());
+      CalcOutputSize(input->shape().data(), fake_filter_shape.data(),
+                     paddings_.data(), dilations_, strides_, RoundType::FLOOR,
+                     output_shape.data());
     }
     auto input_shape = fake_filter_shape;
     output->Resize(output_shape);

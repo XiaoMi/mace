@@ -7,9 +7,9 @@
 
 #include <limits>
 #include "mace/core/future.h"
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 
 namespace mace {
 
@@ -42,7 +42,7 @@ struct PoolingFunctorBase {
   const int *dilations_;
 };
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct PoolingFunctor : PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
@@ -50,29 +50,27 @@ struct PoolingFunctor : PoolingFunctorBase {
                  const Padding padding_type,
                  const std::vector<int> &paddings,
                  const int *dilations)
-      : PoolingFunctorBase(pooling_type, kernels,
-                           strides, padding_type,
-                           paddings, dilations) {}
+      : PoolingFunctorBase(
+            pooling_type, kernels, strides, padding_type, paddings, dilations) {
+  }
 
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future) {
-
     std::vector<index_t> output_shape(4);
     std::vector<index_t> filter_shape = {
-        kernels_[0], kernels_[1],
-        input_tensor->dim(3), input_tensor->dim(3)
-    };
+        kernels_[0], kernels_[1], input_tensor->dim(3), input_tensor->dim(3)};
 
     std::vector<int> paddings(2);
     if (paddings_.empty()) {
       kernels::CalcNHWCPaddingAndOutputSize(
-          input_tensor->shape().data(), filter_shape.data(), dilations_, strides_,
-          padding_type_, output_shape.data(), paddings.data());
+          input_tensor->shape().data(), filter_shape.data(), dilations_,
+          strides_, padding_type_, output_shape.data(), paddings.data());
     } else {
       paddings = paddings_;
-      CalcOutputSize(input_tensor->shape().data(), filter_shape.data(), paddings_.data(),
-                     dilations_, strides_, RoundType::CEIL, output_shape.data());
+      CalcOutputSize(input_tensor->shape().data(), filter_shape.data(),
+                     paddings_.data(), dilations_, strides_, RoundType::CEIL,
+                     output_shape.data());
     }
     output_tensor->Resize(output_shape);
 
@@ -110,7 +108,8 @@ struct PoolingFunctor : PoolingFunctorBase {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             for (int c = 0; c < channels; ++c) {
-              index_t out_offset = (((b * height) + h) * width + w) * channels + c;
+              index_t out_offset =
+                  (((b * height) + h) * width + w) * channels + c;
               index_t in_offset = b * in_image_size * input_channels + c;
               T res = std::numeric_limits<T>::lowest();
               for (int kh = 0; kh < kernel_h; ++kh) {
@@ -119,7 +118,8 @@ struct PoolingFunctor : PoolingFunctorBase {
                   int inw = padded_w_start + w * stride_w + dilation_w * kw;
                   if (inh >= 0 && inh < input_height && inw >= 0 &&
                       inw < input_width) {
-                    index_t input_offset = in_offset + (inh * input_width + inw) * input_channels;
+                    index_t input_offset =
+                        in_offset + (inh * input_width + inw) * input_channels;
                     res = std::max(res, input[input_offset]);
                   }
                 }
@@ -135,7 +135,8 @@ struct PoolingFunctor : PoolingFunctorBase {
         for (int h = 0; h < height; ++h) {
           for (int w = 0; w < width; ++w) {
             for (int c = 0; c < channels; ++c) {
-              index_t out_offset = (((b * height) + h) * width + w) * channels + c;
+              index_t out_offset =
+                  (((b * height) + h) * width + w) * channels + c;
               index_t in_offset = b * in_image_size * input_channels + c;
               T sum = 0;
               int block_size = 0;
@@ -145,7 +146,8 @@ struct PoolingFunctor : PoolingFunctorBase {
                   int inw = padded_w_start + w * stride_w + dilation_w * kw;
                   if (inh >= 0 && inh < input_height && inw >= 0 &&
                       inw < input_width) {
-                    index_t input_offset = in_offset + (inh * input_width + inw) * input_channels;
+                    index_t input_offset =
+                        in_offset + (inh * input_width + inw) * input_channels;
                     sum += input[input_offset];
                     block_size += 1;
                   }
@@ -158,16 +160,13 @@ struct PoolingFunctor : PoolingFunctorBase {
       }
     }
   }
-
 };
 
-template<>
+template <>
 void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input_tensor,
-    Tensor *output_tensor,
-    StatsFuture *future);
+    const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future);
 
-template<typename T>
+template <typename T>
 struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
@@ -175,9 +174,9 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
                  const Padding padding_type,
                  const std::vector<int> &paddings,
                  const int *dilations)
-      : PoolingFunctorBase(pooling_type, kernels,
-                           strides, padding_type,
-                           paddings, dilations) {}
+      : PoolingFunctorBase(
+            pooling_type, kernels, strides, padding_type, paddings, dilations) {
+  }
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future);

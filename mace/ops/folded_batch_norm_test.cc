@@ -17,7 +17,7 @@ void CalculateScaleOffset(const std::vector<float> &gamma,
                           std::vector<float> &scale,
                           std::vector<float> &offset) {
   size_t size = gamma.size();
-  for (int i = 0 ; i < size; ++i) {
+  for (int i = 0; i < size; ++i) {
     scale[i] = gamma[i] / std::sqrt(var[i] + epsilon);
     offset[i] = offset[i] - mean[i] * scale[i];
   }

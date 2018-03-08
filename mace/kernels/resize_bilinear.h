@@ -5,8 +5,8 @@
 #define MACE_KERNELS_RESIZE_BILINEAR_H_
 
 #include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/tensor.h"
 
 namespace mace {
 namespace kernels {
@@ -74,9 +74,9 @@ void ResizeImage(const T *images,
       const T *batch_input_ptr = images + in_batch_num_values * b;
       T *batch_output_ptr = output + out_batch_num_values * b;
       const T *y_lower_input_ptr =
-        batch_input_ptr + ys[y].lower * in_width * channels;
+          batch_input_ptr + ys[y].lower * in_width * channels;
       const T *y_upper_input_ptr =
-        batch_input_ptr + ys[y].upper * in_width * channels;
+          batch_input_ptr + ys[y].upper * in_width * channels;
       T *y_output_ptr = batch_output_ptr + y * out_width * channels;
       const float ys_lerp = ys[y].lerp;
 
@@ -95,7 +95,7 @@ void ResizeImage(const T *images,
           const T bottom_right = bottom_right_ptr[c];
 
           output_ptr[c] = ComputeLerp(top_left, top_right, bottom_left,
-              bottom_right, xs_lerp, ys_lerp);
+                                      bottom_right, xs_lerp, ys_lerp);
         }
       }
     }
@@ -107,10 +107,10 @@ struct ResizeBilinearFunctorBase {
   ResizeBilinearFunctorBase(const std::vector<index_t> &size,
                             bool align_corners)
       : align_corners_(align_corners) {
-        MACE_CHECK(size.size() == 2);
-        out_height_ = size[0];
-        out_width_ = size[1];
-      }
+    MACE_CHECK(size.size() == 2);
+    out_height_ = size[0];
+    out_width_ = size[1];
+  }
 
  protected:
   bool align_corners_;
@@ -163,8 +163,9 @@ struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
   }
 };
 
-template<typename T>
-struct ResizeBilinearFunctor<DeviceType::OPENCL, T> : ResizeBilinearFunctorBase {
+template <typename T>
+struct ResizeBilinearFunctor<DeviceType::OPENCL, T>
+    : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
       : ResizeBilinearFunctorBase(size, align_corners) {}
 
