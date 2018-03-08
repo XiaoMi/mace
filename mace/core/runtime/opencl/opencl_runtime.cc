@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 
+#include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
@@ -108,9 +109,15 @@ OpenCLRuntime::OpenCLRuntime() {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 
-  // a context is like a "runtime link" to the device and platform;
-  // i.e. communication is possible
-  cl::Context context({gpu_device});
+  // TODO (heliangliang) Make this configurable (e.g.HIGH for benchmark,
+  // disabled for Mali)
+  cl_context_properties context_properties[] = {
+      // Set context perf hint to normal
+      CL_CONTEXT_PERF_HINT_QCOM, CL_PERF_HINT_NORMAL_QCOM,
+      // Set context priority hint to low
+      CL_CONTEXT_PRIORITY_HINT_QCOM, CL_PRIORITY_HINT_LOW_QCOM, 0};
+
+  cl::Context context({gpu_device}, context_properties);
   cl::CommandQueue command_queue(context, gpu_device, properties);
 
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
