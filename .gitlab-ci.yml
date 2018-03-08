@@ -23,4 +23,4 @@ ops_benchmark:
   only:
     - master
   script:
-    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark
+    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark ".*half_OPENCL"
