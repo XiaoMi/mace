@@ -211,6 +211,7 @@ def main(unused_args):
     for model_name in configs["models"]:
       # Transfer params by environment
       os.environ["MODEL_TAG"] = model_name
+      print '=======================', model_name, '======================='
       model_config = configs["models"][model_name]
       for key in model_config:
         if key in ['input_nodes', 'output_nodes'] and isinstance(model_config[key], list):

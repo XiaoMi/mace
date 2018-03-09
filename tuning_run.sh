@@ -44,14 +44,14 @@ else
   IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
   for NAME in "${INPUT_NAMES[@]}";do
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
-    adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} || exit 1
+    adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} > /dev/null || exit 1
   done
 
-  adb push ${MODEL_OUTPUT_DIR}/mace_run ${PHONE_DATA_DIR} || exit 1
+  adb </dev/null push ${MODEL_OUTPUT_DIR}/mace_run ${PHONE_DATA_DIR} > /dev/null || exit 1
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
-    adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} || exit 1
+    adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
-  adb push lib/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} || exit 1
+  adb push lib/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} > /dev/null || exit 1
   
   mace_adb_output=`adb </dev/null shell \
     "LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
