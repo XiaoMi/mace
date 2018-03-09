@@ -23,11 +23,12 @@ class MemoryOptimizer(object):
     for op in net_def.op:
       if self.is_buffer_image_op(op):
         continue
-      tensor_name = op.output[0]
-      if tensor_name in consumers:
-        self.ref_counter[tensor_name] = len(consumers[tensor_name])
-      else:
-        self.ref_counter[tensor_name] = 0
+      for output in op.output:
+        tensor_name = output
+        if tensor_name in consumers:
+          self.ref_counter[tensor_name] = len(consumers[tensor_name])
+        else:
+          self.ref_counter[tensor_name] = 0
 
   def is_buffer_image_op(self, op):
     return op.type == 'BufferToImage' or op.type == 'ImageToBuffer'
@@ -46,25 +47,29 @@ class MemoryOptimizer(object):
     for op in self.net_def.op:
       if self.is_buffer_image_op(op):
         continue
-      if len(self.idle_mem) == 0:
-        # allocate new mem
-        mem_id = self.total_mem_count
-        self.total_mem_count += 1
-      else:
-        # reuse mem
-        mem_id = self.idle_mem.pop()
-
       if not op.output_shape:
         print('WARNING: There is no output shape information to do memory optimization.')
         return
-      op.mem_id = mem_id
-      self.op_mem[op.output[0]] = mem_id
-      if mem_id not in self.mem_block:
-        self.mem_block[mem_id] = [0, 0]
-      mem_size = self.mem_block[mem_id]
-      op_mem_size = self.get_mem_size(op.type, op.output_shape[0].dims)
-      mem_size[0] = max(mem_size[0], op_mem_size[0])
-      mem_size[1] = max(mem_size[1], op_mem_size[1])
+      if len(op.output_shape) != len(op.output):
+        print('WARNING: the number of output shape is not equal to the number of output.')
+        return
+      for i in range(len(op.output)):
+        if len(self.idle_mem) == 0:
+          # allocate new mem
+          mem_id = self.total_mem_count
+          self.total_mem_count += 1
+        else:
+          # reuse mem
+          mem_id = self.idle_mem.pop()
+
+        op.mem_id.extend([mem_id])
+        self.op_mem[op.output[i]] = mem_id
+        if mem_id not in self.mem_block:
+          self.mem_block[mem_id] = [0, 0]
+        mem_size = self.mem_block[mem_id]
+        op_mem_size = self.get_mem_size(op.type, op.output_shape[i].dims)
+        mem_size[0] = max(mem_size[0], op_mem_size[0])
+        mem_size[1] = max(mem_size[1], op_mem_size[1])
 
       # de-ref input tensor mem
       for ipt in op.input:

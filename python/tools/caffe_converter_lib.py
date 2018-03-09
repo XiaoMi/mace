@@ -45,19 +45,11 @@ class Operator(object):
     self.parents = []
     self.children = []
     self.data = []
-    self.output_shape = []
+    self.output_shape_map = {}
 
   def add_parent(self, parent_op):
-    assert parent_op not in self.parents
     self.parents.append(parent_op)
-    if self not in parent_op.children:
-      parent_op.children.append(self)
-
-  def add_child(self, child_op):
-    assert child_op not in self.children
-    self.children.append(child_op)
-    if self not in child_op.parents:
-      child_op.parents.append(self)
+    parent_op.children.append(self)
 
   def get_single_parent(self):
     if len(self.parents) != 1:
@@ -72,18 +64,6 @@ def BlobToNPArray(blob):
   else:
     return np.asarray(blob.data, dtype=np.float32).reshape(blob.shape.dim)
 
-def CommonConvert(op, mace_type, dt):
-  op_def = mace_pb2.OperatorDef()
-  arg = op_def.arg.add()
-  arg.name = 'T'
-  arg.i = dt
-  data_format_arg = op_def.arg.add()
-  data_format_arg.name = 'data_format'
-  data_format_arg.s = 'NHWC'
-  op_def.name = op.name
-  op_def.type = mace_type
-  op_def.input.extend([parent.name+':0' for parent in op.parents])
-  return op_def
 
 class Shapes(object):
   @staticmethod
@@ -111,6 +91,10 @@ class Shapes(object):
         output_shape[axis] += input_shape[axis]
     return output_shape
 
+  @staticmethod
+  def slice_shape(input_shape, num_output):
+    return [input_shape[0], input_shape[1], input_shape[2], input_shape[3]/num_output]
+
 class CaffeConverter(object):
   def __init__(self, caffe_net, weights, net_def, dt, device, winograd):
     self.net_def = net_def
@@ -121,11 +105,14 @@ class CaffeConverter(object):
     self.winograd = winograd
     self.resolved_ops = set()
     self.ops = []
+    self.inputs_map = {}
 
     # Add Input operations
+    top_name_map = {}
     inputs = caffe_net.input
     for input in inputs:
       self.ops.extend([Operator(input, 'Input', None)])
+      top_name_map[input] = input
 
     layers = caffe_net.layer
     # remove train layers and dropout
@@ -137,21 +124,28 @@ class CaffeConverter(object):
     self.ops.extend([Operator(layer.name, layer.type, layer) for layer in layers])
 
     self.ops_map = {op.name : op for op in self.ops}
-    output_op = {}
+    output_op_map = {}
     for layer in layers:
       op = self.ops_map[layer.name]
       for input_name in layer.bottom:
         assert input_name != layer.name
-        parent_op = output_op.get(input_name)
+        parent_op = output_op_map.get(input_name)
         if parent_op is None:
           parent_op = self.ops_map[input_name]
         op.add_parent(parent_op)
-      if len(layer.top) > 1:
-        raise Exception('Only support single-output layers')
-      for output_name in layer.top:
+        if op.name not in self.inputs_map:
+          self.inputs_map[op.name] = []
+        self.inputs_map[op.name].extend([top_name_map[input_name]])
+      for i in range(len(layer.top)):
+        output_name = layer.top[i]
+        if len(layer.top) == 1:
+          top_name_map[output_name] = op.name
+        else:
+          top_name_map[output_name] = op.name + '_' + str(i)
         if output_name == layer.name:
           continue
-        output_op[output_name] = op
+        output_op_map[output_name] = op
+
 
     # Load weights
     weights_layers = weights.layer
@@ -164,6 +158,19 @@ class CaffeConverter(object):
 
     # toposort ops
     self.ops = self.toposort_ops()
+
+  def CommonConvert(self, op, mace_type):
+    op_def = mace_pb2.OperatorDef()
+    arg = op_def.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    data_format_arg = op_def.arg.add()
+    data_format_arg.name = 'data_format'
+    data_format_arg.s = 'NHWC'
+    op_def.name = op.name
+    op_def.type = mace_type
+    op_def.input.extend([name+':0' for name in self.inputs_map[op.name]])
+    return op_def
 
   def remove_unused_layers(self, layers):
     phase_map = {0: 'train', 1: 'test'}
@@ -325,7 +332,7 @@ class CaffeConverter(object):
     return pad, stride, kernel
 
   def convert_conv2d(self, op):
-    op_def = CommonConvert(op, 'Conv2D', self.dt)
+    op_def = self.CommonConvert(op, 'Conv2D')
     param = op.layer.convolution_param
 
     # Add filter
@@ -364,11 +371,11 @@ class CaffeConverter(object):
     final_op = op
     self.resolved_ops.add(op.name)
 
-    output_shape = Shapes.conv_pool_shape(op.get_single_parent().output_shape,
+    output_shape = Shapes.conv_pool_shape(op.get_single_parent().output_shape_map[op.layer.bottom[0]],
                                           weight_data.shape,
                                           paddings, strides, dilations,
                                           math.floor)
-    op.output_shape = output_shape
+    op.output_shape_map[op.layer.top[0]] = output_shape
 
     if len(self.ops_map[final_op.name].children) == 1 \
         and self.ops_map[final_op.name].children[0].type in activation_name_map:
@@ -378,7 +385,7 @@ class CaffeConverter(object):
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
       final_op = activation_op
-      final_op.output_shape = output_shape
+      final_op.output_shape_map[final_op.layer.top[0]] = output_shape
       self.resolved_ops.add(activation_op.name)
 
     op_def.output.extend([final_op.name+':0'])
@@ -388,7 +395,7 @@ class CaffeConverter(object):
   def convert_batchnorm(self, op):
     if len(op.children) != 1 or op.children[0].type != 'Scale':
       raise Exception('Now only support BatchNorm+Scale')
-    op_def = CommonConvert(op, 'FoldedBatchNorm', self.dt)
+    op_def = self.CommonConvert(op, 'FoldedBatchNorm')
     scale_op = op.children[0]
 
     epsilon_value = op.layer.batch_norm_param.eps
@@ -422,7 +429,7 @@ class CaffeConverter(object):
     self.resolved_ops.add(scale_op.name)
     final_op = scale_op
 
-    output_shape = op.get_single_parent().output_shape
+    output_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
 
     if len(self.ops_map[final_op.name].children) == 1 \
         and self.ops_map[final_op.name].children[0].type in activation_name_map:
@@ -431,7 +438,7 @@ class CaffeConverter(object):
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
       final_op = activation_op
-      final_op.output_shape = output_shape
+      final_op.output_shape_map[final_op.layer.top[0]] = output_shape
       self.resolved_ops.add(activation_op.name)
 
     op_def.output.extend([final_op.name + ':0'])
@@ -447,13 +454,13 @@ class CaffeConverter(object):
     except AttributeError:
       pass
 
-    op_def = CommonConvert(op, 'FC', self.dt)
+    op_def = self.CommonConvert(op, 'FC')
     weight_tensor_name = op.name + '_weight:0'
     if op.data[0].ndim not in [2, 4]:
       raise ValueError('Unexpected weigth ndim.')
     if op.data[0].ndim == 4 and list(op.data[0].shape[:2] != [1, 1]):
       raise ValueError('Do not support 4D weight with shape [1, 1, *, *]')
-    input_shape = op.get_single_parent().output_shape
+    input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
     weight_data = op.data[0].reshape(-1, op.data[0].shape[-1])
     assert weight_data.shape[1] == (input_shape[1] * input_shape[2] * input_shape[3])
     weight_data = weight_data.reshape(-1, input_shape[3], input_shape[1], input_shape[2])
@@ -479,7 +486,7 @@ class CaffeConverter(object):
 
     self.resolved_ops.add(op.name)
     output_shape = Shapes.fully_connected_shape(input_shape, weight_data.shape)
-    op.output_shape = output_shape
+    op.output_shape_map[op.layer.top[0]] = output_shape
     final_op = op
 
     if len(self.ops_map[final_op.name].children) == 1 \
@@ -489,7 +496,7 @@ class CaffeConverter(object):
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
       final_op = activation_op
-      final_op.output_shape = output_shape
+      final_op.output_shape_map[final_op.layer.top[0]] = output_shape
       self.resolved_ops.add(activation_op.name)
 
     op_def.output.extend([final_op.name + ':0'])
@@ -497,7 +504,7 @@ class CaffeConverter(object):
     self.net_def.op.extend([op_def])
 
   def convert_pooling(self, op):
-    op_def = CommonConvert(op, 'Pooling', self.dt)
+    op_def = self.CommonConvert(op, 'Pooling')
 
     param = op.layer.pooling_param
     paddings, strides, kernels = self.add_stride_pad_kernel_arg(param, op_def)
@@ -509,11 +516,11 @@ class CaffeConverter(object):
     pooling_type_arg.name = 'pooling_type'
     pooling_type_arg.i = pooling_type_mode[pooling_type]
 
-    input_shape = op.get_single_parent().output_shape
+    input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
     filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]]
     output_shape = Shapes.conv_pool_shape(input_shape, filter_shape,
                                           paddings, strides, [1, 1], math.ceil)
-    op.output_shape = output_shape
+    op.output_shape_map[op.layer.top[0]] = output_shape
 
     op_def.output.extend([op.name + ':0'])
     self.add_output_shape(op_def, output_shape)
@@ -521,19 +528,19 @@ class CaffeConverter(object):
     self.resolved_ops.add(op.name)
 
   def convert_activation(self, op):
-    op_def = CommonConvert(op, 'Activation', self.dt)
+    op_def = self.CommonConvert(op, 'Activation')
     activation_arg = op_def.arg.add()
     activation_arg.name = 'activation'
     activation_arg.s = activation_name_map[op.type]
     op_def.output.extend([op.name + ':0'])
-    output_shape = op.get_single_parent().output_shape
-    op.output_shape = output_shape
+    output_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_prelu(self, op):
-    op_def = CommonConvert(op, 'Activation', self.dt)
+    op_def = self.CommonConvert(op, 'Activation')
     activation_arg = op_def.arg.add()
     activation_arg.name = 'activation'
     activation_arg.s = 'PRELU'
@@ -546,23 +553,23 @@ class CaffeConverter(object):
     else:
       op_def.input.extend([alpha_tensor_name])
     op_def.output.extend([op.name + ':0'])
-    output_shape = op.get_single_parent().output_shape
-    op.output_shape = output_shape
+    output_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_add(self, op):
-    op_def = CommonConvert(op, 'AddN', self.dt)
+    op_def = self.CommonConvert(op, 'AddN')
     op_def.output.extend([op.name + ':0'])
-    output_shape = op.parents[0].output_shape
-    op.output_shape = output_shape
+    output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_concat(self, op):
-    op_def = CommonConvert(op, 'Concat', self.dt)
+    op_def = self.CommonConvert(op, 'Concat')
     axis_arg = op_def.arg.add()
     axis_arg.name = 'axis'
     axis_arg.i = 3
@@ -575,17 +582,17 @@ class CaffeConverter(object):
       pass
 
     input_shapes = []
-    for parent in op.parents:
-      input_shapes.append(parent.output_shape)
+    for i in range(len(op.parents)):
+      input_shapes.append(op.parents[i].output_shape_map[op.layer.bottom[i]])
     output_shape = Shapes.concat_shape(input_shapes, axis_arg.i)
-    op.output_shape = output_shape
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
   def convert_eltwise(self, op):
-    op_def = CommonConvert(op, 'Eltwise', self.dt)
+    op_def = self.CommonConvert(op, 'Eltwise')
     param = op.layer.eltwise_param
     type_arg = op_def.arg.add()
     type_arg.name = 'type'
@@ -595,17 +602,40 @@ class CaffeConverter(object):
       coeff_arg.name = 'coeff'
       coeff_arg.ints.extend(list(param.coeff))
 
-    output_shape = op.parents[0].output_shape
-    op.output_shape = output_shape
+    output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
+  def convert_slice(self, op):
+    op_def = self.CommonConvert(op, 'Slice')
+    if op.layer.HasField('slice_param'):
+      param = op.layer.slice_param
+      if param.HasField('axis') and param.axis != 1:
+        raise Exception('Mace do not support slice with axis ' + str(param.axis))
+      if len(param.slice_point) > 0:
+        raise Exception('Mace do not support slice with slice_point')
+
+    input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    num_outputs = len(op.layer.top)
+    if (input_shape[3] % num_outputs) != 0 or \
+      (self.device == 'gpu' and ((input_shape[3] / num_outputs) % 4 != 0)) :
+      raise Exception('Mace do not support slice with input shape '
+                      + str(input_shape) + ' and number of output ' + str(num_outputs))
+    output_shape = Shapes.slice_shape(input_shape, num_outputs)
+    for i in range(len(op.layer.top)):
+      op.output_shape_map[op.layer.top[i]] = output_shape
+      self.add_output_shape(op_def, output_shape)
+      op_def.output.extend([op.name + '_' + str(i) + ':0'])
+    self.net_def.op.extend([op_def])
+    self.resolved_ops.add(op.name)
+
   def convert_normal_op(self, op):
-    op_def = CommonConvert(op, op.type, self.dt)
-    output_shape = op.parents[0].output_shape
-    op.output_shape = output_shape
+    op_def = self.CommonConvert(op, op.type)
+    output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
     self.add_output_shape(op_def, output_shape)
     op_def.output.extend([op.name + ':0'])
     self.net_def.op.extend([op_def])
@@ -631,7 +661,7 @@ class CaffeConverter(object):
     assert len(input_nodes) == len(input_shapes)
     for i in range(len(input_nodes)):
       input_op = self.ops_map[input_nodes[i]]
-      input_op.output_shape = input_shapes[i]
+      input_op.output_shape_map[input_op.name] = input_shapes[i]
 
   def convert(self, input_nodes, input_shapes, output_nodes):
     is_single = len(input_nodes) == 1 and len(output_nodes) == 1
@@ -666,6 +696,8 @@ class CaffeConverter(object):
         self.convert_eltwise(op)
       elif op.type in ['Softmax']:
        self.convert_normal_op(op)
+      elif op.type == 'Slice':
+        self.convert_slice(op)
       else:
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 

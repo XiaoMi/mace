@@ -19,13 +19,15 @@ void UpdateOp(mace::OperatorDef &op,
               const std::vector<std::string> &inputs,
               const std::vector<std::string> &outputs,
               const std::vector<mace::DataType> &output_types,
-              uint32_t node_id) {
+              uint32_t node_id,
+              const std::vector<int> &mem_ids) {
   op.set_name(name);
   op.set_type(type);
   op.set_input(inputs);
   op.set_output(outputs);
   op.set_output_type(output_types);
   op.set_node_id(node_id);
+  op.set_mem_id(mem_ids);
 }
 
 }  // namespace
@@ -66,10 +68,6 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
   {% endif %}
   {% endfor %}
 
-  {% if net.op[i].HasField('mem_id') %}
-  op.set_mem_id({{net.op[i].mem_id}});
-  {% endif %}
-
   {% for shape in net.op[i].output_shape %}
 	{% if shape.dims | length > 0 %}
   op.add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
@@ -85,7 +83,8 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
           { {{ net.op[i].input|stringfy }} },
           { {{ net.op[i].output|stringfy }} },
           output_types,
-          {{ net.op[i].node_id }});
+          {{ net.op[i].node_id }},
+          { {{ net.op[i].mem_id | join(', ') }} });
 
   {% if runtime == 'dsp' %}
     op.set_padding({{ net.op[i].padding }});

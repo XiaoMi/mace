@@ -18,26 +18,26 @@ def file_checksum(fname):
 def main(unused_args):
   if not os.path.isfile(FLAGS.model_file):
     print("Input graph file '" + FLAGS.model_file + "' does not exist!")
-    return -1
+    sys.exit(-1)
 
   model_checksum = file_checksum(FLAGS.model_file)
   if FLAGS.model_checksum != "" and FLAGS.model_checksum != model_checksum:
     print("Model checksum mismatch: %s != %s" % (model_checksum, FLAGS.model_checksum))
-    return -1
+    sys.exit(-1)
 
   if FLAGS.platform == 'caffe':
     if not os.path.isfile(FLAGS.weight_file):
       print("Input weight file '" + FLAGS.weight_file + "' does not exist!")
-      return -1
+      sys.exit(-1)
 
     weight_checksum = file_checksum(FLAGS.weight_file)
     if FLAGS.weight_checksum != "" and FLAGS.weight_checksum != weight_checksum:
       print("Weight checksum mismatch: %s != %s" % (weight_checksum, FLAGS.weight_checksum))
-      return -1
+      sys.exit(-1)
 
     if FLAGS.runtime == 'dsp':
       print("DSP not support caffe model yet.")
-      return -1
+      sys.exit(-1)
 
     from lib.python.tools import caffe_converter_lib
     output_graph_def = caffe_converter_lib.convert_to_mace_pb(
