@@ -83,6 +83,7 @@ extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_Reshape(OperatorRegistry *op_registry);
 extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
+extern void Register_Slice(OperatorRegistry *op_registry);
 
 OperatorRegistry::OperatorRegistry() {
   Register_Activation(this);
@@ -109,6 +110,7 @@ OperatorRegistry::OperatorRegistry() {
   Register_Reshape(this);
   Register_Eltwise(this);
   Register_FullyConnected(this);
+  Register_Slice(this);
 }
 
 }  // namespace mace

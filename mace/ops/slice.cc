@@ -2,27 +2,27 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/concat.h"
+#include "mace/ops/slice.h"
 
 namespace mace {
 
-void Register_Concat(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+void Register_Slice(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::CPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ConcatOp<DeviceType::CPU, float>);
+                    SliceOp<DeviceType::CPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ConcatOp<DeviceType::OPENCL, float>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                    SliceOp<DeviceType::OPENCL, float>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    ConcatOp<DeviceType::OPENCL, half>);
+                    SliceOp<DeviceType::OPENCL, half>);
 }
 
 }  // namespace mace
