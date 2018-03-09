@@ -20,7 +20,7 @@ bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
                                      --data_type=${DATA_TYPE} \
                                      --runtime=${RUNTIME} \
                                      --output_type=source \
-                                     --template=${LIBMACE_SOURCE_DIR}/lib/python/tools/model.template \
+                                     --template=${LIBMACE_SOURCE_DIR}/lib/python/tools \
                                      --model_tag=${MODEL_TAG} \
                                      --input_shape=${INPUT_SHAPES} \
                                      ${DSP_MODE_FLAG} \
