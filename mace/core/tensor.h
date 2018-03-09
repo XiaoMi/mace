@@ -72,7 +72,10 @@ class Tensor {
         name_(""){};
 
   Tensor(BufferBase *buffer, DataType dtype)
-      : dtype_(dtype), buffer_(buffer), is_buffer_owner_(false), name_("") {}
+    : dtype_(dtype),
+      buffer_(buffer),
+      is_buffer_owner_(false),
+      name_("") {}
 
   Tensor(const BufferSlice &buffer_slice, DataType dtype)
       : dtype_(dtype),
@@ -166,8 +169,8 @@ class Tensor {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
       buffer_->Resize(raw_size());
     } else {
+      MACE_CHECK(is_buffer_owner_);
       buffer_ = new Buffer(allocator_, raw_size());
-      is_buffer_owner_ = true;
     }
   }
 
@@ -176,8 +179,8 @@ class Tensor {
     shape_ = shape;
     image_shape_ = image_shape;
     if (buffer_ == nullptr) {
+      MACE_CHECK(is_buffer_owner_);
       buffer_ = new Image(image_shape, dtype_);
-      is_buffer_owner_ = true;
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
       Image *image = dynamic_cast<Image *>(buffer_);
