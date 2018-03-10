@@ -192,7 +192,12 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
     }
     LOG(FATAL) << "Build program from "
                << (is_opencl_binary ? "binary: " : "source: ")
-               << built_program_key << " failed: " << ret;
+               << built_program_key << " failed: "
+               << (ret == CL_INVALID_PROGRAM ? "CL_INVALID_PROGRAM, possible "
+                   "cause 1: the MACE library is built from SoC 1 but is "
+                   "used on different SoC 2, possible cause 2: the MACE "
+                   "buffer is corrupted make sure your code has no "
+                   "out-of-range memory writing" : MakeString(ret));
   }
 
   if (!is_opencl_binary) {
