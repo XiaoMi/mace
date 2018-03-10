@@ -41,7 +41,8 @@ struct SliceFunctor {
       int output_idx = outer_idx * output_channels;
       for (size_t i = 0; i < outputs_count; ++i) {
         if (DataTypeCanUseMemcpy(DataTypeToEnum<T>::v())) {
-          memcpy(output_ptrs[i]+output_idx, input_ptr+input_idx, output_channels * sizeof(T));
+          memcpy(output_ptrs[i]+output_idx, input_ptr+input_idx,
+                 output_channels * sizeof(T));
         } else {
           for (index_t k = 0; k < output_channels; ++k) {
             *(output_ptrs[i] + output_idx + k) = *(input_ptr + input_idx + k);

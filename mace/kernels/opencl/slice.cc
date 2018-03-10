@@ -11,13 +11,15 @@ namespace mace {
 namespace kernels {
 
 template<typename T>
-void SliceFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
-                                                     const std::vector<Tensor *> &output_list,
-                                                     StatsFuture *future) {
+void SliceFunctor<DeviceType::OPENCL, T>::operator()(
+    const Tensor *input,
+    const std::vector<Tensor *> &output_list,
+    StatsFuture *future) {
   const index_t input_channels = input->dim(3);
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
-  MACE_CHECK(output_channels % 4 == 0) << "output channels of slice op must be divisible by 4";
+  MACE_CHECK(output_channels % 4 == 0)
+    << "output channels of slice op must be divisible by 4";
   std::vector<index_t> output_shape({input->dim(0), input->dim(1),
                                      input->dim(2), output_channels});
 
@@ -33,7 +35,8 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE="
+                           + DtToCLCMDDt(DataTypeToEnum<T>::value));
     kernel_ = runtime->BuildKernel("slice", kernel_name, built_options);
   }
   const index_t channel_blk = RoundUpDiv4(output_channels);
@@ -53,9 +56,9 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
      << outputs_count;
   for (int i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
-    kernel_.setArg(idx++, *(static_cast<const cl::Image2D *>(input->opencl_image())));
+    kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
-    kernel_.setArg(idx++, *(static_cast<cl::Image2D *>(output_list[i]->opencl_image())));
+    kernel_.setArg(idx++, *(output_list[i]->opencl_image()));
 
     TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
   }
