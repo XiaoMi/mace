@@ -35,7 +35,7 @@ if [ "$PLATFORM" == "tensorflow" ];then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
-      adb </dev/null pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
+      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null
     done
   fi
   python tools/validate.py --platform=tensorflow \
@@ -77,7 +77,7 @@ elif [ "$PLATFORM" == "caffe" ];then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
-      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR}
+      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null
     done
   fi
   for NAME in "${OUTPUT_NAMES[@]}";do
@@ -99,6 +99,6 @@ elif [ "$PLATFORM" == "caffe" ];then
     --input_node ${INPUT_NODES} \
     --output_node ${OUTPUT_NODES} \
     --input_shape ${INPUT_SHAPES} \
-    --output_shape ${OUTPUT_SHAPES}
+    --output_shape ${OUTPUT_SHAPES} || exit 1
 
 fi

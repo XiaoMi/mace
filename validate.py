@@ -38,8 +38,10 @@ def compare_output(output_name, mace_out_value, out_value):
       print '=======================Similarity Test Passed======================'
     else:
       print '=======================Similarity Test Failed======================'
+      sys.exit(-1)
   else:
     print '=======================Skip empty node==================='
+    sys.exit(-1)
 
 
 def validate_tf_model(input_names, input_shapes, output_names):
