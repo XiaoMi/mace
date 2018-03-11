@@ -125,6 +125,12 @@ def build_mace_run_prod(model_output_dir, tuning, libmace_name):
   build_mace_run(production_or_not, model_output_dir, hexagon_mode)
 
 
+def build_run_throughput_test(run_seconds, merged_lib_file, model_input_dir):
+  command = "bash tools/build_run_throughput_test.sh {} {} {}".format(
+    run_seconds, merged_lib_file, model_input_dir)
+  run_command(command)
+
+
 def validate_model(model_output_dir):
   generate_data_or_not = False
   command = "bash tools/validate_tools.sh {} {}".format(
@@ -167,10 +173,12 @@ def parse_args():
       "--output_dir", type=str, default="build", help="The output dir.")
   parser.add_argument(
       "--round", type=int, default=1, help="The model running round.")
+  parser.add_argument("--run_seconds", type=int, default=10,
+                      help="The model throughput test running seconds.")
   parser.add_argument(
       "--tuning", type="bool", default="true", help="Tune opencl params.")
-  parser.add_argument(
-      "--mode", type=str, default="all", help="[build|run|validate|merge|all].")
+  parser.add_argument("--mode", type=str, default="all",
+                      help="[build|run|validate|merge|all|throughput_test].")
   return parser.parse_known_args()
 
 
@@ -255,6 +263,15 @@ def main(unused_args):
     if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
       merge_libs_and_tuning_results(FLAGS.output_dir + "/" + target_abi,
                                     model_output_dirs)
+
+  if FLAGS.mode == "throughput_test":
+    merged_lib_file = FLAGS.output_dir + "/%s/libmace/lib/libmace_%s.a" % \
+        (configs["target_abis"][0], os.environ["PROJECT_NAME"])
+    generate_random_input(FLAGS.output_dir)
+    for model_name in configs["models"]:
+      runtime = configs["models"][model_name]["runtime"]
+      os.environ["%s_MODEL_TAG" % runtime.upper()] = model_name
+    build_run_throughput_test(FLAGS.run_seconds, merged_lib_file, FLAGS.output_dir)
 
 
 if __name__ == "__main__":
