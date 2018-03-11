@@ -344,7 +344,7 @@ class TFConverter(object):
     final_op = op
     self.resolved_ops[op.name] = 1
 
-    if len(self.tf_graph[op.name]) == 1 and self.tf_graph[op.name][0].type == 'BiasAdd' :
+    if len(self.tf_graph.get(op.name, [])) == 1 and self.tf_graph[op.name][0].type == 'BiasAdd':
       bias_add_op = self.tf_graph[op.name][0]
       if self.device == 'gpu':
         output_name = self.add_buffer_to_image(get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
