@@ -153,7 +153,9 @@ void OperatorDef::CopyFrom(const OperatorDef &from) {
   output_type_.resize(from_data_type.size());
   std::copy(from_data_type.begin(), from_data_type.end(), output_type_.begin());
 
-  mem_id_ = from.mem_id();
+  auto mem_ids = from.mem_id();
+  mem_id_.resize(mem_ids.size());
+  std::copy(mem_ids.begin(), mem_ids.end(), mem_id_.begin());
 
   // nnlib
   node_id_ = from.node_id();
@@ -186,13 +188,11 @@ void OperatorDef::set_type(const std::string &type_) {
 }
 bool OperatorDef::has_type() const { return (has_bits_ & 0x00000002u) != 0; }
 void OperatorDef::set_has_type() { has_bits_ |= 0x00000002u; }
-int OperatorDef::mem_id() const { return mem_id_; }
-void OperatorDef::set_mem_id(const int mem_id) {
-  set_has_mem_id();
-  mem_id_ = mem_id;
+const std::vector<int> &OperatorDef::mem_id() const { return mem_id_; }
+void OperatorDef::set_mem_id(const std::vector<int> &value) {
+  mem_id_.resize(value.size());
+  std::copy(value.begin(), value.end(), mem_id_.begin());
 }
-bool OperatorDef::has_mem_id() const { return (has_bits_ & 0x00000004u) != 0; }
-void OperatorDef::set_has_mem_id() { has_bits_ |= 0x00000004u; }
 uint32_t OperatorDef::node_id() const { return node_id_; }
 void OperatorDef::set_node_id(uint32_t node_id) { node_id_ = node_id; }
 uint32_t OperatorDef::op_id() const { return op_id_; }

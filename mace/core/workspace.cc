@@ -116,7 +116,7 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   // As DSP may have different data output type for each op,
   // we stick to the same concept.
   for (auto &op : net_def.op()) {
-    if (op.has_mem_id()) {
+    if (! op.mem_id().empty()){
       const DataType op_dtype = static_cast<DataType>(
           ArgumentHelper::GetSingleArgument<OperatorDef, int>(
               op, "T", static_cast<int>(DT_FLOAT)));
@@ -135,18 +135,20 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   }
   VLOG(3) << "Preallocate image to tensors";
   for (auto &op : net_def.op()) {
-    if (op.has_mem_id()) {
-      std::unique_ptr<Tensor> tensor(
-          new Tensor(preallocated_allocator_.GetBuffer(op.mem_id()), dtype));
-      tensor->SetSourceOpName(op.name());
-      VLOG(3)
-          << "Tensor: " << op.name() << "(" << op.type() << ")"
-          << "; Mem: " << op.mem_id() << "; Image shape: "
-          << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[0]
-          << ", "
-          << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                 ->image_shape()[1];
-      tensor_map_[op.output(0)] = std::move(tensor);
+    if (!op.mem_id().empty()) {
+      auto mem_ids = op.mem_id();
+      int count = mem_ids.size();
+      for (int i = 0; i < count; ++i) {
+        std::unique_ptr<Tensor> tensor
+            (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
+        tensor->SetSourceOpName(op.name());
+        VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")" << "; Mem: "
+                << mem_ids[i] << "; Image shape: "
+                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[0]
+                << ", "
+                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[1];
+        tensor_map_[op.output(i)] = std::move(tensor);
+      }
     }
   }
 }

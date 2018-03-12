@@ -174,9 +174,8 @@ class OperatorDef {
   const std::string &type() const;
   void set_type(const std::string &type_);
   bool has_type() const;
-  int mem_id() const;
-  void set_mem_id(const int mem_id);
-  bool has_mem_id() const;
+  const std::vector<int> &mem_id() const;
+  void set_mem_id(const std::vector<int> &value);
   uint32_t node_id() const;
   void set_node_id(uint32_t node_id);
   uint32_t op_id() const;
@@ -220,7 +219,7 @@ class OperatorDef {
   std::vector<OutputShape> output_shape_;
   std::vector<DataType> output_type_;
 
-  int mem_id_;
+  std::vector<int> mem_id_;
 
   // nnlib
   uint32_t node_id_;

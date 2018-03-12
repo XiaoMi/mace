@@ -72,8 +72,6 @@ static void ConcatN(cl::Kernel *kernel,
   const index_t width = output->dim(2);
   const index_t channel = output->dim(3);
 
-  const int channel_blk = RoundUpDiv4(channel);
-
   if (kernel->get() == nullptr) {
     auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
