@@ -60,7 +60,7 @@ class Operator(object):
 def BlobToNPArray(blob):
   if blob.num != 0:
     return (np.asarray(blob.data, dtype=np.float32).
-            reshape(blob.num, blob.channels, blob.height, blob.width))
+            reshape((blob.num, blob.channels, blob.height, blob.width)))
   else:
     return np.asarray(blob.data, dtype=np.float32).reshape(blob.shape.dim)
 
@@ -95,6 +95,7 @@ class Shapes(object):
   def slice_shape(input_shape, num_output):
     return [input_shape[0], input_shape[1], input_shape[2], input_shape[3]/num_output]
 
+# outputs' name is [op.name + '_' + #]
 class CaffeConverter(object):
   def __init__(self, caffe_net, weights, net_def, dt, device, winograd):
     self.net_def = net_def
@@ -105,7 +106,7 @@ class CaffeConverter(object):
     self.winograd = winograd
     self.resolved_ops = set()
     self.ops = []
-    self.inputs_map = {}
+    self.inputs_map = {} # caffe op name -> mace inputs' name
 
     # Add Input operations
     top_name_map = {}
@@ -255,8 +256,6 @@ class CaffeConverter(object):
       op_def.name = name
       op_def.type = 'BufferToImage'
       op_def.input.extend([new_input_name])
-      if name not in self.ops_map:
-        raise Exception("Input name not in the model")
       op_def.output.extend([name+':0'])
 
       epsilon_arg = op_def.arg.add()
@@ -350,7 +349,7 @@ class CaffeConverter(object):
     # Add Bias
     if len(op.data) == 2:
       bias_tensor_name = op.name + '_bias:0'
-      bias_data = op.data[1]
+      bias_data = op.data[1].reshape(-1)
       self.add_tensor(bias_tensor_name, bias_data)
       if self.device == 'gpu':
         output_name = self.add_buffer_to_image(bias_tensor_name, "ARGUMENT")
@@ -412,8 +411,8 @@ class CaffeConverter(object):
 
     scale_value = (
       (1.0 / np.vectorize(math.sqrt)(var_value + epsilon_value)) *
-      gamma_value)
-    offset_value = (-mean_value * scale_value) + beta_value
+      gamma_value).reshape(-1)
+    offset_value = ((-mean_value * scale_value) + beta_value).reshape(-1)
     input_names = [op.name+'_scale:0', op.name+'_offset:0']
     self.add_tensor(input_names[0], scale_value)
     self.add_tensor(input_names[1], offset_value)
@@ -458,15 +457,20 @@ class CaffeConverter(object):
     weight_tensor_name = op.name + '_weight:0'
     if op.data[0].ndim not in [2, 4]:
       raise ValueError('Unexpected weigth ndim.')
-    if op.data[0].ndim == 4 and list(op.data[0].shape[:2] != [1, 1]):
+    if op.data[0].ndim == 4 and list(op.data[0].shape[:2]) != [1, 1]:
       raise ValueError('Do not support 4D weight with shape [1, 1, *, *]')
     input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
+
     weight_data = op.data[0].reshape(-1, op.data[0].shape[-1])
     assert weight_data.shape[1] == (input_shape[1] * input_shape[2] * input_shape[3])
     weight_data = weight_data.reshape(-1, input_shape[3], input_shape[1], input_shape[2])
     weight_data = weight_data.transpose((0, 2, 3, 1)).reshape(weight_data.shape[0], -1)
     self.add_tensor(weight_tensor_name, weight_data)
     if self.device == 'gpu':
+      if (weight_data.shape[0] + 3) / 4 > OPENCL_IMAGE_MAX_SIZE \
+          or weight_data.shape[1] > OPENCL_IMAGE_MAX_SIZE:
+        raise Exception('Mace gpu do not support FC with weight shape: '
+                        +str(weight_data.shape))
       buffer_type = "WEIGHT_HEIGHT"
       output_name = self.add_buffer_to_image(weight_tensor_name, buffer_type)
       op_def.input.extend([output_name])
@@ -476,7 +480,7 @@ class CaffeConverter(object):
     # Add Bias
     if len(op.data) == 2:
       bias_tensor_name = op.name + '_bias:0'
-      bias_data = op.data[1]
+      bias_data = op.data[1].reshape(-1)
       self.add_tensor(bias_tensor_name, bias_data)
       if self.device == 'gpu':
         output_name = self.add_buffer_to_image(bias_tensor_name, "ARGUMENT")
@@ -545,7 +549,7 @@ class CaffeConverter(object):
     activation_arg.name = 'activation'
     activation_arg.s = 'PRELU'
     alpha_tensor_name = op.name + '_alpha:0'
-    alpha_data = op.data[0]
+    alpha_data = op.data[0].reshape(-1)
     self.add_tensor(alpha_tensor_name, alpha_data)
     if self.device == 'gpu':
       output_name = self.add_buffer_to_image(alpha_tensor_name, "ARGUMENT")
@@ -661,7 +665,10 @@ class CaffeConverter(object):
     assert len(input_nodes) == len(input_shapes)
     for i in range(len(input_nodes)):
       input_op = self.ops_map[input_nodes[i]]
-      input_op.output_shape_map[input_op.name] = input_shapes[i]
+      if input_op.layer is not None:
+        input_op.output_shape_map[input_op.layer.top[0]] = input_shapes[i]
+      else:
+        input_op.output_shape_map[input_op.name] = input_shapes[i]
 
   def convert(self, input_nodes, input_shapes, output_nodes):
     is_single = len(input_nodes) == 1 and len(output_nodes) == 1
