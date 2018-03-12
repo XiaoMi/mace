@@ -177,3 +177,11 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
   )
   with open(output, "wb") as f:
     f.write(source)
+
+  # generate model header file
+  template_name = 'model_header.template'
+  source = j2_env.get_template(template_name).render(
+    tag = model_tag,
+  )
+  with open(output_dir + model_tag + '.h', "wb") as f:
+    f.write(source)
