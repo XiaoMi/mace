@@ -386,6 +386,9 @@ MaceEngine::MaceEngine(const NetDef *net_def, DeviceType device_type)
     net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
   }
 }
+
+extern const char *MaceGitVersion();
+
 MaceEngine::MaceEngine(const NetDef *net_def,
                        DeviceType device_type,
                        const std::vector<std::string> &input_nodes,
@@ -395,6 +398,7 @@ MaceEngine::MaceEngine(const NetDef *net_def,
       ws_(new Workspace()),
       net_(nullptr),
       hexagon_controller_(nullptr) {
+  LOG(INFO) << "MACE GIT VERSION: " << MaceGitVersion();
   for (auto input_name : input_nodes) {
     ws_->CreateTensor(MakeString("mace_input_node_", input_name, ":0"),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
