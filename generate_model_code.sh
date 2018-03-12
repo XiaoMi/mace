@@ -10,7 +10,7 @@ if [ ${DSP_MODE} ]; then
   DSP_MODE_FLAG="--dsp_mode=${DSP_MODE}"
 fi
 
-bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
+PYTHONUNBUFFERED=1 bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
                                      --model_file=${MODEL_FILE_PATH} \
                                      --weight_file=${WEIGHT_FILE_PATH} \
                                      --model_checksum=${MODEL_SHA256_CHECKSUM} \

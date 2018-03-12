@@ -1,10 +1,7 @@
 import argparse
 import sys
-import os
-import os.path
 import numpy as np
 import re
-from scipy import spatial
 
 # Validation Flow:
 # 1. Generate input data

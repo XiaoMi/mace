@@ -17,6 +17,29 @@ import yaml
 
 from ConfigParser import ConfigParser
 
+def run_command_real_time(command):
+  print("Run command: {}".format(command))
+  process = subprocess.Popen(
+    command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+  while True:
+    std_err = process.stderr.readline()
+    if std_err == '' and process.poll() is not None:
+      break
+    if std_err:
+      print std_err.strip()
+  while True:
+    std_out = process.stdout.readline()
+    if std_out == '' and process.poll() is not None:
+      break
+    if std_out:
+      print std_out.strip()
+  ret_code = process.poll()
+
+  if ret_code != 0:
+    raise Exception("Exit not 0 from bash with code: {}, command: {}".format(
+      ret_code, command))
+
 def run_command(command):
   print("Run command: {}".format(command))
   result = subprocess.Popen(
@@ -71,7 +94,7 @@ def generate_random_input(model_output_dir):
 
 def generate_model_code():
   command = "bash tools/generate_model_code.sh"
-  run_command(command)
+  run_command_real_time(command)
 
 
 def build_mace_run(production_mode, model_output_dir, hexagon_mode):

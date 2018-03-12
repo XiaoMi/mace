@@ -24,7 +24,7 @@ if [ "$GENERATE_DATA_OR_NOT" = 1 ]; then
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
     rm -rf ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME}
   done
-  python tools/generate_data.py --input_node=${INPUT_NODES} \
+  python -u tools/generate_data.py --input_node=${INPUT_NODES} \
     --input_file=${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
     --input_shape="${INPUT_SHAPES}" || exit 1
   exit 0
@@ -38,7 +38,7 @@ if [ "$PLATFORM" == "tensorflow" ];then
       adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null
     done
   fi
-  python tools/validate.py --platform=tensorflow \
+  python -u tools/validate.py --platform=tensorflow \
       --model_file ${MODEL_FILE_PATH} \
       --input_file ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME} \
       --mace_out_file ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
@@ -90,7 +90,8 @@ elif [ "$PLATFORM" == "caffe" ];then
   docker cp tools/validate.py ${CONTAINER_NAME}:/mace
   docker cp ${MODEL_FILE_PATH} ${CONTAINER_NAME}:/mace
   docker cp ${WEIGHT_FILE_PATH} ${CONTAINER_NAME}:/mace
-  docker exec -it ${CONTAINER_NAME} python /mace/validate.py  --platform=caffe \
+  docker exec -it ${CONTAINER_NAME} python -u /mace/validate.py \
+    --platform=caffe \
     --model_file /mace/${MODEL_FILE_NAME} \
     --weight_file /mace/${WEIGHT_FILE_NAME} \
     --input_file /mace/${INPUT_FILE_NAME} \
