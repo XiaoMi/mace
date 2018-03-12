@@ -158,6 +158,7 @@ DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
 DEFINE_int32(round, 1, "round");
+DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
 
 bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
@@ -225,22 +226,25 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
       }
     }
     t1 = NowMicros();
-    LOG(INFO) << "Averate latency: " << (t1 - t0) / FLAGS_round << " us";
+    LOG(INFO) << "Average latency: " << (t1 - t0) / FLAGS_round << " us";
   }
 
-  if (output_data != nullptr) {
-    std::string output_name = FLAGS_output_file + "_" + FormatName(FLAGS_output_node);
-    ofstream out_file(output_name, ios::binary);
-    out_file.write((const char *) (output_data.get()),
-                   output_size * sizeof(float));
-    out_file.flush();
-    out_file.close();
-    LOG(INFO) << "Write output file "
-              << output_name
-              << " with size " << output_size
-              << " done.";
-  } else {
-    LOG(INFO) << "Output data is null";
+  if (FLAGS_restart_round == 1) {
+    if (output_data != nullptr) {
+      std::string
+        output_name = FLAGS_output_file + "_" + FormatName(FLAGS_output_node);
+      ofstream out_file(output_name, ios::binary);
+      out_file.write((const char *) (output_data.get()),
+                     output_size * sizeof(float));
+      out_file.flush();
+      out_file.close();
+      LOG(INFO) << "Write output file "
+                << output_name
+                << " with size " << output_size
+                << " done.";
+    } else {
+      LOG(INFO) << "Output data is null";
+    }
   }
 
   return true;
@@ -326,7 +330,7 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
       }
     }
     t1 = NowMicros();
-    LOG(INFO) << "Averate latency: " << (t1 - t0) / FLAGS_round << " us";
+    LOG(INFO) << "Average latency: " << (t1 - t0) / FLAGS_round << " us";
   }
 
   for (size_t i = 0; i < output_count; ++i) {
@@ -363,7 +367,8 @@ int main(int argc, char **argv) {
   LOG(INFO) << "output_file: " << FLAGS_output_file;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
   LOG(INFO) << "device: " << FLAGS_device;
-  LOG(INFO) << "round: " << FLAGS_round;
+  LOG(INFO) << "round: " << FLAGS_restart_round;
+  LOG(INFO) << "restart_round: " << FLAGS_round;
 
   std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
   std::vector<std::string> output_names = str_util::Split(FLAGS_output_node, ',');
@@ -382,10 +387,17 @@ int main(int argc, char **argv) {
   }
 
   bool ret;
-  if (input_count == 1 && output_count == 1) {
-    ret = SingleInputAndOutput(input_shape_vec[0], output_shape_vec[0]);
-  } else {
-    ret = MultipleInputOrOutput(input_names, input_shape_vec, output_names, output_shape_vec);
+#pragma omp parallel for
+  for (int i = 0; i < FLAGS_restart_round; ++i) {
+    VLOG(0) << "restart round " << i;
+    if (input_count == 1 && output_count == 1) {
+      ret = SingleInputAndOutput(input_shape_vec[0], output_shape_vec[0]);
+    } else {
+      ret = MultipleInputOrOutput(input_names,
+                                  input_shape_vec,
+                                  output_names,
+                                  output_shape_vec);
+    }
   }
   if(ret) {
     return 0;
