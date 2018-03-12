@@ -68,3 +68,6 @@ cp bazel-bin/examples/mace_run $MODEL_OUTPUT_DIR
 if [ "$EMBED_MODEL_DATA" = 0 ]; then
   cp codegen/models/${MODEL_TAG}/${MODEL_TAG}.data $MODEL_OUTPUT_DIR
 fi
+
+# copy model header file to build output dir
+cp codegen/models/${MODEL_TAG}/${MODEL_TAG}.h $MODEL_OUTPUT_DIR

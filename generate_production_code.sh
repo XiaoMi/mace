@@ -20,8 +20,8 @@ if [ "$PULL_OR_NOT" = 1 ]; then
   rm -rf ${CL_BIN_DIR}
   mkdir -p ${CL_BIN_DIR}
   if [ x"$TARGET_ABI" != x"host" ]; then
-    adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR}
-    adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR}
+    adb pull ${KERNEL_DIR}/. ${CL_BIN_DIR} > /dev/null
+    adb pull ${PHONE_DATA_DIR}/mace_run.config ${CL_BIN_DIR} > /dev/null
   fi
 fi
 
