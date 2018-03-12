@@ -15,9 +15,12 @@ source ${CURRENT_DIR}/env.sh
 LIBMACE_BUILD_DIR=$1
 MODEL_OUTPUT_DIRS=$2
 MODEL_OUTPUT_DIRS_ARR=(${MODEL_OUTPUT_DIRS//,/ })
+MODEL_HEADER_DIR=${LIBMACE_BUILD_DIR}/libmace/include/mace/public
+MODEL_DATA_DIR=${LIBMACE_BUILD_DIR}/libmace/data
 
 rm -rf ${LIBMACE_BUILD_DIR}/libmace
 mkdir -p ${LIBMACE_BUILD_DIR}/libmace/lib
+mkdir -p ${MODEL_DATA_DIR}
 cp -rf ${LIBMACE_SOURCE_DIR}/include ${LIBMACE_BUILD_DIR}/libmace/
 cp ${LIBMACE_SOURCE_DIR}/lib/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/libmace/lib
 
@@ -37,6 +40,12 @@ fi
 for model_output_dir in ${MODEL_OUTPUT_DIRS_ARR[@]}; do
   for lib in ${model_output_dir}/*.a; do
     echo "addlib ${lib}" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  done
+  for data_file in ${model_output_dir}/*.data; do
+    cp ${data_file} ${MODEL_DATA_DIR}
+  done
+  for header_file in ${model_output_dir}/*.h; do
+    cp ${header_file} ${MODEL_HEADER_DIR}
   done
 done
 echo "save" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
