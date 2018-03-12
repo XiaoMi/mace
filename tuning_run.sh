@@ -16,6 +16,7 @@ MODEL_OUTPUT_DIR=$1
 ROUND=$2
 TUNING_OR_NOT=$3
 PRODUCTION_MODE=$4
+RESTART_ROUND=$5
 
 if [ x"$TARGET_ABI" = x"host" ]; then
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
@@ -28,7 +29,8 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --output_file=${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME} \
     --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE}   \
-    --round=1 || exit 1
+    --round=1 \
+    --restart_round=1 || exit 1
 else
   if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != 1 ]];then
     tuning_flag=1
@@ -69,7 +71,8 @@ else
     --output_file=${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME} \
     --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE}   \
-    --round=$ROUND; echo \\$?"` || exit 1
+    --round=$ROUND \
+    --restart_round=$RESTART_ROUND; echo \\$?"` || exit 1
   echo "$mace_adb_output" | head -n -1
 
   mace_adb_return_code=`echo "$mace_adb_output" | tail -1`
