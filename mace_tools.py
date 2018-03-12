@@ -80,9 +80,9 @@ def build_mace_run(production_mode, model_output_dir, hexagon_mode):
   run_command(command)
 
 
-def tuning_run(model_output_dir, running_round, tuning, production_mode):
-  command = "bash tools/tuning_run.sh {} {} {} {}".format(
-      model_output_dir, running_round, int(tuning), int(production_mode))
+def tuning_run(model_output_dir, running_round, tuning, production_mode, restart_round):
+  command = "bash tools/tuning_run.sh {} {} {} {} {}".format(
+      model_output_dir, running_round, int(tuning), int(production_mode), restart_round)
   run_command(command)
 
 
@@ -91,8 +91,8 @@ def benchmark_model(model_output_dir):
   run_command(command)
 
 
-def run_model(model_output_dir, running_round):
-  tuning_run(model_output_dir, running_round, False, False)
+def run_model(model_output_dir, running_round, restart_round):
+  tuning_run(model_output_dir, running_round, False, False, restart_round)
 
 
 def generate_production_code(model_output_dirs, pull_or_not):
@@ -117,7 +117,8 @@ def build_mace_run_prod(model_output_dir, tuning, libmace_name):
       model_output_dir,
       running_round=0,
       tuning=tuning,
-      production_mode=production_or_not)
+      production_mode=production_or_not,
+      restart_round=1)
 
   production_or_not = True
   pull_or_not = True
@@ -176,6 +177,8 @@ def parse_args():
   parser.add_argument("--run_seconds", type=int, default=10,
                       help="The model throughput test running seconds.")
   parser.add_argument(
+    "--restart_round", type=int, default=1, help="The model restart round.")
+  parser.add_argument(
       "--tuning", type="bool", default="true", help="Tune opencl params.")
   parser.add_argument("--mode", type=str, default="all",
                       help="[build|run|validate|merge|all|throughput_test].")
@@ -194,6 +197,7 @@ def main(unused_args):
 
   if FLAGS.mode == "validate":
     FLAGS.round = 1
+    FLAGS.restart_round = 1
 
   # target_abi = configs["target_abi"]
   # libmace_name = get_libs(target_abi, configs)
@@ -252,7 +256,7 @@ def main(unused_args):
         build_mace_run_prod(model_output_dir, FLAGS.tuning, libmace_name)
 
       if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
-        run_model(model_output_dir, FLAGS.round)
+        run_model(model_output_dir, FLAGS.round, FLAGS.restart_round)
 
       if FLAGS.mode == "benchmark":
         benchmark_model(model_output_dir)
