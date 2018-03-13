@@ -12,37 +12,49 @@ namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-class ChannelShuffleFunctor {
- public:
-  ChannelShuffleFunctor(const int group) : group_(group) {}
+struct ChannelShuffleFunctor {
+  ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 
-  void operator()(const T *input,
-                  const index_t *input_shape,
-                  T *output,
+  void operator()(const Tensor *input,
+                  Tensor *output,
                   StatsFuture *future) {
-    index_t batch = input_shape[0];
-    index_t channels = input_shape[1];
-    index_t height = input_shape[2];
-    index_t width = input_shape[3];
+    output->ResizeLike(input);
 
-    index_t image_size = height * width;
-    int channels_of_group = channels / group_;
+    Tensor::MappingGuard logits_guard(input);
+    Tensor::MappingGuard output_guard(output);
+    const T *input_ptr = input->data<T>();
+    T *output_ptr = output->mutable_data<T>();
 
-    for (int b = 0; b < batch; ++b) {
-      for (int c = 0; c < channels_of_group; ++c) {
-        for (int g = 0; g < group_; ++g) {
-          index_t input_offset =
-              (b * channels + g * channels_of_group + c) * image_size;
-          index_t output_offset = (b * channels + c * group_ + g) * image_size;
-          memcpy(output + output_offset, input + input_offset,
-                 image_size * sizeof(T));
-        }
+    index_t batch = input->dim(0);
+    index_t height = input->dim(1);
+    index_t width = input->dim(2);
+    index_t channels = input->dim(3);
+
+    index_t bhw_fuse = batch * height * width;
+    int channels_per_group = channels / groups_;
+
+#pragma omp parallel for
+    for (int bhw = 0; bhw < bhw_fuse; ++bhw) {
+      for (int c = 0; c < channels; ++c) {
+        index_t channel_base = bhw * channels;
+        output_ptr[channel_base + c] =
+          input_ptr[channel_base + c % groups_ * channels_per_group
+            + c / groups_];
       }
     }
   }
 
- private:
-  const int group_;
+  const int groups_;
+};
+
+template <typename T>
+struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
+  ChannelShuffleFunctor(const int groups) : groups_(groups) {}
+
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
+
+  cl::Kernel kernel_;
+  const int groups_;
 };
 
 }  // namespace kernels

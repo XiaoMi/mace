@@ -23,13 +23,12 @@ class ChannelShuffleOp : public Operator<D, T> {
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
-    MACE_CHECK(input->shape()[1] % group_ == 0,
+    int channels = input->dim(3);
+    MACE_CHECK(channels % group_ == 0,
                "input channels must be an integral multiple of group. ",
-               input->shape()[1]);
-
-    output->ResizeLike(input);
-    functor_(input->data<T>(), input->shape().data(), output->mutable_data<T>(),
-             future);
+               input->dim(3));
+    int channels_per_group = channels / group_;
+    functor_(input, output, future);
 
     return true;
   }
