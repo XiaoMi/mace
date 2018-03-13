@@ -1,0 +1,44 @@
+# example.yaml
+# Each yaml file describes a exported library (could be named [target_abi]/libmace-${filename}.a), 
+# which can contains more than one models
+target_abis: [armeabi-v7a, arm64-v8a]
+target_socs: [MSM8953] # target_socs not enabled yet
+embed_model_data: 1
+vlog_level: 0
+models:
+  preview_net:
+    platform: tensorflow
+    model_file_path: path/to/model64.pb # also support http:// and https://
+    model_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    input_nodes: input_node
+    output_nodes: output_node
+    input_shapes: 1,64,64,3
+    output_shapes: 1,64,64,2
+    runtime: gpu
+    limit_opencl_kernel_time: 0
+    dsp_mode: 0
+    obfuscate: 1
+    fast_conv: 0
+  capture_net:
+    platform: caffe
+    model_file_path: path/to/model.prototxt
+    weight_file_path: path/to/weight.caffemodel
+    model_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    weight_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    input_nodes:
+      - input_node0
+      - input_node1
+    output_nodes:
+      - output_node0
+      - output_node1
+    input_shapes:
+      - 1,256,256,3
+      - 1,128,128,3
+    output_shapes:
+      - 1,256,256,2
+      - 1,1,1,2
+    runtime: cpu
+    limit_opencl_kernel_time: 1
+    dsp_mode: 0
+    obfuscate: 1
+    fast_conv: 0
