@@ -22,7 +22,7 @@ rm -rf ${LIBMACE_BUILD_DIR}/libmace
 mkdir -p ${LIBMACE_BUILD_DIR}/libmace/include/mace/public
 mkdir -p ${LIBMACE_BUILD_DIR}/libmace/lib
 mkdir -p ${MODEL_DATA_DIR}
-cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/libmace/
+cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/libmace/include/mace/public/
 cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/libmace/lib
 
 LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`

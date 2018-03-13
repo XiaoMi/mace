@@ -25,13 +25,6 @@ if [ "$PULL_OR_NOT" = 1 ]; then
   fi
 fi
 
-rm -rf ${CL_CODEGEN_DIR}
-mkdir -p ${CL_CODEGEN_DIR}
-rm -rf ${TUNING_CODEGEN_DIR}
-mkdir -p ${TUNING_CODEGEN_DIR}
-
-set -x
-
 python mace/python/tools/opencl_codegen.py \
   --cl_binary_dirs=${CL_BIN_DIRS} \
   --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
