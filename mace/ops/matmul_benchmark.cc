@@ -68,4 +68,7 @@ static void MatMulBenchmark(
 BM_MATMUL(16, 32, 128, 49);
 BM_MATMUL(16, 32, 128, 961);
 BM_MATMUL(16, 32, 128, 3969);
+BM_MATMUL(16, 128, 128, 49);
+BM_MATMUL(16, 128, 128, 961);
+BM_MATMUL(16, 128, 128, 3969);
 }  // namespace mace
