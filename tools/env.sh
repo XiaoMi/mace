@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
-LIBMACE_SOURCE_DIR=`/bin/pwd`
+MACE_SOURCE_DIR=`/bin/pwd`
 INPUT_FILE_NAME="model_input"
 OUTPUT_FILE_NAME="model_out"
 PHONE_DATA_DIR="/data/local/tmp/mace_run"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
-CODEGEN_DIR=${LIBMACE_SOURCE_DIR}/codegen
+CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
@@ -31,4 +31,4 @@ GENERATED_MODEL_LIB_NAME="libgenerated_models.a"
 if [ x"$TARGET_ABI" = x"host" ]; then
   GENERATED_MODEL_LIB_NAME="libgenerated_models.pic.a"
 fi
-GENERATED_MODEL_LIB_PATH="bazel-bin/codegen/${GENERATED_MODEL_LIB_NAME}"
+GENERATED_MODEL_LIB_PATH="bazel-bin/mace/codegen/${GENERATED_MODEL_LIB_NAME}"

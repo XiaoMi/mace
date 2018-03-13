@@ -3,14 +3,14 @@
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
-bazel build //lib/python/tools:converter || exit 1
+bazel build //mace/python/tools:converter || exit 1
 rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}
 if [ ${DSP_MODE} ]; then
   DSP_MODE_FLAG="--dsp_mode=${DSP_MODE}"
 fi
 
-PYTHONUNBUFFERED=1 bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
+PYTHONUNBUFFERED=1 bazel-bin/mace/python/tools/converter --platform=${PLATFORM} \
                                      --model_file=${MODEL_FILE_PATH} \
                                      --weight_file=${WEIGHT_FILE_PATH} \
                                      --model_checksum=${MODEL_SHA256_CHECKSUM} \
@@ -20,7 +20,7 @@ PYTHONUNBUFFERED=1 bazel-bin/lib/python/tools/converter --platform=${PLATFORM} \
                                      --data_type=${DATA_TYPE} \
                                      --runtime=${RUNTIME} \
                                      --output_type=source \
-                                     --template=${LIBMACE_SOURCE_DIR}/lib/python/tools \
+                                     --template=${MACE_SOURCE_DIR}/mace/python/tools \
                                      --model_tag=${MODEL_TAG} \
                                      --input_shape=${INPUT_SHAPES} \
                                      ${DSP_MODE_FLAG} \

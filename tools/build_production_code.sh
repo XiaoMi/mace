@@ -35,9 +35,9 @@ build_target()
 }
 
 if [ x"$TARGET_ABI" = x"host" ]; then
-  build_host_target //codegen:generated_opencl_prod
-  build_host_target //codegen:generated_tuning_params
+  build_host_target //mace/codegen:generated_opencl_prod
+  build_host_target //mace/codegen:generated_tuning_params
 else
-  build_target //codegen:generated_opencl_prod
-  build_target //codegen:generated_tuning_params
+  build_target //mace/codegen:generated_opencl_prod
+  build_target //mace/codegen:generated_tuning_params
 fi

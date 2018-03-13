@@ -1,10 +1,10 @@
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 import tensorflow as tf
 from tensorflow import gfile
 from operator import mul
 from dsp_ops import DspOps
-from lib.python.tools import graph_util
-from lib.python.tools.convert_util import tf_dtype_2_mace_dtype
+from mace.python.tools import graph_util
+from mace.python.tools.convert_util import tf_dtype_2_mace_dtype
 
 # converter --input ../libcv/quantized_model.pb --output quantized_model_dsp.pb \
 # --runtime dsp --input_node input_node --output_node output_node

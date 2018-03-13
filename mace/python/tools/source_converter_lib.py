@@ -3,7 +3,7 @@ import uuid
 import numpy as np
 import hashlib
 
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 from jinja2 import Environment, FileSystemLoader
 
 

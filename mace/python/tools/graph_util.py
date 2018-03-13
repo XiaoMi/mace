@@ -1,5 +1,5 @@
 import tensorflow as tf
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 from collections import OrderedDict
 
 def sort_tf_node(node, nodes_map, ordered_nodes_map):

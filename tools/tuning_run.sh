@@ -53,7 +53,7 @@ else
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
     adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
-  adb push lib/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} > /dev/null || exit 1
+  adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} > /dev/null || exit 1
   
   mace_adb_output=`adb </dev/null shell \
     "LD_LIBRARY_PATH=${PHONE_DATA_DIR} \

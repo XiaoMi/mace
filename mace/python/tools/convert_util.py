@@ -1,5 +1,5 @@
 import tensorflow as tf
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 
 TF_DTYPE_2_MACE_DTYPE_MAP = {
     tf.float32: mace_pb2.DT_FLOAT,

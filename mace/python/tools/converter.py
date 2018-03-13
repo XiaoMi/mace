@@ -2,7 +2,7 @@ import argparse
 import sys
 import hashlib
 import os.path
-from lib.python.tools import source_converter_lib
+from mace.python.tools import source_converter_lib
 
 # ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb --output quantized_test_dsp.pb --runtime dsp --input_dim input_node,1,28,28,3
 
@@ -39,17 +39,17 @@ def main(unused_args):
       print("DSP not support caffe model yet.")
       sys.exit(-1)
 
-    from lib.python.tools import caffe_converter_lib
+    from mace.python.tools import caffe_converter_lib
     output_graph_def = caffe_converter_lib.convert_to_mace_pb(
       FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node, FLAGS.input_shape, FLAGS.output_node,
       FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
   elif FLAGS.platform == 'tensorflow':
     if FLAGS.runtime == 'dsp':
-      from lib.python.tools import tf_dsp_converter_lib
+      from mace.python.tools import tf_dsp_converter_lib
       output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
         FLAGS.model_file, FLAGS.input_node, FLAGS.output_node, FLAGS.dsp_mode)
     else:
-      from lib.python.tools import tf_converter_lib
+      from mace.python.tools import tf_converter_lib
       output_graph_def = tf_converter_lib.convert_to_mace_pb(
         FLAGS.model_file, FLAGS.input_node, FLAGS.input_shape, FLAGS.output_node,
         FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)

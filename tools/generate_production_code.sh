@@ -32,11 +32,11 @@ mkdir -p ${TUNING_CODEGEN_DIR}
 
 set -x
 
-python lib/python/tools/opencl_codegen.py \
+python mace/python/tools/opencl_codegen.py \
   --cl_binary_dirs=${CL_BIN_DIRS} \
   --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc
 
-python lib/python/tools/binary_codegen.py \
+python mace/python/tools/binary_codegen.py \
   --binary_dirs=${CL_BIN_DIRS} \
   --binary_file_name=mace_run.config \
   --output_path=${TUNING_CODEGEN_DIR}/tuning_params.cc

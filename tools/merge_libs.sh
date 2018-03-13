@@ -19,24 +19,31 @@ MODEL_HEADER_DIR=${LIBMACE_BUILD_DIR}/libmace/include/mace/public
 MODEL_DATA_DIR=${LIBMACE_BUILD_DIR}/libmace/data
 
 rm -rf ${LIBMACE_BUILD_DIR}/libmace
+mkdir -p ${LIBMACE_BUILD_DIR}/libmace/include/mace/public
 mkdir -p ${LIBMACE_BUILD_DIR}/libmace/lib
 mkdir -p ${MODEL_DATA_DIR}
-cp -rf ${LIBMACE_SOURCE_DIR}/include ${LIBMACE_BUILD_DIR}/libmace/
-cp ${LIBMACE_SOURCE_DIR}/lib/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/libmace/lib
+cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/libmace/
+cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/libmace/lib
 
 LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`
 
 # Merge all libraries in to one
 echo "create ${LIBMACE_BUILD_DIR}/libmace/lib/libmace_${PROJECT_NAME}.a" > ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-echo "addlib lib/mace/libmace.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-echo "addlib lib/mace/libmace_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-if [ x"TARGET_ABI" = x"host" ]; then
-  echo "addlib bazel-bin/codegen/libgenerated_opencl_prod.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-  echo "addlib bazel-bin/codegen/libgenerated_tuning_params.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+
+if [ x"$TARGET_ABI" = x"host" ]; then
+  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl_prod.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 else
-  echo "addlib bazel-bin/codegen/libgenerated_opencl_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-  echo "addlib bazel-bin/codegen/libgenerated_tuning_params.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_tuning_params.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_version.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/core/libcore.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/core/libopencl_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/kernels/libkernels.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/utils/libutils.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/utils/libutils_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 fi
+
 for model_output_dir in ${MODEL_OUTPUT_DIRS_ARR[@]}; do
   for lib in ${model_output_dir}/*.a; do
     echo "addlib ${lib}" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri

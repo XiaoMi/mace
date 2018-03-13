@@ -1,6 +1,6 @@
 import sys
 import operator
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 
 class MemoryOptimizer(object):
   def __init__(self, net_def):

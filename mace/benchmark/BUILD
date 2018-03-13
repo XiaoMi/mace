@@ -29,7 +29,7 @@ cc_binary(
     linkstatic = 1,
     deps = [
         ":stat_summarizer",
-        "//codegen:generated_models",
+        "//mace/codegen:generated_models",
         "//external:gflags_nothreads",
     ] + if_hexagon_enabled([
         "//lib/hexagon:hexagon",

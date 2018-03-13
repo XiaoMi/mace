@@ -1,10 +1,10 @@
-from lib.proto import mace_pb2
+from mace.proto import mace_pb2
 import tensorflow as tf
 import numpy as np
 import math
 import copy
 from tensorflow import gfile
-from lib.python.tools import memory_optimizer
+from mace.python.tools import memory_optimizer
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.framework import tensor_shape_pb2
 

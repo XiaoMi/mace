@@ -5,4 +5,5 @@ if [ x"$TARGET_ABI" != x"host" ]; then
   adb shell rm -rf $PHONE_DATA_DIR
 fi
 
-rm -rf codegen/models codegen/opencl codegen/tuning
+rm -rf mace/codegen/models
+git checkout -- mace/codegen/opencl/opencl_compiled_program.cc mace/codegen/tuning/tuning_params.cc

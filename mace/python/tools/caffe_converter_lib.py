@@ -1,6 +1,6 @@
-from lib.proto import mace_pb2
-from lib.proto import caffe_pb2
-from lib.python.tools import memory_optimizer
+from mace.proto import mace_pb2
+from mace.proto import caffe_pb2
+from mace.python.tools import memory_optimizer
 import google.protobuf.text_format
 import numpy as np
 import math

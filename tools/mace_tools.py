@@ -17,29 +17,6 @@ import yaml
 
 from ConfigParser import ConfigParser
 
-def run_command_real_time(command):
-  print("Run command: {}".format(command))
-  process = subprocess.Popen(
-    command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-  while True:
-    std_err = process.stderr.readline()
-    if std_err == '' and process.poll() is not None:
-      break
-    if std_err:
-      print std_err.strip()
-  while True:
-    std_out = process.stdout.readline()
-    if std_out == '' and process.poll() is not None:
-      break
-    if std_out:
-      print std_out.strip()
-  ret_code = process.poll()
-
-  if ret_code != 0:
-    raise Exception("Exit not 0 from bash with code: {}, command: {}".format(
-      ret_code, command))
-
 def run_command(command):
   print("Run command: {}".format(command))
   result = subprocess.Popen(
@@ -56,7 +33,7 @@ def run_command(command):
         result.returncode, command))
 
 
-def get_libs(target_abi, configs):
+def get_global_runtime(configs):
   runtime_list = []
   for model_name in configs["models"]:
     model_runtime = configs["models"][model_name]["runtime"]
@@ -72,12 +49,12 @@ def get_libs(target_abi, configs):
   else:
     raise Exception("Not found available RUNTIME in config files!")
 
-  libmace_name = "libmace-{}-{}".format(target_abi, global_runtime)
+  return global_runtime
 
-  command = "bash tools/download_and_link_lib.sh " + libmace_name
+
+def generate_opencl_and_version_code():
+  command = "bash tools/generate_opencl_and_version_code.sh"
   run_command(command)
-
-  return libmace_name
 
 
 def clear_env():
@@ -94,7 +71,7 @@ def generate_random_input(model_output_dir):
 
 def generate_model_code():
   command = "bash tools/generate_model_code.sh"
-  run_command_real_time(command)
+  run_command(command)
 
 
 def build_mace_run(production_mode, model_output_dir, hexagon_mode):
@@ -128,8 +105,8 @@ def generate_production_code(model_output_dirs, pull_or_not):
   run_command(command)
 
 
-def build_mace_run_prod(model_output_dir, tuning, libmace_name):
-  if "dsp" in libmace_name:
+def build_mace_run_prod(model_output_dir, tuning, global_runtime):
+  if "dsp" == global_runtime:
     hexagon_mode = True
   else:
     hexagon_mode = False
@@ -222,16 +199,14 @@ def main(unused_args):
     FLAGS.round = 1
     FLAGS.restart_round = 1
 
-  # target_abi = configs["target_abi"]
-  # libmace_name = get_libs(target_abi, configs)
-  # Transfer params by environment
-  # os.environ["TARGET_ABI"] = target_abi
   os.environ["EMBED_MODEL_DATA"] = str(configs["embed_model_data"])
   os.environ["VLOG_LEVEL"] = str(configs["vlog_level"])
   os.environ["PROJECT_NAME"] = os.path.splitext(os.path.basename(FLAGS.config))[0]
 
+  generate_opencl_and_version_code()
+
   for target_abi in configs["target_abis"]:
-    libmace_name = get_libs(target_abi, configs)
+    global_runtime = get_global_runtime(configs)
     # Transfer params by environment
     os.environ["TARGET_ABI"] = target_abi
     model_output_dirs = []
@@ -277,7 +252,7 @@ def main(unused_args):
 
       if FLAGS.mode == "build" or FLAGS.mode == "all":
         generate_model_code()
-        build_mace_run_prod(model_output_dir, FLAGS.tuning, libmace_name)
+        build_mace_run_prod(model_output_dir, FLAGS.tuning, global_runtime)
 
       if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
         run_model(model_output_dir, FLAGS.round, FLAGS.restart_round)
