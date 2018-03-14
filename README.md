@@ -6,3 +6,6 @@
 
 Supported Devices: **CPU(NEON)/GPU/DSP**.
 
+## User Guide
+
+wiki url: [http://v9.git.n.xiaomi.com/deep-computing/mace/wikis/User%20Guide/introduction](http://v9.git.n.xiaomi.com/deep-computing/mace/wikis/User%20Guide/introduction)

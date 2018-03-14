@@ -42,6 +42,7 @@ else
   echo "addlib bazel-bin/mace/kernels/libkernels.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/utils/libutils.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/utils/libutils_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/ops/libops.lo" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 fi
 
 for model_output_dir in ${MODEL_OUTPUT_DIRS_ARR[@]}; do
