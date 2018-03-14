@@ -158,10 +158,15 @@ class TFConverter(object):
   def add_output_shape(outputs, op):
     output_shapes = []
     for output in outputs:
-      if output.shape.num_elements() is not None:
-        output_shape = mace_pb2.OutputShape()
-        output_shape.dims.extend(output.shape.as_list())
-        output_shapes.append(output_shape)
+      output_shape = mace_pb2.OutputShape()
+      if isinstance(output, list):
+        output_shape.dims.extend(output)
+      elif isinstance(output, tf.Tensor):
+        if output.shape.num_elements() is not None:
+          output_shape.dims.extend(output.shape.as_list())
+      else:
+        raise ValueError('output type not supported: ', type(output))
+      output_shapes.append(output_shape)
     op.output_shape.extend(output_shapes)
 
   def add_tensor(self, name, shape, tf_dt, value):
@@ -782,11 +787,11 @@ class TFConverter(object):
     self.unused_tensor.add(get_input_tensor(reshape_op, 1).name)
 
     if reshape_op.outputs[0].shape.ndims == 2:
-      shape = reshape_op.outputs[0].shape
-      from tensorflow.python.framework.tensor_shape import as_shape
-      reshape_op.outputs[0]._shape = as_shape([1, 1, shape[0], shape[1]])
+      shape = [dim.value for dim in reshape_op.outputs[0].shape]
+      if len(shape) == 2:
+        shape = [1, 1, shape[0], shape[1]]
     op_def.output.extend([output.name for output in reshape_op.outputs])
-    self.add_output_shape(reshape_op.outputs, op_def)
+    self.add_output_shape([shape], op_def)
     self.resolved_ops[reshape_op.name] = 1
 
   def convert_normal_op(self, op):
