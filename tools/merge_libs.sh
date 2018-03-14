@@ -49,9 +49,11 @@ for model_output_dir in ${MODEL_OUTPUT_DIRS_ARR[@]}; do
   for lib in ${model_output_dir}/*.a; do
     echo "addlib ${lib}" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   done
-  for data_file in ${model_output_dir}/*.data; do
-    cp ${data_file} ${MODEL_DATA_DIR}
-  done
+  if [ "${EMBED_MODEL_DATA}" == "0" ];then
+    for data_file in ${model_output_dir}/*.data; do
+      cp ${data_file} ${MODEL_DATA_DIR}
+    done
+  fi
   for header_file in ${model_output_dir}/*.h; do
     cp ${header_file} ${MODEL_HEADER_DIR}
   done
