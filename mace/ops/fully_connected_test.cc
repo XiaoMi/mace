@@ -39,6 +39,7 @@ void Simple(const std::vector<index_t> &input_shape,
         .Input("WeightImage")
         .Input("BiasImage")
         .Output("OutputImage")
+        .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -147,6 +148,7 @@ void Complex(const index_t batch,
       .Input("WeightImage")
       .Input("BiasImage")
       .Output("OutputImage")
+      .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -183,4 +185,75 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(16, 13, 12, 31, 113);
   Complex<half>(31, 21, 11, 23, 103);
 }
+
+template <typename T>
+void TestWeightWidthFormat(const index_t batch,
+                           const index_t height,
+                           const index_t width,
+                           const index_t channels,
+                           const index_t out_channel) {
+  srand(time(NULL));
+
+  // Construct graph
+  OpsTestNet net;
+  OpDefBuilder("FC", "FullyConnectedTest")
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<DeviceType::OPENCL, float>(
+      "Input", {batch, height, width, channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>(
+      "Weight", {out_channel, height * width * channels});
+  net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
+
+  // run cpu
+  net.RunOp();
+
+  // Check
+  Tensor expected;
+  expected.Copy(*net.GetOutput("Output"));
+
+  // Run on opencl
+  BufferToImage<DeviceType::OPENCL, T>(net, "Input", "InputImage",
+                                       kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<DeviceType::OPENCL, T>(net, "Weight", "WeightImage",
+                                       kernels::BufferType::WEIGHT_WIDTH);
+  BufferToImage<DeviceType::OPENCL, float>(net, "Bias", "BiasImage",
+                                           kernels::BufferType::ARGUMENT);
+
+  OpDefBuilder("FC", "FullyConnectedTest")
+      .Input("InputImage")
+      .Input("WeightImage")
+      .Input("BiasImage")
+      .Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+
+  // Run on opencl
+  net.RunOp(DeviceType::OPENCL);
+
+  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+                                           kernels::BufferType::IN_OUT_CHANNEL);
+  if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1);
+  } else {
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  }
+}
+
+TEST_F(FullyConnectedOpTest, OPENCLWidthFormatAligned) {
+  TestWeightWidthFormat<float>(1, 7, 7, 32, 16);
+  TestWeightWidthFormat<float>(1, 7, 7, 512, 128);
+  TestWeightWidthFormat<float>(1, 1, 1, 2048, 1024);
+}
+TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
+  TestWeightWidthFormat<float>(1, 2, 2, 512, 2);
+  TestWeightWidthFormat<half>(1, 11, 11, 32, 16);
+  TestWeightWidthFormat<half>(1, 16, 32, 32, 32);
+}
+
 }

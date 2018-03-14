@@ -4,7 +4,7 @@
 __kernel void fully_connected(__read_only image2d_t input,
                               __read_only image2d_t weight,
 #ifdef BIAS
-                              __read_only image2d_t bias,
+    __read_only image2d_t bias,
 #endif
                               __write_only image2d_t output,
                               __private const int input_height,
@@ -54,4 +54,77 @@ __kernel void fully_connected(__read_only image2d_t input,
   result = do_activation(result, relux_max_limit);
 #endif
   WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
+}
+
+// output = weight * input + bias
+__kernel void fully_connected_width(__read_only image2d_t input,
+                                    __read_only image2d_t weight,
+#ifdef BIAS
+    __read_only image2d_t bias,
+#endif
+                                    __write_only image2d_t output,
+                                    __local float *intermediate_output,
+                                    __private const int input_height,
+                                    __private const int input_width,
+                                    __private const short in_chan_blks,
+                                    __private const float relux_max_limit) {
+  const int inter_out_idx = get_global_id(0);
+  const int width_blk_idx = get_global_id(1);
+  const int width_blk_count = get_global_size(1);
+  const int out_blk_idx = get_global_id(2);
+
+  const short in_outer_size = mul24(input_width, in_chan_blks);
+  const short weight_y = mad24(out_blk_idx, 4, inter_out_idx);
+
+  int2 input_coord, weight_coord;
+  DATA_TYPE4 in, w;
+  DATA_TYPE sum = 0.0;
+
+  input_coord = (int2)(0, 0);
+
+  for (short h_idx = 0; h_idx < input_height; ++h_idx) {
+    short weight_x_base = mul24(h_idx, in_outer_size);
+    for (short w_idx = (short)width_blk_idx; w_idx < input_width; w_idx += width_blk_count) {
+      short weight_x = mad24(w_idx, in_chan_blks, weight_x_base);
+      weight_coord = (int2)(weight_x, weight_y);
+      input_coord.x = w_idx;
+#pragma unroll
+      for (short chan_idx = 0; chan_idx < in_chan_blks; ++chan_idx) {
+        in = READ_IMAGET(input, SAMPLER, input_coord);
+
+        w = READ_IMAGET(weight, SAMPLER, weight_coord);
+
+        sum += dot(in, w);
+
+        input_coord.x += input_width;
+        weight_coord.x += 1;
+      }
+    }
+    input_coord.y++;
+  }
+
+  const short inter_out_offset = mad24(get_local_id(1), 4, get_local_id(0));
+  const short local_width_blk_size = (short)get_local_size(1);
+  const short local_size = mul24((short)get_local_size(0),
+                                 local_width_blk_size);
+  short inter_idx = mad24((short)get_local_id(2), local_size, inter_out_offset);
+  intermediate_output[inter_idx] = sum;
+
+  if (inter_out_offset == 0) {
+#ifdef BIAS
+    DATA_TYPE4 result = READ_IMAGET(bias, SAMPLER, (int2)(out_blk_idx, 0));
+#else
+    DATA_TYPE4 result = (DATA_TYPE4)(0, 0, 0, 0);
+#endif
+
+    for(short i = 0; i < local_width_blk_size; ++i) {
+      result += vload4(0, intermediate_output+inter_idx);
+      inter_idx += 4;
+    }
+
+#if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
+    result = do_activation(result, relux_max_limit);
+#endif
+    WRITE_IMAGET(output, (int2)(out_blk_idx, 0), result);
+  }
 }

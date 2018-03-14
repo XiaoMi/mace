@@ -25,6 +25,7 @@ enum BufferType {
   WINOGRAD_FILTER = 5,
   DW_CONV2D_FILTER = 6,
   WEIGHT_HEIGHT = 7,
+  WEIGHT_WIDTH = 8,
 };
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */

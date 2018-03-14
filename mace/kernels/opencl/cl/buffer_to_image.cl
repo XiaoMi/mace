@@ -318,10 +318,11 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
                                            __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  const int width_blks = (width + 3) / 4;
   const int batch_idx = h / height;
   const int height_idx = h % height;
-  const int width_idx = (w % width) << 2;
-  const int channel_idx = w / width;
+  const int width_idx = (w % width_blks) << 2;
+  const int channel_idx = w / width_blks;
   const int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
       + channel_idx;
 

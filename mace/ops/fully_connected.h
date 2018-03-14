@@ -15,7 +15,11 @@ class FullyConnectedOp : public Operator<D, T> {
  public:
   FullyConnectedOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(kernels::StringToActivationType(
+        functor_(static_cast<kernels::BufferType>(
+                     OperatorBase::GetSingleArgument<int>(
+                         "weight_type", static_cast<int>(
+                             kernels::WEIGHT_WIDTH))),
+                 kernels::StringToActivationType(
                      OperatorBase::GetSingleArgument<std::string>("activation",
                                                                   "NOOP")),
                  OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
