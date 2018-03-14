@@ -2,7 +2,7 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "benchmark/stat_summarizer.h"
+#include "mace/benchmark/stat_summarizer.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 

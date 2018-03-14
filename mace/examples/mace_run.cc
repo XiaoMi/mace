@@ -101,6 +101,16 @@ DeviceType ParseDeviceType(const string &device_str) {
   }
 }
 
+GPUType ParseGPUType(const string &gpu_type_str) {
+  if (gpu_type_str.compare("ADRENO") == 0) {
+    return GPUType::ADRENO;
+  } else if (gpu_type_str.compare("MALI") == 0) {
+    return GPUType::MALI;
+  } else {
+    return GPUType::ADRENO;
+  }
+}
+
 struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
   if (prev.arena != curr.arena) {
@@ -160,6 +170,11 @@ DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
+DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
+DEFINE_int32(gpu_perf_hint, 2, "0:NA/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 1, "0:NA/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
+DEFINE_int32(cpu_power_option, 0, "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
 
 bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
                           const std::vector<int64_t> &output_shape) {
@@ -174,6 +189,20 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
 
   DeviceType device_type = ParseDeviceType(FLAGS_device);
   LOG(INFO) << "Runing with device type: " << device_type;
+
+  // config runtime
+  if (device_type == DeviceType::OPENCL) {
+    GPUType gpu_type = ParseGPUType(FLAGS_gpu_type);
+    mace::ConfigOpenCLRuntime(
+        gpu_type,
+        static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
+        static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
+  }
+  else if (device_type == DeviceType::CPU) {
+    mace::ConfigCPURuntime(
+        FLAGS_omp_num_threads,
+        static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
+  }
 
   // Init model
   LOG(INFO) << "Run init";
@@ -265,6 +294,20 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
 
   DeviceType device_type = ParseDeviceType(FLAGS_device);
   LOG(INFO) << "Runing with device type: " << device_type;
+
+  // config runtime
+  if (device_type == DeviceType::OPENCL) {
+    GPUType gpu_type = ParseGPUType(FLAGS_gpu_type);
+    mace::ConfigOpenCLRuntime(
+        gpu_type,
+        static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
+        static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
+  }
+  else if (device_type == DeviceType::CPU) {
+    mace::ConfigCPURuntime(
+        FLAGS_omp_num_threads,
+        static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
+  }
 
   // Init model
   LOG(INFO) << "Run init";
@@ -367,8 +410,13 @@ int main(int argc, char **argv) {
   LOG(INFO) << "output_file: " << FLAGS_output_file;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
   LOG(INFO) << "device: " << FLAGS_device;
-  LOG(INFO) << "round: " << FLAGS_restart_round;
-  LOG(INFO) << "restart_round: " << FLAGS_round;
+  LOG(INFO) << "round: " << FLAGS_round;
+  LOG(INFO) << "restart_round: " << FLAGS_restart_round;
+  LOG(INFO) << "gpu_type: " << FLAGS_gpu_type;
+  LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;
+  LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
+  LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
+  LOG(INFO) << "cpu_power_option: " << FLAGS_cpu_power_option;
 
   std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
   std::vector<std::string> output_names = str_util::Split(FLAGS_output_node, ',');

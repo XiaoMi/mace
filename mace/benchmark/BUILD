@@ -1,7 +1,7 @@
 # Benchmark
 # Examples
 load(
-    "//:mace.bzl",
+    "//mace:mace.bzl",
     "if_production_mode",
     "if_not_production_mode",
     "if_hexagon_enabled",
@@ -16,7 +16,7 @@ cc_library(
     hdrs = ["stat_summarizer.h"],
     linkstatic = 1,
     deps = [
-        "@mace//:mace_headers",
+        "//mace/core",
     ],
 )
 
@@ -29,17 +29,9 @@ cc_binary(
     linkstatic = 1,
     deps = [
         ":stat_summarizer",
-        "//mace/codegen:generated_models",
         "//external:gflags_nothreads",
-    ] + if_hexagon_enabled([
-        "//lib/hexagon:hexagon",
-    ]) + if_production_mode([
-        "@mace//:mace_prod",
-        "//codegen:generated_opencl_prod",
-        "//codegen:generated_tuning_params",
-    ]) + if_not_production_mode([
-        "@mace//:mace_dev",
-    ]),
+        "//mace/codegen:generated_models",
+    ],
 )
 
 cc_library(
@@ -58,9 +50,6 @@ cc_binary(
     deps = [
         ":libmace_merged",
         "//external:gflags_nothreads",
-        "//lib/hexagon",
-        "@mace//:mace",
-        "@mace//:mace_headers",
-        "@mace//:mace_prod",
+        "//mace/core",
     ],
 )

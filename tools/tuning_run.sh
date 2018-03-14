@@ -17,6 +17,9 @@ ROUND=$2
 TUNING_OR_NOT=$3
 PRODUCTION_MODE=$4
 RESTART_ROUND=$5
+OPTION_ARGS=$6
+
+echo $OPTION_ARGS
 
 if [ x"$TARGET_ABI" = x"host" ]; then
   MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
@@ -30,7 +33,8 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --model_data_file=${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE}   \
     --round=1 \
-    --restart_round=1 || exit 1
+    --restart_round=1 \
+    $OPTION_ARGS || exit 1
 else
   if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != 1 ]];then
     tuning_flag=1
@@ -54,9 +58,8 @@ else
     adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
   adb push mace/core/runtime/hexagon/libhexagon_controller.so ${PHONE_DATA_DIR} > /dev/null || exit 1
-  
-  mace_adb_output=`adb </dev/null shell \
-    "LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
+
+  ADB_CMD_STR="LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
     MACE_TUNING=${tuning_flag} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
@@ -72,7 +75,10 @@ else
     --model_data_file=${PHONE_DATA_DIR}/${MODEL_TAG}.data \
     --device=${DEVICE_TYPE}   \
     --round=$ROUND \
-    --restart_round=$RESTART_ROUND; echo \\$?"` || exit 1
+    --restart_round=$RESTART_ROUND \
+    $OPTION_ARGS; echo \\$?"
+  echo $ADB_CMD_STR
+  mace_adb_output=`adb </dev/null shell "$ADB_CMD_STR"` || exit 1
   echo "$mace_adb_output" | head -n -1
 
   mace_adb_return_code=`echo "$mace_adb_output" | tail -1`

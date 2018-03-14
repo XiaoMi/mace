@@ -61,6 +61,17 @@ enum DataType {
   DT_UINT32 = 22
 };
 
+enum GPUType { ADRENO = 0, MALI = 1 };
+enum GPUPerfHint { PERF_NA = 0, PERF_LOW = 1, PERF_NORMAL = 2, PERF_HIGH = 3 };
+enum GPUPriorityHint {
+  PRIORITY_NA = 0,
+  PRIORITY_LOW = 1,
+  PRIORITY_NORMAL = 2,
+  PRIORITY_HIGH = 3
+};
+
+enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2};
+
 class ConstTensor {
  public:
   ConstTensor(const std::string &name,
@@ -368,6 +379,9 @@ struct MaceInputInfo {
   std::vector<int64_t> shape;
   const float *data;
 };
+
+void ConfigOpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
+void ConfigCPURuntime(int omp_num_threads, CPUPowerOption power_option);
 
 class MaceEngine {
  public:
