@@ -9,6 +9,6 @@
 
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 
-#include "mace/core/runtime/opencl/cl2.hpp"
+#include "include/CL/cl2.hpp"
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_CL2_HEADER_H_
