@@ -24,3 +24,14 @@ cc_test(
         "//mace/core:test_benchmark_main",
     ],
 )
+
+cc_binary(
+    name = "mace_run",
+    srcs = ["mace_run.cc"],
+    linkopts = if_openmp_enabled(["-fopenmp"]),
+    linkstatic = 1,
+    deps = [
+        "//mace/codegen:generated_models",
+        "//external:gflags_nothreads",
+    ],
+)

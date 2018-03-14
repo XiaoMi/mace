@@ -104,6 +104,7 @@ cc_library(
     deps = [
         ":opencl_headers",
         "//mace/codegen:generated_opencl_prod",
+        "//mace/codegen:generated_tuning_params",
         "//mace/utils",
     ],
 )
