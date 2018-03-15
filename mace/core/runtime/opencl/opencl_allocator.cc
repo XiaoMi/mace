@@ -40,7 +40,7 @@ void *OpenCLAllocator::New(size_t nbytes) const {
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                       nbytes, nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS);
+  MACE_CHECK(error == CL_SUCCESS) << "error code: " << error;
   MACE_CHECK_NOTNULL(buffer);
   return static_cast<void *>(buffer);
 }

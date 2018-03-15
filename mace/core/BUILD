@@ -37,7 +37,6 @@ cc_library(
     ]),
     hdrs = glob([
         "*.h",
-        "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
@@ -61,10 +60,10 @@ cc_library(
 cc_library(
     name = "opencl_headers",
     hdrs = glob([
-        "runtime/opencl/cl2.hpp",
         "runtime/opencl/*.h",
     ]),
     deps = [
+        "@opencl_clhpp//:opencl_clhpp",
         "@opencl_headers//:opencl20_headers",
     ],
 )
