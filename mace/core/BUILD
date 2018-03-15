@@ -14,6 +14,7 @@ load(
     "if_not_hexagon_enabled",
     "if_production_mode",
     "if_not_production_mode",
+    "if_openmp_enabled",
 )
 
 cc_library(
@@ -21,6 +22,7 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
+            "runtime/cpu/*.cc",
             "runtime/opencl/*.cc",
             "runtime/hexagon/*.cc",
         ],
@@ -37,9 +39,11 @@ cc_library(
     ]),
     hdrs = glob([
         "*.h",
+        "runtime/cpu/*.h",
         "runtime/opencl/*.h",
         "runtime/hexagon/*.h",
     ]),
+    copts = if_openmp_enabled(["-fopenmp"]),
     linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",

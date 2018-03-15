@@ -20,7 +20,7 @@ namespace mace {
 class OpenCLProfilingTimer : public Timer {
  public:
   explicit OpenCLProfilingTimer(const cl::Event *event)
-      : event_(event), accumulated_micros_(0){};
+      : event_(event), accumulated_micros_(0) {};
   void StartTiming() override;
   void StopTiming() override;
   void AccumulateTiming() override;
@@ -38,6 +38,7 @@ class OpenCLProfilingTimer : public Timer {
 class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
+  static OpenCLRuntime *CreateGlobal(GPUType, GPUPerfHint, GPUPriorityHint);
 
   cl::Context &context();
   cl::Device &device();
@@ -51,7 +52,7 @@ class OpenCLRuntime {
                          const std::set<std::string> &build_options);
 
  private:
-  OpenCLRuntime();
+  OpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
   ~OpenCLRuntime();
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
@@ -73,6 +74,7 @@ class OpenCLRuntime {
   std::string kernel_path_;
 };
 
+static OpenCLRuntime *opencl_runtime_instance = nullptr;
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_

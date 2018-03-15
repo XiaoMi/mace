@@ -80,19 +80,22 @@ def build_mace_run(production_mode, model_output_dir, hexagon_mode):
   run_command(command)
 
 
-def tuning_run(model_output_dir, running_round, tuning, production_mode, restart_round):
-  command = "bash tools/tuning_run.sh {} {} {} {} {}".format(
-      model_output_dir, running_round, int(tuning), int(production_mode), restart_round)
+def tuning_run(model_output_dir, running_round, tuning, production_mode,
+               restart_round, option_args=''):
+  command = "bash tools/tuning_run.sh {} {} {} {} {} \"{}\"".format(
+      model_output_dir, running_round, int(tuning), int(production_mode),
+      restart_round, option_args)
   run_command(command)
 
 
-def benchmark_model(model_output_dir):
-  command = "bash tools/benchmark.sh {}".format(model_output_dir)
+def benchmark_model(model_output_dir, option_args=''):
+  command = "bash tools/benchmark.sh {} \"{}\"".format(model_output_dir, option_args)
   run_command(command)
 
 
-def run_model(model_output_dir, running_round, restart_round):
-  tuning_run(model_output_dir, running_round, False, False, restart_round)
+def run_model(model_output_dir, running_round, restart_round, option_args):
+  tuning_run(model_output_dir, running_round, False, False, restart_round,
+             option_args)
 
 
 def generate_production_code(model_output_dirs, pull_or_not):
@@ -204,6 +207,7 @@ def main(unused_args):
   os.environ["PROJECT_NAME"] = os.path.splitext(os.path.basename(FLAGS.config))[0]
 
   generate_opencl_and_version_code()
+  option_args = ' '.join([arg for arg in unused_args if arg.startswith('--')])
 
   for target_abi in configs["target_abis"]:
     global_runtime = get_global_runtime(configs)
@@ -255,10 +259,10 @@ def main(unused_args):
         build_mace_run_prod(model_output_dir, FLAGS.tuning, global_runtime)
 
       if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
-        run_model(model_output_dir, FLAGS.round, FLAGS.restart_round)
+        run_model(model_output_dir, FLAGS.round, FLAGS.restart_round, option_args)
 
       if FLAGS.mode == "benchmark":
-        benchmark_model(model_output_dir)
+        benchmark_model(model_output_dir, option_args)
 
       if FLAGS.mode == "validate" or FLAGS.mode == "all":
         validate_model(model_output_dir)

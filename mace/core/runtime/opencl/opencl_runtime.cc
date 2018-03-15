@@ -63,11 +63,67 @@ void OpenCLProfilingTimer::ClearTiming() {
 }
 
 OpenCLRuntime *OpenCLRuntime::Global() {
-  static OpenCLRuntime instance;
-  return &instance;
+  if (opencl_runtime_instance == nullptr) {
+    return CreateGlobal(GPUType::ADRENO, GPUPerfHint::PERF_NORMAL,
+                        GPUPriorityHint::PRIORITY_LOW);
+  }
+  return opencl_runtime_instance;
 }
 
-OpenCLRuntime::OpenCLRuntime() {
+OpenCLRuntime *OpenCLRuntime::CreateGlobal(GPUType gpu_type,
+                                           GPUPerfHint gpu_perf_hint,
+                                           GPUPriorityHint gpu_priority_hint) {
+  opencl_runtime_instance = new OpenCLRuntime(gpu_type, gpu_perf_hint,
+                                              gpu_priority_hint);
+  return opencl_runtime_instance;
+}
+
+void ParseOpenCLRuntimeConfig(cl_context_properties *properties,
+                              GPUType gpu_type,
+                              GPUPerfHint gpu_perf_hint,
+                              GPUPriorityHint gpu_priority_hint) {
+  int index = 0;
+  if (gpu_type == GPUType::ADRENO) {
+    switch (gpu_perf_hint) {
+      case GPUPerfHint::PERF_LOW:
+        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
+        properties[index++] = CL_PERF_HINT_LOW_QCOM;
+        break;
+      case GPUPerfHint::PERF_NORMAL:
+        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
+        properties[index++] = CL_PERF_HINT_NORMAL_QCOM;
+        break;
+      case GPUPerfHint::PERF_HIGH:
+        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
+        properties[index++] = CL_PERF_HINT_HIGH_QCOM;
+        break;
+      default:break;
+    }
+    switch (gpu_priority_hint) {
+      case GPUPriorityHint::PRIORITY_LOW:
+        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
+        properties[index++] = CL_PRIORITY_HINT_LOW_QCOM;
+        break;
+      case GPUPriorityHint::PRIORITY_NORMAL:
+        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
+        properties[index++] = CL_PRIORITY_HINT_NORMAL_QCOM;
+        break;
+      case GPUPriorityHint::PRIORITY_HIGH:
+        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
+        properties[index++] = CL_PRIORITY_HINT_HIGH_QCOM;
+        break;
+      default:break;
+    }
+  } else {
+    // TODO: support Mali GPU context properties
+  }
+
+  // The properties list should be terminated with 0
+  properties[index] = 0;
+}
+
+OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
+                             GPUPriorityHint gpu_priority_hint) {
   LoadOpenCLLibrary();
 
   std::vector<cl::Platform> all_platforms;
@@ -109,15 +165,12 @@ OpenCLRuntime::OpenCLRuntime() {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 
-  // TODO (heliangliang) Make this configurable (e.g.HIGH for benchmark,
-  // disabled for Mali)
-  cl_context_properties context_properties[] = {
-      // Set context perf hint to normal
-      CL_CONTEXT_PERF_HINT_QCOM, CL_PERF_HINT_NORMAL_QCOM,
-      // Set context priority hint to low
-      CL_CONTEXT_PRIORITY_HINT_QCOM, CL_PRIORITY_HINT_LOW_QCOM, 0};
+  std::unique_ptr<cl_context_properties[]> context_properties(
+      new cl_context_properties[5]);
+  ParseOpenCLRuntimeConfig(context_properties.get(), gpu_type, gpu_perf_hint,
+                           gpu_priority_hint);
 
-  cl::Context context({gpu_device}, context_properties);
+  cl::Context context({gpu_device}, context_properties.get());
   cl::CommandQueue command_queue(context, gpu_device, properties);
 
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
