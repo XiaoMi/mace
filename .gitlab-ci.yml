@@ -9,8 +9,7 @@ cpplint:
     - master
   script:
     - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py
-    # FIXME remove "|| true" after cpplint fixed
-    - python cpplint.py --root=mace --linelength=80 --counting=detailed $(find mace -name *.h -or -name *.cc | grep -vE "half.h") || true
+    - python cpplint.py --root=mace --linelength=80 --counting=detailed $(find mace -name *.h -or -name *.cc)
 
 ops_test:
   stage: ops_test
