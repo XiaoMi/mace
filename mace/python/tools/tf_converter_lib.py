@@ -786,10 +786,9 @@ class TFConverter(object):
     reshape_op = self.tf_graph[softmax_op.name][0]
     self.unused_tensor.add(get_input_tensor(reshape_op, 1).name)
 
-    if reshape_op.outputs[0].shape.ndims == 2:
-      shape = [dim.value for dim in reshape_op.outputs[0].shape]
-      if len(shape) == 2:
-        shape = [1, 1, shape[0], shape[1]]
+    shape = [dim.value for dim in reshape_op.outputs[0].shape]
+    if len(shape) == 2:
+      shape = [1, 1, shape[0], shape[1]]
     op_def.output.extend([output.name for output in reshape_op.outputs])
     self.add_output_shape([shape], op_def)
     self.resolved_ops[reshape_op.name] = 1
