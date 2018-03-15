@@ -79,13 +79,13 @@ else
     --device=${DEVICE_TYPE}   \
     --round=$ROUND \
     --restart_round=$RESTART_ROUND \
-    $OPTION_ARGS; echo \\$?"
+    $OPTION_ARGS; echo \$?"
   echo $ADB_CMD_STR
   mace_adb_output=`adb -s $DEVICE_ID </dev/null shell "$ADB_CMD_STR"` || exit 1
   echo "$mace_adb_output" | head -n -1
 
   mace_adb_return_code=`echo "$mace_adb_output" | tail -1`
-  if [ ${mace_adb_return_code%?} -ne 0 ]; then
+  if ! [[ ${mace_adb_return_code%?} = 0 || ${mace_adb_return_code} = 0 ]]; then
     exit 1
   fi
 fi

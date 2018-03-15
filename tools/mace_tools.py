@@ -136,10 +136,10 @@ def build_run_throughput_test(run_seconds, merged_lib_file, model_input_dir):
   run_command(command)
 
 
-def validate_model(model_output_dir):
+def validate_model(target_soc, model_output_dir):
   generate_data_or_not = False
-  command = "bash tools/validate_tools.sh {} {}".format(
-      model_output_dir, int(generate_data_or_not))
+  command = "bash tools/validate_tools.sh {} {} {}".format(
+      target_soc, model_output_dir, int(generate_data_or_not))
   run_command(command)
 
 
@@ -262,13 +262,13 @@ def main(unused_args):
           build_mace_run_prod(target_soc, model_output_dir, FLAGS.tuning, global_runtime)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
-          run_model(target_soc, model_output_dir, FLAGS.round, FLAGS.restart_round)
+          run_model(target_soc, model_output_dir, FLAGS.round, FLAGS.restart_round, option_args)
 
         if FLAGS.mode == "benchmark":
-          benchmark_model(model_output_dir)
+          benchmark_model(model_output_dir, option_args)
 
         if FLAGS.mode == "validate" or FLAGS.mode == "all":
-          validate_model(model_output_dir)
+          validate_model(target_soc, model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
         merge_libs_and_tuning_results(target_soc, FLAGS.output_dir + "/" + os.environ["PROJECT_NAME"],
