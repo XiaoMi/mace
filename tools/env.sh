@@ -32,3 +32,14 @@ if [ x"$TARGET_ABI" = x"host" ]; then
   GENERATED_MODEL_LIB_NAME="libgenerated_models.pic.a"
 fi
 GENERATED_MODEL_LIB_PATH="bazel-bin/mace/codegen/${GENERATED_MODEL_LIB_NAME}"
+
+echo_device_id_by_soc()
+{
+  TARGET_SOC=$1
+  for device in `adb devices | grep "^[A-Za-z0-9]\+[[:space:]]\+device$"| cut -f1`; do
+    device_soc=`adb -s ${device} shell getprop | grep ro.board.platform | cut -d [ -f3 | cut -d ] -f1`
+    if [ x"$TARGET_SOC" = x"$device_soc" ]; then
+      echo "$device"
+    fi
+  done
+}

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/validate_tools.sh model_output_dir generate_data_or_not"
+  echo "Usage: bash tools/validate_tools.sh target_soc model_output_dir generate_data_or_not"
 }
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
   Usage
   exit 1
 fi
@@ -12,8 +12,11 @@ fi
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
-MODEL_OUTPUT_DIR=$1
-GENERATE_DATA_OR_NOT=$2
+TARGET_SOC=$1
+MODEL_OUTPUT_DIR=$2
+GENERATE_DATA_OR_NOT=$3
+
+DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
 
 IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
 IFS=',' read -r -a OUTPUT_NAMES <<< "${OUTPUT_NODES}"
@@ -35,7 +38,7 @@ if [ "$PLATFORM" == "tensorflow" ];then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
-      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null
+      adb -s $DEVICE_ID pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null || exit 1
     done
   fi
   python -u tools/validate.py --platform=tensorflow \
@@ -77,7 +80,7 @@ elif [ "$PLATFORM" == "caffe" ];then
     for NAME in "${OUTPUT_NAMES[@]}";do
       FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
       rm -rf ${MODEL_OUTPUT_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME}
-      adb pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null
+      adb -s $DEVICE_ID pull ${PHONE_DATA_DIR}/${OUTPUT_FILE_NAME}_${FORMATTED_NAME} ${MODEL_OUTPUT_DIR} > /dev/null || exit 1
     done
   fi
   for NAME in "${OUTPUT_NAMES[@]}";do
