@@ -140,7 +140,7 @@ template <typename T>
 class ActivationFunctor<DeviceType::OPENCL, T> {
  public:
   ActivationFunctor(ActivationType type, T relux_max_limit)
-      : activation_(type), relux_max_limit_(relux_max_limit) {}
+      : activation_(type), relux_max_limit_(static_cast<T>(relux_max_limit)) {}
 
   void operator()(const Tensor *input,
                   const Tensor *alpha,

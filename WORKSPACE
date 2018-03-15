@@ -58,6 +58,13 @@ new_git_repository(
     remote = "https://github.com/KhronosGroup/OpenCL-CLHPP.git",
 )
 
+new_git_repository(
+    name = "half",
+    build_file = "mace/third_party/half.BUILD",
+    commit = "87d7f25f7ba2c7d3b051f6c857031de0ecac5afd",
+    remote = "http://v9.git.n.xiaomi.com/deep-computing/half.git",
+)
+
 git_repository(
     name = "com_github_gflags_gflags",
     #tag    = "v2.2.0",
