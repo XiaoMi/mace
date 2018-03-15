@@ -29,7 +29,7 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
       return 0;
   }
 }
-}
+}  // namespace
 
 OpenCLAllocator::OpenCLAllocator() {}
 
@@ -93,7 +93,7 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
   return mapped_ptr;
 }
 
-// TODO : there is something wrong with half type.
+// TODO(liuqi) there is something wrong with half type.
 void *OpenCLAllocator::MapImage(void *buffer,
                                 const std::vector<size_t> &image_shape,
                                 std::vector<size_t> *mapped_image_pitch) const {

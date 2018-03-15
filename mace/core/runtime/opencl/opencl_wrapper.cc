@@ -2,12 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "CL/opencl.h"
-
 #include "mace/core/runtime/opencl/opencl_wrapper.h"
-#include "mace/utils/logging.h"
 
+#include <CL/opencl.h>
 #include <dlfcn.h>
+#include <string>
+#include <vector>
+
+#include "mace/utils/logging.h"
 
 /**
  * Wrapper of OpenCL 2.0 (based on 1.2)
@@ -51,13 +53,13 @@ class OpenCLLibraryImpl final {
       const cl_context_properties *,
       cl_uint,
       const cl_device_id *,
-      void(CL_CALLBACK *)(const char *, const void *, size_t, void *),
+      void (CL_CALLBACK *)(const char *, const void *, size_t, void *),  // NOLINT
       void *,
       cl_int *);
   using clCreateContextFromTypeFunc = cl_context (*)(
       const cl_context_properties *,
       cl_device_type,
-      void(CL_CALLBACK *)(const char *, const void *, size_t, void *),
+      void (CL_CALLBACK *)(const char *, const void *, size_t, void *),  // NOLINT
       void *,
       cl_int *);
   using clReleaseContextFunc = cl_int (*)(cl_context);

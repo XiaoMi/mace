@@ -5,6 +5,8 @@
 #ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_ALLOCATOR_H_
 #define MACE_CORE_RUNTIME_OPENCL_OPENCL_ALLOCATOR_H_
 
+#include <vector>
+
 #include "mace/core/allocator.h"
 
 namespace mace {

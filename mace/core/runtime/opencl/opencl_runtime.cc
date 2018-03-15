@@ -2,13 +2,16 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/core/runtime/opencl/opencl_runtime.h"
+
 #include <cstdlib>
 #include <fstream>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT(build/c++11)
+#include <string>
+#include <vector>
 
 #include "mace/core/runtime/opencl/opencl_extension.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
 
@@ -78,48 +81,48 @@ OpenCLRuntime *OpenCLRuntime::CreateGlobal(GPUType gpu_type,
   return opencl_runtime_instance;
 }
 
-void ParseOpenCLRuntimeConfig(cl_context_properties *properties,
+void ParseOpenCLRuntimeConfig(std::vector<cl_context_properties> *properties,
                               GPUType gpu_type,
                               GPUPerfHint gpu_perf_hint,
                               GPUPriorityHint gpu_priority_hint) {
-  int index = 0;
+  MACE_CHECK_NOTNULL(properties);
   if (gpu_type == GPUType::ADRENO) {
     switch (gpu_perf_hint) {
       case GPUPerfHint::PERF_LOW:
-        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
-        properties[index++] = CL_PERF_HINT_LOW_QCOM;
+        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+        properties->push_back(CL_PERF_HINT_LOW_QCOM);
         break;
       case GPUPerfHint::PERF_NORMAL:
-        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
-        properties[index++] = CL_PERF_HINT_NORMAL_QCOM;
+        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+        properties->push_back(CL_PERF_HINT_NORMAL_QCOM);
         break;
       case GPUPerfHint::PERF_HIGH:
-        properties[index++] = CL_CONTEXT_PERF_HINT_QCOM;
-        properties[index++] = CL_PERF_HINT_HIGH_QCOM;
+        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+        properties->push_back(CL_PERF_HINT_HIGH_QCOM);
         break;
       default:break;
     }
     switch (gpu_priority_hint) {
       case GPUPriorityHint::PRIORITY_LOW:
-        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
-        properties[index++] = CL_PRIORITY_HINT_LOW_QCOM;
+        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+        properties->push_back(CL_PRIORITY_HINT_LOW_QCOM);
         break;
       case GPUPriorityHint::PRIORITY_NORMAL:
-        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
-        properties[index++] = CL_PRIORITY_HINT_NORMAL_QCOM;
+        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+        properties->push_back(CL_PRIORITY_HINT_NORMAL_QCOM);
         break;
       case GPUPriorityHint::PRIORITY_HIGH:
-        properties[index++] = CL_CONTEXT_PRIORITY_HINT_QCOM;
-        properties[index++] = CL_PRIORITY_HINT_HIGH_QCOM;
+        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+        properties->push_back(CL_PRIORITY_HINT_HIGH_QCOM);
         break;
       default:break;
     }
   } else {
-    // TODO: support Mali GPU context properties
+    LOG(WARNING) << "GPU options are only supported by Adreno GPU";
   }
 
   // The properties list should be terminated with 0
-  properties[index] = 0;
+  properties->push_back(0);
 }
 
 OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
@@ -165,12 +168,12 @@ OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 
-  std::unique_ptr<cl_context_properties[]> context_properties(
-      new cl_context_properties[5]);
-  ParseOpenCLRuntimeConfig(context_properties.get(), gpu_type, gpu_perf_hint,
+  std::vector<cl_context_properties> context_properties;
+  context_properties.reserve(5);
+  ParseOpenCLRuntimeConfig(&context_properties, gpu_type, gpu_perf_hint,
                            gpu_priority_hint);
 
-  cl::Context context({gpu_device}, context_properties.get());
+  cl::Context context({gpu_device}, context_properties.data());
   cl::CommandQueue command_queue(context, gpu_device, properties);
 
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
@@ -198,7 +201,7 @@ cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
 std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
     const std::string &filename_msg) {
-  // TODO This can be long and slow, fix it
+  // TODO(heliangliang) This can be long and slow, fix it
   std::string filename_prefix = filename_msg;
   for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
     if (*it == ' ' || *it == '-' || *it == '=') {
@@ -210,8 +213,8 @@ std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
 
 extern bool GetSourceOrBinaryProgram(const std::string &program_name,
                                      const std::string &binary_file_name_prefix,
-                                     cl::Context &context,
-                                     cl::Device &device,
+                                     const cl::Context &context,
+                                     const cl::Device &device,
                                      cl::Program *program,
                                      bool *is_opencl_binary);
 
@@ -317,13 +320,13 @@ void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
 }
 
 uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
-  unsigned long long size = 0;
+  uint64_t size = 0;
   device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
   return static_cast<uint32_t>(size);
 }
 
 uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
-  unsigned long long size = 0;
+  uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
   return static_cast<uint32_t>(size);
 }
