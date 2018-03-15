@@ -52,6 +52,7 @@ cc_library(
         ":opencl_headers",
         "//mace/utils",
         "//mace/codegen:generated_version",
+        "@half//:half",
     ] + if_production_mode([
         "//mace/utils:utils_prod",
         "//mace/core:opencl_prod",

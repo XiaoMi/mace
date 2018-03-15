@@ -238,6 +238,16 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
 }
 
 template <typename T>
+std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
+  std::vector<T> dest;
+  dest.reserve(src.size());
+  for (float f : src) {
+    dest.push_back(static_cast<T>(f));
+  }
+  return std::move(dest);
+}
+
+template <typename T>
 std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                      const std::vector<T> &data) {
   std::unique_ptr<Tensor> res(

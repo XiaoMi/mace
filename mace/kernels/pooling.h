@@ -138,7 +138,7 @@ struct PoolingFunctor : PoolingFunctorBase {
               index_t out_offset =
                   (((b * height) + h) * width + w) * channels + c;
               index_t in_offset = b * in_image_size * input_channels + c;
-              T sum = 0;
+              T sum = static_cast<T>(0);
               int block_size = 0;
               for (int kh = 0; kh < kernel_h; ++kh) {
                 for (int kw = 0; kw < kernel_w; ++kw) {
