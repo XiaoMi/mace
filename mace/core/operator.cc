@@ -3,6 +3,9 @@
 //
 
 #include <sstream>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "mace/core/operator.h"
 

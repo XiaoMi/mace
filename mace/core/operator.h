@@ -5,6 +5,11 @@
 #ifndef MACE_CORE_OPERATOR_H
 #define MACE_CORE_OPERATOR_H
 
+#include <memory>
+#include <string>
+#include <vector>
+#include <map>
+
 #include "mace/core/arg_helper.h"
 #include "mace/core/future.h"
 #include "mace/core/registry.h"
@@ -100,7 +105,7 @@ class Operator : public OperatorBase {
       }
     }
   }
-  virtual bool Run(StatsFuture *future) override = 0;
+  bool Run(StatsFuture *future) override = 0;
   ~Operator() noexcept override {}
 };
 
@@ -150,7 +155,7 @@ class OperatorRegistry {
       RegistryType;
   OperatorRegistry();
   ~OperatorRegistry() = default;
-  RegistryType *registry() { return &registry_; };
+  RegistryType *registry() { return &registry_; }
   std::unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
                                                Workspace *ws,
                                                DeviceType type,

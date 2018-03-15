@@ -2,6 +2,9 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <string>
+#include <vector>
+
 #include "mace/core/arg_helper.h"
 #include "mace/utils/logging.h"
 

@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_DSP_UTIL_QUANTIZE_H_
-#define MACE_DSP_UTIL_QUANTIZE_H_
+#ifndef MACE_CORE_RUNTIME_HEXAGON_QUANTIZE_H_
+#define MACE_CORE_RUNTIME_HEXAGON_QUANTIZE_H_
 
 #include "mace/core/tensor.h"
 
@@ -40,6 +40,6 @@ class Quantizer {
   DISABLE_COPY_AND_ASSIGN(Quantizer);
 };
 
-}  // mace
+}  // namespace mace
 
-#endif  // MACE_DSP_UTIL_QUANTIZE_H_
+#endif  // MACE_CORE_RUNTIME_HEXAGON_QUANTIZE_H_

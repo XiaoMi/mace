@@ -5,7 +5,10 @@
 #ifndef MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_
 #define MACE_CORE_PREALLOCATED_POOLED_ALLOCATOR_H_
 
+#include <memory>
+#include <utility>
 #include <unordered_map>
+
 #include "mace/core/allocator.h"
 #include "mace/core/buffer.h"
 

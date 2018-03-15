@@ -5,6 +5,10 @@
 #ifndef MACE_CORE_NET_H_
 #define MACE_CORE_NET_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/public/mace.h"
 

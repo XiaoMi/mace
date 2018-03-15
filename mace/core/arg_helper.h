@@ -5,6 +5,8 @@
 #ifndef MACE_CORE_ARG_HELPER_H_
 #define MACE_CORE_ARG_HELPER_H_
 
+#include <string>
+#include <vector>
 #include <map>
 
 #include "mace/public/mace.h"

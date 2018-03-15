@@ -5,6 +5,10 @@
 #ifndef MACE_CORE_TENSOR_H_
 #define MACE_CORE_TENSOR_H_
 
+#include <string>
+#include <vector>
+#include <functional>
+
 #include "mace/core/buffer.h"
 #include "mace/core/preallocated_pooled_allocator.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -60,7 +64,7 @@ inline std::ostream &operator<<(std::ostream &os, signed char c) {
 inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
   return os << static_cast<unsigned int>(c);
 }
-}
+}  // namespace numerical_chars
 
 class Tensor {
  public:
@@ -69,7 +73,7 @@ class Tensor {
         dtype_(type),
         buffer_(nullptr),
         is_buffer_owner_(true),
-        name_(""){};
+        name_("") {}
 
   Tensor(BufferBase *buffer, DataType dtype)
     : dtype_(dtype),
@@ -240,7 +244,7 @@ class Tensor {
   inline void SetSourceOpName(const std::string name) { name_ = name; }
 
   inline void DebugPrint() const {
-    using namespace numerical_chars;
+    using namespace numerical_chars;  // NOLINT(build/namespaces)
     std::stringstream os;
     for (index_t i : shape_) {
       os << i << ", ";
@@ -262,7 +266,7 @@ class Tensor {
 
   class MappingGuard {
    public:
-    MappingGuard(const Tensor *tensor) : tensor_(tensor) {
+    explicit MappingGuard(const Tensor *tensor) : tensor_(tensor) {
       if (tensor_ != nullptr) {
         tensor_->buffer_->Map(&mapped_image_pitch_);
       }
@@ -301,6 +305,6 @@ class Tensor {
   DISABLE_COPY_AND_ASSIGN(Tensor);
 };
 
-}  // namespace tensor
+}  // namespace mace
 
 #endif  // MACE_CORE_TENSOR_H_

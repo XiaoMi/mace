@@ -7,6 +7,9 @@
 #define MACE_CORE_ALLOCATOR_H_
 
 #include <malloc.h>
+#include <map>
+#include <limits>
+#include <vector>
 
 #include "mace/core/registry.h"
 #include "mace/core/types.h"
@@ -81,7 +84,7 @@ class CPUAllocator : public Allocator {
     free(data);
   };
   void *Map(void *buffer, size_t offset, size_t nbytes) const override {
-    return (char *)buffer + offset;
+    return reinterpret_cast<char*>(buffer) + offset;
   }
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,

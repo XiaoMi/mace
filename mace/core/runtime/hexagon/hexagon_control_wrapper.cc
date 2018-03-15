@@ -3,8 +3,11 @@
 //
 
 #include <sys/time.h>
-#include <thread>
+#include <thread>  // NOLINT(build/c++11)
 #include <vector>
+#include <unordered_map>
+#include <string>
+#include <utility>
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
@@ -324,7 +327,7 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
   MACE_ASSERT(output_bytes == output_tensor->raw_size(),
               "wrong output bytes inferred.");
   return res == 0;
-};
+}
 
 bool HexagonControlWrapper::ExecuteGraphNew(
     const std::vector<Tensor> &input_tensors,
@@ -374,7 +377,7 @@ bool HexagonControlWrapper::ExecuteGraphNew(
   delete[] inputs;
   delete[] outputs;
   return res == 0;
-};
+}
 
 bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
                                                     Tensor *output_tensor) {
