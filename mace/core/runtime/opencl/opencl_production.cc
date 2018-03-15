@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
+
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -10,8 +14,8 @@ namespace mace {
 
 bool GetSourceOrBinaryProgram(const std::string &program_name,
                               const std::string &binary_file_name_prefix,
-                              cl::Context &context,
-                              cl::Device &device,
+                              const cl::Context &context,
+                              const cl::Device &device,
                               cl::Program *program,
                               bool *is_binary) {
   extern const std::map<std::string, std::vector<unsigned char>>

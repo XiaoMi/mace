@@ -7,8 +7,9 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT(build/c++11)
 #include <set>
+#include <string>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -20,7 +21,7 @@ namespace mace {
 class OpenCLProfilingTimer : public Timer {
  public:
   explicit OpenCLProfilingTimer(const cl::Event *event)
-      : event_(event), accumulated_micros_(0) {};
+      : event_(event), accumulated_micros_(0) {}
   void StartTiming() override;
   void StopTiming() override;
   void AccumulateTiming() override;

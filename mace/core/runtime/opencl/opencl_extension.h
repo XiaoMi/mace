@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_RUNTIME_OPENCL_EXTENSION_H_
-#define MACE_CORE_RUNTIME_OPENCL_EXTENSION_H_
+#ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_EXTENSION_H_
+#define MACE_CORE_RUNTIME_OPENCL_OPENCL_EXTENSION_H_
 
 #include "mace/core/runtime/opencl/cl2_header.h"
 
@@ -25,4 +25,4 @@ typedef cl_uint cl_priority_hint;
 #define CL_PRIORITY_HINT_NORMAL_QCOM 0x40CB
 #define CL_PRIORITY_HINT_LOW_QCOM 0x40CC
 
-#endif  // MACE_CORE_RUNTIME_OPENCL_EXTENSION_H_
+#endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_EXTENSION_H_

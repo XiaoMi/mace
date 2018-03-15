@@ -54,7 +54,7 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
     const int in_idx = mul24(in_ch_blk, in_width);
     int filter_x_part0 = in_ch_blk << 2;
     for (short hb_idx = 0; hb_idx < filter_height; ++hb_idx) {
-      // TODO (heliangliang) optimize out these muls
+      // TODO(heliangliang) optimize out these muls
       int in_hb_value = height_idx + mul24(hb_idx, dilation_h);
       in_hb_value = select(in_hb_value + batch_idx,
                            -1,
