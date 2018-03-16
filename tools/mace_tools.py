@@ -94,9 +94,9 @@ def tuning_run(target_soc,
   run_command(command)
 
 
-def benchmark_model(model_output_dir, option_args=''):
-  command = "bash tools/benchmark.sh {} \"{}\"".format(model_output_dir,
-                                                       option_args)
+def benchmark_model(target_soc, model_output_dir, option_args=''):
+  command = "bash tools/benchmark.sh {} {} \"{}\"".format(
+      target_soc, model_output_dir, option_args)
   run_command(command)
 
 
@@ -138,9 +138,10 @@ def build_mace_run_prod(target_soc, model_output_dir, tuning, global_runtime):
   build_mace_run(production_or_not, model_output_dir, hexagon_mode)
 
 
-def build_run_throughput_test(run_seconds, merged_lib_file, model_input_dir):
-  command = "bash tools/build_run_throughput_test.sh {} {} {}".format(
-      run_seconds, merged_lib_file, model_input_dir)
+def build_run_throughput_test(target_soc, run_seconds, merged_lib_file,
+                              model_input_dir):
+  command = "bash tools/build_run_throughput_test.sh {} {} {} {}".format(
+      target_soc, run_seconds, merged_lib_file, model_input_dir)
   run_command(command)
 
 
@@ -226,8 +227,8 @@ def main(unused_args):
   generate_opencl_and_version_code()
   option_args = ' '.join([arg for arg in unused_args if arg.startswith('--')])
 
-  for target_abi in configs["target_abis"]:
-    for target_soc in configs["target_socs"]:
+  for target_soc in configs["target_socs"]:
+    for target_abi in configs["target_abis"]:
       global_runtime = get_global_runtime(configs)
       # Transfer params by environment
       os.environ["TARGET_ABI"] = target_abi
@@ -291,7 +292,7 @@ def main(unused_args):
                     FLAGS.restart_round, option_args)
 
         if FLAGS.mode == "benchmark":
-          benchmark_model(model_output_dir, option_args)
+          benchmark_model(target_soc, model_output_dir, option_args)
 
         if FLAGS.mode == "validate" or FLAGS.mode == "all":
           validate_model(target_soc, model_output_dir)
@@ -302,14 +303,14 @@ def main(unused_args):
             model_output_dirs)
 
       if FLAGS.mode == "throughput_test":
-        merged_lib_file = FLAGS.output_dir + "/%s/libmace/lib/libmace_%s.a" % \
-            (configs["target_abis"][0], os.environ["PROJECT_NAME"])
+        merged_lib_file = FLAGS.output_dir + "/%s/%s/libmace_%s.%s.a" % \
+            (os.environ["PROJECT_NAME"], target_abi, os.environ["PROJECT_NAME"], target_soc)
         generate_random_input(target_soc, FLAGS.output_dir)
         for model_name in configs["models"]:
           runtime = configs["models"][model_name]["runtime"]
           os.environ["%s_MODEL_TAG" % runtime.upper()] = model_name
-        build_run_throughput_test(FLAGS.run_seconds, merged_lib_file,
-                                  FLAGS.output_dir)
+        build_run_throughput_test(target_soc, FLAGS.run_seconds,
+                                  merged_lib_file, FLAGS.output_dir)
 
 
 if __name__ == "__main__":
