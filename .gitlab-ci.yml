@@ -23,5 +23,4 @@ ops_benchmark:
   only:
     - master
   script:
-    # FIXME remove pattern when speed issue is resolved
-    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark "BM_CONV_2D.*"
+    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark
