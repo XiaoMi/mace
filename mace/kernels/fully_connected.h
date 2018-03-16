@@ -9,24 +9,30 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
+#include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {
 
 struct FullyConnectedBase {
-  FullyConnectedBase(const ActivationType activation,
+  FullyConnectedBase(const BufferType weight_type,
+                     const ActivationType activation,
                      const float relux_max_limit)
-      : activation_(activation), relux_max_limit_(relux_max_limit) {}
+      : weight_type_(weight_type),
+        activation_(activation),
+        relux_max_limit_(relux_max_limit) {}
 
+  const int weight_type_;
   const ActivationType activation_;
   const float relux_max_limit_;
 };
 
 template <DeviceType D, typename T>
 struct FullyConnectedFunctor : FullyConnectedBase {
-  FullyConnectedFunctor(const ActivationType activation,
+  FullyConnectedFunctor(const BufferType weight_type,
+                        const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(activation, relux_max_limit) {}
+      : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
@@ -70,9 +76,10 @@ struct FullyConnectedFunctor : FullyConnectedBase {
 
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
-  FullyConnectedFunctor(const ActivationType activation,
+  FullyConnectedFunctor(const BufferType weight_type,
+                        const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(activation, relux_max_limit) {}
+      : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
@@ -81,6 +88,8 @@ struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
                   StatsFuture *future);
 
   cl::Kernel kernel_;
+  std::vector<uint32_t> gws_;
+  std::vector<uint32_t> lws_;
 };
 
 }  // namespace kernels

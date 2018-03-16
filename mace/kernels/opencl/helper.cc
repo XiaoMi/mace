@@ -84,6 +84,15 @@ void CalWeightHeightImageShape(const std::vector<index_t> &shape, /* HW */
   image_shape[1] = RoundUpDiv4(shape[0]);
 }
 
+// [(W + 3) / 4, H]
+void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* HW */
+                              std::vector<size_t> &image_shape) {
+  MACE_CHECK(shape.size() == 2);
+  image_shape.resize(2);
+  image_shape[0] = RoundUpDiv4(shape[1]);
+  image_shape[1] = shape[0];
+}
+
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
                      std::vector<size_t> &image_shape) {
@@ -111,6 +120,9 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
       break;
     case WEIGHT_HEIGHT:
       CalWeightHeightImageShape(shape, image_shape);
+      break;
+    case WEIGHT_WIDTH:
+      CalWeightWidthImageShape(shape, image_shape);
       break;
     default:
       LOG(FATAL) << "Mace not supported yet.";

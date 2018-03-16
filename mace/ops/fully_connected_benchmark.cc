@@ -22,10 +22,12 @@ static void FCBenchmark(
   net.AddRandomInput<D, float>("Bias", {out_channel});
 
   if (D == DeviceType::OPENCL) {
+    const int width_size = height * width * channel;
+    kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
+    BufferToImage<D, T>(net, "Weight", "WeightImage",
+                        weight_type);
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Weight", "WeightImage",
-                        kernels::BufferType::WEIGHT_HEIGHT);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
@@ -34,6 +36,7 @@ static void FCBenchmark(
         .Input("WeightImage")
         .Input("BiasImage")
         .Output("OutputImage")
+        .AddIntArg("weight_type", static_cast<int>(weight_type))
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
@@ -78,4 +81,6 @@ static void FCBenchmark(
 
 BM_FC(1, 16, 16, 32, 32);
 BM_FC(1, 8, 8, 32, 1000);
+BM_FC(1, 2, 2, 512, 2);
+BM_FC(1, 7, 7, 512, 4096);
 }  // namespace mace

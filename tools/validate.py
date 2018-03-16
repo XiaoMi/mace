@@ -5,6 +5,7 @@ import os.path
 import numpy as np
 import re
 from scipy import spatial
+from scipy import stats
 
 # Validation Flow:
 # 1. Generate input data
@@ -30,7 +31,10 @@ def format_output_name(name):
 
 def compare_output(output_name, mace_out_value, out_value):
   if mace_out_value.size != 0:
-    similarity = (1 - spatial.distance.cosine(out_value.flat, mace_out_value.flat))
+    out_value = out_value.reshape(-1)
+    mace_out_value = mace_out_value.reshape(-1)
+    assert len(out_value) == len(mace_out_value)
+    similarity = (1 - spatial.distance.cosine(out_value, mace_out_value))
     print output_name, 'MACE VS', FLAGS.platform.upper(), 'similarity: ', similarity
     if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
         (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
@@ -92,7 +96,10 @@ def validate_caffe_model(input_names, input_shapes, output_names, output_shapes)
   for i in range(len(input_names)):
     input_value = load_data(FLAGS.input_file + "_" + input_names[i])
     input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1, 2))
-    net.blobs[input_names[i]].data[0] = input_value
+    input_blob_name = input_names[i]
+    if input_names[i] in net.top_names:
+      input_blob_name = net.top_names[input_names[i]][0]
+    net.blobs[input_blob_name].data[0] = input_value
 
   net.forward()
 

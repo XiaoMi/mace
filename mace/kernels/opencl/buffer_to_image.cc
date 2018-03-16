@@ -49,6 +49,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
                          : "in_out_height_buffer_to_image";
       break;
     case IN_OUT_WIDTH:
+    case WEIGHT_WIDTH:
       MACE_CHECK(!i2b_) << "IN_OUT_WIDTH only support buffer to image now";
       kernel_name = "in_out_width_buffer_to_image";
       break;
@@ -88,7 +89,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
   }
   if (type == ARGUMENT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
-  } else if (type == WEIGHT_HEIGHT) {
+  } else if (type == WEIGHT_HEIGHT || type == WEIGHT_WIDTH) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, 1);
