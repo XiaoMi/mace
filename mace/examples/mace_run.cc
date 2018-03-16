@@ -171,8 +171,8 @@ DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
 DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
-DEFINE_int32(gpu_perf_hint, 2, "0:NA/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(gpu_priority_hint, 1, "0:NA/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
 DEFINE_int32(cpu_power_option, 0, "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
 
@@ -199,7 +199,7 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
   else if (device_type == DeviceType::CPU) {
-    mace::ConfigCPURuntime(
+    mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
   }
@@ -304,7 +304,7 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
   else if (device_type == DeviceType::CPU) {
-    mace::ConfigCPURuntime(
+    mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
   }

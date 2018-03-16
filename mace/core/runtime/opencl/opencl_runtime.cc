@@ -65,20 +65,24 @@ void OpenCLProfilingTimer::ClearTiming() {
   accumulated_micros_ = 0;
 }
 
+std::unique_ptr<OpenCLRuntime> OpenCLRuntime::runtime_instance_ = nullptr;
+
 OpenCLRuntime *OpenCLRuntime::Global() {
-  if (opencl_runtime_instance == nullptr) {
-    return CreateGlobal(GPUType::ADRENO, GPUPerfHint::PERF_NORMAL,
-                        GPUPriorityHint::PRIORITY_LOW);
+  // FIXME: not thread safe
+  if (runtime_instance_ == nullptr) {
+    return CreateGlobal(GPUType::ADRENO, GPUPerfHint::PERF_DEFAULT,
+                        GPUPriorityHint::PRIORITY_DEFAULT);
   }
-  return opencl_runtime_instance;
+  return runtime_instance_.get();
 }
 
 OpenCLRuntime *OpenCLRuntime::CreateGlobal(GPUType gpu_type,
                                            GPUPerfHint gpu_perf_hint,
                                            GPUPriorityHint gpu_priority_hint) {
-  opencl_runtime_instance = new OpenCLRuntime(gpu_type, gpu_perf_hint,
-                                              gpu_priority_hint);
-  return opencl_runtime_instance;
+  runtime_instance_ =
+      std::unique_ptr<OpenCLRuntime>(new OpenCLRuntime(gpu_type, gpu_perf_hint,
+                                                       gpu_priority_hint));
+  return runtime_instance_.get();
 }
 
 void ParseOpenCLRuntimeConfig(std::vector<cl_context_properties> *properties,
