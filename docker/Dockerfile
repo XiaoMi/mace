@@ -117,9 +117,3 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
 # Download tensorflow tools
 RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \
     chmod +x transform_graph
-
-# Install gitlab runner
-RUN curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-ci-multi-runner/script.deb.sh | bash
-RUN apt-get install gitlab-ci-multi-runner
-
-ENTRYPOINT gitlab-runner run
