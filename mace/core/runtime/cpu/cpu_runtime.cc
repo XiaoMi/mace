@@ -29,6 +29,7 @@ int GetCPUMaxFreq(int cpu_id) {
 }
 
 void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids) {
+  MACE_CHECK_NOTNULL(cpu_ids);
   int cpu_count = cpu_ids->size();
   std::vector<int> cpu_max_freq;
   cpu_max_freq.resize(cpu_count);

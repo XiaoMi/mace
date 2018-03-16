@@ -2,8 +2,8 @@
 // Copyright (c) 2018 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_
-#define MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_
+#ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
+#define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
 
 #include <string>
 #include <unordered_map>
@@ -47,4 +47,4 @@ class OpMap {
 };
 }  // namespace mace
 
-#endif  // MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_
+#endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_NN_OPS_H_
