@@ -422,7 +422,6 @@ class CaffeConverter(object):
     # Add filter
     weight_tensor_name = op.name + '_weight:0'
     self.add_tensor(weight_tensor_name, op.data[0])
-    print 'Winograd filter shape:', op.data[0].shape
 
     buffer_type = "WINOGRAD_FILTER"
     filter_name = self.add_buffer_to_image(weight_tensor_name, buffer_type)

@@ -105,12 +105,10 @@ def validate_caffe_model(input_names, input_shapes, output_names, output_shapes)
 
   for i in range(len(output_names)):
     value = net.blobs[net.top_names[output_names[i]][0]].data[0]
-    print net.top_names[output_names[i]][0]
     out_shape = output_shapes[i]
     out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[1], out_shape[2]
     value = value.reshape(out_shape).transpose((0, 2, 3, 1))
     output_file_name = FLAGS.mace_out_file + "_" + format_output_name(output_names[i])
-    print 'output file name:', output_file_name
     mace_out_value = load_data(output_file_name)
     compare_output(output_names[i], mace_out_value, value)
 

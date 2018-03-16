@@ -23,15 +23,9 @@ static void FCBenchmark(
 
   if (D == DeviceType::OPENCL) {
     const int width_size = height * width * channel;
-    kernels::BufferType weight_type = kernels::BufferType::WEIGHT_HEIGHT;
-//    if (width_size > 16384) {
-      BufferToImage<D, T>(net, "Weight", "WeightImage",
-                          kernels::BufferType::WEIGHT_WIDTH);
-      weight_type = kernels::BufferType::WEIGHT_WIDTH;
-//    } else {
-//      BufferToImage<D, T>(net, "Weight", "WeightImage",
-//                          kernels::BufferType::WEIGHT_HEIGHT);
-//    }
+    kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
+    BufferToImage<D, T>(net, "Weight", "WeightImage",
+                        weight_type);
     BufferToImage<D, T>(net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(net, "Bias", "BiasImage",
