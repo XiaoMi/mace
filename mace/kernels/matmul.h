@@ -89,42 +89,71 @@ inline void MatMulKernelFunc(const T *A,
 }
 }  // namespace
 
-#define CASE_K_MATMUL(HC, WC, KC) \
-  case KC: \
-    MatMulKernelFunc<T, register_tile_size, HC, WC, KC>(a_ptr_batch_base, \
-                  b_ptr_batch_base, \
-                  c_ptr_batch_base, \
-                  ih, \
-                  iw, \
-                  ik, \
-                  height, \
-                  width, \
-                  K); \
-  break;
+#define MACE_DO_MATMUL(HC, WC, KC) \
+MatMulKernelFunc<T, register_tile_size, HC, WC, KC>(a_ptr_batch_base, \
+                b_ptr_batch_base, \
+                c_ptr_batch_base, \
+                ih, \
+                iw, \
+                ik, \
+                height, \
+                width, \
+                K);
 
-#define CASE_W_MATMUL(HC, WC) \
-  case WC: \
-    switch (k_count) { \
-      CASE_K_MATMUL(HC, WC, 1); \
-      CASE_K_MATMUL(HC, WC, 2); \
-      CASE_K_MATMUL(HC, WC, 3); \
-      CASE_K_MATMUL(HC, WC, 4); \
-      default: \
-        LOG(FATAL) << "Unsupported k tile: " << k_count; \
-    } \
-    break;
+#define MACE_CASE_K_MATMUL(HC, WC) \
+switch (k_count) { \
+  case 1: \
+    MACE_DO_MATMUL(HC, WC, 1); \
+    break; \
+  case 2: \
+    MACE_DO_MATMUL(HC, WC, 2); \
+    break; \
+  case 3: \
+    MACE_DO_MATMUL(HC, WC, 3); \
+    break; \
+  case 4: \
+    MACE_DO_MATMUL(HC, WC, 4); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported k tile: " << k_count; \
+}
 
-#define CASE_H_MATMUL(HC) \
-  case HC: \
-    switch (w_count) { \
-      CASE_W_MATMUL(HC, 1); \
-      CASE_W_MATMUL(HC, 2); \
-      CASE_W_MATMUL(HC, 3); \
-      CASE_W_MATMUL(HC, 4); \
-      default: \
-        LOG(FATAL) << "Unsupported w tile: " << k_count; \
-    } \
-    break;
+
+#define MACE_CASE_W_MATMUL(HC) \
+switch (w_count) { \
+  case 1: \
+    MACE_CASE_K_MATMUL(HC, 1); \
+    break; \
+  case 2: \
+    MACE_CASE_K_MATMUL(HC, 2); \
+    break; \
+  case 3: \
+    MACE_CASE_K_MATMUL(HC, 3); \
+    break; \
+  case 4: \
+    MACE_CASE_K_MATMUL(HC, 4); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported w tile: " << w_count; \
+}
+
+#define MACE_CASE_H_MATMUL \
+switch (h_count) { \
+  case 1: \
+    MACE_CASE_W_MATMUL(1); \
+    break; \
+  case 2: \
+    MACE_CASE_W_MATMUL(2); \
+    break; \
+  case 3: \
+    MACE_CASE_W_MATMUL(3); \
+    break; \
+  case 4: \
+    MACE_CASE_W_MATMUL(4); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported h tile: " << h_count; \
+}
 
 template<DeviceType D, typename T>
 struct MatMulFunctor {
@@ -196,14 +225,7 @@ struct MatMulFunctor {
                   const int w_count = std::min(register_tile_size, iw_end - iw);
                   const int k_count = std::min(register_tile_size, ik_end - ik);
 
-                  switch (h_count) {
-                    CASE_H_MATMUL(1);
-                    CASE_H_MATMUL(2);
-                    CASE_H_MATMUL(3);
-                    CASE_H_MATMUL(4);
-                    default:LOG(FATAL) << "Unsupported height tile: "
-                                       << h_count;
-                  }
+                  MACE_CASE_H_MATMUL;
                 }  // ik
               }  // iw
             }  // ih

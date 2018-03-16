@@ -197,6 +197,56 @@ struct Conv2dFunctorBase {
   const float relux_max_limit_;
 };
 
+#define MACE_DO_CONV2D(CC, CH, CW) \
+Conv2dKernelFunc<T, inc_tile_size, CC, CH, CW>( \
+  input_ptr, filter_data, bias_data, output_ptr, \
+  h_offset, w_offset, c_offset, kernel_h, kernel_w, \
+  stride_h, stride_w, dilation_h, dilation_w, \
+  channels, input_channels, width, padded_width);
+
+#define MACE_CASE_W_CONV2D(CC, CH) \
+switch (w_count) { \
+  case 1: \
+    MACE_DO_CONV2D(CC, CH, 1); \
+    break; \
+  case 2: \
+    MACE_DO_CONV2D(CC, CH, 2); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported w tile: " << w_count; \
+}
+
+#define MACE_CASE_H_CONV2D(CC) \
+switch (h_count) { \
+  case 1: \
+    MACE_CASE_W_CONV2D(CC, 1); \
+    break; \
+  case 2: \
+    MACE_CASE_W_CONV2D(CC, 2); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported h tile: " << h_count; \
+}
+
+#define MACE_CASE_C_CONV2D \
+switch (c_count) { \
+  case 1: \
+    MACE_CASE_H_CONV2D(1); \
+    break; \
+  case 2: \
+    MACE_CASE_H_CONV2D(2); \
+    break; \
+  case 3: \
+    MACE_CASE_H_CONV2D(3); \
+    break; \
+  case 4: \
+    MACE_CASE_H_CONV2D(4); \
+    break; \
+  default: \
+    LOG(FATAL) << "Unsupported c tile: " << c_count; \
+}
+
+
 template <DeviceType D, typename T>
 struct Conv2dFunctor : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
@@ -312,306 +362,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
             const int w_count = std::min(w_tile_size, width - w_offset);
             const int c_count = std::min(c_tile_size, channels - c_offset);
 
-            switch (c_count) {
-              case 1:
-                switch (h_count) {
-                  case 1:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 1, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 1, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 1, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 1, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  case 2:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 2, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 2, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 2, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 1, 2, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  default:
-                    LOG(FATAL) << "Unsupported height tile: " << h_count;
-                }
-                break;
-              case 2:
-                switch (h_count) {
-                  case 1:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 1, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 1, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 1, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 1, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  case 2:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 2, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 2, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 2, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 2, 2, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  default:
-                    LOG(FATAL) << "Unsupported height tile: " << h_count;
-                }
-                break;
-              case 3:
-                switch (h_count) {
-                  case 1:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 1, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 1, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 1, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 1, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  case 2:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 2, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 2, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 2, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 3, 2, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  default:
-                    LOG(FATAL) << "Unsupported height tile: " << h_count;
-                }
-                break;
-              case 4:
-                switch (h_count) {
-                  case 1:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 1, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 1, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 1, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 1, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  case 2:
-                    switch (w_count) {
-                      case 1:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 2, 1>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 2:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 2, 2>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 3:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 2, 3>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      case 4:
-                        Conv2dKernelFunc<T, inc_tile_size, 4, 2, 4>(
-                            input_ptr, filter_data, bias_data, output_ptr,
-                            h_offset, w_offset, c_offset, kernel_h, kernel_w,
-                            stride_h, stride_w, dilation_h, dilation_w,
-                            channels, input_channels, width, padded_width);
-                        break;
-                      default:
-                        LOG(FATAL) << "Unsupported width tile: " << w_count;
-                    }
-                    break;
-                  default:
-                    LOG(FATAL) << "Unsupported height tile: " << h_count;
-                }
-                break;
-              default:
-                LOG(FATAL) << "Unsupported channel tile: " << c_count;
-            }
+            MACE_CASE_C_CONV2D;
           }
         }
       }
