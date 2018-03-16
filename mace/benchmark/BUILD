@@ -16,7 +16,8 @@ cc_library(
     hdrs = ["stat_summarizer.h"],
     linkstatic = 1,
     deps = [
-        "//mace/core",
+        "//mace/public",
+        "//mace/utils",
     ],
 )
 
