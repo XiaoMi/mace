@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
-#define MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
+#ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
+#define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_
 
 #include <vector>
 
@@ -16,7 +16,7 @@ namespace mace {
 
 class HexagonControlWrapper {
  public:
-  HexagonControlWrapper(){};
+  HexagonControlWrapper() {}
   int GetVersion();
   bool Config();
   bool Init();
@@ -53,6 +53,6 @@ class HexagonControlWrapper {
 
   DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };
-}
+}  // namespace mace
 
-#endif  // MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_
+#endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROL_WRAPPER_H_

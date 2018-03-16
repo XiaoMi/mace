@@ -6,6 +6,8 @@
 #define MACE_CORE_BUFFER_H_
 
 #include <vector>
+#include <functional>
+
 #include "mace/core/allocator.h"
 #include "mace/core/types.h"
 
@@ -14,7 +16,7 @@ namespace mace {
 class BufferBase {
  public:
   BufferBase() : size_(0) {}
-  BufferBase(index_t size) : size_(size) {}
+  explicit BufferBase(index_t size) : size_(size) {}
   virtual ~BufferBase() {}
 
   virtual void *buffer() = 0;
@@ -39,7 +41,7 @@ class BufferBase {
 
   virtual bool OnHost() const = 0;
 
-  virtual index_t offset() const { return 0; };
+  virtual index_t offset() const { return 0; }
 
   template <typename T>
   const T *data() const {
@@ -59,7 +61,7 @@ class BufferBase {
 
 class Buffer : public BufferBase {
  public:
-  Buffer(Allocator *allocator)
+  explicit Buffer(Allocator *allocator)
       : BufferBase(0),
         allocator_(allocator),
         buf_(nullptr),
@@ -93,7 +95,7 @@ class Buffer : public BufferBase {
   void *buffer() {
     MACE_CHECK_NOTNULL(buf_);
     return buf_;
-  };
+  }
 
   const void *raw_data() const {
     if (OnHost()) {
@@ -129,7 +131,7 @@ class Buffer : public BufferBase {
   void Map(std::vector<size_t> *pitch) {
     MACE_CHECK(mapped_buf_ == nullptr, "buf has been already mapped");
     mapped_buf_ = Map(0, size_, pitch);
-  };
+  }
 
   void UnMap() {
     UnMap(mapped_buf_);
@@ -151,7 +153,7 @@ class Buffer : public BufferBase {
   void Copy(void *src, index_t offset, index_t length) {
     MACE_CHECK_NOTNULL(mapped_buf_);
     MACE_CHECK(length <= size_, "out of buffer");
-    memcpy(mapped_buf_, (char *)src + offset, length);
+    memcpy(mapped_buf_, reinterpret_cast<char*>(src) + offset, length);
   }
 
   bool OnHost() const { return allocator_->OnHost(); }
@@ -197,7 +199,7 @@ class Image : public BufferBase {
   void *buffer() {
     MACE_CHECK_NOTNULL(buf_);
     return buf_;
-  };
+  }
 
   const void *raw_data() const {
     MACE_CHECK_NOTNULL(mapped_buf_);
@@ -227,12 +229,12 @@ class Image : public BufferBase {
     MACE_CHECK(mapped_buf_ == nullptr, "buf has been already mapped");
     MACE_CHECK_NOTNULL(pitch);
     mapped_buf_ = allocator_->MapImage(buf_, shape_, pitch);
-  };
+  }
 
   void UnMap() {
     UnMap(mapped_buf_);
     mapped_buf_ = nullptr;
-  };
+  }
 
   void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
 
@@ -276,12 +278,12 @@ class BufferSlice : public BufferBase {
   void *buffer() {
     MACE_CHECK_NOTNULL(buffer_);
     return buffer_->buffer();
-  };
+  }
 
   const void *raw_data() const {
     if (OnHost()) {
       MACE_CHECK_NOTNULL(buffer_);
-      return (char *)buffer_->raw_data() + offset_;
+      return reinterpret_cast<const char*>(buffer_->raw_data()) + offset_;
     } else {
       MACE_CHECK_NOTNULL(mapped_buf_);
       return mapped_buf_;
@@ -304,13 +306,13 @@ class BufferSlice : public BufferBase {
     MACE_CHECK_NOTNULL(buffer_);
     MACE_CHECK(mapped_buf_ == nullptr, "mapped buf is not null");
     mapped_buf_ = buffer_->Map(offset_, length_, pitch);
-  };
+  }
 
   void UnMap() {
     MACE_CHECK_NOTNULL(mapped_buf_);
     buffer_->UnMap(mapped_buf_);
     mapped_buf_ = nullptr;
-  };
+  }
 
   void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
 
@@ -326,6 +328,6 @@ class BufferSlice : public BufferBase {
   index_t offset_;
   index_t length_;
 };
-}
+}  // namespace mace
 
 #endif  // MACE_CORE_BUFFER_H_

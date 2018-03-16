@@ -55,7 +55,7 @@ new_git_repository(
     name = "opencl_clhpp",
     build_file = "mace/third_party/opencl-clhpp.BUILD",
     commit = "4c6f7d56271727e37fb19a9b47649dd175df2b12",
-    remote = "https://github.com/KhronosGroup/OpenCL-CLHPP.git",
+    remote = "http://v9.git.n.xiaomi.com/deep-computing/OpenCL-CLHPP-Mirror.git",
 )
 
 new_git_repository(

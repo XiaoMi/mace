@@ -14,7 +14,6 @@ int main(int argc, char **argv) {
   mace::ConfigOpenCLRuntime(mace::GPUType::ADRENO, mace::GPUPerfHint::PERF_HIGH,
                             mace::GPUPriorityHint::PRIORITY_HIGH);
 
-  // TODO Use gflags
   if (argc == 2) {
     mace::testing::Benchmark::Run(argv[1]);
   } else {

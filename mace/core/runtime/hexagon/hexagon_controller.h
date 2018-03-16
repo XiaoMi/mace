@@ -1,5 +1,9 @@
-#ifndef MACE_DSP_HEXAGON_DSP_CONTROLLER_H_
-#define MACE_DSP_HEXAGON_DSP_CONTROLLER_H_
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
+
+#ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROLLER_H_
+#define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROLLER_H_
 
 #include "mace/core/runtime/hexagon/hexagon_nn.h"
 
@@ -18,4 +22,5 @@ int hexagon_controller_DeInitHexagon();
 }
 #endif  // __cplusplus
 
-#endif  // MACE_DSP_HEXAGON_DSP_CONTROLLER_H_
+#endif  // MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROLLER_H_
+

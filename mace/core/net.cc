@@ -2,6 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <utility>
+
 #include "mace/core/net.h"
 #include "mace/utils/memory_logging.h"
 #include "mace/utils/timer.h"

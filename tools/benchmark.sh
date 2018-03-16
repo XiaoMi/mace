@@ -29,7 +29,8 @@ if [ "$EMBED_MODEL_DATA" = 0 ]; then
 fi
 
 if [ x"$TARGET_ABI" == x"host" ]; then
-  bazel build --verbose_failures -c opt --strip always //mace/benchmark:benchmark_model \
+  bazel build --verbose_failures -c opt --strip always \
+    //mace/benchmark:benchmark_model \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
@@ -52,16 +53,18 @@ if [ x"$TARGET_ABI" == x"host" ]; then
       $OPTION_ARGS || exit 1
 
 else
-  bazel build --verbose_failures -c opt --strip always //mace/benchmark:benchmark_model \
+  bazel build --verbose_failures -c opt --strip always \
+    //mace/benchmark:benchmark_model \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
     --cpu=${TARGET_ABI} \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
+    --copt="-DMACE_OBFUSCATE_LITERALS" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
-    --copt="-O3" \
     --define openmp=true \
+    --copt="-O3" \
     --define production=true || exit 1
 
   cp bazel-bin/mace/benchmark/benchmark_model $MODEL_OUTPUT_DIR
@@ -70,11 +73,14 @@ else
   IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
   for NAME in "${INPUT_NAMES[@]}";do
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
-    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} ${PHONE_DATA_DIR} || exit 1
+    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} \
+        ${PHONE_DATA_DIR} > /dev/null || exit 1
   done
-  adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/benchmark_model ${PHONE_DATA_DIR} || exit 1
+  adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/benchmark_model \
+      ${PHONE_DATA_DIR} > /dev/null || exit 1
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
-    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data ${PHONE_DATA_DIR} || exit 1
+    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data
+        ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
 
   adb -s $DEVICE_ID </dev/null shell \
