@@ -35,7 +35,7 @@ class MemoryOptimizer(object):
 
   def get_mem_size(self, op_type, output_shape):
     mem_size = [0, 0]
-    if op_type == 'WinogradTransform' or op_type == 'GEMM':
+    if op_type == 'WinogradTransform' or op_type == 'MatMul':
       mem_size[0] = output_shape[2] * output_shape[3]
       mem_size[1] = output_shape[0] * int((output_shape[1]+3)/4)
     else:
