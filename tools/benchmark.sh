@@ -1,7 +1,7 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/benchmark.sh model_output_dir"
+  echo "Usage: bash tools/benchmark.sh target_soc model_output_dir option_args"
 }
 
 if [ $# -lt 1 ]; then
@@ -12,10 +12,13 @@ fi
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
-MODEL_OUTPUT_DIR=$1
-OPTION_ARGS=$2
+TARGET_SOC=$1
+MODEL_OUTPUT_DIR=$2
+OPTION_ARGS=$3
 
 echo $OPTION_ARGS
+
+DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
 
 if [ -f "$MODEL_OUTPUT_DIR/benchmark_model" ]; then
   rm -rf $MODEL_OUTPUT_DIR/benchmark_model
@@ -66,21 +69,21 @@ else
 
   cp bazel-bin/mace/benchmark/benchmark_model $MODEL_OUTPUT_DIR
 
-  adb shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
+  adb -s $DEVICE_ID shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
   IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
   for NAME in "${INPUT_NAMES[@]}";do
     FORMATTED_NAME=$(sed s/[^[:alnum:]]/_/g <<< ${NAME})
-    adb push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} \
+    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${INPUT_FILE_NAME}_${FORMATTED_NAME} \
         ${PHONE_DATA_DIR} > /dev/null || exit 1
   done
-  adb push ${MODEL_OUTPUT_DIR}/benchmark_model \
+  adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/benchmark_model \
       ${PHONE_DATA_DIR} > /dev/null || exit 1
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
-    adb push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data
+    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data
         ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
 
-  adb </dev/null shell \
+  adb -s $DEVICE_ID </dev/null shell \
     LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \

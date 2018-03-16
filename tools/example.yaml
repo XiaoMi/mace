@@ -1,8 +1,9 @@
 # example.yaml
 # Each yaml file describes a exported library (could be named [target_abi]/libmace-${filename}.a), 
 # which can contains more than one models
+# target_soc can get by `adb shell getprop | grep ro.board.platform | cut -d [ -f3 | cut -d ] -f1`
 target_abis: [armeabi-v7a, arm64-v8a]
-target_socs: [MSM8953] # target_socs not enabled yet
+target_socs: [MSM8953]
 embed_model_data: 1
 vlog_level: 0
 models:

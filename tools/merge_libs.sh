@@ -1,10 +1,10 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/merge_libs.sh libmace_output_dir model_output_dirs"
+  echo "Usage: bash tools/merge_libs.sh target_soc libmace_output_dir model_output_dirs"
 }
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
   Usage
   exit 1
 fi
@@ -12,23 +12,33 @@ fi
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
-LIBMACE_BUILD_DIR=$1
-MODEL_OUTPUT_DIRS=$2
+TARGET_SOC=$1
+LIBMACE_BUILD_DIR=$2
+MODEL_OUTPUT_DIRS=$3
 MODEL_OUTPUT_DIRS_ARR=(${MODEL_OUTPUT_DIRS//,/ })
-MODEL_HEADER_DIR=${LIBMACE_BUILD_DIR}/libmace/include/mace/public
-MODEL_DATA_DIR=${LIBMACE_BUILD_DIR}/libmace/data
+MODEL_HEADER_DIR=${LIBMACE_BUILD_DIR}/include/mace/public
+MODEL_DATA_DIR=${LIBMACE_BUILD_DIR}/data
 
-rm -rf ${LIBMACE_BUILD_DIR}/libmace
-mkdir -p ${LIBMACE_BUILD_DIR}/libmace/include/mace/public
-mkdir -p ${LIBMACE_BUILD_DIR}/libmace/lib
-mkdir -p ${MODEL_DATA_DIR}
-cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/libmace/include/mace/public/
-cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/libmace/lib
+if [ ! -d "${MODEL_HEADER_DIR}" ]; then
+  mkdir -p ${MODEL_HEADER_DIR}
+fi
+if [ ! -d "${LIBMACE_BUILD_DIR}/${TARGET_ABI}" ]; then
+  mkdir -p ${LIBMACE_BUILD_DIR}/${TARGET_ABI}
+fi
+if [ ! -d "${LIBMACE_BUILD_DIR}/hexagon" ]; then
+  mkdir -p ${LIBMACE_BUILD_DIR}/hexagon
+fi
+if [ ! -d "${MODEL_DATA_DIR}" ]; then
+  mkdir -p ${MODEL_DATA_DIR}
+fi
+
+cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/include/mace/public/
+cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/hexagon/
 
 LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`
 
 # Merge all libraries in to one
-echo "create ${LIBMACE_BUILD_DIR}/libmace/lib/libmace_${PROJECT_NAME}.a" > ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+echo "create ${LIBMACE_BUILD_DIR}/${TARGET_ABI}/libmace_${PROJECT_NAME}.${TARGET_SOC}.a" > ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 
 if [ x"$TARGET_ABI" = x"host" ]; then
   echo "addlib bazel-bin/mace/codegen/libgenerated_opencl_prod.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
