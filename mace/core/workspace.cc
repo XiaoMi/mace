@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "mace/core/arg_helper.h"
 #include "mace/core/workspace.h"
@@ -52,16 +53,16 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   unsigned char *model_data_ptr = nullptr;
   for (auto &const_tensor : net_def.tensors()) {
     if (model_data_ptr == nullptr ||
-        reinterpret_cast<long long>(const_tensor.data()) <
-            reinterpret_cast<long long>(model_data_ptr)) {
+        reinterpret_cast<int64_t>(const_tensor.data()) <
+            reinterpret_cast<int64_t>(model_data_ptr)) {
       model_data_ptr = const_cast<unsigned char *>(const_tensor.data());
     }
   }
   for (auto &const_tensor : net_def.tensors()) {
     model_data_size = std::max(
         model_data_size,
-        static_cast<index_t>((reinterpret_cast<long long>(const_tensor.data()) -
-                              reinterpret_cast<long long>(model_data_ptr)) +
+        static_cast<index_t>((reinterpret_cast<int64_t>(const_tensor.data()) -
+                              reinterpret_cast<int64_t>(model_data_ptr)) +
                              const_tensor.data_size() *
                                  GetEnumTypeSize(const_tensor.data_type())));
   }
@@ -89,7 +90,8 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
       dims.push_back(d);
     }
 
-    index_t offset = (long long)const_tensor.data() - (long long)model_data_ptr;
+    index_t offset = reinterpret_cast<int64_t>(const_tensor.data())
+        - reinterpret_cast<int64_t>(model_data_ptr);
     std::unique_ptr<Tensor> tensor(
         new Tensor(BufferSlice(tensor_buffer_.get(), offset,
                                const_tensor.data_size() *
@@ -116,7 +118,7 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   // As DSP may have different data output type for each op,
   // we stick to the same concept.
   for (auto &op : net_def.op()) {
-    if (! op.mem_id().empty()){
+    if (!op.mem_id().empty()) {
       const DataType op_dtype = static_cast<DataType>(
           ArgumentHelper::GetSingleArgument<OperatorDef, int>(
               op, "T", static_cast<int>(DT_FLOAT)));
@@ -142,11 +144,14 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
         std::unique_ptr<Tensor> tensor
             (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
         tensor->SetSourceOpName(op.name());
-        VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")" << "; Mem: "
-                << mem_ids[i] << "; Image shape: "
-                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[0]
+        VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
+                << " Mem: "  << mem_ids[i]
+                << " Image shape: "
+                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                    ->image_shape()[0]
                 << ", "
-                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())->image_shape()[1];
+                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                    ->image_shape()[1];
         tensor_map_[op.output(i)] = std::move(tensor);
       }
     }

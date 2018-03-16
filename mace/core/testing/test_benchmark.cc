@@ -6,7 +6,7 @@
 #include <cstdlib>
 
 #include <algorithm>
-#include <regex>
+#include <regex>  // NOLINT(build/c++11)
 #include <vector>
 
 #include "mace/core/testing/test_benchmark.h"

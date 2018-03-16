@@ -5,6 +5,11 @@
 #ifndef MACE_CORE_WORKSPACE_H_
 #define MACE_CORE_WORKSPACE_H_
 
+#include <map>
+#include <string>
+#include <vector>
+#include <memory>
+
 #include "mace/core/preallocated_pooled_allocator.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"

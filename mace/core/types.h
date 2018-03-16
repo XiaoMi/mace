@@ -6,6 +6,7 @@
 #define MACE_CORE_TYPES_H_
 
 #include <cstdint>
+#include <string>
 
 #include "mace/public/mace.h"
 #include "include/half.hpp"

@@ -16,7 +16,7 @@ namespace mace {
 
 class HexagonControlWrapper {
  public:
-  HexagonControlWrapper(){};
+  HexagonControlWrapper() {}
   int GetVersion();
   bool Config();
   bool Init();
@@ -53,6 +53,6 @@ class HexagonControlWrapper {
 
   DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };
-}
+}  // namespace mace
 
 #endif  // MACE_DSP_HEXAGON_CONTROL_WRAPPER_H_

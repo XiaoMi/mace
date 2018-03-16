@@ -2,6 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <algorithm>
+
 #include "mace/core/runtime/hexagon/quantize.h"
 
 namespace mace {
@@ -92,5 +94,6 @@ void Quantizer::DeQuantize(const Tensor &in_tensor,
     out[i] = (in[i] * stepsize) + min_in;
   }
 }
+
 
 }  // namespace mace

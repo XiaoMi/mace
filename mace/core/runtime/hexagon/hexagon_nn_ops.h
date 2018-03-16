@@ -2,10 +2,12 @@
 // Copyright (c) 2018 XiaoMi All rights reserved.
 //
 
-#ifndef LIBMACE_HEXAGON_NN_OPS_H
-#define LIBMACE_HEXAGON_NN_OPS_H
+#ifndef MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_
+#define MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_
 
+#include <string>
 #include <unordered_map>
+
 #include "mace/utils/logging.h"
 
 namespace mace {
@@ -15,7 +17,7 @@ namespace mace {
 typedef enum op_type_enum {
 #define DEF_OP(NAME, ...) OP_##NAME,
 
-#include "mace/core/runtime/hexagon/ops.h"
+#include "mace/core/runtime/hexagon/ops.h"  // NOLINT(build/include)
   NN_OPS_MAX
 
 #undef DEF_OP
@@ -26,7 +28,7 @@ class OpMap {
   void Init() {
 #define DEF_OP(NAME) op_map_[#NAME] = OP_##NAME;
 
-#include "mace/core/runtime/hexagon/ops.h"
+#include "mace/core/runtime/hexagon/ops.h"  // NOLINT(build/include)
 
 #undef DEF_OP
   }
@@ -45,4 +47,4 @@ class OpMap {
 };
 }  // namespace mace
 
-#endif  // LIBMACE_HEXAGON_NN_OPS_H
+#endif  // MACE_CORE_RUNTIME_HEXAGON_NN_OPS_H_

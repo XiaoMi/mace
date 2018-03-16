@@ -3,8 +3,8 @@
 //
 
 
-#ifndef MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H
-#define MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H
+#ifndef MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
+#define MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
 
 #include "mace/public/mace.h"
 
@@ -14,4 +14,4 @@ void SetCPURuntime(int omp_num_threads, CPUPowerOption power_option);
 
 }
 
-#endif //MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H
+#endif  // MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_

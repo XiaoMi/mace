@@ -459,7 +459,7 @@ MaceEngine::~MaceEngine() {
     MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
   }
-};
+}
 
 bool MaceEngine::Run(const float *input,
                      const std::vector<index_t> &input_shape,
@@ -493,7 +493,6 @@ bool MaceEngine::Run(const float *input,
     auto shape = output_tensor->shape();
     int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
                                           std::multiplies<int64_t>());
-    // TODO: check for overflow exception.
     std::memcpy(output, output_tensor->data<float>(),
                 output_size * sizeof(float));
     return true;
@@ -530,7 +529,6 @@ bool MaceEngine::Run(const std::vector<MaceInputInfo> &inputs,
       int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
                                             std::multiplies<int64_t>());
       MACE_CHECK(!shape.empty()) << "Output's shape must greater than 0";
-      // TODO: check for overflow exception.
       std::memcpy(output.second, output_tensor->data<float>(),
                   output_size * sizeof(float));
     } else {
