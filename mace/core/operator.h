@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_OPERATOR_H
-#define MACE_CORE_OPERATOR_H
+#ifndef MACE_CORE_OPERATOR_H_
+#define MACE_CORE_OPERATOR_H_
 
 #include <memory>
 #include <string>
@@ -176,4 +176,4 @@ MACE_DECLARE_REGISTRY(OpRegistry,
 
 }  // namespace mace
 
-#endif  // MACE_CORE_OPERATOR_H
+#endif  // MACE_CORE_OPERATOR_H_
