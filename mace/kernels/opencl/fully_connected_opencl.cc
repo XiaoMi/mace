@@ -35,16 +35,22 @@ void FCWXKernel(cl::Kernel *kernel,
       built_options.emplace("-DBIAS");
     }
     switch (activation) {
-      case NOOP:break;
-      case RELU:built_options.emplace("-DUSE_RELU");
+      case NOOP:
         break;
-      case RELUX:built_options.emplace("-DUSE_RELUX");
+      case RELU:
+        built_options.emplace("-DUSE_RELU");
         break;
-      case TANH:built_options.emplace("-DUSE_TANH");
+      case RELUX:
+        built_options.emplace("-DUSE_RELUX");
         break;
-      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
+      case TANH:
+        built_options.emplace("-DUSE_TANH");
         break;
-      default:LOG(FATAL) << "Unknown activation type: " << activation;
+      case SIGMOID:
+        built_options.emplace("-DUSE_SIGMOID");
+        break;
+      default:
+        LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
     *kernel =
@@ -53,8 +59,9 @@ void FCWXKernel(cl::Kernel *kernel,
     const index_t batch = output->dim(0);
     const index_t output_size = output->dim(3);
     const index_t output_blocks = RoundUpDiv4(output_size);
+    const uint32_t wave_size = runtime->GetKernelWaveSize(*kernel);
 
-    gws = {4, 8, static_cast<uint32_t>(output_blocks)};
+    gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
 
     const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(*kernel);
     const uint32_t inter_local_blks = kwg_size / (gws[0] * gws[1]);
@@ -70,7 +77,8 @@ void FCWXKernel(cl::Kernel *kernel,
     kernel->setArg(idx++, (lws[0] * lws[1] * lws[2] * sizeof(float)), nullptr);
     kernel->setArg(idx++, static_cast<int>(input->dim(1)));
     kernel->setArg(idx++, static_cast<int>(input->dim(2)));
-    kernel->setArg(idx++, static_cast<short>(RoundUpDiv4(input->dim(3))));
+    kernel->setArg(idx++, static_cast<int>(RoundUpDiv4(input->dim(3))));
+    kernel->setArg(idx++, static_cast<int>(output_blocks));
     kernel->setArg(idx++, relux_max_limit);
   }
   cl::Event event;

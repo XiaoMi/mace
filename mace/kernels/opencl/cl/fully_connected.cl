@@ -66,12 +66,15 @@ __kernel void fully_connected_width(__read_only image2d_t input,
                                     __local float *intermediate_output,
                                     __private const int input_height,
                                     __private const int input_width,
-                                    __private const short in_chan_blks,
+                                    __private const int in_chan_blks,
+                                    __private const int out_blks,
                                     __private const float relux_max_limit) {
   const int inter_out_idx = get_global_id(0);
   const int width_blk_idx = get_global_id(1);
   const int width_blk_count = get_global_size(1);
-  const int out_blk_idx = get_global_id(2);
+  const int batch_out_blk_idx = get_global_id(2);
+  const int batch_idx = batch_out_blk_idx / out_blks;
+  const int out_blk_idx = batch_out_blk_idx % out_blks;
 
   const short in_outer_size = mul24(input_width, in_chan_blks);
   const short weight_y = mad24(out_blk_idx, 4, inter_out_idx);
@@ -80,16 +83,17 @@ __kernel void fully_connected_width(__read_only image2d_t input,
   DATA_TYPE4 in, w;
   DATA_TYPE sum = 0.0;
 
-  input_coord = (int2)(0, 0);
+  input_coord = (int2)(0, mul24(batch_idx, input_height));
 
-  for (short h_idx = 0; h_idx < input_height; ++h_idx) {
-    short weight_x_base = mul24(h_idx, in_outer_size);
-    for (short w_idx = (short)width_blk_idx; w_idx < input_width; w_idx += width_blk_count) {
-      short weight_x = mad24(w_idx, in_chan_blks, weight_x_base);
+  for (int h_idx = 0; h_idx < input_height; ++h_idx) {
+    int weight_x_base = mul24(h_idx, in_outer_size);
+    for (int w_idx = width_blk_idx; w_idx < input_width;
+         w_idx += width_blk_count) {
+      int weight_x = mad24(w_idx, in_chan_blks, weight_x_base);
       weight_coord = (int2)(weight_x, weight_y);
       input_coord.x = w_idx;
 #pragma unroll
-      for (short chan_idx = 0; chan_idx < in_chan_blks; ++chan_idx) {
+      for (int chan_idx = 0; chan_idx < in_chan_blks; ++chan_idx) {
         in = READ_IMAGET(input, SAMPLER, input_coord);
 
         w = READ_IMAGET(weight, SAMPLER, weight_coord);
@@ -125,6 +129,6 @@ __kernel void fully_connected_width(__read_only image2d_t input,
 #if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
     result = do_activation(result, relux_max_limit);
 #endif
-    WRITE_IMAGET(output, (int2)(out_blk_idx, 0), result);
+    WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
   }
 }

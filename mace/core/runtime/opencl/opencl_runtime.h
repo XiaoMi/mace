@@ -48,6 +48,7 @@ class OpenCLRuntime {
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint32_t GetDeviceMaxWorkGroupSize();
   uint32_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
+  uint32_t GetKernelWaveSize(const cl::Kernel &kernel);
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);

@@ -19,6 +19,7 @@ buffer_type_map = {
   'WINOGRAD_FILTER' : 5,
   'DW_CONV2D_FILTER' : 6,
   'WEIGHT_HEIGHT' : 7,
+  'WEIGHT_WIDTH' : 8,
 }
 
 data_type_map = {
@@ -310,24 +311,25 @@ class CaffeConverter(object):
       pad = [param.pad * 2, param.pad * 2]
       kernel = [param.kernel_size, param.kernel_size]
 
-    strides_arg = op_def.arg.add()
-    strides_arg.name = 'strides'
     if param.HasField("stride_h") or param.HasField("stride_w"):
       stride = [param.stride_h, param.stride_w]
-    strides_arg.ints.extend(stride)
     # Pad
-    padding_arg = op_def.arg.add()
-    padding_arg.name = 'padding_values'
     if param.HasField("pad_h") or param.HasField("pad_w"):
       pad = [param.pad_h * 2, param.pad_w * 2]
-    padding_arg.ints.extend(pad)
-    # kernel
-    if op_def.type == 'Pooling':
-      kernel_arg = op_def.arg.add()
-      kernel_arg.name = 'kernels'
-      if param.HasField("kernel_h") or param.HasField("kernel_w"):
-        kernel = [param.kernel_h, param.kernel_w]
-      kernel_arg.ints.extend(kernel)
+
+    if op_def is not None:
+      strides_arg = op_def.arg.add()
+      strides_arg.name = 'strides'
+      strides_arg.ints.extend(stride)
+
+      padding_arg = op_def.arg.add()
+      padding_arg.name = 'padding_values'
+      padding_arg.ints.extend(pad)
+
+      if op_def.type == 'Pooling':
+        if param.HasField("kernel_h") or param.HasField("kernel_w"):
+          kernel = [param.kernel_h, param.kernel_w]
+
     return pad, stride, kernel
 
   def convert_conv2d(self, op):
@@ -390,6 +392,126 @@ class CaffeConverter(object):
     op_def.output.extend([final_op.name+':0'])
     self.add_output_shape(op_def, output_shape)
     self.net_def.op.extend([op_def])
+
+  def check_winograd_conv(self, op):
+    param = op.layer.convolution_param
+    filter_shape = np.asarray(op.data[0].shape)
+    filter_shape = filter_shape[[2, 3, 0, 1]]
+    paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
+
+    dilations = [1, 1]
+    if len(param.dilation) > 0:
+      if len(param.dilation) == 1:
+        dilations = [param.dilation[0], param.dilation[0]]
+      elif len(param.dilation) == 2:
+        dilations = [param.dilation[0], param.dilation[1]]
+
+    output_shape = Shapes.conv_pool_shape(
+      op.get_single_parent().output_shape_map[op.layer.bottom[0]],
+      filter_shape, paddings, strides, dilations, math.floor)
+    width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
+    return self.winograd and self.device == 'gpu' and \
+           filter_shape[0] == 3 and (filter_shape[0] == filter_shape[1]) and \
+           dilations[0] == 1 and (dilations[0] == dilations[1]) and\
+           (strides[0] == 1) and (strides[0] == strides[1]) and \
+           (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
+           (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
+           (width < OPENCL_IMAGE_MAX_SIZE)
+
+  def convert_winograd_conv(self, op):
+    # Add filter
+    weight_tensor_name = op.name + '_weight:0'
+    self.add_tensor(weight_tensor_name, op.data[0])
+    print 'Winograd filter shape:', op.data[0].shape
+
+    buffer_type = "WINOGRAD_FILTER"
+    filter_name = self.add_buffer_to_image(weight_tensor_name, buffer_type)
+
+    param = op.layer.convolution_param
+    paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
+
+    filter_shape = np.asarray(op.data[0].shape)
+    filter_shape = filter_shape[[2, 3, 0, 1]]
+
+    output_shape = Shapes.conv_pool_shape(
+      op.get_single_parent().output_shape_map[op.layer.bottom[0]],
+      filter_shape, paddings, strides, [1, 1], math.floor)
+
+    # Input transform
+    wt_op = mace_pb2.OperatorDef()
+    arg = wt_op.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    padding_arg = wt_op.arg.add()
+    padding_arg.name = 'padding_values'
+    padding_arg.ints.extend(paddings)
+    wt_op.name = op.name + '_input_transform'
+    wt_op.type = 'WinogradTransform'
+    wt_op.input.extend([name+':0' for name in self.inputs_map[op.name]])
+    wt_output_name = wt_op.name + ":0"
+    wt_op.output.extend([wt_output_name])
+    wt_output_shape = mace_pb2.OutputShape()
+    wt_output_width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
+    wt_output_shape.dims.extend([16, filter_shape[3], wt_output_width, 1])
+    wt_op.output_shape.extend([wt_output_shape])
+
+    # MatMul
+    matmul_op = mace_pb2.OperatorDef()
+    arg = matmul_op.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    matmul_op.name = op.name + '_matmul'
+    matmul_op.type = 'MatMul'
+    matmul_op.input.extend([filter_name, wt_output_name])
+    matmul_output_name = matmul_op.name + ":0"
+    matmul_op.output.extend([matmul_output_name])
+    matmul_output_shape = mace_pb2.OutputShape()
+    matmul_output_shape.dims.extend([16, filter_shape[2], wt_output_width, 1])
+    matmul_op.output_shape.extend([matmul_output_shape])
+
+    # Inverse transform
+    iwt_op = mace_pb2.OperatorDef()
+    arg = iwt_op.arg.add()
+    arg.name = 'T'
+    arg.i = self.dt
+    batch_arg = iwt_op.arg.add()
+    batch_arg.name = 'batch'
+    batch_arg.i = output_shape[0]
+    height_arg = iwt_op.arg.add()
+    height_arg.name = 'height'
+    height_arg.i = output_shape[1]
+    width_arg = iwt_op.arg.add()
+    width_arg.name = 'width'
+    width_arg.i = output_shape[2]
+    iwt_op.name = op.name + '_inverse_transform'
+    iwt_op.type = 'WinogradInverseTransform'
+    iwt_op.input.extend([matmul_output_name])
+
+    # Add Bias
+    if len(op.data) == 2:
+      bias_tensor_name = op.name + '_bias:0'
+      bias_data = op.data[1].reshape(-1)
+      self.add_tensor(bias_tensor_name, bias_data)
+      output_name = self.add_buffer_to_image(bias_tensor_name, "ARGUMENT")
+      iwt_op.input.extend([output_name])
+
+    final_op = op
+    final_op.output_shape_map[final_op.layer.top[0]] = output_shape
+    self.resolved_ops.add(op.name)
+
+    if len(self.ops_map[final_op.name].children) == 1 \
+        and self.ops_map[final_op.name].children[0].type in activation_name_map:
+      activation_op = self.ops_map[final_op.name].children[0]
+      fused_act_arg = iwt_op.arg.add()
+      fused_act_arg.name = 'activation'
+      fused_act_arg.s = activation_name_map[activation_op.type]
+      final_op = activation_op
+      final_op.output_shape_map[final_op.layer.top[0]] = output_shape
+      self.resolved_ops.add(activation_op.name)
+
+    iwt_op.output.extend([final_op.name+':0'])
+    self.add_output_shape(iwt_op, output_shape)
+    self.net_def.op.extend([wt_op, matmul_op, iwt_op])
 
   def convert_batchnorm(self, op):
     if len(op.children) != 1 or op.children[0].type != 'Scale':
@@ -468,10 +590,21 @@ class CaffeConverter(object):
     self.add_tensor(weight_tensor_name, weight_data)
     if self.device == 'gpu':
       if (weight_data.shape[0] + 3) / 4 > OPENCL_IMAGE_MAX_SIZE \
-          or weight_data.shape[1] > OPENCL_IMAGE_MAX_SIZE:
+          and (weight_data.shape[1] + 3) / 4 > OPENCL_IMAGE_MAX_SIZE:
         raise Exception('Mace gpu do not support FC with weight shape: '
                         +str(weight_data.shape))
-      buffer_type = "WEIGHT_HEIGHT"
+      if input_shape[3] % 4 == 0:
+        buffer_type = "WEIGHT_WIDTH"
+      else:
+        buffer_type = "WEIGHT_HEIGHT"
+        weight_type_arg = op_def.arg.add()
+        weight_type_arg.name = 'weight_type'
+        weight_type_arg.i = buffer_type_map['WEIGHT_HEIGHT']
+
+      if buffer_type == "WEIGHT_HEIGHT" and \
+                  (weight_data.shape[0] + 3) / 4 > OPENCL_IMAGE_MAX_SIZE:
+        raise Exception('Mace gpu do not support FC with weight shape: '
+                        +str(weight_data.shape))
       output_name = self.add_buffer_to_image(weight_tensor_name, buffer_type)
       op_def.input.extend([output_name])
     else:
@@ -521,6 +654,13 @@ class CaffeConverter(object):
     pooling_type_arg.i = pooling_type_mode[pooling_type]
 
     input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[0]]
+    if param.HasField('global_pooling') and param.global_pooling:
+      kernels = [input_shape[1], input_shape[2]]
+
+    kernel_arg = op_def.arg.add()
+    kernel_arg.name = 'kernels'
+    kernel_arg.ints.extend(kernels)
+
     filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]]
     output_shape = Shapes.conv_pool_shape(input_shape, filter_shape,
                                           paddings, strides, [1, 1], math.ceil)
@@ -684,7 +824,10 @@ class CaffeConverter(object):
       if op.type == 'Input':
         self.resolved_ops.add(op.name)
       elif op.type == 'Convolution':
-        self.convert_conv2d(op)
+        if self.check_winograd_conv(op):
+          self.convert_winograd_conv(op)
+        else:
+          self.convert_conv2d(op)
       elif op.type == 'BatchNorm':
         self.convert_batchnorm(op)
       elif op.type == 'InnerProduct':
@@ -719,7 +862,8 @@ class CaffeConverter(object):
         print 'Unresolve Op: %s with type %s' % (op.name, op.type)
 
 
-def convert_to_mace_pb(model_file, weight_file, input_node_str, input_shape_str, output_node_str, data_type, device, winograd):
+def convert_to_mace_pb(model_file, weight_file, input_node_str, input_shape_str,
+                       output_node_str, data_type, device, winograd):
   net_def = mace_pb2.NetDef()
   dt = data_type_map[data_type]
 

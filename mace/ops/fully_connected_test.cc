@@ -187,11 +187,11 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfUnAlignedWithBatch) {
 }
 
 template <typename T>
-void TestWeightWidthFormat(const index_t batch,
-                           const index_t height,
-                           const index_t width,
-                           const index_t channels,
-                           const index_t out_channel) {
+void TestWXFormat(const index_t batch,
+                  const index_t height,
+                  const index_t width,
+                  const index_t channels,
+                  const index_t out_channel) {
   srand(time(NULL));
 
   // Construct graph
@@ -246,14 +246,21 @@ void TestWeightWidthFormat(const index_t batch,
 }
 
 TEST_F(FullyConnectedOpTest, OPENCLWidthFormatAligned) {
-  TestWeightWidthFormat<float>(1, 7, 7, 32, 16);
-  TestWeightWidthFormat<float>(1, 7, 7, 512, 128);
-  TestWeightWidthFormat<float>(1, 1, 1, 2048, 1024);
+  TestWXFormat<float>(1, 7, 7, 32, 16);
+  TestWXFormat<float>(1, 7, 7, 512, 128);
+  TestWXFormat<float>(1, 1, 1, 2048, 1024);
 }
+
+TEST_F(FullyConnectedOpTest, OPENCLWidthFormatMultiBatch) {
+  TestWXFormat<float>(11, 7, 7, 32, 16);
+  TestWXFormat<float>(5, 7, 7, 512, 128);
+  TestWXFormat<float>(3, 1, 1, 2048, 1024);
+}
+
 TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
-  TestWeightWidthFormat<float>(1, 2, 2, 512, 2);
-  TestWeightWidthFormat<half>(1, 11, 11, 32, 16);
-  TestWeightWidthFormat<half>(1, 16, 32, 32, 32);
+  TestWXFormat<float>(1, 2, 2, 512, 2);
+  TestWXFormat<half>(1, 11, 11, 32, 16);
+  TestWXFormat<half>(1, 16, 32, 32, 32);
 }
 
 }

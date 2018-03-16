@@ -25,4 +25,6 @@ typedef cl_uint cl_priority_hint;
 #define CL_PRIORITY_HINT_NORMAL_QCOM 0x40CB
 #define CL_PRIORITY_HINT_LOW_QCOM 0x40CC
 
+/* Accepted by clGetKernelWorkGroupInfo */
+#define CL_KERNEL_WAVE_SIZE_QCOM 0xAA02
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_EXTENSION_H_
