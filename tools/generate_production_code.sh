@@ -16,7 +16,13 @@ TARGET_SOC=$1
 CL_BIN_DIRS=$2
 PULL_OR_NOT=$3
 
-DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
+RESULT_VALUE=`echo_device_id_by_soc $TARGET_SOC`
+if [ $? -ne 0 ]; then
+  echo $RESULT_VALUE
+  exit 1
+else
+  DEVICE_ID=$RESULT_VALUE
+fi
 
 if [ "$PULL_OR_NOT" = 1 ]; then
   CL_BIN_DIR=${CL_BIN_DIRS}

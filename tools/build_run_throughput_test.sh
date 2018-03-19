@@ -17,7 +17,13 @@ RUN_SECONDS=$2
 MERGED_LIB_FILE=$3
 MODEL_INPUT_DIR=$4
 
-DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
+RESULT_VALUE=`echo_device_id_by_soc $TARGET_SOC`
+if [ $? -ne 0 ]; then
+  echo $RESULT_VALUE
+  exit 1
+else
+  DEVICE_ID=$RESULT_VALUE
+fi
 
 if [ "$CPU_MODEL_TAG" != '' ]; then
   CPU_MODEL_TAG_BUILD_FLAGS="--copt=-DMACE_CPU_MODEL_TAG=${CPU_MODEL_TAG}"
