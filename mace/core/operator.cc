@@ -74,6 +74,7 @@ extern void Register_BufferToImage(OperatorRegistry *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
+extern void Register_DepthToSpace(OperatorRegistry *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
 extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
@@ -109,6 +110,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Conv2D(this);
   ops::Register_DepthwiseConv2d(this);
   ops::Register_Eltwise(this);
+  ops::Register_DepthToSpace(this);
   ops::Register_FoldedBatchNorm(this);
   ops::Register_FullyConnected(this);
   ops::Register_FusedConv2D(this);
