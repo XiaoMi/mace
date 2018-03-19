@@ -5,6 +5,7 @@
 #include "mace/ops/fused_conv_2d.h"
 
 namespace mace {
+namespace ops {
 
 void Register_FusedConv2D(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FusedConv2D")
@@ -26,4 +27,5 @@ void Register_FusedConv2D(OperatorRegistry *op_registry) {
                     FusedConv2dOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

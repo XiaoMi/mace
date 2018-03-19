@@ -7,6 +7,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void BMWinogradTransform(
     int iters, int batch, int height, int width, int channels) {
@@ -105,4 +108,6 @@ BM_WINOGRAD_INVERSE_TRANSFORM(1, 14, 14, 32);
 BM_WINOGRAD_INVERSE_TRANSFORM(1, 62, 62, 32);
 BM_WINOGRAD_INVERSE_TRANSFORM(1, 126, 126, 32);
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

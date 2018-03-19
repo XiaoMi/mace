@@ -2,11 +2,16 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/concat.h"
+#include <string>
+#include <functional>
+
 #include "gmock/gmock.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/ops/concat.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class ConcatOpTest : public OpsTestBase {};
 
@@ -87,10 +92,11 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
 }
 
 TEST_F(ConcatOpTest, CPURandom) {
-  srand(time(nullptr));
+  // srand(time(nullptr));
+  static unsigned int seed = 123;
   int dim = 5;
-  int num_inputs = 2 + rand() % 10;
-  int axis = rand() % dim;
+  int num_inputs = 2 + rand_r(&seed) % 10;
+  int axis = rand_r(&seed) % dim;
   // Construct graph
   OpsTestNet net;
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -108,7 +114,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   std::vector<float *> input_ptrs(num_inputs, nullptr);
   index_t concat_axis_size = 0;
   for (int i = 0; i < num_inputs; ++i) {
-    input_shapes[i][axis] = 1 + rand() % dim;
+    input_shapes[i][axis] = 1 + rand_r(&seed) % dim;
     concat_axis_size += input_shapes[i][axis];
     GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
     input_ptrs[i] = inputs[i].data();
@@ -217,3 +223,7 @@ TEST_F(ConcatOpTest, OPENCLAlignedMultiInput) {
   OpenclRandomTest<float>(
       {{3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}, {3, 32, 32, 32}}, 3);
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

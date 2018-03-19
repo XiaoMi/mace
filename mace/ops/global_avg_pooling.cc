@@ -5,6 +5,7 @@
 #include "mace/ops/global_avg_pooling.h"
 
 namespace mace {
+namespace ops {
 
 void Register_GlobalAvgPooling(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("GlobalAvgPooling")
@@ -14,4 +15,5 @@ void Register_GlobalAvgPooling(OperatorRegistry *op_registry) {
                     GlobalAvgPoolingOp<DeviceType::CPU, float>);
 }
 
+}  // namespace ops
 }  // namespace mace

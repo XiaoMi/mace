@@ -2,10 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <vector>
+
 #include "mace/ops/fused_conv_2d.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class FusedConv2dOpTest : public OpsTestBase {};
 
@@ -274,14 +278,15 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    srand(time(NULL));
+    // srand(time(NULL));
 
     // generate random input
-    index_t batch = 3 + (rand() % 10);
+    static unsigned int seed = 123;
+    index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2] + (rand() % 10);
-    index_t output_channels = shape[3] + (rand() % 10);
+    index_t input_channels = shape[2] + (rand_r(&seed) % 10);
+    index_t output_channels = shape[3] + (rand_r(&seed) % 10);
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -350,14 +355,15 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    srand(time(NULL));
+    // srand(time(NULL));
 
     // generate random input
-    index_t batch = 3 + (rand() % 10);
+    static unsigned int seed = 123;
+    index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2] + (rand() % 10);
-    index_t output_channels = shape[3] + (rand() % 10);
+    index_t input_channels = shape[2] + (rand_r(&seed) % 10);
+    index_t output_channels = shape[3] + (rand_r(&seed) % 10);
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -676,3 +682,7 @@ TEST_F(FusedConv2dOpTest, OPENCL15X15AtrousConvD4) {
   TestGeneralHalfAtrousConv<DeviceType::OPENCL>({63, 71}, {15, 15, 16, 16},
                                                 {2, 2});
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

@@ -5,6 +5,7 @@
 #include "mace/ops/addn.h"
 
 namespace mace {
+namespace ops {
 
 void Register_AddN(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
@@ -26,4 +27,5 @@ void Register_AddN(OperatorRegistry *op_registry) {
                     AddNOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class BiasAddOpTest : public OpsTestBase {};
 
@@ -60,13 +62,14 @@ TEST_F(BiasAddOpTest, BiasAddSimpleOPENCL) {
 }
 
 TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
-  index_t height = 64 + rand() % 50;
-  index_t width = 64 + rand() % 50;
+  static unsigned int seed = 123;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t height = 64 + rand_r(&seed) % 50;
+  index_t width = 64 + rand_r(&seed) % 50;
 
   // Construct graph
   OpsTestNet net;
@@ -110,13 +113,14 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
-  index_t height = 103 + rand() % 100;
-  index_t width = 113 + rand() % 100;
+  static unsigned int seed = 123;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t height = 103 + rand_r(&seed) % 100;
+  index_t width = 113 + rand_r(&seed) % 100;
 
   // Construct graph
   OpsTestNet net;
@@ -158,4 +162,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
 }
-}
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

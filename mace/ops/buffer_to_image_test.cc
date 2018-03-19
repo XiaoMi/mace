@@ -5,7 +5,9 @@
 #include "gtest/gtest.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 template <DeviceType D, typename T>
 void TestBidirectionTransform(const int type,
@@ -188,3 +190,7 @@ TEST(BufferToImageTest, ArgStringHalfToHalfSmall) {
   TestStringHalfBidirectionTransform<DeviceType::OPENCL, half>(
       kernels::ARGUMENT, {2}, input_data);
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

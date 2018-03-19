@@ -2,11 +2,15 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/resize_bilinear.h"
+#include <vector>
+
 #include "mace/core/operator.h"
+#include "mace/ops/resize_bilinear.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class ResizeBilinearTest : public OpsTestBase {};
 
@@ -61,17 +65,17 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
 template <DeviceType D>
 void TestRandomResizeBilinear() {
-  srand(time(nullptr));
+  // srand(time(nullptr));
   testing::internal::LogToStderr();
-
+  static unsigned int seed = 123;
   for (int round = 0; round < 10; ++round) {
-    int batch = 1 + rand() % 5;
-    int channels = 1 + rand() % 100;
-    int height = 1 + rand() % 100;
-    int width = 1 + rand() % 100;
-    int in_height = 1 + rand() % 100;
-    int in_width = 1 + rand() % 100;
-    int align_corners = rand() % 1;
+    int batch = 1 + rand_r(&seed) % 5;
+    int channels = 1 + rand_r(&seed) % 100;
+    int height = 1 + rand_r(&seed) % 100;
+    int width = 1 + rand_r(&seed) % 100;
+    int in_height = 1 + rand_r(&seed) % 100;
+    int in_width = 1 + rand_r(&seed) % 100;
+    int align_corners = rand_r(&seed) % 1;
 
     // Construct graph
     OpsTestNet net;
@@ -106,7 +110,7 @@ void TestRandomResizeBilinear() {
       ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
     } else {
-      // TODO support NEON
+      // TODO(someone): support NEON
     }
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.001);
@@ -122,3 +126,7 @@ TEST_F(ResizeBilinearTest, NEONRandomResizeBilinear) {
 TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
   TestRandomResizeBilinear<DeviceType::OPENCL>();
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

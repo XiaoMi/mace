@@ -7,6 +7,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void ConcatHelper(int iters, int concat_dim, int dim1) {
   mace::testing::StopTiming();
@@ -106,4 +109,6 @@ BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, half);
 BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, half);
 BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, half);
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

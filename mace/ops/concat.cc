@@ -5,6 +5,7 @@
 #include "mace/ops/concat.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Concat(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
@@ -25,4 +26,5 @@ void Register_Concat(OperatorRegistry *op_registry) {
                     ConcatOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

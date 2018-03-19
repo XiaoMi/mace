@@ -5,6 +5,7 @@
 #include "mace/ops/slice.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Slice(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
@@ -25,4 +26,5 @@ void Register_Slice(OperatorRegistry *op_registry) {
                     SliceOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

@@ -3,10 +3,13 @@
 //
 
 #include <fstream>
+
 #include "gtest/gtest.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 template <DeviceType D>
 void RunSpaceToBatch(const std::vector<index_t> &input_shape,
@@ -216,3 +219,7 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
 //                                      {2, 2, 2, 2},
 //                                      space_tensor.get());
 //}
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

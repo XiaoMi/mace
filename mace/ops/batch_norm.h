@@ -10,6 +10,7 @@
 #include "mace/kernels/batch_norm.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
@@ -55,6 +56,7 @@ class BatchNormOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_BATCH_NORM_H_

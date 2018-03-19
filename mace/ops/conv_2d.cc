@@ -5,6 +5,7 @@
 #include "mace/ops/conv_2d.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Conv2D(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
@@ -26,4 +27,5 @@ void Register_Conv2D(OperatorRegistry *op_registry) {
                     Conv2dOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

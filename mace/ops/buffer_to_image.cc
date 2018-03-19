@@ -5,6 +5,7 @@
 #include "mace/ops/buffer_to_image.h"
 
 namespace mace {
+namespace ops {
 
 void Register_BufferToImage(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferToImage")
@@ -20,4 +21,5 @@ void Register_BufferToImage(OperatorRegistry *op_registry) {
                     BufferToImageOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

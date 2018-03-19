@@ -5,6 +5,7 @@
 #include "mace/ops/eltwise.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Eltwise(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
@@ -26,4 +27,5 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                     EltwiseOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

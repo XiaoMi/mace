@@ -7,10 +7,12 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 static void ChannelShuffle(
-  int iters, int batch, int channels, int height, int width, int group) {
+    int iters, int batch, int channels, int height, int width, int group) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -23,15 +25,15 @@ static void ChannelShuffle(
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
-      .Input("InputImage")
-      .Output("Output")
-      .AddIntArg("group", group)
-      .Finalize(net.NewOperatorDef());
+        .Input("InputImage")
+        .Output("Output")
+        .AddIntArg("group", group)
+        .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("Softmax", "SoftmaxBM")
-      .Input("Input")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
   }
 
   // Warm-up
@@ -47,18 +49,19 @@ static void ChannelShuffle(
   net.Sync();
 }
 
-#define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, TYPE, DEVICE)                  \
-  static void BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
-      int iters) {                                                       \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;     \
-    mace::testing::MaccProcessed(tot);                                  \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                 \
-    ChannelShuffle<DEVICE, TYPE>(iters, N, C, H, W, G);                 \
-  }                                                                     \
+#define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
+  static void                                                             \
+      BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
+          int iters) {                                                    \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
+    mace::testing::MaccProcessed(tot);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
+    ChannelShuffle<DEVICE, TYPE>(iters, N, C, H, W, G);                   \
+  }                                                                       \
   BENCHMARK(BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
 
-#define BM_CHANNEL_SHUFFLE(N, C, H, W, G) \
-  BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU); \
+#define BM_CHANNEL_SHUFFLE(N, C, H, W, G)                 \
+  BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU);    \
   BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, OPENCL); \
   BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, half, OPENCL);
 
@@ -66,4 +69,6 @@ BM_CHANNEL_SHUFFLE(1, 64, 64, 64, 8);
 BM_CHANNEL_SHUFFLE(1, 64, 128, 128, 8);
 BM_CHANNEL_SHUFFLE(1, 64, 256, 256, 8);
 
-} // namespace mace
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

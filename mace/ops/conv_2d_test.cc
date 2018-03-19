@@ -2,11 +2,15 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/conv_2d.h"
 #include <fstream>
+#include <vector>
+
+#include "mace/ops/conv_2d.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class Conv2dOpTest : public OpsTestBase {};
 
@@ -347,14 +351,15 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape,
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    srand(time(NULL));
+    // srand(time(NULL));
 
     // generate random input
-    index_t batch = 3 + (rand() % 10);
+    static unsigned int seed = 123;
+    index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2] + (rand() % 10);
-    index_t output_channels = shape[3] + (rand() % 10);
+    index_t input_channels = shape[2] + (rand_r(&seed) % 10);
+    index_t output_channels = shape[3] + (rand_r(&seed) % 10);
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("Conv2D", "Conv2dTest")
@@ -729,3 +734,7 @@ TEST_F(Conv2dOpTest, OPENCLAlignedPad2) {
 TEST_F(Conv2dOpTest, OPENCLUnalignedPad4) {
   TestArbitraryPadConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7}, {4, 4});
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

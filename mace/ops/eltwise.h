@@ -2,13 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_RESHAPE_H_
-#define MACE_OPS_RESHAPE_H_
+#ifndef MACE_OPS_ELTWISE_H_
+#define MACE_OPS_ELTWISE_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/eltwise.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class EltwiseOp : public Operator<D, T> {
@@ -44,6 +45,7 @@ class EltwiseOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_RESHAPE_H_
+#endif  // MACE_OPS_ELTWISE_H_

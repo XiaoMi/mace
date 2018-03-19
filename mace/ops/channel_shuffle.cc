@@ -5,6 +5,7 @@
 #include "mace/ops/channel_shuffle.h"
 
 namespace mace {
+namespace ops {
 
 void Register_ChannelShuffle(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ChannelShuffle")
@@ -24,4 +25,5 @@ void Register_ChannelShuffle(OperatorRegistry *op_registry) {
                     ChannelShuffleOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

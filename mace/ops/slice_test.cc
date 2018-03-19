@@ -2,22 +2,27 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <functional>
+
+#include "gmock/gmock.h"
 #include "mace/ops/slice.h"
 #include "mace/ops/ops_test_util.h"
-#include "gmock/gmock.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class SliceOpTest : public OpsTestBase {};
 
 template<DeviceType D, typename T>
 void RandomTest(const int num_outputs) {
-  srand(time(nullptr));
-  const index_t output_channels = 4 * (1 + rand() % 10);
+  // srand(time(nullptr));
+  static unsigned int seed = 123;
+  const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
   const index_t input_channels = num_outputs * output_channels;
-  const index_t batch = 3 + (rand() % 10);
-  const index_t height = 13 + (rand() % 10);
-  const index_t width = 17 + (rand() % 10);
+  const index_t batch = 3 + (rand_r(&seed) % 10);
+  const index_t height = 13 + (rand_r(&seed) % 10);
+  const index_t width = 17 + (rand_r(&seed) % 10);
 
   // Construct graph
   OpsTestNet net;
@@ -47,7 +52,6 @@ void RandomTest(const int num_outputs) {
       builder = builder.Output(MakeString("Output", i));
     }
     builder.Finalize(net.NewOperatorDef());
-
   }
 
   // Run
@@ -97,3 +101,7 @@ TEST_F(SliceOpTest, OPENCLHalf) {
   RandomTest<DeviceType::OPENCL, half>(4);
   RandomTest<DeviceType::OPENCL, half>(11);
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

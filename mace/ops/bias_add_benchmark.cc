@@ -8,6 +8,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void BiasAdd(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
@@ -77,4 +80,7 @@ BM_BIAS_ADD(1, 512, 14, 14);
 BM_BIAS_ADD(1, 1024, 7, 7);
 BM_BIAS_ADD(32, 1, 256, 256);
 BM_BIAS_ADD(32, 3, 256, 256);
+
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

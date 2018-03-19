@@ -2,13 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_BIAS_ADD_H_
-#define MACE_BIAS_ADD_H_
+#ifndef MACE_OPS_BIAS_ADD_H_
+#define MACE_OPS_BIAS_ADD_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/bias_add.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class BiasAddOp : public Operator<D, T> {
@@ -40,6 +41,7 @@ class BiasAddOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_BIAS_ADD_H_
+#endif  // MACE_OPS_BIAS_ADD_H_

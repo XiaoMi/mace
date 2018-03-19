@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class AddnOpTest : public OpsTestBase {};
 
@@ -66,11 +68,12 @@ void RandomTest() {
 
   for (int round = 0; round < 10; ++round) {
     // generate random input
-    index_t n = 1 + (rand() % 5);
-    index_t h = 1 + (rand() % 100);
-    index_t w = 1 + (rand() % 100);
-    index_t c = 1 + (rand() % 32);
-    int input_num = 2 + rand() % 3;
+    static unsigned int seed = 123;
+    index_t n = 1 + (rand_r(&seed) % 5);
+    index_t h = 1 + (rand_r(&seed) % 100);
+    index_t w = 1 + (rand_r(&seed) % 100);
+    index_t c = 1 + (rand_r(&seed) % 32);
+    int input_num = 2 + rand_r(&seed) % 3;
     // Construct graph
     OpsTestNet net;
     auto op_def = OpDefBuilder("AddN", "AddNTest");
@@ -117,4 +120,6 @@ void RandomTest() {
 
 TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<DeviceType::OPENCL>(); }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

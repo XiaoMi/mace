@@ -9,6 +9,7 @@
 #include "mace/kernels/matmul.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class MatMulOp : public Operator<D, T> {
@@ -35,6 +36,7 @@ class MatMulOp : public Operator<D, T> {
   kernels::MatMulFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_MATMUL_H_

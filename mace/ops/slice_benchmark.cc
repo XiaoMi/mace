@@ -7,6 +7,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template<DeviceType D, typename T>
 static void BMSliceHelper(int iters,
                           const std::vector<index_t> &input_shape,
@@ -75,5 +78,6 @@ BM_SLICE(1, 32, 32, 256, 2);
 BM_SLICE(1, 128, 128, 32, 2);
 BM_SLICE(1, 128, 128, 128, 2);
 
-
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

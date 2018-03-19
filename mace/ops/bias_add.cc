@@ -5,6 +5,7 @@
 #include "mace/ops/bias_add.h"
 
 namespace mace {
+namespace ops {
 
 void Register_BiasAdd(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
@@ -26,4 +27,5 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
                     BiasAddOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

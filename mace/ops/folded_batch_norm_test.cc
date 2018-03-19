@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class FoldedBatchNormOpTest : public OpsTestBase {};
 
@@ -14,12 +16,12 @@ void CalculateScaleOffset(const std::vector<float> &gamma,
                           const std::vector<float> &mean,
                           const std::vector<float> &var,
                           const float epsilon,
-                          std::vector<float> &scale,
-                          std::vector<float> &offset) {
+                          std::vector<float> *scale,
+                          std::vector<float> *offset) {
   size_t size = gamma.size();
   for (int i = 0; i < size; ++i) {
-    scale[i] = gamma[i] / std::sqrt(var[i] + epsilon);
-    offset[i] = offset[i] - mean[i] * scale[i];
+    (*scale)[i] = gamma[i] / std::sqrt(var[i] + epsilon);
+    (*offset)[i] = (*offset)[i] - mean[i] * (*scale)[i];
   }
 }
 
@@ -32,7 +34,7 @@ void Simple() {
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
   std::vector<float> scale(1);
   std::vector<float> offset(1);
-  CalculateScaleOffset({4.0f}, {2.0}, {10}, {11.67f}, 1e-3, scale, offset);
+  CalculateScaleOffset({4.0f}, {2.0}, {10}, {11.67f}, 1e-3, &scale, &offset);
   net.AddInputFromArray<D, float>("Scale", {1}, scale);
   net.AddInputFromArray<D, float>("Offset", {1}, offset);
 
@@ -172,11 +174,12 @@ width});
 */
 
 TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = 123;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
   index_t width = 64;
 
@@ -227,11 +230,11 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
-  srand(time(NULL));
-
+  // srand(time(NULL));
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = 123;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
   index_t width = 64;
 
@@ -283,11 +286,11 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
-  srand(time(NULL));
-
+  // srand(time(NULL));
+  static unsigned int seed = 123;
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
   index_t width = 113;
 
@@ -337,11 +340,12 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = 123;
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
   index_t width = 113;
 
@@ -390,4 +394,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
 }
-}
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

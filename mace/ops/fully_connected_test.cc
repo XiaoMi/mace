@@ -3,10 +3,13 @@
 //
 
 #include <fstream>
+
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class FullyConnectedOpTest : public OpsTestBase {};
 
@@ -263,4 +266,6 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
   TestWXFormat<half>(1, 16, 32, 32, 32);
 }
 
-}
+}  // namespace test
+}  // namespace ops
+}  // namespace mace
