@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class ActivationOpTest : public OpsTestBase {};
 
@@ -365,4 +367,6 @@ TEST_F(ActivationOpTest, OPENCLSimpleSigmoid) {
   TestSimpleSigmoid<DeviceType::OPENCL>();
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

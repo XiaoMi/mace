@@ -3,11 +3,15 @@
 //
 
 #include <string>
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void SoftmaxBenchmark(
     int iters, int batch, int channels, int height, int width) {
@@ -66,4 +70,7 @@ BM_SOFTMAX(1, 3, 512, 512);
 BM_SOFTMAX(1, 4, 512, 512);
 BM_SOFTMAX(1, 10, 256, 256);
 BM_SOFTMAX(1, 1024, 7, 7);
+
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

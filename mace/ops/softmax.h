@@ -9,6 +9,7 @@
 #include "mace/kernels/softmax.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class SoftmaxOp : public Operator<D, T> {
@@ -34,6 +35,7 @@ class SoftmaxOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_SOFTMAX_H_

@@ -20,6 +20,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              const ActivationType activation,
                              const float relux_max_limit,
                              const DataType dt,
+                             std::vector<index_t> *prev_input_shape,
                              Tensor *output,
                              StatsFuture *future) {
   const index_t batch = output->dim(0);
@@ -68,6 +69,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     auto runtime = OpenCLRuntime::Global();
     *kernel = runtime->BuildKernel("conv_2d_1x1", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
@@ -83,6 +86,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
     kernel->setArg(idx++, stride);
+
+    *prev_input_shape = input->shape();
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

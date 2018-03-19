@@ -21,6 +21,7 @@ void DepthwiseConv2d(cl::Kernel *kernel,
                      const ActivationType activation,
                      const float relux_max_limit,
                      const DataType dt,
+                     std::vector<index_t> *prev_input_shape,
                      Tensor *output,
                      StatsFuture *future) {
   const index_t batch = output->dim(0);
@@ -35,17 +36,6 @@ void DepthwiseConv2d(cl::Kernel *kernel,
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv4(width);
   if (kernel->get() == nullptr) {
-    const index_t input_batch = input->dim(0);
-    const index_t input_height = input->dim(1);
-    const index_t input_width = input->dim(2);
-
-    const index_t filter_height = filter->dim(0);
-    const index_t filter_width = filter->dim(1);
-    MACE_CHECK(multiplier == 1, "Multiplier > 1 not supported");
-    MACE_CHECK(multiplier * input_channels == channels);
-    MACE_CHECK(filter->dim(2) == input_channels, filter->dim(2), "!=",
-               input_channels);
-
     auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d");
@@ -80,6 +70,18 @@ void DepthwiseConv2d(cl::Kernel *kernel,
 
     *kernel =
         runtime->BuildKernel("depthwise_conv2d", kernel_name, built_options);
+  }
+  if (!IsVecEqual(*prev_input_shape, input->shape())) {
+    const index_t input_batch = input->dim(0);
+    const index_t input_height = input->dim(1);
+    const index_t input_width = input->dim(2);
+
+    const index_t filter_height = filter->dim(0);
+    const index_t filter_width = filter->dim(1);
+    MACE_CHECK(multiplier == 1, "Multiplier > 1 not supported");
+    MACE_CHECK(multiplier * input_channels == channels);
+    MACE_CHECK(filter->dim(2) == input_channels, filter->dim(2), "!=",
+               input_channels);
 
     uint32_t idx = 0;
     kernel->setArg(idx++, *(input->opencl_image()));
@@ -102,6 +104,7 @@ void DepthwiseConv2d(cl::Kernel *kernel,
       kernel->setArg(idx++, static_cast<short>(dilations[0]));
       kernel->setArg(idx++, static_cast<short>(dilations[1]));
     }
+    *prev_input_shape = input->shape();
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -120,9 +123,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *bias,
     Tensor *output,
     StatsFuture *future) {
-  typedef void (*Conv2dOpenclFunction)(const Tensor *input,
-                                       const Tensor *filter, const Tensor *bias,
-                                       Tensor *output, StatsFuture *future);
+
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
   if (strides_[0] != strides_[1]) {
@@ -163,7 +164,7 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
 
   DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                   dilations_, activation_, relux_max_limit_,
-                  DataTypeToEnum<T>::value, output, future);
+                  DataTypeToEnum<T>::value, &input_shape_, output, future);
 }
 
 template struct DepthwiseConv2dFunctor<DeviceType::OPENCL, float>;

@@ -5,10 +5,13 @@
 #ifndef MACE_OPS_ACTIVATION_H_
 #define MACE_OPS_ACTIVATION_H_
 
+#include <string>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/activation.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class ActivationOp : public Operator<D, T> {
@@ -36,6 +39,7 @@ class ActivationOp : public Operator<D, T> {
   kernels::ActivationFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_ACTIVATION_H_

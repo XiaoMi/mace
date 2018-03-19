@@ -7,6 +7,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class EltwiseOpTest : public OpsTestBase {};
 
@@ -170,4 +172,6 @@ TEST_F(EltwiseOpTest, OPENCLRandomHalf) {
                                        {13, 32, 32, 64});
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

@@ -7,6 +7,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void BMSpaceToBatch(
     int iters, int batch, int height, int width, int channels, int shape) {
@@ -55,4 +58,7 @@ static void BMSpaceToBatch(
 BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);
 BM_SPACE_TO_BATCH(1, 256, 256, 32, 2);
 BM_SPACE_TO_BATCH(1, 256, 256, 32, 4);
+
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

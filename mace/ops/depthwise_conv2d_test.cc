@@ -5,9 +5,9 @@
 #include "mace/ops/conv_2d.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
-
-namespace {
+namespace mace {
+namespace ops {
+namespace test {
 
 class DepthwiseConv2dOpTest : public OpsTestBase {};
 
@@ -207,11 +207,10 @@ void TestNxNS12(const index_t height, const index_t width) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    srand(time(NULL));
-
     // generate random input
-    index_t batch = 1 + rand() % 5;
-    index_t input_channels = 3 + rand() % 16;
+    static unsigned int seed = time(NULL);
+    index_t batch = 1 + rand_r(&seed) % 5;
+    index_t input_channels = 3 + rand_r(&seed) % 16;
     index_t multiplier = 1;
     // Construct graph
     OpsTestNet net;
@@ -316,4 +315,6 @@ TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12Half) {
   TestNxNS12<DeviceType::OPENCL, half>(107, 113);
 }
 
-}  // namespace
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

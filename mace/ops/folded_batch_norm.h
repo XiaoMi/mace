@@ -5,10 +5,13 @@
 #ifndef MACE_OPS_FOLDED_BATCH_NORM_H_
 #define MACE_OPS_FOLDED_BATCH_NORM_H_
 
+#include <string>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/batch_norm.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class FoldedBatchNormOp : public Operator<D, T> {
@@ -48,6 +51,7 @@ class FoldedBatchNormOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_FOLDED_BATCH_NORM_H_

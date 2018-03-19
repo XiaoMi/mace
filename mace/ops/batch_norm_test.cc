@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class BatchNormOpTest : public OpsTestBase {};
 
@@ -75,11 +77,10 @@ TEST_F(BatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<DeviceType::OPENCL>(); }
 
 TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
-  srand(time(NULL));
-
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
   index_t width = 64;
 
@@ -147,11 +148,10 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
-  srand(time(NULL));
-
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
   index_t width = 64;
 
@@ -220,11 +220,10 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
-  srand(time(NULL));
-
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
   index_t width = 113;
 
@@ -292,11 +291,10 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
-  srand(time(NULL));
-
   // generate random input
-  index_t batch = 1 + rand() % 10;
-  index_t channels = 3 + rand() % 50;
+  static unsigned int seed = time(NULL);
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
   index_t width = 113;
 
@@ -363,4 +361,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
 }
-}
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

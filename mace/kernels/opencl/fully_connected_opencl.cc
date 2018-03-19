@@ -13,6 +13,7 @@ void FCWXKernel(cl::Kernel *kernel,
                 const Tensor *input,
                 const Tensor *weight,
                 const Tensor *bias,
+                std::vector<index_t> *prev_input_shape,
                 Tensor *output,
                 const ActivationType activation,
                 std::vector<uint32_t> &gws,
@@ -67,6 +68,11 @@ void FCWXKernel(cl::Kernel *kernel,
     const uint32_t inter_local_blks = kwg_size / (gws[0] * gws[1]);
     lws = {gws[0], gws[1], inter_local_blks};
 
+  }
+  if (!IsVecEqual(*prev_input_shape, input->shape())) {
+    const index_t batch = output->dim(0);
+    const index_t output_blocks = RoundUpDiv4(output->dim(3));
+
     uint32_t idx = 0;
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(weight->opencl_image()));
@@ -80,6 +86,10 @@ void FCWXKernel(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int>(RoundUpDiv4(input->dim(3))));
     kernel->setArg(idx++, static_cast<int>(output_blocks));
     kernel->setArg(idx++, relux_max_limit);
+
+    gws[2] = static_cast<uint32_t>(batch * output_blocks);
+
+    *prev_input_shape = input->shape();
   }
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
@@ -103,6 +113,7 @@ void FCWTXKernel(cl::Kernel *kernel,
                  const Tensor *input,
                  const Tensor *weight,
                  const Tensor *bias,
+                 std::vector<index_t> *prev_input_shape,
                  Tensor *output,
                  const ActivationType activation,
                  std::vector<uint32_t> &gws,
@@ -141,6 +152,9 @@ void FCWTXKernel(cl::Kernel *kernel,
     *kernel =
         runtime->BuildKernel("fully_connected", kernel_name, built_options);
 
+    lws = {16, 64, 1};
+  }
+  if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(weight->opencl_image()));
@@ -155,14 +169,13 @@ void FCWTXKernel(cl::Kernel *kernel,
     kernel->setArg(idx++, relux_max_limit);
 
     const index_t batch = output->dim(0);
-    const index_t output_size = output->dim(3);
-
-    const index_t output_blocks = RoundUpDiv4(output_size);
+    const index_t output_blocks = RoundUpDiv4(output->dim(3));
 
     gws = {
         static_cast<uint32_t>(batch), static_cast<uint32_t>(output_blocks),
     };
-    lws = {16, 64, 1};
+
+    *prev_input_shape = input->shape();
   }
 
   std::stringstream ss;
@@ -185,11 +198,11 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
   output->ResizeImage(output_shape, output_image_shape);
 
   if (weight_type_ == BufferType::WEIGHT_HEIGHT) {
-    FCWTXKernel<T>(&kernel_, input, weight, bias, output,
+    FCWTXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
                    activation_, gws_, lws_, relux_max_limit_, future);
   } else {
-    FCWXKernel<T>(&kernel_, input, weight, bias, output,
-                     activation_, gws_, lws_, relux_max_limit_, future);
+    FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
+                  activation_, gws_, lws_, relux_max_limit_, future);
   }
 };
 

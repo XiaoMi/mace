@@ -36,6 +36,8 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
     kernel_ = runtime->BuildKernel("eltwise", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(input_shape_, input0->shape())) {
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input0->opencl_image()));
     kernel_.setArg(idx++, *(input1->opencl_image()));
@@ -44,6 +46,7 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
       kernel_.setArg(idx++, coeff_[1]);
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
+    input_shape_ = input0->shape();
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),

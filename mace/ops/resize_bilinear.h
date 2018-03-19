@@ -9,6 +9,7 @@
 #include "mace/kernels/resize_bilinear.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class ResizeBilinearOp : public Operator<D, T> {
@@ -34,6 +35,7 @@ class ResizeBilinearOp : public Operator<D, T> {
   kernels::ResizeBilinearFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_RESIZE_BILINEAR_H_

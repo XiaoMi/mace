@@ -7,6 +7,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class ReshapeTest : public OpsTestBase {};
 
@@ -54,4 +56,6 @@ TEST_F(ReshapeTest, Complex) {
   TestReshape({1, 2, 3, 4}, {1, 3, 8}, {1, 3, 8});
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

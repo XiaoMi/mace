@@ -2,15 +2,17 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_SPACE_TO_BATCH_H_
-#define MACE_OPS_SPACE_TO_BATCH_H_
+#ifndef MACE_OPS_BATCH_TO_SPACE_H_
+#define MACE_OPS_BATCH_TO_SPACE_H_
 
 #include <memory>
+#include <vector>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/space_to_batch.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class BatchToSpaceNDOp : public Operator<D, T> {
@@ -68,6 +70,7 @@ class BatchToSpaceNDOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_SPACE_TO_BATCH_H_
+#endif  // MACE_OPS_BATCH_TO_SPACE_H_

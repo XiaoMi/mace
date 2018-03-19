@@ -5,17 +5,19 @@
 #include <functional>
 #include <vector>
 
+#include "gmock/gmock.h"
 #include "mace/ops/slice.h"
 #include "mace/ops/ops_test_util.h"
-#include "gmock/gmock.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class SliceOpTest : public OpsTestBase {};
 
 template<DeviceType D, typename T>
 void RandomTest(const int num_outputs) {
-  unsigned int seed = time(nullptr);
+  static unsigned int seed = time(NULL);
   const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
   const index_t input_channels = num_outputs * output_channels;
   const index_t batch = 3 + (rand_r(&seed) % 10);
@@ -108,4 +110,6 @@ TEST_F(SliceOpTest, OPENCLHalf) {
   RandomTest<DeviceType::OPENCL, half>(11);
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

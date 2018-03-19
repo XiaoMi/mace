@@ -12,6 +12,7 @@
 #include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class PoolingOp : public ConvPool2dOpBase<D, T> {
@@ -46,6 +47,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_POOLING_H_

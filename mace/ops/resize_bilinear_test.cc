@@ -4,11 +4,13 @@
 
 #include <vector>
 
-#include "mace/ops/resize_bilinear.h"
 #include "mace/core/operator.h"
+#include "mace/ops/resize_bilinear.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class ResizeBilinearTest : public OpsTestBase {};
 
@@ -63,9 +65,8 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
 template <DeviceType D>
 void TestRandomResizeBilinear() {
-  unsigned int seed = time(nullptr);
   testing::internal::LogToStderr();
-
+  static unsigned int seed = time(NULL);
   for (int round = 0; round < 10; ++round) {
     int batch = 1 + rand_r(&seed) % 5;
     int channels = 1 + rand_r(&seed) % 100;
@@ -108,7 +109,7 @@ void TestRandomResizeBilinear() {
       ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
     } else {
-      // TODO(yejianwu) support NEON
+      // TODO(someone): support NEON
     }
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.001);
@@ -125,4 +126,6 @@ TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
   TestRandomResizeBilinear<DeviceType::OPENCL>();
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

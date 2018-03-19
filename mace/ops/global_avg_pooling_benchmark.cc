@@ -8,7 +8,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
-namespace kernels {
+namespace ops {
+namespace test {
 
 template <DeviceType D>
 static void GlobalAvgPooling(
@@ -54,5 +55,6 @@ BM_GLOBAL_AVG_POOLING(1, 3, 7, 7);
 BM_GLOBAL_AVG_POOLING(1, 3, 64, 64);
 BM_GLOBAL_AVG_POOLING(1, 3, 256, 256);
 
-}  // namespace kernels
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

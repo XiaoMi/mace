@@ -3,11 +3,15 @@
 //
 
 #include <string>
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void MatMulBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
@@ -72,4 +76,7 @@ BM_MATMUL(16, 32, 128, 3969);
 BM_MATMUL(16, 128, 128, 49);
 BM_MATMUL(16, 128, 128, 961);
 BM_MATMUL(16, 128, 128, 3969);
+
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

@@ -58,6 +58,9 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
     kernel_ = runtime->BuildKernel("activation", kernel_name, built_options);
+  }
+
+  if (!IsVecEqual(input_shape_, input->shape())) {
     int idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     if (activation_ == PRELU) {
@@ -66,6 +69,8 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
     kernel_.setArg(idx++, *(output->opencl_image()));
+
+    input_shape_ = input->shape();
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

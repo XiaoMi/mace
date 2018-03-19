@@ -11,6 +11,7 @@
 #include "mace/kernels/channel_shuffle.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class ChannelShuffleOp : public Operator<D, T> {
@@ -42,6 +43,7 @@ class ChannelShuffleOp : public Operator<D, T> {
   kernels::ChannelShuffleFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_CHANNEL_SHUFFLE_H_

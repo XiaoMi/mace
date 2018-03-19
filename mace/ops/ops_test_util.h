@@ -22,6 +22,8 @@
 #include "mace/utils/utils.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class OpDefBuilder {
  public:
@@ -423,6 +425,8 @@ void ImageToBuffer(OpsTestNet *net,
   net->Sync();
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_OPS_TEST_UTIL_H_

@@ -25,6 +25,18 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t out_width = out_width_;
 
   if (kernel_.get() == nullptr) {
+    auto runtime = OpenCLRuntime::Global();
+    std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
+    built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
+    auto dt = DataTypeToEnum<T>::value;
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    kernel_ =
+        runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
+
+  }
+  if (!IsVecEqual(input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> output_shape{batch, out_height, out_width, channels};
 
@@ -38,16 +50,6 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     float width_scale =
         CalculateResizeScale(in_width, out_width, align_corners_);
 
-    auto runtime = OpenCLRuntime::Global();
-    std::set<std::string> built_options;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
-    built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
-    auto dt = DataTypeToEnum<T>::value;
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    kernel_ =
-        runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
-
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
@@ -56,6 +58,9 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
+
+    input_shape_ = input->shape();
+
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

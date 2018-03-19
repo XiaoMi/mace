@@ -11,6 +11,7 @@
 #include "mace/kernels/addn.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class AddNOp : public Operator<D, T> {
@@ -40,6 +41,7 @@ class AddNOp : public Operator<D, T> {
   kernels::AddNFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_ADDN_H_

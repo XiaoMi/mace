@@ -2,13 +2,17 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/kernels/eltwise.h"
 #include <string>
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
+#include "mace/kernels/eltwise.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void EltwiseBenchmark(
     int iters, kernels::EltwiseType type, int n, int h, int w, int c) {
@@ -81,4 +85,6 @@ BM_ELTWISE(0, 1, 240, 240, 256);
 BM_ELTWISE(1, 1, 240, 240, 256);
 BM_ELTWISE(2, 1, 240, 240, 256);
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

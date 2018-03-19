@@ -10,6 +10,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class PoolingOpTest : public OpsTestBase {};
 
@@ -394,4 +396,6 @@ TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
                                 Padding::SAME);
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

@@ -5,6 +5,7 @@
 #include "mace/ops/pooling.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Pooling(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
@@ -30,4 +31,5 @@ void Register_Pooling(OperatorRegistry *op_registry) {
                     PoolingOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

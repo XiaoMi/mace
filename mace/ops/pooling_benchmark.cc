@@ -9,7 +9,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
-namespace kernels {
+namespace ops {
+namespace test {
 
 template <DeviceType D>
 static void Pooling(int iters,
@@ -73,5 +74,6 @@ BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 513, 513, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 1025, 1025, 2, 2, SAME, MAX);
 
-}  // namespace kernels
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

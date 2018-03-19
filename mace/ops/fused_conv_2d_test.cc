@@ -8,6 +8,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class FusedConv2dOpTest : public OpsTestBase {};
 
@@ -276,9 +278,8 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    unsigned int seed = time(NULL);
-
     // generate random input
+    static unsigned int seed = time(NULL);
     index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
@@ -352,9 +353,8 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    unsigned int seed = time(NULL);
-
     // generate random input
+    static unsigned int seed = time(NULL);
     index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
@@ -679,4 +679,6 @@ TEST_F(FusedConv2dOpTest, OPENCL15X15AtrousConvD4) {
                                                 {2, 2});
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

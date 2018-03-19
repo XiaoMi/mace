@@ -11,6 +11,7 @@
 #include "mace/kernels/fully_connected.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class FullyConnectedOp : public Operator<D, T> {
@@ -48,6 +49,7 @@ class FullyConnectedOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_FULLY_CONNECTED_H_
