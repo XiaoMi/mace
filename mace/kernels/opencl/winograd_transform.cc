@@ -32,12 +32,12 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t round_w = (output_shape[2] + 1) / 2;
   const index_t out_width = input_tensor->dim(0) * round_h * round_w;
 
-  if (kernel_.get() == nullptr) {
-    output_shape = {16, input_tensor->dim(3), out_width, 1};
-    std::vector<size_t> image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
-    output_tensor->ResizeImage(output_shape, image_shape);
+  output_shape = {16, input_tensor->dim(3), out_width, 1};
+  std::vector<size_t> image_shape;
+  CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
+  output_tensor->ResizeImage(output_shape, image_shape);
 
+  if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
     std::set<std::string> built_options;
