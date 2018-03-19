@@ -20,7 +20,7 @@ class DepthToSpaceOp : public Operator<D, T> {
   DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         functor_(OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0}),
-                 OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
+                 OperatorBase::GetSingleArgument<int>("block_size", 1),
                  true) {}
 
   bool Run(StatsFuture *future) override {
