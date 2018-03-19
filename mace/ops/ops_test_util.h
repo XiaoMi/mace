@@ -394,6 +394,7 @@ void BufferToImage(OpsTestNet *net,
                    const std::string &output_name,
                    const kernels::BufferType type) {
   MACE_CHECK_NOTNULL(net);
+
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input(input_name)
       .Output(output_name)
@@ -412,6 +413,8 @@ void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
                    const kernels::BufferType type) {
+  MACE_CHECK_NOTNULL(net);
+
   OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
       .Input(input_name)
       .Output(output_name)
