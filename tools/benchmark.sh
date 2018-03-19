@@ -18,7 +18,13 @@ OPTION_ARGS=$3
 
 echo $OPTION_ARGS
 
-DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
+RESULT_VALUE=`echo_device_id_by_soc $TARGET_SOC`
+if [ $? -ne 0 ]; then
+  echo $RESULT_VALUE
+  exit 1
+else
+  DEVICE_ID=$RESULT_VALUE
+fi
 
 if [ -f "$MODEL_OUTPUT_DIR/benchmark_model" ]; then
   rm -rf $MODEL_OUTPUT_DIR/benchmark_model

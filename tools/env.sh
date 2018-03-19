@@ -40,6 +40,10 @@ echo_device_id_by_soc()
     device_soc=`adb -s ${device} shell getprop | grep ro.board.platform | cut -d [ -f3 | cut -d ] -f1`
     if [ x"$TARGET_SOC" = x"$device_soc" ]; then
       echo "$device"
+      return 0
     fi
   done
+
+  echo "MACE ERROR: Not found device with soc ${TARGET_SOC}"
+  return 1
 }

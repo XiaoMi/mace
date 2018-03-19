@@ -16,7 +16,13 @@ TARGET_SOC=$1
 MODEL_OUTPUT_DIR=$2
 GENERATE_DATA_OR_NOT=$3
 
-DEVICE_ID=`echo_device_id_by_soc $TARGET_SOC`
+RESULT_VALUE=`echo_device_id_by_soc $TARGET_SOC`
+if [ $? -ne 0 ]; then
+  echo $RESULT_VALUE
+  exit 1
+else
+  DEVICE_ID=$RESULT_VALUE
+fi
 
 IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
 IFS=',' read -r -a OUTPUT_NAMES <<< "${OUTPUT_NODES}"
