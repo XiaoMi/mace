@@ -92,8 +92,7 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
 }
 
 TEST_F(ConcatOpTest, CPURandom) {
-  // srand(time(nullptr));
-  static unsigned int seed = 123;
+  static unsigned int seed = time(nullptr);
   int dim = 5;
   int num_inputs = 2 + rand_r(&seed) % 10;
   int axis = rand_r(&seed) % dim;

@@ -64,11 +64,10 @@ TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
 template <DeviceType D>
 void RandomTest() {
   testing::internal::LogToStderr();
-  srand(time(NULL));
+  static unsigned int seed = time(NULL);
 
   for (int round = 0; round < 10; ++round) {
     // generate random input
-    static unsigned int seed = 123;
     index_t n = 1 + (rand_r(&seed) % 5);
     index_t h = 1 + (rand_r(&seed) % 100);
     index_t w = 1 + (rand_r(&seed) % 100);

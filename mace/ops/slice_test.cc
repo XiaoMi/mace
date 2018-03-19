@@ -16,8 +16,8 @@ class SliceOpTest : public OpsTestBase {};
 
 template<DeviceType D, typename T>
 void RandomTest(const int num_outputs) {
-  // srand(time(nullptr));
-  static unsigned int seed = 123;
+
+  static unsigned int seed = time(NULL);
   const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
   const index_t input_channels = num_outputs * output_channels;
   const index_t batch = 3 + (rand_r(&seed) % 10);

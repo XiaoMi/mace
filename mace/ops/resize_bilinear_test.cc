@@ -65,9 +65,9 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
 template <DeviceType D>
 void TestRandomResizeBilinear() {
-  // srand(time(nullptr));
+
   testing::internal::LogToStderr();
-  static unsigned int seed = 123;
+  static unsigned int seed = time(NULL);
   for (int round = 0; round < 10; ++round) {
     int batch = 1 + rand_r(&seed) % 5;
     int channels = 1 + rand_r(&seed) % 100;

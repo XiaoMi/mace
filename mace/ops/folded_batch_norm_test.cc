@@ -174,10 +174,8 @@ width});
 */
 
 TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
-  // srand(time(NULL));
-
   // generate random input
-  static unsigned int seed = 123;
+  static unsigned int seed = time(NULL);
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
@@ -230,9 +228,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
-  // srand(time(NULL));
   // generate random input
-  static unsigned int seed = 123;
+  static unsigned int seed = time(NULL);
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
@@ -286,9 +283,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
-  // srand(time(NULL));
-  static unsigned int seed = 123;
   // generate random input
+  static unsigned int seed = time(NULL);
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
@@ -340,10 +336,8 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
-  // srand(time(NULL));
-
   // generate random input
-  static unsigned int seed = 123;
+  static unsigned int seed = time(NULL);
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
