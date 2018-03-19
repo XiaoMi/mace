@@ -62,9 +62,14 @@ enum DataType {
 };
 
 enum GPUType { ADRENO = 0, MALI = 1 };
-enum GPUPerfHint { PERF_NA = 0, PERF_LOW = 1, PERF_NORMAL = 2, PERF_HIGH = 3 };
+enum GPUPerfHint {
+  PERF_DEFAULT = 0,
+  PERF_LOW = 1,
+  PERF_NORMAL = 2,
+  PERF_HIGH = 3
+};
 enum GPUPriorityHint {
-  PRIORITY_NA = 0,
+  PRIORITY_DEFAULT = 0,
   PRIORITY_LOW = 1,
   PRIORITY_NORMAL = 2,
   PRIORITY_HIGH = 3
@@ -381,7 +386,8 @@ struct MaceInputInfo {
 };
 
 void ConfigOpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
-void ConfigCPURuntime(int omp_num_threads, CPUPowerOption power_option);
+void ConfigOmpThreadsAndAffinity(int omp_num_threads,
+                                 CPUPowerOption power_option);
 
 class MaceEngine {
  public:

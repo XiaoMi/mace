@@ -360,10 +360,11 @@ void ConfigOpenCLRuntime(GPUType gpu_type,
   OpenCLRuntime::CreateGlobal(gpu_type, gpu_perf_hint, gpu_priority_hint);
 }
 
-void ConfigCPURuntime(int omp_num_threads, CPUPowerOption power_option) {
+void ConfigOmpThreadsAndAffinity(int omp_num_threads,
+                                 CPUPowerOption power_option) {
   LOG(INFO) << "Config CPU Runtime: omp_num_threads: " << omp_num_threads
             << ", cpu_power_option: " << power_option;
-  SetCPURuntime(omp_num_threads, power_option);
+  SetOmpThreadsAndAffinity(omp_num_threads, power_option);
 }
 
 // Mace Engine

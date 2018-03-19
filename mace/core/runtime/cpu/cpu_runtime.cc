@@ -20,7 +20,7 @@ int GetCPUMaxFreq(int cpu_id) {
           "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
           cpu_id);
   FILE *fp = fopen(path, "rb");
-  if (!fp) return 0;
+  MACE_CHECK(fp, "File: ", path, " not exists");
 
   int freq = 0;
   fscanf(fp, "%d", &freq);
@@ -28,7 +28,7 @@ int GetCPUMaxFreq(int cpu_id) {
   return freq;
 }
 
-void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids) {
+void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids, int *big_core_offset) {
   MACE_CHECK_NOTNULL(cpu_ids);
   int cpu_count = cpu_ids->size();
   std::vector<int> cpu_max_freq;
@@ -54,51 +54,61 @@ void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids) {
       }
     }
   }
+
+  *big_core_offset = 0;
+  for (int i = 1; i < cpu_count; ++i) {
+    if (cpu_max_freq[i] > cpu_max_freq[i - 1]) {
+      *big_core_offset = i;
+      break;
+    }
+  }
 }
 
 void SetThreadAffinity(cpu_set_t mask) {
   int sys_call_res;
   pid_t pid = gettid();
-
-  // TODO(chenghui): when set omp num threads to 1,
-  // sometiomes return EINVAL(22) error.
-  // https://linux.die.net/man/2/sched_setaffinity
-  sys_call_res = syscall(__NR_sched_setaffinity, pid, sizeof(mask), &mask);
-  if (sys_call_res != 0) {
-    LOG(FATAL) << "syscall setaffinity error: " << sys_call_res << ' ' << errno;
-  }
+  int err = sched_setaffinity(pid, sizeof(mask), &mask);
+  MACE_CHECK(err == 0, "set affinity error: ", errno);
 }
 
 }  // namespace
 
-void SetCPURuntime(int omp_num_threads, CPUPowerOption power_option) {
+void SetOmpThreadsAndAffinity(int omp_num_threads,
+                              CPUPowerOption power_option) {
   int cpu_count = omp_get_num_procs();
-  LOG(INFO) << "cpu_count: " << cpu_count;
   std::vector<int> sorted_cpu_ids;
   sorted_cpu_ids.resize(cpu_count);
-  SortCPUIdsByMaxFreqAsc(&sorted_cpu_ids);
+  int big_core_offset;
+  SortCPUIdsByMaxFreqAsc(&sorted_cpu_ids, &big_core_offset);
 
   std::vector<int> use_cpu_ids;
-  if (power_option == CPUPowerOption::DEFAULT || omp_num_threads >= cpu_count) {
+  if (power_option == CPUPowerOption::DEFAULT) {
     use_cpu_ids = sorted_cpu_ids;
-    omp_num_threads = cpu_count;
   } else if (power_option == CPUPowerOption::HIGH_PERFORMANCE) {
-    use_cpu_ids =
-        std::vector<int>(sorted_cpu_ids.begin() + cpu_count - omp_num_threads,
-                         sorted_cpu_ids.end());
+    use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin() + big_core_offset,
+                                   sorted_cpu_ids.end());
   } else {
-    use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin(),
-                                   sorted_cpu_ids.begin() + omp_num_threads);
+    if (big_core_offset > 0) {
+      use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin(),
+                                     sorted_cpu_ids.begin() + big_core_offset);
+    } else {
+      use_cpu_ids = sorted_cpu_ids;
+    }
   }
 
+  if (omp_num_threads > use_cpu_ids.size()) {
+    LOG(WARNING) << "set omp num threads greater than num of cpus can use: "
+                 << use_cpu_ids.size();
+  }
   omp_set_num_threads(omp_num_threads);
+
   // compute mask
   cpu_set_t mask;
   CPU_ZERO(&mask);
   for (auto cpu_id : use_cpu_ids) {
     CPU_SET(cpu_id, &mask);
   }
-  LOG(INFO) << "use cpus mask: " << mask.__bits[0];
+  VLOG(3) << "Set cpu affinity with mask: " << mask.__bits[0];
 
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {

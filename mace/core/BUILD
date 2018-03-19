@@ -85,6 +85,7 @@ cc_library(
     ],
     deps = [
         ":core",
+        "//external:gflags_nothreads",
         "//mace/utils",
     ],
     alwayslink = 1,

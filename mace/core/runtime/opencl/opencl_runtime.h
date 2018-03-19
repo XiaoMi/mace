@@ -52,10 +52,10 @@ class OpenCLRuntime {
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);
+  ~OpenCLRuntime();
 
  private:
   OpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
-  ~OpenCLRuntime();
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
 
@@ -74,9 +74,9 @@ class OpenCLRuntime {
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
   std::string kernel_path_;
+  static std::unique_ptr<OpenCLRuntime> runtime_instance_;
 };
 
-static OpenCLRuntime *opencl_runtime_instance = nullptr;
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_
