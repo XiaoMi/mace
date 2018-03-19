@@ -278,9 +278,10 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    
+    // srand(time(NULL));
+
     // generate random input
-    static unsigned int seed = time(NULL);
+    static unsigned int seed = 123;
     index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];
@@ -354,9 +355,10 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
-    
+    // srand(time(NULL));
+
     // generate random input
-    static unsigned int seed = time(NULL);
+    static unsigned int seed = 123;
     index_t batch = 3 + (rand_r(&seed) % 10);
     index_t height = shape[0];
     index_t width = shape[1];

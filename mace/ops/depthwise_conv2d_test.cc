@@ -207,8 +207,10 @@ void TestNxNS12(const index_t height, const index_t width) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
+    // srand(time(NULL));
+
     // generate random input
-    static unsigned int seed = time(NULL);
+    static unsigned int seed = 123;
     index_t batch = 1 + rand_r(&seed) % 5;
     index_t input_channels = 3 + rand_r(&seed) % 16;
     index_t multiplier = 1;

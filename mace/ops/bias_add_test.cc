@@ -62,8 +62,10 @@ TEST_F(BiasAddOpTest, BiasAddSimpleOPENCL) {
 }
 
 TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
+  // srand(time(NULL));
+
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64 + rand_r(&seed) % 50;
@@ -111,8 +113,10 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
+  // srand(time(NULL));
+
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103 + rand_r(&seed) % 100;

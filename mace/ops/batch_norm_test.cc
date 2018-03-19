@@ -77,9 +77,10 @@ TEST_F(BatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<DeviceType::OPENCL>(); }
 
 TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
+  // srand(time(NULL));
 
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
@@ -149,8 +150,10 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
+  // srand(time(NULL));
+
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 64;
@@ -221,8 +224,10 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
+  // srand(time(NULL));
+
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
@@ -292,8 +297,10 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
+  // srand(time(NULL));
+
   // generate random input
-  static unsigned int seed = time(NULL);
+  static unsigned int seed = 123;
   index_t batch = 1 + rand_r(&seed) % 10;
   index_t channels = 3 + rand_r(&seed) % 50;
   index_t height = 103;
