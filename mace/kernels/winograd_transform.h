@@ -49,6 +49,7 @@ struct WinogradTransformFunctor<DeviceType::OPENCL, T>
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 
   cl::Kernel kernel_;
+  std::vector<index_t> input_shape_;
 };
 
 struct WinogradInverseTransformFunctorBase {
@@ -105,6 +106,7 @@ struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T>
                   StatsFuture *future);
 
   cl::Kernel kernel_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namespace kernels

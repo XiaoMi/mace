@@ -71,6 +71,13 @@ inline bool LimitKernelTime() {
   return flag != nullptr && strlen(flag) == 1 && flag[0] == '1';
 }
 
+template <typename T>
+bool IsVecEqual(const std::vector<T> &input0,
+                const std::vector<T> &input1) {
+  return ((input0.size() == input1.size()) &&
+      (std::equal(input0.begin(), input0.end(), input1.begin())));
+}
+
 namespace {
 template <typename T>
 void AppendToStream(std::stringstream *ss, const std::string &delimiter, T v) {

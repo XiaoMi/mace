@@ -32,15 +32,6 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     MACE_CHECK(channels == input_tensors[i]->dim(3));
   }
 
-  std::vector<index_t> output_shape = input_tensors[0]->shape();
-  std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
-  output_tensor->ResizeImage(output_shape, output_image_shape);
-
-  const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t width_pixels = channel_blocks * width;
-  const index_t batch_height_pixels = batch * height;
-
   if (kernel_.get() == nullptr) {
     if (input_tensors.size() > 4) {
       MACE_NOT_IMPLEMENTED;
@@ -55,11 +46,26 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
     kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
 
+  }
+
+  std::vector<index_t> output_shape = input_tensors[0]->shape();
+
+  const index_t channel_blocks = RoundUpDiv4(channels);
+  const index_t width_pixels = channel_blocks * width;
+  const index_t batch_height_pixels = batch * height;
+
+  if (!IsVecEqual(input_shape_, input_tensors[0]->shape())) {
+    std::vector<size_t> output_image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+    output_tensor->ResizeImage(output_shape, output_image_shape);
+
     uint32_t idx = 0;
     for (auto input : input_tensors) {
       kernel_.setArg(idx++, *(input->opencl_image()));
     }
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
+
+    input_shape_ = input_tensors[0]->shape();
   }
 
   const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),

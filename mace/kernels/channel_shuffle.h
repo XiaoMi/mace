@@ -55,6 +55,7 @@ struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
 
   cl::Kernel kernel_;
   const int groups_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namespace kernels

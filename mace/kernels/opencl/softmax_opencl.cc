@@ -34,11 +34,14 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(input_shape_, logits->shape())) {
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(logits->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
     kernel_.setArg(idx++, *(output->opencl_image()));
+    input_shape_ = logits->shape();
   }
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width),

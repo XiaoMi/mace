@@ -61,7 +61,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
 
     kernel_ = runtime->BuildKernel("batch_norm", kernel_name, built_options);
-
+  }
+  if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(scale->opencl_image()));
@@ -73,6 +74,8 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit_);
+
+    input_shape_ = input->shape();
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

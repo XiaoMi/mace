@@ -156,6 +156,7 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
                   Tensor *output,
                   StatsFuture *future);
   cl::Kernel kernel_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namepsace kernels
