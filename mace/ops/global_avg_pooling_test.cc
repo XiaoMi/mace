@@ -4,7 +4,7 @@
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
 
 class GlobalAvgPoolingOpTest : public OpsTestBase {};
 
@@ -31,3 +31,5 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+
+}  // namespace mace

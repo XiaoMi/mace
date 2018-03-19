@@ -5,6 +5,8 @@
 #ifndef MACE_OPS_GLOBAL_AVG_POOLING_H_
 #define MACE_OPS_GLOBAL_AVG_POOLING_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/global_avg_pooling.h"
 

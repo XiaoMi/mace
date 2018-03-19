@@ -13,8 +13,9 @@ class WinogradConvlutionTest : public OpsTestBase {};
 
 void TransposeFilter(const std::vector<float> &input,
                      const std::vector<index_t> &input_shape,
-                     std::vector<float> &output) {
-  output.resize(input.size());
+                     std::vector<float> *output) {
+  MACE_CHECK_NOTNULL(output);
+  output->resize(input.size());
 
   const float *input_ptr = input.data();
   for (index_t h = 0; h < input_shape[0]; ++h) {
@@ -24,7 +25,7 @@ void TransposeFilter(const std::vector<float> &input,
           int offset = ((oc * input_shape[3] + ic) * input_shape[0] + h) *
                            input_shape[1] +
                        w;
-          output[offset] = *input_ptr;
+          (*output)[offset] = *input_ptr;
           ++input_ptr;
         }
       }
@@ -46,16 +47,16 @@ void WinogradConvolution(const index_t batch,
   // Add input data
   std::vector<float> filter_data;
   std::vector<index_t> filter_shape = {3, 3, out_channels, in_channels};
-  GenerateRandomRealTypeData<float>(filter_shape, filter_data);
+  GenerateRandomRealTypeData<float>(filter_shape, &filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
   net.AddRandomInput<D, T>("Bias", {out_channels});
 
-  BufferToImage<D, T>(net, "Input", "InputImage",
+  BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(net, "Filter", "FilterImage",
+  BufferToImage<D, T>(&net, "Filter", "FilterImage",
                       kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<D, T>(&net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
@@ -69,7 +70,7 @@ void WinogradConvolution(const index_t batch,
   net.RunOp(D);
 
   // Transfer output
-  ImageToBuffer<D, T>(net, "OutputImage", "ConvOutput",
+  ImageToBuffer<D, T>(&net, "OutputImage", "ConvOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
@@ -78,10 +79,10 @@ void WinogradConvolution(const index_t batch,
   // Winograd convolution
   // transform filter
   std::vector<float> wino_filter_data;
-  TransposeFilter(filter_data, filter_shape, wino_filter_data);
+  TransposeFilter(filter_data, filter_shape, &wino_filter_data);
   net.AddInputFromArray<D, float>(
       "WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
-  BufferToImage<D, T>(net, "WinoFilterData", "WinoFilter",
+  BufferToImage<D, T>(&net, "WinoFilterData", "WinoFilter",
                       kernels::BufferType::WINOGRAD_FILTER);
 
   // transform input
@@ -119,7 +120,7 @@ void WinogradConvolution(const index_t batch,
   net.RunOp(D);
   net.Sync();
 
-  ImageToBuffer<D, float>(net, "WinoOutputImage", "WinoOutput",
+  ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-1);
@@ -163,16 +164,16 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Add input data
   std::vector<float> filter_data;
   std::vector<index_t> filter_shape = {3, 3, out_channels, in_channels};
-  GenerateRandomRealTypeData<float>(filter_shape, filter_data);
+  GenerateRandomRealTypeData<float>(filter_shape, &filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
   net.AddRandomInput<D, T>("Bias", {out_channels});
 
-  BufferToImage<D, T>(net, "Input", "InputImage",
+  BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(net, "Filter", "FilterImage",
+  BufferToImage<D, T>(&net, "Filter", "FilterImage",
                       kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+  BufferToImage<D, T>(&net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
@@ -186,7 +187,7 @@ void WinogradConvolutionWithPad(const index_t batch,
   net.RunOp(D);
 
   // Transfer output
-  ImageToBuffer<D, T>(net, "OutputImage", "ConvOutput",
+  ImageToBuffer<D, T>(&net, "OutputImage", "ConvOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
@@ -195,10 +196,10 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Winograd convolution
   // transform filter
   std::vector<float> wino_filter_data;
-  TransposeFilter(filter_data, filter_shape, wino_filter_data);
+  TransposeFilter(filter_data, filter_shape, &wino_filter_data);
   net.AddInputFromArray<D, float>(
       "WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
-  BufferToImage<D, T>(net, "WinoFilterData", "WinoFilter",
+  BufferToImage<D, T>(&net, "WinoFilterData", "WinoFilter",
                       kernels::BufferType::WINOGRAD_FILTER);
 
   // transform input
@@ -236,7 +237,7 @@ void WinogradConvolutionWithPad(const index_t batch,
   net.RunOp(D);
   net.Sync();
 
-  ImageToBuffer<D, float>(net, "WinoOutputImage", "WinoOutput",
+  ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-1);
@@ -250,4 +251,4 @@ TEST_F(WinogradConvlutionTest, UnAlignedConvolutionPad2) {
   WinogradConvolutionWithPad<DeviceType::OPENCL, float>(1, 32, 32, 96, 109, 2);
 }
 
-}
+}  // namespace mace

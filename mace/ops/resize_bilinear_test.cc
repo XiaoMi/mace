@@ -2,11 +2,13 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include <vector>
+
 #include "mace/ops/resize_bilinear.h"
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
 
 class ResizeBilinearTest : public OpsTestBase {};
 
@@ -61,17 +63,17 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
 
 template <DeviceType D>
 void TestRandomResizeBilinear() {
-  srand(time(nullptr));
+  unsigned int seed = time(nullptr);
   testing::internal::LogToStderr();
 
   for (int round = 0; round < 10; ++round) {
-    int batch = 1 + rand() % 5;
-    int channels = 1 + rand() % 100;
-    int height = 1 + rand() % 100;
-    int width = 1 + rand() % 100;
-    int in_height = 1 + rand() % 100;
-    int in_width = 1 + rand() % 100;
-    int align_corners = rand() % 1;
+    int batch = 1 + rand_r(&seed) % 5;
+    int channels = 1 + rand_r(&seed) % 100;
+    int height = 1 + rand_r(&seed) % 100;
+    int width = 1 + rand_r(&seed) % 100;
+    int in_height = 1 + rand_r(&seed) % 100;
+    int in_width = 1 + rand_r(&seed) % 100;
+    int align_corners = rand_r(&seed) % 1;
 
     // Construct graph
     OpsTestNet net;
@@ -91,7 +93,7 @@ void TestRandomResizeBilinear() {
     expected.Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::OPENCL) {
-      BufferToImage<D, float>(net, "Input", "InputImage",
+      BufferToImage<D, float>(&net, "Input", "InputImage",
                               kernels::BufferType::IN_OUT_CHANNEL);
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -103,10 +105,10 @@ void TestRandomResizeBilinear() {
       // Run
       net.RunOp(D);
 
-      ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
+      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
     } else {
-      // TODO support NEON
+      // TODO(yejianwu) support NEON
     }
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.001);
@@ -122,3 +124,5 @@ TEST_F(ResizeBilinearTest, NEONRandomResizeBilinear) {
 TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
   TestRandomResizeBilinear<DeviceType::OPENCL>();
 }
+
+}  // namespace mace

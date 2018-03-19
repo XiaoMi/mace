@@ -5,6 +5,8 @@
 #ifndef MACE_OPS_RESHAPE_H_
 #define MACE_OPS_RESHAPE_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/reshape.h"
 

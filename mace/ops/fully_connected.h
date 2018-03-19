@@ -5,6 +5,8 @@
 #ifndef MACE_OPS_FULLY_CONNECTED_H_
 #define MACE_OPS_FULLY_CONNECTED_H_
 
+#include <string>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/fully_connected.h"
 

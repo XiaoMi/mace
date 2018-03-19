@@ -6,6 +6,7 @@
 #define MACE_OPS_WINOGRAD_INVERSE_TRANSFORM_H_
 
 #include <memory>
+#include <string>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/activation.h"

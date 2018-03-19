@@ -33,11 +33,11 @@ static void DepthwiseConv2d(int iters,
   net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
         .Input("InputImage")

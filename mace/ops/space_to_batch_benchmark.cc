@@ -15,7 +15,7 @@ static void BMSpaceToBatch(
   OpsTestNet net;
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
-  BufferToImage<D, float>(net, "Input", "InputImage",
+  BufferToImage<D, float>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputImage")

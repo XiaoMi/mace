@@ -22,9 +22,9 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
 
   std::vector<index_t> input_shape = {4, 4};
   std::vector<float> input0;
-  GenerateRandomRealTypeData(input_shape, input0);
+  GenerateRandomRealTypeData(input_shape, &input0);
   std::vector<float> input1;
-  GenerateRandomRealTypeData(input_shape, input1);
+  GenerateRandomRealTypeData(input_shape, &input1);
   // Add inputs
   net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
@@ -59,9 +59,9 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
 
   std::vector<index_t> input_shape = {4, 4};
   std::vector<float> input0;
-  GenerateRandomRealTypeData(input_shape, input0);
+  GenerateRandomRealTypeData(input_shape, &input0);
   std::vector<float> input1;
-  GenerateRandomRealTypeData(input_shape, input1);
+  GenerateRandomRealTypeData(input_shape, &input1);
   // Add inputs
   net.AddInputFromArray<DeviceType::CPU, float>("Input0", input_shape, input0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input1", input_shape, input1);
@@ -102,7 +102,7 @@ TEST_F(ConcatOpTest, CPURandom) {
       .Finalize(net.NewOperatorDef());
 
   std::vector<index_t> shape_data;
-  GenerateRandomIntTypeData<index_t>({dim}, shape_data, 1, dim);
+  GenerateRandomIntTypeData<index_t>({dim}, &shape_data, 1, dim);
   std::vector<std::vector<index_t>> input_shapes(num_inputs, shape_data);
   std::vector<std::vector<float>> inputs(num_inputs, std::vector<float>());
   std::vector<float *> input_ptrs(num_inputs, nullptr);
@@ -110,7 +110,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   for (int i = 0; i < num_inputs; ++i) {
     input_shapes[i][axis] = 1 + rand() % dim;
     concat_axis_size += input_shapes[i][axis];
-    GenerateRandomRealTypeData(input_shapes[i], inputs[i]);
+    GenerateRandomRealTypeData(input_shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
     net.AddInputFromArray<DeviceType::CPU, float>(MakeString("Input", i),
                                                   input_shapes[i], inputs[i]);
@@ -152,7 +152,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     const std::string image_name = MakeString("InputImage", i);
     concat_axis_size += shapes[i][axis];
     net.AddRandomInput<DeviceType::OPENCL, float>(input_name, shapes[i]);
-    BufferToImage<DeviceType::OPENCL, T>(net, input_name, image_name,
+    BufferToImage<DeviceType::OPENCL, T>(&net, input_name, image_name,
                                          kernels::BufferType::IN_OUT_CHANNEL);
   }
 
@@ -169,7 +169,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   // Run
   net.RunOp(DeviceType::OPENCL);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "Output",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "Output",
                                            kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check

@@ -2,10 +2,16 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_TEST_UTIL_H_
-#define MACE_OPS_TEST_UTIL_H_
+#ifndef MACE_OPS_OPS_TEST_UTIL_H_
+#define MACE_OPS_OPS_TEST_UTIL_H_
 
+#include <functional>
+#include <limits>
+#include <memory>
+#include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "mace/core/net.h"
@@ -95,7 +101,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistry()){};
+  OpsTestNet() : op_registry_(new OperatorRegistry()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -204,37 +210,41 @@ class OpsTestBase : public ::testing::Test {
 
 template <typename T>
 void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
-                                std::vector<T> &res) {
+                                std::vector<T> *res) {
+  MACE_CHECK_NOTNULL(res);
+
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
 
   index_t size = std::accumulate(shape.begin(), shape.end(), 1,
                                  std::multiplies<index_t>());
-  res.resize(size);
+  res->resize(size);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    std::generate(res.begin(), res.end(),
+    std::generate(res->begin(), res->end(),
                   [&gen, &nd] { return half_float::half_cast<half>(nd(gen)); });
   } else {
-    std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
+    std::generate(res->begin(), res->end(), [&gen, &nd] { return nd(gen); });
   }
 }
 
 template <typename T>
 void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
-                               std::vector<T> &res,
+                               std::vector<T> *res,
                                const T a = 0,
                                const T b = std::numeric_limits<T>::max()) {
+  MACE_CHECK_NOTNULL(res);
+
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> nd(a, b);
 
   index_t size = std::accumulate(shape.begin(), shape.end(), 1,
                                  std::multiplies<index_t>());
-  res.resize(size);
+  res->resize(size);
 
-  std::generate(res.begin(), res.end(), [&gen, &nd] { return nd(gen); });
+  std::generate(res->begin(), res->end(), [&gen, &nd] { return nd(gen); });
 }
 
 template <typename T>
@@ -377,25 +387,26 @@ void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
 }
 
 template <DeviceType D, typename T>
-void BufferToImage(OpsTestNet &net,
+void BufferToImage(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
                    const kernels::BufferType type) {
+  MACE_CHECK_NOTNULL(net);
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input(input_name)
       .Output(output_name)
       .AddIntArg("buffer_type", type)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+      .Finalize(net->NewOperatorDef());
 
   // Run
-  net.RunOp(D);
+  net->RunOp(D);
 
-  net.Sync();
+  net->Sync();
 }
 
 template <DeviceType D, typename T>
-void ImageToBuffer(OpsTestNet &net,
+void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
                    const kernels::BufferType type) {
@@ -404,14 +415,14 @@ void ImageToBuffer(OpsTestNet &net,
       .Output(output_name)
       .AddIntArg("buffer_type", type)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+      .Finalize(net->NewOperatorDef());
 
   // Run
-  net.RunOp(D);
+  net->RunOp(D);
 
-  net.Sync();
+  net->Sync();
 }
 
 }  // namespace mace
 
-#endif  // MACE_OPS_TEST_UTIL_H_
+#endif  // MACE_OPS_OPS_TEST_UTIL_H_

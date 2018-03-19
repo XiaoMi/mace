@@ -6,6 +6,7 @@
 #define MACE_OPS_SPACE_TO_BATCH_H_
 
 #include <memory>
+#include <vector>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/space_to_batch.h"

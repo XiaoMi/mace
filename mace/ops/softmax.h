@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_SOFTMAX_H_
-#define MACE_SOFTMAX_H_
+#ifndef MACE_OPS_SOFTMAX_H_
+#define MACE_OPS_SOFTMAX_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/softmax.h"
@@ -36,4 +36,4 @@ class SoftmaxOp : public Operator<D, T> {
 
 }  // namespace mace
 
-#endif  // MACE_SOFTMAX_H_
+#endif  // MACE_OPS_SOFTMAX_H_

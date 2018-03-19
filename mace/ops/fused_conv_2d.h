@@ -6,6 +6,7 @@
 #define MACE_OPS_FUSED_CONV_2D_H_
 
 #include <memory>
+#include <string>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_2d.h"

@@ -8,8 +8,8 @@
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
-using namespace mace::kernels;
+namespace mace {
+namespace kernels {
 
 template <DeviceType D>
 static void Pooling(int iters,
@@ -49,18 +49,20 @@ static void Pooling(int iters,
   }
 }
 
-#define BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)                    \
-  static void                                                                       \
-      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE( \
-          int iters) {                                                              \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                \
-    mace::testing::MaccProcessed(tot);                                              \
-    mace::testing::BytesProcessed(tot *(sizeof(float)));                            \
-    Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,                     \
-                    PoolingType::PO);                                               \
-  }                                                                                 \
-  BENCHMARK(                                                                        \
-      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE)
+#define BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)          \
+  static void                                                             \
+      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
+        ##DEVICE(                                                         \
+          int iters) {                                                    \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
+    mace::testing::MaccProcessed(tot);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(float)));                  \
+    Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,           \
+                    PoolingType::PO);                                     \
+  }                                                                       \
+  BENCHMARK(                                                              \
+      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
+        ##DEVICE)
 
 #define BM_POOLING(N, C, H, W, K, S, PA, PO) \
   BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);
@@ -70,3 +72,6 @@ BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 513, 513, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 1025, 1025, 2, 2, SAME, MAX);
+
+}  // namespace kernels
+}  // namespace mace

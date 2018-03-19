@@ -19,9 +19,9 @@ static void BiasAdd(int iters, int batch, int channels, int height, int width) {
   net.AddRandomInput<D, T>("Bias", {channels}, true);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("BiasAdd", "BiasAddBM")
         .Input("InputImage")

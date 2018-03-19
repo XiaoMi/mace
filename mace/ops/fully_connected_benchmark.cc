@@ -8,6 +8,7 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+
 template <DeviceType D, typename T>
 static void FCBenchmark(
     int iters, int batch, int height, int width, int channel, int out_channel) {
@@ -24,11 +25,11 @@ static void FCBenchmark(
   if (D == DeviceType::OPENCL) {
     const int width_size = height * width * channel;
     kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
-    BufferToImage<D, T>(net, "Weight", "WeightImage",
+    BufferToImage<D, T>(&net, "Weight", "WeightImage",
                         weight_type);
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FC", "FullyConnectedTest")

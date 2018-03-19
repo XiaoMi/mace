@@ -20,9 +20,9 @@ static void EltwiseBenchmark(
   net.AddRandomInput<D, T>("Input1", {n, h, w, c});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, half>(net, "Input0", "InputImg0",
+    BufferToImage<D, half>(&net, "Input0", "InputImg0",
                            kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Input1", "InputImg1",
+    BufferToImage<D, half>(&net, "Input1", "InputImg1",
                            kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")

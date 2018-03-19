@@ -61,9 +61,9 @@ static void OpenclConcatHelper(int iters,
   net.AddRandomInput<DeviceType::OPENCL, float>("Input0", shape0);
   net.AddRandomInput<DeviceType::OPENCL, float>("Input1", shape1);
 
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input0", "InputImage0",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Input0", "InputImage0",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input1", "InputImage1",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Input1", "InputImage1",
                                        kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Concat", "ConcatBM")
       .Input("InputImage0")

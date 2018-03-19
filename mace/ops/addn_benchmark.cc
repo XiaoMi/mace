@@ -20,7 +20,7 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
 
   if (D == DeviceType::OPENCL) {
     for (int i = 0; i < inputs; ++i) {
-      BufferToImage<D, T>(net, MakeString("Input", i).c_str(),
+      BufferToImage<D, T>(&net, MakeString("Input", i).c_str(),
                           MakeString("InputImage", i).c_str(),
                           kernels::BufferType::IN_OUT_CHANNEL);
     }

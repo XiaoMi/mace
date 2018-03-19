@@ -19,7 +19,7 @@ static void SoftmaxBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Softmax", "SoftmaxBM")

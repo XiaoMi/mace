@@ -92,7 +92,7 @@ void RandomTest() {
 
     // run on gpu
     for (int i = 0; i < input_num; ++i) {
-      BufferToImage<D, half>(net, MakeString("Input", i),
+      BufferToImage<D, half>(&net, MakeString("Input", i),
                              MakeString("InputImage", i),
                              kernels::BufferType::IN_OUT_CHANNEL);
     }
@@ -108,7 +108,7 @@ void RandomTest() {
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.1);

@@ -34,11 +34,11 @@ static void Conv2d(int iters,
   net.AddRandomInput<D, float>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")

@@ -6,7 +6,7 @@
 #include "gtest/gtest.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
 
 template <DeviceType D>
 void RunSpaceToBatch(const std::vector<index_t> &input_shape,
@@ -17,7 +17,7 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   OpsTestNet net;
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  BufferToImage<D, float>(net, "Input", "InputImage",
+  BufferToImage<D, float>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputImage")
@@ -29,7 +29,7 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(net, "OutputImage", "Output",
+  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                           kernels::BufferType::IN_OUT_CHANNEL);
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-8);
@@ -45,7 +45,7 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  BufferToImage<D, float>(net, "Input", "InputImage",
+  BufferToImage<D, float>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputImage")
@@ -57,7 +57,7 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(net, "OutputImage", "Output",
+  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                           kernels::BufferType::IN_OUT_CHANNEL);
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-8);
@@ -216,3 +216,5 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
 //                                      {2, 2, 2, 2},
 //                                      space_tensor.get());
 //}
+
+}  // namespace mace
