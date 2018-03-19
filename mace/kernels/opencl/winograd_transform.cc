@@ -14,28 +14,6 @@ namespace kernels {
 template <typename T>
 void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future) {
-  std::vector<index_t> output_shape(4);
-  std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
-  std::vector<int> paddings(2);
-  if (paddings_.empty()) {
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
-        strides_.data(), padding_type_, output_shape.data(), paddings.data());
-  } else {
-    paddings = paddings_;
-    CalcOutputSize(input_tensor->shape().data(), filter_shape.data(),
-                   paddings_.data(), dilations_.data(), strides_.data(),
-                   RoundType::FLOOR, output_shape.data());
-  }
-
-  const index_t round_h = (output_shape[1] + 1) / 2;
-  const index_t round_w = (output_shape[2] + 1) / 2;
-  const index_t out_width = input_tensor->dim(0) * round_h * round_w;
-
-  output_shape = {16, input_tensor->dim(3), out_width, 1};
-  std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
-  output_tensor->ResizeImage(output_shape, image_shape);
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
@@ -50,6 +28,30 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
 
+  }
+  std::vector<index_t> output_shape(4);
+  std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
+  std::vector<int> paddings(2);
+  if (paddings_.empty()) {
+    kernels::CalcNHWCPaddingAndOutputSize(
+        input_tensor->shape().data(), filter_shape.data(), dilations_.data(),
+        strides_.data(), padding_type_, output_shape.data(), paddings.data());
+  } else {
+    paddings = paddings_;
+    CalcOutputSize(input_tensor->shape().data(), filter_shape.data(),
+                   paddings_.data(), dilations_.data(), strides_.data(),
+                   RoundType::FLOOR, output_shape.data());
+  }
+  const index_t round_h = (output_shape[1] + 1) / 2;
+  const index_t round_w = (output_shape[2] + 1) / 2;
+  const index_t out_width = input_tensor->dim(0) * round_h * round_w;
+
+  if (!IsVecEqual(input_shape_, input_tensor->shape())) {
+    output_shape = {16, input_tensor->dim(3), out_width, 1};
+    std::vector<size_t> image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, image_shape);
+    output_tensor->ResizeImage(output_shape, image_shape);
+
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input_tensor->opencl_image()));
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
@@ -60,6 +62,8 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
+
+    input_shape_ = input_tensor->shape();
   }
 
   const uint32_t gws[2] = {
@@ -79,11 +83,6 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *bias,
     Tensor *output_tensor,
     StatsFuture *future) {
-  std::vector<index_t> output_shape = {batch_, height_, width_,
-                                       input_tensor->dim(1)};
-  std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
-  output_tensor->ResizeImage(output_shape, image_shape);
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
@@ -121,6 +120,13 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     auto runtime = OpenCLRuntime::Global();
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
+  }
+  if (!IsVecEqual(input_shape_, input_tensor->shape())) {
+    std::vector<index_t> output_shape = {batch_, height_, width_,
+                                         input_tensor->dim(1)};
+    std::vector<size_t> image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
+    output_tensor->ResizeImage(output_shape, image_shape);
 
     const uint32_t round_h = (height_ + 1) / 2;
     const uint32_t round_w = (width_ + 1) / 2;
@@ -139,6 +145,8 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, relux_max_limit_);
+
+    input_shape_ = input_tensor->shape();
   }
 
   const uint32_t gws[2] = {

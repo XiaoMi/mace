@@ -33,10 +33,13 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ = runtime->BuildKernel("bias_add", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(bias->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
+    input_shape_ = input->shape();
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

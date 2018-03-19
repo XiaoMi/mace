@@ -54,6 +54,7 @@ struct SpaceToBatchFunctor<DeviceType::OPENCL, T> : SpaceToBatchFunctorBase {
                   StatsFuture *future);
 
   cl::Kernel kernel_;
+  std::vector<index_t> space_shape_;
 };
 
 }  // namespace kernels

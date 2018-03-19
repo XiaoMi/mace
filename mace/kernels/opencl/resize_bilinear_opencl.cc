@@ -24,21 +24,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t out_height = out_height_;
   const index_t out_width = out_width_;
 
-  MACE_CHECK(out_height > 0 && out_width > 0);
-  std::vector<index_t> output_shape{batch, out_height, out_width, channels};
-
-  std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  output_image_shape);
-  output->ResizeImage(output_shape, output_image_shape);
-
   if (kernel_.get() == nullptr) {
-
-    float height_scale =
-        CalculateResizeScale(in_height, out_height, align_corners_);
-    float width_scale =
-        CalculateResizeScale(in_width, out_width, align_corners_);
-
     auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
@@ -49,6 +35,21 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ =
         runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(input_shape_, input->shape())) {
+    MACE_CHECK(out_height > 0 && out_width > 0);
+    std::vector<index_t> output_shape{batch, out_height, out_width, channels};
+
+    std::vector<size_t> output_image_shape;
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                    output_image_shape);
+    output->ResizeImage(output_shape, output_image_shape);
+
+    float height_scale =
+        CalculateResizeScale(in_height, out_height, align_corners_);
+    float width_scale =
+        CalculateResizeScale(in_width, out_width, align_corners_);
+
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
@@ -57,6 +58,9 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
+
+    input_shape_ = input->shape();
+
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

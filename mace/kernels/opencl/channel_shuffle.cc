@@ -13,9 +13,10 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
-                                       Tensor *output,
-                                       StatsFuture *future) {
+void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
+    const Tensor *input,
+    Tensor *output,
+    StatsFuture *future) {
   output->ResizeLike(input);
 
   const index_t batch = input->dim(0);
@@ -39,12 +40,15 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *inpu
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ = runtime->BuildKernel("channel_shuffle", kernel_name, built_options);
-
+  }
+  if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, groups_);
     kernel_.setArg(idx++, static_cast<uint32_t>(channels_per_group));
     kernel_.setArg(idx++, *(output->opencl_image()));
+
+    input_shape_ = input->shape();
   }
   const uint32_t gws[3] = {static_cast<uint32_t>(group_channel_blocks),
                            static_cast<uint32_t>(width),

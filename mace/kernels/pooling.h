@@ -182,6 +182,7 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
                   StatsFuture *future);
 
   cl::Kernel kernel_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namespace kernels

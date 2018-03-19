@@ -36,17 +36,16 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ = runtime->BuildKernel("matmul", kernel_name, built_options);
-
-    uint32_t idx = 0;
-    kernel_.setArg(idx++, *(A->opencl_image()));
-    kernel_.setArg(idx++, *(B->opencl_image()));
-    kernel_.setArg(idx++, *(C->opencl_image()));
-    kernel_.setArg(idx++, static_cast<int>(height));
-    kernel_.setArg(idx++, static_cast<int>(width));
-    kernel_.setArg(idx++, static_cast<int>(A->dim(2)));
-    kernel_.setArg(idx++, static_cast<int>(height_blocks));
-    kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
   }
+  uint32_t idx = 0;
+  kernel_.setArg(idx++, *(A->opencl_image()));
+  kernel_.setArg(idx++, *(B->opencl_image()));
+  kernel_.setArg(idx++, *(C->opencl_image()));
+  kernel_.setArg(idx++, static_cast<int>(height));
+  kernel_.setArg(idx++, static_cast<int>(width));
+  kernel_.setArg(idx++, static_cast<int>(A->dim(2)));
+  kernel_.setArg(idx++, static_cast<int>(height_blocks));
+  kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
 
   const uint32_t gws[2] = {
       static_cast<uint32_t>(width_blocks),

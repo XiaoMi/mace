@@ -43,6 +43,8 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_ =
         runtime->BuildKernel("space_to_batch", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(space_shape_, space_tensor->shape())) {
     uint32_t idx = 0;
     if (b2s_) {
       kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
@@ -59,6 +61,8 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
+
+    space_shape_ = space_tensor->shape();
   }
 
   const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));

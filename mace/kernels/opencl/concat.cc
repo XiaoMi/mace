@@ -15,6 +15,7 @@ static void Concat2(cl::Kernel *kernel,
                     const Tensor *input0,
                     const Tensor *input1,
                     const DataType dt,
+                    std::vector<index_t> *prev_input_shape,
                     Tensor *output,
                     StatsFuture *future) {
   const index_t batch = output->dim(0);
@@ -41,6 +42,8 @@ static void Concat2(cl::Kernel *kernel,
     }
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
 
+  }
+  if (!IsVecEqual(*prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
     kernel->setArg(idx++,
                    *(static_cast<const cl::Image2D *>(input0->opencl_image())));
@@ -49,6 +52,7 @@ static void Concat2(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
     kernel->setArg(idx++,
                    *(static_cast<cl::Image2D *>(output->opencl_image())));
+    *prev_input_shape = input0->shape();
   }
 
   const uint32_t gws[3] = {
@@ -142,7 +146,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
   switch (inputs_count) {
     case 2:
       Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
-              output, future);
+              &input_shape_, output, future);
       break;
     default:
       if (divisible_four) {

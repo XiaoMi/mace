@@ -96,7 +96,7 @@ def output_shape(input_shape, filter_shape):
   return out_shape
 
 
-def winog_conv(m, r, input, filter):
+def winograd_conv(m, r, input, filter):
   alpha = m + r - 1
   print 'Winograd(m = %d, r = %d, tile size=%d' % (m, r, alpha)
   alpha_square = alpha * alpha
@@ -194,14 +194,14 @@ def main():
   # filter.tofile("filter_in")
   for i in [2, 4, 6]:
     print "==========f(%d,3)==========" % i
-    winog_out = winog_conv(i, 3, input, filter)
-    res = np.allclose(tf_out, winog_out)
+    winograd_out = winograd_conv(i, 3, input, filter)
+    res = np.allclose(tf_out, winograd_out)
     if res:
       print "=========Pass========="
     else:
       print "=========Failed======="
       print "TF: ", tf_out
-      print "Winograd: ", winog_out
+      print "Winograd: ", winograd_out
 
 
 if __name__ == '__main__':
