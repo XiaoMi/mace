@@ -24,14 +24,15 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t out_height = out_height_;
   const index_t out_width = out_width_;
 
-  if (kernel_.get() == nullptr) {
-    MACE_CHECK(out_height > 0 && out_width > 0);
-    std::vector<index_t> output_shape{batch, out_height, out_width, channels};
+  MACE_CHECK(out_height > 0 && out_width > 0);
+  std::vector<index_t> output_shape{batch, out_height, out_width, channels};
 
-    std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                    output_image_shape);
-    output->ResizeImage(output_shape, output_image_shape);
+  std::vector<size_t> output_image_shape;
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                  output_image_shape);
+  output->ResizeImage(output_shape, output_image_shape);
+
+  if (kernel_.get() == nullptr) {
 
     float height_scale =
         CalculateResizeScale(in_height, out_height, align_corners_);
