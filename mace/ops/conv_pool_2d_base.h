@@ -5,10 +5,13 @@
 #ifndef MACE_OPS_CONV_POOL_2D_BASE_H_
 #define MACE_OPS_CONV_POOL_2D_BASE_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class ConvPool2dOpBase : public Operator<D, T> {
@@ -29,6 +32,7 @@ class ConvPool2dOpBase : public Operator<D, T> {
   std::vector<int> dilations_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_CONV_POOL_2D_BASE_H_

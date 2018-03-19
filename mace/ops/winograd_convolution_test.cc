@@ -3,11 +3,14 @@
 //
 
 #include <fstream>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class WinogradConvlutionTest : public OpsTestBase {};
 
@@ -39,7 +42,7 @@ void WinogradConvolution(const index_t batch,
                          const index_t in_channels,
                          const index_t out_channels,
                          const Padding padding) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // Construct graph
   OpsTestNet net;
@@ -156,7 +159,7 @@ void WinogradConvolutionWithPad(const index_t batch,
                                 const index_t in_channels,
                                 const index_t out_channels,
                                 const int padding) {
-  srand(time(NULL));
+  // srand(time(NULL));
 
   // Construct graph
   OpsTestNet net;
@@ -245,9 +248,6 @@ void WinogradConvolutionWithPad(const index_t batch,
   }
 }
 
-TEST_F(WinogradConvlutionTest, UnAlignedConvolutionPad2) {
-  WinogradConvolutionWithPad<DeviceType::OPENCL, float>(1, 64, 64, 40, 19, 2);
-  WinogradConvolutionWithPad<DeviceType::OPENCL, float>(1, 32, 32, 96, 109, 2);
-}
-
-}
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

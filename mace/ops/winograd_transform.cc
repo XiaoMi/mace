@@ -5,6 +5,7 @@
 #include "mace/ops/winograd_transform.h"
 
 namespace mace {
+namespace ops {
 
 void Register_WinogradTransform(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
@@ -19,4 +20,5 @@ void Register_WinogradTransform(OperatorRegistry *op_registry) {
                     WinogradTransformOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

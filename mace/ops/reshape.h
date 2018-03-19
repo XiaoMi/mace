@@ -5,10 +5,13 @@
 #ifndef MACE_OPS_RESHAPE_H_
 #define MACE_OPS_RESHAPE_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/reshape.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class ReshapeOp : public Operator<D, T> {
@@ -61,6 +64,7 @@ class ReshapeOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_RESHAPE_H_

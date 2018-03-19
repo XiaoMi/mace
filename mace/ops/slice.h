@@ -5,9 +5,13 @@
 #ifndef MACE_OPS_SLICE_H_
 #define MACE_OPS_SLICE_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/slice.h"
+
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class SliceOp : public Operator<D, T> {
@@ -32,6 +36,7 @@ class SliceOp : public Operator<D, T> {
   OP_INPUT_TAGS(INPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_SLICE_H_

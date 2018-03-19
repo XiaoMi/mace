@@ -3,11 +3,15 @@
 //
 
 #include <string>
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   mace::testing::StopTiming();
@@ -75,4 +79,6 @@ BM_ADDN(4, 1, 128, 128, 3);
 BM_ADDN(2, 1, 256, 256, 3);
 BM_ADDN(2, 1, 512, 512, 3);
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

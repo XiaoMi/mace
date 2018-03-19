@@ -8,8 +8,9 @@
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
-using namespace mace::kernels;
+namespace mace {
+namespace ops {
+namespace test {
 
 template <DeviceType D>
 static void Pooling(int iters,
@@ -70,3 +71,7 @@ BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 513, 513, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 1025, 1025, 2, 2, SAME, MAX);
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

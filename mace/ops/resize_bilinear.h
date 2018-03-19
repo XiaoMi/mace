@@ -2,13 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_RESIZE_BILINEAR_H
-#define MACE_RESIZE_BILINEAR_H
+#ifndef MACE_OPS_RESIZE_BILINEAR_H_
+#define MACE_OPS_RESIZE_BILINEAR_H_
 
 #include "mace/core/operator.h"
 #include "mace/kernels/resize_bilinear.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class ResizeBilinearOp : public Operator<D, T> {
@@ -34,6 +35,7 @@ class ResizeBilinearOp : public Operator<D, T> {
   kernels::ResizeBilinearFunctor<D, T> functor_;
 };
 
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_RESIZE_BILINEAR_H
+#endif  // MACE_OPS_RESIZE_BILINEAR_H_

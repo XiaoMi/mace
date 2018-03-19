@@ -62,6 +62,8 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
   }
 }
 
+namespace ops {
+
 extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
@@ -88,32 +90,34 @@ extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
 extern void Register_Slice(OperatorRegistry *op_registry);
 
+}  // namespace ops
+
 OperatorRegistry::OperatorRegistry() {
-  Register_Activation(this);
-  Register_AddN(this);
-  Register_BatchNorm(this);
-  Register_BatchToSpaceND(this);
-  Register_BiasAdd(this);
-  Register_BufferToImage(this);
-  Register_ChannelShuffle(this);
-  Register_Concat(this);
-  Register_Conv2D(this);
-  Register_DepthwiseConv2d(this);
-  Register_FoldedBatchNorm(this);
-  Register_FusedConv2D(this);
-  Register_GlobalAvgPooling(this);
-  Register_ImageToBuffer(this);
-  Register_Pooling(this);
-  Register_ResizeBilinear(this);
-  Register_Softmax(this);
-  Register_SpaceToBatchND(this);
-  Register_MatMul(this);
-  Register_WinogradTransform(this);
-  Register_WinogradInverseTransform(this);
-  Register_Reshape(this);
-  Register_Eltwise(this);
-  Register_FullyConnected(this);
-  Register_Slice(this);
+  ops::Register_Activation(this);
+  ops::Register_AddN(this);
+  ops::Register_BatchNorm(this);
+  ops::Register_BatchToSpaceND(this);
+  ops::Register_BiasAdd(this);
+  ops::Register_BufferToImage(this);
+  ops::Register_ChannelShuffle(this);
+  ops::Register_Concat(this);
+  ops::Register_Conv2D(this);
+  ops::Register_DepthwiseConv2d(this);
+  ops::Register_FoldedBatchNorm(this);
+  ops::Register_FusedConv2D(this);
+  ops::Register_GlobalAvgPooling(this);
+  ops::Register_ImageToBuffer(this);
+  ops::Register_Pooling(this);
+  ops::Register_ResizeBilinear(this);
+  ops::Register_Softmax(this);
+  ops::Register_SpaceToBatchND(this);
+  ops::Register_MatMul(this);
+  ops::Register_WinogradTransform(this);
+  ops::Register_WinogradInverseTransform(this);
+  ops::Register_Reshape(this);
+  ops::Register_Eltwise(this);
+  ops::Register_FullyConnected(this);
+  ops::Register_Slice(this);
 }
 
 }  // namespace mace

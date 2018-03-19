@@ -5,6 +5,7 @@
 #include "mace/ops/matmul.h"
 
 namespace mace {
+namespace ops {
 
 void Register_MatMul(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("MatMul")
@@ -26,4 +27,5 @@ void Register_MatMul(OperatorRegistry *op_registry) {
                     MatMulOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

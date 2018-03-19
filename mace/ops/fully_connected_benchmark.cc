@@ -3,11 +3,15 @@
 //
 
 #include <string>
+
 #include "mace/core/operator.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void FCBenchmark(
     int iters, int batch, int height, int width, int channel, int out_channel) {
@@ -83,4 +87,7 @@ BM_FC(1, 16, 16, 32, 32);
 BM_FC(1, 8, 8, 32, 1000);
 BM_FC(1, 2, 2, 512, 2);
 BM_FC(1, 7, 7, 512, 4096);
+
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

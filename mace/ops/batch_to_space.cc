@@ -5,6 +5,7 @@
 #include "mace/ops/batch_to_space.h"
 
 namespace mace {
+namespace ops {
 
 void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
@@ -19,4 +20,5 @@ void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
                     BatchToSpaceNDOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

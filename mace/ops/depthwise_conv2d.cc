@@ -5,6 +5,7 @@
 #include "mace/ops/depthwise_conv2d.h"
 
 namespace mace {
+namespace ops {
 
 void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
@@ -26,4 +27,5 @@ void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
                     DepthwiseConv2dOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

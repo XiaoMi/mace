@@ -9,6 +9,7 @@
 #include "mace/kernels/buffer_to_image.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class ImageToBufferOp : public Operator<D, T> {
@@ -35,5 +36,7 @@ class ImageToBufferOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
+
 #endif  // MACE_OPS_IMAGE_TO_BUFFER_H_

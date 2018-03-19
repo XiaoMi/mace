@@ -5,6 +5,7 @@
 #include "mace/ops/fully_connected.h"
 
 namespace mace {
+namespace ops {
 
 void Register_FullyConnected(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
@@ -26,4 +27,5 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                     FullyConnectedOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

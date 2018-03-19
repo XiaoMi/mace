@@ -8,6 +8,9 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
+
 template <DeviceType D, typename T>
 static void ResizeBilinearBenchmark(int iters,
                                     int batch,
@@ -84,4 +87,6 @@ BM_RESIZE_BILINEAR(1, 128, 240, 240, 480, 480);
 BM_RESIZE_BILINEAR(1, 3, 4032, 3016, 480, 480);
 BM_RESIZE_BILINEAR(1, 3, 480, 480, 4032, 3016);
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

@@ -6,6 +6,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class SoftmaxOpTest : public OpsTestBase {};
 
@@ -102,4 +104,6 @@ TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
   Complex<DeviceType::OPENCL>({5, 211, 107, 1});
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

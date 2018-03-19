@@ -2,10 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_TEST_UTIL_H_
-#define MACE_OPS_TEST_UTIL_H_
+#ifndef MACE_OPS_OPS_TEST_UTIL_H_
+#define MACE_OPS_OPS_TEST_UTIL_H_
 
 #include <type_traits>
+#include <limits>
+#include <functional>
+#include <vector>
+#include <string>
 
 #include "gtest/gtest.h"
 #include "mace/core/net.h"
@@ -16,6 +20,8 @@
 #include "mace/utils/utils.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class OpDefBuilder {
  public:
@@ -95,7 +101,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistry()){};
+  OpsTestNet() : op_registry_(new OperatorRegistry()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -412,6 +418,8 @@ void ImageToBuffer(OpsTestNet &net,
   net.Sync();
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_TEST_UTIL_H_
+#endif  // MACE_OPS_OPS_TEST_UTIL_H_

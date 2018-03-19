@@ -6,12 +6,14 @@
 #define MACE_OPS_FUSED_CONV_2D_H_
 
 #include <memory>
+#include <string>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_2d.h"
 #include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, typename T>
 class FusedConv2dOp : public ConvPool2dOpBase<D, T> {
@@ -46,6 +48,7 @@ class FusedConv2dOp : public ConvPool2dOpBase<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_FUSED_CONV_2D_H_

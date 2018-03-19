@@ -3,10 +3,13 @@
 //
 
 #include <fstream>
+
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 class MatMulOpTest : public OpsTestBase {};
 
@@ -170,4 +173,7 @@ TEST_F(MatMulOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(16, 32, 64, 64);
   Complex<half>(31, 31, 61, 67);
 }
-}
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

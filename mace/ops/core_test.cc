@@ -5,6 +5,8 @@
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
+namespace ops {
+namespace test {
 
 TEST(CoreTest, INIT_MODE) {
   std::vector<OperatorDef> op_defs;
@@ -56,4 +58,6 @@ TEST(CoreTest, INIT_MODE) {
                           1e-5);
 }
 
+}  // namespace test
+}  // namespace ops
 }  // namespace mace

@@ -5,6 +5,7 @@
 #include "mace/ops/batch_norm.h"
 
 namespace mace {
+namespace ops {
 
 void Register_BatchNorm(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchNorm")
@@ -26,4 +27,5 @@ void Register_BatchNorm(OperatorRegistry *op_registry) {
                     BatchNormOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

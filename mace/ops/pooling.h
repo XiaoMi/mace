@@ -5,11 +5,14 @@
 #ifndef MACE_OPS_POOLING_H_
 #define MACE_OPS_POOLING_H_
 
+#include <vector>
+
 #include "mace/core/operator.h"
 #include "mace/kernels/pooling.h"
 #include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
+namespace ops {
 
 template <DeviceType D, class T>
 class PoolingOp : public ConvPool2dOpBase<D, T> {
@@ -25,7 +28,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
                  this->strides_.data(),
                  this->padding_type_,
                  this->paddings_,
-                 this->dilations_.data()){};
+                 this->dilations_.data()) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -44,6 +47,7 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
+}  // namespace ops
 }  // namespace mace
 
 #endif  // MACE_OPS_POOLING_H_

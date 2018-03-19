@@ -5,6 +5,7 @@
 #include "mace/ops/folded_batch_norm.h"
 
 namespace mace {
+namespace ops {
 
 void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
@@ -26,4 +27,5 @@ void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
                     FoldedBatchNormOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace

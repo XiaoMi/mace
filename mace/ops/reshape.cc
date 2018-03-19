@@ -5,6 +5,7 @@
 #include "mace/ops/reshape.h"
 
 namespace mace {
+namespace ops {
 
 void Register_Reshape(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Reshape")
@@ -14,4 +15,5 @@ void Register_Reshape(OperatorRegistry *op_registry) {
                     ReshapeOp<DeviceType::CPU, float>);
 }
 
+}  // namespace ops
 }  // namespace mace

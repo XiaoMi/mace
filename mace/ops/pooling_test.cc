@@ -9,7 +9,9 @@
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/ops_test_util.h"
 
-using namespace mace;
+namespace mace {
+namespace ops {
+namespace test {
 
 class PoolingOpTest : public OpsTestBase {};
 
@@ -393,3 +395,7 @@ TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
   AvgPoolingTest<OPENCL, float>({3, 31, 37, 128}, {8, 8}, {8, 8},
                                 Padding::SAME);
 }
+
+}  // namespace test
+}  // namespace ops
+}  // namespace mace

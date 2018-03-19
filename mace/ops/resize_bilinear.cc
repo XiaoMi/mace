@@ -5,6 +5,7 @@
 #include "mace/ops/resize_bilinear.h"
 
 namespace mace {
+namespace ops {
 
 void Register_ResizeBilinear(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
@@ -26,4 +27,5 @@ void Register_ResizeBilinear(OperatorRegistry *op_registry) {
                     ResizeBilinearOp<DeviceType::OPENCL, half>);
 }
 
+}  // namespace ops
 }  // namespace mace
