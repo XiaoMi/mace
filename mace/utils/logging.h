@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
@@ -122,7 +123,7 @@ class LatencyLogger {
       VLOG(vlog_level_) << message_
                         << " latency: " << stop_micros - start_micros_ << " us";
     }
-  };
+  }
 
  private:
   const int vlog_level_;

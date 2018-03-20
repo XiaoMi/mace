@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace mace {
-namespace {
+namespace string_util {
 
 inline void MakeStringInternal(std::stringstream & /*ss*/) {}
 
@@ -27,12 +27,12 @@ inline void MakeStringInternal(std::stringstream &ss,
   MakeStringInternal(ss, args...);
 }
 
-}  // namespace
+}  // namespace string_util
 
 template <typename... Args>
 std::string MakeString(const Args &... args) {
   std::stringstream ss;
-  MakeStringInternal(ss, args...);
+  string_util::MakeStringInternal(ss, args...);
   return ss.str();
 }
 

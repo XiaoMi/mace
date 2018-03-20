@@ -2,16 +2,18 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+
+#include <sys/time.h>
+
+#include <cstdlib>
+#include <fstream>
+#include <numeric>
+#include <thread>  // NOLINT(build/c++11)
+
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 #include "mace/benchmark/stat_summarizer.h"
-
-#include <cstdlib>
-#include <fstream>
-#include <thread>
-#include <numeric>
-#include <sys/time.h>
 
 namespace mace {
 namespace MACE_MODEL_TAG {
@@ -24,10 +26,11 @@ extern NetDef CreateNet(const unsigned char *model_data);
 
 extern const std::string ModelChecksum();
 
-}
-}
+}  // namespace MACE_MODEL_TAG
+}  // namespace mace
 
 namespace mace {
+namespace benchmark {
 namespace str_util {
 
 std::vector<std::string> Split(const std::string &str, char delims) {
@@ -64,8 +67,6 @@ bool SplitAndParseToInts(const std::string &str,
 
 }  //  namespace str_util
 
-namespace benchmark {
-
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
   while (!tmp.empty()) {
@@ -96,7 +97,7 @@ inline int64_t NowMicros() {
 
 bool RunInference(MaceEngine *engine,
                   const std::vector<mace::MaceInputInfo> &input_infos,
-                  std::map<std::string, float*> &output_infos,
+                  std::map<std::string, float*> *output_infos,
                   StatSummarizer *summarizer,
                   int64_t *inference_time_us) {
   RunMetadata run_metadata;
@@ -104,10 +105,10 @@ bool RunInference(MaceEngine *engine,
   if (summarizer) {
     run_metadata_ptr = &run_metadata;
   }
-  if (input_infos.size() == 1 && output_infos.size() == 1) {
+  if (input_infos.size() == 1 && output_infos->size() == 1) {
     const int64_t start_time = NowMicros();
     bool s = engine->Run(input_infos[0].data, input_infos[0].shape,
-                         output_infos.begin()->second, run_metadata_ptr);
+                         output_infos->begin()->second, run_metadata_ptr);
     const int64_t end_time = NowMicros();
 
     if (!s) {
@@ -117,7 +118,7 @@ bool RunInference(MaceEngine *engine,
     *inference_time_us = end_time - start_time;
   } else {
     const int64_t start_time = NowMicros();
-    bool s = engine->Run(input_infos, output_infos, run_metadata_ptr);
+    bool s = engine->Run(input_infos, *output_infos, run_metadata_ptr);
     const int64_t end_time = NowMicros();
 
     if (!s) {
@@ -136,7 +137,7 @@ bool RunInference(MaceEngine *engine,
 
 bool Run(MaceEngine *engine,
          const std::vector<mace::MaceInputInfo> &input_infos,
-         std::map<std::string, float*> &output_infos,
+         std::map<std::string, float*> *output_infos,
          StatSummarizer *summarizer,
          int num_runs,
          double max_time_sec,
@@ -156,7 +157,8 @@ bool Run(MaceEngine *engine,
   bool util_max_time = (num_runs <= 0);
   for (int i = 0; util_max_time || i < num_runs; ++i) {
     int64_t inference_time_us = 0;
-    bool s = RunInference(engine, input_infos, output_infos, summarizer, &inference_time_us);
+    bool s = RunInference(engine, input_infos, output_infos,
+                          summarizer, &inference_time_us);
     stat.UpdateStat(inference_time_us);
     (*total_time_us) += inference_time_us;
     ++(*actual_num_runs);
@@ -183,15 +185,18 @@ bool Run(MaceEngine *engine,
 }
 
 DEFINE_string(device, "CPU", "Device [CPU|OPENCL]");
-DEFINE_string(input_node, "input_node0,input_node1", "input nodes, separated by comma");
-DEFINE_string(output_node, "output_node0,output_node1", "output nodes, separated by comma");
+DEFINE_string(input_node, "input_node0,input_node1",
+              "input nodes, separated by comma");
+DEFINE_string(output_node, "output_node0,output_node1",
+              "output nodes, separated by comma");
 DEFINE_string(input_shape, "", "input shape, separated by colon and comma");
 DEFINE_string(output_shape, "", "output shape, separated by colon and comma");
 DEFINE_string(input_file, "", "input file name");
 DEFINE_int32(max_num_runs, 100, "number of runs max");
 DEFINE_string(max_time, "10.0", "length to run max");
 DEFINE_string(inference_delay, "-1", "delay between runs in seconds");
-DEFINE_string(inter_benchmark_delay, "-1", "delay between benchmarks in seconds");
+DEFINE_string(inter_benchmark_delay, "-1",
+              "delay between benchmarks in seconds");
 DEFINE_string(benchmark_name, "", "benchmark name");
 DEFINE_bool(show_run_order, true, "whether to list stats by run order");
 DEFINE_int32(run_order_limit, 0, "how many items to show by run order");
@@ -203,15 +208,18 @@ DEFINE_bool(show_type, true, "whether to list stats by op type");
 DEFINE_bool(show_summary, true, "whether to show a summary of the stats");
 DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
-DEFINE_string(model_data_file, "", "model data file name, used when EMBED_MODEL_DATA set to 0");
+DEFINE_string(model_data_file, "",
+              "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
 DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
-DEFINE_int32(cpu_power_option, 0, "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
+DEFINE_int32(cpu_power_option, 0,
+             "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
 
 int Main(int argc, char **argv) {
-  MACE_CHECK(FLAGS_device != "HEXAGON", "Model benchmark tool do not support DSP.");
+  MACE_CHECK(FLAGS_device != "HEXAGON",
+             "Model benchmark tool do not support DSP.");
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -228,12 +236,14 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "output shapes: [" << FLAGS_output_shape << "]";
   LOG(INFO) << "Warmup runs: [" << FLAGS_warmup_runs << "]";
   LOG(INFO) << "Num runs: [" << FLAGS_max_num_runs << "]";
-  LOG(INFO) << "Inter-inference delay (seconds): [" << FLAGS_inference_delay << "]";
-  LOG(INFO) << "Inter-benchmark delay (seconds): [" << FLAGS_inter_benchmark_delay << "]";
+  LOG(INFO) << "Inter-inference delay (seconds): ["
+            << FLAGS_inference_delay << "]";
+  LOG(INFO) << "Inter-benchmark delay (seconds): ["
+            << FLAGS_inter_benchmark_delay << "]";
 
-  const long int inter_inference_sleep_seconds =
+  const int64_t inter_inference_sleep_seconds =
       std::strtol(FLAGS_inference_delay.c_str(), nullptr, 10);
-  const long int inter_benchmark_sleep_seconds =
+  const int64_t inter_benchmark_sleep_seconds =
       std::strtol(FLAGS_inter_benchmark_delay.c_str(), nullptr, 10);
   const double max_benchmark_time_seconds =
       std::strtod(FLAGS_max_time.c_str(), nullptr);
@@ -252,7 +262,7 @@ int Main(int argc, char **argv) {
   stats.reset(new StatSummarizer(stats_options));
 
   DeviceType device_type = CPU;
-  if(FLAGS_device == "OPENCL") {
+  if (FLAGS_device == "OPENCL") {
     device_type = OPENCL;
   }
 
@@ -264,17 +274,20 @@ int Main(int argc, char **argv) {
         gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
-  else if (device_type == CPU) {
+  } else if (device_type == CPU) {
     mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
   }
 
-  std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
-  std::vector<std::string> output_names = str_util::Split(FLAGS_output_node, ',');
-  std::vector<std::string> input_shapes = str_util::Split(FLAGS_input_shape, ':');
-  std::vector<std::string> output_shapes = str_util::Split(FLAGS_output_shape, ':');
+  std::vector<std::string> input_names =
+      str_util::Split(FLAGS_input_node, ',');
+  std::vector<std::string> output_names =
+      str_util::Split(FLAGS_output_node, ',');
+  std::vector<std::string> input_shapes =
+      str_util::Split(FLAGS_input_shape, ':');
+  std::vector<std::string> output_shapes =
+      str_util::Split(FLAGS_output_shape, ':');
 
   const size_t input_count = input_shapes.size();
   const size_t output_count = output_shapes.size();
@@ -298,10 +311,12 @@ int Main(int argc, char **argv) {
 
   for (size_t i = 0; i < input_count; ++i) {
     int64_t input_size = std::accumulate(input_shape_vec[i].begin(),
-                                         input_shape_vec[i].end(), 1, std::multiplies<int64_t>());
+                                         input_shape_vec[i].end(), 1,
+                                         std::multiplies<int64_t>());
     input_datas[i].reset(new float[input_size]);
     // load input
-    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]), std::ios::in | std::ios::binary);
+    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
+                          std::ios::in | std::ios::binary);
     if (in_file.is_open()) {
       in_file.read(reinterpret_cast<char *>(input_datas[i].get()),
                    input_size * sizeof(float));
@@ -317,7 +332,8 @@ int Main(int argc, char **argv) {
   }
   for (size_t i = 0; i < output_count; ++i) {
     int64_t output_size = std::accumulate(output_shape_vec[i].begin(),
-                                          output_shape_vec[i].end(), 1, std::multiplies<int64_t>());
+                                          output_shape_vec[i].end(), 1,
+                                          std::multiplies<int64_t>());
     output_datas[i].reset(new float[output_size]);
     output_infos[output_names[i]] = output_datas[i].get();
   }
@@ -328,7 +344,8 @@ int Main(int argc, char **argv) {
   if (input_count == 1 && output_count == 1) {
     engine_ptr.reset(new mace::MaceEngine(&net_def, device_type));
   } else {
-    engine_ptr.reset(new mace::MaceEngine(&net_def, device_type, input_names, output_names));
+    engine_ptr.reset(new mace::MaceEngine(&net_def, device_type,
+                                          input_names, output_names));
   }
   if (device_type == DeviceType::OPENCL) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
@@ -340,7 +357,8 @@ int Main(int argc, char **argv) {
   int64_t num_warmup_runs = 0;
   if (FLAGS_warmup_runs > 0) {
     bool status =
-        Run(engine_ptr.get(), input_infos, output_infos, nullptr, FLAGS_warmup_runs, -1.0,
+        Run(engine_ptr.get(), input_infos, &output_infos, nullptr,
+            FLAGS_warmup_runs, -1.0,
             inter_inference_sleep_seconds, &warmup_time_us, &num_warmup_runs);
     if (!status) {
       LOG(ERROR) << "Failed at warm up run";
@@ -354,7 +372,7 @@ int Main(int argc, char **argv) {
   int64_t no_stat_time_us = 0;
   int64_t no_stat_runs = 0;
   bool status =
-      Run(engine_ptr.get(), input_infos, output_infos,
+      Run(engine_ptr.get(), input_infos, &output_infos,
           nullptr, FLAGS_max_num_runs, max_benchmark_time_seconds,
           inter_inference_sleep_seconds, &no_stat_time_us, &no_stat_runs);
   if (!status) {
@@ -363,7 +381,7 @@ int Main(int argc, char **argv) {
 
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
-  status = Run(engine_ptr.get(), input_infos, output_infos,
+  status = Run(engine_ptr.get(), input_infos, &output_infos,
                stats.get(), FLAGS_max_num_runs, max_benchmark_time_seconds,
                inter_inference_sleep_seconds, &stat_time_us, &stat_runs);
   if (!status) {
@@ -372,8 +390,8 @@ int Main(int argc, char **argv) {
 
   LOG(INFO) << "Average inference timings in us: "
             << "Warmup: "
-            << (FLAGS_warmup_runs > 0 ? warmup_time_us / FLAGS_warmup_runs : 0) << ", "
-            << "no stats: " << no_stat_time_us / no_stat_runs << ", "
+            << (FLAGS_warmup_runs > 0 ? warmup_time_us / FLAGS_warmup_runs : 0)
+            << ", " << "no stats: " << no_stat_time_us / no_stat_runs << ", "
             << "with stats: " << stat_time_us / stat_runs;
 
   stats->PrintOperatorStats();
@@ -381,7 +399,7 @@ int Main(int argc, char **argv) {
   return 0;
 }
 
-}  //  namespace benchmark
-}  //  namespace mace
+}  // namespace benchmark
+}  // namespace mace
 
 int main(int argc, char **argv) { mace::benchmark::Main(argc, argv); }

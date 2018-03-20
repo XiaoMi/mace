@@ -6,13 +6,15 @@
 #define MACE_UTILS_MEMORY_LOGGING_H_
 
 #include <malloc.h>
+#include <string>
+
 #include "mace/utils/logging.h"
 
 namespace mace {
 
 class MallinfoChangeLogger {
  public:
-  MallinfoChangeLogger(const std::string &name) : name_(name) {
+  explicit MallinfoChangeLogger(const std::string &name) : name_(name) {
     prev_ = mallinfo();
   }
   ~MallinfoChangeLogger() {

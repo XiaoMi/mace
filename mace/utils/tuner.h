@@ -17,8 +17,6 @@
 #include "mace/utils/timer.h"
 #include "mace/utils/utils.h"
 
-namespace {}  // namespace
-
 namespace mace {
 
 extern bool GetTuningParams(
@@ -127,7 +125,7 @@ class Tuner {
       const std::function<RetType(const std::vector<param_type> &,
                                   Timer *,
                                   std::vector<param_type> *)> &func,
-      std::vector<param_type> &params,
+      const std::vector<param_type> &params,
       Timer *timer,
       int num_runs,
       double *time_us,

@@ -13,4 +13,4 @@ namespace mace {
 extern const std::map<std::string, std::vector<unsigned char>>
     kCompiledProgramMap = {};
 
-}  // namespace
+}  // namespace mace

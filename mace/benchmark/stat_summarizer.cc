@@ -3,14 +3,18 @@
 //
 
 #include "mace/benchmark/stat_summarizer.h"
+
+#include <iomanip>
+#include <iostream>
+#include <queue>
+#include <utility>
+
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
-#include <iomanip>
-#include <queue>
-#include <iostream>
 
 namespace mace {
+namespace benchmark {
 
 StatSummarizer::StatSummarizer(const StatSummarizerOptions &options)
     : options_(options) {}
@@ -90,7 +94,7 @@ std::string StatSummarizer::HeaderString(const std::string &title) const {
   stream << "============================== " << title
          << " ==============================" << std::endl;
 
-  InitField(stream, 14) << "[node type]";
+  InitField(stream, 24) << "[node type]";
   InitField(stream, 9) << "[start]";
   InitField(stream, 9) << "[first]";
   InitField(stream, 9) << "[avg ms]";
@@ -114,7 +118,7 @@ std::string StatSummarizer::ColumnString(const StatSummarizer::Detail &detail,
   const int64_t times_called = detail.times_called / num_runs();
 
   std::stringstream stream;
-  InitField(stream, 14) << detail.type;
+  InitField(stream, 24) << detail.type;
   InitField(stream, 9) << start_ms;
   InitField(stream, 9) << first_time_ms;
   InitField(stream, 9) << avg_time_ms;
@@ -224,7 +228,7 @@ std::string StatSummarizer::GetStatsByNodeType() const {
                     std::pair<std::string, int64_t>(node_type.first, mem_used));
   }
 
-  InitField(stream, 14) << "[Node type]";
+  InitField(stream, 24) << "[Node type]";
   InitField(stream, 9) << "[count]";
   InitField(stream, 10) << "[avg ms]";
   InitField(stream, 11) << "[avg %]";
@@ -248,7 +252,7 @@ std::string StatSummarizer::GetStatsByNodeType() const {
         ((entry.first / static_cast<float>(accumulated_us)) * 100.0f);
     cdf += percentage;
 
-    InitField(stream, 14) << node_type;
+    InitField(stream, 24) << node_type;
     InitField(stream, 9) << node_type_map_count[node_type];
     InitField(stream, 10) << time_per_run_ms;
     InitField(stream, 10) << percentage << "%";
@@ -317,4 +321,5 @@ void StatSummarizer::PrintOperatorStats() const {
   }
 }
 
+}  // namespace benchmark
 }  // namespace mace

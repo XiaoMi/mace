@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_MACE_H_
-#define MACE_CORE_MACE_H_
+#ifndef MACE_PUBLIC_MACE_H_
+#define MACE_PUBLIC_MACE_H_
 
 #include <cstdint>
 #include <map>
@@ -169,7 +169,7 @@ class NodeInput {
 class OutputShape {
  public:
   OutputShape();
-  OutputShape(const std::vector<int64_t> &dims);
+  OutputShape(const std::vector<int64_t> &dims);  // NOLINT(runtime/explicit)
   void CopyFrom(const OutputShape &from);
 
  public:
@@ -409,9 +409,10 @@ class MaceEngine {
            float *output,
            RunMetadata *run_metadata);
   // Multiple input or output
-  bool Run(const std::vector<MaceInputInfo> &input,
-           std::map<std::string, float *> &output,
-           RunMetadata *run_metadata = nullptr);
+  bool Run(
+      const std::vector<MaceInputInfo> &input,
+      std::map<std::string, float *> &output,  // NOLINT(runtime/references)
+      RunMetadata *run_metadata = nullptr);
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 
@@ -425,4 +426,4 @@ class MaceEngine {
 
 }  // namespace mace
 
-#endif  // MACE_CORE_MACE_H_
+#endif  // MACE_PUBLIC_MACE_H_
