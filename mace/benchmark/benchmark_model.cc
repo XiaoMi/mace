@@ -100,6 +100,7 @@ bool RunInference(MaceEngine *engine,
                   std::map<std::string, float*> *output_infos,
                   StatSummarizer *summarizer,
                   int64_t *inference_time_us) {
+  MACE_CHECK_NOTNULL(output_infos);
   RunMetadata run_metadata;
   RunMetadata *run_metadata_ptr = nullptr;
   if (summarizer) {
@@ -144,6 +145,7 @@ bool Run(MaceEngine *engine,
          int64_t sleep_sec,
          int64_t *total_time_us,
          int64_t *actual_num_runs) {
+  MACE_CHECK_NOTNULL(output_infos);
   *total_time_us = 0;
 
   LOG(INFO) << "Running benchmark for max " << num_runs << " iterators, max "

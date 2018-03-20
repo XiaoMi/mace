@@ -13,6 +13,7 @@ namespace mace {
 namespace utils {
 
 bool StringConsume(const std::string &x, std::string *arg) {
+  MACE_CHECK_NOTNULL(arg);
   if ((arg->size() >= x.size()) &&
       (memcmp(arg->data(), x.data(), x.size()) == 0)) {
     *arg = arg->substr(x.size());
