@@ -36,11 +36,11 @@ static void Conv2d(int iters,
   net.AddRandomInput<D, float>("Bias", {output_channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputImage")
@@ -82,30 +82,32 @@ static void Conv2d(int iters,
 // approximate the amortized latency. The OpenCL runtime for Mali/Adreno is
 // in-order.
 
-#define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, DILATION, P, OC, TYPE,                                     \
-                         DEVICE)                                                                                \
-  static void                                                                                                   \
-      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION##_##P##_##OC##_##TYPE##_##DEVICE( \
-          int iters) {                                                                                          \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                                            \
-    int64_t pad_h = 0, pad_w = 0;                                                                               \
-    if (P == SAME) {                                                                                            \
-      pad_h = KH / 2;                                                                                           \
-      pad_w = KW / 2;                                                                                           \
-    }                                                                                                           \
-    int64_t oh =                                                                                                \
-        (H + 2 * pad_h - KH - (KH - 1) * (DILATION - 1)) / STRIDE + 1;                                          \
-    int64_t ow =                                                                                                \
-        (W + 2 * pad_w - KW - (KW - 1) * (DILATION - 1)) / STRIDE + 1;                                          \
-    const int64_t macc =                                                                                        \
-        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);                                     \
-    mace::testing::MaccProcessed(macc);                                                                         \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                                                         \
-    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, DILATION,                                           \
-                         mace::Padding::P, OC);                                                                 \
-  }                                                                                                             \
-  BENCHMARK(                                                                                                    \
-      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION##_##P##_##OC##_##TYPE##_##DEVICE)
+#define BM_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, DILATION, P, OC, TYPE,   \
+                         DEVICE)                                              \
+  static void                                                                 \
+      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION\
+        ##_##P##_##OC##_##TYPE##_##DEVICE(                                    \
+          int iters) {                                                        \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
+    int64_t pad_h = 0, pad_w = 0;                                             \
+    if (P == SAME) {                                                          \
+      pad_h = KH / 2;                                                         \
+      pad_w = KW / 2;                                                         \
+    }                                                                         \
+    int64_t oh =                                                              \
+        (H + 2 * pad_h - KH - (KH - 1) * (DILATION - 1)) / STRIDE + 1;        \
+    int64_t ow =                                                              \
+        (W + 2 * pad_w - KW - (KW - 1) * (DILATION - 1)) / STRIDE + 1;        \
+    const int64_t macc =                                                      \
+        static_cast<int64_t>(iters) * N * OC * oh * ow * (KH * KW * C + 1);   \
+    mace::testing::MaccProcessed(macc);                                       \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
+    Conv2d<DEVICE, TYPE>(iters, N, C, H, W, KH, KW, STRIDE, DILATION,         \
+                         mace::Padding::P, OC);                               \
+  }                                                                           \
+  BENCHMARK(                                                                  \
+      BM_CONV_2D_##N##_##C##_##H##_##W##_K##KH##x##KW##S##STRIDE##D##DILATION\
+        ##_##P##_##OC##_##TYPE##_##DEVICE)
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \

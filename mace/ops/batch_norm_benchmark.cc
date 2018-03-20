@@ -26,15 +26,15 @@ static void BatchNorm(
   net.AddRandomInput<D, T>("Var", {channels}, true);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(net, "Scale", "ScaleImage",
+    BufferToImage<D, float>(&net, "Scale", "ScaleImage",
                             kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Offset", "OffsetImage",
+    BufferToImage<D, float>(&net, "Offset", "OffsetImage",
                             kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Mean", "MeanImage",
+    BufferToImage<D, float>(&net, "Mean", "MeanImage",
                             kernels::BufferType::ARGUMENT);
-    BufferToImage<D, float>(net, "Var", "VarImage",
+    BufferToImage<D, float>(&net, "Var", "VarImage",
                             kernels::BufferType::ARGUMENT);
     OpDefBuilder("BatchNorm", "BatchNormBM")
         .Input("InputImage")

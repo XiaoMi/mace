@@ -38,9 +38,9 @@ void Simple(const kernels::EltwiseType type,
     // Run
     net.RunOp(D);
   } else {
-    BufferToImage<D, half>(net, "Input1", "InputImg1",
+    BufferToImage<D, half>(&net, "Input1", "InputImg1",
                            kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Input2", "InputImg2",
+    BufferToImage<D, half>(&net, "Input2", "InputImg2",
                            kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg1")
@@ -53,7 +53,7 @@ void Simple(const kernels::EltwiseType type,
     // Run
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImg", "Output",
+    ImageToBuffer<D, float>(&net, "OutputImg", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   }
 
@@ -122,9 +122,9 @@ void RandomTest(const kernels::EltwiseType type,
   // Run
   net.RunOp();
 
-  BufferToImage<D, T>(net, "Input1", "InputImg1",
+  BufferToImage<D, T>(&net, "Input1", "InputImg1",
                       kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(net, "Input2", "InputImg2",
+  BufferToImage<D, T>(&net, "Input2", "InputImg2",
                       kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg1")
@@ -138,7 +138,7 @@ void RandomTest(const kernels::EltwiseType type,
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(net, "OutputImg", "OPENCLOutput",
+  ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {

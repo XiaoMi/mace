@@ -30,11 +30,11 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Bias", bias_shape, bias_value);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(net, "Weight", "WeightImage",
+    BufferToImage<D, float>(&net, "Weight", "WeightImage",
                             kernels::BufferType::WEIGHT_HEIGHT);
-    BufferToImage<D, float>(net, "Bias", "BiasImage",
+    BufferToImage<D, float>(&net, "Bias", "BiasImage",
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FC", "FullyConnectedTest")
@@ -48,7 +48,7 @@ void Simple(const std::vector<index_t> &input_shape,
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("FC", "FullyConnectedTest")
@@ -139,11 +139,11 @@ void Complex(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input", "InputImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(net, "Weight", "WeightImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Weight", "WeightImage",
                                        kernels::BufferType::WEIGHT_HEIGHT);
-  BufferToImage<DeviceType::OPENCL, float>(net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
@@ -158,7 +158,7 @@ void Complex(const index_t batch,
   // Run on opencl
   net.RunOp(DeviceType::OPENCL);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1);
@@ -221,11 +221,11 @@ void TestWXFormat(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(net, "Input", "InputImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(net, "Weight", "WeightImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Weight", "WeightImage",
                                        kernels::BufferType::WEIGHT_WIDTH);
-  BufferToImage<DeviceType::OPENCL, float>(net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
@@ -239,7 +239,7 @@ void TestWXFormat(const index_t batch,
   // Run on opencl
   net.RunOp(DeviceType::OPENCL);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1);

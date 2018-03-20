@@ -25,11 +25,11 @@ void SimpleValidTest() {
       "Filter", {2, 2, 2, 1}, {1.0f, 2.0f, 2.0f, 4.0f, 3.0f, 6.0f, 4.0f, 8.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f});
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputImage")
@@ -45,7 +45,7 @@ void SimpleValidTest() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(net, "OutputImage", "Output",
+    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
@@ -129,11 +129,11 @@ void ComplexValidTest() {
   net.AddInputFromArray<D, float>("Bias", {6},
                                   {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputImage")
@@ -149,7 +149,7 @@ void ComplexValidTest() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(net, "OutputImage", "Output",
+    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
@@ -239,11 +239,11 @@ void TestNxNS12(const index_t height, const index_t width) {
     expected.Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::OPENCL) {
-      BufferToImage<D, T>(net, "Input", "InputImage",
+      BufferToImage<D, T>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
-      BufferToImage<D, T>(net, "Filter", "FilterImage",
+      BufferToImage<D, T>(&net, "Filter", "FilterImage",
                           kernels::BufferType::DW_CONV2D_FILTER);
-      BufferToImage<D, T>(net, "Bias", "BiasImage",
+      BufferToImage<D, T>(&net, "Bias", "BiasImage",
                           kernels::BufferType::ARGUMENT);
       OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
           .Input("InputImage")
@@ -259,7 +259,7 @@ void TestNxNS12(const index_t height, const index_t width) {
       net.RunOp(D);
 
       // Transfer output
-      ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
+      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
     } else {
       OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")

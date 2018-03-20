@@ -24,8 +24,9 @@ static void MatMulBenchmark(
   net.AddRandomInput<D, float>("B", {batch, channels, out_width, 1});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
-    BufferToImage<D, T>(net, "B", "BImage", kernels::BufferType::IN_OUT_HEIGHT);
+    BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
+    BufferToImage<D, T>(&net, "B", "BImage",
+                        kernels::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulBM")
         .Input("AImage")

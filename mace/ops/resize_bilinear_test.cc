@@ -94,7 +94,7 @@ void TestRandomResizeBilinear() {
     expected.Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::OPENCL) {
-      BufferToImage<D, float>(net, "Input", "InputImage",
+      BufferToImage<D, float>(&net, "Input", "InputImage",
                               kernels::BufferType::IN_OUT_CHANNEL);
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -106,7 +106,7 @@ void TestRandomResizeBilinear() {
       // Run
       net.RunOp(D);
 
-      ImageToBuffer<D, float>(net, "OutputImage", "DeviceOutput",
+      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
     } else {
       // TODO(someone): support NEON

@@ -50,18 +50,20 @@ static void Pooling(int iters,
   }
 }
 
-#define BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)                    \
-  static void                                                                       \
-      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE( \
-          int iters) {                                                              \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;                \
-    mace::testing::MaccProcessed(tot);                                              \
-    mace::testing::BytesProcessed(tot *(sizeof(float)));                            \
-    Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,                     \
-                    PoolingType::PO);                                               \
-  }                                                                                 \
-  BENCHMARK(                                                                        \
-      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_##DEVICE)
+#define BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)          \
+  static void                                                             \
+      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
+        ##DEVICE(                                                         \
+          int iters) {                                                    \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
+    mace::testing::MaccProcessed(tot);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(float)));                  \
+    Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,           \
+                    PoolingType::PO);                                     \
+  }                                                                       \
+  BENCHMARK(                                                              \
+      BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
+        ##DEVICE)
 
 #define BM_POOLING(N, C, H, W, K, S, PA, PO) \
   BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);

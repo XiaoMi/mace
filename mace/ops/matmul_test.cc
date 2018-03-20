@@ -27,9 +27,9 @@ void Simple(const std::vector<index_t> &A_shape,
   net.AddInputFromArray<D, float>("B", B_shape, B_value);
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "A", "AImage",
+    BufferToImage<D, float>(&net, "A", "AImage",
                             kernels::BufferType::IN_OUT_WIDTH);
-    BufferToImage<D, float>(net, "B", "BImage",
+    BufferToImage<D, float>(&net, "B", "BImage",
                             kernels::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulTest")
@@ -41,7 +41,7 @@ void Simple(const std::vector<index_t> &A_shape,
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_HEIGHT);
   } else {
     OpDefBuilder("MatMul", "MatMulTest")
@@ -127,9 +127,9 @@ void Complex(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(net, "A", "AImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "A", "AImage",
                                        kernels::BufferType::IN_OUT_WIDTH);
-  BufferToImage<DeviceType::OPENCL, T>(net, "B", "BImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "B", "BImage",
                                        kernels::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("MatMul", "MatMulTest")
@@ -142,7 +142,7 @@ void Complex(const index_t batch,
   // Run on opencl
   net.RunOp(DeviceType::OPENCL);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_HEIGHT);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1);

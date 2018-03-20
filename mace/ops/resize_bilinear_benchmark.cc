@@ -29,7 +29,7 @@ static void ResizeBilinearBenchmark(int iters,
   net.AddInputFromArray<D, index_t>("OutSize", {2},
                                     {output_height, output_width});
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
         .Input("InputImage")
@@ -60,18 +60,20 @@ static void ResizeBilinearBenchmark(int iters,
   net.Sync();
 }
 
-#define BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)                \
-  static void                                                                       \
-      BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_##DEVICE( \
-          int iters) {                                                              \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H1 * W1 * 3;         \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H0 * W0;              \
-    mace::testing::MaccProcessed(macc);                                             \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                             \
-    ResizeBilinearBenchmark<DEVICE, TYPE>(iters, N, C, H0, W0, H1, W1);             \
-  }                                                                                 \
-  BENCHMARK(                                                                        \
-      BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_##DEVICE)
+#define BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)        \
+  static void                                                               \
+      BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
+        ##DEVICE(                                                           \
+          int iters) {                                                      \
+    const int64_t macc = static_cast<int64_t>(iters) * N * C * H1 * W1 * 3; \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H0 * W0;      \
+    mace::testing::MaccProcessed(macc);                                     \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                     \
+    ResizeBilinearBenchmark<DEVICE, TYPE>(iters, N, C, H0, W0, H1, W1);     \
+  }                                                                         \
+  BENCHMARK(                                                                \
+      BM_RESIZE_BILINEAR_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
+        ##DEVICE)
 
 #define BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
   BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \

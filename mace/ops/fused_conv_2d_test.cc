@@ -27,11 +27,11 @@ void TestNHWCSimple3x3VALID() {
   net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
         .Input("InputImage")
@@ -47,7 +47,7 @@ void TestNHWCSimple3x3VALID() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(net, "OutputImage", "Output",
+    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
@@ -84,11 +84,11 @@ void TestNHWCSimple3x3SAME() {
   net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
         .Input("InputImage")
@@ -104,7 +104,7 @@ void TestNHWCSimple3x3SAME() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(net, "OutputImage", "Output",
+    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
@@ -152,9 +152,9 @@ void TestNHWCSimple3x3WithoutBias() {
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -169,7 +169,7 @@ void TestNHWCSimple3x3WithoutBias() {
     // Run
     net.RunOp(D);
     // Transfer output
-    ImageToBuffer<D, T>(net, "OutputImage", "Output",
+    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
                         kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -221,11 +221,11 @@ void TestConv1x1() {
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(net, "Filter", "FilterImage",
+    BufferToImage<D, float>(&net, "Filter", "FilterImage",
                             kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, float>(net, "Bias", "BiasImage",
+    BufferToImage<D, float>(&net, "Bias", "BiasImage",
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -240,7 +240,7 @@ void TestConv1x1() {
     // Run
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -311,11 +311,11 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     expected.Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -331,7 +331,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
   };
@@ -374,13 +374,13 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
 
     std::vector<float> float_input_data;
     GenerateRandomRealTypeData({batch, height, width, input_channels},
-                               float_input_data);
+                               &float_input_data);
     std::vector<float> float_filter_data;
     GenerateRandomRealTypeData(
         {kernel_h, kernel_w, output_channels, input_channels},
-        float_filter_data);
+        &float_filter_data);
     std::vector<float> float_bias_data;
-    GenerateRandomRealTypeData({output_channels}, float_bias_data);
+    GenerateRandomRealTypeData({output_channels}, &float_bias_data);
     // Add input data
     net.AddInputFromArray<D, float>(
         "Input", {batch, height, width, input_channels}, float_input_data);
@@ -396,11 +396,11 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     expected.Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, half>(net, "Input", "InputImage",
+    BufferToImage<D, half>(&net, "Input", "InputImage",
                            kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Filter", "FilterImage",
+    BufferToImage<D, half>(&net, "Filter", "FilterImage",
                            kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, half>(net, "Bias", "BiasImage",
+    BufferToImage<D, half>(&net, "Bias", "BiasImage",
                            kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -416,7 +416,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
@@ -474,11 +474,11 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     expected.Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -494,7 +494,7 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
   };
@@ -553,11 +553,11 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape,
     expected.Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, T>(net, "Input", "InputImage",
+    BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(net, "Filter", "FilterImage",
+    BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(net, "Bias", "BiasImage",
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -573,7 +573,7 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape,
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, T>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
   };
@@ -640,11 +640,11 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     expected.Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, half>(net, "Input", "InputImage",
+    BufferToImage<D, half>(&net, "Input", "InputImage",
                            kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(net, "Filter", "FilterImage",
+    BufferToImage<D, half>(&net, "Filter", "FilterImage",
                            kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, half>(net, "Bias", "BiasImage",
+    BufferToImage<D, half>(&net, "Bias", "BiasImage",
                            kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -660,7 +660,7 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(net, "OutputImage", "OPENCLOutput",
+    ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.7);
   };

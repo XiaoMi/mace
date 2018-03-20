@@ -18,7 +18,7 @@ static void BMWinogradTransform(
   OpsTestNet net;
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
-  BufferToImage<D, T>(net, "Input", "InputImage",
+  BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
@@ -65,7 +65,7 @@ static void BMWinogradInverseTransform(
   OpsTestNet net;
   net.AddRandomInput<D, float>("Input", {16, channels, p, 1});
 
-  BufferToImage<D, T>(net, "Input", "InputImage",
+  BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_HEIGHT);
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("InputImage")

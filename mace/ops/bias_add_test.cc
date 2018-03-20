@@ -21,9 +21,9 @@ void BiasAddSimple() {
   net.AddInputFromArray<D, float>("Bias", {1}, {0.5f});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(net, "Bias", "BiasImage",
+    BufferToImage<D, float>(&net, "Bias", "BiasImage",
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -35,7 +35,7 @@ void BiasAddSimple() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, float>(net, "OutputImage", "Output",
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -90,9 +90,9 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, float>(net, "Input", "InputImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Input", "InputImage",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, float>(net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -105,7 +105,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   net.RunOp(DeviceType::OPENCL);
   net.Sync();
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
 }
@@ -139,9 +139,9 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, float>(net, "Input", "InputImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Input", "InputImage",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, float>(net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BiasAdd", "BiasAddTest")
@@ -154,7 +154,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   net.RunOp(DeviceType::OPENCL);
   net.Sync();
 
-  ImageToBuffer<DeviceType::OPENCL, float>(net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
 }

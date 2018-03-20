@@ -23,7 +23,7 @@ static void ReluBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluBM")
@@ -83,7 +83,7 @@ static void ReluxBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxBM")
@@ -146,9 +146,9 @@ static void PreluBenchmark(
   net.AddRandomInput<D, float>("Alpha", {channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(net, "Alpha", "AlphaImage",
+    BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("Activation", "PreluBM")
@@ -210,7 +210,7 @@ static void TanhBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "TanhBM")
@@ -270,7 +270,7 @@ static void SigmoidBenchmark(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, float>(net, "Input", "InputImage",
+    BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "SigmoidBM")
