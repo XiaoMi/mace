@@ -5,6 +5,9 @@
 #ifndef MACE_KERNELS_OPENCL_HELPER_H_
 #define MACE_KERNELS_OPENCL_HELPER_H_
 
+#include <string>
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -30,7 +33,7 @@ enum BufferType {
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
-                     std::vector<size_t> &image_shape);
+                     std::vector<size_t> *image_shape);
 
 std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
                                       const BufferType type);
@@ -43,13 +46,13 @@ std::string DtToCLDt(const DataType dt);
 
 std::string DtToUpstreamCLDt(const DataType dt);
 
-void TuningOrRun3DKernel(cl::Kernel &kernel,
+void TuningOrRun3DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future);
 
-void TuningOrRun2DKernel(cl::Kernel &kernel,
+void TuningOrRun2DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,
@@ -78,7 +81,6 @@ bool IsVecEqual(const std::vector<T> &input0,
       (std::equal(input0.begin(), input0.end(), input1.begin())));
 }
 
-namespace {
 template <typename T>
 void AppendToStream(std::stringstream *ss, const std::string &delimiter, T v) {
   (*ss) << v;
@@ -92,7 +94,6 @@ void AppendToStream(std::stringstream *ss,
   (*ss) << first << delimiter;
   AppendToStream(ss, delimiter, args...);
 }
-}  // namespace
 
 template <typename... Args>
 std::string Concat(Args... args) {

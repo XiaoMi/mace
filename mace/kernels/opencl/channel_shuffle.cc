@@ -39,7 +39,8 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    kernel_ = runtime->BuildKernel("channel_shuffle", kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("channel_shuffle", kernel_name,
+                                   built_options);
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
@@ -61,7 +62,6 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
      << output->dim(2) << "_"
      << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
-
 }
 
 template

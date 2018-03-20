@@ -8,6 +8,8 @@
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
 #include <arm_neon.h>
 #endif
+#include <algorithm>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -16,8 +18,6 @@
 
 namespace mace {
 namespace kernels {
-
-namespace {
 
 template <typename T>
 void DepthwiseConv2dKernel(const T *input_ptr,
@@ -232,8 +232,6 @@ void DepthwiseConv2dNoOOBCheckKernel(const T *input_ptr,
     }
   }
 }
-
-}  // namespace
 
 struct DepthwiseConv2dFunctorBase {
   DepthwiseConv2dFunctorBase(const int *strides,

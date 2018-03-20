@@ -4,6 +4,9 @@
 #ifndef MACE_KERNELS_RESIZE_BILINEAR_H_
 #define MACE_KERNELS_RESIZE_BILINEAR_H_
 
+#include <algorithm>
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -11,7 +14,6 @@
 namespace mace {
 namespace kernels {
 
-namespace {
 struct CachedInterpolation {
   index_t lower;  // Lower source index used in the interpolation
   index_t upper;  // Upper source index used in the interpolation
@@ -100,7 +102,6 @@ void ResizeImage(const T *images,
       }
     }
   }
-}
 }
 
 struct ResizeBilinearFunctorBase {

@@ -45,7 +45,6 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
     kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
-
   }
 
   std::vector<index_t> output_shape = input_tensors[0]->shape();
@@ -56,7 +55,8 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
 
   if (!IsVecEqual(input_shape_, input_tensors[0]->shape())) {
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                    &output_image_shape);
     output_tensor->ResizeImage(output_shape, output_image_shape);
 
     uint32_t idx = 0;
@@ -75,7 +75,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
      << "_" << output_shape[2] << "_" << output_shape[3];
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
-};
+}
 
 template struct AddNFunctor<DeviceType::OPENCL, float>;
 

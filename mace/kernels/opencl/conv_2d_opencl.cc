@@ -92,7 +92,8 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                  &output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
   if (kernel_h == kernel_w && kernel_h <= 5 &&

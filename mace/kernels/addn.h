@@ -8,6 +8,7 @@
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
 #include <arm_neon.h>
 #endif
+#include <algorithm>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -17,9 +18,7 @@
 namespace mace {
 namespace kernels {
 
-namespace {
 constexpr int kCostPerGroup = 1024;
-}  // namespace
 
 template <DeviceType D, typename T>
 struct AddNFunctor {

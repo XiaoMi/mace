@@ -5,6 +5,8 @@
 #ifndef MACE_KERNELS_SLICE_H_
 #define MACE_KERNELS_SLICE_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -16,7 +18,6 @@ namespace kernels {
 
 template<DeviceType D, typename T>
 struct SliceFunctor {
-
   void operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future) {
@@ -56,15 +57,13 @@ struct SliceFunctor {
 
 template<typename T>
 struct SliceFunctor<DeviceType::OPENCL, T> {
-
   void operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future);
   cl::Kernel kernel_;
-
 };
 
-}  // namepsace kernels
+}  // namespace kernels
 }  // namespace mace
 
 #endif  // MACE_KERNELS_SLICE_H_

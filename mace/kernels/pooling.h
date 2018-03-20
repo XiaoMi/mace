@@ -2,10 +2,13 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_KERNELS_POOLING_H
-#define MACE_KERNELS_POOLING_H
+#ifndef MACE_KERNELS_POOLING_H_
+#define MACE_KERNELS_POOLING_H_
 
+#include <algorithm>
 #include <limits>
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -188,4 +191,4 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_POOLING_H
+#endif  // MACE_KERNELS_POOLING_H_

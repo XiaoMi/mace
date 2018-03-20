@@ -78,7 +78,7 @@ void BatchNormFunctor<DeviceType::NEON, float>::operator()(
       }
     }
   }
-};
+}
 
 }  // namespace kernels
 }  // namespace mace

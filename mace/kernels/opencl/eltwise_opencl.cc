@@ -35,7 +35,6 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
     kernel_ = runtime->BuildKernel("eltwise", kernel_name, built_options);
-
   }
   if (!IsVecEqual(input_shape_, input0->shape())) {
     uint32_t idx = 0;

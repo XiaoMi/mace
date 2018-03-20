@@ -16,12 +16,14 @@ void FCWXKernel(cl::Kernel *kernel,
                 std::vector<index_t> *prev_input_shape,
                 Tensor *output,
                 const ActivationType activation,
-                std::vector<uint32_t> &gws,
-                std::vector<uint32_t> &lws,
+                std::vector<uint32_t> *gws,
+                std::vector<uint32_t> *lws,
                 const float relux_max_limit,
                 StatsFuture *future) {
   MACE_CHECK(input->dim(3) % 4 == 0)
     << "FC width kernel only support input with 4x channel.";
+  MACE_CHECK_NOTNULL(gws);
+  MACE_CHECK_NOTNULL(lws);
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel->get() == nullptr) {
@@ -62,12 +64,11 @@ void FCWXKernel(cl::Kernel *kernel,
     const index_t output_blocks = RoundUpDiv4(output_size);
     const uint32_t wave_size = runtime->GetKernelWaveSize(*kernel);
 
-    gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
+    *gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
 
     const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(*kernel);
-    const uint32_t inter_local_blks = kwg_size / (gws[0] * gws[1]);
-    lws = {gws[0], gws[1], inter_local_blks};
-
+    const uint32_t inter_local_blks = kwg_size / ((*gws)[0] * (*gws)[1]);
+    *lws = {(*gws)[0], (*gws)[1], inter_local_blks};
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t batch = output->dim(0);
@@ -80,21 +81,22 @@ void FCWXKernel(cl::Kernel *kernel,
       kernel->setArg(idx++, *(bias->opencl_image()));
     }
     kernel->setArg(idx++, *(output->opencl_image()));
-    kernel->setArg(idx++, (lws[0] * lws[1] * lws[2] * sizeof(float)), nullptr);
+    kernel->setArg(idx++, ((*lws)[0] * (*lws)[1] * (*lws)[2] * sizeof(float)),
+                   nullptr);
     kernel->setArg(idx++, static_cast<int>(input->dim(1)));
     kernel->setArg(idx++, static_cast<int>(input->dim(2)));
     kernel->setArg(idx++, static_cast<int>(RoundUpDiv4(input->dim(3))));
     kernel->setArg(idx++, static_cast<int>(output_blocks));
     kernel->setArg(idx++, relux_max_limit);
 
-    gws[2] = static_cast<uint32_t>(batch * output_blocks);
+    (*gws)[2] = static_cast<uint32_t>(batch * output_blocks);
 
     *prev_input_shape = input->shape();
   }
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      *kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+      *kernel, cl::NullRange, cl::NDRange((*gws)[0], (*gws)[1], (*gws)[2]),
+      cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 
   if (future != nullptr) {
@@ -105,7 +107,6 @@ void FCWXKernel(cl::Kernel *kernel,
       }
     };
   }
-
 }
 
 template <typename T>
@@ -116,10 +117,12 @@ void FCWTXKernel(cl::Kernel *kernel,
                  std::vector<index_t> *prev_input_shape,
                  Tensor *output,
                  const ActivationType activation,
-                 std::vector<uint32_t> &gws,
-                 std::vector<uint32_t> &lws,
+                 std::vector<uint32_t> *gws,
+                 std::vector<uint32_t> *lws,
                  const float relux_max_limit,
                  StatsFuture *future) {
+  MACE_CHECK_NOTNULL(gws);
+  MACE_CHECK_NOTNULL(lws);
   if (kernel->get() == nullptr) {
     auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
@@ -152,7 +155,7 @@ void FCWTXKernel(cl::Kernel *kernel,
     *kernel =
         runtime->BuildKernel("fully_connected", kernel_name, built_options);
 
-    lws = {16, 64, 1};
+    *lws = {16, 64, 1};
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
@@ -171,18 +174,16 @@ void FCWTXKernel(cl::Kernel *kernel,
     const index_t batch = output->dim(0);
     const index_t output_blocks = RoundUpDiv4(output->dim(3));
 
-    gws = {
+    *gws = {
         static_cast<uint32_t>(batch), static_cast<uint32_t>(output_blocks),
     };
-
     *prev_input_shape = input->shape();
   }
 
   std::stringstream ss;
   ss << "fc_opencl_kernel_" << output->dim(0) << "_" << output->dim(1) << "_"
      << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun2DKernel(*kernel, ss.str(), gws.data(), lws, future);
-
+  TuningOrRun2DKernel(*kernel, ss.str(), gws->data(), *lws, future);
 }
 
 template <typename T>
@@ -194,17 +195,18 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
     StatsFuture *future) {
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                  &output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
   if (weight_type_ == BufferType::WEIGHT_HEIGHT) {
     FCWTXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                   activation_, gws_, lws_, relux_max_limit_, future);
+                   activation_, &gws_, &lws_, relux_max_limit_, future);
   } else {
     FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                  activation_, gws_, lws_, relux_max_limit_, future);
+                  activation_, &gws_, &lws_, relux_max_limit_, future);
   }
-};
+}
 
 template struct FullyConnectedFunctor<DeviceType::OPENCL, float>;
 

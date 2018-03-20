@@ -33,7 +33,6 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
-
   }
   if (!IsVecEqual(input_shape_, logits->shape())) {
     uint32_t idx = 0;

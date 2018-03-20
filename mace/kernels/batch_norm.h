@@ -8,6 +8,7 @@
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
 #include <arm_neon.h>
 #endif
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -159,7 +160,7 @@ struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
   std::vector<index_t> input_shape_;
 };
 
-}  // namepsace kernels
+}  // namespace kernels
 }  // namespace mace
 
 #endif  // MACE_KERNELS_BATCH_NORM_H_

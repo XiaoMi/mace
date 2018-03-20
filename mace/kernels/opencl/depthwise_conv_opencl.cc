@@ -91,18 +91,18 @@ void DepthwiseConv2d(cl::Kernel *kernel,
     }
     kernel->setArg(idx++, *(output->opencl_image()));
     kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, static_cast<short>(input_height));
-    kernel->setArg(idx++, static_cast<short>(input_width));
-    kernel->setArg(idx++, static_cast<short>(input_channel_blocks));
-    kernel->setArg(idx++, static_cast<short>(height));
-    kernel->setArg(idx++, static_cast<short>(width));
-    kernel->setArg(idx++, static_cast<short>(filter_height));
-    kernel->setArg(idx++, static_cast<short>(filter_width));
-    kernel->setArg(idx++, static_cast<short>(paddings[0] / 2));
-    kernel->setArg(idx++, static_cast<short>(paddings[1] / 2));
+    kernel->setArg(idx++, static_cast<int16_t>(input_height));
+    kernel->setArg(idx++, static_cast<int16_t>(input_width));
+    kernel->setArg(idx++, static_cast<int16_t>(input_channel_blocks));
+    kernel->setArg(idx++, static_cast<int16_t>(height));
+    kernel->setArg(idx++, static_cast<int16_t>(width));
+    kernel->setArg(idx++, static_cast<int16_t>(filter_height));
+    kernel->setArg(idx++, static_cast<int16_t>(filter_width));
+    kernel->setArg(idx++, static_cast<int16_t>(paddings[0] / 2));
+    kernel->setArg(idx++, static_cast<int16_t>(paddings[1] / 2));
     if (stride != 1 || dilations[0] != 1 || dilations[1] != 1) {
-      kernel->setArg(idx++, static_cast<short>(dilations[0]));
-      kernel->setArg(idx++, static_cast<short>(dilations[1]));
+      kernel->setArg(idx++, static_cast<int16_t>(dilations[0]));
+      kernel->setArg(idx++, static_cast<int16_t>(dilations[1]));
     }
     *prev_input_shape = input->shape();
   }
@@ -159,7 +159,8 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
   }
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                  &output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
   DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),

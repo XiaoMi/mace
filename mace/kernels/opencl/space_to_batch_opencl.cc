@@ -22,7 +22,8 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     StatsFuture *future) {
   const char *kernel_name = nullptr;
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                  &output_image_shape);
   if (b2s_) {
     space_tensor->ResizeImage(output_shape, output_image_shape);
     kernel_name = "batch_to_space";
@@ -42,7 +43,6 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
     kernel_ =
         runtime->BuildKernel("space_to_batch", kernel_name, built_options);
-
   }
   if (!IsVecEqual(space_shape_, space_tensor->shape())) {
     uint32_t idx = 0;

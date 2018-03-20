@@ -8,6 +8,8 @@
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
 #include <arm_neon.h>
 #endif
+#include <algorithm>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -18,7 +20,6 @@
 
 namespace mace {
 namespace kernels {
-namespace {
 
 template <typename T,
           int inc_tile_size,
@@ -61,9 +62,9 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
         // AArch64 NEON has 32 128-bit general purpose registers
         static_assert(inc_tile_size == 4, "input channels tile size must be 4");
-        float32x4_t in[h_count * w_count];
+        float32x4_t in[h_count * w_count];  // NOLINT(runtime/arrays)
 #else
-        T in[h_count * w_count * inc_tile_size];
+        T in[h_count * w_count * inc_tile_size];  // NOLINT(runtime/arrays)
 #endif
         for (int hi = 0; hi < h_count; ++hi) {
           for (int wi = 0; wi < w_count; ++wi) {
@@ -86,9 +87,9 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
 
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
         static_assert(inc_tile_size == 4, "input channels tile size must be 4");
-        float32x4_t weights[c_count];
+        float32x4_t weights[c_count];  // NOLINT(runtime/arrays)
 #else
-        T weights[c_count * inc_tile_size];
+        T weights[c_count * inc_tile_size];  // NOLINT(runtime/arrays)
 #endif
         for (int ci = 0; ci < c_count; ++ci) {
           const int weights_idx = ci;
@@ -126,7 +127,7 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
       }
       // handling the remaining input channels
       for (; inc < input_channels; ++inc) {
-        T in[h_count * w_count];
+        T in[h_count * w_count];  // NOLINT(runtime/arrays)
         for (int hi = 0; hi < h_count; ++hi) {
           for (int wi = 0; wi < w_count; ++wi) {
             const int in_idx = hi * w_count + wi;
@@ -138,7 +139,7 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
           }
         }
 
-        T weights[c_count];
+        T weights[c_count];  // NOLINT(runtime/arrays)
         for (int ci = 0; ci < c_count; ++ci) {
           const int weights_idx = ci;
           const int filter_offset =
@@ -173,7 +174,6 @@ void Conv2dKernelFunc(const T *input_ptr,  // batch start
     }
   }
 }
-};  // namespace
 
 struct Conv2dFunctorBase {
   Conv2dFunctorBase(const int *strides,
@@ -331,7 +331,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
     auto output_data = output->mutable_data<T>();
 
     constexpr int inc_tile_size = 4;
-// TODO Auto tuning these parameters
+// TODO(heliangliang) Auto tuning these parameters
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
     const int c_tile_size = 4;
     const int h_tile_size = 2;
