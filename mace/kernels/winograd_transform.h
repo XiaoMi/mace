@@ -5,6 +5,8 @@
 #ifndef MACE_KERNELS_WINOGRAD_TRANSFORM_H_
 #define MACE_KERNELS_WINOGRAD_TRANSFORM_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"

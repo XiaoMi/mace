@@ -5,6 +5,10 @@
 #ifndef MACE_KERNELS_SOFTMAX_H_
 #define MACE_KERNELS_SOFTMAX_H_
 
+#include <algorithm>
+#include <functional>
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -38,7 +42,7 @@ struct SoftmaxFunctor {
         for (index_t c = 1; c < num_classes; ++c) {
           max_value = std::max(max_value, logits_ptr[pos + c]);
         }
-        // TODO: check overflow?
+        // TODO(liuqi): check overflow?
         T sum = 0;
         for (index_t c = 0; c < num_classes; ++c) {
           exp_data[c] = ::exp((logits_ptr[pos + c] - max_value));
@@ -60,7 +64,7 @@ struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   std::vector<index_t> input_shape_;
 };
 
-}  // namepsace kernels
+}  // namespace kernels
 }  // namespace mace
 
 #endif  // MACE_KERNELS_SOFTMAX_H_

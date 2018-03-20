@@ -36,12 +36,11 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       built_options.emplace("-DPOOL_AVG");
     }
     kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
-
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     std::vector<index_t> output_shape(4);
-    std::vector<index_t> filter_shape = {kernels_[0], kernels_[1], input->dim(3),
-                                         input->dim(3)};
+    std::vector<index_t> filter_shape = {kernels_[0], kernels_[1],
+                                         input->dim(3), input->dim(3)};
 
     std::vector<int> paddings(2);
     if (paddings_.empty()) {
@@ -50,12 +49,14 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
           padding_type_, output_shape.data(), paddings.data());
     } else {
       paddings = paddings_;
-      CalcOutputSize(input->shape().data(), filter_shape.data(), paddings_.data(),
-                     dilations_, strides_, RoundType::CEIL, output_shape.data());
+      CalcOutputSize(input->shape().data(), filter_shape.data(),
+                     paddings_.data(), dilations_, strides_, RoundType::CEIL,
+                     output_shape.data());
     }
 
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, output_image_shape);
+    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
+                    &output_image_shape);
     output->ResizeImage(output_shape, output_image_shape);
 
     uint32_t idx = 0;

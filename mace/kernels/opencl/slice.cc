@@ -24,7 +24,7 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
                                      input->dim(2), output_channels});
 
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
   for (size_t i= 0; i < outputs_count; ++i) {
     output_list[i]->ResizeImage(output_shape, image_shape);
   }

@@ -68,7 +68,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
     auto runtime = OpenCLRuntime::Global();
     *kernel = runtime->BuildKernel("conv_2d_1x1", kernel_name, built_options);
-
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;

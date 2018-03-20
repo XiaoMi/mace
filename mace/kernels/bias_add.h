@@ -5,6 +5,8 @@
 #ifndef MACE_KERNELS_BIAS_ADD_H_
 #define MACE_KERNELS_BIAS_ADD_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -65,7 +67,7 @@ struct BiasAddFunctor<DeviceType::OPENCL, T> {
   std::vector<index_t> input_shape_;
 };
 
-}  // namepsace kernels
+}  // namespace kernels
 }  // namespace mace
 
 #endif  // MACE_KERNELS_BIAS_ADD_H_

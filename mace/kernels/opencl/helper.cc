@@ -3,6 +3,11 @@
 //
 
 #include "mace/kernels/opencl/helper.h"
+
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "mace/utils/tuner.h"
 #include "mace/utils/utils.h"
 
@@ -11,91 +16,92 @@ namespace kernels {
 
 // [(C + 3) / 4 * W, N * H]
 void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
-                           std::vector<size_t> &image_shape) {
+                           std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = RoundUpDiv4(shape[3]) * shape[2];
-  image_shape[1] = shape[0] * shape[1];
+  image_shape->resize(2);
+  (*image_shape)[0] = RoundUpDiv4(shape[3]) * shape[2];
+  (*image_shape)[1] = shape[0] * shape[1];
 }
 
 // [RoundUp<4>(Ic) * H * W, (Oc + 3) / 4]
 void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWOI */
-                               std::vector<size_t> &image_shape) {
+                               std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[3], 4);
-  image_shape[1] = RoundUpDiv4(shape[2]);
+  image_shape->resize(2);
+  (*image_shape)[0] = shape[0] * shape[1] * RoundUp<index_t>(shape[3], 4);
+  (*image_shape)[1] = RoundUpDiv4(shape[2]);
 }
 
 // [H * W * M, (Ic + 3) / 4]
 void CalDepthwiseConv2dFilterImageShape(
     const std::vector<index_t> &shape, /* HWIM */
-    std::vector<size_t> &image_shape) {
+    std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = shape[0] * shape[1] * shape[3];
-  image_shape[1] = RoundUpDiv4(shape[2]);
+  image_shape->resize(2);
+  (*image_shape)[0] = shape[0] * shape[1] * shape[3];
+  (*image_shape)[1] = RoundUpDiv4(shape[2]);
 }
 
 // [(size + 3) / 4, 1]
 void CalArgImageShape(const std::vector<index_t> &shape,
-                      std::vector<size_t> &image_shape) {
+                      std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 1);
-  image_shape.resize(2);
-  image_shape[0] = RoundUpDiv4(shape[0]);
-  image_shape[1] = 1;
+  image_shape->resize(2);
+  (*image_shape)[0] = RoundUpDiv4(shape[0]);
+  (*image_shape)[1] = 1;
 }
 
 // Only support 3x3 now
 // [ (Ic + 3) / 4, 16 * Oc]
 void CalWinogradFilterImageShape(
     const std::vector<index_t> &shape, /* Oc, Ic, H, W*/
-    std::vector<size_t> &image_shape) {
+    std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = RoundUpDiv4(shape[1]);
-  image_shape[1] = (shape[0] << 4);
+  image_shape->resize(2);
+  (*image_shape)[0] = RoundUpDiv4(shape[1]);
+  (*image_shape)[1] = (shape[0] << 4);
 }
 
 // [W * C, N * RoundUp<4>(H)]
 void CalInOutHeightImageShape(const std::vector<index_t> &shape, /* NHWC */
-                              std::vector<size_t> &image_shape) {
+                              std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = shape[2] * shape[3];
-  image_shape[1] = shape[0] * RoundUpDiv4(shape[1]);
+  image_shape->resize(2);
+  (*image_shape)[0] = shape[2] * shape[3];
+  (*image_shape)[1] = shape[0] * RoundUpDiv4(shape[1]);
 }
 
 // [RoundUp<4>(W) * C, N * H]
 void CalInOutWidthImageShape(const std::vector<index_t> &shape, /* NHWC */
-                             std::vector<size_t> &image_shape) {
+                             std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
-  image_shape.resize(2);
-  image_shape[0] = RoundUpDiv4(shape[2]) * shape[3];
-  image_shape[1] = shape[0] * shape[1];
+  image_shape->resize(2);
+  (*image_shape)[0] = RoundUpDiv4(shape[2]) * shape[3];
+  (*image_shape)[1] = shape[0] * shape[1];
 }
 
 // [W, (H + 3) / 4]
 void CalWeightHeightImageShape(const std::vector<index_t> &shape, /* HW */
-                               std::vector<size_t> &image_shape) {
+                               std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 2);
-  image_shape.resize(2);
-  image_shape[0] = shape[1];
-  image_shape[1] = RoundUpDiv4(shape[0]);
+  image_shape->resize(2);
+  (*image_shape)[0] = shape[1];
+  (*image_shape)[1] = RoundUpDiv4(shape[0]);
 }
 
 // [(W + 3) / 4, H]
 void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* HW */
-                              std::vector<size_t> &image_shape) {
+                              std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 2);
-  image_shape.resize(2);
-  image_shape[0] = RoundUpDiv4(shape[1]);
-  image_shape[1] = shape[0];
+  image_shape->resize(2);
+  (*image_shape)[0] = RoundUpDiv4(shape[1]);
+  (*image_shape)[1] = shape[0];
 }
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
-                     std::vector<size_t> &image_shape) {
+                     std::vector<size_t> *image_shape) {
+  MACE_CHECK_NOTNULL(image_shape);
   switch (type) {
     case CONV2D_FILTER:
       CalConv2dFilterImageShape(shape, image_shape);
@@ -188,7 +194,7 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
   }
 }
 
-void TuningOrRun3DKernel(cl::Kernel &kernel,
+void TuningOrRun3DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,
@@ -202,7 +208,7 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
     local_ws[2] =
         std::min<uint32_t>(gws[2], kwg_size / (local_ws[0] * local_ws[1]));
     return {
-        // TODO tuning these magic numbers
+        // TODO(heliangliang): tuning these magic numbers
         {local_ws[0], local_ws[1], local_ws[2], 1},
         {kwg_size / 16, 4, 4, 1},
         {kwg_size / 32, 4, 8, 1},
@@ -291,7 +297,7 @@ void TuningOrRun3DKernel(cl::Kernel &kernel,
   }
 }
 
-void TuningOrRun2DKernel(cl::Kernel &kernel,
+void TuningOrRun2DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,

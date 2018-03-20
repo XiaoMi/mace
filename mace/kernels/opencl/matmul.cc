@@ -17,7 +17,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
                                                       StatsFuture *future) {
   std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
-  CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, c_image_shape);
+  CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
   C->ResizeImage(c_shape, c_image_shape);
 
   const index_t batch = C->dim(0);
@@ -56,7 +56,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   ss << "matmul_opencl_kernel_" << C->dim(0) << "_" << C->dim(1) << "_"
      << C->dim(2) << "_" << C->dim(3);
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
-};
+}
 
 template struct MatMulFunctor<DeviceType::OPENCL, float>;
 

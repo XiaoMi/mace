@@ -14,7 +14,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     Tensor *buffer, const BufferType type, Tensor *image, StatsFuture *future) {
   std::vector<size_t> image_shape;
   if (!i2b_) {
-    CalImage2DShape(buffer->shape(), type, image_shape);
+    CalImage2DShape(buffer->shape(), type, &image_shape);
     if (type == WINOGRAD_FILTER) {
       std::vector<index_t> new_shape = CalWinogradShape(buffer->shape(), type);
       image->ResizeImage(new_shape, image_shape);

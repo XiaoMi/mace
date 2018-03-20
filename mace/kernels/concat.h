@@ -5,6 +5,8 @@
 #ifndef MACE_KERNELS_CONCAT_H_
 #define MACE_KERNELS_CONCAT_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -15,14 +17,14 @@ namespace mace {
 namespace kernels {
 
 struct ConcatFunctorBase {
-  ConcatFunctorBase(const int32_t axis) : axis_(axis) {}
+  explicit ConcatFunctorBase(const int32_t axis) : axis_(axis) {}
 
   int32_t axis_;
 };
 
 template <DeviceType D, typename T>
 struct ConcatFunctor : ConcatFunctorBase {
-  ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
+  explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
 
   void operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
@@ -77,7 +79,7 @@ struct ConcatFunctor : ConcatFunctorBase {
 
 template <typename T>
 struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
-  ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
+  explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
 
   void operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
@@ -86,7 +88,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
   std::vector<index_t> input_shape_;
 };
 
-}  // namepsace kernels
+}  // namespace kernels
 }  // namespace mace
 
 #endif  // MACE_KERNELS_CONCAT_H_

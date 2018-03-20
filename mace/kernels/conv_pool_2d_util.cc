@@ -4,6 +4,8 @@
 
 #include "mace/kernels/conv_pool_2d_util.h"
 
+#include <vector>
+
 namespace mace {
 namespace kernels {
 
@@ -56,7 +58,7 @@ void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
-  // TODO may be it's better to also truncate the left/top to
+  // TODO(liuqi): may be it's better to also truncate the left/top to
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
 
@@ -120,7 +122,7 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
-  // TODO may be it's better to also truncate the left/top to
+  // TODO(liuqi): may be it's better to also truncate the left/top to
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
 
@@ -219,7 +221,7 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
   }
 
   // Note: TensorFlow may padded one more on the right/bottom side
-  // TODO may be it's better to also truncate the left/top to
+  // TODO(liuqi): may be it's better to also truncate the left/top to
   // utilize the more centered features. We need to benchmark
   // based on the model accuracy.
   padding_size[0] = std::max<int>(

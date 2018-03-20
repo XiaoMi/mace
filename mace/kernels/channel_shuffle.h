@@ -5,6 +5,8 @@
 #ifndef MACE_KERNELS_CHANNEL_SHUFFLE_H_
 #define MACE_KERNELS_CHANNEL_SHUFFLE_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 
@@ -13,7 +15,7 @@ namespace kernels {
 
 template <DeviceType D, typename T>
 struct ChannelShuffleFunctor {
-  ChannelShuffleFunctor(const int groups) : groups_(groups) {}
+  explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 
   void operator()(const Tensor *input,
                   Tensor *output,
@@ -49,7 +51,7 @@ struct ChannelShuffleFunctor {
 
 template <typename T>
 struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
-  ChannelShuffleFunctor(const int groups) : groups_(groups) {}
+  explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 

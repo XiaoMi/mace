@@ -4,6 +4,8 @@
 #ifndef MACE_KERNELS_RESHAPE_H_
 #define MACE_KERNELS_RESHAPE_H_
 
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
@@ -20,7 +22,7 @@ struct ReshapeFunctor {
                   Tensor *output,
                   StatsFuture *future) {
     output->Resize(out_shape);
-    // TODO copy on write to avoid this copy.
+    // TODO(liuqi): copy on write to avoid this copy.
     output->CopyBytes(input->raw_data(), input->size() * sizeof(T));
   }
 };

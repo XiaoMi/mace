@@ -21,7 +21,6 @@
 namespace mace {
 namespace kernels {
 
-namespace {
 template<typename T,
   int register_tile_size,
   int h_count,
@@ -87,7 +86,6 @@ inline void MatMulKernelFunc(const T *A,
     }
   }
 }
-}  // namespace
 
 #define MACE_DO_MATMUL(HC, WC, KC) \
 MatMulKernelFunc<T, register_tile_size, HC, WC, KC>(a_ptr_batch_base, \
@@ -117,7 +115,6 @@ switch (k_count) { \
   default: \
     LOG(FATAL) << "Unsupported k tile: " << k_count; \
 }
-
 
 #define MACE_CASE_W_MATMUL(HC) \
 switch (w_count) { \

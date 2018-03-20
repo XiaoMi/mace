@@ -34,7 +34,6 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     kernel_ =
         runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
-
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
@@ -42,7 +41,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
 
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                    output_image_shape);
+                    &output_image_shape);
     output->ResizeImage(output_shape, output_image_shape);
 
     float height_scale =
@@ -60,7 +59,6 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
 
     input_shape_ = input->shape();
-
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),

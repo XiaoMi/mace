@@ -2,8 +2,10 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_KERNELS_CONV_2D_H_
-#define MACE_KERNELS_CONV_2D_H_
+#ifndef MACE_KERNELS_SPACE_TO_BATCH_H_
+#define MACE_KERNELS_SPACE_TO_BATCH_H_
+
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -60,4 +62,4 @@ struct SpaceToBatchFunctor<DeviceType::OPENCL, T> : SpaceToBatchFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_CONV_2D_H_
+#endif  // MACE_KERNELS_SPACE_TO_BATCH_H_

@@ -41,7 +41,6 @@ static void Concat2(cl::Kernel *kernel,
       built_options.emplace("-DDIVISIBLE_FOUR");
     }
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
-
   }
   if (!IsVecEqual(*prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
@@ -140,7 +139,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
       inputs_count == 2 || divisible_four,
       "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, image_shape);
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
   output->ResizeImage(output_shape, image_shape);
 
   switch (inputs_count) {
@@ -155,7 +154,7 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
         MACE_NOT_IMPLEMENTED;
       }
   }
-};
+}
 
 template struct ConcatFunctor<DeviceType::OPENCL, float>;
 template struct ConcatFunctor<DeviceType::OPENCL, half>;

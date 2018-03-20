@@ -296,7 +296,7 @@ void Conv2dNeonK1x1S1(const float *input,  // NCHW
       }
     }
   }
-};
+}
 
 void Conv2dNeonPixelK1x1S1(
     const float *input,  // NCHW
@@ -321,7 +321,7 @@ void Conv2dNeonPixelK1x1S1(
 
   const index_t total_pixels = height * width;
   // Process 4 * 2 = 8 pixels for each innermost loop
-  // TODO Does 64 bit v.s. 32 bit index matters? need benchmark
+  // TODO(heliangliang): Does 64 bit v.s. 32 bit index matters? need benchmark
   const index_t total_loops = total_pixels >> 3;
   const index_t loop_remaining = total_pixels & 7;
 
@@ -329,7 +329,7 @@ void Conv2dNeonPixelK1x1S1(
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < channels; ++c) {
       const float *filter_ptr = filter + c * input_channels;
-      // TODO Will GCC opt these out?
+      // TODO(heliangliang): Will GCC opt these out?
       float *channel_output_start =
           output + n * channels * height * width + c * height * width;
       const float *input_ptr =
@@ -469,7 +469,7 @@ void Conv2dNeonPixelK1x1S1(
       }
     }
   }
-};
+}
 
 }  // namespace kernels
 }  // namespace mace
