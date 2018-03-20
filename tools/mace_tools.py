@@ -237,6 +237,7 @@ def main(unused_args):
         # Transfer params by environment
         os.environ["MODEL_TAG"] = model_name
         print '=======================', model_name, '======================='
+        skip_validate = configs["models"][model_name]["skip_validate"]
         model_config = configs["models"][model_name]
         for key in model_config:
           if key in ['input_nodes', 'output_nodes'] and isinstance(
@@ -294,7 +295,7 @@ def main(unused_args):
         if FLAGS.mode == "benchmark":
           benchmark_model(target_soc, model_output_dir, option_args)
 
-        if FLAGS.mode == "validate" or FLAGS.mode == "all":
+        if FLAGS.mode == "validate" or (FLAGS.mode == "all" and skip_validate == 0):
           validate_model(target_soc, model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
