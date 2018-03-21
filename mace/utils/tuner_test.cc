@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
-#include <thread>
+#include <thread>  // NOLINT(build/c++11)
 
 #include "gtest/gtest.h"
 

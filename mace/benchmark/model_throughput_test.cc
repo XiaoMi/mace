@@ -19,15 +19,12 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>
-#include <thread>
+#include <thread>  // NOLINT(build/c++11)
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
-
-using namespace std;
-using namespace mace;
 
 namespace mace {
 
@@ -73,15 +70,15 @@ extern const std::string ModelChecksum();
 }  // namespace MACE_DSP_MODEL_TAG
 #endif
 
-}  // namespace mace
+namespace benchmark {
 
-void ParseShape(const string &str, vector<int64_t> *shape) {
-  string tmp = str;
+void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
+  std::string tmp = str;
   while (!tmp.empty()) {
     int dim = atoi(tmp.data());
     shape->push_back(dim);
     size_t next_offset = tmp.find(",");
-    if (next_offset == string::npos) {
+    if (next_offset == std::string::npos) {
       break;
     } else {
       tmp = tmp.substr(next_offset + 1);
@@ -89,7 +86,7 @@ void ParseShape(const string &str, vector<int64_t> *shape) {
   }
 }
 
-DeviceType ParseDeviceType(const string &device_str) {
+DeviceType ParseDeviceType(const std::string &device_str) {
   if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
   } else if (device_str.compare("NEON") == 0) {
@@ -111,20 +108,23 @@ DEFINE_string(gpu_model_data_file, "", "gpu model data file name");
 DEFINE_string(dsp_model_data_file, "", "dsp model data file name");
 DEFINE_int32(run_seconds, 10, "run seconds");
 
-int main(int argc, char **argv) {
+int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
   LOG(INFO) << "mace git version: " << MaceGitVersion();
 #ifdef MACE_CPU_MODEL_TAG
-  LOG(INFO) << "cpu model checksum: " << mace::MACE_CPU_MODEL_TAG::ModelChecksum();
+  LOG(INFO) << "cpu model checksum: "
+            << mace::MACE_CPU_MODEL_TAG::ModelChecksum();
 #endif
 #ifdef MACE_GPU_MODEL_TAG
-  LOG(INFO) << "gpu model checksum: " << mace::MACE_GPU_MODEL_TAG::ModelChecksum();
+  LOG(INFO) << "gpu model checksum: "
+            << mace::MACE_GPU_MODEL_TAG::ModelChecksum();
 #endif
 #ifdef MACE_DSP_MODEL_TAG
-  LOG(INFO) << "dsp model checksum: " << mace::MACE_DSP_MODEL_TAG::ModelChecksum();
+  LOG(INFO) << "dsp model checksum: "
+            << mace::MACE_DSP_MODEL_TAG::ModelChecksum();
 #endif
   LOG(INFO) << "input_shape: " << FLAGS_input_shape;
   LOG(INFO) << "output_shape: " << FLAGS_output_shape;
@@ -134,8 +134,8 @@ int main(int argc, char **argv) {
   LOG(INFO) << "dsp_model_data_file: " << FLAGS_dsp_model_data_file;
   LOG(INFO) << "run_seconds: " << FLAGS_run_seconds;
 
-  vector<int64_t> input_shape_vec;
-  vector<int64_t> output_shape_vec;
+  std::vector<int64_t> input_shape_vec;
+  std::vector<int64_t> output_shape_vec;
   ParseShape(FLAGS_input_shape, &input_shape_vec);
   ParseShape(FLAGS_output_shape, &output_shape_vec);
 
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
   std::unique_ptr<float[]> dsp_output_data(new float[output_size]);
 
   // load input
-  ifstream in_file(FLAGS_input_file, ios::in | ios::binary);
+  std::ifstream in_file(FLAGS_input_file, std::ios::in | std::ios::binary);
   if (in_file.is_open()) {
     in_file.read(reinterpret_cast<char *>(input_data.get()),
                  input_size * sizeof(float));
@@ -166,7 +166,8 @@ int main(int argc, char **argv) {
   /* --------------------- CPU init ----------------------- */
   LOG(INFO) << "Load & init cpu model and warm up";
   const unsigned char *cpu_model_data =
-      mace::MACE_CPU_MODEL_TAG::LoadModelData(FLAGS_cpu_model_data_file.c_str());
+      mace::MACE_CPU_MODEL_TAG::LoadModelData(
+      FLAGS_cpu_model_data_file.c_str());
   NetDef cpu_net_def = mace::MACE_CPU_MODEL_TAG::CreateNet(cpu_model_data);
 
   mace::MaceEngine cpu_engine(&cpu_net_def, DeviceType::CPU);
@@ -182,7 +183,8 @@ int main(int argc, char **argv) {
   /* --------------------- GPU init ----------------------- */
   LOG(INFO) << "Load & init gpu model and warm up";
   const unsigned char *gpu_model_data =
-      mace::MACE_GPU_MODEL_TAG::LoadModelData(FLAGS_gpu_model_data_file.c_str());
+      mace::MACE_GPU_MODEL_TAG::LoadModelData(
+      FLAGS_gpu_model_data_file.c_str());
   NetDef gpu_net_def = mace::MACE_GPU_MODEL_TAG::CreateNet(gpu_model_data);
 
   mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::OPENCL);
@@ -199,7 +201,8 @@ int main(int argc, char **argv) {
   /* --------------------- DSP init ----------------------- */
   LOG(INFO) << "Load & init dsp model and warm up";
   const unsigned char *dsp_model_data =
-      mace::MACE_DSP_MODEL_TAG::LoadModelData(FLAGS_gpu_model_data_file.c_str());
+      mace::MACE_DSP_MODEL_TAG::LoadModelData(
+      FLAGS_gpu_model_data_file.c_str());
   NetDef dsp_net_def = mace::MACE_DSP_MODEL_TAG::CreateNet(dsp_model_data);
 
   mace::MaceEngine dsp_engine(&dsp_net_def, DeviceType::HEXAGON);
@@ -278,4 +281,11 @@ int main(int argc, char **argv) {
 #endif
 
   LOG(INFO) << "Total throughput: " << total_throughput << " f/s";
+
+  return 0;
 }
+
+}  // namespace benchmark
+}  // namespace mace
+
+int main(int argc, char **argv) { mace::benchmark::Main(argc, argv); }

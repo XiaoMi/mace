@@ -2,10 +2,11 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_TOOLS_BENCHMARK_STAT_SUMMARIZER_H_
-#define MACE_TOOLS_BENCHMARK_STAT_SUMMARIZER_H_
+#ifndef MACE_BENCHMARK_STAT_SUMMARIZER_H_
+#define MACE_BENCHMARK_STAT_SUMMARIZER_H_
 
 #include <stdlib.h>
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <map>
@@ -16,6 +17,8 @@
 namespace mace {
 
 class RunMetadata;
+
+namespace benchmark {
 
 template <typename ValueType, typename HighPrecisionValueType = double>
 class Stat {
@@ -194,6 +197,7 @@ class StatSummarizer {
   StatSummarizerOptions options_;
 };
 
-}  //  namespace mace
+}  // namespace benchmark
+}  // namespace mace
 
-#endif  // MACE_TOOLS_BENCHMARK_STAT_SUMMARIZER_H_
+#endif  // MACE_BENCHMARK_STAT_SUMMARIZER_H_

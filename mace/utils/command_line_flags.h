@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_CORE_COMMAND_LINE_FLAGS_H
-#define MACE_CORE_COMMAND_LINE_FLAGS_H
+#ifndef MACE_UTILS_COMMAND_LINE_FLAGS_H_
+#define MACE_UTILS_COMMAND_LINE_FLAGS_H_
 
 #include <string>
 #include <vector>
@@ -13,7 +13,7 @@ namespace mace {
 class Flag {
  public:
   Flag(const char *name, int *dst1, const std::string &usage_text);
-  Flag(const char *name, long long *dst1, const std::string &usage_text);
+  Flag(const char *name, int64_t *dst1, const std::string &usage_text);
   Flag(const char *name, bool *dst, const std::string &usage_text);
   Flag(const char *name, std::string *dst, const std::string &usage_text);
   Flag(const char *name, float *dst, const std::string &usage_text);
@@ -26,7 +26,7 @@ class Flag {
   std::string name_;
   enum { TYPE_INT, TYPE_INT64, TYPE_BOOL, TYPE_STRING, TYPE_FLOAT } type_;
   int *int_value_;
-  long long *int64_value_;
+  int64_t *int64_value_;
   bool *bool_value_;
   std::string *string_value_;
   float *float_value_;
@@ -50,4 +50,4 @@ class Flags {
 
 }  // namespace mace
 
-#endif  // MACE_CORE_COMMAND_LINE_FLAGS_H
+#endif  // MACE_UTILS_COMMAND_LINE_FLAGS_H_

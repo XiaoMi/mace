@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
 #include <fstream>
 #include <map>
 #include <string>

@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2017 XiaoMi All rights reserved.
+//
 #include <map>
 #include <string>
 #include <unordered_map>

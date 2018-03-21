@@ -3,32 +3,32 @@
 //
 
 #include "mace/utils/command_line_flags.h"
-#include "mace/utils/logging.h"
 
 #include <cstring>
 #include <iomanip>
 
+#include "mace/utils/logging.h"
+
 namespace mace {
-namespace {
+namespace utils {
 
-using namespace std;
-
-bool StringConsume(string &arg, const string &x) {
-  if ((arg.size() >= x.size()) &&
-      (memcmp(arg.data(), x.data(), x.size()) == 0)) {
-    arg = arg.substr(x.size());
+bool StringConsume(const std::string &x, std::string *arg) {
+  MACE_CHECK_NOTNULL(arg);
+  if ((arg->size() >= x.size()) &&
+      (memcmp(arg->data(), x.data(), x.size()) == 0)) {
+    *arg = arg->substr(x.size());
     return true;
   }
   return false;
 }
 
-bool ParseStringFlag(string arg,
-                     string flag,
-                     string *dst,
+bool ParseStringFlag(std::string arg,
+                     std::string flag,
+                     std::string *dst,
                      bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
-      StringConsume(arg, "=")) {
+  if (StringConsume("--", &arg) && StringConsume(flag, &arg) &&
+      StringConsume("=", &arg)) {
     *dst = arg;
     return true;
   }
@@ -36,13 +36,13 @@ bool ParseStringFlag(string arg,
   return false;
 }
 
-bool ParseInt32Flag(string arg,
-                    string flag,
+bool ParseInt32Flag(std::string arg,
+                    std::string flag,
                     int32_t *dst,
                     bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
-      StringConsume(arg, "=")) {
+  if (StringConsume("--", &arg) && StringConsume(flag, &arg) &&
+      StringConsume("=", &arg)) {
     char extra;
     if (sscanf(arg.data(), "%d%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -55,13 +55,13 @@ bool ParseInt32Flag(string arg,
   return false;
 }
 
-bool ParseInt64Flag(string arg,
-                    string flag,
-                    long long *dst,
+bool ParseInt64Flag(std::string arg,
+                    std::string flag,
+                    int64_t *dst,
                     bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
-      StringConsume(arg, "=")) {
+  if (StringConsume("--", &arg) && StringConsume(flag, &arg) &&
+      StringConsume("=", &arg)) {
     char extra;
     if (sscanf(arg.data(), "%lld%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -74,9 +74,10 @@ bool ParseInt64Flag(string arg,
   return false;
 }
 
-bool ParseBoolFlag(string arg, string flag, bool *dst, bool *value_parsing_ok) {
+bool ParseBoolFlag(std::string arg, std::string flag,
+                   bool *dst, bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag)) {
+  if (StringConsume("--", &arg) && StringConsume(flag, &arg)) {
     if (arg.empty()) {
       *dst = true;
       return true;
@@ -99,13 +100,13 @@ bool ParseBoolFlag(string arg, string flag, bool *dst, bool *value_parsing_ok) {
   return false;
 }
 
-bool ParseFloatFlag(string arg,
-                    string flag,
+bool ParseFloatFlag(std::string arg,
+                    std::string flag,
                     float *dst,
                     bool *value_parsing_ok) {
   *value_parsing_ok = true;
-  if (StringConsume(arg, "--") && StringConsume(arg, flag) &&
-      StringConsume(arg, "=")) {
+  if (StringConsume("--", &arg) && StringConsume(flag, &arg) &&
+      StringConsume("=", &arg)) {
     char extra;
     if (sscanf(arg.data(), "%f%c", dst, &extra) != 1) {
       LOG(ERROR) << "Couldn't interpret value " << arg << " for flag " << flag
@@ -118,47 +119,48 @@ bool ParseFloatFlag(string arg,
   return false;
 }
 
-}  // namespace
+}  // namespace utils
 
-Flag::Flag(const char *name, int *dst, const string &usage_text)
+Flag::Flag(const char *name, int *dst, const std::string &usage_text)
     : name_(name), type_(TYPE_INT), int_value_(dst), usage_text_(usage_text) {}
 
-Flag::Flag(const char *name, long long *dst, const string &usage_text)
+Flag::Flag(const char *name, int64_t *dst, const std::string &usage_text)
     : name_(name),
       type_(TYPE_INT64),
       int64_value_(dst),
       usage_text_(usage_text) {}
 
-Flag::Flag(const char *name, bool *dst, const string &usage_text)
+Flag::Flag(const char *name, bool *dst, const std::string &usage_text)
     : name_(name),
       type_(TYPE_BOOL),
       bool_value_(dst),
       usage_text_(usage_text) {}
 
-Flag::Flag(const char *name, string *dst, const string &usage_text)
+Flag::Flag(const char *name, std::string *dst, const std::string &usage_text)
     : name_(name),
       type_(TYPE_STRING),
       string_value_(dst),
       usage_text_(usage_text) {}
 
-Flag::Flag(const char *name, float *dst, const string &usage_text)
+Flag::Flag(const char *name, float *dst, const std::string &usage_text)
     : name_(name),
       type_(TYPE_FLOAT),
       float_value_(dst),
       usage_text_(usage_text) {}
 
-bool Flag::Parse(string arg, bool *value_parsing_ok) const {
+bool Flag::Parse(std::string arg, bool *value_parsing_ok) const {
   bool result = false;
   if (type_ == TYPE_INT) {
-    result = ParseInt32Flag(arg, name_, int_value_, value_parsing_ok);
+    result = utils::ParseInt32Flag(arg, name_, int_value_, value_parsing_ok);
   } else if (type_ == TYPE_INT64) {
-    result = ParseInt64Flag(arg, name_, int64_value_, value_parsing_ok);
+    result = utils::ParseInt64Flag(arg, name_, int64_value_, value_parsing_ok);
   } else if (type_ == TYPE_BOOL) {
-    result = ParseBoolFlag(arg, name_, bool_value_, value_parsing_ok);
+    result = utils::ParseBoolFlag(arg, name_, bool_value_, value_parsing_ok);
   } else if (type_ == TYPE_STRING) {
-    result = ParseStringFlag(arg, name_, string_value_, value_parsing_ok);
+    result = utils::ParseStringFlag(arg, name_,
+                                    string_value_, value_parsing_ok);
   } else if (type_ == TYPE_FLOAT) {
-    result = ParseFloatFlag(arg, name_, float_value_, value_parsing_ok);
+    result = utils::ParseFloatFlag(arg, name_, float_value_, value_parsing_ok);
   }
   return result;
 }
@@ -169,7 +171,7 @@ bool Flag::Parse(string arg, bool *value_parsing_ok) const {
   bool result = true;
   std::vector<char *> unknown_flags;
   for (int i = 1; i < *argc; ++i) {
-    if (string(argv[i]) == "--") {
+    if (std::string(argv[i]) == "--") {
       while (i < *argc) {
         unknown_flags.push_back(argv[i]);
         ++i;
@@ -202,8 +204,8 @@ bool Flag::Parse(string arg, bool *value_parsing_ok) const {
   return result && (*argc < 2 || strcmp(argv[1], "--help") != 0);
 }
 
-/*static*/ string Flags::Usage(const string &cmdline,
-                               const std::vector<Flag> &flag_list) {
+std::string Flags::Usage(const std::string &cmdline,
+                         const std::vector<Flag> &flag_list) {
   std::stringstream usage_text;
   usage_text << "usage: " << cmdline << std::endl;
 

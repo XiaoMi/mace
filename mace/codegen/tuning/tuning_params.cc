@@ -13,4 +13,4 @@ namespace mace {
 extern const std::map<std::string, std::vector<unsigned int>>
     kTuningParamsData = {};
 
-}  // namespace
+}  // namespace mace

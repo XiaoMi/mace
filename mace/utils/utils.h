@@ -7,6 +7,8 @@
 
 #include <sys/time.h>
 #include <sstream>
+#include <string>
+#include <utility>
 
 namespace mace {
 template <typename Integer>

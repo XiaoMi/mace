@@ -2,8 +2,8 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_UTILS_ENV_TIME_H
-#define MACE_UTILS_ENV_TIME_H
+#ifndef MACE_UTILS_ENV_TIME_H_
+#define MACE_UTILS_ENV_TIME_H_
 
 #include <stdint.h>
 #include <sys/time.h>
@@ -19,4 +19,4 @@ inline int64_t NowMicros() {
 
 }  // namespace mace
 
-#endif  // MACE_UTILS_ENV_TIME_H
+#endif  // MACE_UTILS_ENV_TIME_H_

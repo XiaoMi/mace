@@ -16,8 +16,6 @@
  */
 #include <malloc.h>
 #include <stdint.h>
-#include <sys/time.h>
-#include <time.h>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -27,9 +25,6 @@
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
-
-using namespace std;
-using namespace mace;
 
 namespace mace {
 namespace MACE_MODEL_TAG {
@@ -45,6 +40,8 @@ extern const std::string ModelChecksum();
 }  // namespace MACE_MODEL_TAG
 }  // namespace mace
 
+namespace mace {
+namespace examples {
 
 namespace str_util {
 
@@ -65,13 +62,13 @@ std::vector<std::string> Split(const std::string &str, char delims) {
 
 }  // namespace str_util
 
-void ParseShape(const string &str, vector<int64_t> *shape) {
-  string tmp = str;
+void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
+  std::string tmp = str;
   while (!tmp.empty()) {
     int dim = atoi(tmp.data());
     shape->push_back(dim);
     size_t next_offset = tmp.find(",");
-    if (next_offset == string::npos) {
+    if (next_offset == std::string::npos) {
       break;
     } else {
       tmp = tmp.substr(next_offset + 1);
@@ -87,7 +84,7 @@ std::string FormatName(const std::string input) {
   return res;
 }
 
-DeviceType ParseDeviceType(const string &device_str) {
+DeviceType ParseDeviceType(const std::string &device_str) {
   if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
   } else if (device_str.compare("NEON") == 0) {
@@ -101,7 +98,7 @@ DeviceType ParseDeviceType(const string &device_str) {
   }
 }
 
-GPUType ParseGPUType(const string &gpu_type_str) {
+GPUType ParseGPUType(const std::string &gpu_type_str) {
   if (gpu_type_str.compare("ADRENO") == 0) {
     return GPUType::ADRENO;
   } else if (gpu_type_str.compare("MALI") == 0) {
@@ -158,12 +155,18 @@ struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   return curr;
 }
 
-DEFINE_string(input_node, "input_node0,input_node1", "input nodes, separated by comma");
-DEFINE_string(input_shape, "1,224,224,3:1,1,1,10", "input shapes, separated by colon and comma");
-DEFINE_string(output_node, "output_node0,output_node1", "output nodes, separated by comma");
-DEFINE_string(output_shape, "1,224,224,2:1,1,1,10", "output shapes, separated by colon and comma");
-DEFINE_string(input_file, "", "input file name | input file prefix for multiple inputs.");
-DEFINE_string(output_file, "", "output file name | output file prefix for multiple outputs");
+DEFINE_string(input_node, "input_node0,input_node1",
+              "input nodes, separated by comma");
+DEFINE_string(input_shape, "1,224,224,3:1,1,1,10",
+              "input shapes, separated by colon and comma");
+DEFINE_string(output_node, "output_node0,output_node1",
+              "output nodes, separated by comma");
+DEFINE_string(output_shape, "1,224,224,2:1,1,1,10",
+              "output shapes, separated by colon and comma");
+DEFINE_string(input_file, "",
+              "input file name | input file prefix for multiple inputs.");
+DEFINE_string(output_file, "",
+              "output file name | output file prefix for multiple outputs");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
@@ -174,7 +177,8 @@ DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
 DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
-DEFINE_int32(cpu_power_option, 0, "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
+DEFINE_int32(cpu_power_option, 0,
+             "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
 
 bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
                           const std::vector<int64_t> &output_shape) {
@@ -197,8 +201,7 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
         gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
-  else if (device_type == DeviceType::CPU) {
+  } else if (device_type == DeviceType::CPU) {
     mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
@@ -227,7 +230,8 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
   std::unique_ptr<float[]> output_data(new float[output_size]);
 
   // load input
-  ifstream in_file(FLAGS_input_file + "_" + FormatName(FLAGS_input_node), ios::in | ios::binary);
+  std::ifstream in_file(FLAGS_input_file + "_" + FormatName(FLAGS_input_node),
+                        std::ios::in | std::ios::binary);
   if (in_file.is_open()) {
     in_file.read(reinterpret_cast<char *>(input_data.get()),
                  input_size * sizeof(float));
@@ -262,7 +266,7 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
     if (output_data != nullptr) {
       std::string
         output_name = FLAGS_output_file + "_" + FormatName(FLAGS_output_node);
-      ofstream out_file(output_name, ios::binary);
+      std::ofstream out_file(output_name, std::ios::binary);
       out_file.write((const char *) (output_data.get()),
                      output_size * sizeof(float));
       out_file.flush();
@@ -279,10 +283,11 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
   return true;
 }
 
-bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
-                           const std::vector<std::vector<int64_t>> &input_shapes,
-                           const std::vector<std::string> &output_names,
-                           const std::vector<std::vector<int64_t>> &output_shapes) {
+bool MultipleInputOrOutput(
+    const std::vector<std::string> &input_names,
+    const std::vector<std::vector<int64_t>> &input_shapes,
+    const std::vector<std::string> &output_names,
+    const std::vector<std::vector<int64_t>> &output_shapes) {
   // load model
   int64_t t0 = NowMicros();
   const unsigned char *model_data =
@@ -302,8 +307,7 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
         gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
-  else if (device_type == DeviceType::CPU) {
+  } else if (device_type == DeviceType::CPU) {
     mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
@@ -333,7 +337,8 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
                         std::multiplies<int64_t>());
     input_datas[i].reset(new float[input_size]);
     // load input
-    ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]), ios::in | ios::binary);
+    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
+                          std::ios::in | std::ios::binary);
     if (in_file.is_open()) {
       in_file.read(reinterpret_cast<char *>(input_datas[i].get()),
                    input_size * sizeof(float));
@@ -377,8 +382,9 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
   }
 
   for (size_t i = 0; i < output_count; ++i) {
-    std::string output_name = FLAGS_output_file + "_" + FormatName(output_names[i]);
-    ofstream out_file(output_name, ios::binary);
+    std::string output_name = FLAGS_output_file + "_"
+        + FormatName(output_names[i]);
+    std::ofstream out_file(output_name, std::ios::binary);
     int64_t output_size =
         std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
                         std::multiplies<int64_t>());
@@ -395,7 +401,7 @@ bool MultipleInputOrOutput(const std::vector<std::string> &input_names,
   return true;
 }
 
-int main(int argc, char **argv) {
+int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -419,14 +425,17 @@ int main(int argc, char **argv) {
   LOG(INFO) << "cpu_power_option: " << FLAGS_cpu_power_option;
 
   std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
-  std::vector<std::string> output_names = str_util::Split(FLAGS_output_node, ',');
-  std::vector<std::string> input_shapes = str_util::Split(FLAGS_input_shape, ':');
-  std::vector<std::string> output_shapes = str_util::Split(FLAGS_output_shape, ':');
+  std::vector<std::string> output_names =
+      str_util::Split(FLAGS_output_node, ',');
+  std::vector<std::string> input_shapes =
+      str_util::Split(FLAGS_input_shape, ':');
+  std::vector<std::string> output_shapes =
+      str_util::Split(FLAGS_output_shape, ':');
 
   const size_t input_count = input_shapes.size();
   const size_t output_count = output_shapes.size();
-  std::vector<vector<int64_t>> input_shape_vec(input_count);
-  std::vector<vector<int64_t>> output_shape_vec(output_count);
+  std::vector<std::vector<int64_t>> input_shape_vec(input_count);
+  std::vector<std::vector<int64_t>> output_shape_vec(output_count);
   for (size_t i = 0; i < input_count; ++i) {
     ParseShape(input_shapes[i], &input_shape_vec[i]);
   }
@@ -447,9 +456,14 @@ int main(int argc, char **argv) {
                                   output_shape_vec);
     }
   }
-  if(ret) {
+  if (ret) {
     return 0;
   } else {
     return -1;
   }
 }
+
+}  // namespace examples
+}  // namespace mace
+
+int main(int argc, char **argv) { mace::examples::Main(argc, argv); }
