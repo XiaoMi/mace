@@ -323,21 +323,21 @@ void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
   }
 }
 
-uint32_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
+uint64_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
   uint64_t size = 0;
   device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
-  return static_cast<uint32_t>(size);
+  return size;
 }
 
-uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
+uint64_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
-  return static_cast<uint32_t>(size);
+  return size;
 }
 
 // TODO(liuqi): not compatible with mali gpu.
-uint32_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
-  uint32_t size = 0;
+uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
+  uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
   return size;
 }

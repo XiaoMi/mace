@@ -62,11 +62,13 @@ void FCWXKernel(cl::Kernel *kernel,
     const index_t batch = output->dim(0);
     const index_t output_size = output->dim(3);
     const index_t output_blocks = RoundUpDiv4(output_size);
-    const uint32_t wave_size = runtime->GetKernelWaveSize(*kernel);
+    const uint32_t wave_size =
+        static_cast<uint32_t>(runtime->GetKernelWaveSize(*kernel));
 
     *gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
 
-    const uint32_t kwg_size = runtime->GetKernelMaxWorkGroupSize(*kernel);
+    const uint32_t kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
     const uint32_t inter_local_blks = kwg_size / ((*gws)[0] * (*gws)[1]);
     *lws = {(*gws)[0], (*gws)[1], inter_local_blks};
   }
