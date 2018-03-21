@@ -35,7 +35,7 @@ RUN pip install --upgrade pip
 
 ENV ANDROID_NDK_HOME /opt/android-ndk
 ENV ANDROID_NDK /opt/android-ndk
-ENV ANDROID_NDK_VERSION r15c
+ENV ANDROID_NDK_VERSION r12b
 
 # Android NDK
 # download
