@@ -13,8 +13,7 @@ void Register_Proposal(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ProposalOp<DeviceType::CPU, float>);
-
 }
 
 }  // namespace ops
-}  //  namespace mace
+}  // namespace mace
