@@ -337,9 +337,9 @@ uint32_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
 
 // TODO(liuqi): not compatible with mali gpu.
 uint32_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
-  unsigned long long size = 0;
+  uint32_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
-  return static_cast<uint32_t>(size);
+  return size;
 }
 
 }  // namespace mace
