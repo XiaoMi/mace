@@ -91,6 +91,8 @@ extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
 extern void Register_Slice(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
+extern void Register_SpaceToDepth(OperatorRegistry *op_registry);
+extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_WinogradTransform(OperatorRegistry *op_registry);
 
@@ -125,6 +127,8 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Slice(this);
   ops::Register_Softmax(this);
   ops::Register_SpaceToBatchND(this);
+  ops::Register_SpaceToDepth(this);
+  ops::Register_MatMul(this);
   ops::Register_WinogradInverseTransform(this);
   ops::Register_WinogradTransform(this);
 }

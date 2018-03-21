@@ -2,22 +2,22 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#ifndef MACE_OPS_DEPTH_TO_SPACE_H_
-#define MACE_OPS_DEPTH_TO_SPACE_H_
+#ifndef MACE_OPS_SPACE_TO_DEPTH_H_
+#define MACE_OPS_SPACE_TO_DEPTH_H_
 
 #include <memory>
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/kernels/depth_to_space.h"
+#include "mace/kernels/space_to_depth.h"
 
 namespace mace {
 namespace ops {
 
 template <DeviceType D, typename T>
-class DepthToSpaceOp : public Operator<D, T> {
+class SpaceToDepthOp : public Operator<D, T> {
   public:
-  DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
+  SpaceToDepthOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         functor_(OperatorBase::GetSingleArgument<int>("block_size", 1)) {}
 
@@ -28,9 +28,11 @@ class DepthToSpaceOp : public Operator<D, T> {
 	  
 	  const int block_size = OperatorBase::GetSingleArgument<int>("block_size", 1);
 
-	  int input_depth = input->dim(3);
-	  MACE_CHECK(input_depth % (block_size * block_size) == 0,
-				 "input depth should be dividable by block_size * block_size",
+      const int input_height = input->dim(1);
+      const int input_width  = input->dim(2);
+	  const int input_depth = input->dim(3);
+	  MACE_CHECK((input_width % block_size == 0) && (input_height % block_size == 0),
+				 "input width and height should be dividable by block_size",
 				 input->dim(3));
 	  functor_(input, output, future);
 	  return true;
@@ -41,11 +43,11 @@ class DepthToSpaceOp : public Operator<D, T> {
     OP_OUTPUT_TAGS(OUTPUT);
     
   private:
-    kernels::DepthToSpaceOpFunctor<D, T> functor_;
+    kernels::SpaceToDepthOpFunctor<D, T> functor_;
 
 };
 
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_DEPTH_TO_SPACE_H_
+#endif  // MACE_OPS_SPACE_TO_DEPTH_H_
