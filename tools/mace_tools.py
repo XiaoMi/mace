@@ -237,7 +237,7 @@ def main(unused_args):
         # Transfer params by environment
         os.environ["MODEL_TAG"] = model_name
         print '=======================', model_name, '======================='
-        skip_validation = configs["models"][model_name]["skip_validation"]
+        skip_validation = configs["models"][model_name].get("skip_validation", 0)
         model_config = configs["models"][model_name]
         for key in model_config:
           if key in ['input_nodes', 'output_nodes'] and isinstance(
