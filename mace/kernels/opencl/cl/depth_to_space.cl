@@ -1,23 +1,26 @@
 #include <common.h>
 
-// assume channes_per_group mod 4 = 0 && groups mod 4 == 0
-__kernel void channel_shuffle(__read_only image2d_t input,
-                      __private const int groups,
-                      __private const int channels_per_group,
+__kernel void depth_to-space(__read_only image2d_t input,
+                      __private const int block_size,
+                      __private const int batch_size,
+                      __private const int input_height,
+                      __private const int input_width,
+                      __private const int input_depth,
+                      __private const int output_height,
+                      __private const int output_width,
+                      __private const int output_depth,
                       __write_only image2d_t output) {
-  const int group_chan_blk_idx = get_global_id(0);
-  const int width_idx = get_global_id(1);
+  const int ch_blk = get_global_id(0);
+  const int w = get_global_id(1);
+  const int hb = get_global_id(2);
   const int width = get_global_size(1);
-  const int hb_idx = get_global_id(2);
-  const int group_blks = groups / 4;
-  const int groups_blks_width = group_blks * width;
-  const int channels_per_group_blks = channels_per_group / 4;
-  const int channels_per_group_blks_width = channels_per_group_blks * width;
 
-  DATA_TYPE4 in_chan_data0, in_chan_data1, in_chan_data2, in_chan_data3;
-  DATA_TYPE4 out_chan_data0, out_chan_data1, out_chan_data2, out_chan_data3;
-
-  int in_x = mad24(group_chan_blk_idx, width, width_idx);
+  const int out_idx = mad24(ch_blk, width, w);
+  
+  const int d = out_idx % output_depth;
+  const int out_idx2 = out_idx / output_depth;
+  const int w = out_idx2 % output_width
+  
   for (short g_blk = 0; g_blk < group_blks; ++g_blk) {
     // fetch 4 groups, for each group fetch 4 channels
     in_chan_data0 = READ_IMAGET(input, SAMPLER, (int2)(in_x, hb_idx));
