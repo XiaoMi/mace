@@ -23,16 +23,7 @@ struct DepthToSpaceOpFunctor {
     const int input_width = input->dim(2);
     const int input_depth = input->dim(3);
     
-    std::cout << "input shape: {" << batch_size <<", ";
-    std::cout << input_height << ", ";
-    std::cout << input_width << ", ";
-    std::cout << input_depth << ", ";
-    
-    std::cout << "block size= " << block_size_<<std::endl;
-
-    const int block_size_sq = block_size_ * block_size_;
-
-    const index_t output_depth = input_depth / block_size_sq;
+    const index_t output_depth = input_depth / (block_size_ * block_size_);
     const index_t output_width = input_width * block_size_;
     const index_t output_height = input_height * block_size_;
     output_shape[0] = batch_size;
@@ -40,15 +31,10 @@ struct DepthToSpaceOpFunctor {
     output_shape[2] = output_width;
     output_shape[3] = output_depth;
     
-    std::cout << "output shape: {" << batch_size <<", ";
-    std::cout << output_height << ", ";
-    std::cout << output_width << ", ";
-    std::cout << output_depth << ", "<<std::endl;
- 
     output->Resize(output_shape);
 
-    // Tensor::MappingGuard logits_guard(input);
-    // Tensor::MappingGuard output_guard(output);
+    Tensor::MappingGuard logits_guard(input);
+    Tensor::MappingGuard output_guard(output);
     const T *input_ptr = input->data<T>();
     T *output_ptr = output->mutable_data<T>();
 
@@ -74,12 +60,7 @@ struct DepthToSpaceOpFunctor {
   }
   const int block_size_;
 };
-/*
-template <>
-void DepthToSpaceOpFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,                                                           
-                                                           Tensor *output,
-                                                           StatsFuture *future);
-*/
+
 template <typename T>
 struct DepthToSpaceOpFunctor<DeviceType::OPENCL, T> {
 

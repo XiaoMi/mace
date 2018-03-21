@@ -2,29 +2,29 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
-#include "mace/ops/depth_to_space.h"
+#include "mace/ops/space_to_depth.h"
 
 namespace mace {
 namespace ops {
 
-void Register_DepthToSpace(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthToSpace")
+void Register_SpaceToDepth(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToDepth")
                                      .Device(DeviceType::CPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    DepthToSpaceOp<DeviceType::CPU, float>);
+                    SpaceToDepthOp<DeviceType::CPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthToSpace")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToDepth")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    DepthToSpaceOp<DeviceType::OPENCL, float>);
+                    SpaceToDepthOp<DeviceType::OPENCL, float>);
                     
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthToSpace")
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToDepth")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    DepthToSpaceOp<DeviceType::OPENCL, half>);
+                    SpaceToDepthOp<DeviceType::OPENCL, half>);
 
 }
 
