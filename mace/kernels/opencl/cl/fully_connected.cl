@@ -81,7 +81,7 @@ __kernel void fully_connected_width(__read_only image2d_t input,
 
   int2 input_coord, weight_coord;
   DATA_TYPE4 in, w;
-  DATA_TYPE sum = 0.0;
+  DATA_TYPE sum = 0;
 
   input_coord = (int2)(0, mul24(batch_idx, input_height));
 
@@ -107,7 +107,8 @@ __kernel void fully_connected_width(__read_only image2d_t input,
     input_coord.y++;
   }
 
-  const short inter_out_offset = mad24(get_local_id(1), 4, get_local_id(0));
+  const short inter_out_offset = mad24((short)get_local_id(1), (short)4,
+                                       (short)get_local_id(0));
   const short local_width_blk_size = (short)get_local_size(1);
   const short local_size = mul24((short)get_local_size(0),
                                  local_width_blk_size);

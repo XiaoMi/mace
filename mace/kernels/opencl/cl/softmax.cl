@@ -12,7 +12,7 @@ __kernel void softmax(__read_only image2d_t input,
 
   int pos = width_idx;
   DATA_TYPE max_value = -FLT_MAX;
-  DATA_TYPE sum = 0.0;
+  DATA_TYPE sum = 0;
   DATA_TYPE4 data;
   for (short i = 0; i < chan_blks; ++i) {
     data = READ_IMAGET(input, SAMPLER, (int2)(pos, hb_idx));
