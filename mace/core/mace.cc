@@ -355,7 +355,7 @@ void ConfigOpenCLRuntime(GPUPerfHint gpu_perf_hint,
                          GPUPriorityHint gpu_priority_hint) {
   VLOG(1) << "Set GPU configurations, gpu_perf_hint: " << gpu_perf_hint
           << ", gpu_priority_hint: " << gpu_priority_hint;
-  OpenCLRuntime::CreateGlobal(gpu_perf_hint, gpu_priority_hint);
+  OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
 
 void ConfigOmpThreadsAndAffinity(int omp_num_threads,
