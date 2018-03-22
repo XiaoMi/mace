@@ -178,6 +178,18 @@ class Tensor {
     }
   }
 
+  inline void ResizeWithBuffer(const std::vector<index_t> &shape,
+                               BufferBase *buffer) {
+    MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
+    shape_ = shape;
+    image_shape_.clear();
+    if (buffer_ != nullptr && is_buffer_owner_) {
+      delete buffer_;
+    }
+    buffer_ = buffer;
+    is_buffer_owner_ = false;
+  }
+
   inline void ResizeImage(const std::vector<index_t> &shape,
                           const std::vector<size_t> &image_shape) {
     shape_ = shape;
