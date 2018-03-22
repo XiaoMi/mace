@@ -21,9 +21,7 @@ struct ReshapeFunctor {
                   const std::vector<index_t> &out_shape,
                   Tensor *output,
                   StatsFuture *future) {
-    output->Resize(out_shape);
-    // TODO(liuqi): copy on write to avoid this copy.
-    output->CopyBytes(input->raw_data(), input->size() * sizeof(T));
+    output->ResizeWithBuffer(out_shape, input->UnderlyingBuffer());
   }
 };
 
