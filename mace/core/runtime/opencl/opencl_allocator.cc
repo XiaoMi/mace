@@ -41,7 +41,6 @@ void *OpenCLAllocator::New(size_t nbytes) const {
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                       nbytes, nullptr, &error);
   MACE_CHECK(error == CL_SUCCESS) << "error code: " << error;
-  MACE_CHECK_NOTNULL(buffer);
   return static_cast<void *>(buffer);
 }
 

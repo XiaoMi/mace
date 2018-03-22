@@ -98,16 +98,6 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
-GPUType ParseGPUType(const std::string &gpu_type_str) {
-  if (gpu_type_str.compare("ADRENO") == 0) {
-    return GPUType::ADRENO;
-  } else if (gpu_type_str.compare("MALI") == 0) {
-    return GPUType::MALI;
-  } else {
-    return GPUType::ADRENO;
-  }
-}
-
 struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
   if (prev.arena != curr.arena) {
@@ -173,7 +163,6 @@ DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
-DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
 DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
@@ -196,9 +185,7 @@ bool SingleInputAndOutput(const std::vector<int64_t> &input_shape,
 
   // config runtime
   if (device_type == DeviceType::OPENCL) {
-    GPUType gpu_type = ParseGPUType(FLAGS_gpu_type);
     mace::ConfigOpenCLRuntime(
-        gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   } else if (device_type == DeviceType::CPU) {
@@ -302,9 +289,7 @@ bool MultipleInputOrOutput(
 
   // config runtime
   if (device_type == DeviceType::OPENCL) {
-    GPUType gpu_type = ParseGPUType(FLAGS_gpu_type);
     mace::ConfigOpenCLRuntime(
-        gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   } else if (device_type == DeviceType::CPU) {
@@ -418,7 +403,6 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "device: " << FLAGS_device;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;
-  LOG(INFO) << "gpu_type: " << FLAGS_gpu_type;
   LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
   LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;

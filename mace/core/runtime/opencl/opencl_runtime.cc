@@ -70,66 +70,61 @@ std::unique_ptr<OpenCLRuntime> OpenCLRuntime::runtime_instance_ = nullptr;
 OpenCLRuntime *OpenCLRuntime::Global() {
   // FIXME: not thread safe
   if (runtime_instance_ == nullptr) {
-    return CreateGlobal(GPUType::ADRENO, GPUPerfHint::PERF_DEFAULT,
+    return CreateGlobal(GPUPerfHint::PERF_DEFAULT,
                         GPUPriorityHint::PRIORITY_DEFAULT);
   }
   return runtime_instance_.get();
 }
 
-OpenCLRuntime *OpenCLRuntime::CreateGlobal(GPUType gpu_type,
-                                           GPUPerfHint gpu_perf_hint,
+OpenCLRuntime *OpenCLRuntime::CreateGlobal(GPUPerfHint gpu_perf_hint,
                                            GPUPriorityHint gpu_priority_hint) {
   runtime_instance_ =
-      std::unique_ptr<OpenCLRuntime>(new OpenCLRuntime(gpu_type, gpu_perf_hint,
+      std::unique_ptr<OpenCLRuntime>(new OpenCLRuntime(gpu_perf_hint,
                                                        gpu_priority_hint));
   return runtime_instance_.get();
 }
 
-void ParseOpenCLRuntimeConfig(std::vector<cl_context_properties> *properties,
-                              GPUType gpu_type,
-                              GPUPerfHint gpu_perf_hint,
-                              GPUPriorityHint gpu_priority_hint) {
+void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
+                                GPUPerfHint gpu_perf_hint,
+                                GPUPriorityHint gpu_priority_hint) {
   MACE_CHECK_NOTNULL(properties);
-  if (gpu_type == GPUType::ADRENO) {
-    switch (gpu_perf_hint) {
-      case GPUPerfHint::PERF_LOW:
-        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
-        properties->push_back(CL_PERF_HINT_LOW_QCOM);
-        break;
-      case GPUPerfHint::PERF_NORMAL:
-        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
-        properties->push_back(CL_PERF_HINT_NORMAL_QCOM);
-        break;
-      case GPUPerfHint::PERF_HIGH:
-        properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
-        properties->push_back(CL_PERF_HINT_HIGH_QCOM);
-        break;
-      default:break;
-    }
-    switch (gpu_priority_hint) {
-      case GPUPriorityHint::PRIORITY_LOW:
-        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
-        properties->push_back(CL_PRIORITY_HINT_LOW_QCOM);
-        break;
-      case GPUPriorityHint::PRIORITY_NORMAL:
-        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
-        properties->push_back(CL_PRIORITY_HINT_NORMAL_QCOM);
-        break;
-      case GPUPriorityHint::PRIORITY_HIGH:
-        properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
-        properties->push_back(CL_PRIORITY_HINT_HIGH_QCOM);
-        break;
-      default:break;
-    }
-  } else {
-    LOG(WARNING) << "GPU options are only supported by Adreno GPU";
+  switch (gpu_perf_hint) {
+    case GPUPerfHint::PERF_LOW:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_LOW_QCOM);
+      break;
+    case GPUPerfHint::PERF_NORMAL:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_NORMAL_QCOM);
+      break;
+    case GPUPerfHint::PERF_HIGH:
+      properties->push_back(CL_CONTEXT_PERF_HINT_QCOM);
+      properties->push_back(CL_PERF_HINT_HIGH_QCOM);
+      break;
+    default:
+      break;
   }
-
+  switch (gpu_priority_hint) {
+    case GPUPriorityHint::PRIORITY_LOW:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_LOW_QCOM);
+      break;
+    case GPUPriorityHint::PRIORITY_NORMAL:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_NORMAL_QCOM);
+      break;
+    case GPUPriorityHint::PRIORITY_HIGH:
+      properties->push_back(CL_CONTEXT_PRIORITY_HINT_QCOM);
+      properties->push_back(CL_PRIORITY_HINT_HIGH_QCOM);
+      break;
+    default:
+      break;
+  }
   // The properties list should be terminated with 0
   properties->push_back(0);
 }
 
-OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
+OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
                              GPUPriorityHint gpu_priority_hint) {
   LoadOpenCLLibrary();
 
@@ -151,12 +146,19 @@ OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
   }
 
   bool gpu_detected = false;
-  cl::Device gpu_device;
+  bool is_adreno_gpu = false;
+  device_ = std::make_shared<cl::Device>();
   for (auto device : all_devices) {
     if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
-      gpu_device = device;
+      *device_ = device;
       gpu_detected = true;
-      VLOG(1) << "Using device: " << device.getInfo<CL_DEVICE_NAME>();
+      const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
+      constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+      if (device_name == kQualcommAdrenoGPUStr) {
+        is_adreno_gpu = true;
+      }
+
+      VLOG(1) << "Using device: " << device_name;
       break;
     }
   }
@@ -172,28 +174,38 @@ OpenCLRuntime::OpenCLRuntime(GPUType gpu_type, GPUPerfHint gpu_perf_hint,
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 
-  std::vector<cl_context_properties> context_properties;
-  context_properties.reserve(5);
-  ParseOpenCLRuntimeConfig(&context_properties, gpu_type, gpu_perf_hint,
-                           gpu_priority_hint);
+  cl_int err;
+  if (is_adreno_gpu) {
+    std::vector<cl_context_properties> context_properties;
+    context_properties.reserve(5);
+    GetAdrenoContextProperties(&context_properties, gpu_perf_hint,
+                               gpu_priority_hint);
+    context_ = std::shared_ptr<cl::Context>(
+        new cl::Context({*device_}, context_properties.data(),
+                        nullptr, nullptr, &err));
+  } else {
+    context_ = std::shared_ptr<cl::Context>(
+        new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+  }
+  MACE_CHECK(err == CL_SUCCESS) << "error code: " << err;
 
-  cl::Context context({gpu_device}, context_properties.data());
-  cl::CommandQueue command_queue(context, gpu_device, properties);
+  command_queue_ = std::make_shared<cl::CommandQueue>(*context_,
+                                                      *device_,
+                                                      properties,
+                                                      &err);
+  MACE_CHECK(err == CL_SUCCESS) << "error code: " << err;
 
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
   this->kernel_path_ =
       std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
-
-  this->device_ = new cl::Device(gpu_device);
-  this->context_ = new cl::Context(context);
-  this->command_queue_ = new cl::CommandQueue(command_queue);
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
   built_program_map_.clear();
-  delete command_queue_;
-  delete context_;
-  delete device_;
+  // We need to control the destruction order, which has dependencies
+  command_queue_.reset();
+  context_.reset();
+  device_.reset();
   UnloadOpenCLLibrary();
 }
 

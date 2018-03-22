@@ -61,13 +61,13 @@ enum DataType {
   DT_UINT32 = 22
 };
 
-enum GPUType { ADRENO = 0, MALI = 1 };
 enum GPUPerfHint {
   PERF_DEFAULT = 0,
   PERF_LOW = 1,
   PERF_NORMAL = 2,
   PERF_HIGH = 3
 };
+
 enum GPUPriorityHint {
   PRIORITY_DEFAULT = 0,
   PRIORITY_LOW = 1,
@@ -385,7 +385,7 @@ struct MaceInputInfo {
   const float *data;
 };
 
-void ConfigOpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
+void ConfigOpenCLRuntime(GPUPerfHint, GPUPriorityHint);
 void ConfigOmpThreadsAndAffinity(int omp_num_threads,
                                  CPUPowerOption power_option);
 
