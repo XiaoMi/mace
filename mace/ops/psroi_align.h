@@ -38,7 +38,7 @@ class PSROIAlignOp : public Operator<D, T> {
   OP_OUTPUT_TAGS(OUTPUT);
 };
 
-} // namespace ops
-} // namespace mace
+}  // namespace ops
+}  // namespace mace
 
-#endif //  MACE_OPS_PSROI_ALIGN_H_
+#endif  // MACE_OPS_PSROI_ALIGN_H_

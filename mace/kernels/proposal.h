@@ -195,7 +195,6 @@ struct ProposalFunctor {
           proposals[sanc_idx][3] = std::max<float>(
               std::min<float>(pred_ctr_y + pred_h / 2, im_height),
               0);
-
         }
       }
     }

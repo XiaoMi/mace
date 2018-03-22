@@ -5,6 +5,9 @@
 #ifndef MACE_KERNELS_PSROI_ALIGN_H_
 #define MACE_KERNELS_PSROI_ALIGN_H_
 
+#include <algorithm>
+#include <vector>
+
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
@@ -169,7 +172,7 @@ struct PSROIAlignFunctor {
   const int group_size_;
 };
 
-}  //  namepsace kernels
-}  //  namespace mace
+}  // namespace kernels
+}  // namespace mace
 
-#endif  //  MACE_KERNELS_PSROI_ALIGN_H_
+#endif  // MACE_KERNELS_PSROI_ALIGN_H_
