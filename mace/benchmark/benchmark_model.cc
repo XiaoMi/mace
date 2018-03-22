@@ -212,7 +212,6 @@ DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
-DEFINE_string(gpu_type, "ADRENO", "ADRENO/MALI");
 DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 8, "num of openmp threads");
@@ -227,7 +226,6 @@ int Main(int argc, char **argv) {
 
   LOG(INFO) << "Benchmark name: [" << FLAGS_benchmark_name << "]";
   LOG(INFO) << "Device: [" << FLAGS_device << "]";
-  LOG(INFO) << "gpu_type: [" << FLAGS_gpu_type << "]";
   LOG(INFO) << "gpu_perf_hint: [" << FLAGS_gpu_perf_hint << "]";
   LOG(INFO) << "gpu_priority_hint: [" << FLAGS_gpu_priority_hint << "]";
   LOG(INFO) << "omp_num_threads: [" << FLAGS_omp_num_threads << "]";
@@ -270,10 +268,7 @@ int Main(int argc, char **argv) {
 
   // config runtime
   if (device_type == OPENCL) {
-    GPUType gpu_type = ADRENO;
-    if (FLAGS_gpu_type == "MALI") gpu_type = MALI;
     mace::ConfigOpenCLRuntime(
-        gpu_type,
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   } else if (device_type == CPU) {

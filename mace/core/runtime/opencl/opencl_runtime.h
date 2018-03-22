@@ -39,7 +39,7 @@ class OpenCLProfilingTimer : public Timer {
 class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
-  static OpenCLRuntime *CreateGlobal(GPUType, GPUPerfHint, GPUPriorityHint);
+  static OpenCLRuntime *CreateGlobal(GPUPerfHint, GPUPriorityHint);
 
   cl::Context &context();
   cl::Device &device();
@@ -55,7 +55,7 @@ class OpenCLRuntime {
   ~OpenCLRuntime();
 
  private:
-  OpenCLRuntime(GPUType, GPUPerfHint, GPUPriorityHint);
+  OpenCLRuntime(GPUPerfHint, GPUPriorityHint);
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
 
@@ -68,9 +68,9 @@ class OpenCLRuntime {
  private:
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
-  cl::Context *context_;
-  cl::Device *device_;
-  cl::CommandQueue *command_queue_;
+  std::shared_ptr<cl::Context> context_;
+  std::shared_ptr<cl::Device> device_;
+  std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
   std::string kernel_path_;
