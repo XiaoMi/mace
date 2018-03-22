@@ -290,16 +290,15 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
     return nullptr;
   }
 
-#define MACE_CL_ASSIGN_FROM_DLSYM(func)                             \
-  do {                                                              \
-    void *ptr = dlsym(handle, #func);                               \
-    if (ptr == nullptr) {                                           \
-      LOG(ERROR) << "Failed to load " << #func << " from " << path; \
-      dlclose(handle);                                              \
-      return nullptr;                                               \
-    }                                                               \
-    func = reinterpret_cast<func##Func>(ptr);                       \
-    VLOG(2) << "Loaded " << #func << " from " << path;              \
+#define MACE_CL_ASSIGN_FROM_DLSYM(func)                          \
+  do {                                                           \
+    void *ptr = dlsym(handle, #func);                            \
+    if (ptr == nullptr) {                                        \
+      VLOG(1) << "Failed to load " << #func << " from " << path; \
+      continue;                                                  \
+    }                                                            \
+    func = reinterpret_cast<func##Func>(ptr);                    \
+    VLOG(2) << "Loaded " << #func << " from " << path;           \
   } while (false)
 
   MACE_CL_ASSIGN_FROM_DLSYM(clGetPlatformIDs);

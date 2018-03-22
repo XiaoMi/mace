@@ -28,19 +28,19 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
                                 __private const float relux_max_limit) {
   DATA_TYPE4 out;
 #ifdef USE_RELU
-  out = fmax(in, 0);
+  out = fmax(in, (DATA_TYPE)0);
 #endif
 #ifdef USE_RELUX
-  out = clamp(in, 0, relux_max_limit);
+  out = clamp(in, (DATA_TYPE4)0, relux_max_limit);
 #endif
 #ifdef USE_PRELU
-  out = select(prelu_alpha * in, in, in >= 0);
+  out = select(prelu_alpha * in, in, in >= (DATA_TYPE)0);
 #endif
 #ifdef USE_TANH
   out = tanh(in);
 #endif
 #ifdef USE_SIGMOID
-  out = native_recip(1.0 + native_exp(-in));
+  out = native_recip((DATA_TYPE)1 + native_exp(-in));
 #endif
   return out;
 }
