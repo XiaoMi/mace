@@ -247,12 +247,9 @@ class CaffeConverter(object):
     arg.i = self.dt
     return output_name
 
-  def add_input_transform(self, names, is_single):
+  def add_input_transform(self, names):
     for name in names:
-      if is_single:
-        new_input_name = MACE_INPUT_NODE_NAME + ":0"
-      else:
-        new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
+      new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
       op_def.name = name
       op_def.type = 'BufferToImage'
@@ -267,12 +264,9 @@ class CaffeConverter(object):
       arg.name = 'T'
       arg.i = self.dt
 
-  def add_output_transform(self, names, is_single):
+  def add_output_transform(self, names):
     for name in names:
-      if is_single:
-        output_name = MACE_OUTPUT_NODE_NAME + ":0"
-      else:
-        output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
+      output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
       op_def.name = output_name[:-2]
       op_def.type = 'ImageToBuffer'
@@ -844,29 +838,20 @@ class CaffeConverter(object):
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
-  def replace_in_out_name(self, input_names, output_names, is_single):
+  def replace_in_out_name(self, input_names, output_names):
     in_names = set([input_name + ":0" for input_name in input_names])
     out_names = set([output_name + ":0" for output_name in output_names])
-    if is_single:
-      for op in self.net_def.op:
-        for i in range(len(op.input)):
-          if op.input[i] in in_names:
-            op.input[i] = MACE_INPUT_NODE_NAME + ':0'
-        for i in range(len(op.output)):
-          if op.output[i] in out_names:
-            op.output[i] = MACE_OUTPUT_NODE_NAME + ':0'
-    else:
-      for op in self.net_def.op:
-        for i in range(len(op.input)):
-          if op.input[i] in in_names:
-            op.input[i] = MACE_INPUT_NODE_NAME + '_' + op.input[i]
-          if op.input[i] in out_names:
-            op.input[i] = MACE_OUTPUT_NODE_NAME + '_' + op.input[i]
-        for i in range(len(op.output)):
-          if op.output[i] in in_names:
-            op.output[i] = MACE_INPUT_NODE_NAME + '_' + op.output[i]
-          if op.output[i] in out_names:
-            op.output[i] = MACE_OUTPUT_NODE_NAME + '_' + op.output[i]
+    for op in self.net_def.op:
+      for i in range(len(op.input)):
+        if op.input[i] in in_names:
+          op.input[i] = MACE_INPUT_NODE_NAME + '_' + op.input[i]
+        if op.input[i] in out_names:
+          op.input[i] = MACE_OUTPUT_NODE_NAME + '_' + op.input[i]
+      for i in range(len(op.output)):
+        if op.output[i] in in_names:
+          op.output[i] = MACE_INPUT_NODE_NAME + '_' + op.output[i]
+        if op.output[i] in out_names:
+          op.output[i] = MACE_OUTPUT_NODE_NAME + '_' + op.output[i]
 
   def add_input_op_shape(self, input_nodes, input_shapes):
     assert len(input_nodes) == len(input_shapes)
@@ -878,9 +863,8 @@ class CaffeConverter(object):
         input_op.output_shape_map[input_op.name] = input_shapes[i]
 
   def convert(self, input_nodes, input_shapes, output_nodes):
-    is_single = len(input_nodes) == 1 and len(output_nodes) == 1
     if self.device == 'gpu':
-      self.add_input_transform(input_nodes, is_single)
+      self.add_input_transform(input_nodes)
 
     assert self.ops[0].type == 'Input'
     self.add_input_op_shape(input_nodes, input_shapes)
@@ -925,10 +909,10 @@ class CaffeConverter(object):
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 
     if self.device == 'gpu':
-      self.add_output_transform(output_nodes, is_single)
+      self.add_output_transform(output_nodes)
 
     if self.device == 'cpu':
-      self.replace_in_out_name(input_nodes, output_nodes, is_single)
+      self.replace_in_out_name(input_nodes, output_nodes)
 
     for op in self.ops:
       if op.name not in self.resolved_ops:

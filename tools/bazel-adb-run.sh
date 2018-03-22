@@ -18,8 +18,8 @@ BAZEL_BIN_PATH=${BAZEL_BIN_PATH#//}
 BAZEL_BIN_PATH=bazel-bin/$BAZEL_BIN_PATH
 BIN_NAME=`echo $BAZEL_TARGET | cut -d: -f2`
 
-ANDROID_ABI=armeabi-v7a
 ANDROID_ABI=arm64-v8a
+ANDROID_ABI=armeabi-v7a
 STRIP="--strip always"
 VLOG_LEVEL=0
 PROFILING="1"
