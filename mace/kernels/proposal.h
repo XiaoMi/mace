@@ -42,33 +42,33 @@ std::vector<std::vector<float>> GenerateAnchors(
   std::vector<std::vector<float>> anchors(scales_size * ratios_size,
                                           std::vector<float>(4));
 
-  int idx = 0;
-  std::vector<float> tmp_anchor(4);
+#pragma omp parallel for
   for (size_t ratio_idx = 0; ratio_idx < ratios_size; ++ratio_idx) {
     float ws = ::roundf(::sqrtf(size / ratios[ratio_idx]));
     float hs = ::roundf(ws * ratios[ratio_idx]);
+    std::vector<float> tmp_anchor(4);
     tmp_anchor[0] = base_window[2] - (ws - 1) / 2;
     tmp_anchor[1] = base_window[3] - (hs - 1) / 2;
     tmp_anchor[2] = base_window[2] + (ws - 1) / 2;
     tmp_anchor[3] = base_window[3] + (hs - 1) / 2;
     auto window = WHCenters(tmp_anchor);
     for (size_t scale_idx = 0; scale_idx < scales_size; ++scale_idx) {
+      const size_t idx = ratio_idx * scales_size + scale_idx;
       ws = window[0] * scales[scale_idx];
       hs = window[1] * scales[scale_idx];
       anchors[idx][0] = window[2] - (ws - 1) / 2;
       anchors[idx][1] = window[3] - (hs - 1) / 2;
       anchors[idx][2] = window[2] + (ws - 1) / 2;
       anchors[idx][3] = window[3] + (hs - 1) / 2;
-      idx++;
     }
   }
   return anchors;
 }
 
 std::vector<int> nms(const float *bboxes_ptr,
-                     const float *scores_ptr,
                      const index_t num_bboxes,
-                     const float thresh) {
+                     const float thresh,
+                     const int post_nms_top_n) {
   std::vector<int> keep;
   std::vector<int> suppressed(num_bboxes, 0);
 
@@ -79,33 +79,29 @@ std::vector<int> nms(const float *bboxes_ptr,
         (bboxes_ptr[idx + 3] - bboxes_ptr[idx + 1] + 1);
   }
 
-  std::vector<int> order(num_bboxes, 0);
-  iota(order.begin(), order.end(), 0);
+  for (int i = 0; i < num_bboxes; ++i) {
+    if (suppressed[i] == 1) continue;
+    keep.push_back(i);
+    if (keep.size() >= post_nms_top_n) break;
+    int coord_idx = i << 2;
+    const float x1 = bboxes_ptr[coord_idx];
+    const float y1 = bboxes_ptr[coord_idx + 1];
+    const float x2 = bboxes_ptr[coord_idx + 2];
+    const float y2 = bboxes_ptr[coord_idx + 3];
+    const float area1 = areas[i];
+    for (int j = i + 1; j < num_bboxes; ++j) {
+      if (suppressed[j] == 1) continue;
 
-  float x1, y1, x2, y2, area1, iou;
-  for (index_t i = 0; i < num_bboxes; ++i) {
-    int idx = order[i];
-    if (suppressed[idx] == 1) continue;
-    keep.push_back(idx);
-    int coord_idx = idx << 2;
-    x1 = bboxes_ptr[coord_idx];
-    y1 = bboxes_ptr[coord_idx + 1];
-    x2 = bboxes_ptr[coord_idx + 2];
-    y2 = bboxes_ptr[coord_idx + 3];
-    area1 = areas[idx];
-    for (index_t j = i + 1; j < num_bboxes; ++j) {
-      const int other_idx = order[j];
-      if (suppressed[other_idx] == 1) continue;
-
-      coord_idx = other_idx << 2;
-      iou = std::max<float>(0.0,
-                       std::min(x2, bboxes_ptr[coord_idx + 2]) -
-                       std::max(x1, bboxes_ptr[coord_idx]) + 1)
+      coord_idx = j << 2;
+      const float iou =
+          std::max<float>(0.0,
+              std::min(x2, bboxes_ptr[coord_idx + 2]) -
+              std::max(x1, bboxes_ptr[coord_idx]) + 1)
           * std::max<float>(0.0,
-                       std::min(y2, bboxes_ptr[coord_idx + 3]) -
-                       std::max(y1, bboxes_ptr[coord_idx + 1]) + 1);
-      if ((iou / (area1 + areas[other_idx] - iou)) >= thresh) {
-        suppressed[other_idx] = 1;
+              std::min(y2, bboxes_ptr[coord_idx + 3]) -
+              std::max(y1, bboxes_ptr[coord_idx + 1]) + 1);
+      if ((iou / (area1 + areas[j] - iou)) >= thresh) {
+        suppressed[j] = 1;
       }
     }
   }
@@ -140,8 +136,8 @@ struct ProposalFunctor {
     MACE_CHECK((rpn_cls_prob->dim(3) / 2 == rpn_bbox_pred->dim(3) / 4) &&
         (rpn_cls_prob->dim(3) / 2 == anchors_.size()));
     const float *img_info = img_info_tensor->data<float>();
-    const index_t im_height = img_info[0] - 1;
-    const index_t im_width = img_info[1] - 1;
+    const int im_height = static_cast<int>(img_info[0] - 1);
+    const int im_width = static_cast<int>(img_info[1] - 1);
     const index_t feat_height = rpn_cls_prob->dim(1);
     const index_t feat_width = rpn_cls_prob->dim(2);
     const int anchors_size = anchors_.size();
@@ -150,35 +146,35 @@ struct ProposalFunctor {
     std::vector<std::vector<float>> proposals(
         anchors_size * feat_height * feat_width,
         std::vector<float>(4));
-    int shift_w, shift_h;
-    int sanc_idx = 0;
+
+#pragma omp parallel for collapse(3)
     for (int h_idx = 0; h_idx < feat_height; ++h_idx) {
-      shift_h = h_idx * feat_stride_;
       for (int w_idx = 0; w_idx < feat_width; ++w_idx) {
-        shift_w = w_idx * feat_stride_;
         for (int a_idx = 0; a_idx < anchors_size; ++a_idx) {
+          const int shift_h = h_idx * feat_stride_;
+          const int shift_w = w_idx * feat_stride_;
+          const index_t sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
+              + a_idx;
           proposals[sanc_idx][0] = anchors_[a_idx][0] + shift_w;
           proposals[sanc_idx][1] = anchors_[a_idx][1] + shift_h;
           proposals[sanc_idx][2] = anchors_[a_idx][2] + shift_w;
           proposals[sanc_idx][3] = anchors_[a_idx][3] + shift_h;
-          sanc_idx++;
         }
       }
     }
     // Convert anchors into proposals via bbox transformations
     // 2. clip predicted boxes to image
-    std::vector<int> keep;
-    const index_t min_size = min_size_ * img_info[2];
-    // 3. remove predicted boxes with either height or width < threshold
-    // (NOTE: convert min_size to input image scale stored in im_info[2])
-
     const float *bbox_deltas = rpn_bbox_pred->data<float>();
-    sanc_idx = 0;
+#pragma omp parallel for collapse(3)
     for (int h_idx = 0; h_idx < feat_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feat_width; ++w_idx) {
         for (int a_idx = 0; a_idx < anchors_size; ++a_idx) {
-          float width = proposals[sanc_idx][2] - proposals[sanc_idx][0] + 1;
-          float height = proposals[sanc_idx][3] - proposals[sanc_idx][1] + 1;
+          const int sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
+              + a_idx;
+          const float width = proposals[sanc_idx][2] -
+              proposals[sanc_idx][0] + 1;
+          const float height = proposals[sanc_idx][3] -
+              proposals[sanc_idx][1] + 1;
           int delta_offset = sanc_idx * 4;
           float pred_ctr_x = bbox_deltas[delta_offset + 0] * width +
               (proposals[sanc_idx][0] + width / 2);
@@ -200,12 +196,25 @@ struct ProposalFunctor {
               std::min<float>(pred_ctr_y + pred_h / 2, im_height),
               0);
 
-          width = proposals[sanc_idx][2] - proposals[sanc_idx][0] + 1;
-          height = proposals[sanc_idx][3] - proposals[sanc_idx][1] + 1;
+        }
+      }
+    }
+    // 3. remove predicted boxes with either height or width < threshold
+    // (NOTE: convert min_size to input image scale stored in im_info[2])
+    std::vector<int> keep;
+    const float min_size = min_size_ * img_info[2];
+    for (int h_idx = 0; h_idx < feat_height; ++h_idx) {
+      for (int w_idx = 0; w_idx < feat_width; ++w_idx) {
+        for (int a_idx = 0; a_idx < anchors_size; ++a_idx) {
+          const int sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
+              + a_idx;
+          const float width = proposals[sanc_idx][2]
+              - proposals[sanc_idx][0] + 1;
+          const float height = proposals[sanc_idx][3]
+              - proposals[sanc_idx][1] + 1;
           if (width >= min_size && height >= min_size) {
             keep.push_back(sanc_idx);
           }
-          sanc_idx++;
         }
       }
     }
@@ -227,6 +236,7 @@ struct ProposalFunctor {
     int size = std::min<int>(pre_nms_top_n_, keep.size());
     std::vector<float> nms_scores(size, 0);
     std::vector<float> nms_proposals((size << 2), 0);
+#pragma omp parallel for
     for (int i = 0; i < size; ++i) {
       nms_scores[i] = scores[score_idx_func(keep[i])];
       nms_proposals[i << 2] = proposals[keep[i]][0];
@@ -238,15 +248,18 @@ struct ProposalFunctor {
     /* 6. apply nms (e.g. threshold = 0.7)
        7. take after_nms_topN (e.g. 300)
        8. return the top proposals (-> RoIs top) */
-    auto nms_result = nms(nms_proposals.data(), nms_scores.data(),
-                          nms_scores.size(), thresh_);
+    auto nms_result = nms(nms_proposals.data(),
+                          nms_scores.size(),
+                          thresh_,
+                          post_nms_top_n_);
 
     // Output rois blob
     // Our RPN implementation only supports a single input image, so all
     // batch inds are 0
-    size = std::min<int>(post_nms_top_n_, nms_result.size());
-    output->Resize({1, 1, size, 5});
+    size = static_cast<int>(nms_result.size());
+    output->Resize({size, 1, 1, 5});
     auto output_ptr = output->mutable_data<float>();
+#pragma omp parallel for
     for (int i = 0; i < size; ++i) {
       const int out_idx = i * 5;
       const int nms_idx = nms_result[i] * 4;

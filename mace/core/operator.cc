@@ -90,6 +90,7 @@ extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
 extern void Register_Slice(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
+extern void Register_PSROIAlign(OperatorRegistry *op_registry);
 
 }  // namespace ops
 
@@ -120,6 +121,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_FullyConnected(this);
   ops::Register_Slice(this);
   ops::Register_Proposal(this);
+  ops::Register_PSROIAlign(this);
 }
 
 }  // namespace mace
