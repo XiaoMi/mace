@@ -64,6 +64,7 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
 
 namespace ops {
 
+// Keep in lexicographical order
 extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
@@ -74,27 +75,29 @@ extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
+extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
+extern void Register_FullyConnected(OperatorRegistry *op_registry);
 extern void Register_FusedConv2D(OperatorRegistry *op_registry);
 extern void Register_GlobalAvgPooling(OperatorRegistry *op_registry);
 extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
-extern void Register_Pooling(OperatorRegistry *op_registry);
-extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
-extern void Register_Softmax(OperatorRegistry *op_registry);
-extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
 extern void Register_MatMul(OperatorRegistry *op_registry);
-extern void Register_WinogradTransform(OperatorRegistry *op_registry);
-extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
-extern void Register_Reshape(OperatorRegistry *op_registry);
-extern void Register_Eltwise(OperatorRegistry *op_registry);
-extern void Register_FullyConnected(OperatorRegistry *op_registry);
-extern void Register_Slice(OperatorRegistry *op_registry);
+extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
 extern void Register_PSROIAlign(OperatorRegistry *op_registry);
+extern void Register_Reshape(OperatorRegistry *op_registry);
+extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
+extern void Register_Slice(OperatorRegistry *op_registry);
+extern void Register_Softmax(OperatorRegistry *op_registry);
+extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
+extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
+extern void Register_WinogradTransform(OperatorRegistry *op_registry);
+
 
 }  // namespace ops
 
 OperatorRegistry::OperatorRegistry() {
+  // Keep in lexicographical order
   ops::Register_Activation(this);
   ops::Register_AddN(this);
   ops::Register_BatchNorm(this);
@@ -105,23 +108,23 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
   ops::Register_DepthwiseConv2d(this);
+  ops::Register_Eltwise(this);
   ops::Register_FoldedBatchNorm(this);
+  ops::Register_FullyConnected(this);
   ops::Register_FusedConv2D(this);
   ops::Register_GlobalAvgPooling(this);
   ops::Register_ImageToBuffer(this);
-  ops::Register_Pooling(this);
-  ops::Register_ResizeBilinear(this);
-  ops::Register_Softmax(this);
-  ops::Register_SpaceToBatchND(this);
   ops::Register_MatMul(this);
-  ops::Register_WinogradTransform(this);
-  ops::Register_WinogradInverseTransform(this);
-  ops::Register_Reshape(this);
-  ops::Register_Eltwise(this);
-  ops::Register_FullyConnected(this);
-  ops::Register_Slice(this);
+  ops::Register_Pooling(this);
   ops::Register_Proposal(this);
   ops::Register_PSROIAlign(this);
+  ops::Register_Reshape(this);
+  ops::Register_ResizeBilinear(this);
+  ops::Register_Slice(this);
+  ops::Register_Softmax(this);
+  ops::Register_SpaceToBatchND(this);
+  ops::Register_WinogradInverseTransform(this);
+  ops::Register_WinogradTransform(this);
 }
 
 }  // namespace mace
