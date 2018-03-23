@@ -169,6 +169,10 @@ def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
                                                        model_output_dirs_str)
   run_command(command)
 
+def packaging_lib_file(output_dir):
+  command = "bash tools/packaging_lib.sh {}".format(output_dir)
+  run_command(command)
+
 
 def parse_model_configs():
   with open(FLAGS.config) as f:
@@ -273,7 +277,8 @@ def main(unused_args):
         md5 = hashlib.md5()
         md5.update(model_config["model_file_path"])
         model_path_digest = md5.hexdigest()
-        model_output_dir = "%s/%s/%s/%s/%s" % (FLAGS.output_dir, model_name,
+        model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (FLAGS.output_dir, os.environ["PROJECT_NAME"],
+                                               "build", model_name,
                                                model_path_digest, target_soc,
                                                target_abi)
         model_output_dirs.append(model_output_dir)
@@ -333,6 +338,8 @@ def main(unused_args):
           os.environ["%s_MODEL_TAG" % runtime.upper()] = model_name
         build_run_throughput_test(target_soc, FLAGS.run_seconds,
                                   merged_lib_file, FLAGS.output_dir)
+
+  packaging_lib_file(FLAGS.output_dir)
 
 
 if __name__ == "__main__":
