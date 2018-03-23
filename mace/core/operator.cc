@@ -1,5 +1,4 @@
-//
-// Copyright (c) 2017 XiaoMi All rights reserved.
+
 //
 
 #include <sstream>
@@ -63,7 +62,6 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
 }
 
 namespace ops {
-
 // Keep in lexicographical order
 extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
