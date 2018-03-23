@@ -1,7 +1,11 @@
 import sh
 import re
 
+def strip_invalid_utf8(str):
+  return sh.iconv(str, "-c", "-t", "UTF-8")
+
 def adb_split_stdout(stdout_str):
+  stdout_str = strip_invalid_utf8(stdout_str)
   # Filter out last empty line
   return [l.strip() for l in stdout_str.split('\n') if len(l.strip()) > 0]
 
@@ -13,7 +17,6 @@ def adb_devices():
 def adb_getprop_by_serialno(serialno):
   outputs = sh.adb("-s", serialno, "shell", "getprop")
   raw_props = adb_split_stdout(outputs)
-
   props = {}
   p = re.compile("\[(.+)\]: \[(.+)\]")
   for raw_prop in raw_props:
@@ -26,5 +29,5 @@ def adb_get_all_socs():
   socs = []
   for d in adb_devices():
     props = adb_getprop_by_serialno(d)
-    socs.append(props["ro.product.board"])
+    socs.append(props["ro.board.platform"])
   return set(socs)
