@@ -92,7 +92,6 @@ extern void Register_Slice(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
 extern void Register_SpaceToDepth(OperatorRegistry *op_registry);
-extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_WinogradTransform(OperatorRegistry *op_registry);
 
@@ -110,9 +109,9 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
+  ops::Register_DepthToSpace(this);
   ops::Register_DepthwiseConv2d(this);
   ops::Register_Eltwise(this);
-  ops::Register_DepthToSpace(this);
   ops::Register_FoldedBatchNorm(this);
   ops::Register_FullyConnected(this);
   ops::Register_FusedConv2D(this);
@@ -128,7 +127,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Softmax(this);
   ops::Register_SpaceToBatchND(this);
   ops::Register_SpaceToDepth(this);
-  ops::Register_MatMul(this);
   ops::Register_WinogradInverseTransform(this);
   ops::Register_WinogradTransform(this);
 }
