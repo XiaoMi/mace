@@ -169,6 +169,7 @@ def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
                                                        model_output_dirs_str)
   run_command(command)
 
+
 def packaging_lib_file(output_dir):
   command = "bash tools/packaging_lib.sh {}".format(output_dir)
   run_command(command)
@@ -262,7 +263,8 @@ def main(unused_args):
         # Transfer params by environment
         os.environ["MODEL_TAG"] = model_name
         print '=======================', model_name, '======================='
-        skip_validation = configs["models"][model_name].get("skip_validation", 0)
+        skip_validation = configs["models"][model_name].get(
+            "skip_validation", 0)
         model_config = configs["models"][model_name]
         for key in model_config:
           if key in ['input_nodes', 'output_nodes'] and isinstance(
@@ -277,10 +279,11 @@ def main(unused_args):
         md5 = hashlib.md5()
         md5.update(model_config["model_file_path"])
         model_path_digest = md5.hexdigest()
-        model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (FLAGS.output_dir, os.environ["PROJECT_NAME"],
-                                               "build", model_name,
-                                               model_path_digest, target_soc,
-                                               target_abi)
+        model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (FLAGS.output_dir,
+                                                     os.environ["PROJECT_NAME"],
+                                                     "build", model_name,
+                                                     model_path_digest,
+                                                     target_soc, target_abi)
         model_output_dirs.append(model_output_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -321,7 +324,8 @@ def main(unused_args):
         if FLAGS.mode == "benchmark":
           benchmark_model(target_soc, model_output_dir, option_args)
 
-        if FLAGS.mode == "validate" or (FLAGS.mode == "all" and skip_validation == 0):
+        if FLAGS.mode == "validate" or (FLAGS.mode == "all" and
+                                        skip_validation == 0):
           validate_model(target_soc, model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
