@@ -16,33 +16,35 @@ namespace ops {
 
 template <DeviceType D, typename T>
 class DepthToSpaceOp : public Operator<D, T> {
-  public:
+ public:
   DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("block_size", 1)) {}
+        functor_(OperatorBase::GetSingleArgument<int>("block_size", 1), true) {}
 
   bool Run(StatsFuture *future) override {
-	  const Tensor *input = this->Input(INPUT);
-	  Tensor *output = this->Output(OUTPUT);
-	  MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
-	  
-	  const int block_size = OperatorBase::GetSingleArgument<int>("block_size", 1);
+    const Tensor *input = this->Input(INPUT);
+    Tensor *output = this->Output(OUTPUT);
+    MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
 
-	  int input_depth = input->dim(3);
-	  MACE_CHECK(input_depth % (block_size * block_size) == 0,
-				 "input depth should be dividable by block_size * block_size",
-				 input->dim(3));
-	  functor_(input, output, future);
-	  return true;
+    const int block_size =
+        OperatorBase::GetSingleArgument<int>("block_size", 1);
+
+    int input_depth = input->dim(3);
+    MACE_CHECK(input_depth % (block_size * block_size) == 0,
+               "input depth should be dividable by block_size * block_size",
+               input->dim(3));
+    MACE_CHECK((input_depth % 4) == 0,
+               "input channel should be dividable by 4");
+    functor_(input, output, future);
+    return true;
   }
-  
-  protected:
-    OP_INPUT_TAGS(INPUT);
-    OP_OUTPUT_TAGS(OUTPUT);
-    
-  private:
-    kernels::DepthToSpaceOpFunctor<D, T> functor_;
 
+ protected:
+  OP_INPUT_TAGS(INPUT);
+  OP_OUTPUT_TAGS(OUTPUT);
+
+ private:
+  kernels::DepthToSpaceOpFunctor<D, T> functor_;
 };
 
 }  // namespace ops

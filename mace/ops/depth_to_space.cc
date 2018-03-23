@@ -19,13 +19,12 @@ void Register_DepthToSpace(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     DepthToSpaceOp<DeviceType::OPENCL, float>);
-                    
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthToSpace")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     DepthToSpaceOp<DeviceType::OPENCL, half>);
-
 }
 
 }  // namespace ops
