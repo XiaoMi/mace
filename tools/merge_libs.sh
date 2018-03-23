@@ -22,18 +22,18 @@ MODEL_DATA_DIR=${LIBMACE_BUILD_DIR}/data
 if [ ! -d "${MODEL_HEADER_DIR}" ]; then
   mkdir -p ${MODEL_HEADER_DIR}
 fi
+cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/include/mace/public/
+
 if [ ! -d "${LIBMACE_BUILD_DIR}/${TARGET_ABI}" ]; then
   mkdir -p ${LIBMACE_BUILD_DIR}/${TARGET_ABI}
-fi
-if [ ! -d "${LIBMACE_BUILD_DIR}/hexagon" ]; then
-  mkdir -p ${LIBMACE_BUILD_DIR}/hexagon
 fi
 if [ ! -d "${MODEL_DATA_DIR}" ]; then
   mkdir -p ${MODEL_DATA_DIR}
 fi
 
-cp -rf ${MACE_SOURCE_DIR}/mace/public/*.h ${LIBMACE_BUILD_DIR}/include/mace/public/
-cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/hexagon/
+if [ x"${TARGET_ABI}" = x"armeabi-v7a" ]; then
+  cp ${MACE_SOURCE_DIR}/mace/core/runtime/hexagon/libhexagon_controller.so ${LIBMACE_BUILD_DIR}/${TARGET_ABI}/
+fi
 
 LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`
 
