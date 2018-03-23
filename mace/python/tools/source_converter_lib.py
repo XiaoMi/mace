@@ -110,7 +110,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
   j2_env.filters['stringfy'] = stringfy
   output_dir = os.path.dirname(output) + '/'
   # generate tensor source files
-  template_name = 'tensor_source.template'
+  template_name = 'tensor_source.jinja2'
   model_data = []
   offset = 0
   counter = 0
@@ -135,7 +135,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
     counter += 1
 
   # generate tensor data
-  template_name = 'tensor_data.template'
+  template_name = 'tensor_data.jinja2'
   source = j2_env.get_template(template_name).render(
     tag = model_tag,
     embed_model_data = embed_model_data,
@@ -150,7 +150,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
     f.close()
 
   # generate op source files
-  template_name = 'operator.template'
+  template_name = 'operator.jinja2'
   counter = 0
   op_size = len(net_def.op)
   for start in range(0, op_size, 10):
@@ -166,7 +166,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
     counter += 1
 
   # generate model source files
-  template_name = 'model.template'
+  template_name = 'model.jinja2'
   tensors = [TensorInfo(i, net_def.tensors[i], runtime) for i in range(len(net_def.tensors))]
   source = j2_env.get_template(template_name).render(
     tensors = tensors,
@@ -179,7 +179,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
     f.write(source)
 
   # generate model header file
-  template_name = 'model_header.template'
+  template_name = 'model_header.jinja2'
   source = j2_env.get_template(template_name).render(
     tag = model_tag,
   )

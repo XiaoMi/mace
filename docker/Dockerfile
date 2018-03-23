@@ -112,7 +112,8 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.4.0 \
     scipy \
     jinja2 \
-    pyyaml
+    pyyaml \
+    sh 
 
 # Download tensorflow tools
 RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \

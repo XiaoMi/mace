@@ -45,7 +45,7 @@ def main(unused_args):
       encrypted_code_maps[file_name[:-3]] = encrypted_code_arr
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  cpp_cl_encrypted_kernel = env.get_template('str2vec_maps.cc.tmpl').render(
+  cpp_cl_encrypted_kernel = env.get_template('str2vec_maps.cc.jinja2').render(
       maps=encrypted_code_maps,
       data_type='unsigned char',
       variable_name='kEncryptedProgramMap')

@@ -31,7 +31,7 @@ def generate_cpp_source():
           maps[file_name[:-4]].append(hex(ele))
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  return env.get_template('str2vec_maps.cc.tmpl').render(
+  return env.get_template('str2vec_maps.cc.jinja2').render(
     maps = maps,
     data_type = 'unsigned char',
     variable_name = 'kCompiledProgramMap'

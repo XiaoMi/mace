@@ -13,10 +13,10 @@
 namespace mace {
 namespace {{tag}} {
 
-void CreateTensor{{tensor_info.id}}(std::vector<mace::ConstTensor> &tensors,
+void CreateTensor{{tensor_info.id}}(std::vector<mace::ConstTensor> *tensors,
                                const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(2, "Create tensor {{ tensor.name }}");
-  tensors.emplace_back(mace::ConstTensor(
+  tensors->emplace_back(mace::ConstTensor(
       {{ tensor.name|tojson }}, model_data + {{ offset }},
       { {{ tensor.dims|join(', ') }} }, {{ tensor_info.data_type }}, {{ tensor.node_id }}));
 }
