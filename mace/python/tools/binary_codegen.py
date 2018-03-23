@@ -44,7 +44,7 @@ def generate_cpp_source():
       idx += params_size
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  return env.get_template('str2vec_maps.cc.tmpl').render(
+  return env.get_template('str2vec_maps.cc.jinja2').render(
     maps = data_map,
     data_type = 'unsigned int',
     variable_name = FLAGS.variable_name

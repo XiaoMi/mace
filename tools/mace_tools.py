@@ -15,6 +15,8 @@ import sys
 import urllib
 import yaml
 
+import adb_tools
+
 from ConfigParser import ConfigParser
 
 
@@ -201,6 +203,11 @@ def parse_args():
       type=str,
       default="all",
       help="[build|run|validate|merge|all|throughput_test].")
+  parser.add_argument(
+      "--socs",
+      type=str,
+      default="all",
+      help="SoCs to build, comma seperated list (getprop ro.board.platform)")
   return parser.parse_known_args()
 
 
@@ -227,7 +234,21 @@ def main(unused_args):
   generate_opencl_and_version_code()
   option_args = ' '.join([arg for arg in unused_args if arg.startswith('--')])
 
-  for target_soc in configs["target_socs"]:
+  available_socs = adb_tools.adb_get_all_socs()
+  target_socs = available_socs
+  if hasattr(configs, "target_socs"):
+    target_socs = set(configs["target_socs"])
+    target_socs = target_socs & available_socs
+
+  if FLAGS.socs != "all":
+    socs = set(FLAGS.socs.split(','))
+    target_socs = target_socs & socs
+    missing_socs = socs.difference(target_socs)
+    if len(missing_socs) > 0:
+      print("Error: devices with SoCs are not connected %s" % missing_socs)
+      exit(1)
+
+  for target_soc in target_socs:
     for target_abi in configs["target_abis"]:
       global_runtime = get_global_runtime(configs)
       # Transfer params by environment

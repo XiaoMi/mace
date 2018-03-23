@@ -13,7 +13,7 @@
 namespace mace {
 namespace {
 
-void UpdateOp(mace::OperatorDef &op,
+void UpdateOp(mace::OperatorDef *op,
               const std::string &name,
               const std::string &type,
               const std::vector<std::string> &inputs,
@@ -21,13 +21,13 @@ void UpdateOp(mace::OperatorDef &op,
               const std::vector<mace::DataType> &output_types,
               uint32_t node_id,
               const std::vector<int> &mem_ids) {
-  op.set_name(name);
-  op.set_type(type);
-  op.set_input(inputs);
-  op.set_output(outputs);
-  op.set_output_type(output_types);
-  op.set_node_id(node_id);
-  op.set_mem_id(mem_ids);
+  op->set_name(name);
+  op->set_type(type);
+  op->set_input(inputs);
+  op->set_output(outputs);
+  op->set_output_type(output_types);
+  op->set_node_id(node_id);
+  op->set_mem_id(mem_ids);
 }
 
 }  // namespace
@@ -38,13 +38,13 @@ namespace {{tag}} {
 
 {% for i in range(start, end) %}
 
-void CreateOperator{{i}}(mace::OperatorDef &op) {
+void CreateOperator{{i}}(mace::OperatorDef *op) {
   MACE_LATENCY_LOGGER(2, "Create operator {{ net.op[i].name }}");
 
   mace::Argument *arg = nullptr;
   {% for arg in net.op[i].arg %}
 
-  arg = op.add_arg();
+  arg = op->add_arg();
   arg->set_name({{ arg.name|tojson }});
 
   {%- if arg.HasField('f') %}
@@ -70,7 +70,7 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
 
   {% for shape in net.op[i].output_shape %}
 	{% if shape.dims | length > 0 %}
-  op.add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
+  op->add_output_shape(mace::OutputShape({ {{ shape.dims|join(', ') }} }));
 	{% endif %}
   {% endfor %}
 
@@ -87,20 +87,20 @@ void CreateOperator{{i}}(mace::OperatorDef &op) {
           { {{ net.op[i].mem_id | join(', ') }} });
 
   {% if runtime == 'dsp' %}
-    op.set_padding({{ net.op[i].padding }});
+    op->set_padding({{ net.op[i].padding }});
     {% if net.op[i].node_input | length > 0 %}
     std::vector<int> input_node_ids({ {{ net.op[i].node_input | map(attribute='node_id') | join(', ') }} });
     std::vector<int> input_output_ports({ {{ net.op[i].node_input | map(attribute='output_port') | join(', ')}} });
 
     for (size_t i = 0; i < {{ net.op[i].node_input | length }}; ++i) {
       mace::NodeInput input(input_node_ids[i], input_output_ports[i]);
-      op.add_node_input(input);
+      op->add_node_input(input);
     }
     {% endif %}
     {% if net.op[i].out_max_byte_size | length > 0 %}
     std::vector<int> out_max_byte_sizes {{ net.op[i].out_max_byte_size | replace('[', '{') | replace(']', '}') }};
     for (size_t i = 0; i < {{ net.op[i].out_max_byte_size | length }}; ++i) {
-      op.add_out_max_byte_size(out_max_byte_sizes[i]);
+      op->add_out_max_byte_size(out_max_byte_sizes[i]);
     }
     {% endif %}
   {% endif %}

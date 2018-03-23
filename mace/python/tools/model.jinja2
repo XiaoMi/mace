@@ -14,13 +14,13 @@ namespace mace {
 namespace {{tag}} {
 
 {% for tensor in tensors %}
-extern void CreateTensor{{ tensor.id }}(std::vector<mace::ConstTensor> &tensors,
+extern void CreateTensor{{ tensor.id }}(std::vector<mace::ConstTensor> *tensors,
                                         const unsigned char *model_data);
 {% endfor %}
 
 
 {% for i in range(net.op|length) %}
-extern void CreateOperator{{i}}(mace::OperatorDef &op);
+extern void CreateOperator{{i}}(mace::OperatorDef *op);
 {% endfor %}
 
 }  // namespace {{ tag }}
@@ -79,31 +79,30 @@ void CreateOutputInfo(mace::NetDef &net_def) {
 }
 {% endif %}
 
-void CreateOperators(std::vector<mace::OperatorDef> &ops) {
+void CreateOperators(std::vector<mace::OperatorDef> *ops) {
   MACE_LATENCY_LOGGER(1, "Create operators");
 
-  ops.resize({{ net.op|length }});
-  {% for i in range(net.op|length) %}
+  ops->resize({{ net.op|length }});
 
-  mace::{{tag}}::CreateOperator{{i}}(ops[{{i}}]);
+  {% for i in range(net.op|length) %}
+  mace::{{tag}}::CreateOperator{{i}}(&ops->at({{i}}));
   {% endfor %}
 }
 
-void CreateTensors(std::vector<mace::ConstTensor> &tensors,
+void CreateTensors(std::vector<mace::ConstTensor> *tensors,
                    const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(1, "Create tensors");
-  tensors.reserve({{ net.tensors|length }});
+  tensors->reserve({{ net.tensors|length }});
 
   {% for tensor in tensors %}
-
   mace::{{tag}}::CreateTensor{{tensor.id}}(tensors, model_data);
   {% endfor %}
 }
 
 
 {% if net.mem_arena.mem_block|length != 0 %}
-void CreateMemoryArena(mace::MemoryArena &mem_arena) {
-  std::vector<mace::MemoryBlock> &mem_block = mem_arena.mutable_mem_block();
+void CreateMemoryArena(mace::MemoryArena *mem_arena) {
+  std::vector<mace::MemoryBlock> &mem_block = mem_arena->mutable_mem_block();
   mem_block.reserve({{ net.mem_arena.mem_block|length }});
 
   {% for mem_blk in net.mem_arena.mem_block %}
@@ -129,12 +128,12 @@ NetDef CreateNet(const unsigned char *model_data) {
   CreateNetArg(net_def);
   {% endif %}
 
-  CreateOperators(net_def.mutable_op());
+  CreateOperators(&net_def.mutable_op());
 
-  CreateTensors(net_def.mutable_tensors(), model_data);
+  CreateTensors(&net_def.mutable_tensors(), model_data);
 
   {% if net.mem_arena.mem_block|length != 0 %}
-  CreateMemoryArena(net_def.mutable_mem_arena());
+  CreateMemoryArena(&net_def.mutable_mem_arena());
   {% endif %}
 
   {% if net.output_info | length > 0 %}
