@@ -22,8 +22,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
       image->ResizeImage(buffer->shape(), image_shape);
     }
   } else {
-    Image *image_buf = dynamic_cast<Image *>(image->UnderlyingBuffer());
-    image_shape = image_buf->image_shape();
+    CalImage2DShape(image->shape(), type, &image_shape);
     buffer->Resize(image->shape());
   }
 
