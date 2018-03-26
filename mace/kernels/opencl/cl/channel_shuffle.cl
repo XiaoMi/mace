@@ -4,11 +4,19 @@
 __kernel void channel_shuffle(__read_only image2d_t input,
                       __private const int groups,
                       __private const int channels_per_group,
-                      __write_only image2d_t output) {
+                      __write_only image2d_t output,
+                       __private const int global_size_dim0,
+                       __private const int global_size_dim1,
+                       __private const int global_size_dim2) {
   const int group_chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
-  const int width = get_global_size(1);
   const int hb_idx = get_global_id(2);
+  if (group_chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
+      || hb_idx >= global_size_dim2) {
+    return;
+  }
+
+  const int width = global_size_dim1;
   const int group_blks = groups / 4;
   const int groups_blks_width = group_blks * width;
   const int channels_per_group_blks = channels_per_group / 4;

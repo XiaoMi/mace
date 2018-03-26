@@ -27,12 +27,19 @@ __kernel void pooling(__read_only image2d_t input,
                       __private const int pad_left,
                       __private const int stride,
                       __private const int pooling_size,
-                      __write_only image2d_t output) {
+                      __write_only image2d_t output,
+                      __private const int global_size_dim0,
+                      __private const int global_size_dim1,
+                      __private const int global_size_dim2) {
   const int out_chan_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
-  const int out_width = get_global_size(1);
   const int out_hb_idx = get_global_id(2);
+  if (out_chan_idx >= global_size_dim0 || out_width_idx >= global_size_dim1
+      || out_hb_idx >= global_size_dim2) {
+    return;
+  }
 
+  const int out_width = global_size_dim1;
   const int batch_idx = mul24((out_hb_idx / out_height), in_height);
   const int in_height_start = mul24((out_hb_idx % out_height), stride) - pad_top;
   const int in_width_start = mul24(out_width_idx, stride) - pad_left;

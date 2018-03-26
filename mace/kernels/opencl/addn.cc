@@ -24,6 +24,8 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t width = input_tensors[0]->dim(2);
   const index_t channels = input_tensors[0]->dim(3);
 
+  auto runtime = OpenCLRuntime::Global();
+
   for (int i = 1; i < size; ++i) {
     MACE_CHECK_NOTNULL(input_tensors[i]);
     MACE_CHECK(batch == input_tensors[i]->dim(0));
@@ -36,7 +38,6 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     if (input_tensors.size() > 4) {
       MACE_NOT_IMPLEMENTED;
     }
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("addn");
@@ -53,6 +54,9 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t width_pixels = channel_blocks * width;
   const index_t batch_height_pixels = batch * height;
 
+  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
+                           static_cast<uint32_t>(batch_height_pixels)};
+
   if (!IsVecEqual(input_shape_, input_tensors[0]->shape())) {
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
@@ -64,13 +68,15 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
       kernel_.setArg(idx++, *(input->opencl_image()));
     }
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensors[0]->shape();
   }
 
-  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
-                           static_cast<uint32_t>(batch_height_pixels)};
-  const std::vector<uint32_t> lws = {64, 16, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {kwg_size / 16, 16, 1};
   std::stringstream ss;
   ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
      << "_" << output_shape[2] << "_" << output_shape[3];

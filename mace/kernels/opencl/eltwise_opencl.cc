@@ -24,8 +24,12 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
   const index_t width_pixels = channel_blocks * width;
   const index_t batch_height_pixels = batch * height;
 
+  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
+                           static_cast<uint32_t>(batch_height_pixels)};
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("eltwise");
@@ -45,12 +49,14 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
       kernel_.setArg(idx++, coeff_[1]);
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
     input_shape_ = input0->shape();
   }
 
-  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
-                           static_cast<uint32_t>(batch_height_pixels)};
-  const std::vector<uint32_t> lws = {64, 16, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {kwg_size / 16, 16, 1};
   std::stringstream ss;
   ss << "eltwise_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);

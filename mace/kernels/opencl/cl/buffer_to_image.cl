@@ -5,9 +5,15 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
-                                     __write_only image2d_t output) {
+                                     __write_only image2d_t output,
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int out_channel_idx = h * 4;
   const int rounded_in_channel = ((in_channel + 3) / 4) * 4;
   const int hw_idx = w / rounded_in_channel;
@@ -45,9 +51,15 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
-                                     __read_only image2d_t input) {
+                                     __read_only image2d_t input,
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int out_channel_idx = h * 4;
   const int rounded_in_channel = ((in_channel + 3) / 4) * 4;
   const int hw_idx = w / rounded_in_channel;
@@ -84,9 +96,14 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
                                         __private const int filter_w,
                                         __private const int in_channel,
                                         __private const int multiplier,
-                                        __write_only image2d_t output) { /* ic%4 * kh * kw * m, ic/4 */
+                                        __write_only image2d_t output,
+                                        __private const int global_size_dim0,
+                                        __private const int global_size_dim1) { /* ic%4 * kh * kw * m, ic/4 */
   const int w = get_global_id(0);
   const int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
 
   DATA_TYPE4 values = 0;
   if (multiplier == 1) {
@@ -134,9 +151,15 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
-                                     __write_only image2d_t output) {
+                                     __write_only image2d_t output,
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int batch_idx = h / height;
   const int height_idx = h % height;
   const int width_idx = w % width;
@@ -166,9 +189,15 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
-                                     __read_only image2d_t input) {
+                                     __read_only image2d_t input,
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int batch_idx = h / height;
   const int height_idx = h % height;
   const int width_idx = w % width;
@@ -196,9 +225,14 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
 __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
-                                  __write_only image2d_t output) {
+                                  __write_only image2d_t output,
+                                  __private const int global_size_dim0,
+                                  __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
 
   const int offset = input_offset + w * 4;
   const int size = count - w * 4;
@@ -223,9 +257,14 @@ __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
 
 __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
                                   __private const int count,
-                                  __read_only image2d_t input) {
+                                  __read_only image2d_t input,
+                                  __private const int global_size_dim0,
+                                  __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
   const int offset = w * 4;
 
   int2 coord = (int2)(w, h);
@@ -251,9 +290,15 @@ __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //n
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
-                                            __write_only image2d_t output) {
+                                            __write_only image2d_t output,
+                                            __private const int global_size_dim0,
+                                            __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int wc = width * channels;
   const int height_blks = (height + 3) / 4;
   const int batch_idx = h / height_blks;
@@ -284,9 +329,15 @@ __kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
-                                            __read_only image2d_t input) {
+                                            __read_only image2d_t input,
+                                            __private const int global_size_dim0,
+                                            __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int height_blks = (height + 3) / 4;
   const int batch_idx = h / height_blks;
   const int height_idx = (h % height_blks) << 2;
@@ -315,9 +366,15 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
                                            __private const int height,
                                            __private const int width,
                                            __private const int channels,
-                                           __write_only image2d_t output) {
+                                           __write_only image2d_t output,
+                                           __private const int global_size_dim0,
+                                           __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int width_blks = (width + 3) / 4;
   const int batch_idx = h / height;
   const int height_idx = h % height;
@@ -349,10 +406,16 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
                                               __private const int in_channels,
                                               __private const int height,
                                               __private const int width,
-                                              __write_only image2d_t output) {
+                                              __write_only image2d_t output,
+                                              __private const int global_size_dim0,
+                                              __private const int global_size_dim1) {
   int w = get_global_id(0);
   int h = get_global_id(1);
-  const int out_channels = get_global_size(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
+  const int out_channels = global_size_dim1;
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
   const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
@@ -429,9 +492,15 @@ __kernel void winograd_filter_image_to_buffer(__global DATA_TYPE *output, //Oc, 
                                               __private const int height,
                                               __private const int width,
                                               __private const int channel,
-                                              __read_only image2d_t input) {
+                                              __read_only image2d_t input,
+                                              __private const int global_size_dim0,
+                                              __private const int global_size_dim1) {
   const int w = get_global_id(0);
   const int h = get_global_id(1);
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+
   const int width_idx = w << 2;
   const int size = width - width_idx;
   int offset = h * width + width_idx;

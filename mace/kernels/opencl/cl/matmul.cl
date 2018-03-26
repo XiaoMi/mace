@@ -8,9 +8,13 @@ __kernel void matmul(__read_only image2d_t A,
                      __private const int N,
                      __private const int K,
                      __private const int height_blocks,
-                     __private const int k_blocks) {
+                     __private const int k_blocks,
+                     __private const int global_size_dim0,
+                     __private const int global_size_dim1) {
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
+  if (get_global_id(0) >= global_size_dim0 || hb >= global_size_dim1) return;
+
   const int batch = hb / height_blocks;
   const int ty = (hb % height_blocks);
   const int gy = mad24(batch, height_blocks, ty);

@@ -29,8 +29,9 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
     output_list[i]->ResizeImage(output_shape, image_shape);
   }
 
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
@@ -46,7 +47,10 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
       static_cast<uint32_t>(input->dim(2)),
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << "slice_opencl_kernel_"
      << input->dim(0) << "_"
@@ -59,6 +63,9 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
     kernel_.setArg(idx++, *(output_list[i]->opencl_image()));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+    kernel_.setArg(idx++, gws[2]);
 
     TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
   }

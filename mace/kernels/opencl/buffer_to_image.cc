@@ -26,7 +26,8 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     buffer->Resize(image->shape());
   }
 
-  size_t gws[2] = {image_shape[0], image_shape[1]};
+  uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
+                     static_cast<uint32_t>(image_shape[1])};
   std::string kernel_name;
   switch (type) {
     case CONV2D_FILTER:
@@ -98,10 +99,20 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
   }
   b2f_kernel.setArg(idx++, *(image->opencl_image()));
-  const std::vector<uint32_t> lws = {16, 64};
+  b2f_kernel.setArg(idx++, gws[0]);
+  b2f_kernel.setArg(idx++, gws[1]);
+
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(b2f_kernel));
+  const std::vector<uint32_t> lws = {16, kwg_size / 16};
+  std::vector<uint32_t> roundup_gws(lws.size());
+  for (size_t i = 0; i < lws.size(); ++i) {
+    roundup_gws[i] = RoundUp(gws[i], lws[i]);
+  }
+
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      b2f_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
+      b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
       cl::NDRange(lws[0], lws[1]), nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 

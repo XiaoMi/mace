@@ -24,8 +24,13 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t out_height = out_height_;
   const index_t out_width = out_width_;
 
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(out_width),
+                           static_cast<uint32_t>(out_height * batch)};
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
     built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
@@ -57,14 +62,16 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+    kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(out_width),
-                           static_cast<uint32_t>(out_height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << "resize_bilinear_opencl_kernel_" << output->dim(0) << "_"
      << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);

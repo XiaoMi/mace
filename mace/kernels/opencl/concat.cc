@@ -24,9 +24,14 @@ static void Concat2(cl::Kernel *kernel,
   const index_t channel = output->dim(3);
 
   const int channel_blk = RoundUpDiv4(channel);
+  const uint32_t gws[3] = {
+      static_cast<uint32_t>(channel_blk), static_cast<uint32_t>(width),
+      static_cast<uint32_t>(batch * height),
+  };
+
+  auto runtime = OpenCLRuntime::Global();
 
   if (kernel->get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
@@ -51,14 +56,16 @@ static void Concat2(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
     kernel->setArg(idx++,
                    *(static_cast<cl::Image2D *>(output->opencl_image())));
+    kernel->setArg(idx++, gws[0]);
+    kernel->setArg(idx++, gws[1]);
+    kernel->setArg(idx++, gws[2]);
+
     *prev_input_shape = input0->shape();
   }
 
-  const uint32_t gws[3] = {
-      static_cast<uint32_t>(channel_blk), static_cast<uint32_t>(width),
-      static_cast<uint32_t>(batch * height),
-  };
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
@@ -75,8 +82,8 @@ static void ConcatN(cl::Kernel *kernel,
   const index_t width = output->dim(2);
   const index_t channel = output->dim(3);
 
+  auto runtime = OpenCLRuntime::Global();
   if (kernel->get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
@@ -89,18 +96,24 @@ static void ConcatN(cl::Kernel *kernel,
   index_t chan_blk_offset = 0;
   for (int i = 0; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
-    uint32_t idx = 0;
-    kernel->setArg(idx++, *(input->opencl_image()));
-    kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
-    kernel->setArg(idx++, *(output->opencl_image()));
-
     index_t input_channel_blk = input->dim(3) / 4;
-    chan_blk_offset += input_channel_blk;
     const uint32_t gws[3] = {
         static_cast<uint32_t>(input_channel_blk), static_cast<uint32_t>(width),
         static_cast<uint32_t>(batch * height),
     };
-    const std::vector<uint32_t> lws = {8, 16, 8, 1};
+
+    uint32_t idx = 0;
+    kernel->setArg(idx++, *(input->opencl_image()));
+    kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
+    kernel->setArg(idx++, *(output->opencl_image()));
+    kernel->setArg(idx++, gws[0]);
+    kernel->setArg(idx++, gws[1]);
+    kernel->setArg(idx++, gws[2]);
+
+    chan_blk_offset += input_channel_blk;
+    const uint32_t kwg_size = 
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+    const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
     std::stringstream ss;
     ss << "concat_n_opencl_kernel_" << input_channel_blk << "_" << width << "_"
        << batch * height;

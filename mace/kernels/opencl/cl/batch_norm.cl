@@ -9,11 +9,19 @@ __kernel void batch_norm(__read_only image2d_t input,
                          __private const float epsilon,
 #endif
                          __write_only image2d_t output,
-                         __private const float relux_max_limit) {
+                         __private const float relux_max_limit,
+                         __private const int global_size_dim0,
+                         __private const int global_size_dim1,
+                         __private const int global_size_dim2) {
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);
-  const int width = get_global_size(1);
+  if (ch_blk >= global_size_dim0 || w >= global_size_dim1
+      || hb >= global_size_dim2) {
+    return;
+  }
+
+  const int width = global_size_dim1;
 
 #ifdef FOLDED_CONSTANT
   DATA_TYPE4 bn_scale = READ_IMAGET(scale, SAMPLER, (int2)(ch_blk, 0));

@@ -31,9 +31,15 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     batch_tensor->ResizeImage(output_shape, output_image_shape);
     kernel_name = "space_to_batch";
   }
+  const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
+  const uint32_t gws[3] = {
+      chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
+      static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
@@ -61,15 +67,16 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+    kernel_.setArg(idx++, gws[2]);
 
     space_shape_ = space_tensor->shape();
   }
 
-  const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
-  const uint32_t gws[3] = {
-      chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
-      static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << kernel_name << "_" << batch_tensor->dim(0) << "_"
      << batch_tensor->dim(1) << "_" << batch_tensor->dim(2) << "_"

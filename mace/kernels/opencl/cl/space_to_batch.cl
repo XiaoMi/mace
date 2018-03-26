@@ -9,10 +9,17 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
-                             __private const int batch_width) {
+                             __private const int batch_width,
+                             __private const int global_size_dim0,
+                             __private const int global_size_dim1,
+                             __private const int global_size_dim2) {
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
+  if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
+      || batch_hb_idx >= global_size_dim2) {
+    return;
+  }
 
   const int batch_b_idx = batch_hb_idx / batch_height;
   const int batch_h_idx = batch_hb_idx % batch_height;
@@ -48,10 +55,17 @@ __kernel void batch_to_space(__read_only image2d_t batch_data,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
-                             __private const int batch_width) {
+                             __private const int batch_width,
+                             __private const int global_size_dim0,
+                             __private const int global_size_dim1,
+                             __private const int global_size_dim2) {
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
+  if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
+      || batch_hb_idx >= global_size_dim2) {
+    return;
+  }
 
   const int batch_b_idx = batch_hb_idx / batch_height;
   const int batch_h_idx = batch_hb_idx % batch_height;

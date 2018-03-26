@@ -8,10 +8,16 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
                                      __private const int round_hw,
                                      __private const int round_w,
                                      __private const int padding_top,
-                                     __private const int padding_left) {
+                                     __private const int padding_left,
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1) {
   int out_width_idx = get_global_id(0);
   int chan_blk_idx = get_global_id(1);
-  const int chan_blk_size = get_global_size(1);
+  if (out_width_idx >= global_size_dim0 || chan_blk_idx >= global_size_dim1) {
+    return;
+  }
+
+  const int chan_blk_size = global_size_dim1;
 
   const int batch_idx = out_width_idx / round_hw;
   const int t_idx = out_width_idx % round_hw;
@@ -115,10 +121,16 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-                                             __private const float relux_max_limit) {
+                                             __private const float relux_max_limit,
+                                             __private const int global_size_dim0,
+                                             __private const int global_size_dim1) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
-  const int out_channel = get_global_size(1);
+  if (width_idx >= global_size_dim0 || height_idx >= global_size_dim1) {
+    return;
+  }
+
+  const int out_channel = global_size_dim1;
   int width = width_idx;
   int height = height_idx;
 

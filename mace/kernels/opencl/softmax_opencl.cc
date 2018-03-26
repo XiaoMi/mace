@@ -23,9 +23,12 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   const index_t channel_blocks = RoundUpDiv4(channels);
   const int remain_channels = channel_blocks * 4 - channels;
 
-  if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
 
+  auto runtime = OpenCLRuntime::Global();
+  if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
     built_options.emplace("-Dsoftmax=" + kernel_name);
@@ -40,12 +43,15 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
     kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+    kernel_.setArg(idx++, gws[2]);
     input_shape_ = logits->shape();
   }
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << "softmax_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);

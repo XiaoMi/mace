@@ -15,6 +15,8 @@ template <typename T>
 void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future) {
 
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
@@ -24,7 +26,6 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-    auto runtime = OpenCLRuntime::Global();
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
   }
@@ -44,6 +45,9 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t round_h = (output_shape[1] + 1) / 2;
   const index_t round_w = (output_shape[2] + 1) / 2;
   const index_t out_width = input_tensor->dim(0) * round_h * round_w;
+  const uint32_t gws[2] = {
+      static_cast<uint32_t>(out_width),
+      static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)))};
 
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
     output_shape = {16, input_tensor->dim(3), out_width, 1};
@@ -61,14 +65,15 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensor->shape();
   }
 
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(out_width),
-      static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)))};
-  const std::vector<uint32_t> lws = {128, 8, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {kwg_size / 8, 8, 1};
   std::stringstream ss;
   ss << "winograd_transform_kernel_" << input_tensor->dim(0) << "_"
      << input_tensor->dim(1) << "_" << input_tensor->dim(2) << "_"
@@ -82,6 +87,9 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const Tensor *bias,
     Tensor *output_tensor,
     StatsFuture *future) {
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
@@ -115,10 +123,13 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 
-    auto runtime = OpenCLRuntime::Global();
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
   }
+
+  const uint32_t gws[2] = {
+      static_cast<uint32_t>(input_tensor->dim(2)),
+      static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(1)))};
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
     std::vector<index_t> output_shape = {batch_, height_, width_,
                                          input_tensor->dim(1)};
@@ -143,14 +154,15 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, relux_max_limit_);
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensor->shape();
   }
 
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(input_tensor->dim(2)),
-      static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(1)))};
-  const std::vector<uint32_t> lws = {128, 8, 1};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {kwg_size / 8, 8, 1};
 
   std::stringstream ss;
   ss << "winograd_inverse_transform_kernel_" << input_tensor->dim(0) << "_"

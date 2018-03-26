@@ -10,9 +10,15 @@ __kernel void fully_connected(__read_only image2d_t input,
                               __private const int input_height,
                               __private const int input_width,
                               __private const int input_channel,
-                              __private const float relux_max_limit) {
+                              __private const float relux_max_limit,
+                              __private const int global_size_dim0,
+                              __private const int global_size_dim1) {
   const int batch_idx = get_global_id(0);
   const int out_blk_idx = get_global_id(1);
+  if (batch_idx >= global_size_dim0 || out_blk_idx >= global_size_dim1) {
+    return;
+  }
+
   const int input_chan_blk = (input_channel + 3) >> 2;
 
   float4 input_value;
@@ -68,11 +74,20 @@ __kernel void fully_connected_width(__read_only image2d_t input,
                                     __private const int input_width,
                                     __private const int in_chan_blks,
                                     __private const int out_blks,
-                                    __private const float relux_max_limit) {
+                                    __private const float relux_max_limit,
+                                    __private const int global_size_dim0,
+                                    __private const int global_size_dim1,
+                                    __private const int global_size_dim2) {
   const int inter_out_idx = get_global_id(0);
   const int width_blk_idx = get_global_id(1);
-  const int width_blk_count = get_global_size(1);
   const int batch_out_blk_idx = get_global_id(2);
+  if (inter_out_idx >= global_size_dim0 || width_blk_idx >= global_size_dim1
+      || batch_out_blk_idx >= global_size_dim2) {
+    return;
+  }
+
+  const int width_blk_count = global_size_dim1;
+
   const int batch_idx = batch_out_blk_idx / out_blks;
   const int out_blk_idx = batch_out_blk_idx % out_blks;
 

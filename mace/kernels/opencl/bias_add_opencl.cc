@@ -23,6 +23,10 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
+
   auto runtime = OpenCLRuntime::Global();
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
@@ -38,17 +42,24 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(bias->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+    kernel_.setArg(idx++, gws[2]);
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8};
+  const uint32_t kwg_size =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8};
+
+  std::vector<uint32_t> roundup_gws(lws.size());
+  for (size_t i = 0; i < lws.size(); ++i) {
+    roundup_gws[i] = RoundUp(gws[i], lws[i]);
+  }
 
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+      kernel_, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
       cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS);
   if (future != nullptr) {

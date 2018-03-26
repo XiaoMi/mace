@@ -8,9 +8,12 @@ __kernel void addn(__read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
 #if INPUT_NUM > 3
                    __read_only image2d_t input3,
 #endif
-                   __write_only image2d_t output) {
+                   __write_only image2d_t output,
+                   __private const int global_size_dim0,
+                   __private const int global_size_dim1) {
   const int w = get_global_id(0);
   const int hb = get_global_id(1);
+  if (w >= global_size_dim0 || hb >= global_size_dim1) return;
 
   DATA_TYPE4 in0 = READ_IMAGET(input0, SAMPLER, (int2)(w, hb));
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(w, hb));
