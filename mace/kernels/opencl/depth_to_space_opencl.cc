@@ -20,15 +20,22 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t input_width = input->dim(2);
   const index_t input_depth = input->dim(3);
 
+  int depth_blocks = 1;
+  const char *kernel_name = nullptr;
+
   index_t output_height, output_width, output_depth;
   if (d2s_) {
     output_height = input_height * block_size_;
     output_width = input_width * block_size_;
     output_depth = input_depth / (block_size_ * block_size_);
+    depth_blocks = RoundUpDiv4(output_depth);
+    kernel_name = "depth_to_space";
   } else {
     output_height = input_height / block_size_;
     output_width = input_width / block_size_;
     output_depth = input_depth * block_size_ * block_size_;
+    depth_blocks = RoundUpDiv4(input_depth);
+    kernel_name = "space_to_depth";
   }
 
   std::vector<index_t> output_shape = {batch, output_height, output_width,
@@ -37,11 +44,6 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
   output->ResizeImage(output_shape, image_shape);
-
-  const int depth_blocks =
-      (d2s_) ? RoundUpDiv4(output_depth) : RoundUpDiv4(input_depth);
-
-  const char *kernel_name = (d2s_) ? "depth_to_space" : "space_to_depth";
 
   if (kernel_.get() == nullptr) {
     auto runtime = OpenCLRuntime::Global();
