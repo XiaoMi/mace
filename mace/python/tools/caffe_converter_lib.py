@@ -785,10 +785,10 @@ class CaffeConverter(object):
     self.resolved_ops.add(op.name)
 
   def convert_reshape(self, op):
-    op_def = self.CommonConvert(op, op.type)
+    op_def = self.CommonConvert(op, 'ReOrganize')
     input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
     output_shape = input_shape
-    shape_param = np.asarray(op.layer.reshape_param.shape.dim)[[0, 2, 3, 1]]
+    shape_param = np.asarray(op.layer.reshape_param.shape.dim)[[0, 3, 2, 1]]
     print shape_param
     for i in range(len(shape_param)):
       if shape_param[i] != 0:
