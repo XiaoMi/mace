@@ -784,21 +784,89 @@ class CaffeConverter(object):
     self.net_def.op.extend([op_def])
     self.resolved_ops.add(op.name)
 
+  def convert_reshape(self, op):
+    op_def = self.CommonConvert(op, op.type)
+    input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    output_shape = input_shape
+    shape_param = np.asarray(op.layer.reshape_param.shape.dim)[[0, 2, 3, 1]]
+    print shape_param
+    for i in range(len(shape_param)):
+      if shape_param[i] != 0:
+        output_shape[i] = shape_param[i]
+    shape_arg = op_def.arg.add()
+    shape_arg.name = 'shape'
+    shape_arg.ints.extend(output_shape)
+    op.output_shape_map[op.layer.top[0]] = output_shape
+    self.add_output_shape(op_def, output_shape)
+    op_def.output.extend([op.name + ':0'])
+    self.net_def.op.extend([op_def])
+    self.resolved_ops.add(op.name)
+
+  def convert_proposal_op(self, op):
+    assert self.device == 'cpu'
+    op_def = self.CommonConvert(op, op.type)
+    if op.layer.HasField('proposal_param'):
+      proposal_param = op.layer.proposal_param
+      feat_stride_arg = op_def.arg.add()
+      feat_stride_arg.name = 'feat_stride'
+      feat_stride_arg.i = proposal_param.feat_stride
+      scales_arg = op_def.arg.add()
+      scales_arg.name = 'scales'
+      scales_arg.ints.extend(list(proposal_param.scales))
+      ratios_arg = op_def.arg.add()
+      ratios_arg.name = 'ratios'
+      ratios_arg.floats.extend(list(proposal_param.ratios))
+    output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
+    self.add_output_shape(op_def, output_shape)
+    op_def.output.extend([op.name + ':0'])
+    self.net_def.op.extend([op_def])
+    self.resolved_ops.add(op.name)
+
+  def convert_psroi_align(self, op):
+    assert self.device == 'cpu'
+    op_def = self.CommonConvert(op, op.type)
+    if op.layer.HasField('psroi_align_param'):
+      psroi_align_param = op.layer.psroi_align_param
+      spatial_scale_arg = op_def.arg.add()
+      spatial_scale_arg.name = 'spatial_scale'
+      spatial_scale_arg.f = psroi_align_param.spatial_scale
+      output_dim_arg = op_def.arg.add()
+      output_dim_arg.name = 'output_dim'
+      output_dim_arg.i = psroi_align_param.output_dim
+      group_size_arg = op_def.arg.add()
+      group_size_arg.name = 'group_size'
+      group_size_arg.i = psroi_align_param.group_size
+    output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
+    op.output_shape_map[op.layer.top[0]] = output_shape
+    self.add_output_shape(op_def, output_shape)
+    op_def.output.extend([op.name + ':0'])
+    self.net_def.op.extend([op_def])
+    self.resolved_ops.add(op.name)
+
   def replace_in_out_name(self, input_names, output_names, is_single):
     in_names = set([input_name + ":0" for input_name in input_names])
     out_names = set([output_name + ":0" for output_name in output_names])
     if is_single:
       for op in self.net_def.op:
-        if len(op.input) > 0 and op.input[0] in in_names:
-          op.input[0] = MACE_INPUT_NODE_NAME + ':0'
-        if len(op.output) > 0 and op.output[0] in out_names:
-          op.output[0] = MACE_OUTPUT_NODE_NAME + ':0'
+        for i in range(len(op.input)):
+          if op.input[i] in in_names:
+            op.input[i] = MACE_INPUT_NODE_NAME + ':0'
+        for i in range(len(op.output)):
+          if op.output[i] in out_names:
+            op.output[i] = MACE_OUTPUT_NODE_NAME + ':0'
     else:
       for op in self.net_def.op:
-        if len(op.input) > 0 and op.input[0] in in_names:
-          op.input[0] = MACE_INPUT_NODE_NAME + '_' + op.input[0]
-        if len(op.output) > 0 and op.output[0] in out_names:
-          op.output[0] = MACE_OUTPUT_NODE_NAME + '_' + op.output[0]
+        for i in range(len(op.input)):
+          if op.input[i] in in_names:
+            op.input[i] = MACE_INPUT_NODE_NAME + '_' + op.input[i]
+          if op.input[i] in out_names:
+            op.input[i] = MACE_OUTPUT_NODE_NAME + '_' + op.input[i]
+        for i in range(len(op.output)):
+          if op.output[i] in in_names:
+            op.output[i] = MACE_INPUT_NODE_NAME + '_' + op.output[i]
+          if op.output[i] in out_names:
+            op.output[i] = MACE_OUTPUT_NODE_NAME + '_' + op.output[i]
 
   def add_input_op_shape(self, input_nodes, input_shapes):
     assert len(input_nodes) == len(input_shapes)
@@ -843,10 +911,16 @@ class CaffeConverter(object):
         self.convert_concat(op)
       elif op.type == 'Eltwise':
         self.convert_eltwise(op)
-      elif op.type in ['Softmax']:
-       self.convert_normal_op(op)
       elif op.type == 'Slice':
         self.convert_slice(op)
+      elif op.type == 'Reshape':
+        self.convert_reshape(op)
+      elif op.type == 'Proposal':
+        self.convert_proposal_op(op)
+      elif op.type == 'PSROIAlign':
+        self.convert_psroi_align(op)
+      elif op.type in ['Softmax']:
+        self.convert_normal_op(op)
       else:
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 

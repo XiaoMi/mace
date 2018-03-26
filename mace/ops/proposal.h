@@ -16,12 +16,12 @@ class ProposalOp : public Operator<D, T> {
  public:
   ProposalOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("min_size", 0),
-                 OperatorBase::GetSingleArgument<float>("nms_thresh", 0),
-                 OperatorBase::GetSingleArgument<int>("pre_nms_top_n", 0),
-                 OperatorBase::GetSingleArgument<int>("post_nms_top_n", 0),
+        functor_(OperatorBase::GetSingleArgument<int>("min_size", 16),
+                 OperatorBase::GetSingleArgument<float>("nms_thresh", 0.7),
+                 OperatorBase::GetSingleArgument<int>("pre_nms_top_n", 6000),
+                 OperatorBase::GetSingleArgument<int>("post_nms_top_n", 300),
                  OperatorBase::GetSingleArgument<int>("feat_stride", 0),
-                 OperatorBase::GetSingleArgument<int>("base_size", 16),
+                 OperatorBase::GetSingleArgument<int>("base_size", 12),
                  OperatorBase::GetRepeatedArgument<int>("scales"),
                  OperatorBase::GetRepeatedArgument<float>("ratios")) {}
 
