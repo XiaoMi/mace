@@ -57,11 +57,11 @@ class MaceEngine {
                       const std::vector<std::string> &output_nodes);
   ~MaceEngine();
 
-  MaceStatus Run(const std::map<std::string, MaceTensor> &input,
-                 std::map<std::string, MaceTensor> *output);
+  MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
+                 std::map<std::string, MaceTensor> *outputs);
 
-  MaceStatus Run(const std::map<std::string, MaceTensor> &input,
-                 std::map<std::string, MaceTensor> *output,
+  MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
+                 std::map<std::string, MaceTensor> *outputs,
                  RunMetadata *run_metadata);
 
  private:
