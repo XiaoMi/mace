@@ -97,14 +97,17 @@ def validate_caffe_model(input_names, input_shapes, output_names, output_shapes)
     input_value = load_data(FLAGS.input_file + "_" + input_names[i])
     input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1, 2))
     input_blob_name = input_names[i]
-    if input_names[i] in net.top_names:
-      input_blob_name = net.top_names[input_names[i]][0]
+    try:
+      if input_names[i] in net.top_names:
+        input_blob_name = net.top_names[input_names[i]][0]
+    except ValueError:
+      pass
     net.blobs[input_blob_name].data[0] = input_value
 
   net.forward()
 
   for i in range(len(output_names)):
-    value = net.blobs[net.top_names[output_names[i]][0]].data[0]
+    value = net.blobs[net.top_names[output_names[i]][0]].data
     out_shape = output_shapes[i]
     out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[1], out_shape[2]
     value = value.reshape(out_shape).transpose((0, 2, 3, 1))
