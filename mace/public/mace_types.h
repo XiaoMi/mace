@@ -3,7 +3,7 @@
 //
 
 // This file defines data types used by net creation and benchmark tools.
-// These APIs are not stable.
+// These APIs are not stable and should only be used by advanced users.
 
 #ifndef MACE_PUBLIC_MACE_TYPES_H_
 #define MACE_PUBLIC_MACE_TYPES_H_
