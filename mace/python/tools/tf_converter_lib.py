@@ -362,7 +362,8 @@ class TFConverter(object):
     if len(self.tf_graph.get(final_op.name, [])) == 1 \
         and self.tf_graph[final_op.name][0].type in activation_name_map:
       activation_op = self.tf_graph[final_op.name][0]
-      op_def.type = "FusedConv2D"
+      if op_def.type == "Conv2D":
+        op_def.type = "FusedConv2D"
       fused_act_arg = op_def.arg.add()
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]

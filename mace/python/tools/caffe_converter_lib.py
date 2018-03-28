@@ -72,9 +72,9 @@ class Shapes(object):
     output_shape = np.zeros_like(input_shape)
     output_shape[0] = input_shape[0]
     output_shape[1] = int(round_func((input_shape[1] + paddings[0] - filter_shape[0]
-                       - (filter_shape[0] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
+                                      - (filter_shape[0] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
     output_shape[2] = int(round_func((input_shape[2] + paddings[1] - filter_shape[1]
-                       - (filter_shape[1] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
+                                      - (filter_shape[1] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
     output_shape[3] = filter_shape[2]
     return output_shape
 
@@ -333,8 +333,18 @@ class CaffeConverter(object):
     return pad, stride, kernel
 
   def convert_conv2d(self, op):
-    op_def = self.CommonConvert(op, 'Conv2D')
     param = op.layer.convolution_param
+    is_depthwise = False
+    if param.HasField('group'):
+      if param.group == op.data[0].shape[0] and op.data[0].shape[1] == 1:
+        is_depthwise = True
+      else:
+        raise Exception("Mace do not support group convolution yet")
+
+    if is_depthwise:
+      op_def = self.CommonConvert(op, 'DepthwiseConv2d')
+    else:
+      op_def = self.CommonConvert(op, 'Conv2D')
 
     # Add filter
     weight_tensor_name = op.name + '_weight:0'
@@ -342,7 +352,7 @@ class CaffeConverter(object):
     self.add_tensor(weight_tensor_name, weight_data)
 
     if self.device == 'gpu':
-      buffer_type = "CONV2D_FILTER"
+      buffer_type = "DW_CONV2D_FILTER" if is_depthwise else "CONV2D_FILTER"
       output_name = self.add_buffer_to_image(weight_tensor_name, buffer_type)
       op_def.input.extend([output_name])
     else:
@@ -373,15 +383,16 @@ class CaffeConverter(object):
     self.resolved_ops.add(op.name)
 
     output_shape = Shapes.conv_pool_shape(op.get_single_parent().output_shape_map[op.layer.bottom[0]],
-                                          weight_data.shape,
-                                          paddings, strides, dilations,
-                                          math.floor)
+      weight_data.shape,
+      paddings, strides, dilations,
+      math.floor)
     op.output_shape_map[op.layer.top[0]] = output_shape
 
     if len(self.ops_map[final_op.name].children) == 1 \
         and self.ops_map[final_op.name].children[0].type in activation_name_map:
       activation_op = self.ops_map[final_op.name].children[0]
-      op_def.type = "FusedConv2D"
+      if not is_depthwise:
+        op_def.type = "FusedConv2D"
       fused_act_arg = op_def.arg.add()
       fused_act_arg.name = 'activation'
       fused_act_arg.s = activation_name_map[activation_op.type]
@@ -412,7 +423,7 @@ class CaffeConverter(object):
     width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
     return self.winograd and self.device == 'gpu' and \
            filter_shape[0] == 3 and (filter_shape[0] == filter_shape[1]) and \
-           dilations[0] == 1 and (dilations[0] == dilations[1]) and\
+           dilations[0] == 1 and (dilations[0] == dilations[1]) and \
            (strides[0] == 1) and (strides[0] == strides[1]) and \
            (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
            (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
@@ -662,7 +673,7 @@ class CaffeConverter(object):
 
     filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]]
     output_shape = Shapes.conv_pool_shape(input_shape, filter_shape,
-                                          paddings, strides, [1, 1], math.ceil)
+      paddings, strides, [1, 1], math.ceil)
     op.output_shape_map[op.layer.top[0]] = output_shape
 
     op_def.output.extend([op.name + ':0'])
@@ -764,7 +775,7 @@ class CaffeConverter(object):
     input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
     num_outputs = len(op.layer.top)
     if (input_shape[3] % num_outputs) != 0 or \
-      (self.device == 'gpu' and ((input_shape[3] / num_outputs) % 4 != 0)) :
+        (self.device == 'gpu' and ((input_shape[3] / num_outputs) % 4 != 0)) :
       raise Exception('Mace do not support slice with input shape '
                       + str(input_shape) + ' and number of output ' + str(num_outputs))
     output_shape = Shapes.slice_shape(input_shape, num_outputs)
@@ -789,7 +800,6 @@ class CaffeConverter(object):
     input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
     output_shape = input_shape
     shape_param = np.asarray(op.layer.reshape_param.shape.dim)[[0, 3, 2, 1]]
-    print shape_param
     for i in range(len(shape_param)):
       if shape_param[i] != 0:
         output_shape[i] = shape_param[i]
@@ -967,3 +977,4 @@ def convert_to_mace_pb(model_file, weight_file, input_node_str, input_shape_str,
     print "Memory optimization done."
 
   return net_def
+
