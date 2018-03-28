@@ -404,7 +404,9 @@ message LayerParameter {
   optional ParameterParameter parameter_param = 145;
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
+  optional ProposalParameter proposal_param = 8266713;
   optional PReLUParameter prelu_param = 131;
+  optional PSROIAlignParameter psroi_align_param = 1490;
   optional PythonParameter python_param = 130;
   optional RecurrentParameter recurrent_param = 146;
   optional ReductionParameter reduction_param = 136;
@@ -942,6 +944,19 @@ message PowerParameter {
   optional float power = 1 [default = 1.0];
   optional float scale = 2 [default = 1.0];
   optional float shift = 3 [default = 0.0];
+}
+
+// Message that stores parameters used by ProposalLayer
+message ProposalParameter {
+  optional uint32 feat_stride = 1 [default = 16];
+  repeated uint32 scales = 2;
+  repeated float ratios = 3;
+}
+
+message PSROIAlignParameter {
+  required float spatial_scale = 1;
+  required int32 output_dim = 2; // output channel number
+  required int32 group_size = 3; // number of groups to encode position-sensitive score maps
 }
 
 message PythonParameter {

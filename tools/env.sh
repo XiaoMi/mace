@@ -2,8 +2,6 @@
 LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
 MACE_SOURCE_DIR=`/bin/pwd`
-INPUT_FILE_NAME="model_input"
-OUTPUT_FILE_NAME="model_out"
 PHONE_DATA_DIR="/data/local/tmp/mace_run"
 KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen

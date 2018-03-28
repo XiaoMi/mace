@@ -63,7 +63,6 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
 }
 
 namespace ops {
-
 // Keep in lexicographical order
 extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
@@ -74,6 +73,7 @@ extern void Register_BufferToImage(OperatorRegistry *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
+extern void Register_DepthToSpace(OperatorRegistry *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
 extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
@@ -85,11 +85,13 @@ extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
 extern void Register_PSROIAlign(OperatorRegistry *op_registry);
+extern void Register_ReOrganize(OperatorRegistry *op_registry);
 extern void Register_Reshape(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
 extern void Register_Slice(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
+extern void Register_SpaceToDepth(OperatorRegistry *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_WinogradTransform(OperatorRegistry *op_registry);
 
@@ -107,6 +109,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
+  ops::Register_DepthToSpace(this);
   ops::Register_DepthwiseConv2d(this);
   ops::Register_Eltwise(this);
   ops::Register_FoldedBatchNorm(this);
@@ -118,11 +121,13 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Pooling(this);
   ops::Register_Proposal(this);
   ops::Register_PSROIAlign(this);
+  ops::Register_ReOrganize(this);
   ops::Register_Reshape(this);
   ops::Register_ResizeBilinear(this);
   ops::Register_Slice(this);
   ops::Register_Softmax(this);
   ops::Register_SpaceToBatchND(this);
+  ops::Register_SpaceToDepth(this);
   ops::Register_WinogradInverseTransform(this);
   ops::Register_WinogradTransform(this);
 }
