@@ -53,7 +53,7 @@ MaceTensor &MaceTensor::operator=(const MaceTensor &&other) {
   return *this;
 }
 
-MaceTensor::~MaceTensor() {}
+MaceTensor::~MaceTensor() = default;
 
 const std::vector<int64_t> &MaceTensor::shape() const { return impl_->shape; }
 
@@ -192,7 +192,7 @@ MaceEngine::MaceEngine(const NetDef *net_def,
       new MaceEngine::Impl(net_def, device_type, input_nodes, output_nodes));
 }
 
-MaceEngine::~MaceEngine() {}
+MaceEngine::~MaceEngine() = default;
 
 MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
                            std::map<std::string, MaceTensor> *outputs,
