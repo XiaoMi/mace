@@ -22,7 +22,9 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              const DataType dt,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
-                             StatsFuture *future) {
+                             StatsFuture *future,
+                             bool *is_non_uniform_work_groups_supported,
+                             uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -38,9 +40,9 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel->get() == nullptr) {
+    *is_non_uniform_work_groups_supported =
+        runtime->IsNonUniformWorkgroupsSupported();
     MACE_CHECK(input_batch == batch);
 
     std::set<std::string> built_options;
@@ -48,7 +50,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (is_qualcomm_opencl200) {
+    if (*is_non_uniform_work_groups_supported) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     if (bias != nullptr) {
@@ -101,11 +103,12 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     kernel->setArg(idx++, gws[2]);
 
     *prev_input_shape = input->shape();
+
+    *kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
   std::string tuning_key =
       Concat("conv2d_1x1_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

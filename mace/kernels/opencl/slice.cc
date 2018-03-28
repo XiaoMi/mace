@@ -31,16 +31,16 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE="
                            + DtToCLCMDDt(DataTypeToEnum<T>::value));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ = runtime->BuildKernel("slice", kernel_name, built_options);
@@ -53,9 +53,9 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
 
-  const uint32_t kwg_size =
+  kwg_size_ =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << "slice_opencl_kernel_"
      << input->dim(0) << "_"

@@ -47,9 +47,9 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::stringstream kernel_name_ss;
@@ -58,7 +58,7 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ =
@@ -93,11 +93,12 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = input->shape();
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 }
 

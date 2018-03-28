@@ -38,9 +38,9 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::set<std::string> built_options;
     std::stringstream kernel_name_ss;
@@ -49,7 +49,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ =
@@ -77,11 +77,12 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, gws[2]);
 
     space_shape_ = space_tensor->shape();
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << kernel_name << "_" << batch_tensor->dim(0) << "_"
      << batch_tensor->dim(1) << "_" << batch_tensor->dim(2) << "_"

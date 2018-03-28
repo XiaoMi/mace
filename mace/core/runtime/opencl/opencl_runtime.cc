@@ -147,16 +147,9 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
     if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
       *device_ = device;
       gpu_detected = true;
+
       const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
-      constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
-      constexpr const char *kMaliGPUStr = "Mali";
-      if (device_name == kQualcommAdrenoGPUStr) {
-        gpu_type_ = GPU_TYPE::QUALCOMM_ADRENO;
-      } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
-        gpu_type_ = GPU_TYPE::MALI;
-      } else {
-        gpu_type_ = GPU_TYPE::UNKNOWN;
-      }
+      gpu_type_ = ParseGPUTypeFromDeviceName(device_name);
 
       const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
       opencl_version_ = device_version.substr(7, 3);
@@ -178,7 +171,7 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   }
 
   cl_int err;
-  if (gpu_type_ == GPU_TYPE::QUALCOMM_ADRENO) {
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties, gpu_perf_hint,
@@ -357,12 +350,30 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   return size;
 }
 
-const GPU_TYPE OpenCLRuntime::GetGPUType() const {
-  return gpu_type_;
+const bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() {
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
+      opencl_version_ == "2.0") {
+    return true;
+  } else {
+    return false;
+  }
 }
 
-const std::string &OpenCLRuntime::GetOpenclVersion() const {
-  return opencl_version_;
+const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(
+    const std::string &device_name) {
+  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+  constexpr const char *kMaliGPUStr = "Mali";
+  constexpr const char *kPowerVRGPUStr = "PowerVR";
+
+  if (device_name == kQualcommAdrenoGPUStr) {
+    return GPUType::QUALCOMM_ADRENO;
+  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+    return GPUType::MALI;
+  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
+    return GPUType::PowerVR;
+  } else {
+    return GPUType::UNKNOWN;
+  }
 }
 
 }  // namespace mace

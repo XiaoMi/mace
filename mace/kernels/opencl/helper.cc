@@ -194,24 +194,14 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
   }
 }
 
-const bool IsQualcommOpenCL200() {
-  auto runtime = OpenCLRuntime::Global();
-
-  if (runtime->GetGPUType() == GPU_TYPE::QUALCOMM_ADRENO &&
-      runtime->GetOpenclVersion() == "2.0") {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void TuningOrRun3DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+  const bool is_non_uniform_work_groups_supported =
+      runtime->IsNonUniformWorkgroupsSupported();
 
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
@@ -249,7 +239,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         << "Tuning parameters of 3D kernel must be 4D";
     cl_int error = CL_SUCCESS;
     std::vector<uint32_t> roundup_gws(3);
-    if (!is_qualcomm_opencl200) {
+    if (!is_non_uniform_work_groups_supported) {
       for (size_t i = 0; i < 3; ++i) {
         roundup_gws[i] = RoundUp(gws[i], params[i]);
       }
@@ -262,7 +252,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
       for (uint32_t i = 0; i < num_blocks; ++i) {
         uint32_t gws2 =
             (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-        if (is_qualcomm_opencl200) {
+        if (is_non_uniform_work_groups_supported) {
           error = runtime->command_queue().enqueueNDRangeKernel(
               kernel, cl::NDRange(0, 0, i * block_size),
               cl::NDRange(gws[0], gws[1], gws2),
@@ -278,7 +268,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
       }
     } else {
       timer->ClearTiming();
-      if (is_qualcomm_opencl200) {
+      if (is_non_uniform_work_groups_supported) {
         error = runtime->command_queue().enqueueNDRangeKernel(
             kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
@@ -303,7 +293,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         for (uint32_t i = 0; i < num_blocks; ++i) {
           uint32_t gws2 =
               (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-          if (is_qualcomm_opencl200) {
+          if (is_non_uniform_work_groups_supported) {
             error = runtime->command_queue().enqueueNDRangeKernel(
                 kernel, cl::NDRange(0, 0, i * block_size),
                 cl::NDRange(gws[0], gws[1], gws2),
@@ -342,7 +332,8 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+  const bool is_non_uniform_work_groups_supported =
+      runtime->IsNonUniformWorkgroupsSupported();
 
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
@@ -368,7 +359,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         << "Tuning parameters of 2D kernel must be 3d";
     cl_int error = CL_SUCCESS;
     std::vector<uint32_t> roundup_gws(2);
-    if (!is_qualcomm_opencl200) {
+    if (!is_non_uniform_work_groups_supported) {
       for (size_t i = 0; i < 2; ++i) {
         roundup_gws[i] = RoundUp(gws[i], params[i]);
       }
@@ -381,7 +372,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
       for (uint32_t i = 0; i < num_blocks; ++i) {
         uint32_t gws1 =
             (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-        if (is_qualcomm_opencl200) {
+        if (is_non_uniform_work_groups_supported) {
           error = runtime->command_queue().enqueueNDRangeKernel(
               kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
               cl::NDRange(params[0], params[1]), nullptr, &event);
@@ -396,7 +387,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
       }
     } else {
       timer->ClearTiming();
-      if (is_qualcomm_opencl200) {
+      if (is_non_uniform_work_groups_supported) {
         error = runtime->command_queue().enqueueNDRangeKernel(
             kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
             cl::NDRange(params[0], params[1]), nullptr, &event);
@@ -420,7 +411,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         for (uint32_t i = 0; i < num_blocks; ++i) {
           uint32_t gws1 =
               (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-          if (is_qualcomm_opencl200) {
+          if (is_non_uniform_work_groups_supported) {
             error = runtime->command_queue().enqueueNDRangeKernel(
                 kernel, cl::NDRange(0, i * block_size),
                 cl::NDRange(gws[0], gws1), cl::NDRange(params[0], params[1]),

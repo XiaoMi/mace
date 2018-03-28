@@ -29,16 +29,16 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("bias_add");
     built_options.emplace("-Dbias_add=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ = runtime->BuildKernel("bias_add", kernel_name, built_options);
@@ -52,15 +52,16 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, gws[1]);
     kernel_.setArg(idx++, gws[2]);
     input_shape_ = input->shape();
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8};
 
   cl::Event event;
   cl_int error;
-  if (is_qualcomm_opencl200) {
+  if (is_non_uniform_work_groups_supported_) {
     error = runtime->command_queue().enqueueNDRangeKernel(
         kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
         cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);

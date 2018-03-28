@@ -62,14 +62,15 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+  const bool is_non_uniform_work_groups_supported =
+      runtime->IsNonUniformWorkgroupsSupported();
 
   std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
   std::set<std::string> built_options;
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
-  if (is_qualcomm_opencl200) {
+  if (is_non_uniform_work_groups_supported) {
     built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
   }
   if (buffer->dtype() == image->dtype()) {
@@ -115,7 +116,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
 
   cl::Event event;
   cl_int error;
-  if (is_qualcomm_opencl200) {
+  if (is_non_uniform_work_groups_supported) {
     error = runtime->command_queue().enqueueNDRangeKernel(
         b2f_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);

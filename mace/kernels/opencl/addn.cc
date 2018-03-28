@@ -26,8 +26,6 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   for (int i = 1; i < size; ++i) {
     MACE_CHECK_NOTNULL(input_tensors[i]);
     MACE_CHECK(batch == input_tensors[i]->dim(0));
@@ -37,6 +35,8 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   }
 
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     if (input_tensors.size() > 4) {
       MACE_NOT_IMPLEMENTED;
     }
@@ -47,7 +47,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
 
@@ -78,11 +78,12 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensors[0]->shape();
+
+    kwg_size_ =
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {kwg_size / 16, 16, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 1};
   std::stringstream ss;
   ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
      << "_" << output_shape[2] << "_" << output_shape[3];

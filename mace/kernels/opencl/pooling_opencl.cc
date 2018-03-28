@@ -20,9 +20,9 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     const DataType dt = DataTypeToEnum<T>::value;
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
@@ -39,13 +39,13 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     if (pooling_type_ == AVG) {
       built_options.emplace("-DPOOL_AVG");
     }
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
   }
 
-  uint32_t gws[3];
+  std::vector<uint32_t> gws;
   if (!IsVecEqual(input_shape_, input->shape())) {
     std::vector<index_t> output_shape(4);
     std::vector<index_t> filter_shape = {kernels_[0], kernels_[1],
@@ -75,9 +75,10 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
     index_t channel_blocks = (channels + 3) / 4;
 
-    gws[0] = static_cast<uint32_t>(channel_blocks);
-    gws[1] = static_cast<uint32_t>(out_width);
-    gws[2] = static_cast<uint32_t>(batch * out_height);
+    gws = {
+        static_cast<uint32_t>(channel_blocks), static_cast<uint32_t>(out_width),
+        static_cast<uint32_t>(batch * out_height),
+    };
 
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
@@ -94,26 +95,16 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = input->shape();
-  } else {
-    index_t batch = output->dim(0);
-    index_t out_height = output->dim(1);
-    index_t out_width = output->dim(2);
-    index_t channels = output->dim(3);
 
-    index_t channel_blocks = (channels + 3) / 4;
-
-    gws[0] = static_cast<uint32_t>(channel_blocks);
-    gws[1] = static_cast<uint32_t>(out_width);
-    gws[2] = static_cast<uint32_t>(batch * out_height);
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << "pooling_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+  TuningOrRun3DKernel(kernel_, ss.str(), gws.data(), lws, future);
 }
 
 template struct PoolingFunctor<DeviceType::OPENCL, float>;

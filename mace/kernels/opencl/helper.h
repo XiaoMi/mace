@@ -102,8 +102,6 @@ std::string Concat(Args... args) {
   return ss.str();
 }
 
-const bool IsQualcommOpenCL200();
-
 }  // namespace kernels
 }  // namespace mace
 #endif  // MACE_KERNELS_OPENCL_HELPER_H_

@@ -33,16 +33,16 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel_.get() == nullptr) {
+    is_non_uniform_work_groups_supported_ =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
     built_options.emplace("-Dmatmul=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (is_qualcomm_opencl200) {
+    if (is_non_uniform_work_groups_supported_) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ = runtime->BuildKernel("matmul", kernel_name, built_options);
@@ -59,9 +59,9 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, gws[0]);
   kernel_.setArg(idx++, gws[1]);
 
-  const uint32_t kwg_size =
+  kwg_size_ =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  const std::vector<uint32_t> lws = {kwg_size / 64, 64, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 1};
   std::stringstream ss;
   ss << "matmul_opencl_kernel_" << C->dim(0) << "_" << C->dim(1) << "_"
      << C->dim(2) << "_" << C->dim(3);

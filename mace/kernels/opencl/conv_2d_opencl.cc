@@ -20,7 +20,9 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              const DataType dt,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
-                             StatsFuture *future);
+                             StatsFuture *future,
+                             bool *is_non_uniform_work_groups_supported,
+                             uint32_t *kwg_size);
 
 extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              const Tensor *input,
@@ -34,7 +36,9 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              const DataType dt,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
-                             StatsFuture *future);
+                             StatsFuture *future,
+                             bool *is_non_uniform_work_groups_supported,
+                             uint32_t *kwg_size);
 
 extern void Conv2dOpencl(cl::Kernel *kernel,
                          const Tensor *input,
@@ -48,7 +52,9 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          const DataType dt,
                          std::vector<index_t> *prev_input_shape,
                          Tensor *output,
-                         StatsFuture *future);
+                         StatsFuture *future,
+                         bool *is_non_uniform_work_groups_supported,
+                         uint32_t *kwg_size);
 
 template <typename T>
 void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
@@ -61,7 +67,8 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       const Tensor *bias, const int stride, const int *padding,
       const int *dilations, const ActivationType activation,
       const float relux_max_limit, const DataType dt,
-      std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future);
+      std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future,
+      bool *is_non_uniform_work_groups_supported, uint32_t *kwg_size);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[5] = {
       Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3, nullptr, nullptr};
@@ -101,11 +108,13 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     auto conv2d_func = selector[kernel_h - 1];
     conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                 dilations_, activation_, relux_max_limit_,
-                DataTypeToEnum<T>::value, &input_shape_, output, future);
+                DataTypeToEnum<T>::value, &input_shape_, output, future,
+                &is_non_uniform_work_groups_supported_, &kwg_size_);
   } else {
     Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                  dilations_, activation_, relux_max_limit_,
-                 DataTypeToEnum<T>::value, &input_shape_, output, future);
+                 DataTypeToEnum<T>::value, &input_shape_, output, future,
+                 &is_non_uniform_work_groups_supported_, &kwg_size_);
   }
 }
 

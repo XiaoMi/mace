@@ -155,6 +155,8 @@ class ActivationFunctor<DeviceType::OPENCL, T> {
   ActivationType activation_;
   T relux_max_limit_;
   cl::Kernel kernel_;
+  uint32_t kwg_size_;
+  bool is_non_uniform_work_groups_supported_;
   std::string tuning_key_prefix_;
   std::vector<index_t> input_shape_;
 };

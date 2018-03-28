@@ -17,7 +17,9 @@ static void Concat2(cl::Kernel *kernel,
                     const DataType dt,
                     std::vector<index_t> *prev_input_shape,
                     Tensor *output,
-                    StatsFuture *future) {
+                    StatsFuture *future,
+                    bool *is_non_uniform_work_groups_supported,
+                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -31,13 +33,13 @@ static void Concat2(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel->get() == nullptr) {
+    *is_non_uniform_work_groups_supported =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
-    if (is_qualcomm_opencl200) {
+    if (*is_non_uniform_work_groups_supported) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     if (input0->dtype() == output->dtype()) {
@@ -66,11 +68,12 @@ static void Concat2(cl::Kernel *kernel,
     kernel->setArg(idx++, gws[2]);
 
     *prev_input_shape = input0->shape();
+
+    *kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
 
-  const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-  const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
   std::stringstream ss;
   ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
@@ -81,7 +84,9 @@ static void ConcatN(cl::Kernel *kernel,
                     const std::vector<const Tensor *> &input_list,
                     const DataType dt,
                     Tensor *output,
-                    StatsFuture *future) {
+                    StatsFuture *future,
+                    bool *is_non_uniform_work_groups_supported,
+                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -89,15 +94,15 @@ static void ConcatN(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
-  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
-
   if (kernel->get() == nullptr) {
+    *is_non_uniform_work_groups_supported =
+        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-    if (is_qualcomm_opencl200) {
+    if (*is_non_uniform_work_groups_supported) {
       built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
@@ -122,9 +127,9 @@ static void ConcatN(cl::Kernel *kernel,
     kernel->setArg(idx++, gws[2]);
 
     chan_blk_offset += input_channel_blk;
-    const uint32_t kwg_size =
+    *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-    const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
+    const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
     std::stringstream ss;
     ss << "concat_n_opencl_kernel_" << input_channel_blk << "_" << width << "_"
        << batch * height;
@@ -169,11 +174,13 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
   switch (inputs_count) {
     case 2:
       Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
-              &input_shape_, output, future);
+              &input_shape_, output, future,
+              &is_non_uniform_work_groups_supported_, &kwg_size_);
       break;
     default:
       if (divisible_four) {
-        ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future);
+        ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future,
+            &is_non_uniform_work_groups_supported_, &kwg_size_);
       } else {
         MACE_NOT_IMPLEMENTED;
       }

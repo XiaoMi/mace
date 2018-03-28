@@ -43,6 +43,10 @@ else
     HEXAGON_MODE_BUILD_FLAG="--define hexagon=true"
   fi
 
+  if [ x"$TARGET_ABI" = x"arm64-v8a" ]; then
+    NEON_ENABLE_FLAG="--define neon=true"
+  fi
+
   bazel build --verbose_failures -c opt --strip always //mace/examples:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
@@ -54,6 +58,7 @@ else
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
     --copt="-O3" \
+    $NEON_ENABLE_FLAG \
     $PRODUCTION_MODE_BUILD_FLAGS \
     $HEXAGON_MODE_BUILD_FLAG || exit 1
 fi
