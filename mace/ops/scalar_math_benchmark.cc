@@ -71,17 +71,16 @@ static void ScalarMath(int iters, int batch, int channels,
 
 BM_SCALAR_MATH(1, 1, 512, 512, 2, 0);
 BM_SCALAR_MATH(1, 3, 128, 128, 2, 1);
-BM_SCALAR_MATH(1, 3, 512, 512, 2, 2);
-BM_SCALAR_MATH(1, 32, 112, 112, 2, 3);
+BM_SCALAR_MATH(1, 3, 512, 512, 2, 4);
+BM_SCALAR_MATH(1, 32, 112, 112, 2, 5);
 BM_SCALAR_MATH(1, 64, 256, 256, 3, 0);
 BM_SCALAR_MATH(1, 64, 512, 512, 3, 1);
-BM_SCALAR_MATH(1, 128, 56, 56, 3, 2);
-BM_SCALAR_MATH(1, 128, 256, 256, 3, 3);
+BM_SCALAR_MATH(1, 128, 56, 56, 3, 4);
+BM_SCALAR_MATH(1, 128, 256, 256, 3, 5);
 BM_SCALAR_MATH(1, 256, 14, 14, 3, 0);
 BM_SCALAR_MATH(1, 512, 14, 14, 3, 1);
-BM_SCALAR_MATH(1, 1024, 7, 7, 3, 2);
-BM_SCALAR_MATH(32, 1, 256, 256, 3, 3);
-BM_SCALAR_MATH(32, 3, 256, 256, 3, 2);
+BM_SCALAR_MATH(1, 1024, 7, 7, 3, 4);
+BM_SCALAR_MATH(32, 1, 256, 256, 3, 5);
 
 }  // namespace test
 }  // namespace ops
