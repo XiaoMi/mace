@@ -8,6 +8,7 @@ package(
 cc_library(
     name = "generated_models",
     srcs = glob(["models/*/*.cc"]),
+    hdrs = glob(["models/*/*.h"]),
     linkstatic = 1,
     deps = [
         "//mace/core",
@@ -32,7 +33,6 @@ cc_library(
     srcs = ["tuning/tuning_params.cc"],
     linkstatic = 1,
 )
-
 
 cc_library(
     name = "generated_version",

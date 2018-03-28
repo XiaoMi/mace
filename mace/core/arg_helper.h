@@ -10,6 +10,7 @@
 #include <map>
 
 #include "mace/public/mace.h"
+#include "mace/public/mace_types.h"
 
 namespace mace {
 

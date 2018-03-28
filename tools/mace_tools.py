@@ -76,26 +76,28 @@ def generate_random_input(target_soc, model_output_dir,
       target_soc, model_output_dir, int(generate_data_or_not))
   run_command(command)
 
-  input_name_list = []
   input_file_list = []
-  if isinstance(input_names, list):
-    input_name_list.extend(input_names)
-  else:
-    input_name_list.append(input_names)
   if isinstance(input_files, list):
     input_file_list.extend(input_files)
   else:
     input_file_list.append(input_files)
-  assert len(input_file_list) == len(input_name_list)
-  for i in range(len(input_file_list)):
-    if input_file_list[i] is not None:
-      dst_input_file = model_output_dir + '/' + input_file_name(input_name_list[i])
-      if input_file_list[i].startswith("http://") or \
-          input_file_list[i].startswith("https://"):
-        urllib.urlretrieve(input_file_list[i], dst_input_file)
-      else:
-        print 'Copy input data:', dst_input_file
-        shutil.copy(input_file_list[i], dst_input_file)
+  if len(input_file_list) != 0:
+    input_name_list = []
+    if isinstance(input_names, list):
+      input_name_list.extend(input_names)
+    else:
+      input_name_list.append(input_names)
+    if len(input_file_list) != len(input_name_list):
+      raise Exception('If input_files set, the input files should match the input names.')
+    for i in range(len(input_file_list)):
+      if input_file_list[i] is not None:
+        dst_input_file = model_output_dir + '/' + input_file_name(input_name_list[i])
+        if input_file_list[i].startswith("http://") or \
+            input_file_list[i].startswith("https://"):
+          urllib.urlretrieve(input_file_list[i], dst_input_file)
+        else:
+          print 'Copy input data:', dst_input_file
+          shutil.copy(input_file_list[i], dst_input_file)
 
 def generate_model_code():
   command = "bash tools/generate_model_code.sh"

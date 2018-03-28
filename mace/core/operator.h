@@ -16,6 +16,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/public/mace.h"
+#include "mace/public/mace_types.h"
 
 namespace mace {
 

@@ -114,6 +114,7 @@ static void Conv2d(int iters,
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, OPENCL); \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);
 
+
 BM_CONV_2D(1, 256, 64, 64, 3, 3, 1, 1, VALID, 256);
 
 BM_CONV_2D(1, 512, 15, 15, 1, 1, 1, 1, VALID, 1024);
@@ -134,6 +135,8 @@ BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, 1, SAME, 128);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, 1, SAME, 128);
 BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, 1, SAME, 128);
 BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, 1, SAME, 128);
+
+BM_CONV_2D(1, 1024, 16, 16, 15, 1, 1, 1, SAME, 2);
 
 // Dilation
 BM_CONV_2D(1, 32, 256, 256, 3, 3, 1, 2, VALID, 32);

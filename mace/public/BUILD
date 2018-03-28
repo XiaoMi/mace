@@ -7,11 +7,11 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android")
-
 cc_library(
     name = "public",
     hdrs = [
         "mace.h",
+        "mace_runtime.h",
+        "mace_types.h",
     ],
 )

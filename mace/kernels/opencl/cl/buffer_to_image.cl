@@ -2,6 +2,7 @@
 
 __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
+                                     __private const int filter_h,
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
@@ -22,16 +23,18 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
   }
 #endif
 
-  const int out_channel_idx = h * 4;
-  const int rounded_in_channel = ((in_channel + 3) / 4) * 4;
-  const int hw_idx = w / rounded_in_channel;
-  const int in_channel_idx = w % rounded_in_channel;
+  const int in_channel_idx = w;
+  const int hw_size = filter_w * filter_h;
+  const int out_channel_idx = h / hw_size * 4;
+  const int hw_idx = h % hw_size;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = input_offset + ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
-                           + in_channel_idx;
+  const int offset = input_offset
+                     + ((h_idx * filter_w + w_idx) * out_channel
+                         + out_channel_idx) * in_channel
+                     + in_channel_idx;
 
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
+  DATA_TYPE4 values = 0;
   if (out_channel_idx < out_channel) {
     const int size = out_channel - out_channel_idx;
     if (size < 4) {
@@ -52,10 +55,11 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
   }
 
   int2 coord = (int2)(w, h);
-  CMD_TYPE(write_image, CMD_DATA_TYPE)(output, coord, values);
+  WRITE_IMAGET(output, coord, values);
 }
 
 __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic */
+                                     __private const int filter_h,
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
@@ -76,18 +80,19 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
   }
 #endif
 
-  const int out_channel_idx = h * 4;
-  const int rounded_in_channel = ((in_channel + 3) / 4) * 4;
-  const int hw_idx = w / rounded_in_channel;
-  const int in_channel_idx = w % rounded_in_channel;
+  const int in_channel_idx = w;
+  const int hw_size = filter_w * filter_h;
+  const int out_channel_idx = h / hw_size * 4;
+  const int hw_idx = h % hw_size;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = ((h_idx * filter_w + w_idx) * out_channel + out_channel_idx) * in_channel
-                           + in_channel_idx;
+  const int offset = ((h_idx * filter_w + w_idx) * out_channel
+                         + out_channel_idx) * in_channel
+                     + in_channel_idx;
 
   if (out_channel_idx < out_channel) {
     int2 coord = (int2)(w, h);
-    VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
+    DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
     const int size = (out_channel - out_channel_idx);
     if (size < 4) {
       switch (size) {
@@ -200,7 +205,7 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
                            + channel_idx;
 
   const int size = channels - channel_idx;
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
+  DATA_TYPE4 values = 0;
   if (size < 4) {
     switch(size) {
       case 3:
@@ -214,7 +219,7 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
-  CMD_TYPE(write_image, CMD_DATA_TYPE)(output, coord, values);
+  WRITE_IMAGET(output, coord, values);
 }
 
 __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
@@ -246,7 +251,7 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
                            + channel_idx;
 
   int2 coord = (int2)(w, h);
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
+  DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
   const int size = channels - channel_idx;
   if (size < 4) {
     switch (size) {
@@ -286,7 +291,7 @@ __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   const int size = count - w * 4;
 
 
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = 0;
+  DATA_TYPE4 values = 0;
   if (size < 4) {
     switch(size) {
       case 3:
@@ -300,7 +305,7 @@ __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
-  CMD_TYPE(write_image, CMD_DATA_TYPE)(output, coord, values);
+  WRITE_IMAGET(output, coord, values);
 }
 
 __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
@@ -325,7 +330,7 @@ __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
   const int offset = w * 4;
 
   int2 coord = (int2)(w, h);
-  VEC_DATA_TYPE(DATA_TYPE, 4) values = CMD_TYPE(read_image, CMD_DATA_TYPE)(input, SAMPLER, coord);
+  DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
   const int size = count - offset;
   if (size < 4) {
     switch (size) {

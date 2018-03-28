@@ -1,7 +1,7 @@
 #include <common.h>
 
 __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
-                          __read_only image2d_t filter, /* cout%4 * cin * kh * kw, cout/4 */
+                          __read_only image2d_t filter, /* cout%4 * cin , kh * kw * cout/4 */
 #ifdef BIAS
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
@@ -39,8 +39,6 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int out_w_blks = get_global_size(1);
 #endif
 
-  const int rounded_in_ch = in_ch_blks << 2;
-
 #ifdef BIAS
   DATA_TYPE4 out0 =
      READ_IMAGET(bias, SAMPLER, (int2)(out_ch_blk, 0));
@@ -65,19 +63,18 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
   const int height_idx = mad24((out_hb % out_height), stride, -padding_top);
 
   const int batch_idx = mul24((out_hb / out_height), in_height);
-  const int rounded_in_ch_x_3 = (rounded_in_ch << 1) + rounded_in_ch;
 
   DATA_TYPE4 in0, in1, in2, in3, in4;
   DATA_TYPE4 weights0, weights1, weights2, weights3;
   for (short in_ch_blk = 0; in_ch_blk < in_ch_blks; ++in_ch_blk) {
     const int in_idx = mul24(in_ch_blk, in_width);
-    int filter_x_part0 = in_ch_blk << 2;
+    int filter_x_idx = in_ch_blk << 2;
+    int filter_y_idx = mul24(out_ch_blk, 9);
     int in_hb_idx = height_idx;
     for (short hb_idx = 0; hb_idx < 3; ++hb_idx) {
       int in_hb_value = select(in_hb_idx + batch_idx,
                                -1,
                                (in_hb_idx < 0 || in_hb_idx >= in_height));
-      int filter_x_part1 = 0;
       int in_width_idx = 0;
       for (short width_idx = 0; width_idx < 3; ++width_idx) {
         int in_width_value;
@@ -97,11 +94,10 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
 #undef READ_INPUT
 
         // int filter_idx = (hb_idx * 3 + width_idx) * rounded_in_ch + (in_ch_blk << 2);
-        int filter_idx = filter_x_part0 + filter_x_part1;
-        weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 0, out_ch_blk));
-        weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 1, out_ch_blk));
-        weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 2, out_ch_blk));
-        weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_idx + 3, out_ch_blk));
+        weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 0, filter_y_idx));
+        weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 1, filter_y_idx));
+        weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 2, filter_y_idx));
+        weights3 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 3, filter_y_idx));
 
         out0 = mad(in0.x, weights0, out0);
         out0 = mad(in0.y, weights1, out0);
@@ -129,10 +125,9 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
         out4 = mad(in4.z, weights2, out4);
         out4 = mad(in4.w, weights3, out4);
 
-        filter_x_part1 += rounded_in_ch;
         in_width_idx += dilation_w;
+        filter_y_idx += 1;
       }
-      filter_x_part0 += rounded_in_ch_x_3;
       in_hb_idx += dilation_h;
     }
   }

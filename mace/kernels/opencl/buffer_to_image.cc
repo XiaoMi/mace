@@ -95,7 +95,12 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
                       static_cast<uint32_t>(buffer->buffer_offset() /
                                             GetEnumTypeSize(buffer->dtype())));
   }
-  if (type == ARGUMENT) {
+  if (type == CONV2D_FILTER) {
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+  } else if (type == ARGUMENT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
   } else if (type == WEIGHT_HEIGHT || type == WEIGHT_WIDTH) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
