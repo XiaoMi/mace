@@ -19,6 +19,7 @@ enum EltwiseType {
   SUM = 1,
   MAX = 2,
   MIN = 3,
+  SUB = 4,
 };
 
 struct EltwiseFunctorBase {
@@ -40,7 +41,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
                   StatsFuture *future) {
     Tensor::MappingGuard input0_guard(input0);
     Tensor::MappingGuard input1_guard(input1);
-    Tensor::MappingGuard output_guard(output);
+    Tensor::MappingGuard output_guard(output);    
 
     const T *input0_ptr = input0->data<T>();
     const T *input1_ptr = input1->data<T>();
@@ -51,33 +52,39 @@ struct EltwiseFunctor : EltwiseFunctorBase {
       case PROD:
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
-          output_ptr[i] = input0_ptr[i] * input1_ptr[i];
+          output_ptr[i] =  input0_ptr[i] * input1_ptr[i];
         }
         break;
       case SUM:
-        if (coeff_.empty()) {
+        if (coeff_.empty()) {			
 #pragma omp parallel for
-          for (index_t i = 0; i < size; ++i) {
+	      for (index_t i = 0; i < size; ++i) {
             output_ptr[i] = input0_ptr[i] + input1_ptr[i];
           }
-        } else {
+        } else {		    
 #pragma omp parallel for
           for (index_t i = 0; i < size; ++i) {
             output_ptr[i] =
-                coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
+              coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
           }
         }
         break;
-      case MAX:
+      case MAX:        
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = std::max<T>(input0_ptr[i], input1_ptr[i]);
         }
         break;
-      case MIN:
+      case MIN:        
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = std::min<T>(input0_ptr[i], input1_ptr[i]);
+        }
+        break;
+      case SUB:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output_ptr[i] = input0_ptr[i] - input1_ptr[i];
         }
         break;
       default:

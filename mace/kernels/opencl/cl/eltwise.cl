@@ -33,8 +33,9 @@ __kernel void eltwise(
   out = fmax(in0, in1);
 #elif ELTWISE_TYPE == 3
   out = fmin(in0, in1);
+#elif ELTWISE_TYPE == 4
+  out = in0 - in1;
 #endif
 
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }
-
