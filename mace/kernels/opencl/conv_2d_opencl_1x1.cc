@@ -37,6 +37,9 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
 
   auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
     MACE_CHECK(input_batch == batch);
 
@@ -45,6 +48,9 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }

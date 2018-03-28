@@ -26,6 +26,8 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   for (int i = 1; i < size; ++i) {
     MACE_CHECK_NOTNULL(input_tensors[i]);
     MACE_CHECK(batch == input_tensors[i]->dim(0));
@@ -45,6 +47,10 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
+
     kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
   }
 

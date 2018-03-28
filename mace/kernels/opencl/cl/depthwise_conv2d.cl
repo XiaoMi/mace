@@ -18,19 +18,29 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
                                __private const short padding_top,
                                __private const short padding_left,
                                __private const short dilation_h,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                                __private const short dilation_w,
                                __private const int global_size_dim0,
                                __private const int global_size_dim1,
                                __private const int global_size_dim2) {
+#else
+                               __private const short dilation_w) {
+#endif
+
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1);
   const short out_hb = get_global_id(2);
+
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (out_ch_blk >= global_size_dim0 || out_w_blk >= global_size_dim1
       || out_hb >= global_size_dim2) {
     return;
   }
-
   const short out_w_blks = global_size_dim1;
+#else
+  const short out_w_blks = get_global_size(1);
+#endif
+
   const short rounded_in_ch = in_ch_blks << 2;
   const short in_ch_blk = out_ch_blk; // multiplier = 1
 
@@ -149,17 +159,25 @@ __kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4
                                   __private const short filter_height,
                                   __private const short filter_width,
                                   __private const short padding_top,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                                   __private const short padding_left,
                                   __private const int global_size_dim0,
                                   __private const int global_size_dim1,
                                   __private const int global_size_dim2) {
+#else
+                                  __private const short padding_left) {
+#endif
+
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1) << 2;
   const short out_hb = get_global_id(2);
+
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (out_ch_blk >= global_size_dim0 || get_global_id(1) >= global_size_dim1
       || out_hb >= global_size_dim2) {
     return;
   }
+#endif
 
   const short rounded_in_ch = in_ch_blks << 2;
   const short in_ch_blk = out_ch_blk; // multiplier = 1

@@ -26,14 +26,18 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
 
-  if (kernel_.get() == nullptr) {
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
 
+  if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("activation");
     built_options.emplace("-Dactivation=" + kernel_name);
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     switch (activation_) {
       case RELU:
         tuning_key_prefix_ = "relu_opencl_kernel_";

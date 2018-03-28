@@ -31,10 +31,15 @@ static void Concat2(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     if (input0->dtype() == output->dtype()) {
       built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
       built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
@@ -83,12 +88,18 @@ static void ConcatN(cl::Kernel *kernel,
   const index_t channel = output->dim(3);
 
   auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
   }
 

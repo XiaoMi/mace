@@ -42,6 +42,8 @@ void DepthwiseConv2d(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d");
@@ -50,6 +52,9 @@ void DepthwiseConv2d(cl::Kernel *kernel,
       built_options.emplace("-Ddepthwise_conv2d_s1=" + kernel_name);
     } else {
       built_options.emplace("-Ddepthwise_conv2d=" + kernel_name);
+    }
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));

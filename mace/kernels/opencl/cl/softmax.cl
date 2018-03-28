@@ -3,20 +3,30 @@
 __kernel void softmax(__read_only image2d_t input,
                       __private const int channels,
                       __private const int remain_channels,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                       __write_only image2d_t output,
                       __private const int global_size_dim0,
                       __private const int global_size_dim1,
                       __private const int global_size_dim2) {
+#else
+                      __write_only image2d_t output) {
+#endif
+
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
+
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
       || hb_idx >= global_size_dim2) {
     return;
   }
-
   const int chan_blks = global_size_dim0 - 1;
   const int width = global_size_dim1;
+#else
+  const int chan_blks = get_global_size(0) - 1;
+  const int width = get_global_size(1);
+#endif
 
   int pos = width_idx;
   DATA_TYPE max_value = -FLT_MAX;

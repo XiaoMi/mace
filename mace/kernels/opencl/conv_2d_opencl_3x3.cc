@@ -37,12 +37,17 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d_3x3");
     built_options.emplace("-Dconv_2d_3x3=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
       case NOOP:

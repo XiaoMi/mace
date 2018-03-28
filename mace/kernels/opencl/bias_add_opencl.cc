@@ -28,6 +28,9 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
                            static_cast<uint32_t>(height * batch)};
 
   auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
@@ -35,6 +38,9 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     built_options.emplace("-Dbias_add=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     kernel_ = runtime->BuildKernel("bias_add", kernel_name, built_options);
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
@@ -52,15 +58,22 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   const std::vector<uint32_t> lws = {8, kwg_size / 64, 8};
 
-  std::vector<uint32_t> roundup_gws(lws.size());
-  for (size_t i = 0; i < lws.size(); ++i) {
-    roundup_gws[i] = RoundUp(gws[i], lws[i]);
-  }
-
   cl::Event event;
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      kernel_, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  cl_int error;
+  if (is_qualcomm_opencl200) {
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  } else {
+    std::vector<uint32_t> roundup_gws(lws.size());
+    for (size_t i = 0; i < lws.size(); ++i) {
+      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+    }
+
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        kernel_, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  }
   MACE_CHECK(error == CL_SUCCESS);
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {

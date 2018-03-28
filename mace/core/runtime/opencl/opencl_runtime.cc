@@ -142,7 +142,6 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   }
 
   bool gpu_detected = false;
-  bool is_adreno_gpu = false;
   device_ = std::make_shared<cl::Device>();
   for (auto device : all_devices) {
     if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
@@ -150,9 +149,17 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
       gpu_detected = true;
       const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
       constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+      constexpr const char *kMaliGPUStr = "Mali";
       if (device_name == kQualcommAdrenoGPUStr) {
-        is_adreno_gpu = true;
+        gpu_type_ = GPU_TYPE::QUALCOMM_ADRENO;
+      } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+        gpu_type_ = GPU_TYPE::MALI;
+      } else {
+        gpu_type_ = GPU_TYPE::UNKNOWN;
       }
+
+      const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+      opencl_version_ = device_version.substr(7, 3);
 
       VLOG(1) << "Using device: " << device_name;
       break;
@@ -171,7 +178,7 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   }
 
   cl_int err;
-  if (is_adreno_gpu) {
+  if (gpu_type_ == GPU_TYPE::QUALCOMM_ADRENO) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties, gpu_perf_hint,
@@ -348,6 +355,14 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
   return size;
+}
+
+const GPU_TYPE OpenCLRuntime::GetGPUType() const {
+  return gpu_type_;
+}
+
+const std::string &OpenCLRuntime::GetOpenclVersion() {
+  return opencl_version_;
 }
 
 }  // namespace mace

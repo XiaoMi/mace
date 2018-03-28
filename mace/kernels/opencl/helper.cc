@@ -194,12 +194,25 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
   }
 }
 
+const bool IsQualcommOpenCL200() {
+  auto runtime = OpenCLRuntime::Global();
+
+  if (runtime->GetGPUType() == GPU_TYPE::QUALCOMM_ADRENO &&
+      runtime->GetOpenclVersion() == "2.0") {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void TuningOrRun3DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
@@ -236,8 +249,10 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         << "Tuning parameters of 3D kernel must be 4D";
     cl_int error = CL_SUCCESS;
     std::vector<uint32_t> roundup_gws(3);
-    for (size_t i = 0; i < 3; ++i) {
-      roundup_gws[i] = RoundUp(gws[i], params[i]);
+    if(!is_qualcomm_opencl200) {
+      for (size_t i = 0; i < 3; ++i) {
+        roundup_gws[i] = RoundUp(gws[i], params[i]);
+      }
     }
 
     if (timer == nullptr) {
@@ -247,18 +262,31 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
       for (uint32_t i = 0; i < num_blocks; ++i) {
         uint32_t gws2 =
             (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-        uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NDRange(0, 0, i * block_size),
-            cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
-            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        if (is_qualcomm_opencl200) {
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, 0, i * block_size),
+              cl::NDRange(gws[0], gws[1], gws2),
+              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        } else {
+          uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, 0, i * block_size),
+              cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
+              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        }
         MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       }
     } else {
       timer->ClearTiming();
-      error = runtime->command_queue().enqueueNDRangeKernel(
-          kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-          cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+      if (is_qualcomm_opencl200) {
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+      } else {
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+      }
       MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
@@ -274,11 +302,18 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         for (uint32_t i = 0; i < num_blocks; ++i) {
           uint32_t gws2 =
               (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-          uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, 0, i * block_size),
-              cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
-              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+          if (is_qualcomm_opencl200) {
+            error = runtime->command_queue().enqueueNDRangeKernel(
+                kernel, cl::NDRange(0, 0, i * block_size),
+                cl::NDRange(gws[0], gws[1], gws2),
+                cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+          } else {
+            uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
+            error = runtime->command_queue().enqueueNDRangeKernel(
+                kernel, cl::NDRange(0, 0, i * block_size),
+                cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
+                cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+          }
           MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
           timer->AccumulateTiming();
         }
@@ -306,6 +341,8 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
                          const std::vector<uint32_t> &lws,
                          StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
@@ -330,8 +367,10 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         << "Tuning parameters of 2D kernel must be 3d";
     cl_int error = CL_SUCCESS;
     std::vector<uint32_t> roundup_gws(2);
-    for (size_t i = 0; i < 2; ++i) {
-      roundup_gws[i] = RoundUp(gws[i], params[i]);
+    if (!is_qualcomm_opencl200) {
+      for (size_t i = 0; i < 2; ++i) {
+        roundup_gws[i] = RoundUp(gws[i], params[i]);
+      }
     }
 
     if (timer == nullptr) {
@@ -341,17 +380,29 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
       for (uint32_t i = 0; i < num_blocks; ++i) {
         uint32_t gws1 =
             (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-        uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
-            cl::NDRange(params[0], params[1]), nullptr, &event);
+        if (is_qualcomm_opencl200) {
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
+              cl::NDRange(params[0], params[1]), nullptr, &event);
+        } else {
+          uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
+              cl::NDRange(params[0], params[1]), nullptr, &event);
+        }
         MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       }
     } else {
       timer->ClearTiming();
-      error = runtime->command_queue().enqueueNDRangeKernel(
-          kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
-          cl::NDRange(params[0], params[1]), nullptr, &event);
+      if (is_qualcomm_opencl200) {
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
+            cl::NDRange(params[0], params[1]), nullptr, &event);
+      } else {
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
+            cl::NDRange(params[0], params[1]), nullptr, &event);
+      }
       MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
@@ -367,10 +418,16 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         for (uint32_t i = 0; i < num_blocks; ++i) {
           uint32_t gws1 =
               (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-          uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
-              cl::NDRange(params[0], params[1]), nullptr, &event);
+          if (is_qualcomm_opencl200) {
+            error = runtime->command_queue().enqueueNDRangeKernel(
+                kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
+                cl::NDRange(params[0], params[1]), nullptr, &event);
+          } else {
+            uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
+            error = runtime->command_queue().enqueueNDRangeKernel(
+                kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
+                cl::NDRange(params[0], params[1]), nullptr, &event);
+          }
           MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
           timer->AccumulateTiming();
         }

@@ -8,12 +8,20 @@ __kernel void matmul(__read_only image2d_t A,
                      __private const int N,
                      __private const int K,
                      __private const int height_blocks,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                      __private const int k_blocks,
                      __private const int global_size_dim0,
                      __private const int global_size_dim1) {
+#else
+                     __private const int k_blocks) {
+#endif
+
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
+
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (get_global_id(0) >= global_size_dim0 || hb >= global_size_dim1) return;
+#endif
 
   const int batch = hb / height_blocks;
   const int ty = (hb % height_blocks);

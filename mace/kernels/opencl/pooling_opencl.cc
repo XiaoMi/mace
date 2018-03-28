@@ -20,11 +20,14 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     const DataType dt = DataTypeToEnum<T>::value;
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
     built_options.emplace("-Dpooling=" + kernel_name);
+
     if (pooling_type_ == MAX && input->dtype() == output->dtype()) {
       built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
       built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
@@ -35,6 +38,9 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
     if (pooling_type_ == AVG) {
       built_options.emplace("-DPOOL_AVG");
+    }
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
     }
     kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
   }

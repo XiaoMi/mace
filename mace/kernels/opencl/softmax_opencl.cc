@@ -28,6 +28,9 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
                            static_cast<uint32_t>(height * batch)};
 
   auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
@@ -35,6 +38,9 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
   }
   if (!IsVecEqual(input_shape_, logits->shape())) {

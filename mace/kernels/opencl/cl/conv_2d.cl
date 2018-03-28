@@ -18,20 +18,29 @@ __kernel void conv_2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                       __private const int padding_top,
                       __private const int padding_left,
                       __private const int dilation_h,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                       __private const int dilation_w,
                       __private const int global_size_dim0,
                       __private const int global_size_dim1,
                       __private const int global_size_dim2) {
+#else
+                      __private const int dilation_w) {
+#endif
+
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
   const int out_hb = get_global_id(2);
 
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (out_ch_blk >= global_size_dim0 || out_w_blk >= global_size_dim1
       || out_hb >= global_size_dim2) {
     return;
   }
-
   const int out_w_blks = global_size_dim1;
+#else
+  const int out_w_blks = get_global_size(1);
+#endif
+
   const int rounded_in_ch = in_ch_blks << 2;
 
 #ifdef BIAS

@@ -6,19 +6,30 @@ __kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w *
                                       __private const float width_scale,
                                       __private const int in_height,
                                       __private const int in_width,
+#ifndef USE_QUALCOMM_OPENCL_2_0
                                       __private const int out_height,
                                       __private const int global_size_dim0,
                                       __private const int global_size_dim1,
                                       __private const int global_size_dim2) {
+#else
+                                      __private const int out_height) {
+#endif
+
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);
+
+#ifndef USE_QUALCOMM_OPENCL_2_0
   if (ch_blk >= global_size_dim0 || w >= global_size_dim1
       || hb >= global_size_dim2) {
     return;
   }
   const int ch_blks = global_size_dim0;
   const int out_width = global_size_dim1;
+#else
+  const int ch_blks = get_global_size(0);
+  const int out_width = get_global_size(1);
+#endif
 
   const int b = hb / out_height;
   const int h = hb % out_height;

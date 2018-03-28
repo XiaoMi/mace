@@ -24,7 +24,10 @@ void FCWXKernel(cl::Kernel *kernel,
     << "FC width kernel only support input with 4x channel.";
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
+
   auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
@@ -34,6 +37,9 @@ void FCWXKernel(cl::Kernel *kernel,
     built_options.emplace("-Dfully_connected_width=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }
@@ -133,14 +139,21 @@ void FCWTXKernel(cl::Kernel *kernel,
                  StatsFuture *future) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
+
+  auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel->get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected");
     built_options.emplace("-Dfully_connected=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
     }

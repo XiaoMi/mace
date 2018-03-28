@@ -17,6 +17,8 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
@@ -26,6 +28,9 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
   }
@@ -90,6 +95,8 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
@@ -100,6 +107,9 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation_) {
       case NOOP:

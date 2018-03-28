@@ -30,6 +30,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
@@ -37,6 +39,9 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (is_qualcomm_opencl200) {
+      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    }
     kernel_ =
         runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
   }

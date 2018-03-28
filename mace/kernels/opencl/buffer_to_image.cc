@@ -59,11 +59,19 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
                          : "winograd_filter_buffer_to_image";
       break;
   }
+
+  auto runtime = OpenCLRuntime::Global();
+
+  const bool is_qualcomm_opencl200 = IsQualcommOpenCL200();
+
   std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
   std::set<std::string> built_options;
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
+  if (is_qualcomm_opencl200) {
+    built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+  }
   if (buffer->dtype() == image->dtype()) {
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
@@ -74,7 +82,6 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
   }
-  auto runtime = OpenCLRuntime::Global();
   auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
                                          obfuscated_kernel_name, built_options);
 
@@ -105,17 +112,24 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
   const uint32_t kwg_size =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(b2f_kernel));
   const std::vector<uint32_t> lws = {16, kwg_size / 16};
-  std::vector<uint32_t> roundup_gws(lws.size());
-  for (size_t i = 0; i < lws.size(); ++i) {
-    roundup_gws[i] = RoundUp(gws[i], lws[i]);
-  }
 
   cl::Event event;
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
-      cl::NDRange(lws[0], lws[1]), nullptr, &event);
-  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  cl_int error;
+  if (is_qualcomm_opencl200) {
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        b2f_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
+        cl::NDRange(lws[0], lws[1]), nullptr, &event);
+  } else {
+    std::vector<uint32_t> roundup_gws(lws.size());
+    for (size_t i = 0; i < lws.size(); ++i) {
+      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+    }
 
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
+        cl::NDRange(lws[0], lws[1]), nullptr, &event);
+  }
+  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
