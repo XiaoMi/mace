@@ -25,6 +25,6 @@ cat <<EOF > ${OUTPUT_FILENAME}
 // This is a generated file, DO NOT EDIT
 
 namespace mace {
-  const char *MaceGitVersion() { return "${GIT_VERSION}"; }
+  const char *MaceVersion() { return "${GIT_VERSION}"; }
 }  // namespace mace
 EOF

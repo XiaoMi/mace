@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 
-#include "mace/public/mace.h"
+#include "mace/public/mace_types.h"
 #include "include/half.hpp"
 
 namespace mace {

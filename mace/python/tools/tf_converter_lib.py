@@ -118,12 +118,9 @@ class TFConverter(object):
     arg.i = self.dt
     return output_name
 
-  def add_input_transform(self, names, is_single):
+  def add_input_transform(self, names):
     for name in names:
-      if is_single:
-        new_input_name = MACE_INPUT_NODE_NAME + ":0"
-      else:
-        new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
+      new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
       op_def.name = name
       op_def.type = 'BufferToImage'
@@ -138,12 +135,9 @@ class TFConverter(object):
       arg.name = 'T'
       arg.i = self.dt
 
-  def add_output_transform(self, names, is_single):
+  def add_output_transform(self, names):
     for name in names:
-      if is_single:
-        output_name = MACE_OUTPUT_NODE_NAME + ":0"
-      else:
-        output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
+      output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
       op_def.name = output_name[:-2]
       op_def.type = 'ImageToBuffer'
@@ -806,26 +800,18 @@ class TFConverter(object):
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
 
-  def replace_in_out_name(self, input_names, output_names, is_single):
+  def replace_in_out_name(self, input_names, output_names):
     in_names = set([input_name + ":0" for input_name in input_names])
     out_names = set([output_name + ":0" for output_name in output_names])
-    if is_single:
-      for op in self.net_def.op:
-        if len(op.input) > 0 and op.input[0] in in_names:
-          op.input[0] = MACE_INPUT_NODE_NAME + ':0'
-        if len(op.output) > 0 and op.output[0] in out_names:
-          op.output[0] = MACE_OUTPUT_NODE_NAME + ':0'
-    else:
-      for op in self.net_def.op:
-        if len(op.input) > 0 and op.input[0] in in_names:
-          op.input[0] = MACE_INPUT_NODE_NAME + '_' + op.input[0]
-        if len(op.output) > 0 and op.output[0] in out_names:
-          op.output[0] = MACE_OUTPUT_NODE_NAME + '_' + op.output[0]
+    for op in self.net_def.op:
+      if op.input[0] in in_names:
+        op.input[0] = MACE_INPUT_NODE_NAME + '_' + op.input[0]
+      if op.output[0] in out_names:
+        op.output[0] = MACE_OUTPUT_NODE_NAME + '_' + op.output[0]
 
   def convert(self, input_nodes, output_nodes):
-    is_single = len(input_nodes) == 1 and len(output_nodes) == 1
     if self.device == 'gpu':
-      self.add_input_transform(input_nodes, is_single)
+      self.add_input_transform(input_nodes)
 
     for op in self.tf_ops:
       if self.resolved_ops[op.name] == 1:
@@ -893,10 +879,10 @@ class TFConverter(object):
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 
     if self.device == 'gpu':
-      self.add_output_transform(output_nodes, is_single)
+      self.add_output_transform(output_nodes)
 
     if self.device == 'cpu':
-      self.replace_in_out_name(input_nodes, output_nodes, is_single)
+      self.replace_in_out_name(input_nodes, output_nodes)
 
     for key in self.resolved_ops:
       if self.resolved_ops[key] != 1:
