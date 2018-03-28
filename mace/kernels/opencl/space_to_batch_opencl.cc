@@ -42,7 +42,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
     kernel_ =
-        runtime->BuildKernel("space_to_batch", kernel_name, built_options);
+        runtime->BuildKernel("space_to_batch", obfuscated_kernel_name, built_options);
   }
   if (!IsVecEqual(space_shape_, space_tensor->shape())) {
     uint32_t idx = 0;

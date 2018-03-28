@@ -27,8 +27,9 @@ __kernel void eltwise(__read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
   out = fmax(in0, in1);
 #elif ELTWISE_TYPE == 3
   out = fmin(in0, in1);
+#elif ELTWISE_TYPE == 4
+  out = in0 - in1;
 #endif
 
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }
-
