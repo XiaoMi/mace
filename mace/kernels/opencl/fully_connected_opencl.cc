@@ -111,7 +111,8 @@ void FCWXKernel(cl::Kernel *kernel,
 
   cl::Event event;
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      *kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+      *kernel, cl::NullRange,
+      cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
       cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 

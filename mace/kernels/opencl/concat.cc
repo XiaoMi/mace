@@ -122,7 +122,7 @@ static void ConcatN(cl::Kernel *kernel,
     kernel->setArg(idx++, gws[2]);
 
     chan_blk_offset += input_channel_blk;
-    const uint32_t kwg_size = 
+    const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
     const std::vector<uint32_t> lws = {8, kwg_size / 64, 8, 1};
     std::stringstream ss;

@@ -56,7 +56,7 @@ class OpenCLRuntime {
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   const GPU_TYPE GetGPUType() const;
-  const std::string &GetOpenclVersion();
+  const std::string &GetOpenclVersion() const;
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);

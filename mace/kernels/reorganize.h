@@ -74,7 +74,6 @@ struct ReOrganizeFunctor {
         }
       }
     }
-
   }
 };
 

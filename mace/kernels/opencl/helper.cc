@@ -249,7 +249,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         << "Tuning parameters of 3D kernel must be 4D";
     cl_int error = CL_SUCCESS;
     std::vector<uint32_t> roundup_gws(3);
-    if(!is_qualcomm_opencl200) {
+    if (!is_qualcomm_opencl200) {
       for (size_t i = 0; i < 3; ++i) {
         roundup_gws[i] = RoundUp(gws[i], params[i]);
       }
@@ -284,7 +284,8 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
       } else {
         error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+            kernel, cl::NullRange,
+            cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
       }
       MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
@@ -387,7 +388,8 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         } else {
           uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
           error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
+              kernel, cl::NDRange(0, i * block_size),
+              cl::NDRange(roundup_gws[0], roundup_gws1),
               cl::NDRange(params[0], params[1]), nullptr, &event);
         }
         MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
@@ -420,12 +422,14 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
               (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
           if (is_qualcomm_opencl200) {
             error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
-                cl::NDRange(params[0], params[1]), nullptr, &event);
+                kernel, cl::NDRange(0, i * block_size),
+                cl::NDRange(gws[0], gws1), cl::NDRange(params[0], params[1]),
+                nullptr, &event);
           } else {
             uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
             error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, i * block_size), cl::NDRange(roundup_gws[0], roundup_gws1),
+                kernel, cl::NDRange(0, i * block_size),
+                cl::NDRange(roundup_gws[0], roundup_gws1),
                 cl::NDRange(params[0], params[1]), nullptr, &event);
           }
           MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;

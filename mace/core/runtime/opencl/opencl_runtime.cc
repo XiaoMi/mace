@@ -361,7 +361,7 @@ const GPU_TYPE OpenCLRuntime::GetGPUType() const {
   return gpu_type_;
 }
 
-const std::string &OpenCLRuntime::GetOpenclVersion() {
+const std::string &OpenCLRuntime::GetOpenclVersion() const {
   return opencl_version_;
 }
 
