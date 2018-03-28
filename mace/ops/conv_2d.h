@@ -31,7 +31,7 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
-
+    
     functor_(input, filter, bias, output, future);
 
     return true;

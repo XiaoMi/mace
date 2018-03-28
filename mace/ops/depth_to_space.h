@@ -19,18 +19,16 @@ class DepthToSpaceOp : public Operator<D, T> {
  public:
   DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("block_size", 1), true) {}
+        block_size_(OperatorBase::GetSingleArgument<int>("block_size", 1)),
+        functor_(this->block_size_, true) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
 
-    const int block_size =
-        OperatorBase::GetSingleArgument<int>("block_size", 1);
-
     int input_depth = input->dim(3);
-    MACE_CHECK(input_depth % (block_size * block_size) == 0,
+    MACE_CHECK(input_depth % (block_size_ * block_size_) == 0,
                "input depth should be dividable by block_size * block_size",
                input->dim(3));
     MACE_CHECK((input_depth % 4) == 0,
@@ -40,6 +38,7 @@ class DepthToSpaceOp : public Operator<D, T> {
   }
 
  protected:
+  const int block_size_;
   OP_INPUT_TAGS(INPUT);
   OP_OUTPUT_TAGS(OUTPUT);
 
