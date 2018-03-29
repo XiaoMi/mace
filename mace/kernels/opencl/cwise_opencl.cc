@@ -12,8 +12,8 @@ namespace kernels {
 
 template <typename T>
 void CWiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
-                                                       Tensor *output,
-                                                       StatsFuture *future) {
+                                                     Tensor *output,
+                                                     StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
