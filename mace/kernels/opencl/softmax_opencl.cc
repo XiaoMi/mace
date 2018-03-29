@@ -45,13 +45,15 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   }
   if (!IsVecEqual(input_shape_, logits->shape())) {
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(logits->opencl_image()));
     kernel_.setArg(idx++, static_cast<int>(channels));
     kernel_.setArg(idx++, remain_channels);
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = logits->shape();
 

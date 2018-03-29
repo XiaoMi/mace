@@ -81,6 +81,11 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     };
 
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
@@ -90,14 +95,23 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, strides_[0]);
     kernel_.setArg(idx++, kernels_[0]);
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = input->shape();
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+  } else {
+    index_t batch = output->dim(0);
+    index_t out_height = output->dim(1);
+    index_t out_width = output->dim(2);
+    index_t channels = output->dim(3);
+
+    index_t channel_blocks = (channels + 3) / 4;
+
+    gws = {
+        static_cast<uint32_t>(channel_blocks), static_cast<uint32_t>(out_width),
+        static_cast<uint32_t>(batch * out_height),
+    };
   }
 
   std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};

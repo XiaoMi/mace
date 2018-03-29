@@ -68,12 +68,6 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   uint32_t gws[3];
   std::stringstream ss;
   if (!IsVecEqual(input_shape_, input->shape())) {
-    uint32_t idx = 0;
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, block_size_);
-    kernel_.setArg(idx++, depth_blocks);
-    kernel_.setArg(idx++, *(output->opencl_image()));
-
     if (d2s_) {
       gws[0] = static_cast<uint32_t>(depth_blocks);
       gws[1] = static_cast<uint32_t>(output_width);
@@ -88,9 +82,16 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
          << input->dim(1) << "_" << input->dim(2) << "_" << input->dim(3);
     }
 
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
+    uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, block_size_);
+    kernel_.setArg(idx++, depth_blocks);
+    kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();
 

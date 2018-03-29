@@ -1,7 +1,13 @@
 #include <common.h>
 
 // Only multiplier = 1 is supported
-__kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void depthwise_conv2d(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                               __private const int global_size_dim0,
+                               __private const int global_size_dim1,
+                               __private const int global_size_dim2,
+#endif
+                               __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
     __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -18,15 +24,7 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
                                __private const short padding_top,
                                __private const short padding_left,
                                __private const short dilation_h,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                               __private const short dilation_w,
-                               __private const int global_size_dim0,
-                               __private const int global_size_dim1,
-                               __private const int global_size_dim2) {
-#else
                                __private const short dilation_w) {
-#endif
-
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1);
   const short out_hb = get_global_id(2);
@@ -144,7 +142,13 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 }
 
-__kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void depthwise_conv2d_s1(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                  __private const int global_size_dim0,
+                                  __private const int global_size_dim1,
+                                  __private const int global_size_dim2,
+#endif
+                                  __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                   __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
     __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -159,15 +163,7 @@ __kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4
                                   __private const short filter_height,
                                   __private const short filter_width,
                                   __private const short padding_top,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __private const short padding_left,
-                                  __private const int global_size_dim0,
-                                  __private const int global_size_dim1,
-                                  __private const int global_size_dim2) {
-#else
                                   __private const short padding_left) {
-#endif
-
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1) << 2;
   const short out_hb = get_global_id(2);

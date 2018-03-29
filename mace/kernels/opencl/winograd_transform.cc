@@ -61,6 +61,10 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     output_tensor->ResizeImage(output_shape, image_shape);
 
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+    }
     kernel_.setArg(idx++, *(input_tensor->opencl_image()));
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(1)));
@@ -70,8 +74,6 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensor->shape();
 
@@ -151,6 +153,10 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const uint32_t round_h = (height_ + 1) / 2;
     const uint32_t round_w = (width_ + 1) / 2;
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+    }
     kernel_.setArg(
         idx++,
         *(static_cast<const cl::Image2D *>(input_tensor->opencl_image())));
@@ -165,8 +171,6 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
     kernel_.setArg(idx++, relux_max_limit_);
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensor->shape();
 

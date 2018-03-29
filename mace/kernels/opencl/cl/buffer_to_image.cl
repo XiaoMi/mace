@@ -1,19 +1,17 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, oc, ic */
+__kernel void filter_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1,
+#endif
+                                     __global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
                                      __private const int filter_h,
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __write_only image2d_t output,
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1) {
-#else
                                      __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -58,19 +56,17 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic */
+__kernel void filter_image_to_buffer(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1,
+#endif
+                                     __global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_h,
                                      __private const int filter_w,
                                      __private const int out_channel,
                                      __private const int in_channel,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __read_only image2d_t input,
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1) {
-#else
                                      __read_only image2d_t input) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -112,19 +108,17 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
   }
 }
 
-__kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, m */
+__kernel void dw_filter_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                        __private const int global_size_dim0,
+                                        __private const int global_size_dim1,
+#endif
+                                        __global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int input_offset,
                                         __private const int filter_w,
                                         __private const int in_channel,
                                         __private const int multiplier,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                        __write_only image2d_t output,
-                                        __private const int global_size_dim0,
-                                        __private const int global_size_dim1) { /* ic%4 * kh * kw * m, ic/4 */
-#else
-                                        __write_only image2d_t output) {
-#endif
-
+                                        __write_only image2d_t output) { /* ic%4 * kh * kw * m, ic/4 */
   const int w = get_global_id(0);
   const int h = get_global_id(1);
 
@@ -175,19 +169,17 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void in_out_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1,
+#endif
+                                     __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __write_only image2d_t output,
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1) {
-#else
                                      __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -222,18 +214,16 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
+__kernel void in_out_image_to_buffer(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1,
+#endif
+                                     __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __read_only image2d_t input,
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1) {
-#else
                                      __read_only image2d_t input) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -267,17 +257,15 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
   }
 }
 
-__kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void arg_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                  __private const int global_size_dim0,
+                                  __private const int global_size_dim1,
+#endif
+                                  __global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __write_only image2d_t output,
-                                  __private const int global_size_dim0,
-                                  __private const int global_size_dim1) {
-#else
                                   __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -308,16 +296,14 @@ __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
-                                  __private const int count,
+__kernel void arg_image_to_buffer(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __read_only image2d_t input,
                                   __private const int global_size_dim0,
-                                  __private const int global_size_dim1) {
-#else
-                                  __read_only image2d_t input) {
+                                  __private const int global_size_dim1,
 #endif
-
+                                  __global DATA_TYPE *output, /* nhwc */
+                                  __private const int count,
+                                  __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -347,19 +333,17 @@ __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
 }
 
 
-__kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //nhwc
+__kernel void in_out_height_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                            __private const int global_size_dim0,
+                                            __private const int global_size_dim1,
+#endif
+                                            __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                            __write_only image2d_t output,
-                                            __private const int global_size_dim0,
-                                            __private const int global_size_dim1) {
-#else
                                             __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -395,18 +379,16 @@ __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //n
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
+__kernel void in_out_height_image_to_buffer(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                            __private const int global_size_dim0,
+                                            __private const int global_size_dim1,
+#endif
+                                            __global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                            __read_only image2d_t input,
-                                            __private const int global_size_dim0,
-                                            __private const int global_size_dim1) {
-#else
                                             __read_only image2d_t input) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -439,19 +421,17 @@ __kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
 }
 
 
-__kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void in_out_width_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                           __private const int global_size_dim0,
+                                           __private const int global_size_dim1,
+#endif
+                                           __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
                                            __private const int height,
                                            __private const int width,
                                            __private const int channels,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                           __write_only image2d_t output,
-                                           __private const int global_size_dim0,
-                                           __private const int global_size_dim1) {
-#else
                                            __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -487,19 +467,17 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, //Oc, Ic, H, W
+__kernel void winograd_filter_buffer_to_image(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                              __private const int global_size_dim0,
+                                              __private const int global_size_dim1,
+#endif
+                                              __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
                                               __private const int in_channels,
                                               __private const int height,
                                               __private const int width,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                              __write_only image2d_t output,
-                                              __private const int global_size_dim0,
-                                              __private const int global_size_dim1) {
-#else
                                               __write_only image2d_t output) {
-#endif
-
   int w = get_global_id(0);
   int h = get_global_id(1);
 
@@ -584,18 +562,16 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer(__global DATA_TYPE *output, //Oc, Ic, H, W
+__kernel void winograd_filter_image_to_buffer(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                              __private const int global_size_dim0,
+                                              __private const int global_size_dim1,
+#endif
+                                              __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
                                               __private const int width,
                                               __private const int channel,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                              __read_only image2d_t input,
-                                              __private const int global_size_dim0,
-                                              __private const int global_size_dim1) {
-#else
                                               __read_only image2d_t input) {
-#endif
-
   const int w = get_global_id(0);
   const int h = get_global_id(1);
 

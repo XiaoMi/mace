@@ -1,6 +1,12 @@
 #include <common.h>
 
-__kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void conv_2d_1x1(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                          __private const int global_size_dim0,
+                          __private const int global_size_dim1,
+                          __private const int global_size_dim2,
+#endif
+                          __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                           __read_only image2d_t filter, /* cout%4 * cin, cout/4 */
 #ifdef BIAS
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -12,15 +18,7 @@ __kernel void conv_2d_1x1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __private const int in_ch_blks,
                           __private const int height,
                           __private const int width,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                          __private const int stride,
-                          __private const int global_size_dim0,
-                          __private const int global_size_dim1,
-                          __private const int global_size_dim2) {
-#else
                           __private const int stride) {
-#endif
-
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
   const int out_hb = get_global_id(2);

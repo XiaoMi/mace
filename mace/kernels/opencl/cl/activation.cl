@@ -1,19 +1,17 @@
 #include <common.h>
 
-__kernel void activation(__read_only image2d_t input,
+__kernel void activation(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                         __private const int global_size_dim0,
+                         __private const int global_size_dim1,
+                         __private const int global_size_dim2,
+#endif
+                         __read_only image2d_t input,
 #ifdef USE_PRELU
                          __read_only image2d_t alpha,
 #endif
                          __private const float relux_max_limit,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                         __write_only image2d_t output,
-                         __private const int global_size_dim0,
-                         __private const int global_size_dim1,
-                         __private const int global_size_dim2) {
-#else
                          __write_only image2d_t output) {
-#endif
-
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);

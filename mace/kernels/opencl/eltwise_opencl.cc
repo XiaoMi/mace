@@ -47,6 +47,10 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
   }
   if (!IsVecEqual(input_shape_, input0->shape())) {
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+    }
     kernel_.setArg(idx++, *(input0->opencl_image()));
     kernel_.setArg(idx++, *(input1->opencl_image()));
     if (!coeff_.empty()) {
@@ -54,8 +58,6 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
       kernel_.setArg(idx++, coeff_[1]);
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input0->shape();
 

@@ -22,18 +22,16 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 }
 
 // Supported data type: half/float
-__kernel void concat_channel(__read_only image2d_t input0,
-                             __read_only image2d_t input1,
-                             __private const int input0_chan,
+__kernel void concat_channel(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                             __write_only image2d_t output,
                              __private const int global_size_dim0,
                              __private const int global_size_dim1,
-                             __private const int global_size_dim2) {
-#else
-                             __write_only image2d_t output) {
+                             __private const int global_size_dim2,
 #endif
-
+                             __read_only image2d_t input0,
+                             __read_only image2d_t input1,
+                             __private const int input0_chan,
+                             __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
@@ -90,17 +88,15 @@ __kernel void concat_channel(__read_only image2d_t input0,
 }
 
 // Required: All input channels are divisible by 4
-__kernel void concat_channel_multi(__read_only image2d_t input,
-                                   __private const int chan_blk_offset,
+__kernel void concat_channel_multi(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                                   __write_only image2d_t output,
                                    __private const int global_size_dim0,
                                    __private const int global_size_dim1,
-                                   __private const int global_size_dim2) {
-#else
-                                   __write_only image2d_t output) {
+                                   __private const int global_size_dim2,
 #endif
-
+                                   __read_only image2d_t input,
+                                   __private const int chan_blk_offset,
+                                   __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);

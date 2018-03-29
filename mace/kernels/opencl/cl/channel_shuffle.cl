@@ -1,18 +1,16 @@
 #include <common.h>
 
 // assume channes_per_group mod 4 = 0 && groups mod 4 == 0
-__kernel void channel_shuffle(__read_only image2d_t input,
-                      __private const int groups,
-                      __private const int channels_per_group,
+__kernel void channel_shuffle(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                      __write_only image2d_t output,
-                      __private const int global_size_dim0,
-                      __private const int global_size_dim1,
-                      __private const int global_size_dim2) {
-#else
-                      __write_only image2d_t output) {
+                              __private const int global_size_dim0,
+                              __private const int global_size_dim1,
+                              __private const int global_size_dim2,
 #endif
-
+                              __read_only image2d_t input,
+                              __private const int groups,
+                              __private const int channels_per_group,
+                              __write_only image2d_t output) {
   const int group_chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);

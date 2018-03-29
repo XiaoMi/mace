@@ -45,12 +45,14 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(bias->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
     input_shape_ = input->shape();
 
     kwg_size_ =

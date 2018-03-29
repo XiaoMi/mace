@@ -56,6 +56,11 @@ static void Concat2(cl::Kernel *kernel,
   }
   if (!IsVecEqual(*prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
+    if (!(*is_non_uniform_work_groups_supported)) {
+      kernel->setArg(idx++, gws[0]);
+      kernel->setArg(idx++, gws[1]);
+      kernel->setArg(idx++, gws[2]);
+    }
     kernel->setArg(idx++,
                    *(static_cast<const cl::Image2D *>(input0->opencl_image())));
     kernel->setArg(idx++,
@@ -63,9 +68,6 @@ static void Concat2(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int32_t>(input0->dim(3)));
     kernel->setArg(idx++,
                    *(static_cast<cl::Image2D *>(output->opencl_image())));
-    kernel->setArg(idx++, gws[0]);
-    kernel->setArg(idx++, gws[1]);
-    kernel->setArg(idx++, gws[2]);
 
     *prev_input_shape = input0->shape();
 
@@ -119,12 +121,14 @@ static void ConcatN(cl::Kernel *kernel,
     };
 
     uint32_t idx = 0;
+    if (!(*is_non_uniform_work_groups_supported)) {
+      kernel->setArg(idx++, gws[0]);
+      kernel->setArg(idx++, gws[1]);
+      kernel->setArg(idx++, gws[2]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, static_cast<int32_t>(chan_blk_offset));
     kernel->setArg(idx++, *(output->opencl_image()));
-    kernel->setArg(idx++, gws[0]);
-    kernel->setArg(idx++, gws[1]);
-    kernel->setArg(idx++, gws[2]);
 
     chan_blk_offset += input_channel_blk;
     *kwg_size =

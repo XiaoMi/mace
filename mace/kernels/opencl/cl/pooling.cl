@@ -19,7 +19,13 @@ inline int calculate_avg_block_size(const int pool_size,
 }
 
 // Supported data type: half/float
-__kernel void pooling(__read_only image2d_t input,
+__kernel void pooling(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                      __private const int global_size_dim0,
+                      __private const int global_size_dim1,
+                      __private const int global_size_dim2,
+#endif
+                      __read_only image2d_t input,
                       __private const int in_height,
                       __private const int in_width,
                       __private const int out_height,
@@ -27,14 +33,7 @@ __kernel void pooling(__read_only image2d_t input,
                       __private const int pad_left,
                       __private const int stride,
                       __private const int pooling_size,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                      __write_only image2d_t output,
-                      __private const int global_size_dim0,
-                      __private const int global_size_dim1,
-                      __private const int global_size_dim2) {
-#else
                       __write_only image2d_t output) {
-#endif
 
   const int out_chan_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);

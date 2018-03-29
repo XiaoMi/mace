@@ -376,7 +376,8 @@ def main(unused_args):
         build_run_throughput_test(target_soc, FLAGS.run_seconds,
                                   merged_lib_file, FLAGS.output_dir)
 
-  packaging_lib_file(FLAGS.output_dir)
+  if FLAGS.mode == "build" or FLAGS.mode == "all":
+    packaging_lib_file(FLAGS.output_dir)
 
 
 if __name__ == "__main__":

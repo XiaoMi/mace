@@ -1,6 +1,12 @@
 #include <common.h>
 
-__kernel void space_to_batch(__read_only image2d_t space_data,
+__kernel void space_to_batch(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                             __private const int global_size_dim0,
+                             __private const int global_size_dim1,
+                             __private const int global_size_dim2,
+#endif
+                             __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,
                              __private const int block_height,
                              __private const int block_width,
@@ -9,15 +15,7 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int batch_width,
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2) {
-#else
                              __private const int batch_width) {
-#endif
-
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
@@ -54,7 +52,13 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
   WRITE_IMAGET(batch_data, batch_coord, value);
 }
 
-__kernel void batch_to_space(__read_only image2d_t batch_data,
+__kernel void batch_to_space(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                             __private const int global_size_dim0,
+                             __private const int global_size_dim1,
+                             __private const int global_size_dim2,
+#endif
+                             __read_only image2d_t batch_data,
                              __write_only image2d_t space_data,
                              __private const int block_height,
                              __private const int block_width,
@@ -63,15 +67,7 @@ __kernel void batch_to_space(__read_only image2d_t batch_data,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int batch_width,
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2) {
-#else
                              __private const int batch_width) {
-#endif
-
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);

@@ -1,17 +1,15 @@
 #include <common.h>
 
-__kernel void depth_to_space(__read_only image2d_t input,
-                             __private const int block_size,
-                             __private const int output_depth,
+__kernel void depth_to_space(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                             __write_only image2d_t output,
                              __private const int global_size_dim0,
                              __private const int global_size_dim1,
-                             __private const int global_size_dim2) {
-#else
-                             __write_only image2d_t output) {
+                             __private const int global_size_dim2,
 #endif
-
+                             __read_only image2d_t input,
+                             __private const int block_size,
+                             __private const int output_depth,
+                             __write_only image2d_t output) {
   const int out_d = get_global_id(0);
   const int out_w = get_global_id(1);
   const int out_h = get_global_id(2);
@@ -44,17 +42,16 @@ __kernel void depth_to_space(__read_only image2d_t input,
   WRITE_IMAGET(output, (int2)(out_pos, out_h), in_data);
 }
 
-__kernel void space_to_depth(__read_only image2d_t input,
-                             __private const int block_size,
-                             __private const int input_depth,
+__kernel void space_to_depth(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                             __write_only image2d_t output,
                              __private const int global_size_dim0,
                              __private const int global_size_dim1,
-                             __private const int global_size_dim2) {
-#else
-                             __write_only image2d_t output) {
+                             __private const int global_size_dim2,
 #endif
+                             __read_only image2d_t input,
+                             __private const int block_size,
+                             __private const int input_depth,
+                             __write_only image2d_t output) {
 
   const int d = get_global_id(0);
   const int w = get_global_id(1);

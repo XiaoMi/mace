@@ -84,6 +84,11 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
+    if (!(*is_non_uniform_work_groups_supported)) {
+      kernel->setArg(idx++, gws[0]);
+      kernel->setArg(idx++, gws[1]);
+      kernel->setArg(idx++, gws[2]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -98,9 +103,6 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int>(height));
     kernel->setArg(idx++, static_cast<int>(width));
     kernel->setArg(idx++, stride);
-    kernel->setArg(idx++, gws[0]);
-    kernel->setArg(idx++, gws[1]);
-    kernel->setArg(idx++, gws[2]);
 
     *prev_input_shape = input->shape();
 

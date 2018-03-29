@@ -87,6 +87,10 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
                                          obfuscated_kernel_name, built_options);
 
   uint32_t idx = 0;
+  if (!is_non_uniform_work_groups_supported) {
+    b2f_kernel.setArg(idx++, gws[0]);
+    b2f_kernel.setArg(idx++, gws[1]);
+  }
   b2f_kernel.setArg(idx++, *(buffer->opencl_buffer()));
   if (!i2b_) {
     MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0,
@@ -112,8 +116,6 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
   }
   b2f_kernel.setArg(idx++, *(image->opencl_image()));
-  b2f_kernel.setArg(idx++, gws[0]);
-  b2f_kernel.setArg(idx++, gws[1]);
 
   const uint32_t kwg_size =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(b2f_kernel));

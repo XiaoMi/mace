@@ -1,6 +1,11 @@
 #include <common.h>
 
-__kernel void addn(__read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
+__kernel void addn(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                   __private const int global_size_dim0,
+                   __private const int global_size_dim1,
+#endif
+                   __read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
                    __read_only image2d_t input1,
 #if INPUT_NUM > 2
                    __read_only image2d_t input2,
@@ -8,14 +13,7 @@ __kernel void addn(__read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
 #if INPUT_NUM > 3
                    __read_only image2d_t input3,
 #endif
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                   __write_only image2d_t output,
-                   __private const int global_size_dim0,
-                   __private const int global_size_dim1) {
-#else
                    __write_only image2d_t output) {
-#endif
-
   const int w = get_global_id(0);
   const int hb = get_global_id(1);
 

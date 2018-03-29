@@ -1,16 +1,14 @@
 #include <common.h>
 
-__kernel void slice(__read_only image2d_t input,
-                    __private const int chan_blk_offset,
+__kernel void slice(
 #ifndef USE_QUALCOMM_OPENCL_2_0
-                    __write_only image2d_t output,
                     __private const int global_size_dim0,
                     __private const int global_size_dim1,
-                    __private const int global_size_dim2) {
-#else
-                    __write_only image2d_t output) {
+                    __private const int global_size_dim2,
 #endif
-
+                    __read_only image2d_t input,
+                    __private const int chan_blk_offset,
+                    __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);

@@ -1,21 +1,19 @@
 #include <common.h>
 
 // C = A * B
-__kernel void matmul(__read_only image2d_t A,
+__kernel void matmul(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                     __private const int global_size_dim0,
+                     __private const int global_size_dim1,
+#endif
+                     __read_only image2d_t A,
                      __read_only image2d_t B,
                      __write_only image2d_t C,
                      __private const int M,
                      __private const int N,
                      __private const int K,
                      __private const int height_blocks,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                     __private const int k_blocks,
-                     __private const int global_size_dim0,
-                     __private const int global_size_dim1) {
-#else
                      __private const int k_blocks) {
-#endif
-
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
 

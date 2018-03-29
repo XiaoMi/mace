@@ -57,6 +57,11 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
   }
   if (!IsVecEqual(space_shape_, space_tensor->shape())) {
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     if (b2s_) {
       kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
       kernel_.setArg(idx++, *(space_tensor->opencl_image()));
@@ -72,9 +77,6 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
 
     space_shape_ = space_tensor->shape();
 

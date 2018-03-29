@@ -1,19 +1,18 @@
 #include <common.h>
 
-__kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void resize_bilinear_nocache(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                      __private const int global_size_dim0,
+                                      __private const int global_size_dim1,
+                                      __private const int global_size_dim2,
+#endif
+                                      __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                       __write_only image2d_t output,
                                       __private const float height_scale,
                                       __private const float width_scale,
                                       __private const int in_height,
                                       __private const int in_width,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                      __private const int out_height,
-                                      __private const int global_size_dim0,
-                                      __private const int global_size_dim1,
-                                      __private const int global_size_dim2) {
-#else
                                       __private const int out_height) {
-#endif
 
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);

@@ -1,6 +1,12 @@
 #include <common.h>
 // Supported data types: half/float
-__kernel void batch_norm(__read_only image2d_t input,
+__kernel void batch_norm(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                         __private const int global_size_dim0,
+                         __private const int global_size_dim1,
+                         __private const int global_size_dim2,
+#endif
+                         __read_only image2d_t input,
                          __read_only image2d_t scale,
                          __read_only image2d_t offset,
 #ifndef FOLDED_CONSTANT
@@ -9,15 +15,7 @@ __kernel void batch_norm(__read_only image2d_t input,
                          __private const float epsilon,
 #endif
                          __write_only image2d_t output,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                         __private const float relux_max_limit,
-                         __private const int global_size_dim0,
-                         __private const int global_size_dim1,
-                         __private const int global_size_dim2) {
-#else
                          __private const float relux_max_limit) {
-#endif
-
   const int ch_blk = get_global_id(0);
   const int w = get_global_id(1);
   const int hb = get_global_id(2);

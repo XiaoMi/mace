@@ -1,6 +1,11 @@
 #include <common.h>
 
-__kernel void winograd_transform_2x2(__read_only image2d_t input,
+__kernel void winograd_transform_2x2(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                     __private const int global_size_dim0,
+                                     __private const int global_size_dim1,
+#endif
+                                     __read_only image2d_t input,
                                      __write_only image2d_t output,
                                      __private const int in_height,
                                      __private const int in_width,
@@ -8,14 +13,7 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
                                      __private const int round_hw,
                                      __private const int round_w,
                                      __private const int padding_top,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int padding_left,
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1) {
-#else
                                      __private const int padding_left) {
-#endif
-
   int out_width_idx = get_global_id(0);
   int chan_blk_idx = get_global_id(1);
 
@@ -121,7 +119,12 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
   }
 }
 
-__kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
+__kernel void winograd_inverse_transform_2x2(
+#ifndef USE_QUALCOMM_OPENCL_2_0
+                                             __private const int global_size_dim0,
+                                             __private const int global_size_dim1,
+#endif
+                                             __read_only image2d_t input,
 #ifdef BIAS
                                              __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
@@ -130,14 +133,7 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
                                              __private const int out_width,
                                              __private const int round_hw,
                                              __private const int round_w,
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                             __private const float relux_max_limit,
-                                             __private const int global_size_dim0,
-                                             __private const int global_size_dim1) {
-#else
                                              __private const float relux_max_limit) {
-#endif
-
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
 

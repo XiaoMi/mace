@@ -71,6 +71,11 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   if (!IsVecEqual(input_shape_, input->shape())) {
     int idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     if (activation_ == PRELU) {
       MACE_CHECK_NOTNULL(alpha);
@@ -78,9 +83,6 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
     kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
-    kernel_.setArg(idx++, gws[2]);
 
     input_shape_ = input->shape();
 

@@ -70,12 +70,14 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     output_tensor->ResizeImage(output_shape, output_image_shape);
 
     uint32_t idx = 0;
+    if (!is_non_uniform_work_groups_supported_) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+    }
     for (auto input : input_tensors) {
       kernel_.setArg(idx++, *(input->opencl_image()));
     }
     kernel_.setArg(idx++, *(output_tensor->opencl_image()));
-    kernel_.setArg(idx++, gws[0]);
-    kernel_.setArg(idx++, gws[1]);
 
     input_shape_ = input_tensors[0]->shape();
 

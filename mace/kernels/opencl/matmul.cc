@@ -48,6 +48,10 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
     kernel_ = runtime->BuildKernel("matmul", kernel_name, built_options);
   }
   uint32_t idx = 0;
+  if (!is_non_uniform_work_groups_supported_) {
+    kernel_.setArg(idx++, gws[0]);
+    kernel_.setArg(idx++, gws[1]);
+  }
   kernel_.setArg(idx++, *(A->opencl_image()));
   kernel_.setArg(idx++, *(B->opencl_image()));
   kernel_.setArg(idx++, *(C->opencl_image()));
@@ -56,8 +60,6 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, static_cast<int>(A->dim(2)));
   kernel_.setArg(idx++, static_cast<int>(height_blocks));
   kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
-  kernel_.setArg(idx++, gws[0]);
-  kernel_.setArg(idx++, gws[1]);
 
   kwg_size_ =
       static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
