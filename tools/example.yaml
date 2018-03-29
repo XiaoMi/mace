@@ -20,6 +20,8 @@ models:
     dsp_mode: 0
     obfuscate: 1
     fast_conv: 0
+    validation_inputs_data:
+      - path/to/input_files
   capture_net:
     platform: caffe
     model_file_path: path/to/model.prototxt

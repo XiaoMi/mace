@@ -96,7 +96,6 @@ def generate_random_input(target_soc, model_output_dir,
             input_file_list[i].startswith("https://"):
           urllib.urlretrieve(input_file_list[i], dst_input_file)
         else:
-          print 'Copy input data:', dst_input_file
           shutil.copy(input_file_list[i], dst_input_file)
 
 def generate_model_code():
@@ -294,10 +293,8 @@ def main(unused_args):
         # Transfer params by environment
         os.environ["MODEL_TAG"] = model_name
         print '=======================', model_name, '======================='
-        skip_validation = configs["models"][model_name].get(
-            "skip_validation", 0)
         model_config = configs["models"][model_name]
-        input_file_list = model_config.get("input_files", [])
+        input_file_list = model_config.get("validation_inputs_data", [])
         for key in model_config:
           if key in ['input_nodes', 'output_nodes'] and isinstance(
               model_config[key], list):
@@ -357,8 +354,7 @@ def main(unused_args):
         if FLAGS.mode == "benchmark":
           benchmark_model(target_soc, model_output_dir, option_args)
 
-        if FLAGS.mode == "validate" or (FLAGS.mode == "all" and
-                                        skip_validation == 0):
+        if FLAGS.mode == "validate" or FLAGS.mode == "all":
           validate_model(target_soc, model_output_dir)
 
       if FLAGS.mode == "build" or FLAGS.mode == "merge" or FLAGS.mode == "all":
