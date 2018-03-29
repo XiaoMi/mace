@@ -53,13 +53,14 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
     built_options.emplace(kernel_name_ss.str());
     auto dt = DataTypeToEnum<T>::value;
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ =
-        runtime->BuildKernel("depth_to_space", kernel_name, built_options);
+        runtime->BuildKernel("depth_to_space",
+                             obfuscated_kernel_name, built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
