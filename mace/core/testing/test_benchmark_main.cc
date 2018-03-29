@@ -7,6 +7,7 @@
 #include "gflags/gflags.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/public/mace.h"
+#include "mace/public/mace_runtime.h"
 
 DEFINE_string(pattern, "all", "op benchmark pattern, eg:.*CONV.*");
 DEFINE_int32(gpu_perf_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
