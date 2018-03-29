@@ -32,18 +32,19 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    is_non_uniform_work_groups_supported_ =
-        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE="
                            + DtToCLCMDDt(DataTypeToEnum<T>::value));
-    if (is_non_uniform_work_groups_supported_) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ = runtime->BuildKernel("slice", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   const index_t channel_blk = RoundUpDiv4(output_channels);
 
@@ -53,8 +54,6 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
 
-  kwg_size_ =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << "slice_opencl_kernel_"
@@ -65,7 +64,7 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
      << outputs_count;
   for (int i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
-    if (!is_non_uniform_work_groups_supported_) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
       kernel_.setArg(idx++, gws[2]);

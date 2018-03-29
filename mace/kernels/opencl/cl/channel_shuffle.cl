@@ -2,11 +2,7 @@
 
 // assume channes_per_group mod 4 = 0 && groups mod 4 == 0
 __kernel void channel_shuffle(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                              __private const int global_size_dim0,
-                              __private const int global_size_dim1,
-                              __private const int global_size_dim2,
-#endif
+                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                               __read_only image2d_t input,
                               __private const int groups,
                               __private const int channels_per_group,
@@ -15,7 +11,7 @@ __kernel void channel_shuffle(
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (group_chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
       || hb_idx >= global_size_dim2) {
     return;

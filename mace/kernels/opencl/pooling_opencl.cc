@@ -21,8 +21,6 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    is_non_uniform_work_groups_supported_ =
-        runtime->IsNonUniformWorkgroupsSupported();
     const DataType dt = DataTypeToEnum<T>::value;
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
@@ -39,10 +37,13 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     if (pooling_type_ == AVG) {
       built_options.emplace("-DPOOL_AVG");
     }
-    if (is_non_uniform_work_groups_supported_) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ = runtime->BuildKernel("pooling", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   std::vector<uint32_t> gws;
@@ -81,7 +82,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     };
 
     uint32_t idx = 0;
-    if (!is_non_uniform_work_groups_supported_) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
       kernel_.setArg(idx++, gws[2]);
@@ -97,9 +98,6 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   } else {
     index_t batch = output->dim(0);
     index_t out_height = output->dim(1);

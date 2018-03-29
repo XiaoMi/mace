@@ -20,11 +20,7 @@ inline int calculate_avg_block_size(const int pool_size,
 
 // Supported data type: half/float
 __kernel void pooling(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                      __private const int global_size_dim0,
-                      __private const int global_size_dim1,
-                      __private const int global_size_dim2,
-#endif
+                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                       __read_only image2d_t input,
                       __private const int in_height,
                       __private const int in_width,
@@ -39,7 +35,7 @@ __kernel void pooling(
   const int out_width_idx = get_global_id(1);
   const int out_hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (out_chan_idx >= global_size_dim0 || out_width_idx >= global_size_dim1
       || out_hb_idx >= global_size_dim2) {
     return;

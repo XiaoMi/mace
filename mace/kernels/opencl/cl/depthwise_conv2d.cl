@@ -2,11 +2,7 @@
 
 // Only multiplier = 1 is supported
 __kernel void depthwise_conv2d(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                               __private const int global_size_dim0,
-                               __private const int global_size_dim1,
-                               __private const int global_size_dim2,
-#endif
+                               UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                                __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
@@ -29,7 +25,7 @@ __kernel void depthwise_conv2d(
   const short out_w_blk = get_global_id(1);
   const short out_hb = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (out_ch_blk >= global_size_dim0 || out_w_blk >= global_size_dim1
       || out_hb >= global_size_dim2) {
     return;
@@ -143,11 +139,7 @@ __kernel void depthwise_conv2d(
 }
 
 __kernel void depthwise_conv2d_s1(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __private const int global_size_dim0,
-                                  __private const int global_size_dim1,
-                                  __private const int global_size_dim2,
-#endif
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                                   __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                   __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
@@ -168,7 +160,7 @@ __kernel void depthwise_conv2d_s1(
   const short out_w_blk = get_global_id(1) << 2;
   const short out_hb = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (out_ch_blk >= global_size_dim0 || get_global_id(1) >= global_size_dim1
       || out_hb >= global_size_dim2) {
     return;

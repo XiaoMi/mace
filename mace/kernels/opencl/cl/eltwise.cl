@@ -1,10 +1,7 @@
 #include <common.h>
 
 __kernel void eltwise(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                      __private const int global_size_dim0,
-                      __private const int global_size_dim1,
-#endif
+                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                       __read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
                       __read_only image2d_t input1,
 #ifdef COEFF_SUM
@@ -15,7 +12,7 @@ __kernel void eltwise(
   const int w = get_global_id(0);
   const int hb = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || hb >= global_size_dim1) return;
 #endif
 

@@ -2,10 +2,7 @@
 
 // C = A * B
 __kernel void matmul(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                     __private const int global_size_dim0,
-                     __private const int global_size_dim1,
-#endif
+                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                      __read_only image2d_t A,
                      __read_only image2d_t B,
                      __write_only image2d_t C,
@@ -17,7 +14,7 @@ __kernel void matmul(
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (get_global_id(0) >= global_size_dim0 || hb >= global_size_dim1) return;
 #endif
 

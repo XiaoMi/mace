@@ -23,11 +23,7 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 
 // Supported data type: half/float
 __kernel void concat_channel(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2,
-#endif
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                              __read_only image2d_t input0,
                              __read_only image2d_t input1,
                              __private const int input0_chan,
@@ -36,7 +32,7 @@ __kernel void concat_channel(
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
       || hb_idx >= global_size_dim2) {
     return;
@@ -89,11 +85,7 @@ __kernel void concat_channel(
 
 // Required: All input channels are divisible by 4
 __kernel void concat_channel_multi(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                   __private const int global_size_dim0,
-                                   __private const int global_size_dim1,
-                                   __private const int global_size_dim2,
-#endif
+                                   UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                                    __read_only image2d_t input,
                                    __private const int chan_blk_offset,
                                    __write_only image2d_t output) {
@@ -101,7 +93,7 @@ __kernel void concat_channel_multi(
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
       || hb_idx >= global_size_dim2) {
     return;

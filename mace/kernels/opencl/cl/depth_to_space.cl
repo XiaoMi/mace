@@ -1,11 +1,7 @@
 #include <common.h>
 
 __kernel void depth_to_space(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2,
-#endif
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                              __read_only image2d_t input,
                              __private const int block_size,
                              __private const int output_depth,
@@ -14,7 +10,7 @@ __kernel void depth_to_space(
   const int out_w = get_global_id(1);
   const int out_h = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (out_d >= global_size_dim0 || out_w >= global_size_dim1
       || out_h >= global_size_dim2) {
     return;
@@ -43,11 +39,7 @@ __kernel void depth_to_space(
 }
 
 __kernel void space_to_depth(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2,
-#endif
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                              __read_only image2d_t input,
                              __private const int block_size,
                              __private const int input_depth,
@@ -57,7 +49,7 @@ __kernel void space_to_depth(
   const int w = get_global_id(1);
   const int h = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (d >= global_size_dim0 || w >= global_size_dim1
       || h >= global_size_dim2) {
     return;

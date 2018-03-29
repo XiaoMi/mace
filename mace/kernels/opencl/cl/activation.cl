@@ -1,11 +1,7 @@
 #include <common.h>
 
 __kernel void activation(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                         __private const int global_size_dim0,
-                         __private const int global_size_dim1,
-                         __private const int global_size_dim2,
-#endif
+                         UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                          __read_only image2d_t input,
 #ifdef USE_PRELU
                          __read_only image2d_t alpha,
@@ -16,7 +12,7 @@ __kernel void activation(
   const int w = get_global_id(1);
   const int hb = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (ch_blk >= global_size_dim0 || w >= global_size_dim1
       || hb >= global_size_dim2) {
     return;

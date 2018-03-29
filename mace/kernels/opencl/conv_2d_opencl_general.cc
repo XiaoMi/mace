@@ -25,7 +25,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          std::vector<index_t> *prev_input_shape,
                          Tensor *output,
                          StatsFuture *future,
-                         bool *is_non_uniform_work_groups_supported,
                          uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -40,15 +39,13 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel->get() == nullptr) {
-    *is_non_uniform_work_groups_supported =
-        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d");
     built_options.emplace("-Dconv_2d=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (*is_non_uniform_work_groups_supported) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
@@ -71,6 +68,9 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     }
 
     *kernel = runtime->BuildKernel("conv_2d", kernel_name, built_options);
+
+    *kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
@@ -79,7 +79,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
 
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
-    if (!(*is_non_uniform_work_groups_supported)) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
       kernel->setArg(idx++, gws[1]);
       kernel->setArg(idx++, gws[2]);
@@ -105,9 +105,6 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     kernel->setArg(idx++, dilations[1]);
 
     *prev_input_shape = input->shape();
-
-    *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
 
   const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};

@@ -31,19 +31,20 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    is_non_uniform_work_groups_supported_ =
-        runtime->IsNonUniformWorkgroupsSupported();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
     built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (is_non_uniform_work_groups_supported_) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ =
         runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
@@ -60,7 +61,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
         CalculateResizeScale(in_width, out_width, align_corners_);
 
     uint32_t idx = 0;
-    if (!is_non_uniform_work_groups_supported_) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
       kernel_.setArg(idx++, gws[2]);
@@ -74,9 +75,6 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
 
     input_shape_ = input->shape();
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};

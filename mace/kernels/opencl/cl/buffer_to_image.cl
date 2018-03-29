@@ -1,10 +1,7 @@
 #include <common.h>
 
 __kernel void filter_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1,
-#endif
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                      __global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
                                      __private const int filter_h,
@@ -15,7 +12,7 @@ __kernel void filter_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -57,10 +54,7 @@ __kernel void filter_buffer_to_image(
 }
 
 __kernel void filter_image_to_buffer(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1,
-#endif
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                      __global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_h,
                                      __private const int filter_w,
@@ -70,7 +64,7 @@ __kernel void filter_image_to_buffer(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -109,10 +103,7 @@ __kernel void filter_image_to_buffer(
 }
 
 __kernel void dw_filter_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                        __private const int global_size_dim0,
-                                        __private const int global_size_dim1,
-#endif
+                                        UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                         __global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int input_offset,
                                         __private const int filter_w,
@@ -122,7 +113,7 @@ __kernel void dw_filter_buffer_to_image(
   const int w = get_global_id(0);
   const int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -170,10 +161,7 @@ __kernel void dw_filter_buffer_to_image(
 }
 
 __kernel void in_out_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1,
-#endif
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                      __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
                                      __private const int height,
@@ -183,7 +171,7 @@ __kernel void in_out_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -215,10 +203,7 @@ __kernel void in_out_buffer_to_image(
 }
 
 __kernel void in_out_image_to_buffer(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1,
-#endif
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                      __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
@@ -227,7 +212,7 @@ __kernel void in_out_image_to_buffer(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -258,10 +243,7 @@ __kernel void in_out_image_to_buffer(
 }
 
 __kernel void arg_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __private const int global_size_dim0,
-                                  __private const int global_size_dim1,
-#endif
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                   __global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
@@ -269,7 +251,7 @@ __kernel void arg_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -297,17 +279,14 @@ __kernel void arg_buffer_to_image(
 }
 
 __kernel void arg_image_to_buffer(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                  __private const int global_size_dim0,
-                                  __private const int global_size_dim1,
-#endif
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                   __global DATA_TYPE *output, /* nhwc */
                                   __private const int count,
                                   __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -334,10 +313,7 @@ __kernel void arg_image_to_buffer(
 
 
 __kernel void in_out_height_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                            __private const int global_size_dim0,
-                                            __private const int global_size_dim1,
-#endif
+                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                             __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
                                             __private const int height,
@@ -347,7 +323,7 @@ __kernel void in_out_height_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -380,10 +356,7 @@ __kernel void in_out_height_buffer_to_image(
 }
 
 __kernel void in_out_height_image_to_buffer(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                            __private const int global_size_dim0,
-                                            __private const int global_size_dim1,
-#endif
+                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                             __global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
@@ -392,7 +365,7 @@ __kernel void in_out_height_image_to_buffer(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -422,10 +395,7 @@ __kernel void in_out_height_image_to_buffer(
 
 
 __kernel void in_out_width_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                           __private const int global_size_dim0,
-                                           __private const int global_size_dim1,
-#endif
+                                           UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                            __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
                                            __private const int height,
@@ -435,7 +405,7 @@ __kernel void in_out_width_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -468,10 +438,7 @@ __kernel void in_out_width_buffer_to_image(
 
 // only support 3x3 now
 __kernel void winograd_filter_buffer_to_image(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                              __private const int global_size_dim0,
-                                              __private const int global_size_dim1,
-#endif
+                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                               __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
                                               __private const int in_channels,
@@ -481,7 +448,7 @@ __kernel void winograd_filter_buffer_to_image(
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
@@ -563,10 +530,7 @@ __kernel void winograd_filter_buffer_to_image(
 
 // only support 3x3 now
 __kernel void winograd_filter_image_to_buffer(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                              __private const int global_size_dim0,
-                                              __private const int global_size_dim1,
-#endif
+                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                               __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
                                               __private const int width,
@@ -575,7 +539,7 @@ __kernel void winograd_filter_image_to_buffer(
   const int w = get_global_id(0);
   const int h = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }

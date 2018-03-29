@@ -1,11 +1,7 @@
 #include <common.h>
 
 __kernel void space_to_batch(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2,
-#endif
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                              __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,
                              __private const int block_height,
@@ -20,7 +16,7 @@ __kernel void space_to_batch(
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
       || batch_hb_idx >= global_size_dim2) {
     return;
@@ -53,11 +49,7 @@ __kernel void space_to_batch(
 }
 
 __kernel void batch_to_space(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                             __private const int global_size_dim0,
-                             __private const int global_size_dim1,
-                             __private const int global_size_dim2,
-#endif
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
                              __read_only image2d_t batch_data,
                              __write_only image2d_t space_data,
                              __private const int block_height,
@@ -72,7 +64,7 @@ __kernel void batch_to_space(
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
       || batch_hb_idx >= global_size_dim2) {
     return;

@@ -186,7 +186,6 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
-  bool is_non_uniform_work_groups_supported_;
   std::vector<index_t> input_shape_;
 };
 

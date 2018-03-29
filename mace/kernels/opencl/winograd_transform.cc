@@ -18,8 +18,6 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    is_non_uniform_work_groups_supported_ =
-        runtime->IsNonUniformWorkgroupsSupported();
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
     std::set<std::string> built_options;
@@ -28,11 +26,14 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-    if (is_non_uniform_work_groups_supported_) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   std::vector<index_t> output_shape(4);
   std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
@@ -61,7 +62,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     output_tensor->ResizeImage(output_shape, image_shape);
 
     uint32_t idx = 0;
-    if (!is_non_uniform_work_groups_supported_) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
     }
@@ -76,9 +77,6 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
 
     input_shape_ = input_tensor->shape();
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 1};
@@ -99,8 +97,6 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    is_non_uniform_work_groups_supported_ =
-        runtime->IsNonUniformWorkgroupsSupported();
     std::string obfuscated_kernel_name =
         MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
     std::set<std::string> built_options;
@@ -110,8 +106,8 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
-    if (is_non_uniform_work_groups_supported_) {
-      built_options.emplace("-DUSE_QUALCOMM_OPENCL_2_0");
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation_) {
@@ -138,6 +134,9 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
 
     kernel_ = runtime->BuildKernel("winograd_transform", obfuscated_kernel_name,
                                    built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const uint32_t gws[2] = {
@@ -153,7 +152,7 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     const uint32_t round_h = (height_ + 1) / 2;
     const uint32_t round_w = (width_ + 1) / 2;
     uint32_t idx = 0;
-    if (!is_non_uniform_work_groups_supported_) {
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
     }
@@ -173,9 +172,6 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, relux_max_limit_);
 
     input_shape_ = input_tensor->shape();
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 1};

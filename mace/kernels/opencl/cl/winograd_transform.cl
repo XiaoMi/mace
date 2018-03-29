@@ -1,10 +1,7 @@
 #include <common.h>
 
 __kernel void winograd_transform_2x2(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                     __private const int global_size_dim0,
-                                     __private const int global_size_dim1,
-#endif
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                      __read_only image2d_t input,
                                      __write_only image2d_t output,
                                      __private const int in_height,
@@ -17,7 +14,7 @@ __kernel void winograd_transform_2x2(
   int out_width_idx = get_global_id(0);
   int chan_blk_idx = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (out_width_idx >= global_size_dim0 || chan_blk_idx >= global_size_dim1) {
     return;
   }
@@ -120,10 +117,7 @@ __kernel void winograd_transform_2x2(
 }
 
 __kernel void winograd_inverse_transform_2x2(
-#ifndef USE_QUALCOMM_OPENCL_2_0
-                                             __private const int global_size_dim0,
-                                             __private const int global_size_dim1,
-#endif
+                                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
                                              __read_only image2d_t input,
 #ifdef BIAS
                                              __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -137,7 +131,7 @@ __kernel void winograd_inverse_transform_2x2(
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
 
-#ifndef USE_QUALCOMM_OPENCL_2_0
+#ifndef NON_UNIFORM_WORK_GROUP
   if (width_idx >= global_size_dim0 || height_idx >= global_size_dim1) {
     return;
   }
