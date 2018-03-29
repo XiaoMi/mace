@@ -8,7 +8,6 @@ from mace.python.tools import memory_optimizer
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.framework import tensor_shape_pb2
 
-# TODO: support NCHW formt, now only support NHWC.
 padding_mode = {
   'VALID': 0,
   'SAME': 1,
@@ -133,7 +132,7 @@ class TFConverter(object):
     arg.i = self.dt
     return output_name
 
-  def add_input_transform(self, names):
+  def add_gpu_input_transform(self, names):
     for name in names:
       new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
@@ -150,7 +149,24 @@ class TFConverter(object):
       arg.name = 'T'
       arg.i = self.dt
 
-  def add_output_transform(self, names):
+  def add_neon_input_transform(self, names):
+    for name in names:
+      new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = name
+      op_def.type = 'Transpose'
+      op_def.input.extend([new_input_name])
+      op_def.output.extend([name+':0'])
+
+      dims_arg = op_def.arg.add()
+      dims_arg.name = 'dims'
+      dims_arg.ints.extend([0, 3, 1, 2])
+
+      arg = op_def.arg.add()
+      arg.name = 'T'
+      arg.i = self.dt
+
+  def add_gpu_output_transform(self, names):
     for name in names:
       output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
       op_def = self.net_def.op.add()
@@ -162,6 +178,19 @@ class TFConverter(object):
       epsilon_arg = op_def.arg.add()
       epsilon_arg.name = 'buffer_type'
       epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
+
+  def add_neon_output_transform(self, names):
+    for name in names:
+      output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = output_name[:-2]
+      op_def.type = 'Transpose'
+      op_def.input.extend([name+':0'])
+      op_def.output.extend([output_name])
+
+      dims_arg = op_def.arg.add()
+      dims_arg.name = 'dims'
+      dims_arg.ints.extend([0, 2, 3, 1])
 
   @staticmethod
   def add_output_shape(outputs, op):
@@ -335,9 +364,14 @@ class TFConverter(object):
     op_def.name = op.name
     if op.type == 'DepthwiseConv2dNative':
       op_def.type = 'DepthwiseConv2d'
+      if self.device == 'neon':
+        self.transpose_filter_tensor[get_input_tensor(op, 1).name] = (3, 2, 0, 1)
     else:
       op_def.type = op.type
-      self.transpose_filter_tensor[get_input_tensor(op, 1).name] = (0, 1, 3, 2)
+      if self.device == 'neon':
+        self.transpose_filter_tensor[get_input_tensor(op, 1).name] = (3, 2, 0, 1)
+      else:
+        self.transpose_filter_tensor[get_input_tensor(op, 1).name] = (0, 1, 3, 2)
     if self.device == 'gpu':
       op_def.input.extend([op.inputs[0].name])
       buffer_type = "DW_CONV2D_FILTER" if op_def.type == 'DepthwiseConv2d' else "CONV2D_FILTER"
@@ -354,7 +388,10 @@ class TFConverter(object):
     strides_arg.ints.extend(op.get_attr('strides')[1:3])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     final_op = op
     self.resolved_ops[op.name] = 1
 
@@ -394,7 +431,10 @@ class TFConverter(object):
     arg.i = self.dt
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     op_def.name = op.name
     op_def.type = 'FoldedBatchNorm'
 
@@ -497,7 +537,10 @@ class TFConverter(object):
     epsilon_arg.f = get_input_tensor(op, 1).eval().astype(np.float)
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     self.unused_tensor.add(get_input_tensor(op, 1).name)
 
     self.net_def.op.extend([op_def])
@@ -528,7 +571,10 @@ class TFConverter(object):
     kernels_arg.ints.extend(op.get_attr('ksize')[1:3])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     self.resolved_ops[op.name] = 1
 
   def convert_global_avg_pooling(self, op):
@@ -555,7 +601,10 @@ class TFConverter(object):
     kernels_arg.ints.extend(op.inputs[0].shape.as_list()[1:3])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     self.resolved_ops[op.name] = 1
 
   def convert_activation(self, op):
@@ -771,7 +820,10 @@ class TFConverter(object):
     strides_arg.ints.extend([1, 1])
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     final_op = conv_op
     self.resolved_ops[op.name] = 1
     self.resolved_ops[conv_op.name] = 1
@@ -879,7 +931,9 @@ class TFConverter(object):
 
   def convert(self, input_nodes, output_nodes):
     if self.device == 'gpu':
-      self.add_input_transform(input_nodes)
+      self.add_gpu_input_transform(input_nodes)
+    if self.device == 'neon':
+      self.add_neon_input_transform(input_nodes)
 
     for op in self.tf_ops:
       if self.resolved_ops[op.name] == 1:
@@ -957,7 +1011,10 @@ class TFConverter(object):
         raise Exception('Unknown Op: %s, type: %s' % (op.name, op.type))
 
     if self.device == 'gpu':
-      self.add_output_transform(output_nodes)
+      self.add_gpu_output_transform(output_nodes)
+
+    if self.device == 'neon':
+      self.add_neon_output_transform(output_nodes)
 
     if self.device == 'cpu':
       self.replace_in_out_name(input_nodes, output_nodes)
@@ -1007,12 +1064,20 @@ class Optimizer:
         scale_tensor = self.tensor_map[scale_buffer_name]
         weight_shape = weight_tensor.dims
         idx = 0
-        for i in range(weight_shape[0]):
-          for j in range(weight_shape[1]):
-            for ic in range(weight_shape[2]):
-              for oc in range(weight_shape[3]):
-                weight_tensor.float_data[idx] *= scale_tensor.float_data[ic * weight_shape[3] + oc]
-                idx += 1
+        if self.device == 'neon':  # OIHW
+          for oc in range(weight_shape[0]):
+            for ic in range(weight_shape[1]):
+              for i in range(weight_shape[2]):
+                for j in range(weight_shape[3]):
+                  weight_tensor.float_data[idx] *= scale_tensor.float_data[ic * weight_shape[0] + oc]
+                  idx += 1
+        else:  # HWIO
+          for i in range(weight_shape[0]):
+            for j in range(weight_shape[1]):
+              for ic in range(weight_shape[2]):
+                for oc in range(weight_shape[3]):
+                  weight_tensor.float_data[idx] *= scale_tensor.float_data[ic * weight_shape[3] + oc]
+                  idx += 1
 
         new_tensors.append(weight_tensor)
         unused_tensors.add(weight_tensor.name)

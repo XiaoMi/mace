@@ -14,6 +14,7 @@
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/kernels/activation.h"
 #include "mace/public/mace.h"
 
 namespace mace {
@@ -407,12 +408,27 @@ struct DepthwiseConv2dFunctor : public DepthwiseConv2dFunctorBase {
 };
 
 template <>
-void DepthwiseConv2dFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input,
-    const Tensor *filter,
-    const Tensor *bias,
-    Tensor *output,
-    StatsFuture *future);
+struct DepthwiseConv2dFunctor<DeviceType::NEON, float>
+  : DepthwiseConv2dFunctorBase {
+  DepthwiseConv2dFunctor(const int *strides,
+                         const Padding padding_type,
+                         const std::vector<int> &paddings,
+                         const int *dilations,
+                         const ActivationType activation,
+                         const float relux_max_limit)
+    : DepthwiseConv2dFunctorBase(strides,
+                                 padding_type,
+                                 paddings,
+                                 dilations,
+                                 activation,
+                                 relux_max_limit) {}
+
+  void operator()(const Tensor *input,
+                  const Tensor *filter,
+                  const Tensor *bias,
+                  Tensor *output,
+                  StatsFuture *future);
+};
 
 template <typename T>
 struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>

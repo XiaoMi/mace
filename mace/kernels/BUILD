@@ -11,13 +11,21 @@ load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled")
 
 cc_library(
     name = "kernels",
-    srcs = glob([
-        "*.cc",
-        "opencl/*.cc",
-    ]),
+    srcs = glob(
+        [
+            "*.cc",
+            "opencl/*.cc",
+            "arm/*.cc",
+        ],
+        exclude = [
+            "*_test.cc",
+            "arm/*_test.cc",
+        ],
+    ),
     hdrs = glob([
         "*.h",
         "opencl/*.h",
+        "arm/*.h",
     ]),
     copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]),
     linkopts = if_android(["-lm"]),
@@ -28,14 +36,20 @@ cc_library(
 )
 
 cc_test(
-    name = "kernel_test",
+    name = "kernels_test",
     testonly = 1,
-    srcs = glob(["test/*.cc"]),
-    linkopts = if_android(["-pie"]),
+    srcs = glob(
+        [
+            "*_test.cc",
+            "arm/*_test.cc",
+        ],
+    ),
+    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]),
+    linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
         ":kernels",
-        "//mace/core",
+        "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],
 )

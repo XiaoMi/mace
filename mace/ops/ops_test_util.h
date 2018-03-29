@@ -105,12 +105,12 @@ class OpsTestNet {
  public:
   OpsTestNet() : op_registry_(new OperatorRegistry()) {}
 
-  template <DeviceType D, typename T>
+  template<DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -118,24 +118,24 @@ class OpsTestNet {
     memcpy(input_data, data.data(), data.size() * sizeof(T));
   }
 
-  template <DeviceType D, typename T>
+  template<DeviceType D, typename T>
   void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
     std::fill(input_data, input_data + input->size(), data);
   }
 
-  template <DeviceType D, typename T>
+  template<DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
                       bool positive = false) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -145,15 +145,93 @@ class OpsTestNet {
     std::normal_distribution<float> nd(0, 1);
     if (DataTypeToEnum<T>::value == DT_HALF) {
       std::generate(
-          input_data, input_data + input->size(), [&gen, &nd, positive] {
-            return half_float::half_cast<half>(positive ? std::abs(nd(gen))
-                                                        : nd(gen));
-          });
+        input_data, input_data + input->size(), [&gen, &nd, positive] {
+          return half_float::half_cast<half>(positive ? std::abs(nd(gen))
+                                                      : nd(gen));
+        });
     } else {
       std::generate(input_data, input_data + input->size(),
                     [&gen, &nd, positive] {
                       return positive ? std::abs(nd(gen)) : nd(gen);
                     });
+    }
+  }
+
+  template<DeviceType D, typename T>
+  void FillNHWCInputToNCHWInput(const std::string &name_nchw,
+                                const std::string &name_nhwc) {
+    Tensor *input = ws_.GetTensor(name_nhwc);
+    Tensor *output = ws_.CreateTensor(name_nchw,
+                                      GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+    const std::vector<index_t> input_shape = input->shape();
+    index_t batch = input_shape[0];
+    index_t height = input_shape[1];
+    index_t width = input_shape[2];
+    index_t channels = input_shape[3];
+    output->Resize({batch, channels, height, width});
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
+    for (index_t b = 0; b < batch; ++b) {
+      for (index_t c = 0; c < channels; ++c) {
+        for (index_t h = 0; h < height; ++h) {
+          for (index_t w = 0; w < width; ++w) {
+            output_data[((b * channels + c) * height + h) * width + w] =
+              input_data[((b * height + h) * width + w) * channels + c];
+          }
+        }
+      }
+    }
+  }
+
+  template<DeviceType D, typename T>
+  void FillHWOIInputToOIHWInput(const std::string &name_oihw,
+                                const std::string &name_hwoi) {
+    Tensor *input = ws_.GetTensor(name_hwoi);
+    Tensor *output = ws_.CreateTensor(name_oihw,
+                                      GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+    const std::vector<index_t> input_shape = input->shape();
+    index_t height = input_shape[0];
+    index_t width = input_shape[1];
+    index_t out_channels = input_shape[2];
+    index_t in_channels = input_shape[3];
+    index_t hw = height * width;
+    index_t oi = out_channels * in_channels;
+    output->Resize({out_channels, in_channels, height, width});
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
+    for (index_t i = 0; i < oi; ++i) {
+      for (index_t j = 0; j < hw; ++j) {
+        output_data[i * height * width + j] =
+          input_data[j * out_channels * in_channels + i];
+      }
+    }
+  }
+
+  template<DeviceType D, typename T>
+  void FillHWIOInputToOIHWInput(const std::string &name_oihw,
+                                const std::string &name_hwio) {
+    Tensor *input = ws_.GetTensor(name_hwio);
+    Tensor *output = ws_.CreateTensor(name_oihw,
+                                      GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+    const std::vector<index_t> input_shape = input->shape();
+    index_t height = input_shape[0];
+    index_t width = input_shape[1];
+    index_t in_channels = input_shape[2];
+    index_t out_channels = input_shape[3];
+    index_t hw = height * width;
+    output->Resize({out_channels, in_channels, height, width});
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
+    for (index_t m = 0; m < out_channels; ++m) {
+      for (index_t c = 0; c < in_channels; ++c) {
+        for (index_t k = 0; k < hw; ++k) {
+          output_data[((m * in_channels) + c) * height * width + k] =
+            input_data[k * out_channels * in_channels + c * out_channels + m];
+        }
+      }
     }
   }
 
@@ -165,17 +243,35 @@ class OpsTestNet {
 
   Workspace *ws() { return &ws_; }
 
-  bool RunOp(DeviceType device) {
+  bool Setup(DeviceType device) {
     NetDef net_def;
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
     }
     net_ = CreateNet(op_registry_, net_def, &ws_, device);
     device_ = device;
+    return net_ != nullptr;
+  }
+
+  bool Run() {
+    MACE_CHECK_NOTNULL(net_);
     return net_->Run();
   }
 
-  bool RunOp() { return RunOp(DeviceType::CPU); }
+  // DEPRECATED(liyin):
+  // Test and benchmark should setup model once and run multiple times.
+  // Setup time should not be counted during benchmark.
+  bool RunOp(DeviceType device) {
+    Setup(device);
+    return Run();
+  }
+
+  // DEPRECATED(liyin):
+  // Test and benchmark should setup model once and run multiple times.
+  // Setup time should not be counted during benchmark.
+  bool RunOp() {
+    return RunOp(DeviceType::CPU);
+  }
 
   Tensor *GetOutput(const char *output_name) {
     return ws_.GetTensor(output_name);
@@ -210,7 +306,7 @@ class OpsTestBase : public ::testing::Test {
   }
 };
 
-template <typename T>
+template<typename T>
 void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
                                 std::vector<T> *res) {
   MACE_CHECK_NOTNULL(res);
@@ -231,7 +327,7 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
   }
 }
 
-template <typename T>
+template<typename T>
 void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
                                std::vector<T> *res,
                                const T a = 0,
@@ -249,7 +345,7 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
   std::generate(res->begin(), res->end(), [&gen, &nd] { return nd(gen); });
 }
 
-template <typename T>
+template<typename T>
 std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
   std::vector<T> dest;
   dest.reserve(src.size());
@@ -259,11 +355,11 @@ std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
   return std::move(dest);
 }
 
-template <typename T>
+template<typename T>
 std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                      const std::vector<T> &data) {
   std::unique_ptr<Tensor> res(
-      new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
+    new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
   T *input_data = res->mutable_data<T>();
   memcpy(input_data, data.data(), data.size() * sizeof(T));
@@ -293,24 +389,24 @@ inline std::string ShapeToString(const Tensor &x) {
   return std::string(stream.str());
 }
 
-template <typename T>
+template<typename T>
 struct is_floating_point_type {
   static const bool value = std::is_same<T, float>::value ||
-                            std::is_same<T, double>::value ||
-                            std::is_same<T, half>::value;
+    std::is_same<T, double>::value ||
+    std::is_same<T, half>::value;
 };
 
-template <typename T>
+template<typename T>
 inline void ExpectEqual(const T &a, const T &b) {
   EXPECT_EQ(a, b);
 }
 
-template <>
+template<>
 inline void ExpectEqual<float>(const float &a, const float &b) {
   EXPECT_FLOAT_EQ(a, b);
 }
 
-template <>
+template<>
 inline void ExpectEqual<double>(const double &a, const double &b) {
   EXPECT_DOUBLE_EQ(a, b);
 }
@@ -320,13 +416,13 @@ inline void AssertSameDims(const Tensor &x, const Tensor &y) {
                                 << "y.shape [ " << ShapeToString(y) << "]";
 }
 
-template <typename EXP_TYPE,
-          typename RES_TYPE,
-          bool is_fp = is_floating_point_type<EXP_TYPE>::value>
+template<typename EXP_TYPE,
+  typename RES_TYPE,
+  bool is_fp = is_floating_point_type<EXP_TYPE>::value>
 struct Expector;
 
 // Partial specialization for float and double.
-template <typename EXP_TYPE, typename RES_TYPE>
+template<typename EXP_TYPE, typename RES_TYPE>
 struct Expector<EXP_TYPE, RES_TYPE, true> {
   static void Equal(const EXP_TYPE &a, const RES_TYPE &b) { ExpectEqual(a, b); }
 
@@ -373,22 +469,22 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
   }
 };
 
-template <typename T>
+template<typename T>
 void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   static_assert(is_floating_point_type<T>::value,
                 "T is not a floating point type");
   Expector<T, T>::Near(x, y, abs_err);
 }
 
-template <typename EXP_TYPE, typename RES_TYPE>
+template<typename EXP_TYPE, typename RES_TYPE>
 void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
   static_assert(is_floating_point_type<EXP_TYPE>::value &&
-                    is_floating_point_type<RES_TYPE>::value,
+                  is_floating_point_type<RES_TYPE>::value,
                 "T is not a floating point type");
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, abs_err);
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 void BufferToImage(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -396,11 +492,11 @@ void BufferToImage(OpsTestNet *net,
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("BufferToImage", "BufferToImageTest")
-      .Input(input_name)
-      .Output(output_name)
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net->NewOperatorDef());
+    .Input(input_name)
+    .Output(output_name)
+    .AddIntArg("buffer_type", type)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);
@@ -408,7 +504,7 @@ void BufferToImage(OpsTestNet *net,
   net->Sync();
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -416,11 +512,11 @@ void ImageToBuffer(OpsTestNet *net,
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
-      .Input(input_name)
-      .Output(output_name)
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net->NewOperatorDef());
+    .Input(input_name)
+    .Output(output_name)
+    .AddIntArg("buffer_type", type)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);

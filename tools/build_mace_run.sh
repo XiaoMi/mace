@@ -57,6 +57,7 @@ else
     --copt="-DMACE_OBFUSCATE_LITERALS" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
+    --define neon=true \
     --copt="-O3" \
     $NEON_ENABLE_FLAG \
     $PRODUCTION_MODE_BUILD_FLAGS \

@@ -146,19 +146,24 @@ class Tensor {
 
   template <typename T>
   inline const T *data() const {
-    MACE_CHECK(buffer_ != nullptr, "buffer is null");
+    MACE_CHECK_NOTNULL(buffer_);
     return buffer_->data<T>();
   }
 
   inline void *raw_mutable_data() {
-    MACE_CHECK(buffer_ != nullptr, "buffer is null");
+    MACE_CHECK_NOTNULL(buffer_);
     return buffer_->raw_mutable_data();
   }
 
   template <typename T>
   inline T *mutable_data() {
-    MACE_CHECK(buffer_ != nullptr, "buffer is null");
+    MACE_CHECK_NOTNULL(buffer_);
     return static_cast<T *>(buffer_->raw_mutable_data());
+  }
+
+  inline void Clear() {
+    MACE_CHECK_NOTNULL(buffer_);
+    buffer_->Clear();
   }
 
   inline void Reshape(const std::vector<index_t> &shape) {
@@ -258,22 +263,19 @@ class Tensor {
   inline void DebugPrint() const {
     using namespace numerical_chars;  // NOLINT(build/namespaces)
     std::stringstream os;
+    os << "Tensor " << name_ << " size: [";
     for (index_t i : shape_) {
       os << i << ", ";
     }
+    os << "], content:\n";
 
-    os.str("");
-    os.clear();
-    MappingGuard guard(this);
     for (int i = 0; i < size(); ++i) {
-      if (i != 0 && i % shape_[3] == 0) {
+      if (i != 0 && i % shape_.back() == 0) {
         os << "\n";
       }
       CASES(dtype_, (os << (this->data<T>()[i]) << ", "));
     }
-    LOG(INFO) << "Tensor size: [" << dim(0) << ", " << dim(1) << ", " << dim(2)
-              << ", " << dim(3) << "], content:\n"
-              << os.str();
+    LOG(INFO) << os.str();
   }
 
   class MappingGuard {

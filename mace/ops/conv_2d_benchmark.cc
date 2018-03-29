@@ -30,10 +30,19 @@ static void Conv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
-  net.AddRandomInput<D, float>("Filter",
-                               {kernel_h, kernel_w, output_channels, channels});
-  net.AddRandomInput<D, float>("Bias", {output_channels});
+  if (D == DeviceType::NEON) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, float>("Filter",
+                                 {output_channels, channels, kernel_h,
+                                  kernel_w});
+    net.AddRandomInput<D, float>("Bias", {output_channels});
+  } else {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, float>("Filter",
+                                 {kernel_h, kernel_w, output_channels,
+                                  channels});
+    net.AddRandomInput<D, float>("Bias", {output_channels});
+  }
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -65,15 +74,17 @@ static void Conv2d(int iters,
         .Finalize(net.NewOperatorDef());
   }
 
+  net.Setup(D);
+
   // Warm-up
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 }
@@ -112,7 +123,8 @@ static void Conv2d(int iters,
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, OPENCL); \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);  \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, NEON);
 
 
 BM_CONV_2D(1, 256, 64, 64, 3, 3, 1, 1, VALID, 256);
@@ -133,6 +145,8 @@ BM_CONV_2D(1, 64, 32, 32, 1, 1, 1, 1, VALID, 128);
 BM_CONV_2D(1, 64, 33, 31, 1, 1, 1, 1, VALID, 128);  // Test bad alignments
 BM_CONV_2D(1, 64, 32, 32, 3, 3, 2, 1, SAME, 128);
 BM_CONV_2D(1, 64, 33, 31, 3, 3, 2, 1, SAME, 128);
+BM_CONV_2D(1, 3, 224, 224, 3, 3, 2, 1, SAME, 32);
+BM_CONV_2D(1, 3, 224, 224, 3, 3, 2, 1, VALID, 32);
 BM_CONV_2D(1, 64, 32, 32, 5, 5, 1, 1, SAME, 128);
 BM_CONV_2D(1, 64, 32, 31, 5, 5, 1, 1, SAME, 128);
 

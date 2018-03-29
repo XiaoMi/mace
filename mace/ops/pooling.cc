@@ -29,6 +29,11 @@ void Register_Pooling(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     PoolingOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    PoolingOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

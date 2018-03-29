@@ -56,6 +56,11 @@ struct SoftmaxFunctor {
   }
 };
 
+template <>
+struct SoftmaxFunctor<DeviceType::NEON, float> {
+  void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
+};
+
 template <typename T>
 struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);

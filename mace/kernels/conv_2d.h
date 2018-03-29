@@ -212,6 +212,12 @@ switch (w_count) { \
   case 2: \
     MACE_DO_CONV2D(CC, CH, 2); \
     break; \
+  case 3: \
+    MACE_DO_CONV2D(CC, CH, 3); \
+    break; \
+  case 4: \
+    MACE_DO_CONV2D(CC, CH, 4); \
+    break; \
   default: \
     LOG(FATAL) << "Unsupported w tile: " << w_count; \
 }
@@ -241,6 +247,42 @@ switch (c_count) { \
     break; \
   case 4: \
     MACE_CASE_H_CONV2D(4); \
+    break; \
+  case 5: \
+    MACE_CASE_H_CONV2D(5); \
+    break; \
+  case 6: \
+    MACE_CASE_H_CONV2D(6); \
+    break; \
+  case 7: \
+    MACE_CASE_H_CONV2D(7); \
+    break; \
+  case 8: \
+    MACE_CASE_H_CONV2D(8); \
+    break; \
+  case 9: \
+    MACE_CASE_H_CONV2D(9); \
+    break; \
+  case 10: \
+    MACE_CASE_H_CONV2D(10); \
+    break; \
+  case 11: \
+    MACE_CASE_H_CONV2D(11); \
+    break; \
+  case 12: \
+    MACE_CASE_H_CONV2D(12); \
+    break; \
+  case 13: \
+    MACE_CASE_H_CONV2D(13); \
+    break; \
+  case 14: \
+    MACE_CASE_H_CONV2D(14); \
+    break; \
+  case 15: \
+    MACE_CASE_H_CONV2D(15); \
+    break; \
+  case 16: \
+    MACE_CASE_H_CONV2D(16); \
     break; \
   default: \
     LOG(FATAL) << "Unsupported c tile: " << c_count; \
@@ -373,11 +415,35 @@ struct Conv2dFunctor : Conv2dFunctorBase {
 };
 
 template <>
-void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
-                                                        const Tensor *filter,
-                                                        const Tensor *bias,
-                                                        Tensor *output,
-                                                        StatsFuture *future);
+struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
+  Conv2dFunctor(const int *strides,
+                const Padding &padding_type,
+                const std::vector<int> &paddings,
+                const int *dilations,
+                const ActivationType activation,
+                const float relux_max_limit)
+    : Conv2dFunctorBase(strides,
+                        padding_type,
+                        paddings,
+                        dilations,
+                        activation,
+                        relux_max_limit),
+      is_filter_transformed_(false) {}
+
+  void operator()(const Tensor *input,
+                  const Tensor *filter,
+                  const Tensor *bias,
+                  Tensor *output,
+                  StatsFuture *future);
+
+  // TODO(liyin): share tmp buffers among ops
+  Tensor padded_input_;
+  Tensor padded_output_;
+  Tensor transformed_input_;
+  Tensor transformed_filter_;
+  Tensor transformed_output_;
+  bool is_filter_transformed_;
+};
 
 template <typename T>
 struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {

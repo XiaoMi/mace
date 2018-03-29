@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x
 Usage() {
   echo "Usage: bash tools/benchmark.sh target_soc model_output_dir option_args"
 }
@@ -70,6 +71,7 @@ else
     --copt="-DMACE_OBFUSCATE_LITERALS" \
     --copt="-DMACE_MODEL_TAG=${MODEL_TAG}" \
     --define openmp=true \
+    --define neon=true \
     --copt="-O3" \
     --define production=true || exit 1
 
@@ -85,7 +87,7 @@ else
   adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/benchmark_model \
       ${PHONE_DATA_DIR} > /dev/null || exit 1
   if [ "$EMBED_MODEL_DATA" = 0 ]; then
-    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data
+    adb -s $DEVICE_ID push ${MODEL_OUTPUT_DIR}/${MODEL_TAG}.data \
         ${PHONE_DATA_DIR} > /dev/null || exit 1
   fi
 

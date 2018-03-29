@@ -9,7 +9,7 @@
 namespace mace {
 namespace kernels {
 
-void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
+void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
                               const index_t *filter_shape,  // OIHW
                               const int *dilations,
                               const int *strides,
@@ -186,6 +186,55 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
   output_shape[3] = filter_shape[2];
 }
 
+void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW
+                    const index_t *filter_shape,  // OIHW
+                    const int *padding_size,
+                    const int *dilations,
+                    const int *strides,
+                    const RoundType round_type,
+                    index_t *output_shape) {
+  MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
+             "Invalid dilations, must >= 1");
+  MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
+    (dilations[1] == 1 || strides[1] == 1),
+             "If dilations > 1, strides should be 1");
+  MACE_CHECK_NOTNULL(output_shape);
+  MACE_CHECK_NOTNULL(padding_size);
+  /*
+  * Convolution arithmetic:
+  * o = floor((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
+  * Pooling arithmetic:
+  * o = ceil((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
+  * For details, see https://arxiv.org/pdf/1603.07285.pdf or
+  * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
+  */
+  output_shape[0] = input_shape[0];
+  if (round_type == FLOOR) {
+    output_shape[2] = static_cast<index_t>(
+      std::floor(1.0 * (input_shape[2] + padding_size[0] - filter_shape[2] -
+        (filter_shape[2] - 1) * (dilations[0] - 1)) /
+        strides[0]) +
+        1);
+    output_shape[3] = static_cast<index_t>(
+      std::floor(1.0 * (input_shape[3] + padding_size[1] - filter_shape[3] -
+        (filter_shape[3] - 1) * (dilations[1] - 1)) /
+        strides[1]) +
+        1);
+  } else {
+    output_shape[2] = static_cast<index_t>(
+      std::ceil(1.0 * (input_shape[2] + padding_size[0] - filter_shape[2] -
+        (filter_shape[2] - 1) * (dilations[0] - 1)) /
+        strides[0]) +
+        1);
+    output_shape[3] = static_cast<index_t>(
+      std::ceil(1.0 * (input_shape[3] + padding_size[1] - filter_shape[3] -
+        (filter_shape[3] - 1) * (dilations[1] - 1)) /
+        strides[1]) +
+        1);
+  }
+  output_shape[1] = filter_shape[0];
+}
+
 void CalPaddingSize(const index_t *input_shape,   // NCHW
                     const index_t *filter_shape,  // OIHW
                     const int *dilations,
@@ -230,10 +279,11 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
       0, (output_width - 1) * strides[1] + k_extent_width - input_shape[3]);
 }
 
-void ConstructInputWithPadding(const Tensor *input_tensor,
-                               const int *paddings,
-                               Tensor *output_tensor,
-                               bool padding_same_value) {
+
+void ConstructNCHWInputWithPadding(const Tensor *input_tensor,
+                                   const int *paddings,
+                                   Tensor *output_tensor,
+                                   bool padding_same_value) {
   Tensor::MappingGuard input_mapper(input_tensor);
   const float *input = input_tensor->data<float>();
   const index_t *input_shape = input_tensor->shape().data();
@@ -244,7 +294,7 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
   index_t width = input_shape[3];
 
   std::vector<index_t> output_shape(
-      {batch, channels, paddings[0] + height, paddings[1] + width});
+    {batch, channels, paddings[0] + height, paddings[1] + width});
 
   const index_t output_width = output_shape[3];
   const int padded_top = paddings[0] / 2;
@@ -268,6 +318,7 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
 
     const int padded_bottom = paddings[0] - padded_top;
     const int padded_right = paddings[1] - padded_left;
+
     for (int i = 0; i < batch; ++i) {
       for (int j = 0; j < channels; ++j) {
         for (int k = 0; k < padded_top; ++k) {
@@ -300,6 +351,51 @@ void ConstructInputWithPadding(const Tensor *input_tensor,
     }
   }
 }
+
+void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
+                                           const int pad_top,
+                                           const int pad_bottom,
+                                           const int pad_left,
+                                           const int pad_right,
+                                           Tensor *output_tensor) {
+  Tensor::MappingGuard input_mapper(input_tensor);
+  const float *input = input_tensor->data<float>();
+  const index_t *input_shape = input_tensor->shape().data();
+
+  index_t batch = input_shape[0];
+  index_t channels = input_shape[1];
+  index_t height = input_shape[2];
+  index_t width = input_shape[3];
+
+  const int pad_height = pad_top + pad_bottom;
+  const int pad_width = pad_left + pad_right;
+  std::vector<index_t> output_shape(
+    {batch, channels, height + pad_height, width + pad_width});
+  output_tensor->Resize(output_shape);
+  Tensor::MappingGuard padded_output_mapper(output_tensor);
+  float *output_data = output_tensor->mutable_data<float>();
+
+  const index_t output_height = output_shape[2];
+  const index_t output_width = output_shape[3];
+  const index_t in_image_size = height * width;
+  const index_t out_image_size = output_height * output_width;
+  const index_t in_batch_size = channels * in_image_size;
+  const index_t out_batch_size = channels * out_image_size;
+
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < batch; ++i) {
+    for (int j = 0; j < channels; ++j) {
+      for (int k = 0; k < height; ++k) {
+        memcpy(output_data + i * out_batch_size + j * out_image_size
+                 + (pad_top + k) * output_width + pad_left,
+               input + i * in_batch_size + j * in_image_size + k * width,
+               width * sizeof(float));
+      }
+      // Skip the padded bottom in this channel and top in the next channel
+    }
+  }
+}
+
 
 void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
                                    const int *paddings,

@@ -50,6 +50,8 @@ def get_global_runtime(configs):
     global_runtime = "gpu"
   elif "cpu" in runtime_list:
     global_runtime = "cpu"
+  elif "neon" in runtime_list:
+    global_runtime = "neon"
   else:
     raise Exception("Not found available RUNTIME in config files!")
 
@@ -379,3 +381,4 @@ def main(unused_args):
 if __name__ == "__main__":
   FLAGS, unparsed = parse_args()
   main(unused_args=[sys.argv[0]] + unparsed)
+

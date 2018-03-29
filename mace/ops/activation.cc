@@ -25,6 +25,11 @@ void Register_Activation(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     ActivationOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Activation")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ActivationOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

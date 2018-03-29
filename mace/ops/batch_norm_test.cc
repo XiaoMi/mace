@@ -11,7 +11,7 @@ namespace test {
 
 class BatchNormOpTest : public OpsTestBase {};
 
-template <DeviceType D>
+template<DeviceType D>
 void Simple() {
   OpsTestNet net;
 
@@ -36,14 +36,14 @@ void Simple() {
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("BatchNorm", "BatchNormTest")
-        .Input("InputImage")
-        .Input("ScaleImage")
-        .Input("OffsetImage")
-        .Input("MeanImage")
-        .Input("VarImage")
-        .AddFloatArg("epsilon", 1e-3)
-        .Output("OutputImage")
-        .Finalize(net.NewOperatorDef());
+      .Input("InputImage")
+      .Input("ScaleImage")
+      .Input("OffsetImage")
+      .Input("MeanImage")
+      .Input("VarImage")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("OutputImage")
+      .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
 
@@ -52,22 +52,22 @@ void Simple() {
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("BatchNorm", "BatchNormTest")
-        .Input("Input")
-        .Input("Scale")
-        .Input("Offset")
-        .Input("Mean")
-        .Input("Var")
-        .AddFloatArg("epsilon", 1e-3)
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Input("Mean")
+      .Input("Var")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
   }
 
   // Check
   auto expected =
-      CreateTensor<float>({1, 6, 2, 1}, {-3.86, -3.86, -1.51, -1.51, 0.83, 0.83,
-                                         3.17, 3.17, 5.51, 5.51, 7.86, 7.86});
+    CreateTensor<float>({1, 6, 2, 1}, {-3.86, -3.86, -1.51, -1.51, 0.83, 0.83,
+                                       3.17, 3.17, 5.51, 5.51, 7.86, 7.86});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }
@@ -87,18 +87,18 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("Input")
-      .Input("Scale")
-      .Input("Offset")
-      .Input("Mean")
-      .Input("Var")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
@@ -124,14 +124,14 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Input("MeanImage")
-      .Input("VarImage")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("OutputImage")
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("ScaleImage")
+    .Input("OffsetImage")
+    .Input("MeanImage")
+    .Input("VarImage")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("OutputImage")
+    .Finalize(net.NewOperatorDef());
 
   // Tuning
   setenv("MACE_TUNING", "1", 1);
@@ -158,18 +158,18 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("Input")
-      .Input("Scale")
-      .Input("Offset")
-      .Input("Mean")
-      .Input("Var")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
@@ -195,15 +195,15 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
                                           kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Input("MeanImage")
-      .Input("VarImage")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("OutputImage")
-      .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("ScaleImage")
+    .Input("OffsetImage")
+    .Input("MeanImage")
+    .Input("VarImage")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("OutputImage")
+    .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
+    .Finalize(net.NewOperatorDef());
 
   // Tuning
   setenv("MACE_TUNING", "1", 1);
@@ -230,18 +230,18 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("Input")
-      .Input("Scale")
-      .Input("Offset")
-      .Input("Mean")
-      .Input("Var")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
@@ -267,14 +267,14 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Input("MeanImage")
-      .Input("VarImage")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("OutputImage")
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("ScaleImage")
+    .Input("OffsetImage")
+    .Input("MeanImage")
+    .Input("VarImage")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("OutputImage")
+    .Finalize(net.NewOperatorDef());
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
@@ -301,18 +301,18 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("Input")
-      .Input("Scale")
-      .Input("Offset")
-      .Input("Mean")
-      .Input("Var")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
@@ -338,15 +338,15 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
                                           kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Input("MeanImage")
-      .Input("VarImage")
-      .AddFloatArg("epsilon", 1e-3)
-      .Output("OutputImage")
-      .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("ScaleImage")
+    .Input("OffsetImage")
+    .Input("MeanImage")
+    .Input("VarImage")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("OutputImage")
+    .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
+    .Finalize(net.NewOperatorDef());
 
   // tuning
   setenv("MACE_TUNING", "1", 1);
@@ -360,6 +360,63 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+}
+
+TEST_F(BatchNormOpTest, NEONTest) {
+  srand(time(NULL));
+  unsigned int seed;
+
+  // generate random input
+  index_t batch = 1 + rand_r(&seed) % 10;
+  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t height = 64;
+  index_t width = 64;
+
+  // Construct graph
+  OpsTestNet net;
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+    .Input("Input")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, float>(
+    "Input", {batch, height, width, channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Scale", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Mean", {channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Var", {channels}, true);
+
+  // run cpu
+  net.RunOp();
+
+  OpDefBuilder("BatchNorm", "BatchNormTest")
+    .Input("InputNeon")
+    .Input("Scale")
+    .Input("Offset")
+    .Input("Mean")
+    .Input("Var")
+    .AddFloatArg("epsilon", 1e-3)
+    .Output("OutputNeon")
+    .Finalize(net.NewOperatorDef());
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNeon", "Input");
+
+  // Run on neon
+  net.RunOp(DeviceType::NEON);
+  net.Sync();
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
+                                                       "Output");
+
+  ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
+                          *net.GetOutput("OutputNeon"),
+                          0.001);
 }
 
 }  // namespace test

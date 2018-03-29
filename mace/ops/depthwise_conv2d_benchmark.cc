@@ -29,10 +29,19 @@ static void DepthwiseConv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, input_channels});
-  net.AddRandomInput<D, float>(
+  if (D == DeviceType::NEON) {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, input_channels, height, width});
+    net.AddRandomInput<D, float>(
+      "Filter", {multiplier, input_channels, kernel_h, kernel_w});
+    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+  } else {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, height, width, input_channels});
+    net.AddRandomInput<D, float>(
       "Filter", {kernel_h, kernel_w, input_channels, multiplier});
-  net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+  }
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -64,15 +73,17 @@ static void DepthwiseConv2d(int iters,
         .Finalize(net.NewOperatorDef());
   }
 
+  net.Setup(D);
+
   // Warm-up
   for (int i = 0; i < 2; ++i) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
     net.Sync();
   }
 }
@@ -108,10 +119,16 @@ static void DepthwiseConv2d(int iters,
 #define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, M)                 \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, CPU);    \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, OPENCL); \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, OPENCL);
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, OPENCL);  \
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, NEON);
 
 BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 1, SAME, 1);
-BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 2, SAME, 1);
+BM_DEPTHWISE_CONV_2D(1, 32, 56, 56, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 32, 224, 224, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 64, 56, 56, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 64, 112, 112, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 64, 224, 224, 3, 3, 2, VALID, 1);
 BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, VALID, 1);
 BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 1, VALID, 1);
 BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 1, SAME, 1);
@@ -124,6 +141,10 @@ BM_DEPTHWISE_CONV_2D(1, 64, 32, 32, 3, 3, 2, SAME, 1);
 BM_DEPTHWISE_CONV_2D(1, 64, 33, 31, 3, 3, 2, SAME, 1);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 2, VALID, 1);
 BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 2, SAME, 1);
+BM_DEPTHWISE_CONV_2D(1, 3, 112, 112, 3, 3, 2, VALID, 1);
+BM_DEPTHWISE_CONV_2D(1, 3, 224, 224, 3, 3, 2, SAME, 1);
+BM_DEPTHWISE_CONV_2D(1, 8, 224, 224, 3, 3, 2, SAME, 1);
+
 
 }  // namespace test
 }  // namespace ops

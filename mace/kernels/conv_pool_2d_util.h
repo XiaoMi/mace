@@ -22,16 +22,16 @@ enum RoundType {
 
 namespace kernels {
 
-void CalcPaddingAndOutputSize(const index_t *input_shape,   // NCHW
-                              const index_t *filter_shape,  // OIHW
+void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,
+                              const index_t *filter_shape,
                               const int *dilations,
                               const int *strides,
                               Padding padding,
                               index_t *output_shape,
                               int *padding_size);
 
-void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NCHW
-                                  const index_t *filter_shape,  // OIHW
+void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,
+                                  const index_t *filter_shape,
                                   const int *dilations,
                                   const int *strides,
                                   Padding padding,
@@ -46,6 +46,14 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
                     const RoundType round_type,
                     index_t *output_shape);
 
+void CalcNCHWOutputSize(const index_t *input_shape,
+                    const index_t *filter_shape,
+                    const int *padding_size,
+                    const int *dilations,
+                    const int *strides,
+                    const RoundType round_type,
+                    index_t *output_shape);
+
 void CalPaddingSize(const index_t *input_shape,   // NCHW
                     const index_t *filter_shape,  // OIHW
                     const int *dilations,
@@ -53,10 +61,15 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
                     Padding padding,
                     int *padding_size);
 
-void ConstructInputWithPadding(const Tensor *input,
-                               const int *paddings,
-                               Tensor *output_tensor,
-                               bool padding_same_value = false);
+void ConstructNCHWInputWithSpecificPadding(const Tensor *input,
+                               const int pad_top, const int pad_bottom,
+                               const int pad_left, const int pad_right,
+                               Tensor *output_tensor);
+
+void ConstructNCHWInputWithPadding(const Tensor *input,
+                                   const int *paddings,
+                                   Tensor *output_tensor,
+                                   bool padding_same_value = false);
 
 void ConstructNHWCInputWithPadding(const Tensor *input,
                                    const int *paddings,

@@ -25,6 +25,11 @@ void Register_Softmax(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     SoftmaxOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Softmax")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    SoftmaxOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops
