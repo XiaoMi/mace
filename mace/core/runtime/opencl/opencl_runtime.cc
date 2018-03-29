@@ -41,7 +41,7 @@ bool WriteFile(const std::string &filename,
 }  // namespace
 
 const std::string OpenCLErrorToString(cl_int error) {
-  switch(error) {
+  switch (error) {
     case CL_SUCCESS:
       return "CL_SUCCESS";
     case CL_DEVICE_NOT_FOUND:
