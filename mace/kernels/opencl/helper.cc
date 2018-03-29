@@ -262,7 +262,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
               cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
               cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
         }
-        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+        MACE_CHECK_CL_SUCCESS(error);
       }
     } else {
       timer->ClearTiming();
@@ -276,7 +276,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
             cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
             cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
       }
-      MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      MACE_CHECK_CL_SUCCESS(error);
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
 
@@ -303,7 +303,7 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
                 cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
                 cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
           }
-          MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+          MACE_CHECK_CL_SUCCESS(error);
           timer->AccumulateTiming();
         }
       }
@@ -379,7 +379,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
               cl::NDRange(roundup_gws[0], roundup_gws1),
               cl::NDRange(params[0], params[1]), nullptr, &event);
         }
-        MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+        MACE_CHECK_CL_SUCCESS(error);
       }
     } else {
       timer->ClearTiming();
@@ -392,7 +392,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
             kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
             cl::NDRange(params[0], params[1]), nullptr, &event);
       }
-      MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+      MACE_CHECK_CL_SUCCESS(error);
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
 
@@ -419,7 +419,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
                 cl::NDRange(roundup_gws[0], roundup_gws1),
                 cl::NDRange(params[0], params[1]), nullptr, &event);
           }
-          MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+          MACE_CHECK_CL_SUCCESS(error);
           timer->AccumulateTiming();
         }
       }

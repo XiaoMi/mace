@@ -134,7 +134,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
         b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
-  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  MACE_CHECK_CL_SUCCESS(error);
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();

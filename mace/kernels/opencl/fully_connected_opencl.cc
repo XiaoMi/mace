@@ -99,7 +99,7 @@ void FCWXKernel(cl::Kernel *kernel,
   cl_int error = runtime->command_queue().enqueueNDRangeKernel(
       *kernel, cl::NullRange, cl::NDRange((*gws)[0], (*gws)[1], (*gws)[2]),
       cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
-  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  MACE_CHECK_CL_SUCCESS(error);
 
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
