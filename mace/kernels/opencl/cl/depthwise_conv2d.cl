@@ -1,7 +1,9 @@
 #include <common.h>
 
 // Only multiplier = 1 is supported
-__kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void depthwise_conv2d(
+                               UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                               __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
     __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -21,8 +23,18 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
                                __private const short dilation_w) {
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1);
-  const short out_w_blks = get_global_size(1);
   const short out_hb = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_ch_blk >= global_size_dim0 || out_w_blk >= global_size_dim1
+      || out_hb >= global_size_dim2) {
+    return;
+  }
+  const short out_w_blks = global_size_dim1;
+#else
+  const short out_w_blks = get_global_size(1);
+#endif
+
   const short rounded_in_ch = in_ch_blks << 2;
   const short in_ch_blk = out_ch_blk; // multiplier = 1
 
@@ -126,7 +138,9 @@ __kernel void depthwise_conv2d(__read_only image2d_t input, /* [c%4 * w * c/4, h
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 }
 
-__kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void depthwise_conv2d_s1(
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                                  __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                   __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
     __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -145,6 +159,14 @@ __kernel void depthwise_conv2d_s1(__read_only image2d_t input, /* [c%4 * w * c/4
   const short out_ch_blk = get_global_id(0);
   const short out_w_blk = get_global_id(1) << 2;
   const short out_hb = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_ch_blk >= global_size_dim0 || get_global_id(1) >= global_size_dim1
+      || out_hb >= global_size_dim2) {
+    return;
+  }
+#endif
+
   const short rounded_in_ch = in_ch_blks << 2;
   const short in_ch_blk = out_ch_blk; // multiplier = 1
 

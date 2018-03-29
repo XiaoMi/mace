@@ -1,6 +1,8 @@
 #include <common.h>
 
-__kernel void winograd_transform_2x2(__read_only image2d_t input,
+__kernel void winograd_transform_2x2(
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                     __read_only image2d_t input,
                                      __write_only image2d_t output,
                                      __private const int in_height,
                                      __private const int in_width,
@@ -11,7 +13,15 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
                                      __private const int padding_left) {
   int out_width_idx = get_global_id(0);
   int chan_blk_idx = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_width_idx >= global_size_dim0 || chan_blk_idx >= global_size_dim1) {
+    return;
+  }
+  const int chan_blk_size = global_size_dim1;
+#else
   const int chan_blk_size = get_global_size(1);
+#endif
 
   const int batch_idx = out_width_idx / round_hw;
   const int t_idx = out_width_idx % round_hw;
@@ -106,7 +116,9 @@ __kernel void winograd_transform_2x2(__read_only image2d_t input,
   }
 }
 
-__kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
+__kernel void winograd_inverse_transform_2x2(
+                                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                             __read_only image2d_t input,
 #ifdef BIAS
                                              __read_only image2d_t bias, /* cout%4 * cout/4 */
 #endif
@@ -118,7 +130,16 @@ __kernel void winograd_inverse_transform_2x2(__read_only image2d_t input,
                                              __private const float relux_max_limit) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (width_idx >= global_size_dim0 || height_idx >= global_size_dim1) {
+    return;
+  }
+  const int out_channel = global_size_dim1;
+#else
   const int out_channel = get_global_size(1);
+#endif
+
   int width = width_idx;
   int height = height_idx;
 

@@ -61,6 +61,7 @@ struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
 
   cl::Kernel kernel_;
+  uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
 };
 

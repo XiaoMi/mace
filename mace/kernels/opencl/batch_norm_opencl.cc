@@ -30,14 +30,23 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
+
+  auto runtime = OpenCLRuntime::Global();
+
+
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("batch_norm");
     built_options.emplace("-Dbatch_norm=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     if (folded_constant_) {
       built_options.emplace("-DFOLDED_CONSTANT");
     }
@@ -61,9 +70,17 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     }
 
     kernel_ = runtime->BuildKernel("batch_norm", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(scale->opencl_image()));
     kernel_.setArg(idx++, *(offset->opencl_image()));
@@ -78,10 +95,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel_", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);

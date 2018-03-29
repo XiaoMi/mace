@@ -23,7 +23,8 @@ void DepthwiseConv2d(cl::Kernel *kernel,
                      const DataType dt,
                      std::vector<index_t> *prev_input_shape,
                      Tensor *output,
-                     StatsFuture *future) {
+                     StatsFuture *future,
+                     uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -35,8 +36,14 @@ void DepthwiseConv2d(cl::Kernel *kernel,
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv4(width);
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width_blocks),
+                           static_cast<uint32_t>(height * batch)};
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel->get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d");
     if (stride == 1 && dilations[0] == 1 && dilations[1] == 1) {
@@ -44,6 +51,9 @@ void DepthwiseConv2d(cl::Kernel *kernel,
       built_options.emplace("-Ddepthwise_conv2d_s1=" + kernel_name);
     } else {
       built_options.emplace("-Ddepthwise_conv2d=" + kernel_name);
+    }
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
@@ -70,6 +80,9 @@ void DepthwiseConv2d(cl::Kernel *kernel,
 
     *kernel =
         runtime->BuildKernel("depthwise_conv2d", kernel_name, built_options);
+
+    *kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t input_batch = input->dim(0);
@@ -84,6 +97,11 @@ void DepthwiseConv2d(cl::Kernel *kernel,
                input_channels);
 
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel->setArg(idx++, gws[0]);
+      kernel->setArg(idx++, gws[1]);
+      kernel->setArg(idx++, gws[2]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -104,13 +122,11 @@ void DepthwiseConv2d(cl::Kernel *kernel,
       kernel->setArg(idx++, static_cast<int16_t>(dilations[0]));
       kernel->setArg(idx++, static_cast<int16_t>(dilations[1]));
     }
+
     *prev_input_shape = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width_blocks),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
   std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel_", activation,
                                   batch, height, width, channels, multiplier);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
@@ -165,7 +181,8 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
 
   DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                   dilations_, activation_, relux_max_limit_,
-                  DataTypeToEnum<T>::value, &input_shape_, output, future);
+                  DataTypeToEnum<T>::value, &input_shape_, output, future,
+                  &kwg_size_);
 }
 
 template struct DepthwiseConv2dFunctor<DeviceType::OPENCL, float>;

@@ -23,7 +23,12 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
+
   auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
@@ -31,25 +36,46 @@ void BiasAddFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     built_options.emplace("-Dbias_add=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     kernel_ = runtime->BuildKernel("bias_add", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(bias->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8};
 
   cl::Event event;
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-      cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  cl_int error;
+  if (runtime->IsNonUniformWorkgroupsSupported()) {
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  } else {
+    std::vector<uint32_t> roundup_gws(lws.size());
+    for (size_t i = 0; i < lws.size(); ++i) {
+      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+    }
+
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        kernel_, cl::NullRange,
+        cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+        cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+  }
   MACE_CHECK(error == CL_SUCCESS);
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {

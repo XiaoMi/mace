@@ -1,6 +1,8 @@
 #include <common.h>
 
-__kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void conv_2d_3x3(
+                          UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                          __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                           __read_only image2d_t filter, /* cout%4 * cin , kh * kw * cout/4 */
 #ifdef BIAS
                           __read_only image2d_t bias, /* cout%4 * cout/4 */
@@ -19,8 +21,17 @@ __kernel void conv_2d_3x3(__read_only image2d_t input, /* [c%4 * w * c/4, h * b]
                           __private const int dilation_w) {
   const int out_ch_blk = get_global_id(0);
   const int out_w_blk = get_global_id(1);
-  const int out_w_blks = get_global_size(1);
   const int out_hb = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_ch_blk >= global_size_dim0 || out_w_blk >= global_size_dim1
+      || out_hb >= global_size_dim2) {
+    return;
+  }
+  const int out_w_blks = global_size_dim1;
+#else
+  const int out_w_blks = get_global_size(1);
+#endif
 
 #ifdef BIAS
   DATA_TYPE4 out0 =

@@ -24,7 +24,8 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              const DataType dt,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
-                             StatsFuture *future) {
+                             StatsFuture *future,
+                             uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -35,12 +36,17 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
 
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d_3x3");
     built_options.emplace("-Dconv_2d_3x3=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
       case NOOP:
@@ -61,11 +67,23 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    auto runtime = OpenCLRuntime::Global();
     *kernel = runtime->BuildKernel("conv_2d_3x3", kernel_name, built_options);
+
+    *kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width_blocks),
+                           static_cast<uint32_t>(height * batch)};
+
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel->setArg(idx++, gws[0]);
+      kernel->setArg(idx++, gws[1]);
+      kernel->setArg(idx++, gws[2]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -87,10 +105,7 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width_blocks),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {4, 15, 8, 1};
+  const std::vector<uint32_t> lws = {4, *kwg_size / 32, 8, 1};
   std::string tuning_key =
       Concat("conv2d_3x3_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

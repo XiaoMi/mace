@@ -30,20 +30,36 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
              "groups must be multiple of 4");
   const index_t group_channel_blocks = RoundUpDiv4(channels_per_group);
 
-  if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
+  const uint32_t gws[3] = {static_cast<uint32_t>(group_channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
 
+  auto runtime = OpenCLRuntime::Global();
+
+  if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("channel_shuffle");
     built_options.emplace("-Dchannel_shuffle=" + kernel_name);
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     kernel_ = runtime->BuildKernel("channel_shuffle", kernel_name,
                                    built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
+
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, groups_);
     kernel_.setArg(idx++, static_cast<uint32_t>(channels_per_group));
@@ -51,10 +67,8 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
 
     input_shape_ = input->shape();
   }
-  const uint32_t gws[3] = {static_cast<uint32_t>(group_channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << "channel_shuffle_opencl_kernel_"
      << output->dim(0) << "_"

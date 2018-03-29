@@ -142,17 +142,17 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   }
 
   bool gpu_detected = false;
-  bool is_adreno_gpu = false;
   device_ = std::make_shared<cl::Device>();
   for (auto device : all_devices) {
     if (device.getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_GPU) {
       *device_ = device;
       gpu_detected = true;
+
       const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
-      constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
-      if (device_name == kQualcommAdrenoGPUStr) {
-        is_adreno_gpu = true;
-      }
+      gpu_type_ = ParseGPUTypeFromDeviceName(device_name);
+
+      const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+      opencl_version_ = device_version.substr(7, 3);
 
       VLOG(1) << "Using device: " << device_name;
       break;
@@ -171,7 +171,7 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   }
 
   cl_int err;
-  if (is_adreno_gpu) {
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties, gpu_perf_hint,
@@ -348,6 +348,32 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
   return size;
+}
+
+const bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() {
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
+      opencl_version_ == "2.0") {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(
+    const std::string &device_name) {
+  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+  constexpr const char *kMaliGPUStr = "Mali";
+  constexpr const char *kPowerVRGPUStr = "PowerVR";
+
+  if (device_name == kQualcommAdrenoGPUStr) {
+    return GPUType::QUALCOMM_ADRENO;
+  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+    return GPUType::MALI;
+  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
+    return GPUType::PowerVR;
+  } else {
+    return GPUType::UNKNOWN;
+  }
 }
 
 }  // namespace mace

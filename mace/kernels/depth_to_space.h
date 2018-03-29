@@ -108,6 +108,7 @@ struct DepthToSpaceOpFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 
   cl::Kernel kernel_;
+  uint32_t kwg_size_;
   const int block_size_;
   bool d2s_;
   std::vector<index_t> input_shape_;

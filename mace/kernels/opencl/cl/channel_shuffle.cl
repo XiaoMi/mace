@@ -1,14 +1,26 @@
 #include <common.h>
 
 // assume channes_per_group mod 4 = 0 && groups mod 4 == 0
-__kernel void channel_shuffle(__read_only image2d_t input,
-                      __private const int groups,
-                      __private const int channels_per_group,
-                      __write_only image2d_t output) {
+__kernel void channel_shuffle(
+                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                              __read_only image2d_t input,
+                              __private const int groups,
+                              __private const int channels_per_group,
+                              __write_only image2d_t output) {
   const int group_chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
-  const int width = get_global_size(1);
   const int hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (group_chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
+      || hb_idx >= global_size_dim2) {
+    return;
+  }
+  const int width = global_size_dim1;
+#else
+  const int width = get_global_size(1);
+#endif
+
   const int group_blks = groups / 4;
   const int groups_blks_width = group_blks * width;
   const int channels_per_group_blks = channels_per_group / 4;

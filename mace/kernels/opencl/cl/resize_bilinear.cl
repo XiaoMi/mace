@@ -1,17 +1,31 @@
 #include <common.h>
 
-__kernel void resize_bilinear_nocache(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+__kernel void resize_bilinear_nocache(
+                                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                                      __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                       __write_only image2d_t output,
                                       __private const float height_scale,
                                       __private const float width_scale,
                                       __private const int in_height,
                                       __private const int in_width,
                                       __private const int out_height) {
+
   const int ch_blk = get_global_id(0);
-  const int ch_blks = get_global_size(0);
   const int w = get_global_id(1);
-  const int out_width = get_global_size(1);
   const int hb = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (ch_blk >= global_size_dim0 || w >= global_size_dim1
+      || hb >= global_size_dim2) {
+    return;
+  }
+  const int ch_blks = global_size_dim0;
+  const int out_width = global_size_dim1;
+#else
+  const int ch_blks = get_global_size(0);
+  const int out_width = get_global_size(1);
+#endif
+
   const int b = hb / out_height;
   const int h = hb % out_height;
 

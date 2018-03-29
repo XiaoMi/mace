@@ -22,14 +22,26 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 }
 
 // Supported data type: half/float
-__kernel void concat_channel(__read_only image2d_t input0,
+__kernel void concat_channel(
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             __read_only image2d_t input0,
                              __read_only image2d_t input1,
                              __private const int input0_chan,
                              __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
-  const int width = get_global_size(1);
   const int hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
+      || hb_idx >= global_size_dim2) {
+    return;
+  }
+  const int width = global_size_dim1;
+#else
+  const int width = get_global_size(1);
+#endif
+
   const int input0_chan_blk = (input0_chan + 3) >> 2;
 
   DATA_TYPE4 data = 0;
@@ -72,13 +84,25 @@ __kernel void concat_channel(__read_only image2d_t input0,
 }
 
 // Required: All input channels are divisible by 4
-__kernel void concat_channel_multi(__read_only image2d_t input,
+__kernel void concat_channel_multi(
+                                   UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                                   __read_only image2d_t input,
                                    __private const int chan_blk_offset,
                                    __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
-  const int width = get_global_size(1);
   const int hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
+      || hb_idx >= global_size_dim2) {
+    return;
+  }
+  const int width = global_size_dim1;
+#else
+  const int width = get_global_size(1);
+#endif
+
   DATA_TYPE4 data = 0;
   data = READ_IMAGET(input,
                      SAMPLER,

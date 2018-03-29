@@ -1,13 +1,24 @@
 #include <common.h>
 
-__kernel void depth_to_space(__read_only image2d_t input,
+__kernel void depth_to_space(
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             __read_only image2d_t input,
                              __private const int block_size,
                              __private const int output_depth,
                              __write_only image2d_t output) {
   const int out_d = get_global_id(0);
   const int out_w = get_global_id(1);
   const int out_h = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_d >= global_size_dim0 || out_w >= global_size_dim1
+      || out_h >= global_size_dim2) {
+    return;
+  }
+  const int output_width = global_size_dim1;
+#else
   const int output_width = get_global_size(1);
+#endif
 
   const int out_pos = mad24(out_d, output_width, out_w);
 
@@ -27,14 +38,27 @@ __kernel void depth_to_space(__read_only image2d_t input,
   WRITE_IMAGET(output, (int2)(out_pos, out_h), in_data);
 }
 
-__kernel void space_to_depth(__read_only image2d_t input,
+__kernel void space_to_depth(
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             __read_only image2d_t input,
                              __private const int block_size,
                              __private const int input_depth,
                              __write_only image2d_t output) {
+
   const int d = get_global_id(0);
   const int w = get_global_id(1);
   const int h = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (d >= global_size_dim0 || w >= global_size_dim1
+      || h >= global_size_dim2) {
+    return;
+  }
+  const int input_width = global_size_dim1;
+#else
   const int input_width = get_global_size(1);
+#endif
+
   const int in_pos = mad24(d, input_width, w);
   const int output_width = input_width / block_size;
 

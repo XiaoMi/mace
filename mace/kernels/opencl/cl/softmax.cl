@@ -1,14 +1,26 @@
 #include <common.h>
 
-__kernel void softmax(__read_only image2d_t input,
+__kernel void softmax(
+                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                      __read_only image2d_t input,
                       __private const int channels,
                       __private const int remain_channels,
                       __write_only image2d_t output) {
   const int chan_blk_idx = get_global_id(0);
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (chan_blk_idx >= global_size_dim0 || width_idx >= global_size_dim1
+      || hb_idx >= global_size_dim2) {
+    return;
+  }
+  const int chan_blks = global_size_dim0 - 1;
+  const int width = global_size_dim1;
+#else
   const int chan_blks = get_global_size(0) - 1;
   const int width = get_global_size(1);
+#endif
 
   int pos = width_idx;
   DATA_TYPE max_value = -FLT_MAX;

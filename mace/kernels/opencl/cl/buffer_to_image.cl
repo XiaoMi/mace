@@ -1,6 +1,8 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, oc, ic */
+__kernel void filter_buffer_to_image(
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                     __global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
                                      __private const int filter_h,
                                      __private const int filter_w,
@@ -9,6 +11,13 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
                                      __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int in_channel_idx = w;
   const int hw_size = filter_w * filter_h;
   const int out_channel_idx = h / hw_size * 4;
@@ -44,7 +53,9 @@ __kernel void filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, o
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic */
+__kernel void filter_image_to_buffer(
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                     __global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_h,
                                      __private const int filter_w,
                                      __private const int out_channel,
@@ -52,6 +63,13 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
                                      __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int in_channel_idx = w;
   const int hw_size = filter_w * filter_h;
   const int out_channel_idx = h / hw_size * 4;
@@ -84,7 +102,9 @@ __kernel void filter_image_to_buffer(__global DATA_TYPE *output, /* h, w, oc, ic
   }
 }
 
-__kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w, ic, m */
+__kernel void dw_filter_buffer_to_image(
+                                        UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                        __global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int input_offset,
                                         __private const int filter_w,
                                         __private const int in_channel,
@@ -92,6 +112,12 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
                                         __write_only image2d_t output) { /* ic%4 * kh * kw * m, ic/4 */
   const int w = get_global_id(0);
   const int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
 
   DATA_TYPE4 values = 0;
   if (multiplier == 1) {
@@ -134,7 +160,9 @@ __kernel void dw_filter_buffer_to_image(__global const DATA_TYPE *input, /* h, w
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void in_out_buffer_to_image(
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                     __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
                                      __private const int height,
                                      __private const int width,
@@ -142,6 +170,13 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
                                      __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int batch_idx = h / height;
   const int height_idx = h % height;
   const int width_idx = w % width;
@@ -167,13 +202,22 @@ __kernel void in_out_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
+__kernel void in_out_image_to_buffer(
+                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                     __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
                                      __private const int channels,
                                      __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int batch_idx = h / height;
   const int height_idx = h % height;
   const int width_idx = w % width;
@@ -198,12 +242,20 @@ __kernel void in_out_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
   }
 }
 
-__kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void arg_buffer_to_image(
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                  __global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
                                   __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
 
   const int offset = input_offset + w * 4;
   const int size = count - w * 4;
@@ -226,11 +278,20 @@ __kernel void arg_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
+__kernel void arg_image_to_buffer(
+                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                  __global DATA_TYPE *output, /* nhwc */
                                   __private const int count,
                                   __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int offset = w * 4;
 
   int2 coord = (int2)(w, h);
@@ -251,7 +312,9 @@ __kernel void arg_image_to_buffer(__global DATA_TYPE *output, /* nhwc */
 }
 
 
-__kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //nhwc
+__kernel void in_out_height_buffer_to_image(
+                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                            __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
                                             __private const int height,
                                             __private const int width,
@@ -259,6 +322,13 @@ __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //n
                                             __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int wc = width * channels;
   const int height_blks = (height + 3) / 4;
   const int batch_idx = h / height_blks;
@@ -285,13 +355,22 @@ __kernel void in_out_height_buffer_to_image(__global const DATA_TYPE *input, //n
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
+__kernel void in_out_height_image_to_buffer(
+                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                            __global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
                                             __private const int channels,
                                             __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int height_blks = (height + 3) / 4;
   const int batch_idx = h / height_blks;
   const int height_idx = (h % height_blks) << 2;
@@ -315,7 +394,9 @@ __kernel void in_out_height_image_to_buffer(__global DATA_TYPE *output, //nhwc
 }
 
 
-__kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* nhwc */
+__kernel void in_out_width_buffer_to_image(
+                                           UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                           __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
                                            __private const int height,
                                            __private const int width,
@@ -323,6 +404,13 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
                                            __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int width_blks = (width + 3) / 4;
   const int batch_idx = h / height;
   const int height_idx = h % height;
@@ -349,7 +437,9 @@ __kernel void in_out_width_buffer_to_image(__global const DATA_TYPE *input, /* n
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, //Oc, Ic, H, W
+__kernel void winograd_filter_buffer_to_image(
+                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                              __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
                                               __private const int in_channels,
                                               __private const int height,
@@ -357,7 +447,16 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
                                               __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int out_channels = global_size_dim1;
+#else
   const int out_channels = get_global_size(1);
+#endif
+
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
   const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
@@ -430,13 +529,22 @@ __kernel void winograd_filter_buffer_to_image(__global const DATA_TYPE *input, /
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer(__global DATA_TYPE *output, //Oc, Ic, H, W
+__kernel void winograd_filter_image_to_buffer(
+                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                                              __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
                                               __private const int width,
                                               __private const int channel,
                                               __read_only image2d_t input) {
   const int w = get_global_id(0);
   const int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
   const int width_idx = w << 2;
   const int size = width - width_idx;
   int offset = h * width + width_idx;

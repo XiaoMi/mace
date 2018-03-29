@@ -19,7 +19,9 @@ inline int calculate_avg_block_size(const int pool_size,
 }
 
 // Supported data type: half/float
-__kernel void pooling(__read_only image2d_t input,
+__kernel void pooling(
+                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                      __read_only image2d_t input,
                       __private const int in_height,
                       __private const int in_width,
                       __private const int out_height,
@@ -28,10 +30,20 @@ __kernel void pooling(__read_only image2d_t input,
                       __private const int stride,
                       __private const int pooling_size,
                       __write_only image2d_t output) {
+
   const int out_chan_idx = get_global_id(0);
   const int out_width_idx = get_global_id(1);
-  const int out_width = get_global_size(1);
   const int out_hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_chan_idx >= global_size_dim0 || out_width_idx >= global_size_dim1
+      || out_hb_idx >= global_size_dim2) {
+    return;
+  }
+  const int out_width = global_size_dim1;
+#else
+  const int out_width = get_global_size(1);
+#endif
 
   const int batch_idx = mul24((out_hb_idx / out_height), in_height);
   const int in_height_start = mul24((out_hb_idx % out_height), stride) - pad_top;

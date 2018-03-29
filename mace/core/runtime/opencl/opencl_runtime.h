@@ -19,6 +19,13 @@
 
 namespace mace {
 
+enum GPUType {
+  QUALCOMM_ADRENO,
+  MALI,
+  PowerVR,
+  UNKNOWN,
+};
+
 class OpenCLProfilingTimer : public Timer {
  public:
   explicit OpenCLProfilingTimer(const cl::Event *event)
@@ -50,6 +57,8 @@ class OpenCLRuntime {
   uint64_t GetDeviceMaxWorkGroupSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
+  const bool IsNonUniformWorkgroupsSupported();
+  const GPUType ParseGPUTypeFromDeviceName(const std::string &device_name);
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);
@@ -75,6 +84,8 @@ class OpenCLRuntime {
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
   std::string kernel_path_;
+  GPUType gpu_type_;
+  std::string opencl_version_;
 
   static GPUPerfHint gpu_perf_hint_;
   static GPUPriorityHint gpu_priority_hint_;

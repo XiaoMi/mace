@@ -14,8 +14,13 @@ source ${CURRENT_DIR}/env.sh
 
 LIBMACE_BUILD_DIR=$1
 
+TAR_PACKAGE_NAME=libmace_${PROJECT_NAME}.tar.gz
+
 pushd $LIBMACE_BUILD_DIR/$PROJECT_NAME
-ls | grep -v build | xargs tar cvzf libmace_${PROJECT_NAME}.tar.gz
+if [ -f $TAR_PACKAGE_NAME ]; then
+  rm -f $TAR_PACKAGE_NAME
+fi
+ls | grep -v build | xargs tar cvzf $TAR_PACKAGE_NAME
 popd
 
 echo "Packaging done!"

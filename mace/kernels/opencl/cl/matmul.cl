@@ -1,7 +1,9 @@
 #include <common.h>
 
 // C = A * B
-__kernel void matmul(__read_only image2d_t A,
+__kernel void matmul(
+                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+                     __read_only image2d_t A,
                      __read_only image2d_t B,
                      __write_only image2d_t C,
                      __private const int M,
@@ -11,6 +13,11 @@ __kernel void matmul(__read_only image2d_t A,
                      __private const int k_blocks) {
   const int gx = get_global_id(0) << 2;
   const int hb = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (get_global_id(0) >= global_size_dim0 || hb >= global_size_dim1) return;
+#endif
+
   const int batch = hb / height_blocks;
   const int ty = (hb % height_blocks);
   const int gy = mad24(batch, height_blocks, ty);

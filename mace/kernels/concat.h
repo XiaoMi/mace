@@ -85,6 +85,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
                   Tensor *output,
                   StatsFuture *future);
   cl::Kernel kernel_;
+  uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
 };
 

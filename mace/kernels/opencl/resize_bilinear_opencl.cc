@@ -24,16 +24,27 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t out_height = out_height_;
   const index_t out_width = out_width_;
 
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(out_width),
+                           static_cast<uint32_t>(out_height * batch)};
+
+  auto runtime = OpenCLRuntime::Global();
+
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
     built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     kernel_ =
         runtime->BuildKernel("resize_bilinear", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
@@ -50,6 +61,11 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
         CalculateResizeScale(in_width, out_width, align_corners_);
 
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+      kernel_.setArg(idx++, gws[2]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, height_scale);
@@ -61,10 +77,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(out_width),
-                           static_cast<uint32_t>(out_height * batch)};
-  const std::vector<uint32_t> lws = {8, 16, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
   std::stringstream ss;
   ss << "resize_bilinear_opencl_kernel_" << output->dim(0) << "_"
      << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);

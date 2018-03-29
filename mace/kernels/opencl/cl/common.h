@@ -18,6 +18,23 @@
 #define READ_IMAGET CMD_TYPE(read_image, CMD_DATA_TYPE)
 #define WRITE_IMAGET CMD_TYPE(write_image, CMD_DATA_TYPE)
 
+#ifndef NON_UNIFORM_WORK_GROUP
+
+#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2 \
+    __private const int global_size_dim0,       \
+    __private const int global_size_dim1,
+#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3 \
+    __private const int global_size_dim0,       \
+    __private const int global_size_dim1,       \
+    __private const int global_size_dim2,
+
+#else
+
+#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+
+#endif
+
 __constant sampler_t SAMPLER =
     CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 

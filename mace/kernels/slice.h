@@ -61,6 +61,7 @@ struct SliceFunctor<DeviceType::OPENCL, T> {
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future);
   cl::Kernel kernel_;
+  uint32_t kwg_size_;
 };
 
 }  // namespace kernels

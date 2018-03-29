@@ -1,6 +1,8 @@
 #include <common.h>
 
-__kernel void space_to_batch(__read_only image2d_t space_data,
+__kernel void space_to_batch(
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,
                              __private const int block_height,
                              __private const int block_width,
@@ -13,6 +15,13 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
+      || batch_hb_idx >= global_size_dim2) {
+    return;
+  }
+#endif
 
   const int batch_b_idx = batch_hb_idx / batch_height;
   const int batch_h_idx = batch_hb_idx % batch_height;
@@ -39,7 +48,9 @@ __kernel void space_to_batch(__read_only image2d_t space_data,
   WRITE_IMAGET(batch_data, batch_coord, value);
 }
 
-__kernel void batch_to_space(__read_only image2d_t batch_data,
+__kernel void batch_to_space(
+                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             __read_only image2d_t batch_data,
                              __write_only image2d_t space_data,
                              __private const int block_height,
                              __private const int block_width,
@@ -52,6 +63,13 @@ __kernel void batch_to_space(__read_only image2d_t batch_data,
   const int chan_idx = get_global_id(0);
   const int batch_w_idx = get_global_id(1);
   const int batch_hb_idx = get_global_id(2);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (chan_idx >= global_size_dim0 || batch_w_idx >= global_size_dim1
+      || batch_hb_idx >= global_size_dim2) {
+    return;
+  }
+#endif
 
   const int batch_b_idx = batch_hb_idx / batch_height;
   const int batch_h_idx = batch_hb_idx % batch_height;
