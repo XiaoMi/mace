@@ -1,26 +1,20 @@
 stages:
+  - cpplint
   - ops_test
   - ops_benchmark
-  - cpplint
 
 cpplint:
   stage: cpplint
-  only:
-    - master
   script:
     - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py
     - python cpplint.py --linelength=80 --counting=detailed $(find mace -name *.h -or -name *.cc)
 
 ops_test:
   stage: ops_test
-  only:
-    - master
   script:
     - FAILURE_PATTERN="FAILED\|Aborted" tools/bazel-adb-run.sh //mace/ops:ops_test
 
 ops_benchmark:
   stage: ops_benchmark
-  only:
-    - master
   script:
     - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark --pattern=.*CONV.*
