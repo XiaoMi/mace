@@ -22,6 +22,7 @@ class DspOps(object):
       'QuantizedSpaceToBatchND': 'QuantizedSpaceToBatchND_8',
       'QuantizedBatchToSpaceND': 'QuantizedBatchToSpaceND_8',
       'QuantizedSoftmax': 'QuantizedSoftmax_8',
+      'QuantizedTanh': 'QuantizedTanh_8',
       'Min': 'Min_f',
       'Max': 'Max_f',
       'QuantizeV2': 'Quantize',
