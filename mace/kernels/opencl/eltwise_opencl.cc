@@ -22,7 +22,7 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t width_pixels = channel_blocks * width;
-  const index_t batch_height_pixels = batch * height;  
+  const index_t batch_height_pixels = batch * height;
 
   const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
                            static_cast<uint32_t>(batch_height_pixels)};
