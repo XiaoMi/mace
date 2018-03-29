@@ -52,7 +52,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
       case PROD:
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
-          output_ptr[i] =  input0_ptr[i] * input1_ptr[i];
+          output_ptr[i] = input0_ptr[i] * input1_ptr[i];
         }
         break;
       case SUM:
