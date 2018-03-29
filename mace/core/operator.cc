@@ -89,7 +89,6 @@ extern void Register_PSROIAlign(OperatorRegistry *op_registry);
 extern void Register_ReOrganize(OperatorRegistry *op_registry);
 extern void Register_Reshape(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
-extern void Register_ScalarMath(OperatorRegistry *op_registry);
 extern void Register_Slice(OperatorRegistry *op_registry);
 extern void Register_Softmax(OperatorRegistry *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
@@ -127,7 +126,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_ReOrganize(this);
   ops::Register_Reshape(this);
   ops::Register_ResizeBilinear(this);
-  ops::Register_ScalarMath(this);
   ops::Register_Slice(this);
   ops::Register_Softmax(this);
   ops::Register_SpaceToBatchND(this);
