@@ -22,7 +22,7 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t width_pixels = channel_blocks * width;
-  const index_t batch_height_pixels = batch * height;  
+  const index_t batch_height_pixels = batch * height;
 
   if (kernel_.get() == nullptr) {
     auto runtime = OpenCLRuntime::Global();
