@@ -65,7 +65,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
 #pragma omp parallel for
           for (index_t i = 0; i < size; ++i) {
             output_ptr[i] =
-              coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
+                coeff_[0] * input0_ptr[i] + coeff_[1] * input1_ptr[i];
           }
         }
         break;

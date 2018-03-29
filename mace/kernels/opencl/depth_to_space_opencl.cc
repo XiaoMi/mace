@@ -70,13 +70,13 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   std::stringstream ss;
   if (!IsVecEqual(input_shape_, input->shape())) {
     if (d2s_) {
-      gws[0] = static_cast<uint32_t>(depth_blocks);
+      gws[0] = static_cast<uint32_t>(output_depth_blocks);
       gws[1] = static_cast<uint32_t>(output_width);
       gws[2] = static_cast<uint32_t>(output_height * batch);
       ss << "depth_to_space_opencl_kernel_" << output->dim(0) << "_"
          << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);
     } else {
-      gws[0] = static_cast<uint32_t>(depth_blocks);
+      gws[0] = static_cast<uint32_t>(input_depth_blocks);
       gws[1] = static_cast<uint32_t>(input_width);
       gws[2] = static_cast<uint32_t>(input_height * batch);
       ss << "space_to_depth_opencl_kernel_" << input->dim(0) << "_"

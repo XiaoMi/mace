@@ -15,16 +15,6 @@ __kernel void depth_to_space(
   const int out_w = get_global_id(1);
   const int out_h = get_global_id(2);
 
-#ifndef NON_UNIFORM_WORK_GROUP
-  if (out_d >= global_size_dim0 || out_w >= global_size_dim1
-      || out_h >= global_size_dim2) {
-    return;
-  }
-  const int output_width = global_size_dim1;
-#else
-  const int output_width = get_global_size(1);
-#endif
-
   if (out_d >= output_depth_blocks || out_h >= output_height || out_w >= output_width)
     return;
 
@@ -61,15 +51,8 @@ __kernel void space_to_depth(
   const int w = get_global_id(1);
   const int h = get_global_id(2);
 
-#ifndef NON_UNIFORM_WORK_GROUP
-  if (d >= global_size_dim0 || w >= global_size_dim1
-      || h >= global_size_dim2) {
+  if (h >= input_height || w >= input_width || d >= input_depth_blocks)
     return;
-  }
-  const int input_width = global_size_dim1;
-#else
-  const int input_width = get_global_size(1);
-#endif
 
   const int in_pos = mad24(d, input_width, w);
 
@@ -84,8 +67,6 @@ __kernel void space_to_depth(
     return;
 
   const int out_pos = mad24(out_d, output_width, out_w);
-
   DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, h));
-
   WRITE_IMAGET(output, (int2)(out_pos, out_h), in_data);
 }
