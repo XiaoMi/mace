@@ -20,26 +20,22 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t input_width = input->dim(2);
   const index_t input_depth = input->dim(3);
 
-  int depth_blocks = 1;
   const char *kernel_name = nullptr;
-  index_t kernel_width = input_width;
 
   index_t output_height, output_width, output_depth;
   if (d2s_) {
     output_height = input_height * block_size_;
     output_width = input_width * block_size_;
     output_depth = input_depth / (block_size_ * block_size_);
-    depth_blocks = RoundUpDiv4(output_depth);
     kernel_name = "depth_to_space";
-    kernel_width = output_width;
   } else {
     output_height = input_height / block_size_;
     output_width = input_width / block_size_;
     output_depth = input_depth * block_size_ * block_size_;
-    depth_blocks = RoundUpDiv4(input_depth);
     kernel_name = "space_to_depth";
-    kernel_width = input_width;
   }
+  const index_t input_depth_blocks = RoundUpDiv4(input_depth);
+  const index_t output_depth_blocks = RoundUpDiv4(output_depth);
 
   std::vector<index_t> output_shape = {batch, output_height, output_width,
                                        output_depth};
@@ -66,28 +62,33 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     uint32_t idx = 0;
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(block_size_));
-    kernel_.setArg(idx++, static_cast<int32_t>(depth_blocks));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_height));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_width));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_depth_blocks));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_height));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_width));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_depth_blocks));
     kernel_.setArg(idx++, *(output->opencl_image()));
     input_shape_ = input->shape();
   }
 
   if (d2s_) {
-    const uint32_t gws[3] = {static_cast<uint32_t>(depth_blocks),
+    const uint32_t gws[3] = {static_cast<uint32_t>(output_depth_blocks),
                              static_cast<uint32_t>(output_width),
                              static_cast<uint32_t>(output_height * batch)};
     const std::vector<uint32_t> lws = {8, 16, 8, 1};
     std::stringstream ss;
     ss << "depth_to_space_opencl_kernel_" << output->dim(0) << "_"
-       << output->dim(1) << "_" << output->dim(2) << "_" << depth_blocks;
+       << output->dim(1) << "_" << output->dim(2) << "_" << output_depth_blocks;
     TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
   } else {
-    const uint32_t gws[3] = {static_cast<uint32_t>(depth_blocks),
+    const uint32_t gws[3] = {static_cast<uint32_t>(input_depth_blocks),
                              static_cast<uint32_t>(input_width),
                              static_cast<uint32_t>(input_height * batch)};
     const std::vector<uint32_t> lws = {8, 16, 8, 1};
     std::stringstream ss;
     ss << "depth_to_space_opencl_kernel_" << input->dim(0) << "_"
-       << input->dim(1) << "_" << input->dim(2) << "_" << depth_blocks;
+       << input->dim(1) << "_" << input->dim(2) << "_" << input_depth_blocks;
     TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
   }
 }
