@@ -12,7 +12,7 @@ namespace ops {
 namespace test {
 
 template <DeviceType D, typename T>
-static void ScalarMath(int iters, int batch, int channels,
+static void CWise(int iters, int batch, int channels,
                        int height, int width, float x, int type) {
   mace::testing::StopTiming();
 
@@ -24,14 +24,14 @@ static void ScalarMath(int iters, int batch, int channels,
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("ScalarMath", "ScalarMathBM")
+    OpDefBuilder("CWise", "CWiseBM")
         .Input("InputImage")
         .Output("Output")
         .AddIntArg("type", type)
         .AddFloatArg("x", x)
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("ScalarMath", "ScalarMathBM")
+    OpDefBuilder("CWise", "CWiseBM")
         .Input("Input")
         .Output("Output")
         .AddIntArg("type", type)
@@ -52,35 +52,41 @@ static void ScalarMath(int iters, int batch, int channels,
   net.Sync();
 }
 
-#define BM_SCALAR_MATH_MACRO(N, C, H, W, X, G, TYPE, DEVICE)              \
+#define BM_CWISE_MACRO(N, C, H, W, X, G, TYPE, DEVICE)              \
   static void                                                             \
-    BM_SCALAR_MATH_##N##_##C##_##H##_##W##_##X##_##G##_##TYPE##_##DEVICE( \
+    BM_CWISE_##N##_##C##_##H##_##W##_##X##_##G##_##TYPE##_##DEVICE( \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
     mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    ScalarMath<DEVICE, TYPE>(iters, N, C, H, W, X, G);               \
+    CWise<DEVICE, TYPE>(iters, N, C, H, W, X, G);               \
   }                                                                  \
-  BENCHMARK(                                                              \
-    BM_SCALAR_MATH_##N##_##C##_##H##_##W##_##X##_##G##_##TYPE##_##DEVICE)
+  BENCHMARK(                                                         \
+    BM_CWISE_##N##_##C##_##H##_##W##_##X##_##G##_##TYPE##_##DEVICE)
 
-#define BM_SCALAR_MATH(N, C, H, W, X, G)                 \
-  BM_SCALAR_MATH_MACRO(N, C, H, W, X, G, float, CPU);    \
-  BM_SCALAR_MATH_MACRO(N, C, H, W, X, G, float, OPENCL); \
-  BM_SCALAR_MATH_MACRO(N, C, H, W, X, G, half, OPENCL);
+#define BM_CWISE(N, C, H, W, X, G)                 \
+  BM_CWISE_MACRO(N, C, H, W, X, G, float, CPU);    \
+  BM_CWISE_MACRO(N, C, H, W, X, G, float, OPENCL); \
+  BM_CWISE_MACRO(N, C, H, W, X, G, half, OPENCL);
 
-BM_SCALAR_MATH(1, 1, 512, 512, 2, 0);
-BM_SCALAR_MATH(1, 3, 128, 128, 2, 1);
-BM_SCALAR_MATH(1, 3, 512, 512, 2, 4);
-BM_SCALAR_MATH(1, 32, 112, 112, 2, 5);
-BM_SCALAR_MATH(1, 64, 256, 256, 3, 0);
-BM_SCALAR_MATH(1, 64, 512, 512, 3, 1);
-BM_SCALAR_MATH(1, 128, 56, 56, 3, 4);
-BM_SCALAR_MATH(1, 128, 256, 256, 3, 5);
-BM_SCALAR_MATH(1, 256, 14, 14, 3, 0);
-BM_SCALAR_MATH(1, 512, 14, 14, 3, 1);
-BM_SCALAR_MATH(1, 1024, 7, 7, 3, 4);
-BM_SCALAR_MATH(32, 1, 256, 256, 3, 5);
+BM_CWISE(1, 1, 512, 512, 2, 0);
+BM_CWISE(1, 3, 128, 128, 2, 1);
+BM_CWISE(1, 3, 512, 512, 2, 4);
+BM_CWISE(1, 32, 112, 112, 2, 5);
+BM_CWISE(1, 32, 112, 112, 2, 6);
+BM_CWISE(1, 32, 112, 112, 2, 7);
+BM_CWISE(1, 64, 256, 256, 3, 0);
+BM_CWISE(1, 64, 512, 512, 3, 1);
+BM_CWISE(1, 128, 56, 56, 3, 4);
+BM_CWISE(1, 128, 256, 256, 3, 5);
+BM_CWISE(1, 64, 512, 512, 3, 6);
+BM_CWISE(1, 64, 512, 512, 3, 7);
+BM_CWISE(1, 256, 14, 14, 3, 0);
+BM_CWISE(1, 512, 14, 14, 3, 1);
+BM_CWISE(1, 1024, 7, 7, 3, 4);
+BM_CWISE(32, 1, 256, 256, 3, 5);
+BM_CWISE(32, 1, 256, 256, 3, 6);
+BM_CWISE(32, 1, 256, 256, 3, 7);
 
 }  // namespace test
 }  // namespace ops

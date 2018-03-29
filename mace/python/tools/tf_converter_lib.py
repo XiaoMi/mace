@@ -19,14 +19,19 @@ pooling_type_mode = {
   'MaxPool': 2
 }
 
-# the order should be the same as eltwise type's order
+# the order should be the same as
+# eltwise type's in mace/kernels/eltwise.h
+# and also cwise type's in mace/kernels/cwise.h
+# cuz these math ops should have compatible with "EltWise" and "CWise"
 math_type_mode = {
   'MUL': 0,
   'ADD': 1,
   'MAX': 2,
   'MIN': 3,
   'SUB': 4,
-  'DIV': 5
+  'DIV': 5,
+  'NEG': 6,
+  'ABS': 7
 }
 
 buffer_type_map = {
@@ -632,18 +637,6 @@ class TFConverter(object):
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
     self.unused_tensor.add(get_input_tensor(op, 1).name)
-
-  def convert_neg(self, op):
-    op_def = self.net_def.op.add()
-    arg = op_def.arg.add()
-    arg.name = 'T'
-    arg.i = self.dt
-    op_def.name = op.name
-    op_def.type = "Neg"
-    op_def.input.extend([input.name for input in op.inputs])
-    op_def.output.extend([output.name for output in op.outputs])
-    self.add_output_shape(op.outputs, op_def)
-    self.resolved_ops[op.name] = 1
     
   def convert_math(self, op, math_type):
     op_def = self.net_def.op.add()
@@ -651,24 +644,31 @@ class TFConverter(object):
     arg.name = 'T'
     arg.i = self.dt
     op_def.name = op.name
-    input_tensor0 = get_input_tensor(op, 0)
-    input_tensor1 = get_input_tensor(op, 1)
-    
-    if input_tensor0.shape == input_tensor1.shape:
-      op_def.type = "Eltwise"
+
+    if len(op.inputs) == 1:
+      op_def.type = "CWise"
       op_def.input.extend([input.name for input in op.inputs])
-    else:
-      op_def.type = "ScalarMath"
-      x_value = 0
-      if len(input_tensor1.shape)==4:
-        op_def.input.extend([op.inputs[1].name])
-        x_value = get_input_tensor(op, 0).eval().astype(np.float32)
-      else:
-        op_def.input.extend([op.inputs[0].name])
-        x_value = get_input_tensor(op, 1).eval().astype(np.float32)
       x_arg = op_def.arg.add()
       x_arg.name = 'x'
-      x_arg.f = x_value
+      x_arg.f = 0
+    elif len(op.inputs) >= 2:
+      input_tensor0 = get_input_tensor(op, 0)
+      input_tensor1 = get_input_tensor(op, 1)
+      if input_tensor0.shape == input_tensor1.shape:
+        op_def.type = "Eltwise"
+        op_def.input.extend([input.name for input in op.inputs])
+      else:
+        op_def.type = "CWise"
+        x_value = 0
+        if len(input_tensor1.shape)==4:
+          op_def.input.extend([op.inputs[1].name])
+          x_value = get_input_tensor(op, 0).eval().astype(np.float32)
+        else:
+          op_def.input.extend([op.inputs[0].name])
+          x_value = get_input_tensor(op, 1).eval().astype(np.float32)
+        x_arg = op_def.arg.add()
+        x_arg.name = 'x'
+        x_arg.f = x_value
     type_arg = op_def.arg.add()
     type_arg.name = 'type'
     type_arg.i = math_type_mode[math_type]
@@ -919,15 +919,15 @@ class TFConverter(object):
       elif op.type == 'BatchToSpaceND':
         self.convert_space_to_batch(op, True)
       elif op.type == 'DepthToSpace':
-		self.convert_depth_to_space(op, True)
+        self.convert_depth_to_space(op, True)
       elif op.type == 'SpaceToDepth':
-		self.convert_depth_to_space(op, False)
-      elif op.type == 'Neg':
-		self.convert_neg(op)
+        self.convert_depth_to_space(op, False)
+      elif op.type in ['Neg', 'neg', 'Negative', 'negative']:
+        self.convert_math(op, 'NEG')
       elif op.type == 'Mul':
-		self.convert_math(op, 'MUL')
+        self.convert_math(op, 'MUL')
       elif op.type == 'Sub':
-		self.convert_math(op, 'SUB')
+        self.convert_math(op, 'SUB')
       elif self.is_softmax(op):
         self.convert_softmax(op)
       elif op.type in ['Relu', 'Sigmoid', 'Tanh']:

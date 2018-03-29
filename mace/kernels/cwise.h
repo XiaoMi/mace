@@ -1,8 +1,8 @@
 //
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
-#ifndef MACE_KERNELS_SCALAR_MATH_H_
-#define MACE_KERNELS_SCALAR_MATH_H_
+#ifndef MACE_KERNELS_CWISE_H_
+#define MACE_KERNELS_CWISE_H_
 
 #include <algorithm>
 #include <vector>
@@ -14,27 +14,29 @@
 namespace mace {
 namespace kernels {
 
-enum ScalarMathType {
+enum CWiseType {
   MUL = 0,
   ADD = 1,
   MAX = 2,
   MIN = 3,
   SUB = 4,
   DIV = 5,
+  NEG = 6,
+  ABS = 7,
 };
 
-struct ScalarMathFunctorBase {
-  ScalarMathFunctorBase(const ScalarMathType type, const float coeff)
+struct CWiseFunctorBase {
+  CWiseFunctorBase(const CWiseType type, const float coeff)
       : type_(type), coeff_(coeff) {}
 
-  ScalarMathType type_;
+  CWiseType type_;
   float coeff_;
 };
 
 template <DeviceType D, typename T>
-struct ScalarMathFunctor : ScalarMathFunctorBase {
-  ScalarMathFunctor(const ScalarMathType type, const float coeff)
-      : ScalarMathFunctorBase(type, coeff) {}
+struct CWiseFunctor : CWiseFunctorBase {
+  CWiseFunctor(const CWiseType type, const float coeff)
+      : CWiseFunctorBase(type, coeff) {}
 
   void operator()(const Tensor *input,
                   Tensor *output,
@@ -59,6 +61,18 @@ struct ScalarMathFunctor : ScalarMathFunctorBase {
           output_ptr[i] =  coeff_ + input_ptr[i];
         }
         break;
+      case MAX:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output_ptr[i] = std::max<T>(input_ptr[i], coeff_);
+        }
+        break;
+      case MIN:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output_ptr[i] = std::min<T>(input_ptr[i], coeff_);
+        }
+        break;
       case SUB:
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
@@ -71,16 +85,29 @@ struct ScalarMathFunctor : ScalarMathFunctorBase {
           output_ptr[i] =  input_ptr[i] / coeff_;
         }
         break;
+      case NEG:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output_ptr[i] =  0 - input_ptr[i];
+        }
+        break;
+      case ABS:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          T val = input_ptr[i];
+          output_ptr[i] =  (val > 0)? val : 0 - val;
+        }
+        break;
       default:
-        LOG(FATAL) << "ScalarMath op not support type " << type_;
+        LOG(FATAL) << "CWise op not support type " << type_;
     }
   }
 };
 
 template <typename T>
-struct ScalarMathFunctor<DeviceType::OPENCL, T> : ScalarMathFunctorBase {
-  ScalarMathFunctor(const ScalarMathType type, const float coeff)
-      : ScalarMathFunctorBase(type, coeff) {}
+struct CWiseFunctor<DeviceType::OPENCL, T> : CWiseFunctorBase {
+  CWiseFunctor(const CWiseType type, const float coeff)
+      : CWiseFunctorBase(type, coeff) {}
 
   void operator()(const Tensor *input,
                   Tensor *output,
@@ -93,4 +120,4 @@ struct ScalarMathFunctor<DeviceType::OPENCL, T> : ScalarMathFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_SCALAR_MATH_H_
+#endif  // MACE_KERNELS_CWISE_H_
