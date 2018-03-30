@@ -27,6 +27,10 @@ void FCWXKernel(cl::Kernel *kernel,
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel->get() == nullptr) {
+    const index_t batch = output->dim(0);
+    const index_t output_size = output->dim(3);
+    const index_t output_blocks = RoundUpDiv4(output_size);
+
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected");
@@ -55,28 +59,47 @@ void FCWXKernel(cl::Kernel *kernel,
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
+    if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
+      built_options.emplace("-DNON_QUALCOMM_ADRENO");
+    }
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
 
     *kernel =
         runtime->BuildKernel("fully_connected", kernel_name, built_options);
 
-    const index_t batch = output->dim(0);
-    const index_t output_size = output->dim(3);
-    const index_t output_blocks = RoundUpDiv4(output_size);
-    const uint32_t wave_size =
-        static_cast<uint32_t>(runtime->GetKernelWaveSize(*kernel));
+    if (runtime->gpu_type() == GPUType::QUALCOMM_ADRENO) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+      const uint32_t wave_size =
+          static_cast<uint32_t>(runtime->GetKernelWaveSize(*kernel));
 
-    *gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
+      *gws = {4, (wave_size / 4), static_cast<uint32_t>(batch * output_blocks)};
 
-    const uint32_t kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-    const uint32_t inter_local_blks = kwg_size / ((*gws)[0] * (*gws)[1]);
-    *lws = {(*gws)[0], (*gws)[1], inter_local_blks};
+      const uint32_t kwg_size =
+          static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+      const uint32_t inter_local_blks = kwg_size / ((*gws)[0] * (*gws)[1]);
+      *lws = {(*gws)[0], (*gws)[1], inter_local_blks};
+    } else {
+      *gws = {4, 8, static_cast<uint32_t>(batch * output_blocks)};
+
+      const uint32_t kwg_size =
+          static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+      const uint32_t inter_local_blks = kwg_size / ((*gws)[0] * (*gws)[1]);
+      *lws = {(*gws)[0], (*gws)[1], inter_local_blks};
+    }
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t batch = output->dim(0);
     const index_t output_blocks = RoundUpDiv4(output->dim(3));
+    (*gws)[2] = static_cast<uint32_t>(batch * output_blocks);
 
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel->setArg(idx++, (*gws)[0]);
+      kernel->setArg(idx++, (*gws)[1]);
+      kernel->setArg(idx++, (*gws)[2]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(weight->opencl_image()));
     if (bias != nullptr) {
@@ -91,15 +114,25 @@ void FCWXKernel(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int>(output_blocks));
     kernel->setArg(idx++, relux_max_limit);
 
-    (*gws)[2] = static_cast<uint32_t>(batch * output_blocks);
-
     *prev_input_shape = input->shape();
   }
   cl::Event event;
-  cl_int error = runtime->command_queue().enqueueNDRangeKernel(
-      *kernel, cl::NullRange, cl::NDRange((*gws)[0], (*gws)[1], (*gws)[2]),
-      cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
-  MACE_CHECK_CL_SUCCESS(error);
+  cl_int error;
+  if (runtime->IsNonUniformWorkgroupsSupported()) {
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        *kernel, cl::NullRange, cl::NDRange((*gws)[0], (*gws)[1], (*gws)[2]),
+        cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
+  } else {
+    std::vector<uint32_t> roundup_gws(lws->size());
+    for (size_t i = 0; i < lws->size(); ++i) {
+      roundup_gws[i] = RoundUp((*gws)[i], (*lws)[i]);
+    }
+    error = runtime->command_queue().enqueueNDRangeKernel(
+        *kernel, cl::NullRange,
+        cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+        cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
+  }
+  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
@@ -125,8 +158,8 @@ void FCWTXKernel(cl::Kernel *kernel,
                  StatsFuture *future) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
+  auto runtime = OpenCLRuntime::Global();
   if (kernel->get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected");
@@ -135,6 +168,9 @@ void FCWTXKernel(cl::Kernel *kernel,
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
+    }
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     switch (activation) {
       case NOOP:
@@ -157,10 +193,23 @@ void FCWTXKernel(cl::Kernel *kernel,
     *kernel =
         runtime->BuildKernel("fully_connected", kernel_name, built_options);
 
-    *lws = {16, 64, 1};
+    uint32_t kwg_size =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+    *lws = {16, kwg_size/16, 1};
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
+    const index_t batch = output->dim(0);
+    const index_t output_blocks = RoundUpDiv4(output->dim(3));
+
+    *gws = {
+        static_cast<uint32_t>(batch), static_cast<uint32_t>(output_blocks),
+    };
+
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel->setArg(idx++, (*gws)[0]);
+      kernel->setArg(idx++, (*gws)[1]);
+    }
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(weight->opencl_image()));
     if (bias != nullptr) {
@@ -173,12 +222,6 @@ void FCWTXKernel(cl::Kernel *kernel,
     // FIXME handle flexable data type: half not supported
     kernel->setArg(idx++, relux_max_limit);
 
-    const index_t batch = output->dim(0);
-    const index_t output_blocks = RoundUpDiv4(output->dim(3));
-
-    *gws = {
-        static_cast<uint32_t>(batch), static_cast<uint32_t>(output_blocks),
-    };
     *prev_input_shape = input->shape();
   }
 

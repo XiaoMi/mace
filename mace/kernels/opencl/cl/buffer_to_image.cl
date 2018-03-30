@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(
-                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
                                      __private const int filter_h,
@@ -53,8 +52,7 @@ __kernel void filter_buffer_to_image(
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(
-                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void filter_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_h,
                                      __private const int filter_w,
@@ -102,8 +100,7 @@ __kernel void filter_image_to_buffer(
   }
 }
 
-__kernel void dw_filter_buffer_to_image(
-                                        UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void dw_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                         __global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int input_offset,
                                         __private const int filter_w,
@@ -160,8 +157,7 @@ __kernel void dw_filter_buffer_to_image(
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_buffer_to_image(
-                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void in_out_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
                                      __private const int height,
@@ -202,8 +198,7 @@ __kernel void in_out_buffer_to_image(
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_image_to_buffer(
-                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void in_out_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
@@ -242,8 +237,7 @@ __kernel void in_out_image_to_buffer(
   }
 }
 
-__kernel void arg_buffer_to_image(
-                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void arg_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
@@ -278,8 +272,7 @@ __kernel void arg_buffer_to_image(
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void arg_image_to_buffer(
-                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void arg_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global DATA_TYPE *output, /* nhwc */
                                   __private const int count,
                                   __read_only image2d_t input) {
@@ -312,8 +305,7 @@ __kernel void arg_image_to_buffer(
 }
 
 
-__kernel void in_out_height_buffer_to_image(
-                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void in_out_height_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
                                             __private const int height,
@@ -355,8 +347,7 @@ __kernel void in_out_height_buffer_to_image(
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_height_image_to_buffer(
-                                            UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void in_out_height_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
@@ -394,8 +385,7 @@ __kernel void in_out_height_image_to_buffer(
 }
 
 
-__kernel void in_out_width_buffer_to_image(
-                                           UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void in_out_width_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
                                            __private const int height,
@@ -437,8 +427,7 @@ __kernel void in_out_width_buffer_to_image(
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image(
-                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void winograd_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
                                               __private const int in_channels,
@@ -529,8 +518,7 @@ __kernel void winograd_filter_buffer_to_image(
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer(
-                                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void winograd_filter_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
                                               __private const int width,

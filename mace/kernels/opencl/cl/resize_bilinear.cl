@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void resize_bilinear_nocache(
-                                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void resize_bilinear_nocache(GLOBAL_WORK_GROUP_SIZE_DIM3
                                       __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                       __write_only image2d_t output,
                                       __private const float height_scale,

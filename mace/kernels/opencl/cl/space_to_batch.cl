@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void space_to_batch(
-                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void space_to_batch(GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,
                              __private const int block_height,
@@ -48,8 +47,7 @@ __kernel void space_to_batch(
   WRITE_IMAGET(batch_data, batch_coord, value);
 }
 
-__kernel void batch_to_space(
-                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void batch_to_space(GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t batch_data,
                              __write_only image2d_t space_data,
                              __private const int block_height,

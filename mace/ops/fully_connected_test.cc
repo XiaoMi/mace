@@ -225,7 +225,7 @@ void TestWXFormat(const index_t batch,
                                        kernels::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::OPENCL, T>(&net, "Weight", "WeightImage",
                                        kernels::BufferType::WEIGHT_WIDTH);
-  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::OPENCL, T>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
@@ -236,7 +236,7 @@ void TestWXFormat(const index_t batch,
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
-  // Run on opencl
+  // Run
   net.RunOp(DeviceType::OPENCL);
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",

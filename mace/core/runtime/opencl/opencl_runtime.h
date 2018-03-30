@@ -66,6 +66,7 @@ class OpenCLRuntime {
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   const bool IsNonUniformWorkgroupsSupported();
   const GPUType ParseGPUTypeFromDeviceName(const std::string &device_name);
+  const GPUType gpu_type() const;
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);

@@ -1,8 +1,7 @@
 #include <common.h>
 
 // assume channes_per_group mod 4 = 0 && groups mod 4 == 0
-__kernel void channel_shuffle(
-                              UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void channel_shuffle(GLOBAL_WORK_GROUP_SIZE_DIM3
                               __read_only image2d_t input,
                               __private const int groups,
                               __private const int channels_per_group,

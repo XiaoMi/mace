@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void addn(
-                   UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void addn(GLOBAL_WORK_GROUP_SIZE_DIM2
                    __read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
                    __read_only image2d_t input1,
 #if INPUT_NUM > 2
