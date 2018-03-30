@@ -51,7 +51,8 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ =
-        runtime->BuildKernel("space_to_batch", kernel_name, built_options);
+        runtime->BuildKernel("space_to_batch",
+                             obfuscated_kernel_name, built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));

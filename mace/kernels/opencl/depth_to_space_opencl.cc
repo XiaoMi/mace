@@ -20,7 +20,6 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   const index_t input_width = input->dim(2);
   const index_t input_depth = input->dim(3);
 
-  int depth_blocks = 1;
   const char *kernel_name = nullptr;
 
   index_t output_height, output_width, output_depth;
@@ -28,15 +27,15 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     output_height = input_height * block_size_;
     output_width = input_width * block_size_;
     output_depth = input_depth / (block_size_ * block_size_);
-    depth_blocks = RoundUpDiv4(output_depth);
     kernel_name = "depth_to_space";
   } else {
     output_height = input_height / block_size_;
     output_width = input_width / block_size_;
     output_depth = input_depth * block_size_ * block_size_;
-    depth_blocks = RoundUpDiv4(input_depth);
     kernel_name = "space_to_depth";
   }
+  const index_t input_depth_blocks = RoundUpDiv4(input_depth);
+  const index_t output_depth_blocks = RoundUpDiv4(output_depth);
 
   std::vector<index_t> output_shape = {batch, output_height, output_width,
                                        output_depth};
@@ -54,13 +53,14 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
     built_options.emplace(kernel_name_ss.str());
     auto dt = DataTypeToEnum<T>::value;
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     kernel_ =
-        runtime->BuildKernel("depth_to_space", kernel_name, built_options);
+        runtime->BuildKernel("depth_to_space",
+                             obfuscated_kernel_name, built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -70,13 +70,13 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
   std::stringstream ss;
   if (!IsVecEqual(input_shape_, input->shape())) {
     if (d2s_) {
-      gws[0] = static_cast<uint32_t>(depth_blocks);
+      gws[0] = static_cast<uint32_t>(output_depth_blocks);
       gws[1] = static_cast<uint32_t>(output_width);
       gws[2] = static_cast<uint32_t>(output_height * batch);
       ss << "depth_to_space_opencl_kernel_" << output->dim(0) << "_"
          << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);
     } else {
-      gws[0] = static_cast<uint32_t>(depth_blocks);
+      gws[0] = static_cast<uint32_t>(input_depth_blocks);
       gws[1] = static_cast<uint32_t>(input_width);
       gws[2] = static_cast<uint32_t>(input_height * batch);
       ss << "space_to_depth_opencl_kernel_" << input->dim(0) << "_"
@@ -90,8 +90,13 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
       kernel_.setArg(idx++, gws[2]);
     }
     kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, block_size_);
-    kernel_.setArg(idx++, depth_blocks);
+    kernel_.setArg(idx++, static_cast<int32_t>(block_size_));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_height));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_width));
+    kernel_.setArg(idx++, static_cast<int32_t>(input_depth_blocks));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_height));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_width));
+    kernel_.setArg(idx++, static_cast<int32_t>(output_depth_blocks));
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();

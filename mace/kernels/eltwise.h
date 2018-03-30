@@ -19,6 +19,7 @@ enum EltwiseType {
   SUM = 1,
   MAX = 2,
   MIN = 3,
+  SUB = 4,
 };
 
 struct EltwiseFunctorBase {
@@ -78,6 +79,12 @@ struct EltwiseFunctor : EltwiseFunctorBase {
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
           output_ptr[i] = std::min<T>(input0_ptr[i], input1_ptr[i]);
+        }
+        break;
+      case SUB:
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output_ptr[i] = input0_ptr[i] - input1_ptr[i];
         }
         break;
       default:
