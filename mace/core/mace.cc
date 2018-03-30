@@ -145,8 +145,8 @@ MaceStatus MaceEngine::Impl::Run(
     std::map<std::string, MaceTensor> *outputs,
     RunMetadata *run_metadata) {
   MACE_CHECK_NOTNULL(outputs);
-  MACE_CHECK(device_type_ != HEXAGON || outputs->size() <= 1,
-             "HEXAGON not supports multiple outputs now");
+  std::vector<Tensor *> input_tensors;
+  std::vector<Tensor *> output_tensors;
   for (auto &input : inputs) {
     Tensor *input_tensor =
         ws_->GetTensor(MakeString("mace_input_node_", input.first, ":0"));
@@ -157,9 +157,21 @@ MaceStatus MaceEngine::Impl::Run(
       memcpy(input_data, input.second.data().get(),
              input_tensor->size() * sizeof(float));
     }
+    input_tensors.push_back(input_tensor);
   }
-  if (!net_->Run(run_metadata)) {
-    LOG(FATAL) << "Net run failed";
+  for (auto &output : *outputs) {
+    Tensor *output_tensor =
+        ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
+    output_tensors.push_back(output_tensor);
+  }
+  if (device_type_ == HEXAGON) {
+    MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
+               "HEXAGON not support multiple inputs and outputs yet.");
+    hexagon_controller_->ExecuteGraph(*input_tensors[0], output_tensors[0]);
+  } else {
+    if (!net_->Run(run_metadata)) {
+      LOG(FATAL) << "Net run failed";
+    }
   }
   for (auto &output : *outputs) {
     Tensor *output_tensor =
