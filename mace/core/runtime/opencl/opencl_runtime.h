@@ -15,6 +15,7 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_wrapper.h"
 #include "mace/public/mace_runtime.h"
+#include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
 
 namespace mace {
@@ -25,6 +26,12 @@ enum GPUType {
   PowerVR,
   UNKNOWN,
 };
+
+
+const std::string OpenCLErrorToString(cl_int error);
+
+#define MACE_CHECK_CL_SUCCESS(error) \
+  MACE_CHECK(error == CL_SUCCESS) << "error: " << OpenCLErrorToString(error)
 
 class OpenCLProfilingTimer : public Timer {
  public:

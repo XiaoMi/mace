@@ -40,7 +40,7 @@ void *OpenCLAllocator::New(size_t nbytes) const {
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                       nbytes, nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS) << "error code: " << error;
+  MACE_CHECK_CL_SUCCESS(error);
   return static_cast<void *>(buffer);
 }
 
@@ -57,9 +57,9 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
       new cl::Image2D(OpenCLRuntime::Global()->context(),
                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
                       image_shape[0], image_shape[1], 0, nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS) << error << " with image shape: ["
-                                  << image_shape[0] << ", " << image_shape[1]
-                                  << "]";
+  MACE_CHECK_CL_SUCCESS(error) << " with image shape: ["
+                               << image_shape[0] << ", " << image_shape[1]
+                               << "]";
 
   return cl_image;
 }
@@ -88,7 +88,7 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
   void *mapped_ptr =
       queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                              offset, nbytes, nullptr, nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS);
+  MACE_CHECK_CL_SUCCESS(error);
   return mapped_ptr;
 }
 
@@ -107,7 +107,7 @@ void *OpenCLAllocator::MapImage(void *buffer,
       *cl_image, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
       mapped_image_pitch->data(), mapped_image_pitch->data() + 1, nullptr,
       nullptr, &error);
-  MACE_CHECK(error == CL_SUCCESS) << error;
+  MACE_CHECK_CL_SUCCESS(error);
 
   return mapped_ptr;
 }
@@ -115,8 +115,9 @@ void *OpenCLAllocator::MapImage(void *buffer,
 void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) const {
   auto cl_buffer = static_cast<cl::Buffer *>(buffer);
   auto queue = OpenCLRuntime::Global()->command_queue();
-  MACE_CHECK(queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr, nullptr,
-                                         nullptr) == CL_SUCCESS);
+  cl_int error = queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr,
+                                             nullptr, nullptr);
+  MACE_CHECK_CL_SUCCESS(error);
 }
 
 bool OpenCLAllocator::OnHost() const { return false; }
