@@ -159,7 +159,6 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   auto filter_data = filter->data<float>();
   auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
   auto output_data = output->mutable_data<float>();
-  memset(output_data, 0, sizeof(float) * batch * channels * height * width);
 
   if (USE_WINOGRAD && filter_h == 3 && filter_w == 3 && stride_h == 1
     && stride_w == 1
@@ -301,6 +300,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     std::vector<index_t> extra_output_shape
       {batch, channels, extra_output_height, extra_output_width};
     padded_output_.Resize(extra_output_shape);
+    padded_output_.Clear();
     pad_output_ptr = &padded_output_;
   }
   float *pad_output_data = pad_output_ptr->mutable_data<float>();
