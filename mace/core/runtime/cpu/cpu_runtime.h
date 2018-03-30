@@ -10,8 +10,9 @@
 
 namespace mace {
 
-void SetOmpThreadsAndAffinity(int omp_num_threads,
-                              CPUPowerOption power_option);
+void SetOmpThreads(int omp_num_threads);
+
+void SetThreadsAffinity(CPUPowerOption power_option);
 
 }
 

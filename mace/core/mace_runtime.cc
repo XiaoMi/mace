@@ -15,11 +15,14 @@ void ConfigOpenCLRuntime(GPUPerfHint gpu_perf_hint,
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
 
-void ConfigOmpThreadsAndAffinity(int omp_num_threads,
-                                 CPUPowerOption power_option) {
-  VLOG(1) << "Config CPU Runtime: omp_num_threads: " << omp_num_threads
-          << ", cpu_power_option: " << power_option;
-  SetOmpThreadsAndAffinity(omp_num_threads, power_option);
+void ConfigOmpThreads(int omp_num_threads) {
+  VLOG(1) << "Config CPU omp_num_threads: " << omp_num_threads;
+  SetOmpThreads(omp_num_threads);
+}
+
+void ConfigCPUPowerOption(CPUPowerOption power_option) {
+  VLOG(1) << "Config CPU power option" << power_option;
+  SetThreadsAffinity(power_option);
 }
 
 };  // namespace mace

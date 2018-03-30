@@ -27,8 +27,8 @@ enum GPUPriorityHint {
 enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2 };
 
 void ConfigOpenCLRuntime(GPUPerfHint, GPUPriorityHint);
-void ConfigOmpThreadsAndAffinity(int omp_num_threads,
-                                 CPUPowerOption power_option);
+void ConfigOmpThreads(int omp_num_threads);
+void ConfigCPUPowerOption(CPUPowerOption power_option);
 
 }  // namespace mace
 

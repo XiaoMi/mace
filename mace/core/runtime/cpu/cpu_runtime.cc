@@ -20,7 +20,10 @@ int GetCPUMaxFreq(int cpu_id) {
           "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
           cpu_id);
   FILE *fp = fopen(path, "rb");
-  MACE_CHECK(fp, "File: ", path, " not exists");
+  if (!fp) {
+    LOG(WARNING) << "File: " << path << " not exists.";
+    return 0;
+  }
 
   int freq = 0;
   fscanf(fp, "%d", &freq);
@@ -73,8 +76,21 @@ void SetThreadAffinity(cpu_set_t mask) {
 
 }  // namespace
 
-void SetOmpThreadsAndAffinity(int omp_num_threads,
-                              CPUPowerOption power_option) {
+void SetOmpThreads(int omp_num_threads) {
+  int cpu_count = omp_get_num_procs();
+  if (omp_num_threads > cpu_count) {
+    LOG(WARNING) << "set omp num threads greater than num of cpus can use: "
+                 << cpu_count;
+  }
+  omp_set_num_threads(omp_num_threads);
+}
+
+void SetThreadsAffinity(CPUPowerOption power_option) {
+  // There is no need to set affinity in default mode
+  if (power_option == CPUPowerOption::DEFAULT) {
+    return;
+  }
+
   int cpu_count = omp_get_num_procs();
   std::vector<int> sorted_cpu_ids;
   sorted_cpu_ids.resize(cpu_count);
@@ -82,9 +98,7 @@ void SetOmpThreadsAndAffinity(int omp_num_threads,
   SortCPUIdsByMaxFreqAsc(&sorted_cpu_ids, &big_core_offset);
 
   std::vector<int> use_cpu_ids;
-  if (power_option == CPUPowerOption::DEFAULT) {
-    use_cpu_ids = sorted_cpu_ids;
-  } else if (power_option == CPUPowerOption::HIGH_PERFORMANCE) {
+  if (power_option == CPUPowerOption::HIGH_PERFORMANCE) {
     use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin() + big_core_offset,
                                    sorted_cpu_ids.end());
   } else {
@@ -96,12 +110,6 @@ void SetOmpThreadsAndAffinity(int omp_num_threads,
     }
   }
 
-  if (omp_num_threads > use_cpu_ids.size()) {
-    LOG(WARNING) << "set omp num threads greater than num of cpus can use: "
-                 << use_cpu_ids.size();
-  }
-  omp_set_num_threads(omp_num_threads);
-
   // compute mask
   cpu_set_t mask;
   CPU_ZERO(&mask);
@@ -110,6 +118,7 @@ void SetOmpThreadsAndAffinity(int omp_num_threads,
   }
   VLOG(3) << "Set cpu affinity with mask: " << mask.__bits[0];
 
+  int omp_num_threads = omp_get_max_threads();
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
     SetThreadAffinity(mask);

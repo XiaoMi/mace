@@ -21,12 +21,12 @@ int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // config runtime
+  mace::ConfigOmpThreads(FLAGS_omp_num_threads);
+  mace::ConfigCPUPowerOption(
+      static_cast<mace::CPUPowerOption>(FLAGS_cpu_power_option));
   mace::ConfigOpenCLRuntime(
       static_cast<mace::GPUPerfHint>(FLAGS_gpu_perf_hint),
       static_cast<mace::GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  mace::ConfigOmpThreadsAndAffinity(
-      FLAGS_omp_num_threads,
-      static_cast<mace::CPUPowerOption>(FLAGS_cpu_power_option));
 
   mace::testing::Benchmark::Run(FLAGS_pattern.c_str());
   return 0;
