@@ -196,14 +196,13 @@ bool RunModel(const std::vector<std::string> &input_names,
   LOG(INFO) << "Runing with device type: " << device_type;
 
   // config runtime
+  mace::ConfigOmpThreads(FLAGS_omp_num_threads);
+  mace::ConfigCPUPowerOption(
+      static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
   if (device_type == DeviceType::OPENCL) {
     mace::ConfigOpenCLRuntime(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  } else if (device_type == DeviceType::CPU) {
-    mace::ConfigOmpThreadsAndAffinity(
-        FLAGS_omp_num_threads,
-        static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
   }
 
   // Init model
