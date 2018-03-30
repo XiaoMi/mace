@@ -37,6 +37,7 @@ def compare_output(output_name, mace_out_value, out_value):
     similarity = (1 - spatial.distance.cosine(out_value, mace_out_value))
     print output_name, 'MACE VS', FLAGS.platform.upper(), 'similarity: ', similarity
     if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
+        (FLAGS.mace_runtime == "neon" and similarity > 0.999) or \
         (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
         (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
       print '=======================Similarity Test Passed======================'
