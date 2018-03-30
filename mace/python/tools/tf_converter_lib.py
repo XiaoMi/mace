@@ -663,7 +663,10 @@ class TFConverter(object):
     op_def.output.extend([output.name for output in op.outputs])
     axis_arg = op_def.arg.add()
     axis_arg.name = 'axis'
-    axis_arg.i = get_input_tensor(op, len(op.inputs) - 1).eval().astype(np.int32)
+    axis = get_input_tensor(op, len(op.inputs) - 1).eval().astype(np.int32)
+    if self.device == 'neon' and axis == 3:
+      axis = 1
+    axis_arg.i = axis
     self.add_output_shape(op.outputs, op_def)
     self.resolved_ops[op.name] = 1
     self.unused_tensor.add(get_input_tensor(op, len(op.inputs) - 1).name)

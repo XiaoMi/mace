@@ -13,7 +13,6 @@ void Register_Concat(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ConcatOp<DeviceType::CPU, float>);
-
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -24,6 +23,11 @@ void Register_Concat(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     ConcatOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    ConcatOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops
