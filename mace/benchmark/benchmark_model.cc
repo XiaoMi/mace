@@ -186,7 +186,7 @@ bool Run(MaceEngine *engine,
   return true;
 }
 
-DEFINE_string(device, "CPU", "Device [CPU|OPENCL]");
+DEFINE_string(device, "CPU", "Device [CPU|NEON|OPENCL]");
 DEFINE_string(input_node, "input_node0,input_node1",
               "input nodes, separated by comma");
 DEFINE_string(output_node, "output_node0,output_node1",
@@ -264,6 +264,8 @@ int Main(int argc, char **argv) {
   DeviceType device_type = CPU;
   if (FLAGS_device == "OPENCL") {
     device_type = OPENCL;
+  } else if (FLAGS_device == "NEON") {
+    device_type = NEON;
   }
 
   // config runtime
@@ -271,7 +273,7 @@ int Main(int argc, char **argv) {
     mace::ConfigOpenCLRuntime(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  } else if (device_type == CPU) {
+  } else if (device_type == CPU || device_type == NEON) {
     mace::ConfigOmpThreadsAndAffinity(
         FLAGS_omp_num_threads,
         static_cast<CPUPowerOption>(FLAGS_cpu_power_option));

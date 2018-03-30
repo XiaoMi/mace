@@ -21,6 +21,7 @@ Tensor *Workspace::CreateTensor(const std::string &name,
     VLOG(3) << "Creating Tensor " << name;
     tensor_map_[name] =
         std::move(std::unique_ptr<Tensor>(new Tensor(alloc, type)));
+    tensor_map_[name]->SetSourceOpName(name);
   }
   return GetTensor(name);
 }

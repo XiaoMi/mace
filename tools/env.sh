@@ -23,6 +23,9 @@ elif [ x"$RUNTIME" = x"gpu" ]; then
 elif [ x"$RUNTIME" = x"cpu" ]; then
   DATA_TYPE="DT_FLOAT"
   DEVICE_TYPE="CPU"
+elif [ x"$RUNTIME" = x"neon" ]; then
+  DATA_TYPE="DT_FLOAT"
+  DEVICE_TYPE="NEON"
 fi
 
 GENERATED_MODEL_LIB_NAME="libgenerated_models.a"

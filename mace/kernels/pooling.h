@@ -166,8 +166,20 @@ struct PoolingFunctor : PoolingFunctorBase {
 };
 
 template <>
-void PoolingFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future);
+struct PoolingFunctor<DeviceType::NEON, float> : PoolingFunctorBase {
+  PoolingFunctor(const PoolingType pooling_type,
+                 const int *kernels,
+                 const int *strides,
+                 const Padding padding_type,
+                 const std::vector<int> &paddings,
+                 const int *dilations)
+    : PoolingFunctorBase(
+    pooling_type, kernels, strides, padding_type, paddings, dilations) {
+  }
+  void operator()(const Tensor *input_tensor,
+                  Tensor *output_tensor,
+                  StatsFuture *future);
+};
 
 template <typename T>
 struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {

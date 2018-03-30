@@ -41,6 +41,8 @@ class BufferBase {
 
   virtual bool OnHost() const = 0;
 
+  virtual void Clear() = 0;
+
   virtual index_t offset() const { return 0; }
 
   template <typename T>
@@ -158,6 +160,12 @@ class Buffer : public BufferBase {
 
   bool OnHost() const { return allocator_->OnHost(); }
 
+  void Clear() {
+    if (buf_ != nullptr) {
+      memset(buf_, 0, size_);
+    }
+  }
+
  private:
   Allocator *allocator_;
   void *buf_;
@@ -242,6 +250,10 @@ class Image : public BufferBase {
 
   bool OnHost() const { return allocator_->OnHost(); }
 
+  void Clear() {
+    MACE_NOT_IMPLEMENTED;
+  }
+
  private:
   Allocator *allocator_;
   std::vector<size_t> shape_;
@@ -321,6 +333,10 @@ class BufferSlice : public BufferBase {
   index_t offset() const { return offset_; }
 
   bool OnHost() const { return buffer_->OnHost(); }
+
+  void Clear() {
+    MACE_NOT_IMPLEMENTED;
+  }
 
  private:
   BufferBase *buffer_;

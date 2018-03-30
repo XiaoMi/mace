@@ -11,7 +11,7 @@ namespace test {
 
 class SoftmaxOpTest : public OpsTestBase {};
 
-template <DeviceType D>
+template<DeviceType D>
 void Simple() {
   // Construct graph
   OpsTestNet net;
@@ -24,9 +24,9 @@ void Simple() {
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Softmax", "SoftmaxTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .Finalize(net.NewOperatorDef());
+      .Input("InputImage")
+      .Output("OutputImage")
+      .Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
@@ -36,17 +36,17 @@ void Simple() {
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Softmax", "SoftmaxTest")
-        .Input("Input")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
   }
 
   auto expected = CreateTensor<float>(
-      {1, 1, 2, 4},
-      {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
+    {1, 1, 2, 4},
+    {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-7);
 }
@@ -54,7 +54,7 @@ void Simple() {
 TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
 TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::OPENCL>(); }
 
-template <DeviceType D>
+template<DeviceType D>
 void Complex(const std::vector<index_t> &logits_shape) {
   // Construct graph
   OpsTestNet net;
@@ -62,9 +62,9 @@ void Complex(const std::vector<index_t> &logits_shape) {
   net.AddRandomInput<D, float>("Input", logits_shape);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
-      .Input("Input")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Run on cpu
   net.RunOp();
@@ -75,9 +75,9 @@ void Complex(const std::vector<index_t> &logits_shape) {
                           kernels::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Output("OutputImage")
+    .Finalize(net.NewOperatorDef());
 
   // Run on gpu
   net.RunOp(D);
@@ -102,6 +102,45 @@ TEST_F(SoftmaxOpTest, OPENCLMulBatchAligned) {
 TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
   Complex<DeviceType::OPENCL>({1, 113, 107, 13});
   Complex<DeviceType::OPENCL>({5, 211, 107, 1});
+}
+
+void SoftMaxNEONTest(const std::vector<index_t> &logits_shape) {
+  // Construct graph
+  OpsTestNet net;
+  // Add input data
+  net.AddRandomInput<CPU, float>("Input", logits_shape);
+
+  OpDefBuilder("Softmax", "SoftmaxTest")
+    .Input("Input")
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
+
+  // Run on cpu
+  net.RunOp();
+
+  OpDefBuilder("Softmax", "SoftmaxTest")
+    .Input("InputNeon")
+    .Output("OutputNeon")
+    .Finalize(net.NewOperatorDef());
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNeon", "Input");
+
+  // run on neon
+  net.RunOp(DeviceType::NEON);
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
+                                                       "Output");
+
+  ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
+                          *net.GetOutput("OutputNeon"),
+                          0.01);
+}
+
+TEST_F(SoftmaxOpTest, NEONTest) {
+  SoftMaxNEONTest({5, 64, 64, 3});
+  SoftMaxNEONTest({8, 128, 128, 8});
+  SoftMaxNEONTest({1, 113, 107, 13});
+  SoftMaxNEONTest({5, 211, 107, 1});
 }
 
 }  // namespace test

@@ -134,11 +134,20 @@ class ActivationFunctor {
 };
 
 template <>
-void ActivationFunctor<DeviceType::NEON, float>::operator()(
-    const Tensor *input,
-    const Tensor *alpha,
-    Tensor *output,
-    StatsFuture *future);
+class ActivationFunctor<DeviceType::NEON, float> {
+ public:
+  ActivationFunctor(ActivationType type, float relux_max_limit)
+    : activation_(type), relux_max_limit_(relux_max_limit) {}
+
+  void operator()(const Tensor *input,
+                  const Tensor *alpha,
+                  Tensor *output,
+                  StatsFuture *future);
+
+ private:
+  ActivationType activation_;
+  float relux_max_limit_;
+};
 
 template <typename T>
 class ActivationFunctor<DeviceType::OPENCL, T> {

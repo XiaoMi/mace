@@ -133,14 +133,21 @@ struct BatchNormFunctor : BatchNormFunctorBase {
 };
 
 template <>
-void BatchNormFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
-                                                           const Tensor *scale,
-                                                           const Tensor *offset,
-                                                           const Tensor *mean,
-                                                           const Tensor *var,
-                                                           const float epsilon,
-                                                           Tensor *output,
-                                                           StatsFuture *future);
+struct BatchNormFunctor<DeviceType::NEON, float> : BatchNormFunctorBase {
+  BatchNormFunctor(const bool folded_constant,
+                   const ActivationType activation,
+                   const float relux_max_limit)
+    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
+  void operator()(const Tensor *input,
+                  const Tensor *scale,
+                  const Tensor *offset,
+                  const Tensor *mean,
+                  const Tensor *var,
+                  const float epsilon,
+                  Tensor *output,
+                  StatsFuture *future);
+};
+
 
 template <typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {

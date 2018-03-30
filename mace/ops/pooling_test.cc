@@ -19,27 +19,27 @@ TEST_F(PoolingOpTest, MAX_VALID) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {2, 2})
+    .AddIntArg("padding", Padding::VALID)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
-      "Input", {1, 4, 4, 2},
-      {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
-       8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
+    "Input", {1, 4, 4, 2},
+    {0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23,
+     8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
 
   // Run
   net.RunOp();
 
   // Check
   auto expected =
-      CreateTensor<float>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
+    CreateTensor<float>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
@@ -48,14 +48,14 @@ TEST_F(PoolingOpTest, MAX_SAME) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {2, 2})
+    .AddIntArg("padding", Padding::SAME)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 3, 3, 1},
@@ -74,19 +74,19 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {2, 2})
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {1, 1})
+    .AddIntArg("padding", Padding::VALID)
+    .AddIntsArg("dilations", {2, 2})
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
-      "Input", {1, 4, 4, 1},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+    "Input", {1, 4, 4, 1},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   // Run
   net.RunOp();
@@ -101,19 +101,19 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {2, 2})
+    .AddIntArg("padding", Padding::SAME)
+    .AddIntsArg("dilations", {1, 1})
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
-      "Input", {1, 2, 9, 1},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
+    "Input", {1, 2, 9, 1},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
   // Run
   net.RunOp();
 
@@ -123,43 +123,43 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-template <DeviceType D>
+template<DeviceType D>
 static void SimpleMaxPooling3S2() {
   // Construct graph
   OpsTestNet net;
 
   // Add input data
   net.AddInputFromArray<D, float>(
-      "Input", {1, 3, 9, 1},
-      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
-       14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
+    "Input", {1, 3, 9, 1},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+     14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pooling", "PoolingTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddIntArg("pooling_type", PoolingType::MAX)
-        .AddIntsArg("kernels", {3, 3})
-        .AddIntsArg("strides", {2, 2})
-        .AddIntArg("padding", Padding::VALID)
-        .AddIntsArg("dilations", {1, 1})
-        .Finalize(net.NewOperatorDef());
+      .Input("InputImage")
+      .Output("OutputImage")
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntsArg("kernels", {3, 3})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
     net.RunOp(D);
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     // Run
     OpDefBuilder("Pooling", "PoolingTest")
-        .Input("Input")
-        .Output("Output")
-        .AddIntArg("pooling_type", PoolingType::MAX)
-        .AddIntsArg("kernels", {3, 3})
-        .AddIntsArg("strides", {2, 2})
-        .AddIntArg("padding", Padding::VALID)
-        .AddIntsArg("dilations", {1, 1})
-        .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Output("Output")
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntsArg("kernels", {3, 3})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
     net.RunOp(D);
   }
 
@@ -175,22 +175,22 @@ TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) {
   SimpleMaxPooling3S2<OPENCL>();
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 static void MaxPooling3S2(const std::vector<index_t> &input_shape,
                           const std::vector<int> strides,
                           Padding padding) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .AddIntsArg("kernels", {3, 3})
-      .AddIntsArg("strides", strides)
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .AddIntsArg("kernels", {3, 3})
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<D, T>("Input", input_shape);
@@ -203,15 +203,15 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
   BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .AddIntArg("pooling_type", PoolingType::MAX)
-      .AddIntsArg("kernels", {3, 3})
-      .AddIntsArg("strides", strides)
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Output("OutputImage")
+    .AddIntArg("pooling_type", PoolingType::MAX)
+    .AddIntsArg("kernels", {3, 3})
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -250,52 +250,52 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("pooling_type", PoolingType::AVG)
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {2, 2})
+    .AddIntArg("padding", Padding::VALID)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("pooling_type", PoolingType::AVG)
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
-      "Input", {1, 4, 4, 2},
-      {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
-       8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
+    "Input", {1, 4, 4, 2},
+    {0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23,
+     8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
 
   // Run
   net.RunOp();
 
   // Check
   auto expected = CreateTensor<float>(
-      {1, 2, 2, 2}, {2.5, 18.5, 4.5, 20.5, 10.5, 26.5, 12.5, 28.5});
+    {1, 2, 2, 2}, {2.5, 18.5, 4.5, 20.5, 10.5, 26.5, 12.5, 28.5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
-template <DeviceType D>
+template<DeviceType D>
 static void SimpleAvgPoolingTest() {
   // Construct graph
   OpsTestNet net;
 
   // Add input data
   net.AddInputFromArray<D, float>(
-      "Input", {1, 2, 8, 1},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+    "Input", {1, 2, 8, 1},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   BufferToImage<D, float>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .AddIntArg("pooling_type", PoolingType::AVG)
-      .AddIntsArg("kernels", {2, 2})
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Output("OutputImage")
+    .AddIntArg("pooling_type", PoolingType::AVG)
+    .AddIntsArg("kernels", {2, 2})
+    .AddIntsArg("strides", {2, 2})
+    .AddIntArg("padding", Padding::SAME)
+    .AddIntsArg("dilations", {1, 1})
+    .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
   ImageToBuffer<D, float>(&net, "OutputImage", "Output",
@@ -311,7 +311,7 @@ TEST_F(PoolingOpTest, OPENCLSimpleAvgPooling) {
   SimpleAvgPoolingTest<OPENCL>();
 }
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 static void AvgPoolingTest(const std::vector<index_t> &shape,
                            const std::vector<int> &kernels,
                            const std::vector<int> &strides,
@@ -319,14 +319,14 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("pooling_type", PoolingType::AVG)
-      .AddIntsArg("kernels", kernels)
-      .AddIntsArg("strides", strides)
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Output("Output")
+    .AddIntArg("pooling_type", PoolingType::AVG)
+    .AddIntsArg("kernels", kernels)
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<D, float>("Input", shape);
@@ -339,15 +339,15 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
   BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .AddIntArg("pooling_type", PoolingType::AVG)
-      .AddIntsArg("kernels", kernels)
-      .AddIntsArg("strides", strides)
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Output("OutputImage")
+    .AddIntArg("pooling_type", PoolingType::AVG)
+    .AddIntsArg("kernels", kernels)
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -396,6 +396,62 @@ TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
                                 Padding::SAME);
 }
 
+static void AvgPoolingNEONTest(const std::vector<index_t> &shape,
+                               const std::vector<int> &kernels,
+                               const std::vector<int> &strides,
+                               Padding padding,
+                               PoolingType pooling_type) {
+  // Construct graph
+  OpsTestNet net;
+  OpDefBuilder("Pooling", "PoolingTest")
+    .Input("Input")
+    .Output("Output")
+    .AddIntArg("pooling_type", pooling_type)
+    .AddIntsArg("kernels", kernels)
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<CPU, float>("Input", shape);
+
+  // run on cpu
+  net.RunOp();
+
+  OpDefBuilder("Pooling", "PoolingTest")
+    .Input("InputNeon")
+    .Output("OutputNeon")
+    .AddIntArg("pooling_type", pooling_type)
+    .AddIntsArg("kernels", kernels)
+    .AddIntsArg("strides", strides)
+    .AddIntArg("padding", padding)
+    .AddIntsArg("dilations", {1, 1})
+    .Finalize(net.NewOperatorDef());
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNeon", "Input");
+
+  // run on neon
+  net.RunOp(DeviceType::NEON);
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
+                                                       "Output");
+
+  ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
+                          *net.GetOutput("OutputNeon"),
+                          0.01);
+}
+
+TEST_F(PoolingOpTest, NEONTest) {
+  AvgPoolingNEONTest({3, 31, 37, 128}, {8, 8}, {8, 8},
+                     Padding::VALID, PoolingType::MAX);
+  AvgPoolingNEONTest({3, 31, 37, 128}, {8, 8}, {8, 8},
+                     Padding::SAME, PoolingType::MAX);
+  AvgPoolingNEONTest({3, 31, 37, 128}, {8, 8}, {8, 8},
+                     Padding::VALID, PoolingType::AVG);
+  AvgPoolingNEONTest({3, 31, 37, 128}, {8, 8}, {8, 8},
+                     Padding::SAME, PoolingType::AVG);
+}
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
