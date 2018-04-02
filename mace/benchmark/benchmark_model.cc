@@ -330,7 +330,8 @@ int Main(int argc, char **argv) {
                         std::multiplies<int64_t>());
     auto buffer_out = std::shared_ptr<float>(new float[output_size],
                                              std::default_delete<float[]>());
-    outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i], buffer_out);
+    outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
+                                                buffer_out);
   }
 
   // Init model
