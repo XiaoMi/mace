@@ -1,7 +1,8 @@
 #include <common.h>
 
 // output = weight * input + bias
-__kernel void fully_connected(__read_only image2d_t input,
+__kernel void fully_connected(GLOBAL_WORK_GROUP_SIZE_DIM2
+                              __read_only image2d_t input,
                               __read_only image2d_t weight,
 #ifdef BIAS
     __read_only image2d_t bias,
@@ -14,6 +15,10 @@ __kernel void fully_connected(__read_only image2d_t input,
   const int batch_idx = get_global_id(0);
   const int out_blk_idx = get_global_id(1);
   const int input_chan_blk = (input_channel + 3) >> 2;
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (batch_idx >= global_size_dim0 || out_blk_idx >= global_size_dim1) return;
+#endif
 
   float4 input_value;
   float4 w0, w1, w2, w3;
@@ -57,7 +62,8 @@ __kernel void fully_connected(__read_only image2d_t input,
 }
 
 // output = weight * input + bias
-__kernel void fully_connected_width(__read_only image2d_t input,
+__kernel void fully_connected_width(GLOBAL_WORK_GROUP_SIZE_DIM3
+                                    __read_only image2d_t input,
                                     __read_only image2d_t weight,
 #ifdef BIAS
     __read_only image2d_t bias,
@@ -73,6 +79,7 @@ __kernel void fully_connected_width(__read_only image2d_t input,
   const int width_blk_idx = get_global_id(1);
   const int width_blk_count = get_global_size(1);
   const int batch_out_blk_idx = get_global_id(2);
+
   const int batch_idx = batch_out_blk_idx / out_blks;
   const int out_blk_idx = batch_out_blk_idx % out_blks;
 
@@ -115,6 +122,16 @@ __kernel void fully_connected_width(__read_only image2d_t input,
   short inter_idx = mad24((short)get_local_id(2), local_size, inter_out_offset);
   intermediate_output[inter_idx] = sum;
 
+#ifdef NON_QUALCOMM_ADRENO
+  barrier(CLK_LOCAL_MEM_FENCE);
+#endif
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (batch_out_blk_idx >= global_size_dim2) {
+    return;
+  }
+#endif
+
   if (inter_out_offset == 0) {
 #ifdef BIAS
     DATA_TYPE4 result = READ_IMAGET(bias, SAMPLER, (int2)(out_blk_idx, 0));
@@ -122,7 +139,7 @@ __kernel void fully_connected_width(__read_only image2d_t input,
     DATA_TYPE4 result = (DATA_TYPE4)(0, 0, 0, 0);
 #endif
 
-    for(short i = 0; i < local_width_blk_size; ++i) {
+    for (short i = 0; i < local_width_blk_size; ++i) {
       result += vload4(0, intermediate_output+inter_idx);
       inter_idx += 4;
     }

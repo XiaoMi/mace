@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void conv_2d_1x1(
-                          UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void conv_2d_1x1(GLOBAL_WORK_GROUP_SIZE_DIM3
                           __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                           __read_only image2d_t filter, /* cout%4 * cin, cout/4 */
 #ifdef BIAS

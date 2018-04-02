@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void slice(
-                    UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void slice(GLOBAL_WORK_GROUP_SIZE_DIM3
                     __read_only image2d_t input,
                     __private const int chan_blk_offset,
                     __write_only image2d_t output) {

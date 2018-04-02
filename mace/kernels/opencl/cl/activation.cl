@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void activation(
-                         UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void activation(GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
 #ifdef USE_PRELU
                          __read_only image2d_t alpha,

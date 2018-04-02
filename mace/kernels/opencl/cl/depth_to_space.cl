@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void depth_to_space(
-                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void depth_to_space(GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input,
                              __private const int block_size,
                              __private const int input_height,
@@ -36,7 +35,7 @@ __kernel void depth_to_space(
 }
 
 __kernel void space_to_depth(
-                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input,
                              __private const int block_size,
                              __private const int input_height,

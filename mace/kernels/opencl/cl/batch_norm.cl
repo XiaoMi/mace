@@ -1,7 +1,6 @@
 #include <common.h>
 // Supported data types: half/float
-__kernel void batch_norm(
-                         UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void batch_norm(GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
                          __read_only image2d_t scale,
                          __read_only image2d_t offset,

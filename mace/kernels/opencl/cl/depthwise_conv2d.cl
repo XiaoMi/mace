@@ -1,8 +1,7 @@
 #include <common.h>
 
 // Only multiplier = 1 is supported
-__kernel void depthwise_conv2d(
-                               UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void depthwise_conv2d(GLOBAL_WORK_GROUP_SIZE_DIM3
                                __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
@@ -138,8 +137,7 @@ __kernel void depthwise_conv2d(
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 }
 
-__kernel void depthwise_conv2d_s1(
-                                  UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void depthwise_conv2d_s1(GLOBAL_WORK_GROUP_SIZE_DIM3
                                   __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                   __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS

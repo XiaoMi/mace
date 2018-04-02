@@ -480,12 +480,12 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
 }
 
 const bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() {
-  if (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
-      opencl_version_ == "2.0") {
-    return true;
-  } else {
-    return false;
-  }
+  return (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
+      opencl_version_ == "2.0");
+}
+
+const GPUType OpenCLRuntime::gpu_type() const {
+  return gpu_type_;
 }
 
 const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(

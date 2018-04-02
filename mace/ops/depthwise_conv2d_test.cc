@@ -57,7 +57,6 @@ void SimpleValidTest() {
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);

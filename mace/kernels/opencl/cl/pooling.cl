@@ -19,8 +19,7 @@ inline int calculate_avg_block_size(const int pool_size,
 }
 
 // Supported data type: half/float
-__kernel void pooling(
-                      UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void pooling(GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input,
                       __private const int in_height,
                       __private const int in_width,

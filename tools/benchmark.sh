@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -x
 Usage() {
   echo "Usage: bash tools/benchmark.sh target_soc model_output_dir option_args"
 }

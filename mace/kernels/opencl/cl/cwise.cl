@@ -1,10 +1,15 @@
 #include <common.h>
 
-__kernel void cwise(__read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
-                      __private const float value,
-                      __write_only image2d_t output) {
+__kernel void cwise(GLOBAL_WORK_GROUP_SIZE_DIM2
+                    __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+                    __private const float value,
+                    __write_only image2d_t output) {
   const int w = get_global_id(0);
   const int hb = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || hb >= global_size_dim1) return;
+#endif
 
   DATA_TYPE4 in0 = READ_IMAGET(input, SAMPLER, (int2)(w, hb));
   DATA_TYPE4 in1 = (DATA_TYPE4){value, value, value, value};

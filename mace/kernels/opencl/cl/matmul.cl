@@ -1,8 +1,7 @@
 #include <common.h>
 
 // C = A * B
-__kernel void matmul(
-                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void matmul(GLOBAL_WORK_GROUP_SIZE_DIM2
                      __read_only image2d_t A,
                      __read_only image2d_t B,
                      __write_only image2d_t C,

@@ -1,7 +1,6 @@
 #include <common.h>
 
-__kernel void winograd_transform_2x2(
-                                     UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void winograd_transform_2x2(GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __read_only image2d_t input,
                                      __write_only image2d_t output,
                                      __private const int in_height,
@@ -116,8 +115,7 @@ __kernel void winograd_transform_2x2(
   }
 }
 
-__kernel void winograd_inverse_transform_2x2(
-                                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
+__kernel void winograd_inverse_transform_2x2(GLOBAL_WORK_GROUP_SIZE_DIM2
                                              __read_only image2d_t input,
 #ifdef BIAS
                                              __read_only image2d_t bias, /* cout%4 * cout/4 */

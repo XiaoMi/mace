@@ -22,8 +22,7 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 }
 
 // Supported data type: half/float
-__kernel void concat_channel(
-                             UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void concat_channel(GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input0,
                              __read_only image2d_t input1,
                              __private const int input0_chan,
@@ -84,8 +83,7 @@ __kernel void concat_channel(
 }
 
 // Required: All input channels are divisible by 4
-__kernel void concat_channel_multi(
-                                   UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+__kernel void concat_channel_multi(GLOBAL_WORK_GROUP_SIZE_DIM3
                                    __read_only image2d_t input,
                                    __private const int chan_blk_offset,
                                    __write_only image2d_t output) {

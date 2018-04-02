@@ -23,8 +23,10 @@ void CWiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   const index_t width_pixels = channel_blocks * width;
   const index_t batch_height_pixels = batch * height;
 
+  auto runtime = OpenCLRuntime::Global();
+  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
+                           static_cast<uint32_t>(batch_height_pixels)};
   if (kernel_.get() == nullptr) {
-    auto runtime = OpenCLRuntime::Global();
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("cwise");
@@ -32,19 +34,27 @@ void CWiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DCWISE_TYPE=", type_));
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
+    }
     kernel_ = runtime->BuildKernel("cwise", kernel_name, built_options);
+
+    kwg_size_ =
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
+    if (!runtime->IsNonUniformWorkgroupsSupported()) {
+      kernel_.setArg(idx++, gws[0]);
+      kernel_.setArg(idx++, gws[1]);
+    }
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<float>(coeff_));
     kernel_.setArg(idx++, *(output->opencl_image()));
     input_shape_ = input->shape();
   }
 
-  const uint32_t gws[2] = {static_cast<uint32_t>(width_pixels),
-                           static_cast<uint32_t>(batch_height_pixels)};
-  const std::vector<uint32_t> lws = {64, 16, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 1};
   std::stringstream ss;
   ss << "cwise_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);

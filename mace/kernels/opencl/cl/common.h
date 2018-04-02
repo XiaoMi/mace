@@ -19,18 +19,18 @@
 
 #ifndef NON_UNIFORM_WORK_GROUP
 
-#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2 \
+#define GLOBAL_WORK_GROUP_SIZE_DIM2 \
     __private const int global_size_dim0,       \
     __private const int global_size_dim1,
-#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3 \
+#define GLOBAL_WORK_GROUP_SIZE_DIM3 \
     __private const int global_size_dim0,       \
     __private const int global_size_dim1,       \
     __private const int global_size_dim2,
 
 #else
 
-#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_2
-#define UNIFORM_WORK_GROUP_SIZE_PARAMS_IN_DIM_3
+#define GLOBAL_WORK_GROUP_SIZE_DIM2
+#define GLOBAL_WORK_GROUP_SIZE_DIM3
 
 #endif
 
