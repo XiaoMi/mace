@@ -25,6 +25,12 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     FullyConnectedOp<DeviceType::OPENCL, half>);
+
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    FullyConnectedOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops
