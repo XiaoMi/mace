@@ -9,6 +9,7 @@
 
 
 import argparse
+import random
 import re
 import sys
 
@@ -49,7 +50,7 @@ def parse_args():
       "--target_socs",
       type=str,
       default="all",
-      help="SoCs to build, comma seperated list (getprop ro.board.platform)")
+      help="SoCs(ro.board.platform) to build, comma seperated list or all/random")
   parser.add_argument(
       "--target",
       type=str,
@@ -74,9 +75,11 @@ def parse_args():
 
 def main(unused_args):
   target_socs = None
-  if FLAGS.target_socs != "all":
+  if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
     target_socs = set(FLAGS.target_socs.split(','))
   target_devices = sh_commands.adb_devices(target_socs=target_socs)
+  if FLAGS.target_socs == "random":
+    target_devices = [random.choice(target_devices)]
 
   target = FLAGS.target
   host_bin_path, bin_name = sh_commands.bazel_target_to_bin(target)

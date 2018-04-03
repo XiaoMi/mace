@@ -12,9 +12,11 @@ cpplint:
 ops_test:
   stage: ops_test
   script:
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=ops_test_stdout_processor
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=ops_test_stdout_processor --target_socs=$TARGET_SOCS
 
 ops_benchmark:
   stage: ops_benchmark
   script:
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_socs=$TARGET_SOCS
