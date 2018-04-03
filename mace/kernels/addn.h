@@ -77,12 +77,6 @@ struct AddNFunctor {
   }
 };
 
-template <>
-void AddNFunctor<DeviceType::NEON, float>::operator()(
-    const std::vector<const Tensor *> &input_tensors,
-    Tensor *output_tensor,
-    StatsFuture *future);
-
 template <typename T>
 struct AddNFunctor<DeviceType::OPENCL, T> {
   void operator()(const std::vector<const Tensor *> &input_tensors,
