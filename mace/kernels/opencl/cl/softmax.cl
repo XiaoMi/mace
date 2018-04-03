@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void softmax(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void softmax(KERNEL_ERROR_PARAMS
+                      GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input,
                       __private const int channels,
                       __private const int remain_channels,
@@ -84,5 +85,8 @@ __kernel void softmax(GLOBAL_WORK_GROUP_SIZE_DIM3
       data = native_exp(data) / sum;
   }
 
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, pos, hb_idx, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }

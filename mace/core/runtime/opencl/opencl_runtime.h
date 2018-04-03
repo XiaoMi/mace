@@ -70,6 +70,7 @@ class OpenCLRuntime {
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
                          const std::set<std::string> &build_options);
+  const bool IsOutOfRangeCheckEnabled() const;
 
  private:
   OpenCLRuntime(GPUPerfHint, GPUPriorityHint);
@@ -94,6 +95,7 @@ class OpenCLRuntime {
   std::string kernel_path_;
   GPUType gpu_type_;
   std::string opencl_version_;
+  bool out_of_range_check_;
 
   static GPUPerfHint gpu_perf_hint_;
   static GPUPriorityHint gpu_priority_hint_;

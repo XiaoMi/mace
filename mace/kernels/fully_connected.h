@@ -107,6 +107,7 @@ struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   std::vector<uint32_t> gws_;
   std::vector<uint32_t> lws_;
   std::vector<index_t> input_shape_;
+  std::unique_ptr<BufferBase> kernel_error_;
 };
 
 }  // namespace kernels

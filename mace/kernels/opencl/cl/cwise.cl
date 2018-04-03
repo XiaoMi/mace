@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void cwise(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void cwise(KERNEL_ERROR_PARAMS
+                    GLOBAL_WORK_GROUP_SIZE_DIM2
                     __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                     __private const float value,
                     __write_only image2d_t output) {
@@ -43,5 +44,8 @@ __kernel void cwise(GLOBAL_WORK_GROUP_SIZE_DIM2
   out.w = fabs(in0.w);
 #endif
 
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }

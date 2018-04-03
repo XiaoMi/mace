@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void space_to_batch(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void space_to_batch(KERNEL_ERROR_PARAMS
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,
                              __private const int block_height,
@@ -44,10 +45,15 @@ __kernel void space_to_batch(GLOBAL_WORK_GROUP_SIZE_DIM3
   DATA_TYPE4 value = READ_IMAGET(space_data, SAMPLER, space_coord);
 
   int2 batch_coord = (int2)(mul24(chan_idx, batch_width) + batch_w_idx, batch_hb_idx);
+
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(batch_data, batch_coord.x, batch_coord.y, kernel_error);
+#endif
   WRITE_IMAGET(batch_data, batch_coord, value);
 }
 
-__kernel void batch_to_space(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void batch_to_space(KERNEL_ERROR_PARAMS
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t batch_data,
                              __write_only image2d_t space_data,
                              __private const int block_height,
@@ -87,6 +93,10 @@ __kernel void batch_to_space(GLOBAL_WORK_GROUP_SIZE_DIM3
 
     int2 space_coord = (int2)(mul24(chan_idx, space_width) + space_w_idx,
                               space_b_idx * space_height + space_h_idx);
+
+#ifdef OUT_OF_RANGE_CHECK
+    check_out_of_range_for_image2d(space_data, space_coord.x, space_coord.y, kernel_error);
+#endif
     WRITE_IMAGET(space_data, space_coord, value);
   }
 }

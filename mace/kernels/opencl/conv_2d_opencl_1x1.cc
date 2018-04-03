@@ -23,7 +23,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
                              StatsFuture *future,
-                             uint32_t *kwg_size) {
+                             uint32_t *kwg_size,
+                             std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -47,6 +48,14 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     built_options.emplace("-Dconv_2d_1x1=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      *kernel_error = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      (*kernel_error)->Map(nullptr);
+      *((*kernel_error)->mutable_data<char>()) = '0';
+      (*kernel_error)->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -84,6 +93,10 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel->setArg(idx++,
+          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
       kernel->setArg(idx++, gws[1]);
@@ -112,6 +125,13 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
       Concat("conv2d_1x1_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    (*kernel_error)->Map(nullptr);
+    char *kerror_code = (*kernel_error)->mutable_data<char>();
+    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    (*kernel_error)->UnMap();
+  }
 }
 
 }  // namespace kernels

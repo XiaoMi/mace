@@ -68,6 +68,7 @@ struct MatMulFunctor<DeviceType::OPENCL, T> {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
 };
 
 }  // namespace kernels

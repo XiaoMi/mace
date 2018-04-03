@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void eltwise(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void eltwise(KERNEL_ERROR_PARAMS
+                      GLOBAL_WORK_GROUP_SIZE_DIM2
                       __read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
                       __read_only image2d_t input1,
 #ifdef COEFF_SUM
@@ -36,5 +37,8 @@ __kernel void eltwise(GLOBAL_WORK_GROUP_SIZE_DIM2
   out = in0 - in1;
 #endif
 
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }

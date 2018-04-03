@@ -19,7 +19,8 @@ inline int calculate_avg_block_size(const int pool_size,
 }
 
 // Supported data type: half/float
-__kernel void pooling(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void pooling(KERNEL_ERROR_PARAMS
+                      GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input,
                       __private const int in_height,
                       __private const int in_width,
@@ -94,5 +95,9 @@ __kernel void pooling(GLOBAL_WORK_GROUP_SIZE_DIM3
   }
 #endif
 
-  WRITE_IMAGET(output, (int2)(mad24(out_chan_idx, out_width, out_width_idx), out_hb_idx), res);
+  const int pos = mad24(out_chan_idx, out_width, out_width_idx);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, pos, out_hb_idx, kernel_error);
+#endif
+  WRITE_IMAGET(output, (int2)(pos, out_hb_idx), res);
 }

@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void activation(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void activation(KERNEL_ERROR_PARAMS
+                         GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
 #ifdef USE_PRELU
                          __read_only image2d_t alpha,
@@ -29,6 +30,9 @@ __kernel void activation(GLOBAL_WORK_GROUP_SIZE_DIM3
 #else
   DATA_TYPE4 out = do_activation(in, relux_max_limit);
 #endif
+
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, pos, hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }
-

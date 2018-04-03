@@ -1,6 +1,7 @@
 #include <common.h>
 // Supported data types: half/float
-__kernel void batch_norm(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void batch_norm(KERNEL_ERROR_PARAMS
+                         GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
                          __read_only image2d_t scale,
                          __read_only image2d_t offset,
@@ -48,5 +49,8 @@ __kernel void batch_norm(GLOBAL_WORK_GROUP_SIZE_DIM3
   out = do_activation(out, relux_max_limit);
 #endif
 
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, pos, hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }

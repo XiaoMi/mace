@@ -1,71 +1,87 @@
 #include <common.h>
 
-__kernel void depth_to_space(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void depth_to_space(KERNEL_ERROR_PARAMS
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input,
                              __private const int block_size,
-                             __private const int input_height,
+                             __private const int input_hb,
                              __private const int input_width,
                              __private const int input_depth_blocks,
-                             __private const int output_height,
                              __private const int output_width,
                              __private const int output_depth_blocks,
                              __write_only image2d_t output) {
   const int out_d = get_global_id(0);
   const int out_w = get_global_id(1);
-  const int out_h = get_global_id(2);
+  const int out_hb = get_global_id(2);
 
-  if (out_d >= output_depth_blocks || out_h >= output_height || out_w >= output_width)
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (out_d >= global_size_dim0 || out_w >= global_size_dim1
+      || out_hb >= global_size_dim2) {
     return;
+  }
+#endif
 
   const int out_pos = mad24(out_d, output_width, out_w);
 
-  const int in_h = out_h / block_size;
-  const int offset_h = out_h % block_size;
+  const int in_hb = out_hb / block_size;
+  const int offset_h = out_hb % block_size;
   const int in_w = out_w / block_size;
   const int offset_w = out_w % block_size;
   const int offset_d = (offset_h * block_size + offset_w) * output_depth_blocks;
   const int in_d = out_d + offset_d;
 
-  if (in_h >= input_height || in_w >= input_width || in_d >= input_depth_blocks)
+  if (in_hb >= input_hb || in_w >= input_width || in_d >= input_depth_blocks) {
     return;
+  }
 
   const int in_pos = mad24(in_d, input_width, in_w);
-  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, in_h));
-  WRITE_IMAGET(output, (int2)(out_pos, out_h), in_data);
+  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, in_hb));
+
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_pos, out_hb, kernel_error);
+#endif
+  WRITE_IMAGET(output, (int2)(out_pos, out_hb), in_data);
 }
 
-__kernel void space_to_depth(
+__kernel void space_to_depth(KERNEL_ERROR_PARAMS
                              GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input,
                              __private const int block_size,
-                             __private const int input_height,
                              __private const int input_width,
                              __private const int input_depth_blocks,
-                             __private const int output_height,
+                             __private const int output_hb,
                              __private const int output_width,
                              __private const int output_depth_blocks,
                              __write_only image2d_t output) {
-
   const int d = get_global_id(0);
   const int w = get_global_id(1);
-  const int h = get_global_id(2);
+  const int hb = get_global_id(2);
 
-  if (h >= input_height || w >= input_width || d >= input_depth_blocks)
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (d >= global_size_dim0 || w >= global_size_dim1
+      || hb >= global_size_dim2) {
     return;
+  }
+#endif
 
   const int in_pos = mad24(d, input_width, w);
 
-  const int out_h = h / block_size;
-  const int offset_h = h % block_size;
+  const int out_hb = hb / block_size;
+  const int offset_h = hb % block_size;
   const int out_w = w / block_size;
   const int offset_w = w % block_size;
   const int offset_d = (offset_h * block_size + offset_w) * input_depth_blocks;
   const int out_d = d + offset_d;
 
-  if (out_d >= output_depth_blocks || out_h >= output_height || out_w >= output_width)
+  if (out_d >= output_depth_blocks || out_hb >= output_hb || out_w >= output_width) {
     return;
+  }
 
   const int out_pos = mad24(out_d, output_width, out_w);
-  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, h));
-  WRITE_IMAGET(output, (int2)(out_pos, out_h), in_data);
+  DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, hb));
+
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_pos, out_hb, kernel_error);
+#endif
+  WRITE_IMAGET(output, (int2)(out_pos, out_hb), in_data);
 }

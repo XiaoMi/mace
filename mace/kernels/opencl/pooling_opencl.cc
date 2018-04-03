@@ -37,6 +37,14 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     if (pooling_type_ == AVG) {
       built_options.emplace("-DPOOL_AVG");
     }
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      kernel_error_ = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      kernel_error_->Map(nullptr);
+      *(kernel_error_->mutable_data<char>()) = '0';
+      kernel_error_->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -82,6 +90,10 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     };
 
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel_.setArg(idx++,
+          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
@@ -117,6 +129,13 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   ss << "pooling_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws.data(), lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    kernel_error_->Map(nullptr);
+    char *kerror_code = kernel_error_->mutable_data<char>();
+    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    kernel_error_->UnMap();
+  }
 }
 
 template struct PoolingFunctor<DeviceType::OPENCL, float>;

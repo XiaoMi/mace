@@ -60,7 +60,8 @@ def adb_run(serialno, host_bin_path, bin_name,
             args="",
             opencl_profiling=1,
             vlog_level=0,
-            device_bin_path="/data/local/tmp/mace"):
+            device_bin_path="/data/local/tmp/mace",
+            out_of_range_check=1):
   host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
   device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
   device_cl_path = "%s/cl" % device_bin_path
@@ -77,8 +78,8 @@ def adb_run(serialno, host_bin_path, bin_name,
   stdout_buff=[]
   process_output = make_output_processor(stdout_buff)
   p = sh.adb("-s", serialno, "shell",
-             "MACE_OPENCL_PROFILING=%d MACE_KERNEL_PATH=%s MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
-             (opencl_profiling, device_cl_path, vlog_level, device_bin_full_path, args),
+             "MACE_OUT_OF_RANGE_CHECK=%d MACE_OPENCL_PROFILING=%d MACE_KERNEL_PATH=%s MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
+             (out_of_range_check, opencl_profiling, device_cl_path, vlog_level, device_bin_full_path, args),
              _out=process_output, _bg=True, _err_to_out=True)
   p.wait()
   return "".join(stdout_buff)

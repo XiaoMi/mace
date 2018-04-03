@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
+                                     GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* h, w, oc, ic */
                                      __private const int input_offset,
                                      __private const int filter_h,
@@ -49,10 +50,14 @@ __kernel void filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
   }
 
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
+                                     GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* h, w, oc, ic */
                                      __private const int filter_h,
                                      __private const int filter_w,
@@ -100,7 +105,8 @@ __kernel void filter_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
   }
 }
 
-__kernel void dw_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
+                                        GLOBAL_WORK_GROUP_SIZE_DIM2
                                         __global const DATA_TYPE *input, /* h, w, ic, m */
                                         __private const int input_offset,
                                         __private const int filter_w,
@@ -154,10 +160,14 @@ __kernel void dw_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
   }
 
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void in_out_buffer_to_image(KERNEL_ERROR_PARAMS
+                                     GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
                                      __private const int height,
@@ -195,10 +205,14 @@ __kernel void in_out_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void in_out_image_to_buffer(KERNEL_ERROR_PARAMS
+                                     GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
                                      __private const int width,
@@ -237,7 +251,8 @@ __kernel void in_out_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
   }
 }
 
-__kernel void arg_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
+                                  GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global const DATA_TYPE *input, /* nhwc */
                                   __private const int input_offset,
                                   __private const int count,
@@ -269,10 +284,14 @@ __kernel void arg_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void arg_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void arg_image_to_buffer(KERNEL_ERROR_PARAMS
+                                  GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global DATA_TYPE *output, /* nhwc */
                                   __private const int count,
                                   __read_only image2d_t input) {
@@ -305,7 +324,8 @@ __kernel void arg_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
 }
 
 
-__kernel void in_out_height_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void in_out_height_buffer_to_image(KERNEL_ERROR_PARAMS
+                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
                                             __private const int height,
@@ -344,10 +364,14 @@ __kernel void in_out_height_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
       values.x = *(input + offset);
   }
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_height_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void in_out_height_image_to_buffer(KERNEL_ERROR_PARAMS
+                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global DATA_TYPE *output, //nhwc
                                             __private const int height,
                                             __private const int width,
@@ -385,7 +409,8 @@ __kernel void in_out_height_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
 }
 
 
-__kernel void in_out_width_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
+                                           GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
                                            __private const int height,
@@ -423,11 +448,15 @@ __kernel void in_out_width_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
       values.x = *(input + offset);
   }
   int2 coord = (int2)(w, h);
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, w, h, kernel_error);
+#endif
   WRITE_IMAGET(output, coord, values);
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void winograd_filter_buffer_to_image(KERNEL_ERROR_PARAMS
+                                              GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
                                               __private const int in_channels,
@@ -495,6 +524,11 @@ __kernel void winograd_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
   tu3[1] = tt + tu3[1] / 2;
 
   int2 coord = (int2)(w, h);
+
+#ifdef OUT_OF_RANGE_CHECK
+    check_out_of_range_for_image2d(output, coord.x, coord.y + out_channels * 15, kernel_error);
+#endif
+
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
     WRITE_IMAGET(output, coord, tu0[i]);
@@ -518,7 +552,8 @@ __kernel void winograd_filter_buffer_to_image(GLOBAL_WORK_GROUP_SIZE_DIM2
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void winograd_filter_image_to_buffer(KERNEL_ERROR_PARAMS
+                                              GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
                                               __private const int width,

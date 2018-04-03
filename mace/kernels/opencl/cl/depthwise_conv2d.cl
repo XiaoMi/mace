@@ -1,7 +1,8 @@
 #include <common.h>
 
 // Only multiplier = 1 is supported
-__kernel void depthwise_conv2d(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void depthwise_conv2d(KERNEL_ERROR_PARAMS
+                               GLOBAL_WORK_GROUP_SIZE_DIM3
                                __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
@@ -122,22 +123,35 @@ __kernel void depthwise_conv2d(GLOBAL_WORK_GROUP_SIZE_DIM3
 
   const short out_x_base = mul24(out_ch_blk, out_width);
   short w = out_w_blk;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out0);
 
   w += out_w_blks;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out1);
 
   w += out_w_blks;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out2);
 
   w += out_w_blks;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 }
 
-__kernel void depthwise_conv2d_s1(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void depthwise_conv2d_s1(KERNEL_ERROR_PARAMS
+                                  GLOBAL_WORK_GROUP_SIZE_DIM3
                                   __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                   __read_only image2d_t filter, /* cout%4 * kh * kw * m, cin/4 */
 #ifdef BIAS
@@ -247,17 +261,29 @@ __kernel void depthwise_conv2d_s1(GLOBAL_WORK_GROUP_SIZE_DIM3
 
   const short out_x_base = mul24(out_ch_blk, out_width);
   short w = out_w_blk;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out0);
 
   w += 1;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out1);
 
   w += 1;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out2);
 
   w += 1;
   if (w >= out_width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 }

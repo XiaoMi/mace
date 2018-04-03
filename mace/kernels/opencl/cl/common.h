@@ -17,6 +17,7 @@
 #define READ_IMAGET CMD_TYPE(read_image, CMD_DATA_TYPE)
 #define WRITE_IMAGET CMD_TYPE(write_image, CMD_DATA_TYPE)
 
+
 #ifndef NON_UNIFORM_WORK_GROUP
 
 #define GLOBAL_WORK_GROUP_SIZE_DIM2 \
@@ -31,6 +32,18 @@
 
 #define GLOBAL_WORK_GROUP_SIZE_DIM2
 #define GLOBAL_WORK_GROUP_SIZE_DIM3
+
+#endif
+
+
+#ifdef OUT_OF_RANGE_CHECK
+
+#define KERNEL_ERROR_PARAMS \
+  __global char *kernel_error,
+
+#else
+
+#define KERNEL_ERROR_PARAMS
 
 #endif
 
@@ -59,6 +72,16 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
   out = native_recip((DATA_TYPE)1 + native_exp(-in));
 #endif
   return out;
+}
+
+inline void check_out_of_range_for_image2d(__write_only image2d_t image,
+                                           __private const int x,
+                                           __private const int y,
+                                           global char *kernel_error) {
+  int2 image_dim = get_image_dim(image);
+  if (x >= image_dim.x || y >= image_dim.y) {
+    *kernel_error = '1';
+  }
 }
 
 #endif  // MACE_KERNELS_OPENCL_CL_COMMON_H_

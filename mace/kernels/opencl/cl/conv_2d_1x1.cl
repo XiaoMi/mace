@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void conv_2d_1x1(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void conv_2d_1x1(KERNEL_ERROR_PARAMS
+                          GLOBAL_WORK_GROUP_SIZE_DIM3
                           __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                           __read_only image2d_t filter, /* cout%4 * cin, cout/4 */
 #ifdef BIAS
@@ -104,17 +105,29 @@ __kernel void conv_2d_1x1(GLOBAL_WORK_GROUP_SIZE_DIM3
 
   const int out_x_base = mul24(out_ch_blk, width);
   int out_x_idx = out_w_blk;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + out_x_idx, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out0);
 
   out_x_idx += out_w_blks;
   if (out_x_idx >= width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + out_x_idx, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out1);
 
   out_x_idx += out_w_blks;
   if (out_x_idx >= width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + out_x_idx, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out2);
 
   out_x_idx += out_w_blks;
   if (out_x_idx >= width) return;
+#ifdef OUT_OF_RANGE_CHECK
+  check_out_of_range_for_image2d(output, out_x_base + out_x_idx, out_hb, kernel_error);
+#endif
   WRITE_IMAGET(output, (int2)(out_x_base + out_x_idx, out_hb), out3);
 }

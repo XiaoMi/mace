@@ -18,7 +18,8 @@ static void Concat2(cl::Kernel *kernel,
                     std::vector<index_t> *prev_input_shape,
                     Tensor *output,
                     StatsFuture *future,
-                    uint32_t *kwg_size) {
+                    uint32_t *kwg_size,
+                    std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -36,6 +37,14 @@ static void Concat2(cl::Kernel *kernel,
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      *kernel_error = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      (*kernel_error)->Map(nullptr);
+      *((*kernel_error)->mutable_data<char>()) = '0';
+      (*kernel_error)->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -56,6 +65,10 @@ static void Concat2(cl::Kernel *kernel,
   }
   if (!IsVecEqual(*prev_input_shape, input0->shape())) {
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel->setArg(idx++,
+          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
       kernel->setArg(idx++, gws[1]);
@@ -77,6 +90,13 @@ static void Concat2(cl::Kernel *kernel,
   ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    (*kernel_error)->Map(nullptr);
+    char *kerror_code = (*kernel_error)->mutable_data<char>();
+    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    (*kernel_error)->UnMap();
+  }
 }
 
 static void ConcatN(cl::Kernel *kernel,
@@ -84,7 +104,8 @@ static void ConcatN(cl::Kernel *kernel,
                     const DataType dt,
                     Tensor *output,
                     StatsFuture *future,
-                    uint32_t *kwg_size) {
+                    uint32_t *kwg_size,
+                    std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -98,6 +119,14 @@ static void ConcatN(cl::Kernel *kernel,
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      *kernel_error = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      (*kernel_error)->Map(nullptr);
+      *((*kernel_error)->mutable_data<char>()) = '0';
+      (*kernel_error)->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -117,6 +146,10 @@ static void ConcatN(cl::Kernel *kernel,
     };
 
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel->setArg(idx++,
+          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
       kernel->setArg(idx++, gws[1]);
@@ -132,6 +165,13 @@ static void ConcatN(cl::Kernel *kernel,
     ss << "concat_n_opencl_kernel_" << input_channel_blk << "_" << width << "_"
        << batch * height;
     TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
+
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      (*kernel_error)->Map(nullptr);
+      char *kerror_code = (*kernel_error)->mutable_data<char>();
+      MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+      (*kernel_error)->UnMap();
+    }
   }
 }
 
@@ -172,12 +212,12 @@ void ConcatFunctor<DeviceType::OPENCL, T>::operator()(
   switch (inputs_count) {
     case 2:
       Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
-              &input_shape_, output, future, &kwg_size_);
+              &input_shape_, output, future, &kwg_size_, &kernel_error_);
       break;
     default:
       if (divisible_four) {
         ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future,
-            &kwg_size_);
+            &kwg_size_, &kernel_error_);
       } else {
         MACE_NOT_IMPLEMENTED;
       }

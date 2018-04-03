@@ -323,6 +323,14 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   const char *kernel_path = getenv("MACE_KERNEL_PATH");
   this->kernel_path_ =
       std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+
+  const char *out_of_range_check = getenv("MACE_OUT_OF_RANGE_CHECK");
+  if (out_of_range_check != nullptr && strlen(out_of_range_check) == 1
+      && out_of_range_check[0] == '1') {
+    this->out_of_range_check_ = true;
+  } else {
+    this->out_of_range_check_ = false;
+  }
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
@@ -503,6 +511,10 @@ const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(
   } else {
     return GPUType::UNKNOWN;
   }
+}
+
+const bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
+  return out_of_range_check_;
 }
 
 }  // namespace mace

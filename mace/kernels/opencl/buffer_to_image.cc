@@ -13,6 +13,7 @@ template <typename T>
 void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     Tensor *buffer, const BufferType type, Tensor *image, StatsFuture *future) {
   std::vector<size_t> image_shape;
+
   if (!i2b_) {
     CalImage2DShape(buffer->shape(), type, &image_shape);
     if (type == WINOGRAD_FILTER) {
@@ -80,10 +81,25 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToUpstreamCLCMDDt(DataTypeToEnum<T>::value));
   }
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    built_options.emplace("-DOUT_OF_RANGE_CHECK");
+    if (!kernel_error_) {
+      kernel_error_ = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      kernel_error_->Map(nullptr);
+      *(kernel_error_->mutable_data<char>()) = '0';
+      kernel_error_->UnMap();
+    }
+  }
+
   auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
                                          obfuscated_kernel_name, built_options);
 
   uint32_t idx = 0;
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    b2f_kernel.setArg(idx++,
+        *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+  }
   if (!runtime->IsNonUniformWorkgroupsSupported()) {
     b2f_kernel.setArg(idx++, gws[0]);
     b2f_kernel.setArg(idx++, gws[1]);
@@ -135,6 +151,12 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
   MACE_CHECK_CL_SUCCESS(error);
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    kernel_error_->Map(nullptr);
+    char *kerror_code = kernel_error_->mutable_data<char>();
+    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    kernel_error_->UnMap();
+  }
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
