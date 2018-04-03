@@ -16,7 +16,7 @@ import urllib
 import yaml
 import re
 
-import adb_tools
+import sh_commands
 
 from ConfigParser import ConfigParser
 
@@ -237,7 +237,7 @@ def parse_args():
       default="all",
       help="[build|run|validate|merge|all|throughput_test].")
   parser.add_argument(
-      "--socs",
+      "--target_socs",
       type=str,
       default="all",
       help="SoCs to build, comma seperated list (getprop ro.board.platform)")
@@ -271,14 +271,14 @@ def main(unused_args):
   generate_opencl_and_version_code()
   option_args = ' '.join([arg for arg in unused_args if arg.startswith('--')])
 
-  available_socs = adb_tools.adb_get_all_socs()
+  available_socs = sh_commands.adb_get_all_socs()
   target_socs = available_socs
   if hasattr(configs, "target_socs"):
     target_socs = set(configs["target_socs"])
     target_socs = target_socs & available_socs
 
-  if FLAGS.socs != "all":
-    socs = set(FLAGS.socs.split(','))
+  if FLAGS.target_socs != "all":
+    socs = set(FLAGS.target_socs.split(','))
     target_socs = target_socs & socs
     missing_socs = socs.difference(target_socs)
     if len(missing_socs) > 0:

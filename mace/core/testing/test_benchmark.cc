@@ -33,6 +33,11 @@ void Benchmark::Run() { Run("all"); }
 void Benchmark::Run(const char *pattern) {
   if (!all_benchmarks) return;
 
+  std::sort(all_benchmarks->begin(), all_benchmarks->end(),
+            [](const Benchmark *lhs, const Benchmark *rhs) {
+              return lhs->name_ < rhs->name_;
+            });
+
   if (std::string(pattern) == "all") {
     pattern = ".*";
   }
@@ -47,6 +52,8 @@ void Benchmark::Run(const char *pattern) {
     width = std::max<int>(width, b->name_.length());
   }
 
+  // Internal perf regression tools depends on the output formatting,
+  // please keep in consistent when modifying
   printf("%-*s %10s %10s %10s %10s\n", width, "Benchmark", "Time(ns)",
          "Iterations", "Input(MB/s)", "MACC(G/s)");
   printf("%s\n", std::string(width + 44, '-').c_str());

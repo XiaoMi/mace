@@ -12,9 +12,11 @@ cpplint:
 ops_test:
   stage: ops_test
   script:
-    - FAILURE_PATTERN="FAILED\|Aborted" tools/bazel-adb-run.sh //mace/ops:ops_test
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=ops_test_stdout_processor --target_socs=$TARGET_SOCS
 
 ops_benchmark:
   stage: ops_benchmark
   script:
-    - FAILURE_PATTERN="Aborted" tools/bazel-adb-run.sh //mace/ops:ops_benchmark --pattern=.*CONV.*
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --target_socs=$TARGET_SOCS
