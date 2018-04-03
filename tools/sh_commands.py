@@ -65,18 +65,21 @@ def adb_run(serialno, host_bin_path, bin_name,
   device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
   device_cl_path = "%s/cl" % device_bin_path
   props = adb_getprop_by_serialno(serialno)
-  print("Run on device: %s, %s, %s" % (serialno, props["ro.board.platform"], props["ro.product.model"]))
+  print("=====================================================================")
+  print("Run on device: %s, %s, %s" % (serialno, props["ro.board.platform"],
+                                       props["ro.product.model"]))
   sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
   sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
   sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_cl_path)
-  print("Push %s to device" % device_bin_full_path)
+  print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
   sh.adb("-s", serialno, "push", host_bin_full_path, device_bin_path)
-  print("Run %s on device" % device_bin_full_path)
+  print("Run %s" % device_bin_full_path)
   stdout_buff=[]
   process_output = make_output_processor(stdout_buff)
   p = sh.adb("-s", serialno, "shell",
-             "MACE_OPENCL_PROFILING=%d MACE_KERNEL_PATH=%s MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" % (opencl_profiling, device_cl_path, vlog_level, device_bin_full_path, args),
-             _out=process_output, _bg=True)
+             "MACE_OPENCL_PROFILING=%d MACE_KERNEL_PATH=%s MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
+             (opencl_profiling, device_cl_path, vlog_level, device_bin_full_path, args),
+             _out=process_output, _bg=True, _err_to_out=True)
   p.wait()
   return "".join(stdout_buff)
 
@@ -102,7 +105,7 @@ def bazel_build(target, strip="always", abi="armeabi-v7a"):
               "--copt=-O3",
               "--define", "neon=true",
               "--define", "openmp=true",
-             _out=process_output, _bg=True)
+              _out=process_output, _bg=True, _err_to_out=True)
   p.wait()
   return "".join(stdout_buff)
 
@@ -138,7 +141,7 @@ def falcon_tags(platform, model, abi):
 def falcon_push_metrics(metrics, device_properties, abi):
   cli = falcon_cli.FalconCli.connect(server="transfer.falcon.miliao.srv",
                                      port=8433,
-                                     debug=False)
+                                     debug=True)
   platform = device_properties["ro.board.platform"].replace(" ", "-")
   model = device_properties["ro.product.model"].replace(" ", "-")
   tags = falcon_tags(platform, model, abi)

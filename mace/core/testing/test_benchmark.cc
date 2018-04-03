@@ -33,6 +33,11 @@ void Benchmark::Run() { Run("all"); }
 void Benchmark::Run(const char *pattern) {
   if (!all_benchmarks) return;
 
+  std::sort(all_benchmarks->begin(), all_benchmarks->end(),
+            [](const Benchmark *lhs, const Benchmark *rhs) {
+              return lhs->name_ < rhs->name_;
+            });
+
   if (std::string(pattern) == "all") {
     pattern = ".*";
   }
