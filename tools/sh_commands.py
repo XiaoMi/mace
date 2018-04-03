@@ -49,6 +49,12 @@ def adb_getprop_by_serialno(serialno):
       props[m.group(1)] = m.group(2)
   return props
 
+def adb_supported_abis(serialno):
+  props = adb_getprop_by_serialno(serialno)
+  abilist_str = props["ro.product.cpu.abilist"]
+  abis = [abi.strip() for abi in abilist_str.split(',')]
+  return abis
+
 def adb_get_all_socs():
   socs = []
   for d in adb_devices():
@@ -88,6 +94,7 @@ def adb_run(serialno, host_bin_path, bin_name,
 # bazel commands
 ################################
 def bazel_build(target, strip="always", abi="armeabi-v7a"):
+  print("Build %s with ABI %s" % (target, abi))
   stdout_buff=[]
   process_output = make_output_processor(stdout_buff)
   p= sh.bazel("build",
