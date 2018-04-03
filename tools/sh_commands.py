@@ -152,7 +152,7 @@ def falcon_push_metrics(metrics, device_properties, abi, endpoint="mace_dev"):
       "tags": tags,
       "timestamp": ts,
       "value": value,
-      "step": 3600,
+      "step": 86400,
       "counterType": "GAUGE"
       } for key, value in metrics.iteritems()]
   cli.update(falcon_metrics)
