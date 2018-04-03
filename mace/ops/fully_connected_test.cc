@@ -13,7 +13,7 @@ namespace test {
 
 class FullyConnectedOpTest : public OpsTestBase {};
 
-template <DeviceType D>
+template<DeviceType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
             const std::vector<index_t> &weight_shape,
@@ -38,12 +38,12 @@ void Simple(const std::vector<index_t> &input_shape,
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FC", "FullyConnectedTest")
-        .Input("InputImage")
-        .Input("WeightImage")
-        .Input("BiasImage")
-        .Output("OutputImage")
-        .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
-        .Finalize(net.NewOperatorDef());
+      .Input("InputImage")
+      .Input("WeightImage")
+      .Input("BiasImage")
+      .Output("OutputImage")
+      .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
+      .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
 
@@ -52,11 +52,11 @@ void Simple(const std::vector<index_t> &input_shape,
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("FC", "FullyConnectedTest")
-        .Input("Input")
-        .Input("Weight")
-        .Input("Bias")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
   }
@@ -72,14 +72,14 @@ TEST_F(FullyConnectedOpTest, SimpleCPU) {
                           {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
                           {206});
   Simple<DeviceType::CPU>(
-      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
-      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+    {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+    {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
   Simple<DeviceType::CPU>(
-      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
-      {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
-       4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
-      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+    {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
+    {1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3,
+     4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3, 4, 5, 6},
+    {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
@@ -92,14 +92,14 @@ TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
                              {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
                              {206});
   Simple<DeviceType::OPENCL>(
-      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
-      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+    {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
+    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+    {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
   Simple<DeviceType::OPENCL>(
-      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
-      {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
-       4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
-      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+    {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
+    {1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3,
+     4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3, 4, 5, 6},
+    {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
@@ -107,7 +107,7 @@ TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
                              {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
-template <typename T>
+template<typename T>
 void Complex(const index_t batch,
              const index_t height,
              const index_t width,
@@ -118,17 +118,17 @@ void Complex(const index_t batch,
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("FC", "FullyConnectedTest")
-      .Input("Input")
-      .Input("Weight")
-      .Input("Bias")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Weight", {out_channel, height * width * channels});
+    "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
 
   // run cpu
@@ -147,13 +147,13 @@ void Complex(const index_t batch,
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
-      .Input("InputImage")
-      .Input("WeightImage")
-      .Input("BiasImage")
-      .Output("OutputImage")
-      .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("WeightImage")
+    .Input("BiasImage")
+    .Output("OutputImage")
+    .AddIntArg("weight_type", kernels::BufferType::WEIGHT_HEIGHT)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net.NewOperatorDef());
 
   // Run on opencl
   net.RunOp(DeviceType::OPENCL);
@@ -189,7 +189,7 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(31, 21, 11, 23, 103);
 }
 
-template <typename T>
+template<typename T>
 void TestWXFormat(const index_t batch,
                   const index_t height,
                   const index_t width,
@@ -200,17 +200,17 @@ void TestWXFormat(const index_t batch,
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("FC", "FullyConnectedTest")
-      .Input("Input")
-      .Input("Weight")
-      .Input("Bias")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Weight", {out_channel, height * width * channels});
+    "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
 
   // run cpu
@@ -229,12 +229,12 @@ void TestWXFormat(const index_t batch,
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
-      .Input("InputImage")
-      .Input("WeightImage")
-      .Input("BiasImage")
-      .Output("OutputImage")
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
+    .Input("InputImage")
+    .Input("WeightImage")
+    .Input("BiasImage")
+    .Output("OutputImage")
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::OPENCL);
@@ -264,6 +264,57 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
   TestWXFormat<float>(1, 2, 2, 512, 2);
   TestWXFormat<half>(1, 11, 11, 32, 16);
   TestWXFormat<half>(1, 16, 32, 32, 32);
+}
+
+void FullyConnectedTestNEON(const index_t batch,
+              const index_t height,
+              const index_t width,
+              const index_t channels,
+              const index_t out_channel) {
+  srand(time(NULL));
+
+  // Construct graph
+  OpsTestNet net;
+  OpDefBuilder("FC", "FullyConnectedTest")
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("Output")
+    .Finalize(net.NewOperatorDef());
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, float>(
+    "Input", {batch, height, width, channels});
+  net.AddRandomInput<DeviceType::CPU, float>(
+    "Weight", {out_channel, height * width * channels});
+  net.AddRandomInput<DeviceType::CPU, float>("Bias", {out_channel});
+
+  // run cpu
+  net.RunOp();
+
+  // Run on neon
+  OpDefBuilder("FC", "FullyConnectedTest")
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("OutputNeon")
+    .Finalize(net.NewOperatorDef());
+
+  // Run on device
+  net.RunOp(DeviceType::NEON);
+
+  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
+                                                       "Output");
+
+  ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
+                          *net.GetOutput("OutputNeon"),
+                          0.001);
+}
+
+TEST_F(FullyConnectedOpTest, TestNEON) {
+  FullyConnectedTestNEON(1, 7, 7, 32, 16);
+  FullyConnectedTestNEON(1, 7, 7, 512, 128);
+  FullyConnectedTestNEON(1, 1, 1, 2048, 1024);
 }
 
 }  // namespace test

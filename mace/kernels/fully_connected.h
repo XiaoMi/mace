@@ -76,6 +76,20 @@ struct FullyConnectedFunctor : FullyConnectedBase {
   }
 };
 
+template <>
+struct FullyConnectedFunctor<DeviceType::NEON, float> : FullyConnectedBase {
+  FullyConnectedFunctor(const BufferType weight_type,
+                        const ActivationType activation,
+                        const float relux_max_limit)
+    : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
+
+  void operator()(const Tensor *input,
+                  const Tensor *weight,
+                  const Tensor *bias,
+                  Tensor *output,
+                  StatsFuture *future);
+};
+
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   FullyConnectedFunctor(const BufferType weight_type,

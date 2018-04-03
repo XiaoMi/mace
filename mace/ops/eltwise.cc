@@ -25,6 +25,11 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     EltwiseOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    EltwiseOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops
