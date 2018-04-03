@@ -94,12 +94,15 @@ def main(unused_args):
     sh_commands.bazel_build(target, abi=target_abi)
     if FLAGS.run_target:
       for serialno in target_devices:
-        device_properties = sh_commands.adb_getprop_by_serialno(serialno)
+        if target_abi not in set(sh_commands.adb_supported_abis(serialno)):
+          print("Skip device %s which does not support ABI %s" % (serialno, target_abi))
+          continue
         stdouts = sh_commands.adb_run(serialno, host_bin_path, bin_name,
                                       args=FLAGS.args,
                                       opencl_profiling=1,
                                       vlog_level=0,
                                       device_bin_path="/data/local/tmp/mace")
+        device_properties = sh_commands.adb_getprop_by_serialno(serialno)
         globals()[FLAGS.stdout_processor](stdouts, device_properties, target_abi)
 
 if __name__ == "__main__":
