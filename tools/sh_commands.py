@@ -141,7 +141,7 @@ def falcon_tags(platform, model, abi):
 def falcon_push_metrics(metrics, device_properties, abi):
   cli = falcon_cli.FalconCli.connect(server="transfer.falcon.miliao.srv",
                                      port=8433,
-                                     debug=True)
+                                     debug=False)
   platform = device_properties["ro.board.platform"].replace(" ", "-")
   model = device_properties["ro.product.model"].replace(" ", "-")
   tags = falcon_tags(platform, model, abi)

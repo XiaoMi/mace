@@ -17,4 +17,4 @@ ops_test:
 ops_benchmark:
   stage: ops_benchmark
   script:
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor --args="--filter=.*CONV.*"
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=True --stdout_processor=ops_benchmark_stdout_processor
