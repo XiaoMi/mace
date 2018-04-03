@@ -33,10 +33,11 @@ def ops_benchmark_stdout_processor(stdout, device_properties, abi):
     line = line.strip()
     parts = line.split()
     if len(parts) == 5 and parts[0].startswith("BM_"):
-      metrics["%s.ops_benchmark_time_ms" % parts[0]] = str(float(parts[1])/1000000.0)
-      metrics["%s.ops_benchmark_input_mb_per_sec" % parts[0]] = parts[3]
-      metrics["%s.ops_benchmark_gmacc_per_sec" % parts[0]] = parts[4]
-  sh_commands.falcon_push_metrics(metrics, device_properties, abi)
+      metrics["%s.time_ms" % parts[0]] = str(float(parts[1])/1000000.0)
+      metrics["%s.input_mb_per_sec" % parts[0]] = parts[3]
+      metrics["%s.gmacc_per_sec" % parts[0]] = parts[4]
+  sh_commands.falcon_push_metrics(metrics, device_properties, abi,
+                                  endpoint="mace_ops_benchmark")
 
 def parse_args():
   """Parses command line arguments."""

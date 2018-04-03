@@ -138,7 +138,7 @@ def gen_mace_version(codegen_path="mace/codegen"):
 def falcon_tags(platform, model, abi):
   return "ro.board.platform=%s,ro.product.model=%s,abi=%s" % (platform, model, abi)
 
-def falcon_push_metrics(metrics, device_properties, abi):
+def falcon_push_metrics(metrics, device_properties, abi, endpoint="mace_dev"):
   cli = falcon_cli.FalconCli.connect(server="transfer.falcon.miliao.srv",
                                      port=8433,
                                      debug=False)
@@ -147,7 +147,7 @@ def falcon_push_metrics(metrics, device_properties, abi):
   tags = falcon_tags(platform, model, abi)
   ts = int(time.time())
   falcon_metrics = [{
-      "endpoint": "mace_dev",
+      "endpoint": endpoint,
       "metric": key,
       "tags": tags,
       "timestamp": ts,
