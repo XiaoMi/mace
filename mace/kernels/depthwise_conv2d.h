@@ -9,6 +9,7 @@
 #include <arm_neon.h>
 #endif
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"

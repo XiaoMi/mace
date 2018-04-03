@@ -4,6 +4,7 @@
 
 #ifndef MACE_KERNELS_DEPTH_TO_SPACE_H_
 #define MACE_KERNELS_DEPTH_TO_SPACE_H_
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"

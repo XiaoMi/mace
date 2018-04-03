@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"

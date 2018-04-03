@@ -5,6 +5,7 @@
 #define MACE_KERNELS_CWISE_H_
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"

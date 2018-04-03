@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_WINOGRAD_TRANSFORM_H_
 #define MACE_KERNELS_WINOGRAD_TRANSFORM_H_
 
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
