@@ -24,6 +24,11 @@ void Register_Slice(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     SliceOp<DeviceType::OPENCL, half>);
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
+                                     .Device(DeviceType::NEON)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    SliceOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

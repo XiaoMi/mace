@@ -16,7 +16,7 @@ namespace test {
 class SliceOpTest : public OpsTestBase {};
 
 template<DeviceType D, typename T>
-void RandomTest(const int num_outputs) {
+void RandomTest(const int num_outputs, const int axis) {
   static unsigned int seed = time(NULL);
   const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
   const index_t input_channels = num_outputs * output_channels;
@@ -27,7 +27,11 @@ void RandomTest(const int num_outputs) {
   // Construct graph
   OpsTestNet net;
 
-  std::vector<index_t> input_shape({batch, height, width, input_channels});
+  std::vector<index_t> input_shape;
+  if (axis == 1)
+    input_shape = {batch, input_channels, height, width};
+  else if (axis == 3)
+    input_shape = {batch, height, width, input_channels};
   const index_t input_size = std::accumulate(input_shape.begin(),
                                              input_shape.end(),
                                              1,
@@ -49,7 +53,7 @@ void RandomTest(const int num_outputs) {
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    auto builder = OpDefBuilder("Slice", "SliceTest");
+    auto builder = OpDefBuilder("Slice", "SliceTest").AddIntArg("axis", axis);
     builder.Input("Input");
     for (int i = 0; i < num_outputs; ++i) {
       builder = builder.Output(MakeString("Output", i));
@@ -70,9 +74,17 @@ void RandomTest(const int num_outputs) {
   }
 
   // Check
-  std::vector<index_t> expected_shape({batch, height, width, output_channels});
+  std::vector<index_t> expected_shape;
+  if (axis == 1)
+    expected_shape = {batch, output_channels, height, width};
+  else if (axis == 3)
+    expected_shape = {batch, height, width, output_channels};
   const index_t outer_size = std::accumulate(expected_shape.begin(),
-                                             expected_shape.end() - 1,
+                                             expected_shape.begin() + axis,
+                                             1,
+                                             std::multiplies<index_t>());
+  const index_t inner_size = std::accumulate(expected_shape.begin() + axis + 1,
+                                             expected_shape.end(),
                                              1,
                                              std::multiplies<index_t>());
   const float *input_ptr = input_data.data();
@@ -83,8 +95,9 @@ void RandomTest(const int num_outputs) {
     Tensor::MappingGuard output_mapper(output);
     output_ptr = output->data<float>();
     for (int outer_idx = 0; outer_idx < outer_size; ++outer_idx) {
-      const int idx = outer_idx * input_channels + i * output_channels;
-      for (int j = 0; j < output_channels; ++j) {
+      const int idx = (outer_idx * input_channels + i * output_channels)
+          *  inner_size;
+      for (int j = 0; j < output_channels * inner_size; ++j) {
         ASSERT_NEAR(*output_ptr++, input_ptr[idx + j], 1e-2) << "with output "
           << i << " index " << idx + j;
       }
@@ -93,21 +106,27 @@ void RandomTest(const int num_outputs) {
 }
 
 TEST_F(SliceOpTest, CPU) {
-  RandomTest<DeviceType::CPU, float>(2);
-  RandomTest<DeviceType::CPU, float>(4);
-  RandomTest<DeviceType::CPU, float>(11);
+  RandomTest<DeviceType::CPU, float>(2, 3);
+  RandomTest<DeviceType::CPU, float>(4, 3);
+  RandomTest<DeviceType::CPU, float>(11, 3);
+}
+
+TEST_F(SliceOpTest, CPUAxis1) {
+  RandomTest<DeviceType::CPU, float>(2, 1);
+  RandomTest<DeviceType::CPU, float>(4, 1);
+  RandomTest<DeviceType::CPU, float>(11, 1);
 }
 
 TEST_F(SliceOpTest, OPENCLFloat) {
-  RandomTest<DeviceType::OPENCL, float>(2);
-  RandomTest<DeviceType::OPENCL, float>(4);
-  RandomTest<DeviceType::OPENCL, float>(11);
+  RandomTest<DeviceType::OPENCL, float>(2, 3);
+  RandomTest<DeviceType::OPENCL, float>(4, 3);
+  RandomTest<DeviceType::OPENCL, float>(11, 3);
 }
 
 TEST_F(SliceOpTest, OPENCLHalf) {
-  RandomTest<DeviceType::OPENCL, half>(2);
-  RandomTest<DeviceType::OPENCL, half>(4);
-  RandomTest<DeviceType::OPENCL, half>(11);
+  RandomTest<DeviceType::OPENCL, half>(2, 3);
+  RandomTest<DeviceType::OPENCL, half>(4, 3);
+  RandomTest<DeviceType::OPENCL, half>(11, 3);
 }
 
 }  // namespace test
