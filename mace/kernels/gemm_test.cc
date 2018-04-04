@@ -31,7 +31,7 @@ TEST(GEMMTest, gemm) {
                 [&gen, &nd] {
                   return nd(gen);
                 });
-  kernels::Gemm(A, B, N, K, M, C);
+  kernels::Gemm(A, B, 1, N, K, M, C);
   kernels::GemmRef(A, B, N, K, M, C_ref);
 
   for (int i = 0; i < N * M; ++i) {

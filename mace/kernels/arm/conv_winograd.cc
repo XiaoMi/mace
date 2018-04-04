@@ -271,44 +271,6 @@ void TransformOutput(const float *input,
     }
   }
 }
-
-void ConvRef3x3s1(const float *input,
-                  const float *filter,
-                  const index_t batch,
-                  const index_t in_height,
-                  const index_t in_width,
-                  const index_t in_channels,
-                  const index_t out_channels,
-                  float *output) {
-  index_t out_height = in_height - 2;
-  index_t out_width = in_width - 2;
-
-#pragma omp parallel for collapse(4)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; ++m) {
-      for (index_t h = 0; h < out_height; ++h) {
-        for (index_t w = 0; w < out_width; ++w) {
-          index_t out_offset =
-            ((b * out_channels + m) * out_height + h) * out_width + w;
-          output[out_offset] = 0;
-          for (index_t c = 0; c < in_channels; ++c) {
-            for (index_t kh = 0; kh < 3; ++kh) {
-              for (index_t kw = 0; kw < 3; ++kw) {
-                index_t ih = h + kh;
-                index_t iw = w + kw;
-                index_t in_offset =
-                  ((b * in_channels + c) * in_height + ih) * in_width + iw;
-                index_t
-                  filter_offset = (((m * in_channels) + c) * 3 + kh) * 3 + kw;
-                output[out_offset] += input[in_offset] * filter[filter_offset];
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
 }  // namespace
 
 void WinoGradConv3x3s1(const float *input,
@@ -398,6 +360,45 @@ void WinoGradConv3x3s1(const float *input,
   delete[]transformed_input;
   delete[]transformed_filter;
   delete[]transformed_output;
+}
+
+
+void ConvRef3x3s1(const float *input,
+                  const float *filter,
+                  const index_t batch,
+                  const index_t in_height,
+                  const index_t in_width,
+                  const index_t in_channels,
+                  const index_t out_channels,
+                  float *output) {
+  index_t out_height = in_height - 2;
+  index_t out_width = in_width - 2;
+
+#pragma omp parallel for collapse(4)
+  for (index_t b = 0; b < batch; ++b) {
+    for (index_t m = 0; m < out_channels; ++m) {
+      for (index_t h = 0; h < out_height; ++h) {
+        for (index_t w = 0; w < out_width; ++w) {
+          index_t out_offset =
+            ((b * out_channels + m) * out_height + h) * out_width + w;
+          output[out_offset] = 0;
+          for (index_t c = 0; c < in_channels; ++c) {
+            for (index_t kh = 0; kh < 3; ++kh) {
+              for (index_t kw = 0; kw < 3; ++kw) {
+                index_t ih = h + kh;
+                index_t iw = w + kw;
+                index_t in_offset =
+                  ((b * in_channels + c) * in_height + ih) * in_width + iw;
+                index_t
+                  filter_offset = (((m * in_channels) + c) * 3 + kh) * 3 + kw;
+                output[out_offset] += input[in_offset] * filter[filter_offset];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 }  // namespace kernels
