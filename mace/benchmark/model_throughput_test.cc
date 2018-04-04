@@ -25,6 +25,7 @@
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
+#include "mace/core/types.h"
 
 namespace mace {
 
@@ -72,10 +73,43 @@ extern const std::string ModelChecksum();
 
 namespace benchmark {
 
+void Split(const std::string &str,
+           char delims,
+           std::vector<std::string> *result) {
+  MACE_CHECK_NOTNULL(result);
+  std::string tmp = str;
+  while (!tmp.empty()) {
+    size_t next_offset = tmp.find(delims);
+    result->push_back(tmp.substr(0, next_offset));
+    if (next_offset == std::string::npos) {
+      break;
+    } else {
+      tmp = tmp.substr(next_offset + 1);
+    }
+  }
+}
+
+void SplitAndParseToInts(const std::string &str,
+                         char delims,
+                         std::vector<int64_t> *result) {
+  MACE_CHECK_NOTNULL(result);
+  std::string tmp = str;
+  while (!tmp.empty()) {
+    index_t dim = atoi(tmp.data());
+    result->push_back(dim);
+    size_t next_offset = tmp.find(delims);
+    if (next_offset == std::string::npos) {
+      break;
+    } else {
+      tmp = tmp.substr(next_offset + 1);
+    }
+  }
+}
+
 void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
   std::string tmp = str;
   while (!tmp.empty()) {
-    int dim = atoi(tmp.data());
+    index_t dim = atoi(tmp.data());
     shape->push_back(dim);
     size_t next_offset = tmp.find(",");
     if (next_offset == std::string::npos) {
@@ -84,6 +118,14 @@ void ParseShape(const std::string &str, std::vector<int64_t> *shape) {
       tmp = tmp.substr(next_offset + 1);
     }
   }
+}
+
+std::string FormatName(const std::string input) {
+  std::string res = input;
+  for (size_t i = 0; i < input.size(); ++i) {
+    if (!::isalnum(res[i])) res[i] = '_';
+  }
+  return res;
 }
 
 DeviceType ParseDeviceType(const std::string &device_str) {
@@ -100,6 +142,10 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
+DEFINE_string(input_node, "input_node0,input_node1",
+              "input nodes, separated by comma");
+DEFINE_string(output_node, "output_node0,output_node1",
+              "output nodes, separated by comma");
 DEFINE_string(input_shape, "1,224,224,3", "input shape, separated by comma");
 DEFINE_string(output_shape, "1,224,224,2", "output shape, separated by comma");
 DEFINE_string(input_file, "", "input file name");
@@ -113,7 +159,6 @@ int Main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
-  LOG(INFO) << "mace git version: " << MaceGitVersion();
 #ifdef MACE_CPU_MODEL_TAG
   LOG(INFO) << "cpu model checksum: "
             << mace::MACE_CPU_MODEL_TAG::ModelChecksum();
@@ -126,7 +171,9 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "dsp model checksum: "
             << mace::MACE_DSP_MODEL_TAG::ModelChecksum();
 #endif
+  LOG(INFO) << "Input node: [" << FLAGS_input_node<< "]";
   LOG(INFO) << "input_shape: " << FLAGS_input_shape;
+  LOG(INFO) << "Output node: [" << FLAGS_output_node<< "]";
   LOG(INFO) << "output_shape: " << FLAGS_output_shape;
   LOG(INFO) << "input_file: " << FLAGS_input_file;
   LOG(INFO) << "cpu_model_data_file: " << FLAGS_cpu_model_data_file;
@@ -134,31 +181,63 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "dsp_model_data_file: " << FLAGS_dsp_model_data_file;
   LOG(INFO) << "run_seconds: " << FLAGS_run_seconds;
 
-  std::vector<int64_t> input_shape_vec;
-  std::vector<int64_t> output_shape_vec;
-  ParseShape(FLAGS_input_shape, &input_shape_vec);
-  ParseShape(FLAGS_output_shape, &output_shape_vec);
+  std::vector<std::string> input_names;
+  std::vector<std::string> output_names;
+  std::vector<std::string> input_shapes;
+  std::vector<std::string> output_shapes;
+  Split(FLAGS_input_node, ',', &input_names);
+  Split(FLAGS_output_node, ',', &output_names);
+  Split(FLAGS_input_shape, ':', &input_shapes);
+  Split(FLAGS_output_shape, ':', &output_shapes);
 
-  int64_t input_size =
-      std::accumulate(input_shape_vec.begin(), input_shape_vec.end(), 1,
-                      std::multiplies<int64_t>());
-  int64_t output_size =
-      std::accumulate(output_shape_vec.begin(), output_shape_vec.end(), 1,
-                      std::multiplies<int64_t>());
-  std::unique_ptr<float[]> input_data(new float[input_size]);
-  std::unique_ptr<float[]> cpu_output_data(new float[output_size]);
-  std::unique_ptr<float[]> gpu_output_data(new float[output_size]);
-  std::unique_ptr<float[]> dsp_output_data(new float[output_size]);
+  const size_t input_count = input_shapes.size();
+  const size_t output_count = output_shapes.size();
+  std::vector<std::vector<int64_t>> input_shape_vec(input_count);
+  std::vector<std::vector<int64_t>> output_shape_vec(output_count);
+  for (size_t i = 0; i < input_count; ++i) {
+    ParseShape(input_shapes[i], &input_shape_vec[i]);
+  }
+  for (size_t i = 0; i < output_count; ++i) {
+    ParseShape(output_shapes[i], &output_shape_vec[i]);
+  }
 
-  // load input
-  std::ifstream in_file(FLAGS_input_file, std::ios::in | std::ios::binary);
-  if (in_file.is_open()) {
-    in_file.read(reinterpret_cast<char *>(input_data.get()),
-                 input_size * sizeof(float));
-    in_file.close();
-  } else {
-    LOG(INFO) << "Open input file failed";
-    return -1;
+  std::map<std::string, mace::MaceTensor> inputs;
+  std::map<std::string, mace::MaceTensor> cpu_outputs;
+  std::map<std::string, mace::MaceTensor> gpu_outputs;
+  std::map<std::string, mace::MaceTensor> dsp_outputs;
+  for (size_t i = 0; i < input_count; ++i) {
+    // Allocate input and output
+    int64_t input_size =
+        std::accumulate(input_shape_vec[i].begin(), input_shape_vec[i].end(), 1,
+                        std::multiplies<int64_t>());
+    auto buffer_in = std::shared_ptr<float>(new float[input_size],
+                                            std::default_delete<float[]>());
+    // load input
+    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
+                          std::ios::in | std::ios::binary);
+    if (in_file.is_open()) {
+      in_file.read(reinterpret_cast<char *>(buffer_in.get()),
+                   input_size * sizeof(float));
+      in_file.close();
+    } else {
+      LOG(FATAL) << "Open input file failed";
+    }
+    inputs[input_names[i]] = mace::MaceTensor(input_shape_vec[i], buffer_in);
+  }
+
+  for (size_t i = 0; i < output_count; ++i) {
+    int64_t output_size =
+        std::accumulate(output_shape_vec[i].begin(),
+                        output_shape_vec[i].end(), 1,
+                        std::multiplies<int64_t>());
+    auto buffer_out = std::shared_ptr<float>(new float[output_size],
+                                             std::default_delete<float[]>());
+    cpu_outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
+                                                    buffer_out);
+    gpu_outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
+                                                    buffer_out);
+    dsp_outputs[output_names[i]] = mace::MaceTensor(output_shape_vec[i],
+                                                    buffer_out);
   }
 
   int64_t t0, t1, init_micros;
@@ -170,11 +249,12 @@ int Main(int argc, char **argv) {
       FLAGS_cpu_model_data_file.c_str());
   NetDef cpu_net_def = mace::MACE_CPU_MODEL_TAG::CreateNet(cpu_model_data);
 
-  mace::MaceEngine cpu_engine(&cpu_net_def, DeviceType::CPU);
+  mace::MaceEngine cpu_engine(&cpu_net_def, DeviceType::CPU, input_names,
+                              output_names);
 
   LOG(INFO) << "CPU Warm up run";
   t0 = NowMicros();
-  cpu_engine.Run(input_data.get(), input_shape_vec, cpu_output_data.get());
+  cpu_engine.Run(inputs, &cpu_outputs);
   t1 = NowMicros();
   LOG(INFO) << "CPU 1st warm up run latency: " << t1 - t0 << " us";
 #endif
@@ -187,12 +267,13 @@ int Main(int argc, char **argv) {
       FLAGS_gpu_model_data_file.c_str());
   NetDef gpu_net_def = mace::MACE_GPU_MODEL_TAG::CreateNet(gpu_model_data);
 
-  mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::OPENCL);
+  mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::OPENCL, input_names,
+                              output_names);
   mace::MACE_GPU_MODEL_TAG::UnloadModelData(gpu_model_data);
 
   LOG(INFO) << "GPU Warm up run";
   t0 = NowMicros();
-  gpu_engine.Run(input_data.get(), input_shape_vec, gpu_output_data.get());
+  gpu_engine.Run(inputs, &gpu_outputs);
   t1 = NowMicros();
   LOG(INFO) << "GPU 1st warm up run latency: " << t1 - t0 << " us";
 #endif
@@ -202,15 +283,16 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "Load & init dsp model and warm up";
   const unsigned char *dsp_model_data =
       mace::MACE_DSP_MODEL_TAG::LoadModelData(
-      FLAGS_gpu_model_data_file.c_str());
+      FLAGS_dsp_model_data_file.c_str());
   NetDef dsp_net_def = mace::MACE_DSP_MODEL_TAG::CreateNet(dsp_model_data);
 
-  mace::MaceEngine dsp_engine(&dsp_net_def, DeviceType::HEXAGON);
+  mace::MaceEngine dsp_engine(&dsp_net_def, DeviceType::HEXAGON, input_names,
+                              output_names);
   mace::MACE_DSP_MODEL_TAG::UnloadModelData(dsp_model_data);
 
   LOG(INFO) << "DSP Warm up run";
   t0 = NowMicros();
-  gpu_engine.Run(input_data.get(), input_shape_vec, dsp_output_data.get());
+  dsp_engine.Run(inputs, &dsp_outputs);
   t1 = NowMicros();
   LOG(INFO) << "DSP 1st warm up run latency: " << t1 - t0 << " us";
 #endif
@@ -226,7 +308,7 @@ int Main(int argc, char **argv) {
     int64_t micros = 0;
     int64_t start = NowMicros();
     for (; micros < run_micros; ++frames) {
-      cpu_engine.Run(input_data.get(), input_shape_vec, cpu_output_data.get());
+      cpu_engine.Run(inputs, &cpu_outputs);
       int64_t end = NowMicros();
       micros = end - start;
     }
@@ -240,7 +322,7 @@ int Main(int argc, char **argv) {
     int64_t micros = 0;
     int64_t start = NowMicros();
     for (; micros < run_micros; ++frames) {
-      gpu_engine.Run(input_data.get(), input_shape_vec, gpu_output_data.get());
+      gpu_engine.Run(inputs, &gpu_outputs);
       int64_t end = NowMicros();
       micros = end - start;
     }
@@ -254,7 +336,7 @@ int Main(int argc, char **argv) {
     int64_t micros = 0;
     int64_t start = NowMicros();
     for (; micros < run_micros; ++frames) {
-      dsp_engine.Run(input_data.get(), input_shape_vec, dsp_output_data.get());
+      dsp_engine.Run(inputs, &dsp_outputs);
       int64_t end = NowMicros();
       micros = end - start;
     }

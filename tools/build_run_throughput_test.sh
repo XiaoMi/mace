@@ -72,9 +72,11 @@ adb -s $DEVICE_ID </dev/null shell \
   MACE_KERNEL_PATH=$KERNEL_DIR \
   MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
   ${PHONE_DATA_DIR}/model_throughput_test \
+  --input_node="${INPUT_NODES}" \
   --input_shape="${INPUT_SHAPES}" \
+  --output_node="${OUTPUT_NODES}" \
   --output_shape="${OUTPUT_SHAPES}" \
-  --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME}_${INPUT_NODES} \
+  --input_file=${PHONE_DATA_DIR}/${INPUT_FILE_NAME} \
   --cpu_model_data_file=${PHONE_DATA_DIR}/${CPU_MODEL_TAG}.data \
   --gpu_model_data_file=${PHONE_DATA_DIR}/${GPU_MODEL_TAG}.data \
   --dsp_model_data_file=${PHONE_DATA_DIR}/${DSP_MODEL_TAG}.data \
