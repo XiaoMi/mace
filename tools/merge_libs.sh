@@ -41,14 +41,13 @@ LIBMACE_TEMP_DIR=`mktemp -d -t libmace.XXXX`
 echo "create ${LIBMACE_BUILD_DIR}/${TARGET_ABI}/libmace_${PROJECT_NAME}.${TARGET_SOC}.a" > ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 
 if [ x"$TARGET_ABI" = x"host" ]; then
-  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl_prod.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
 else
-  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
+  echo "addlib bazel-bin/mace/codegen/libgenerated_opencl.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/codegen/libgenerated_tuning_params.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/codegen/libgenerated_version.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/core/libcore.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
-  echo "addlib bazel-bin/mace/core/libopencl_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/kernels/libkernels.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/utils/libutils.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri
   echo "addlib bazel-bin/mace/utils/libutils_prod.a" >> ${LIBMACE_TEMP_DIR}/libmace_${PROJECT_NAME}.mri

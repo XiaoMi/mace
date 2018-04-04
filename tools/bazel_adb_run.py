@@ -94,6 +94,7 @@ def main(unused_args):
 
   # generate sources
   sh_commands.gen_encrypted_opencl_source()
+  sh_commands.gen_compiled_opencl_source()
   sh_commands.gen_mace_version()
 
   for target_abi in target_abis:

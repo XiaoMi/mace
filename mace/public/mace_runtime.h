@@ -8,6 +8,11 @@
 #ifndef MACE_PUBLIC_MACE_RUNTIME_H_
 #define MACE_PUBLIC_MACE_RUNTIME_H_
 
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace mace {
 
 enum GPUPerfHint {
@@ -26,9 +31,19 @@ enum GPUPriorityHint {
 
 enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2 };
 
+class KVStorageEngine {
+ public:
+  virtual void Write(
+      const std::map<std::string, std::vector<unsigned char>> &data) = 0;
+  virtual void Read(
+      std::map<std::string, std::vector<unsigned char>> *data) = 0;
+};
+
 void ConfigOpenCLRuntime(GPUPerfHint, GPUPriorityHint);
+void ConfigKVStorageEngine(std::shared_ptr<KVStorageEngine> storage_engine);
 void ConfigOmpThreads(int omp_num_threads);
 void ConfigCPUPowerOption(CPUPowerOption power_option);
+
 
 }  // namespace mace
 

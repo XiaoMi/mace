@@ -3,7 +3,7 @@ LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
 MACE_SOURCE_DIR=`/bin/pwd`
 PHONE_DATA_DIR="/data/local/tmp/mace_run"
-KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
+COMPILED_PROGRAM_DIR="${PHONE_DATA_DIR}/cl_program/"
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl

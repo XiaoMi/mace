@@ -54,7 +54,8 @@ class MaceEngine {
   explicit MaceEngine(const NetDef *net_def,
                       DeviceType device_type,
                       const std::vector<std::string> &input_nodes,
-                      const std::vector<std::string> &output_nodes);
+                      const std::vector<std::string> &output_nodes,
+                      const std::string &internal_storage_path);
   ~MaceEngine();
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,

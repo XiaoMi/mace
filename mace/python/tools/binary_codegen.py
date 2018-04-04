@@ -27,7 +27,6 @@ def generate_cpp_source():
 
     idx = 0
     size, = struct.unpack("Q", binary_array[idx:idx+8])
-    print size
     idx += 8
     for _ in xrange(size):
       key_size, = struct.unpack("i", binary_array[idx:idx+4])
@@ -64,7 +63,7 @@ def parse_args():
   parser.add_argument(
       "--binary_dirs",
       type=str,
-      default="cl_bin0/,cl_bin1/",
+      default="",
       help="The binaries file path.")
   parser.add_argument(
       "--binary_file_name",

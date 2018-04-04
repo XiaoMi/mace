@@ -96,5 +96,20 @@ inline std::string ObfuscateSymbol(const std::string &src) {
 #define MACE_OBFUSCATE_SYMBOL(str) (str)
 #endif
 
+inline std::vector<std::string> Split(const std::string &str, char delims) {
+  std::vector<std::string> result;
+  std::string tmp = str;
+  while (!tmp.empty()) {
+    size_t next_offset = tmp.find(delims);
+    result.push_back(tmp.substr(0, next_offset));
+    if (next_offset == std::string::npos) {
+      break;
+    } else {
+      tmp = tmp.substr(next_offset + 1);
+    }
+  }
+  return result;
+}
+
 }  // namespace mace
 #endif  // MACE_UTILS_UTILS_H_

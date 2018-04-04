@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import struct
 
 import numpy as np
 
@@ -13,30 +14,49 @@ FLAGS = None
 
 
 def generate_cpp_source():
+  cl_built_kernel_file_name = 'mace_cl_compiled_program.bin'
+  cl_platform_info_file_name = 'mace_cl_platform_info.txt'
   maps = {}
-  cl_binary_dir_arr = FLAGS.cl_binary_dirs.split(",")
-  for cl_binary_dir in cl_binary_dir_arr:
-    if not os.path.exists(cl_binary_dir):
-      print("Input cl_binary_dir " + cl_binary_dir + " doesn't exist!")
-    for file_name in os.listdir(cl_binary_dir):
-      file_path = os.path.join(cl_binary_dir, file_name)
-      if file_path[-4:] == ".bin":
-        # read binary
-        f = open(file_path, "rb")
-        binary_array = np.fromfile(f, dtype=np.uint8)
-        f.close()
+  platform_info = ''
+  for binary_dir in FLAGS.cl_binary_dirs.split(","):
+    binary_path = os.path.join(binary_dir, cl_built_kernel_file_name)
+    if not os.path.exists(binary_path):
+      continue
 
-        maps[file_name[:-4]] = []
-        for ele in binary_array:
-          maps[file_name[:-4]].append(hex(ele))
+    with open(binary_path, "rb") as f:
+      binary_array = np.fromfile(f, dtype=np.uint8)
+
+    idx = 0
+    size, = struct.unpack("Q", binary_array[idx:idx+8])
+    idx += 8
+    for _ in xrange(size):
+      key_size, = struct.unpack("i", binary_array[idx:idx+4])
+      idx += 4
+      key, = struct.unpack(str(key_size) + "s", binary_array[idx:idx+key_size])
+      idx += key_size
+      value_size, = struct.unpack("i", binary_array[idx:idx+4])
+      idx += 4
+      maps[key] = []
+      value = struct.unpack(str(value_size) + "B",
+                            binary_array[idx:idx+value_size])
+      idx += value_size
+      for ele in value:
+        maps[key].append(hex(ele))
+
+    cl_platform_info_path = os.path.join(binary_dir, cl_platform_info_file_name)
+    with open(cl_platform_info_path, 'r') as f:
+      curr_platform_info = f.read()
+    if platform_info != "":
+      assert(curr_platform_info == platform_info)
+    platform_info = curr_platform_info
 
   env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
-  return env.get_template('str2vec_maps.cc.jinja2').render(
+  return env.get_template('opencl_compiled_kernel.cc.jinja2').render(
     maps = maps,
     data_type = 'unsigned char',
-    variable_name = 'kCompiledProgramMap'
+    variable_name = 'kCompiledProgramMap',
+    platform_info = platform_info,
   )
-
 
 def main(unused_args):
 
@@ -54,7 +74,7 @@ def parse_args():
   parser.add_argument(
       "--cl_binary_dirs",
       type=str,
-      default="cl_bin0/,cl_bin1/,cl_bin2/",
+      default="",
       help="The cl binaries directories.")
   parser.add_argument(
       "--output_path",

@@ -15,6 +15,11 @@ void ConfigOpenCLRuntime(GPUPerfHint gpu_perf_hint,
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
 
+void ConfigKVStorageEngine(std::shared_ptr<KVStorageEngine> storage_engine) {
+  VLOG(1) << "Set internal KV Storage Engine";
+  OpenCLRuntime::Configure(storage_engine);
+}
+
 void ConfigOmpThreads(int omp_num_threads) {
   VLOG(1) << "Config CPU omp_num_threads: " << omp_num_threads;
   SetOmpThreads(omp_num_threads);

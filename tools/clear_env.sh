@@ -26,4 +26,3 @@ if [ x"$TARGET_ABI" != x"host" ]; then
 fi
 
 rm -rf mace/codegen/models
-git checkout -- mace/codegen/opencl/opencl_compiled_program.cc mace/codegen/tuning/tuning_params.cc

@@ -16,7 +16,6 @@
  */
 #include <malloc.h>
 #include <stdint.h>
-#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -101,52 +100,6 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
-struct mallinfo LogMallinfoChange(struct mallinfo prev) {
-  struct mallinfo curr = mallinfo();
-  if (prev.arena != curr.arena) {
-    LOG(INFO) << "Non-mmapped space allocated (bytes): " << curr.arena
-              << ", diff: " << ((int64_t)curr.arena - (int64_t)prev.arena);
-  }
-  if (prev.ordblks != curr.ordblks) {
-    LOG(INFO) << "Number of free chunks: " << curr.ordblks
-              << ", diff: " << ((int64_t)curr.ordblks - (int64_t)prev.ordblks);
-  }
-  if (prev.smblks != curr.smblks) {
-    LOG(INFO) << "Number of free fastbin blocks: " << curr.smblks
-              << ", diff: " << ((int64_t)curr.smblks - (int64_t)prev.smblks);
-  }
-  if (prev.hblks != curr.hblks) {
-    LOG(INFO) << "Number of mmapped regions: " << curr.hblks
-              << ", diff: " << ((int64_t)curr.hblks - (int64_t)prev.hblks);
-  }
-  if (prev.hblkhd != curr.hblkhd) {
-    LOG(INFO) << "Space allocated in mmapped regions (bytes): " << curr.hblkhd
-              << ", diff: " << ((int64_t)curr.hblkhd - (int64_t)prev.hblkhd);
-  }
-  if (prev.usmblks != curr.usmblks) {
-    LOG(INFO) << "Maximum total allocated space (bytes): " << curr.usmblks
-              << ", diff: " << ((int64_t)curr.usmblks - (int64_t)prev.usmblks);
-  }
-  if (prev.fsmblks != curr.fsmblks) {
-    LOG(INFO) << "Space in freed fastbin blocks (bytes): " << curr.fsmblks
-              << ", diff: " << ((int64_t)curr.fsmblks - (int64_t)prev.fsmblks);
-  }
-  if (prev.uordblks != curr.uordblks) {
-    LOG(INFO) << "Total allocated space (bytes): " << curr.uordblks
-              << ", diff: "
-              << ((int64_t)curr.uordblks - (int64_t)prev.uordblks);
-  }
-  if (prev.fordblks != curr.fordblks) {
-    LOG(INFO) << "Total free space (bytes): " << curr.fordblks << ", diff: "
-              << ((int64_t)curr.fordblks - (int64_t)prev.fordblks);
-  }
-  if (prev.keepcost != curr.keepcost) {
-    LOG(INFO) << "Top-most, releasable space (bytes): " << curr.keepcost
-              << ", diff: "
-              << ((int64_t)curr.keepcost - (int64_t)prev.keepcost);
-  }
-  return curr;
-}
 
 DEFINE_string(input_node,
               "input_node0,input_node1",
@@ -185,16 +138,11 @@ bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
   // load model
-  int64_t t0 = NowMicros();
   const unsigned char *model_data =
       mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
   NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
-  int64_t t1 = NowMicros();
-  double create_net_millis = (t1 - t0) / 1000.0;
-  LOG(INFO) << "CreateNetDef latency: " << create_net_millis << " ms";
 
   DeviceType device_type = ParseDeviceType(FLAGS_device);
-  LOG(INFO) << "Runing with device type: " << device_type;
 
   // config runtime
   mace::ConfigOmpThreads(FLAGS_omp_num_threads);
@@ -206,18 +154,15 @@ bool RunModel(const std::vector<std::string> &input_names,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
 
+  const std::string kernel_file_path =
+                  "/data/local/tmp/mace_run/cl";
+
   // Init model
-  LOG(INFO) << "Run init";
-  mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
+  mace::MaceEngine engine(&net_def, device_type, input_names,
+                          output_names, kernel_file_path);
   if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
   }
-  int64_t t2 = NowMicros();
-  double mace_engine_ctor_millis = (t2 - t1) / 1000.0;
-  double init_millis = (t2 - t0) / 1000.0;
-  LOG(INFO) << "MaceEngine constructor latency: "
-            << mace_engine_ctor_millis << " ms";
-  LOG(INFO) << "Total init latency: " << init_millis << " ms";
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();
@@ -255,35 +200,14 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 
   LOG(INFO) << "Warm up run";
-  int64_t t3 = NowMicros();
   engine.Run(inputs, &outputs);
-  int64_t t4 = NowMicros();
-  double warmup_millis = (t4 - t3) / 1000.0;
-  LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
 
-  double model_run_millis = -1;
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
-    int64_t t0 = NowMicros();
-    struct mallinfo prev = mallinfo();
     for (int i = 0; i < FLAGS_round; ++i) {
       engine.Run(inputs, &outputs);
-      if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
-        LOG(INFO) << "=== check malloc info change #" << i << " ===";
-        prev = LogMallinfoChange(prev);
-      }
     }
-    int64_t t1 = NowMicros();
-    model_run_millis = (t1 - t0) / 1000.0 / FLAGS_round;
-    LOG(INFO) << "Average latency: " << model_run_millis << " ms";
   }
-
-  // Metrics reporting tools depends on the format, keep in consistent
-  printf("================================================================\n");
-  printf("      create_net engine_ctor        init      warmup     run_avg\n");
-  printf("================================================================\n");
-  printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
-         mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =
@@ -297,8 +221,6 @@ bool RunModel(const std::vector<std::string> &input_names,
         output_size * sizeof(float));
     out_file.flush();
     out_file.close();
-    LOG(INFO) << "Write output file " << output_name << " with size "
-              << output_size << " done.";
   }
 
   return true;

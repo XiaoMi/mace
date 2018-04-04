@@ -11,34 +11,18 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/file_storage_engine.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
 
 namespace mace {
-namespace {
 
-bool WriteFile(const std::string &filename,
-               bool binary,
-               const std::vector<unsigned char> &content) {
-  std::ios_base::openmode mode = std::ios_base::out | std::ios_base::trunc;
-  if (binary) {
-    mode |= std::ios::binary;
-  }
-  std::ofstream ofs(filename, mode);
-
-  ofs.write(reinterpret_cast<const char *>(&content[0]),
-            content.size() * sizeof(char));
-  ofs.close();
-  if (ofs.fail()) {
-    LOG(ERROR) << "Failed to write to file " << filename;
-    return false;
-  }
-
-  return true;
-}
-
-}  // namespace
+extern const std::map<std::string, std::vector<unsigned char>>
+    kCompiledProgramMap;
+extern const std::string kCompiledProgramPlatform;
+extern const std::map<std::string, std::vector<unsigned char>>
+    kEncryptedProgramMap;
 
 const std::string OpenCLErrorToString(cl_int error) {
   switch (error) {
@@ -194,19 +178,23 @@ void OpenCLProfilingTimer::ClearTiming() {
   accumulated_micros_ = 0;
 }
 
-GPUPerfHint OpenCLRuntime::gpu_perf_hint_ = GPUPerfHint::PERF_DEFAULT;
-GPUPriorityHint OpenCLRuntime::gpu_priority_hint_ =
+GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_DEFAULT;
+GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
     GPUPriorityHint::PRIORITY_DEFAULT;
+std::shared_ptr<KVStorageEngine> OpenCLRuntime::kStorageEngine(nullptr);
 
 OpenCLRuntime *OpenCLRuntime::Global() {
-  static OpenCLRuntime runtime(gpu_perf_hint_, gpu_priority_hint_);
+  static OpenCLRuntime runtime(kGPUPerfHint, kGPUPriorityHint);
   return &runtime;
 }
 
 void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
                               GPUPriorityHint gpu_priority_hint) {
-  OpenCLRuntime::gpu_perf_hint_ = gpu_perf_hint;
-  OpenCLRuntime::gpu_priority_hint_ = gpu_priority_hint;
+  OpenCLRuntime::kGPUPerfHint = gpu_perf_hint;
+  OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
+}
+void OpenCLRuntime::Configure(std::shared_ptr<KVStorageEngine> storage_engine) {
+  OpenCLRuntime::kStorageEngine = std::move(storage_engine);
 }
 
 void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
@@ -259,9 +247,12 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
     LOG(FATAL) << "No OpenCL platforms found";
   }
   cl::Platform default_platform = all_platforms[0];
-  VLOG(1) << "Using platform: " << default_platform.getInfo<CL_PLATFORM_NAME>()
-          << ", " << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
-          << default_platform.getInfo<CL_PLATFORM_VERSION>();
+  std::stringstream ss;
+  ss << default_platform.getInfo<CL_PLATFORM_NAME>()
+     << ", " << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
+     << default_platform.getInfo<CL_PLATFORM_VERSION>();
+  platform_info_ = ss.str();
+  VLOG(1) << "Using platform: " << platform_info_;
 
   // get default device (CPUs, GPUs) of the default platform
   std::vector<cl::Device> all_devices;
@@ -278,10 +269,10 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
       gpu_detected = true;
 
       const std::string device_name = device.getInfo<CL_DEVICE_NAME>();
-      gpu_type_ = ParseGPUTypeFromDeviceName(device_name);
+      gpu_type_ = ParseGPUType(device_name);
 
       const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
-      opencl_version_ = device_version.substr(7, 3);
+      opencl_version_ = ParseDeviceVersion(device_version);
 
       VLOG(1) << "Using device: " << device_name;
       break;
@@ -320,9 +311,18 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
                                                       &err);
   MACE_CHECK_CL_SUCCESS(err);
 
-  const char *kernel_path = getenv("MACE_KERNEL_PATH");
-  this->kernel_path_ =
-      std::string(kernel_path == nullptr ? "" : kernel_path) + "/";
+  this->program_map_changed = false;
+
+  if (kStorageEngine == nullptr) {
+    const std::string cl_compiled_file_name = "mace_cl_compiled_program.bin";
+    kStorageEngine = std::move(
+        std::unique_ptr<FileStorageEngine>(
+            new FileStorageEngine(cl_compiled_file_name)));
+  }
+
+  if (platform_info_ != kCompiledProgramPlatform) {
+    kStorageEngine->Read(&program_content_map_);
+  }
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
@@ -340,45 +340,16 @@ cl::Device &OpenCLRuntime::device() { return *device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
-std::string OpenCLRuntime::GenerateCLBinaryFilenamePrefix(
-    const std::string &filename_msg) {
-  // TODO(heliangliang) This can be long and slow, fix it
-  std::string filename_prefix = filename_msg;
-  for (auto it = filename_prefix.begin(); it != filename_prefix.end(); ++it) {
-    if (*it == ' ' || *it == '-' || *it == '=') {
-      *it = '_';
-    }
-  }
-  return MACE_OBFUSCATE_SYMBOL(filename_prefix);
-}
+bool OpenCLRuntime::BuildProgramFromBinary(
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from binary
+  if (kCompiledProgramPlatform != platform_info_) return false;
+  auto it_binary = kCompiledProgramMap.find(built_program_key);
+  if (it_binary == kCompiledProgramMap.end()) return false;
 
-extern bool GetSourceOrBinaryProgram(const std::string &program_name,
-                                     const std::string &binary_file_name_prefix,
-                                     const cl::Context &context,
-                                     const cl::Device &device,
-                                     cl::Program *program,
-                                     bool *is_opencl_binary);
-
-void OpenCLRuntime::BuildProgram(const std::string &program_name,
-                                 const std::string &built_program_key,
-                                 const std::string &build_options,
-                                 cl::Program *program) {
-  MACE_CHECK_NOTNULL(program);
-
-  std::string binary_file_name_prefix =
-      GenerateCLBinaryFilenamePrefix(built_program_key);
-  std::vector<unsigned char> program_vec;
-  bool is_opencl_binary;
-  const bool found =
-      GetSourceOrBinaryProgram(program_name, binary_file_name_prefix, context(),
-                               device(), program, &is_opencl_binary);
-  MACE_CHECK(found, "Program not found for ",
-             is_opencl_binary ? "binary: " : "source: ", built_program_key);
-
-  // Build program
-  std::string build_options_str =
-      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
-  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+  *program = cl::Program(context(), {device()}, {it_binary->second});
   cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
     if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
@@ -387,20 +358,75 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
           program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
       LOG(INFO) << "Program build log: " << build_log;
     }
-    LOG(FATAL) << "Build program from "
-               << (is_opencl_binary ? "binary: " : "source: ")
-               << built_program_key << " failed: "
-               << (ret == CL_INVALID_PROGRAM ? "CL_INVALID_PROGRAM, possible "
-                   "cause 1: the MACE library is built from SoC 1 but is "
-                   "used on different SoC 2, possible cause 2: the MACE "
-                   "buffer is corrupted make sure your code has no "
-                   "out-of-range memory writing" : MakeString(ret));
+    LOG(WARNING) << "Build program "
+                 << built_program_key << " from Binary failed:"
+                 << (ret == CL_INVALID_PROGRAM ? "CL_INVALID_PROGRAM, possible "
+                     "cause 1: the MACE library is built from SoC 1 but is "
+                     "used on different SoC 2, possible cause 2: the MACE "
+                     "buffer is corrupted make sure your code has no "
+                     "out-of-range memory writing" : MakeString(ret));
+    return false;
+  }
+  VLOG(3) << "Program from Binary: " << built_program_key;
+  return true;
+}
+
+bool OpenCLRuntime::BuildProgramFromCache(
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from binary
+  auto it_content = this->program_content_map_.find(built_program_key);
+  if (it_content == this->program_content_map_.end()) {
+    return false;
   }
 
-  if (!is_opencl_binary) {
-    // Write binary if necessary
-    std::string binary_filename =
-        kernel_path_ + binary_file_name_prefix + ".bin";
+  *program = cl::Program(context(), {device()}, {it_content->second});
+  cl_int ret = program->build({device()}, build_options_str.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(WARNING) << "Build program "
+                 << built_program_key << " from Cache failed:"
+                 << MakeString(ret);
+    return false;
+  }
+  VLOG(3) << "Program from Cache: " << built_program_key;
+  return true;
+}
+
+void OpenCLRuntime::BuildProgramFromSource(
+    const std::string &program_name,
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from source
+  auto it_source = kEncryptedProgramMap.find(program_name);
+  if (it_source != kEncryptedProgramMap.end()) {
+    cl::Program::Sources sources;
+    std::string source(it_source->second.begin(), it_source->second.end());
+    std::string kernel_source = ObfuscateString(source);
+    sources.push_back(kernel_source);
+    *program = cl::Program(context(), sources);
+    cl_int ret = program->build({device()}, build_options_str.c_str());
+    if (ret != CL_SUCCESS) {
+      if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+          CL_BUILD_ERROR) {
+        std::string build_log =
+            program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+        LOG(INFO) << "Program build log: " << build_log;
+      }
+      LOG(WARNING) << "Build program "
+                   << program_name << " from source failed: "
+                   << MakeString(ret);
+      return;
+    }
+
+    // Keep built program binary
     size_t device_list_size = 1;
     std::unique_ptr<size_t[]> program_binary_sizes(
         new size_t[device_list_size]);
@@ -424,8 +450,34 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
             program_binary_sizes[0]);
 
-    MACE_CHECK(WriteFile(binary_filename, true, content));
+    this->program_content_map_.emplace(built_program_key,
+                                       content);
+    this->program_map_changed = true;
+    VLOG(3) << "Program from source: " << built_program_key ;
   }
+}
+
+void OpenCLRuntime::BuildProgram(const std::string &program_name,
+                                 const std::string &built_program_key,
+                                 const std::string &build_options,
+                                 cl::Program *program) {
+  MACE_CHECK_NOTNULL(program);
+
+  std::string build_options_str =
+      build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
+  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
+  bool ret = BuildProgramFromBinary(built_program_key,
+                                    build_options_str, program);
+  if (!ret) {
+    ret = BuildProgramFromCache(built_program_key,
+                                build_options_str, program);
+    // Fallback to source.
+    if (!ret) {
+      BuildProgramFromSource(program_name, built_program_key,
+                             build_options_str, program);
+    }
+  }
+
 }
 
 cl::Kernel OpenCLRuntime::BuildKernel(
@@ -451,6 +503,13 @@ cl::Kernel OpenCLRuntime::BuildKernel(
   return cl::Kernel(program, kernel_name.c_str());
 }
 
+void OpenCLRuntime::SaveBuiltCLProgram() {
+  if (program_map_changed) {
+    kStorageEngine->Write(program_content_map_);
+    program_map_changed = false;
+  }
+}
+
 void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
   if (stats != nullptr) {
     stats->start_micros =
@@ -472,7 +531,6 @@ uint64_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   return size;
 }
 
-// TODO(liuqi): not compatible with mali gpu.
 uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
@@ -488,7 +546,11 @@ const GPUType OpenCLRuntime::gpu_type() const {
   return gpu_type_;
 }
 
-const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(
+const std::string OpenCLRuntime::platform_info() const {
+  return platform_info_;
+}
+
+const GPUType OpenCLRuntime::ParseGPUType(
     const std::string &device_name) {
   constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
   constexpr const char *kMaliGPUStr = "Mali";
@@ -503,6 +565,14 @@ const GPUType OpenCLRuntime::ParseGPUTypeFromDeviceName(
   } else {
     return GPUType::UNKNOWN;
   }
+}
+const std::string OpenCLRuntime::ParseDeviceVersion(
+    const std::string &device_version) {
+  // OpenCL Device version string format:
+  // OpenCL<space><major_version.minor_version><space>\
+  // <vendor-specific information>
+  auto words = Split(device_version, ' ');
+  return words[1];
 }
 
 }  // namespace mace
