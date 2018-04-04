@@ -58,7 +58,7 @@ __kernel void resize_bilinear_nocache(KERNEL_ERROR_PARAMS
   const int out_w_offset = mul24(ch_blk, out_width);
   const int out_h_offset = mul24(b, out_height);
 
-  check_out_of_range_for_image2d(output, out_w_offset + w, out_h_offset + h, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_w_offset + w, out_h_offset + h, kernel_error);
 
   WRITE_IMAGET(output, (int2)(out_w_offset + w, out_h_offset + h), out);
 }

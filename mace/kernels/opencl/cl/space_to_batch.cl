@@ -46,7 +46,7 @@ __kernel void space_to_batch(KERNEL_ERROR_PARAMS
 
   int2 batch_coord = (int2)(mul24(chan_idx, batch_width) + batch_w_idx, batch_hb_idx);
 
-  check_out_of_range_for_image2d(batch_data, batch_coord.x, batch_coord.y, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(batch_data, batch_coord.x, batch_coord.y, kernel_error);
 
   WRITE_IMAGET(batch_data, batch_coord, value);
 }
@@ -93,7 +93,7 @@ __kernel void batch_to_space(KERNEL_ERROR_PARAMS
     int2 space_coord = (int2)(mul24(chan_idx, space_width) + space_w_idx,
                               space_b_idx * space_height + space_h_idx);
 
-    check_out_of_range_for_image2d(space_data, space_coord.x, space_coord.y, kernel_error);
+    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(space_data, space_coord.x, space_coord.y, kernel_error);
 
     WRITE_IMAGET(space_data, space_coord, value);
   }

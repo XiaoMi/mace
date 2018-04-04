@@ -129,22 +129,22 @@ __kernel void conv_2d(KERNEL_ERROR_PARAMS
   const int out_x_base = mul24(out_ch_blk, out_width);
 
   int w = out_w_blk;
-  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_x_base + w, out_hb, kernel_error);
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out0);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_x_base + w, out_hb, kernel_error);
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out1);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_x_base + w, out_hb, kernel_error);
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out2);
 
   w += out_w_blks;
   if (w >= out_width) return;
-  check_out_of_range_for_image2d(output, out_x_base + w, out_hb, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_x_base + w, out_hb, kernel_error);
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out3);
 
 }

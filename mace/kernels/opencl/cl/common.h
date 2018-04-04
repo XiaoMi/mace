@@ -47,6 +47,13 @@
 
 #endif
 
+#ifdef OUT_OF_RANGE_CHECK
+#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, x, y, kernel_error) \
+  check_out_of_range_for_image2d(image, x, y, kernel_error)
+#else
+#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, x, y, kernel_error)
+#endif
+
 __constant sampler_t SAMPLER =
     CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 

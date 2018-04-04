@@ -60,7 +60,7 @@ __kernel void fully_connected(KERNEL_ERROR_PARAMS
   result = do_activation(result, relux_max_limit);
 #endif
 
-  check_out_of_range_for_image2d(output, out_blk_idx, batch_idx, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_blk_idx, batch_idx, kernel_error);
 
   WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
 }
@@ -153,7 +153,7 @@ __kernel void fully_connected_width(KERNEL_ERROR_PARAMS
     result = do_activation(result, relux_max_limit);
 #endif
 
-    check_out_of_range_for_image2d(output, out_blk_idx, batch_idx, kernel_error);
+    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_blk_idx, batch_idx, kernel_error);
 
     WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
   }

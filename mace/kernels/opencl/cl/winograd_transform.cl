@@ -94,7 +94,7 @@ __kernel void winograd_transform_2x2(KERNEL_ERROR_PARAMS
   input3[2] = tv3[2] - tv3[1];
   input3[3] = tv3[1] - tv3[3];
 
-  check_out_of_range_for_image2d(output, out_width_idx, chan_blk_idx + chan_blk_idx * 15, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_width_idx, chan_blk_idx + chan_blk_idx * 15, kernel_error);
 
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
@@ -212,23 +212,23 @@ __kernel void winograd_inverse_transform_2x2(KERNEL_ERROR_PARAMS
   in1[1] = do_activation(in1[1], relux_max_limit);
 #endif
 
-  check_out_of_range_for_image2d(output, coord_x, coord_y, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, coord_x, coord_y, kernel_error);
 
   WRITE_IMAGET(output, (int2)(coord_x, coord_y), in0[0]);
 
   t = 0;
   if (out_width_idx + 1 < out_width) {
-    check_out_of_range_for_image2d(output, coord_x + 1, coord_y, kernel_error);
+    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, coord_x + 1, coord_y, kernel_error);
     WRITE_IMAGET(output, (int2)(coord_x + 1, coord_y), in0[1]);
     t += 1;
   }
   if (out_height_idx + 1 < out_height) {
-    check_out_of_range_for_image2d(output, coord_x, coord_y + 1, kernel_error);
+    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, coord_x, coord_y + 1, kernel_error);
     WRITE_IMAGET(output, (int2)(coord_x, coord_y + 1), in1[0]);
     t += 1;
   }
   if (t == 2) {
-    check_out_of_range_for_image2d(output, coord_x + 1, coord_y + 1, kernel_error);
+    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, coord_x + 1, coord_y + 1, kernel_error);
     WRITE_IMAGET(output, (int2)(coord_x + 1, coord_y + 1), in1[1]);
   }
 

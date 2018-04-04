@@ -32,7 +32,7 @@ __kernel void addn(KERNEL_ERROR_PARAMS
   out = out + in3;
 #endif
 
-  check_out_of_range_for_image2d(output, w, hb, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, w, hb, kernel_error);
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }
 

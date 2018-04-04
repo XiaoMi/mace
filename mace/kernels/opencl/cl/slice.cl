@@ -24,6 +24,6 @@ __kernel void slice(KERNEL_ERROR_PARAMS
                                              width, width_idx), hb_idx));
 
   const int pos = mad24(chan_blk_idx, width, width_idx);
-  check_out_of_range_for_image2d(output, pos, hb_idx, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, pos, hb_idx, kernel_error);
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }

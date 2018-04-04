@@ -48,18 +48,18 @@ __kernel void matmul(KERNEL_ERROR_PARAMS
     c3 += (DATA_TYPE4)(dot(a0, b3), dot(a1, b3), dot(a2, b3), dot(a3, b3));
   }
 
-  check_out_of_range_for_image2d(C, gx, gy, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(C, gx, gy, kernel_error);
   WRITE_IMAGET(C, (int2)(gx, gy), c0);
 
   if ((gx + 1) >= N) return;
-  check_out_of_range_for_image2d(C, gx + 1, gy, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(C, gx + 1, gy, kernel_error);
   WRITE_IMAGET(C, (int2)(gx + 1, gy), c1);
 
   if ((gx + 2) >= N) return;
-  check_out_of_range_for_image2d(C, gx + 2, gy, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(C, gx + 2, gy, kernel_error);
   WRITE_IMAGET(C, (int2)(gx + 2, gy), c2);
 
   if ((gx + 3) >= N) return;
-  check_out_of_range_for_image2d(C, gx + 3, gy, kernel_error);
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(C, gx + 3, gy, kernel_error);
   WRITE_IMAGET(C, (int2)(gx + 3, gy), c3);
 }
