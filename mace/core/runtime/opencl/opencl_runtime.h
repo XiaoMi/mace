@@ -10,6 +10,7 @@
 #include <mutex>  // NOLINT(build/c++11)
 #include <set>
 #include <string>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"

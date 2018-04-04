@@ -15,7 +15,7 @@ namespace mace {
 
 class FileStorageEngine : public KVStorageEngine {
  public:
-  FileStorageEngine(const std::string &file_name);
+  explicit FileStorageEngine(const std::string &file_name);
  public:
   void Write(
       const std::map<std::string, std::vector<unsigned char>> &data) override;

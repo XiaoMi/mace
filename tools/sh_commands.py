@@ -128,6 +128,7 @@ def bazel_target_to_bin(target):
 ################################
 # TODO this should be refactored
 def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
+  sh.mkdir("-p", "%s/opencl" % codegen_path)
   sh.python("mace/python/tools/encrypt_opencl_codegen.py",
             "--cl_kernel_dir=./mace/kernels/opencl/cl/",
             "--output_path=%s/opencl/opencl_encrypt_program.cc" % codegen_path)
@@ -138,6 +139,7 @@ def gen_mace_version(codegen_path="mace/codegen"):
           "%s/version/version.cc" % codegen_path)
 
 def gen_compiled_opencl_source(codegen_path="mace/codegen"):
+  sh.mkdir("-p", "%s/opencl" % codegen_path)
   sh.python("mace/python/tools/opencl_codegen.py",
             "--output_path=%s/opencl/opencl_compiled_program.cc" % codegen_path)
 

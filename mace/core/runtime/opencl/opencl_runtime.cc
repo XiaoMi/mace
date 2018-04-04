@@ -10,6 +10,7 @@
 #include <mutex>  // NOLINT(build/c++11)
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "mace/core/file_storage_engine.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
@@ -453,7 +454,7 @@ void OpenCLRuntime::BuildProgramFromSource(
     this->program_content_map_.emplace(built_program_key,
                                        content);
     this->program_map_changed = true;
-    VLOG(3) << "Program from source: " << built_program_key ;
+    VLOG(3) << "Program from source: " << built_program_key;
   }
 }
 
@@ -477,7 +478,6 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
                              build_options_str, program);
     }
   }
-
 }
 
 cl::Kernel OpenCLRuntime::BuildKernel(

@@ -10,10 +10,11 @@
 
 namespace mace {
 
-std::string FileStorageEngine::kStoragePath = "/data/local/tmp";
+std::string FileStorageEngine::kStoragePath  // NOLINT(runtime/string)
+    = "/data/local/tmp";
 
 FileStorageEngine::FileStorageEngine(const std::string &file_name):
-    file_name_(file_name){}
+    file_name_(file_name) {}
 
 void FileStorageEngine::Write(
     const std::map<std::string, std::vector<unsigned char>> &data) {
@@ -25,7 +26,7 @@ void FileStorageEngine::Write(
     int64_t data_size = data.size();
     ofs.write(reinterpret_cast<const char *>(&data_size),
               sizeof(data_size));
-    for (auto &kv: data) {
+    for (auto &kv : data) {
       int32_t key_size = static_cast<int32_t>(kv.first.size());
       ofs.write(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
       ofs.write(kv.first.c_str(), key_size);

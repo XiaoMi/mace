@@ -17,6 +17,8 @@ TARGET_SOC=$2
 CL_BIN_DIRS=$3
 PULL_OR_NOT=$4
 
+mkdir -p ${CL_CODEGEN_DIR}
+
 if [ x"$TYPE" == x"source" ];then
   python mace/python/tools/encrypt_opencl_codegen.py \
     --cl_kernel_dir=./mace/kernels/opencl/cl/ \

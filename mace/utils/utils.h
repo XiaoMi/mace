@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace mace {
 template <typename Integer>

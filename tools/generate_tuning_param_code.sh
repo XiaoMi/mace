@@ -3,6 +3,8 @@
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
+mkdir -p ${TUNING_CODEGEN_DIR}
+
 if [ "$#" -eq "0" ]; then
   python mace/python/tools/binary_codegen.py \
     --binary_file_name=mace_run.config \
