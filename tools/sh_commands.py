@@ -78,7 +78,7 @@ def adb_run(serialno, host_bin_path, bin_name,
   sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
   sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_cl_path)
   print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
-  sh.adb("-s", serialno, "push", host_bin_full_path, device_bin_path)
+  sh.adb("-s", serialno, "push", host_bin_full_path, device_bin_full_path)
   print("Run %s" % device_bin_full_path)
   stdout_buff=[]
   process_output = make_output_processor(stdout_buff)
@@ -142,21 +142,24 @@ def gen_mace_version(codegen_path="mace/codegen"):
 ################################
 # falcon
 ################################
-def falcon_tags(platform, model, abi):
-  return "ro.board.platform=%s,ro.product.model=%s,abi=%s" % (platform, model, abi)
+def falcon_tags(tags_dict):
+  tags = ""
+  for k, v in tags_dict.iteritems():
+    if tags == "":
+      tags = "%s=%s" % (k, v)
+    else:
+      tags = tags + ",%s=%s" % (k, v)
+  return tags
 
-def falcon_push_metrics(metrics, device_properties, abi, endpoint="mace_dev"):
+def falcon_push_metrics(metrics, endpoint="mace_dev", tags={}):
   cli = falcon_cli.FalconCli.connect(server="transfer.falcon.miliao.srv",
                                      port=8433,
                                      debug=False)
-  platform = device_properties["ro.board.platform"].replace(" ", "-")
-  model = device_properties["ro.product.model"].replace(" ", "-")
-  tags = falcon_tags(platform, model, abi)
   ts = int(time.time())
   falcon_metrics = [{
       "endpoint": endpoint,
       "metric": key,
-      "tags": tags,
+      "tags": falcon_tags(tags),
       "timestamp": ts,
       "value": value,
       "step": 86400,
