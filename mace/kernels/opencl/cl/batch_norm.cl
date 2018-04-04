@@ -49,8 +49,7 @@ __kernel void batch_norm(KERNEL_ERROR_PARAMS
   out = do_activation(out, relux_max_limit);
 #endif
 
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, pos, hb, kernel_error);
-#endif
+
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }

@@ -78,10 +78,12 @@ inline void check_out_of_range_for_image2d(__write_only image2d_t image,
                                            __private const int x,
                                            __private const int y,
                                            global char *kernel_error) {
+#ifdef OUT_OF_RANGE_CHECK
   int2 image_dim = get_image_dim(image);
   if (x >= image_dim.x || y >= image_dim.y) {
     *kernel_error = '1';
   }
+#endif
 }
 
 #endif  // MACE_KERNELS_OPENCL_CL_COMMON_H_

@@ -31,8 +31,7 @@ __kernel void activation(KERNEL_ERROR_PARAMS
   DATA_TYPE4 out = do_activation(in, relux_max_limit);
 #endif
 
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, pos, hb, kernel_error);
-#endif
+
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }

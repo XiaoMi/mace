@@ -85,8 +85,7 @@ __kernel void softmax(KERNEL_ERROR_PARAMS
       data = native_exp(data) / sum;
   }
 
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, pos, hb_idx, kernel_error);
-#endif
+
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }

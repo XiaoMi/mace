@@ -37,9 +37,8 @@ __kernel void depth_to_space(KERNEL_ERROR_PARAMS
   const int in_pos = mad24(in_d, input_width, in_w);
   DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, in_hb));
 
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, out_pos, out_hb, kernel_error);
-#endif
+
   WRITE_IMAGET(output, (int2)(out_pos, out_hb), in_data);
 }
 
@@ -80,8 +79,7 @@ __kernel void space_to_depth(KERNEL_ERROR_PARAMS
   const int out_pos = mad24(out_d, output_width, out_w);
   DATA_TYPE4 in_data = READ_IMAGET(input, SAMPLER, (int2)(in_pos, hb));
 
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, out_pos, out_hb, kernel_error);
-#endif
+
   WRITE_IMAGET(output, (int2)(out_pos, out_hb), in_data);
 }

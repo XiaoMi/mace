@@ -50,9 +50,7 @@ __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
   }
 
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -160,9 +158,7 @@ __kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
   }
 
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -205,9 +201,7 @@ __kernel void in_out_buffer_to_image(KERNEL_ERROR_PARAMS
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -284,9 +278,7 @@ __kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
     values = vload4(0, input + offset);
   }
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -364,9 +356,7 @@ __kernel void in_out_height_buffer_to_image(KERNEL_ERROR_PARAMS
       values.x = *(input + offset);
   }
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -448,9 +438,7 @@ __kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
       values.x = *(input + offset);
   }
   int2 coord = (int2)(w, h);
-#ifdef OUT_OF_RANGE_CHECK
   check_out_of_range_for_image2d(output, w, h, kernel_error);
-#endif
   WRITE_IMAGET(output, coord, values);
 }
 
@@ -525,9 +513,7 @@ __kernel void winograd_filter_buffer_to_image(KERNEL_ERROR_PARAMS
 
   int2 coord = (int2)(w, h);
 
-#ifdef OUT_OF_RANGE_CHECK
-    check_out_of_range_for_image2d(output, coord.x, coord.y + out_channels * 15, kernel_error);
-#endif
+  check_out_of_range_for_image2d(output, coord.x, coord.y + out_channels * 15, kernel_error);
 
 #pragma unroll
   for (short i = 0; i < 4; ++i) {
