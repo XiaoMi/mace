@@ -162,7 +162,8 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
 
   if (USE_WINOGRAD && filter_h == 3 && filter_w == 3 && stride_h == 1
     && stride_w == 1
-    && dilation_h == 1 && dilation_w == 1) {
+    && dilation_h == 1 && dilation_w == 1
+    && input_channels >= 8 && channels >= 8) {
     extra_output_height = RoundUp<index_t>(height, 2);
     extra_input_height = std::max(padded_input_height, extra_output_height + 2);
     extra_output_width = RoundUp<index_t>(width, 2);

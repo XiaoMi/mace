@@ -22,6 +22,13 @@ void Gemm(const float *A,
           const index_t width,
           float *C);
 
+void GemmRef(const float *A,
+             const float *B,
+             const index_t height,
+             const index_t K,
+             const index_t width,
+             float *C);
+
 }  // namespace kernels
 }  // namespace mace
 
