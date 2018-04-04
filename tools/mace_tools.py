@@ -9,6 +9,7 @@
 import argparse
 import hashlib
 import os
+import sh
 import shutil
 import subprocess
 import sys
@@ -111,18 +112,42 @@ def build_mace_run(production_mode, model_output_dir, hexagon_mode):
   run_command(command)
 
 
-def tuning_run(target_soc,
+def tuning_run(model_name,
+               target_runtime,
+               target_abi,
+               target_soc,
                model_output_dir,
                running_round,
                tuning,
                production_mode,
                restart_round,
                option_args=''):
-  command = "bash tools/tuning_run.sh {} {} {} {} {} {} \"{}\"".format(
-      target_soc, model_output_dir, running_round, int(tuning),
-      int(production_mode), restart_round, option_args)
-  run_command(command)
-
+  # TODO(yejianwu) refactoring the hackish code
+  stdout_buff = []
+  process_output = sh_commands.make_output_processor(stdout_buff)
+  p = sh.bash("tools/tuning_run.sh", target_soc, model_output_dir,
+              running_round, int(tuning), int(production_mode),
+              restart_round, option_args, _out=process_output,
+              _bg=True, _err_to_out=True)
+  p.wait()
+  metrics = {}
+  for line in stdout_buff:
+    line = line.strip()
+    parts = line.split()
+    if len(parts) == 6 and parts[0].startswith("time"):
+      metrics["%s.create_net_ms" % model_name] = str(float(parts[1]))
+      metrics["%s.mace_engine_ctor_ms" % model_name] = str(float(parts[2]))
+      metrics["%s.init_ms" % model_name] = str(float(parts[3]))
+      metrics["%s.warmup_ms" % model_name] = str(float(parts[4]))
+      if float(parts[5]) > 0:
+        metrics["%s.avg_latency_ms" % model_name] = str(float(parts[5]))
+  tags = {"ro.board.platform": target_soc,
+          "abi": target_abi,
+          # "runtime": target_runtime, # TODO(yejianwu) Add the actual runtime
+          "round": running_round, # TODO(yejianwu) change this to source/binary
+          "tuning": tuning}
+  sh_commands.falcon_push_metrics(metrics, endpoint="mace_model_benchmark",
+                                  tags=tags)
 
 def benchmark_model(target_soc, model_output_dir, option_args=''):
   command = "bash tools/benchmark.sh {} {} \"{}\"".format(
@@ -130,9 +155,10 @@ def benchmark_model(target_soc, model_output_dir, option_args=''):
   run_command(command)
 
 
-def run_model(target_soc, model_output_dir, running_round, restart_round,
-              option_args):
-  tuning_run(target_soc, model_output_dir, running_round, False, False,
+def run_model(model_name, target_runtime, target_abi, target_soc,
+              model_output_dir, running_round, restart_round, option_args):
+  tuning_run(model_name, target_runtime, target_abi, target_soc,
+             model_output_dir, running_round, False, False,
              restart_round, option_args)
 
 
@@ -146,8 +172,9 @@ def generate_production_code(target_soc, model_output_dirs, pull_or_not):
   run_command(command)
 
 
-def build_mace_run_prod(target_soc, model_output_dir, tuning, global_runtime):
-  if "dsp" == global_runtime:
+def build_mace_run_prod(model_name, target_runtime, target_abi, target_soc,
+                        model_output_dir, tuning):
+  if "dsp" == target_runtime:
     hexagon_mode = True
   else:
     hexagon_mode = False
@@ -155,6 +182,9 @@ def build_mace_run_prod(target_soc, model_output_dir, tuning, global_runtime):
   production_or_not = False
   build_mace_run(production_or_not, model_output_dir, hexagon_mode)
   tuning_run(
+      model_name,
+      target_runtime,
+      target_abi, 
       target_soc,
       model_output_dir,
       running_round=0,
@@ -346,12 +376,13 @@ def main(unused_args):
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
           generate_model_code()
-          build_mace_run_prod(target_soc, model_output_dir, FLAGS.tuning,
-                              global_runtime)
+          build_mace_run_prod(model_name, global_runtime, target_abi,
+                              target_soc, model_output_dir, FLAGS.tuning)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
-          run_model(target_soc, model_output_dir, FLAGS.round,
-                    FLAGS.restart_round, option_args)
+          run_model(model_name, global_runtime, target_abi, target_soc,
+                    model_output_dir, FLAGS.round, FLAGS.restart_round,
+                    option_args)
 
         if FLAGS.mode == "benchmark":
           benchmark_model(target_soc, model_output_dir, option_args)
