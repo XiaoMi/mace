@@ -25,7 +25,7 @@ def generate_cpp_source():
     with open(binary_path, "rb") as f:
       binary_array = np.fromfile(f, dtype=np.uint8)
 
-    print "Generate binary", binary_path
+    print "Generate binary from", binary_path
     idx = 0
     size, = struct.unpack("Q", binary_array[idx:idx+8])
     idx += 8

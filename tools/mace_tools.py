@@ -156,7 +156,7 @@ def tuning_run(model_name,
   stdout_buff = []
   process_output = sh_commands.make_output_processor(stdout_buff)
   p = sh.bash("tools/tuning_run.sh", target_soc, model_output_dir,
-              running_round, int(tuning), int(production_mode),
+              running_round, int(tuning),
               restart_round, option_args, _out=process_output,
               _bg=True, _err_to_out=True)
   p.wait()
@@ -188,7 +188,7 @@ def benchmark_model(target_soc, model_output_dir, option_args=''):
 def run_model(model_name, target_runtime, target_abi, target_soc,
               model_output_dir, running_round, restart_round, option_args):
   tuning_run(model_name, target_runtime, target_abi, target_soc,
-             model_output_dir, running_round, False, False,
+             model_output_dir, running_round, False,
              restart_round, option_args)
 
 

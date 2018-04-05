@@ -19,11 +19,10 @@ def generate_cpp_source():
   binary_dirs = FLAGS.cl_binary_dirs.strip().split(",")
   for binary_dir in binary_dirs:
     binary_path = os.path.join(binary_dir, FLAGS.built_kernel_file_name)
-    print 'Before generate opencl code:', binary_path
     if not os.path.exists(binary_path):
       continue
 
-    print 'generate opencl code:', binary_path
+    print 'generate opencl code from', binary_path
     with open(binary_path, "rb") as f:
       binary_array = np.fromfile(f, dtype=np.uint8)
 
