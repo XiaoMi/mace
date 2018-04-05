@@ -56,7 +56,7 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
   static void Configure(GPUPerfHint, GPUPriorityHint);
-  static void Configure(std::shared_ptr<KVStorageEngine> storage_engine);
+  static void Configure(std::shared_ptr<KVStorage> storage_engine);
 
   cl::Context &context();
   cl::Device &device();
@@ -108,16 +108,15 @@ class OpenCLRuntime {
   std::shared_ptr<cl::Device> device_;
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
-  std::map<std::string, std::vector<unsigned char>> program_content_map_;
   std::mutex program_build_mutex_;
   GPUType gpu_type_;
   std::string opencl_version_;
   std::string platform_info_;
-  bool program_map_changed;
+  bool program_map_changed_;
+  std::unique_ptr<KVStorage> storage_;
 
   static GPUPerfHint kGPUPerfHint;
   static GPUPriorityHint kGPUPriorityHint;
-  static std::shared_ptr<KVStorageEngine> kStorageEngine;
 };
 
 }  // namespace mace

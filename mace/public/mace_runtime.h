@@ -31,16 +31,36 @@ enum GPUPriorityHint {
 
 enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2 };
 
-class KVStorageEngine {
+class KVStorage {
  public:
-  virtual void Write(
-      const std::map<std::string, std::vector<unsigned char>> &data) = 0;
-  virtual void Read(
-      std::map<std::string, std::vector<unsigned char>> *data) = 0;
+  virtual void Load() = 0;
+  virtual bool Insert(const std::string &key,
+                      const std::vector<unsigned char> &value) = 0;
+  virtual std::vector<unsigned char> *Find(const std::string &key) = 0;
+  virtual void Flush() = 0;
 };
 
+class KVStorageFactory {
+ public:
+  virtual std::unique_ptr<KVStorage> CreateStorage(const std::string &name) = 0;
+};
+
+class FileStorageFactory : public KVStorageFactory {
+ public:
+  explicit FileStorageFactory(const std::string &path);
+
+  ~FileStorageFactory();
+
+  std::unique_ptr<KVStorage> CreateStorage(const std::string &name) override;
+
+ private:
+  class Impl;
+  std::unique_ptr<Impl> impl_;
+};
+
+void ConfigKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
+
 void ConfigOpenCLRuntime(GPUPerfHint, GPUPriorityHint);
-void ConfigKVStorageEngine(std::shared_ptr<KVStorageEngine> storage_engine);
 void ConfigOmpThreads(int omp_num_threads);
 void ConfigCPUPowerOption(CPUPowerOption power_option);
 

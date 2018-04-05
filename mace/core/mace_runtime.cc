@@ -8,6 +8,8 @@
 
 namespace mace {
 
+std::shared_ptr<KVStorageFactory> kStorageFactory = nullptr;
+
 void ConfigOpenCLRuntime(GPUPerfHint gpu_perf_hint,
                          GPUPriorityHint gpu_priority_hint) {
   VLOG(1) << "Set GPU configurations, gpu_perf_hint: " << gpu_perf_hint
@@ -15,9 +17,9 @@ void ConfigOpenCLRuntime(GPUPerfHint gpu_perf_hint,
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
 
-void ConfigKVStorageEngine(std::shared_ptr<KVStorageEngine> storage_engine) {
+void ConfigKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
   VLOG(1) << "Set internal KV Storage Engine";
-  OpenCLRuntime::Configure(storage_engine);
+  kStorageFactory = storage_factory;
 }
 
 void ConfigOmpThreads(int omp_num_threads) {

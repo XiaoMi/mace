@@ -251,7 +251,6 @@ def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
   build_production_code()
 
   model_output_dirs_str = ",".join(model_output_dirs)
-  print output_dir, model_output_dirs
   command = "bash tools/merge_libs.sh {} {} {}".format(target_soc, output_dir,
                                                        model_output_dirs_str)
   run_command(command)

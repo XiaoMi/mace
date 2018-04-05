@@ -24,8 +24,8 @@ else
   fi
 
   if [ "$PULL_OR_NOT" = 1 ]; then
-    rm -rf ${BIN_DIRS}
     mkdir -p ${BIN_DIRS}
+    rm -rf ${BIN_DIRS}/mace_run.config
     if [ x"$TARGET_ABI" != x"host" ]; then
       adb -s $DEVICE_ID pull ${PHONE_DATA_DIR}/mace_run.config ${BIN_DIRS} > /dev/null
     fi

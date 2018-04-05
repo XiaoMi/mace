@@ -14,15 +14,16 @@ FLAGS = None
 
 
 def generate_cpp_source():
-  cl_built_kernel_file_name = 'mace_cl_compiled_program.bin'
-  cl_platform_info_file_name = 'mace_cl_platform_info.txt'
   maps = {}
   platform_info = ''
-  for binary_dir in FLAGS.cl_binary_dirs.split(","):
-    binary_path = os.path.join(binary_dir, cl_built_kernel_file_name)
+  binary_dirs = FLAGS.cl_binary_dirs.strip().split(",")
+  for binary_dir in binary_dirs:
+    binary_path = os.path.join(binary_dir, FLAGS.built_kernel_file_name)
+    print 'Before generate opencl code:', binary_path
     if not os.path.exists(binary_path):
       continue
 
+    print 'generate opencl code:', binary_path
     with open(binary_path, "rb") as f:
       binary_array = np.fromfile(f, dtype=np.uint8)
 
@@ -43,7 +44,7 @@ def generate_cpp_source():
       for ele in value:
         maps[key].append(hex(ele))
 
-    cl_platform_info_path = os.path.join(binary_dir, cl_platform_info_file_name)
+    cl_platform_info_path = os.path.join(binary_dir, FLAGS.platform_info_file_name)
     with open(cl_platform_info_path, 'r') as f:
       curr_platform_info = f.read()
     if platform_info != "":
@@ -73,6 +74,16 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument(
       "--cl_binary_dirs",
+      type=str,
+      default="",
+      help="The cl binaries directories.")
+  parser.add_argument(
+      "--built_kernel_file_name",
+      type=str,
+      default="",
+      help="The cl binaries directories.")
+  parser.add_argument(
+      "--platform_info_file_name",
       type=str,
       default="",
       help="The cl binaries directories.")

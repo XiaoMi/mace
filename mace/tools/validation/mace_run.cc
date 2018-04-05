@@ -228,6 +228,9 @@ bool RunModel(const std::vector<std::string> &input_names,
 
   // Init model
   LOG(INFO) << "Run init";
+  std::shared_ptr<KVStorageFactory> storage_factory(
+      new FileStorageFactory(kernel_file_path));
+  ConfigKVStorageFactory(storage_factory);
   mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
   if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);

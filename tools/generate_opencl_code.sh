@@ -26,6 +26,8 @@ if [ x"$TYPE" == x"source" ];then
 elif [ x"$#" == x"1" ];then
 
   python mace/python/tools/opencl_codegen.py \
+    --built_kernel_file_name=${CL_BUILT_KERNEL_FILE_NAME} \
+    --platform_info_file_name=${CL_PLATFORM_INFO_FILE_NAME} \
     --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc || exit 1
 
 else
@@ -39,14 +41,17 @@ else
 
   if [ "$PULL_OR_NOT" = 1 ]; then
     CL_BIN_DIR=${CL_BIN_DIRS}
-    rm -rf ${CL_BIN_DIR}
     mkdir -p ${CL_BIN_DIR}
+    rm -rf ${CL_BIN_DIR}/${CL_BUILT_KERNEL_FILE_NAME}
+    rm -rf ${CL_BIN_DIR}/${CL_PLATFORM_INFO_FILE_NAME}
     if [ x"$TARGET_ABI" != x"host" ]; then
       adb -s $DEVICE_ID pull ${COMPILED_PROGRAM_DIR}/. ${CL_BIN_DIR} > /dev/null
     fi
   fi
 
   python mace/python/tools/opencl_codegen.py \
+    --built_kernel_file_name=${CL_BUILT_KERNEL_FILE_NAME} \
+    --platform_info_file_name=${CL_PLATFORM_INFO_FILE_NAME} \
     --cl_binary_dirs=${CL_BIN_DIRS} \
     --output_path=${CL_CODEGEN_DIR}/opencl_compiled_program.cc || exit 1
 fi

@@ -12,7 +12,7 @@
 #include <vector>
 #include <utility>
 
-#include "mace/core/file_storage_engine.h"
+#include "mace/core/file_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
@@ -182,7 +182,6 @@ void OpenCLProfilingTimer::ClearTiming() {
 GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_DEFAULT;
 GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
     GPUPriorityHint::PRIORITY_DEFAULT;
-std::shared_ptr<KVStorageEngine> OpenCLRuntime::kStorageEngine(nullptr);
 
 OpenCLRuntime *OpenCLRuntime::Global() {
   static OpenCLRuntime runtime(kGPUPerfHint, kGPUPriorityHint);
@@ -193,9 +192,6 @@ void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
                               GPUPriorityHint gpu_priority_hint) {
   OpenCLRuntime::kGPUPerfHint = gpu_perf_hint;
   OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
-}
-void OpenCLRuntime::Configure(std::shared_ptr<KVStorageEngine> storage_engine) {
-  OpenCLRuntime::kStorageEngine = std::move(storage_engine);
 }
 
 void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
@@ -239,7 +235,8 @@ void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
 }
 
 OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
-                             GPUPriorityHint gpu_priority_hint) {
+                             GPUPriorityHint gpu_priority_hint):
+    storage_(nullptr) {
   LoadOpenCLLibrary();
 
   std::vector<cl::Platform> all_platforms;
@@ -312,17 +309,16 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
                                                       &err);
   MACE_CHECK_CL_SUCCESS(err);
 
-  this->program_map_changed = false;
+  this->program_map_changed_ = false;
 
-  if (kStorageEngine == nullptr) {
+  extern std::shared_ptr<KVStorageFactory> kStorageFactory;
+  if (kStorageFactory != nullptr) {
     const std::string cl_compiled_file_name = "mace_cl_compiled_program.bin";
-    kStorageEngine = std::move(
-        std::unique_ptr<FileStorageEngine>(
-            new FileStorageEngine(cl_compiled_file_name)));
-  }
+    storage_ = kStorageFactory->CreateStorage(cl_compiled_file_name);
 
-  if (platform_info_ != kCompiledProgramPlatform) {
-    kStorageEngine->Read(&program_content_map_);
+    if (platform_info_ != kCompiledProgramPlatform) {
+      storage_->Load();
+    }
   }
 }
 
@@ -377,12 +373,13 @@ bool OpenCLRuntime::BuildProgramFromCache(
     const std::string &build_options_str,
     cl::Program *program) {
   // Find from binary
-  auto it_content = this->program_content_map_.find(built_program_key);
-  if (it_content == this->program_content_map_.end()) {
+  if (this->storage_ == nullptr) return false;
+  auto content = this->storage_->Find(built_program_key);
+  if (content == nullptr) {
     return false;
   }
 
-  *program = cl::Program(context(), {device()}, {it_content->second});
+  *program = cl::Program(context(), {device()}, {*content});
   cl_int ret = program->build({device()}, build_options_str.c_str());
   if (ret != CL_SUCCESS) {
     if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
@@ -451,9 +448,11 @@ void OpenCLRuntime::BuildProgramFromSource(
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
             program_binary_sizes[0]);
 
-    this->program_content_map_.emplace(built_program_key,
-                                       content);
-    this->program_map_changed = true;
+    if (this->storage_ != nullptr) {
+      this->storage_->Insert(built_program_key, content);
+      this->program_map_changed_ = true;
+    }
+
     VLOG(3) << "Program from source: " << built_program_key;
   }
 }
@@ -504,9 +503,9 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 }
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
-  if (program_map_changed) {
-    kStorageEngine->Write(program_content_map_);
-    program_map_changed = false;
+  if (program_map_changed_ && storage_ != nullptr) {
+    storage_->Flush();
+    program_map_changed_ = false;
   }
 }
 

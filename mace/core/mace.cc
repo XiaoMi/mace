@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include "mace/core/file_storage_engine.h"
+#include "mace/core/file_storage.h"
 #include "mace/core/net.h"
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -69,8 +69,7 @@ class MaceEngine::Impl {
   explicit Impl(const NetDef *net_def,
                 DeviceType device_type,
                 const std::vector<std::string> &input_nodes,
-                const std::vector<std::string> &output_nodes,
-                const std::string &internal_storage_path);
+                const std::vector<std::string> &output_nodes);
   ~Impl();
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
@@ -90,8 +89,7 @@ class MaceEngine::Impl {
 MaceEngine::Impl::Impl(const NetDef *net_def,
                        DeviceType device_type,
                        const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes,
-                       const std::string &internal_storage_path)
+                       const std::vector<std::string> &output_nodes)
     : op_registry_(new OperatorRegistry()),
       device_type_(device_type),
       ws_(new Workspace()),
@@ -99,7 +97,6 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
       hexagon_controller_(nullptr) {
   LOG(INFO) << "MACE version: " << MaceVersion();
   // Set storage path for internal usage
-  FileStorageEngine::kStoragePath = internal_storage_path;
   for (auto input_name : input_nodes) {
     ws_->CreateTensor(MakeString("mace_input_node_", input_name, ":0"),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
@@ -206,11 +203,9 @@ MaceStatus MaceEngine::Impl::Run(
 MaceEngine::MaceEngine(const NetDef *net_def,
                        DeviceType device_type,
                        const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes,
-                       const std::string &internal_storage_path) {
+                       const std::vector<std::string> &output_nodes) {
   impl_ = std::unique_ptr<MaceEngine::Impl>(
-      new MaceEngine::Impl(net_def, device_type, input_nodes,
-                           output_nodes, internal_storage_path));
+      new MaceEngine::Impl(net_def, device_type, input_nodes, output_nodes));
 }
 
 MaceEngine::~MaceEngine() = default;
