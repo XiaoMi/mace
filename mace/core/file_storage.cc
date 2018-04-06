@@ -4,9 +4,16 @@
 
 #include "mace/core/file_storage.h"
 
-#include <fstream>
+#include <fcntl.h>
+#include <limits.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <memory>
 #include <utility>
+
 
 #include "mace/utils/logging.h"
 
@@ -43,28 +50,66 @@ FileStorage::FileStorage(const std::string &file_path):
     file_path_(file_path) {}
 
 void FileStorage::Load() {
-  std::ifstream ifs(file_path_, std::ios::binary | std::ios::in);
-  if (ifs.is_open()) {
-    int64_t data_size = 0;
-    ifs.read(reinterpret_cast<char *>(&data_size), sizeof(data_size));
-    while (data_size--) {
-      int32_t key_size = 0;
-      ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
-      std::string key(key_size, ' ');
-      ifs.read(&key[0], key_size);
+  struct stat st;
+  stat(file_path_.c_str(), &st);
+  size_t file_size = st.st_size;
+  int fd = open(file_path_.c_str(), O_RDONLY);
+  if (fd == -1) {
+    LOG(WARNING) << "open file " << file_path_
+                 << " failed, error code: " << errno;
+    return;
+  }
+  unsigned char *file_data =
+    static_cast<unsigned char *>(mmap(nullptr, file_size, PROT_READ,
+          MAP_PRIVATE, fd, 0));
+  int res = 0;
+  if (file_data == MAP_FAILED) {
+    LOG(WARNING) << "mmap file " << file_path_
+                 << " failed, error code: " << errno;
 
-      int32_t value_size = 0;
-      ifs.read(reinterpret_cast<char *>(&value_size),
-               sizeof(value_size));
-
-      std::vector<unsigned char> value(value_size);
-      ifs.read(reinterpret_cast<char *>(value.data()),
-               value_size);
-      data_.emplace(key, value);
+    res = close(fd);
+    if (res != 0) {
+      LOG(WARNING) << "close file " << file_path_
+                   << " failed, error code: " << errno;
     }
-    ifs.close();
-  } else {
-    LOG(INFO) << "No file to Read.";
+    return;
+  }
+  unsigned char *file_data_ptr = file_data;
+
+  const size_t int_size = sizeof(int32_t);
+
+  int64_t data_size = 0;
+  memcpy(&data_size, file_data_ptr, sizeof(int64_t));
+  file_data_ptr += sizeof(int64_t);
+  int32_t key_size = 0;
+  int32_t value_size = 0;
+  for (int i = 0; i < data_size; ++i) {
+    memcpy(&key_size, file_data_ptr, int_size);
+    file_data_ptr += int_size;
+    std::unique_ptr<char[]> key(new char[key_size+1]);
+    memcpy(&key[0], file_data_ptr, key_size);
+    file_data_ptr += key_size;
+    key[key_size] = '\0';
+
+    memcpy(&value_size, file_data_ptr, int_size);
+    file_data_ptr += int_size;
+    std::vector<unsigned char> value(value_size);
+    memcpy(value.data(), file_data_ptr, value_size);
+    file_data_ptr += value_size;
+
+    data_.emplace(std::string(&key[0]), value);
+  }
+
+  res = munmap(file_data, file_size);
+  if (res != 0) {
+    LOG(WARNING) << "munmap file " << file_path_
+                 << " failed, error code: " << errno;
+    return;
+  }
+  res = close(fd);
+  if (res != 0) {
+    LOG(WARNING) << "close file " << file_path_
+                 << " failed, error code: " << errno;
   }
 }
 
@@ -82,26 +127,59 @@ std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
 }
 
 void FileStorage::Flush() {
-  std::ofstream ofs(file_path_,
-                    std::ios::binary | std::ios::out);
-  if (ofs.is_open()) {
-    int64_t data_size = data_.size();
-    ofs.write(reinterpret_cast<const char *>(&data_size),
-              sizeof(data_size));
-    for (auto &kv : data_) {
-      int32_t key_size = static_cast<int32_t>(kv.first.size());
-      ofs.write(reinterpret_cast<const char *>(&key_size), sizeof(key_size));
-      ofs.write(kv.first.c_str(), key_size);
+  int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT, 0600);
+  if (fd < 0) {
+    LOG(WARNING) << "open file " << file_path_
+                 << " failed, error code:" << errno;
+    return;
+  }
 
-      int32_t value_size = static_cast<int32_t>(kv.second.size());
-      ofs.write(reinterpret_cast<const char *>(&value_size),
-                sizeof(value_size));
-      ofs.write(reinterpret_cast<const char*>(kv.second.data()),
-                value_size);
+  const size_t int_size = sizeof(int32_t);
+
+  int64_t data_size = sizeof(int64_t);
+  for (auto &kv : data_) {
+    data_size += 2 * int_size + kv.first.size() + kv.second.size();
+  }
+  std::unique_ptr<unsigned char[]> buffer(new unsigned char[data_size]);
+  unsigned char *buffer_ptr = &buffer[0];
+
+  int64_t num_of_data = data_.size();
+  memcpy(buffer_ptr, &num_of_data, sizeof(int64_t));
+  buffer_ptr += sizeof(int64_t);
+  for (auto &kv : data_) {
+    int32_t key_size = kv.first.size();
+    memcpy(buffer_ptr, &key_size, int_size);
+    buffer_ptr += int_size;
+
+    memcpy(buffer_ptr, kv.first.c_str(), kv.first.size());
+    buffer_ptr += kv.first.size();
+
+    int32_t value_size = kv.second.size();
+    memcpy(buffer_ptr, &value_size, int_size);
+    buffer_ptr += int_size;
+
+    memcpy(buffer_ptr, kv.second.data(), kv.second.size());
+    buffer_ptr += kv.second.size();
+  }
+  int res = 0;
+  buffer_ptr = &buffer[0];
+  int64_t remain_size = data_size;
+  while (remain_size > 0) {
+    size_t buffer_size = std::min<int64_t>(remain_size, SSIZE_MAX);
+    res = write(fd, buffer_ptr, buffer_size);
+    if (res == -1) {
+      LOG(WARNING) << "write file " << file_path_
+                   << " failed, error code: " << errno;
+      return;
     }
-    ofs.close();
-  } else {
-    LOG(WARNING) << "Write failed, please check directory exists";
+    remain_size -= buffer_size;
+    buffer_ptr += buffer_size;
+  }
+
+  res = close(fd);
+  if (res != 0) {
+    LOG(WARNING) << "close file " << file_path_
+                 << " failed, error code: " << errno;
   }
 }
 
