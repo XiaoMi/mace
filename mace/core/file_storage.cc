@@ -49,16 +49,28 @@ std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
 FileStorage::FileStorage(const std::string &file_path):
     file_path_(file_path) {}
 
-void FileStorage::Load() {
+KVStorageStatus FileStorage::Load() {
   struct stat st;
-  stat(file_path_.c_str(), &st);
-  size_t file_size = st.st_size;
-  int fd = open(file_path_.c_str(), O_RDONLY);
-  if (fd == -1) {
-    LOG(WARNING) << "open file " << file_path_
-                 << " failed, error code: " << errno;
-    return;
+  if (stat(file_path_.c_str(), &st) == -1) {
+    if (errno == ENOENT) {
+      return KVStorageStatus::STORAGE_FILE_NOT_EXIST;
+    } else {
+      LOG(WARNING) << "stat file " << file_path_
+                   << " failed, error code: " << errno;
+      return KVStorageStatus::STORAGE_ERROR;
+    }
   }
+  int fd = open(file_path_.c_str(), O_RDONLY);
+  if (fd < 0) {
+    if (errno == ENOENT) {
+      return KVStorageStatus::STORAGE_FILE_NOT_EXIST;
+    } else {
+      LOG(WARNING) << "open file " << file_path_
+                   << " failed, error code: " << errno;
+      return KVStorageStatus::STORAGE_ERROR;
+    }
+  }
+  size_t file_size = st.st_size;
   unsigned char *file_data =
     static_cast<unsigned char *>(mmap(nullptr, file_size, PROT_READ,
           MAP_PRIVATE, fd, 0));
@@ -72,7 +84,7 @@ void FileStorage::Load() {
       LOG(WARNING) << "close file " << file_path_
                    << " failed, error code: " << errno;
     }
-    return;
+    return KVStorageStatus::STORAGE_ERROR;
   }
   unsigned char *file_data_ptr = file_data;
 
@@ -104,12 +116,20 @@ void FileStorage::Load() {
   if (res != 0) {
     LOG(WARNING) << "munmap file " << file_path_
                  << " failed, error code: " << errno;
+    res = close(fd);
+    if (res != 0) {
+      LOG(WARNING) << "close file " << file_path_
+                   << " failed, error code: " << errno;
+    }
+    return KVStorageStatus::STORAGE_ERROR;
   }
   res = close(fd);
   if (res != 0) {
     LOG(WARNING) << "close file " << file_path_
                  << " failed, error code: " << errno;
+    return KVStorageStatus::STORAGE_ERROR;
   }
+  return KVStorageStatus::STORAGE_SUCCESS;
 }
 
 bool FileStorage::Insert(const std::string &key,
@@ -125,12 +145,12 @@ const std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
   return &(iter->second);
 }
 
-void FileStorage::Flush() {
+KVStorageStatus FileStorage::Flush() {
   int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT, 0600);
   if (fd < 0) {
     LOG(WARNING) << "open file " << file_path_
                  << " failed, error code:" << errno;
-    return;
+    return KVStorageStatus::STORAGE_ERROR;
   }
 
   const size_t int_size = sizeof(int32_t);
@@ -169,7 +189,12 @@ void FileStorage::Flush() {
     if (res == -1) {
       LOG(WARNING) << "write file " << file_path_
                    << " failed, error code: " << errno;
-      return;
+      res = close(fd);
+      if (res != 0) {
+        LOG(WARNING) << "close file " << file_path_
+                     << " failed, error code: " << errno;
+      }
+      return KVStorageStatus::STORAGE_ERROR;
     }
     remain_size -= buffer_size;
     buffer_ptr += buffer_size;
@@ -179,7 +204,9 @@ void FileStorage::Flush() {
   if (res != 0) {
     LOG(WARNING) << "close file " << file_path_
                  << " failed, error code: " << errno;
+    return KVStorageStatus::STORAGE_ERROR;
   }
+  return KVStorageStatus::STORAGE_SUCCESS;
 }
 
 };  // namespace mace

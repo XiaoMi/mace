@@ -215,7 +215,7 @@ def build_mace_run_prod(model_name, target_runtime, target_abi, target_soc,
   tuning_run(
       model_name,
       target_runtime,
-      target_abi, 
+      target_abi,
       target_soc,
       model_output_dir,
       running_round=0,

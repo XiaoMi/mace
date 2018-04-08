@@ -18,11 +18,11 @@ class FileStorage : public KVStorage {
   explicit FileStorage(const std::string &file_path);
 
  public:
-  void Load() override;
+  KVStorageStatus Load() override;
   bool Insert(const std::string &key,
               const std::vector<unsigned char> &value) override;
   const std::vector<unsigned char> *Find(const std::string &key) override;
-  void Flush() override;
+  KVStorageStatus Flush() override;
 
  private:
   std::string file_path_;
