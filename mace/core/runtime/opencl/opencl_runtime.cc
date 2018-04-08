@@ -317,7 +317,7 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
     storage_ = kStorageFactory->CreateStorage(cl_compiled_file_name);
 
     if (platform_info_ != kCompiledProgramPlatform) {
-      if (storage_->Load() == KVStorageStatus::STORAGE_ERROR) {
+      if (storage_->Load() != 0) {
         LOG(FATAL) << "Load opencl compiled kernel file failed";
       }
     }
@@ -506,7 +506,7 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
   if (program_map_changed_ && storage_ != nullptr) {
-    if (storage_->Flush() != KVStorageStatus::STORAGE_SUCCESS) {
+    if (storage_->Flush() != 0) {
       LOG(FATAL) << "Store opencl compiled kernel to file failed";
     }
     program_map_changed_ = false;

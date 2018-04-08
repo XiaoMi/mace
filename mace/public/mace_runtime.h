@@ -31,19 +31,15 @@ enum GPUPriorityHint {
 
 enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2 };
 
-enum KVStorageStatus {
-  STORAGE_SUCCESS = 0,
-  STORAGE_FILE_NOT_EXIST = 1,
-  STORAGE_ERROR = 2
-};
-
 class KVStorage {
  public:
-  virtual KVStorageStatus Load() = 0;
+  // return: 0 for success, -1 for error
+  virtual int Load() = 0;
   virtual bool Insert(const std::string &key,
                       const std::vector<unsigned char> &value) = 0;
   virtual const std::vector<unsigned char> *Find(const std::string &key) = 0;
-  virtual KVStorageStatus Flush() = 0;
+  // return: 0 for success, -1 for error
+  virtual int Flush() = 0;
 };
 
 class KVStorageFactory {
