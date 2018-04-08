@@ -68,14 +68,26 @@ def BlobToNPArray(blob):
 
 class Shapes(object):
   @staticmethod
-  def conv_pool_shape(input_shape, filter_shape, paddings, strides, dilations, round_func):
+  def conv_pool_shape(input_shape, filter_shape, paddings, strides, dilations, round_func, input_format='NHWC'):
     output_shape = np.zeros_like(input_shape)
     output_shape[0] = input_shape[0]
-    output_shape[1] = int(round_func((input_shape[1] + paddings[0] - filter_shape[0]
-                                      - (filter_shape[0] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
-    output_shape[2] = int(round_func((input_shape[2] + paddings[1] - filter_shape[1]
-                                      - (filter_shape[1] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
-    output_shape[3] = filter_shape[2]
+    if input_format == 'NHWC':
+      # input format: NHWC, filter format: HWOI
+      output_shape[1] = int(round_func((input_shape[1] + paddings[0] - filter_shape[0]
+                                        - (filter_shape[0] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
+      output_shape[2] = int(round_func((input_shape[2] + paddings[1] - filter_shape[1]
+                                        - (filter_shape[1] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
+      output_shape[3] = filter_shape[2]
+    elif input_format == 'NCHW':
+      # input format: NCHW, filter format: OIHW
+      output_shape[1] = filter_shape[0]
+      output_shape[2] = int(round_func((input_shape[2] + paddings[0] - filter_shape[2]
+                                        - (filter_shape[2] - 1) * (dilations[0] - 1)) / float(strides[0]))) + 1
+      output_shape[3] = int(round_func((input_shape[3] + paddings[1] - filter_shape[3]
+                                        - (filter_shape[3] - 1) * (dilations[1] - 1)) / float(strides[1]))) + 1
+    else:
+      raise Exception("format %s is not supported" % input_format)
+
     return output_shape
 
   @staticmethod
@@ -93,8 +105,13 @@ class Shapes(object):
     return output_shape
 
   @staticmethod
-  def slice_shape(input_shape, num_output):
-    return [input_shape[0], input_shape[1], input_shape[2], input_shape[3]/num_output]
+  def slice_shape(input_shape, num_output, input_format='NHWC'):
+    if input_format == 'NHWC':
+      return [input_shape[0], input_shape[1], input_shape[2], input_shape[3]/num_output]
+    elif input_format == 'NCHW':
+      return [input_shape[0], input_shape[1]/num_output, input_shape[2], input_shape[3]]
+    else:
+      raise Exception("format %s is not supported" % input_format)
 
 # outputs' name is [op.name + '_' + #]
 class CaffeConverter(object):
@@ -168,7 +185,10 @@ class CaffeConverter(object):
     arg.i = self.dt
     data_format_arg = op_def.arg.add()
     data_format_arg.name = 'data_format'
-    data_format_arg.s = 'NHWC'
+    if self.device == 'neon':
+      data_format_arg.s = 'NCHW'
+    else:
+      data_format_arg.s = 'NHWC'
     op_def.name = op.name
     op_def.type = mace_type
     op_def.input.extend([name+':0' for name in self.inputs_map[op.name]])
@@ -342,7 +362,11 @@ class CaffeConverter(object):
 
     # Add filter
     weight_tensor_name = op.name + '_weight:0'
-    weight_data = op.data[0].transpose((2, 3, 0, 1))
+    if self.device == 'neon':
+      weight_data = op.data[0]
+    else:
+      # OIHW -> HWOI
+      weight_data = op.data[0].transpose((2, 3, 0, 1))
     self.add_tensor(weight_tensor_name, weight_data)
 
     if self.device == 'gpu':
@@ -376,10 +400,11 @@ class CaffeConverter(object):
     final_op = op
     self.resolved_ops.add(op.name)
 
+    input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
     output_shape = Shapes.conv_pool_shape(op.get_single_parent().output_shape_map[op.layer.bottom[0]],
       weight_data.shape,
       paddings, strides, dilations,
-      math.floor)
+      math.floor, input_format)
     op.output_shape_map[op.layer.top[0]] = output_shape
 
     if len(self.ops_map[final_op.name].children) == 1 \
@@ -399,9 +424,13 @@ class CaffeConverter(object):
     self.net_def.op.extend([op_def])
 
   def check_winograd_conv(self, op):
+    # TODO: support winograd conv on neon
+    if self.device == 'neon':
+      return False
     param = op.layer.convolution_param
     filter_shape = np.asarray(op.data[0].shape)
-    filter_shape = filter_shape[[2, 3, 0, 1]]
+    if self.device != 'neon':
+      filter_shape = filter_shape[[2, 3, 0, 1]]  # OIHW -> HWOI
     paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
 
     dilations = [1, 1]
@@ -411,17 +440,21 @@ class CaffeConverter(object):
       elif len(param.dilation) == 2:
         dilations = [param.dilation[0], param.dilation[1]]
 
+    input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
     output_shape = Shapes.conv_pool_shape(
       op.get_single_parent().output_shape_map[op.layer.bottom[0]],
-      filter_shape, paddings, strides, dilations, math.floor)
+      filter_shape, paddings, strides, dilations, math.floor, input_format)
     width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
-    return self.winograd and self.device == 'gpu' and \
-           filter_shape[0] == 3 and (filter_shape[0] == filter_shape[1]) and \
-           dilations[0] == 1 and (dilations[0] == dilations[1]) and \
-           (strides[0] == 1) and (strides[0] == strides[1]) and \
-           (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
-           (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
-           (width < OPENCL_IMAGE_MAX_SIZE)
+    if self.winograd and dilations[0] == 1 and (dilations[0] == dilations[1]) and \
+            (strides[0] == 1) and (strides[0] == strides[1]):
+      if self.device == 'gpu':
+        return filter_shape[0] == 3 and (filter_shape[0] == filter_shape[1]) and \
+               (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
+               (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
+               (width < OPENCL_IMAGE_MAX_SIZE)
+      elif self.device == 'neon':
+        return filter_shape[2] == 3 and (filter_shape[2] == filter_shape[3])
+    return False
 
   def convert_winograd_conv(self, op):
     # Add filter
@@ -435,11 +468,13 @@ class CaffeConverter(object):
     paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
 
     filter_shape = np.asarray(op.data[0].shape)
-    filter_shape = filter_shape[[2, 3, 0, 1]]
+    if self.device != 'neon':
+      filter_shape = filter_shape[[2, 3, 0, 1]]  # OIHW -> HWOI
 
+    input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
     output_shape = Shapes.conv_pool_shape(
       op.get_single_parent().output_shape_map[op.layer.bottom[0]],
-      filter_shape, paddings, strides, [1, 1], math.floor)
+      filter_shape, paddings, strides, [1, 1], math.floor, input_format)
 
     # Input transform
     wt_op = mace_pb2.OperatorDef()
@@ -455,8 +490,12 @@ class CaffeConverter(object):
     wt_output_name = wt_op.name + ":0"
     wt_op.output.extend([wt_output_name])
     wt_output_shape = mace_pb2.OutputShape()
-    wt_output_width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
-    wt_output_shape.dims.extend([16, filter_shape[3], wt_output_width, 1])
+    if self.device != 'neon':
+      wt_output_width = output_shape[0] * ((output_shape[1] + 1)/2) * ((output_shape[2]+1)/2)
+      wt_output_shape.dims.extend([16, filter_shape[3], wt_output_width, 1])
+    else:
+      wt_output_width = output_shape[0] * ((output_shape[2] + 1)/2) * ((output_shape[3]+1)/2)
+      wt_output_shape.dims.extend([16, filter_shape[1], wt_output_width, 1])
     wt_op.output_shape.extend([wt_output_shape])
 
     # MatMul
@@ -470,7 +509,10 @@ class CaffeConverter(object):
     matmul_output_name = matmul_op.name + ":0"
     matmul_op.output.extend([matmul_output_name])
     matmul_output_shape = mace_pb2.OutputShape()
-    matmul_output_shape.dims.extend([16, filter_shape[2], wt_output_width, 1])
+    if self.device != 'neon':
+      matmul_output_shape.dims.extend([16, filter_shape[2], wt_output_width, 1])
+    else:
+      matmul_output_shape.dims.extend([16, filter_shape[0], wt_output_width, 1])
     matmul_op.output_shape.extend([matmul_output_shape])
 
     # Inverse transform
@@ -483,10 +525,10 @@ class CaffeConverter(object):
     batch_arg.i = output_shape[0]
     height_arg = iwt_op.arg.add()
     height_arg.name = 'height'
-    height_arg.i = output_shape[1]
+    height_arg.i = output_shape[1] if self.device != 'neon' else output_shape[2]
     width_arg = iwt_op.arg.add()
     width_arg.name = 'width'
-    width_arg.i = output_shape[2]
+    width_arg.i = output_shape[2] if self.device != 'neon' else output_shape[3]
     iwt_op.name = op.name + '_inverse_transform'
     iwt_op.type = 'WinogradInverseTransform'
     iwt_op.input.extend([matmul_output_name])
@@ -589,8 +631,9 @@ class CaffeConverter(object):
 
     weight_data = op.data[0].reshape(-1, op.data[0].shape[-1])
     assert weight_data.shape[1] == (input_shape[1] * input_shape[2] * input_shape[3])
-    weight_data = weight_data.reshape(-1, input_shape[3], input_shape[1], input_shape[2])
-    weight_data = weight_data.transpose((0, 2, 3, 1)).reshape(weight_data.shape[0], -1)
+    if self.device != 'neon':
+      weight_data = weight_data.reshape(-1, input_shape[3], input_shape[1], input_shape[2])
+      weight_data = weight_data.transpose((0, 2, 3, 1)).reshape(weight_data.shape[0], -1)
     self.add_tensor(weight_tensor_name, weight_data)
     if self.device == 'gpu':
       if (weight_data.shape[0] + 3) / 4 > OPENCL_IMAGE_MAX_SIZE \
@@ -665,9 +708,12 @@ class CaffeConverter(object):
     kernel_arg.name = 'kernels'
     kernel_arg.ints.extend(kernels)
 
-    filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]]
+    filter_shape = [kernels[0], kernels[1], input_shape[3], input_shape[3]] \
+      if self.device != 'neon' else \
+      [input_shape[1], input_shape[1], kernels[0], kernels[1]]
+    input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
     output_shape = Shapes.conv_pool_shape(input_shape, filter_shape,
-      paddings, strides, [1, 1], math.ceil)
+      paddings, strides, [1, 1], math.ceil, input_format)
     op.output_shape_map[op.layer.top[0]] = output_shape
 
     op_def.output.extend([op.name + ':0'])
@@ -720,7 +766,7 @@ class CaffeConverter(object):
     op_def = self.CommonConvert(op, 'Concat')
     axis_arg = op_def.arg.add()
     axis_arg.name = 'axis'
-    axis_arg.i = 3
+    axis_arg.i = 3 if self.device != 'neon' else 1
     try:
       if op.layer.concat_param.HasFeild('axis'):
         axis_arg.i = op.concat_param.axis
@@ -766,13 +812,19 @@ class CaffeConverter(object):
       if len(param.slice_point) > 0:
         raise Exception('Mace do not support slice with slice_point')
 
+    axis_arg = op_def.arg.add()
+    axis_arg.name = 'axis'
+    axis_arg.i = 3 if self.device != 'neon' else 1
+
     input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
     num_outputs = len(op.layer.top)
-    if (input_shape[3] % num_outputs) != 0 or \
-        (self.device == 'gpu' and ((input_shape[3] / num_outputs) % 4 != 0)) :
+    input_channels = input_shape[axis_arg.i]
+    if (input_channels % num_outputs) != 0 or \
+        (self.device == 'gpu' and ((input_channels / num_outputs) % 4 != 0)):
       raise Exception('Mace do not support slice with input shape '
                       + str(input_shape) + ' and number of output ' + str(num_outputs))
-    output_shape = Shapes.slice_shape(input_shape, num_outputs)
+    input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
+    output_shape = Shapes.slice_shape(input_shape, num_outputs, input_format)
     for i in range(len(op.layer.top)):
       op.output_shape_map[op.layer.top[i]] = output_shape
       self.add_output_shape(op_def, output_shape)
@@ -790,10 +842,15 @@ class CaffeConverter(object):
     self.resolved_ops.add(op.name)
 
   def convert_reshape(self, op):
-    op_def = self.CommonConvert(op, 'ReOrganize')
+    if self.device == 'neon':
+      op_def = self.CommonConvert(op, 'Reshape')
+    else:
+      op_def = self.CommonConvert(op, 'ReOrganize')
     input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
     output_shape = input_shape
-    shape_param = np.asarray(op.layer.reshape_param.shape.dim)[[0, 3, 2, 1]]
+    shape_param = np.asarray(op.layer.reshape_param.shape.dim)
+    if self.device != 'neon':
+      shape_param = shape_param[[0, 3, 1, 2]]
     for i in range(len(shape_param)):
       if shape_param[i] != 0:
         output_shape[i] = shape_param[i]
@@ -867,14 +924,49 @@ class CaffeConverter(object):
     assert len(input_nodes) == len(input_shapes)
     for i in range(len(input_nodes)):
       input_op = self.ops_map[input_nodes[i]]
+      input_shape = input_shapes[i] if self.device != 'neon' else \
+        [input_shapes[i][0], input_shapes[i][3], input_shapes[i][1], input_shapes[i][2]]
       if input_op.layer is not None:
-        input_op.output_shape_map[input_op.layer.top[0]] = input_shapes[i]
+        input_op.output_shape_map[input_op.layer.top[0]] = input_shape
       else:
-        input_op.output_shape_map[input_op.name] = input_shapes[i]
+        input_op.output_shape_map[input_op.name] = input_shape
+
+  def add_neon_input_transform(self, names):
+    for name in names:
+      new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = name
+      op_def.type = 'Transpose'
+      op_def.input.extend([new_input_name])
+      op_def.output.extend([name+':0'])
+
+      dims_arg = op_def.arg.add()
+      dims_arg.name = 'dims'
+      dims_arg.ints.extend([0, 3, 1, 2])  # NHWC -> NCHW
+
+      arg = op_def.arg.add()
+      arg.name = 'T'
+      arg.i = self.dt
+
+  def add_neon_output_transform(self, names):
+    for name in names:
+      output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
+      op_def = self.net_def.op.add()
+      op_def.name = output_name[:-2]
+      op_def.type = 'Transpose'
+      op_def.input.extend([name+':0'])
+      op_def.output.extend([output_name])
+
+      dims_arg = op_def.arg.add()
+      dims_arg.name = 'dims'
+      dims_arg.ints.extend([0, 2, 3, 1])  # NCHW -> NHWC
 
   def convert(self, input_nodes, input_shapes, output_nodes):
     if self.device == 'gpu':
       self.add_input_transform(input_nodes)
+
+    if self.device == 'neon':
+      self.add_neon_input_transform(input_nodes)
 
     assert self.ops[0].type == 'Input'
     self.add_input_op_shape(input_nodes, input_shapes)
@@ -923,6 +1015,9 @@ class CaffeConverter(object):
 
     if self.device == 'cpu':
       self.replace_in_out_name(input_nodes, output_nodes)
+
+    if self.device == 'neon':
+      self.add_neon_output_transform(output_nodes)
 
     for op in self.ops:
       if op.name not in self.resolved_ops:
