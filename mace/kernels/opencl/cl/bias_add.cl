@@ -24,7 +24,5 @@ __kernel void bias_add(KERNEL_ERROR_PARAMS
   DATA_TYPE4 bias_value = READ_IMAGET(bias, SAMPLER, (int2)(ch_blk, 0));
   DATA_TYPE4 out = in + bias_value;
 
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, pos, hb, kernel_error);
-
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }

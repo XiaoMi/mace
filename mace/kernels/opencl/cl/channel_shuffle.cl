@@ -51,8 +51,6 @@ __kernel void channel_shuffle(KERNEL_ERROR_PARAMS
 
     int out_x = mad24(mad24(group_chan_blk_idx, groups, g_blk), width, width_idx);
 
-    CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, out_x + groups_blks_width * 3, hb_idx, kernel_error);
-
     WRITE_IMAGET(output, (int2)(out_x, hb_idx), out_chan_data0);
     out_x += groups_blks_width;
 

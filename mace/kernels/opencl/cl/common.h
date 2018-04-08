@@ -14,9 +14,19 @@
 #define CMD_TYPE(cmd, type) CMD_TYPE_STR(cmd, type)
 
 #define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
-#define READ_IMAGET CMD_TYPE(read_image, CMD_DATA_TYPE)
-#define WRITE_IMAGET CMD_TYPE(write_image, CMD_DATA_TYPE)
 
+#ifdef OUT_OF_RANGE_CHECK
+#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord) \
+  check_out_of_range_for_image2d(image, (coord).x, (coord).y, kernel_error);
+#else
+#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)
+#endif
+
+#define READ_IMAGET(image, coord, value) \
+  CMD_TYPE(read_image, CMD_DATA_TYPE)(image, coord, value)
+#define WRITE_IMAGET(image, coord, value)        \
+  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)   \
+  CMD_TYPE(write_image, CMD_DATA_TYPE)(image, coord, value);
 
 #ifndef NON_UNIFORM_WORK_GROUP
 
@@ -45,13 +55,6 @@
 
 #define KERNEL_ERROR_PARAMS
 
-#endif
-
-#ifdef OUT_OF_RANGE_CHECK
-#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, x, y, kernel_error) \
-  check_out_of_range_for_image2d(image, x, y, kernel_error)
-#else
-#define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, x, y, kernel_error)
 #endif
 
 __constant sampler_t SAMPLER =

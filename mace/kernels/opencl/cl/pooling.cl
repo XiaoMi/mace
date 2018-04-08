@@ -96,6 +96,5 @@ __kernel void pooling(KERNEL_ERROR_PARAMS
 #endif
 
   const int pos = mad24(out_chan_idx, out_width, out_width_idx);
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, pos, out_hb_idx, kernel_error);
   WRITE_IMAGET(output, (int2)(pos, out_hb_idx), res);
 }

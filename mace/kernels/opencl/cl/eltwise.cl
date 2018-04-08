@@ -37,7 +37,5 @@ __kernel void eltwise(KERNEL_ERROR_PARAMS
   out = in0 - in1;
 #endif
 
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, w, hb, kernel_error);
-
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }

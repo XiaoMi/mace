@@ -44,7 +44,5 @@ __kernel void cwise(KERNEL_ERROR_PARAMS
   out.w = fabs(in0.w);
 #endif
 
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, w, hb, kernel_error);
-
   WRITE_IMAGET(output, (int2)(w, hb), out);
 }

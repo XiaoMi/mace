@@ -82,8 +82,6 @@ __kernel void concat_channel(KERNEL_ERROR_PARAMS
 
   const int pos = mad24(chan_blk_idx, width, width_idx);
 
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, pos, hb_idx, kernel_error);
-
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }
 
@@ -113,8 +111,6 @@ __kernel void concat_channel_multi(KERNEL_ERROR_PARAMS
                      (int2)(mad24(chan_blk_idx, width, width_idx), hb_idx));
 
   const int pos = mad24(chan_blk_idx + chan_blk_offset, width, width_idx);
-
-  CHECK_OUT_OF_RANGE_FOR_IMAGE2D(output, pos, hb_idx, kernel_error);
 
   WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }
