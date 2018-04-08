@@ -20,6 +20,7 @@ cc_library(
         exclude = [
             "*_test.cc",
             "arm/*_test.cc",
+            "opencl/*_test.cc",
         ],
     ),
     hdrs = glob([
@@ -42,6 +43,7 @@ cc_test(
         [
             "*_test.cc",
             "arm/*_test.cc",
+            "opencl/*_test.cc",
         ],
     ),
     copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]),
