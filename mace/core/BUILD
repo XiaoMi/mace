@@ -27,8 +27,6 @@ cc_library(
             "runtime/hexagon/*.cc",
         ],
         exclude = [
-            "runtime/opencl/opencl_production.cc",
-            "runtime/opencl/opencl_development.cc",
             "*_test.cc",
             "runtime/hexagon/hexagon_controller_dummy.cc",
         ],
@@ -50,15 +48,15 @@ cc_library(
     ]),
     deps = [
         ":opencl_headers",
-        "//mace/utils",
+        "//mace/codegen:generated_opencl",
         "//mace/codegen:generated_version",
+        "//mace/utils",
         "@half//:half",
     ] + if_production_mode([
+        "//mace/codegen:generated_tuning_params",
         "//mace/utils:utils_prod",
-        "//mace/core:opencl_prod",
     ]) + if_not_production_mode([
         "//mace/utils:utils_dev",
-        "//mace/core:opencl_dev",
     ]),
 )
 
@@ -89,27 +87,4 @@ cc_library(
         "//mace/utils",
     ],
     alwayslink = 1,
-)
-
-cc_library(
-    name = "opencl_dev",
-    srcs = ["runtime/opencl/opencl_development.cc"],
-    linkstatic = 1,
-    deps = [
-        ":opencl_headers",
-        "//mace/codegen:generated_opencl_dev",
-        "//mace/utils",
-    ],
-)
-
-cc_library(
-    name = "opencl_prod",
-    srcs = ["runtime/opencl/opencl_production.cc"],
-    linkstatic = 1,
-    deps = [
-        ":opencl_headers",
-        "//mace/codegen:generated_opencl_prod",
-        "//mace/codegen:generated_tuning_params",
-        "//mace/utils",
-    ],
 )

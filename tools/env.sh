@@ -3,12 +3,14 @@ LIBMACE_TAG=`git describe --abbrev=0 --tags`
 
 MACE_SOURCE_DIR=`/bin/pwd`
 PHONE_DATA_DIR="/data/local/tmp/mace_run"
-KERNEL_DIR="${PHONE_DATA_DIR}/cl/"
+COMPILED_PROGRAM_DIR="${PHONE_DATA_DIR}/cl_program/"
 CODEGEN_DIR=${MACE_SOURCE_DIR}/mace/codegen
 MODEL_CODEGEN_DIR=${CODEGEN_DIR}/models/${MODEL_TAG}
 CL_CODEGEN_DIR=${CODEGEN_DIR}/opencl
 TUNING_CODEGEN_DIR=${CODEGEN_DIR}/tuning
 VERSION_SOURCE_PATH=${CODEGEN_DIR}/version
+CL_BUILT_KERNEL_FILE_NAME=mace_cl_compiled_program.bin
+CL_PLATFORM_INFO_FILE_NAME=mace_cl_platform_info.txt
 if [ -z ${EMBED_MODEL_DATA} ]; then
   EMBED_MODEL_DATA=1
 fi

@@ -30,7 +30,7 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --copt="-O3" \
     $PRODUCTION_MODE_BUILD_FLAGS || exit 1
 
-  bazel build --verbose_failures -c opt --strip always //mace/examples:mace_run \
+  bazel build --verbose_failures -c opt --strip always //mace/tools/validation:mace_run \
     --copt="-std=c++11" \
     --copt="-D_GLIBCXX_USE_C99_MATH_TR1" \
     --copt="-Werror=return-type" \
@@ -47,7 +47,7 @@ else
     NEON_ENABLE_FLAG="--define neon=true"
   fi
 
-  bazel build --verbose_failures -c opt --strip always //mace/examples:mace_run \
+  bazel build --verbose_failures -c opt --strip always //mace/tools/validation:mace_run \
     --crosstool_top=//external:android/crosstool \
     --host_crosstool_top=@bazel_tools//tools/cpp:toolchain \
     --cpu=${TARGET_ABI} \
@@ -64,14 +64,13 @@ else
     $HEXAGON_MODE_BUILD_FLAG || exit 1
 fi
 
-if [ "$PRODUCTION_MODE" = 1 ]; then
-  cp $GENERATED_MODEL_LIB_PATH $MODEL_OUTPUT_DIR/libmace_${MODEL_TAG}.a
-fi
+rm -rf $MODEL_OUTPUT_DIR/libmace_${MODEL_TAG}.a
+cp $GENERATED_MODEL_LIB_PATH $MODEL_OUTPUT_DIR/libmace_${MODEL_TAG}.a
 
 if [ -f "$MODEL_OUTPUT_DIR/mace_run" ]; then
   rm -rf $MODEL_OUTPUT_DIR/mace_run
 fi
-cp bazel-bin/mace/examples/mace_run $MODEL_OUTPUT_DIR
+cp bazel-bin/mace/tools/validation/mace_run $MODEL_OUTPUT_DIR
 if [ "$EMBED_MODEL_DATA" = 0 ]; then
   cp mace/codegen/models/${MODEL_TAG}/${MODEL_TAG}.data $MODEL_OUTPUT_DIR
 fi

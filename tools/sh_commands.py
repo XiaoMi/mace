@@ -69,22 +69,20 @@ def adb_run(serialno, host_bin_path, bin_name,
             device_bin_path="/data/local/tmp/mace"):
   host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
   device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
-  device_cl_path = "%s/cl" % device_bin_path
   props = adb_getprop_by_serialno(serialno)
   print("=====================================================================")
   print("Run on device: %s, %s, %s" % (serialno, props["ro.board.platform"],
                                        props["ro.product.model"]))
   sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
   sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
-  sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_cl_path)
   print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
   sh.adb("-s", serialno, "push", host_bin_full_path, device_bin_full_path)
   print("Run %s" % device_bin_full_path)
   stdout_buff=[]
   process_output = make_output_processor(stdout_buff)
   p = sh.adb("-s", serialno, "shell",
-             "MACE_OPENCL_PROFILING=%d MACE_KERNEL_PATH=%s MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
-             (opencl_profiling, device_cl_path, vlog_level, device_bin_full_path, args),
+             "MACE_OPENCL_PROFILING=%d MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
+             (opencl_profiling, vlog_level, device_bin_full_path, args),
              _out=process_output, _bg=True, _err_to_out=True)
   p.wait()
   return "".join(stdout_buff)
@@ -130,6 +128,7 @@ def bazel_target_to_bin(target):
 ################################
 # TODO this should be refactored
 def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
+  sh.mkdir("-p", "%s/opencl" % codegen_path)
   sh.python("mace/python/tools/encrypt_opencl_codegen.py",
             "--cl_kernel_dir=./mace/kernels/opencl/cl/",
             "--output_path=%s/opencl/opencl_encrypt_program.cc" % codegen_path)
@@ -138,6 +137,11 @@ def gen_mace_version(codegen_path="mace/codegen"):
   sh.mkdir("-p", "%s/version" % codegen_path)
   sh.bash("mace/tools/git/gen_version_source.sh",
           "%s/version/version.cc" % codegen_path)
+
+def gen_compiled_opencl_source(codegen_path="mace/codegen"):
+  sh.mkdir("-p", "%s/opencl" % codegen_path)
+  sh.python("mace/python/tools/opencl_codegen.py",
+            "--output_path=%s/opencl/opencl_compiled_program.cc" % codegen_path)
 
 ################################
 # falcon

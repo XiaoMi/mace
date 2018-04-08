@@ -1,10 +1,10 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/tuning_run.sh target_soc model_output_dir round tuning production_mode"
+  echo "Usage: bash tools/tuning_run.sh target_soc model_output_dir round tuning "
 }
 
-if [ $# -lt 7 ]; then
+if [ $# -lt 6 ]; then
   Usage
   exit 1
 fi
@@ -16,9 +16,8 @@ TARGET_SOC=$1
 MODEL_OUTPUT_DIR=$2
 ROUND=$3
 TUNING_OR_NOT=$4
-PRODUCTION_MODE=$5
-RESTART_ROUND=$6
-OPTION_ARGS=$7
+RESTART_ROUND=$5
+OPTION_ARGS=$6
 
 echo $OPTION_ARGS
 
@@ -45,16 +44,14 @@ if [ x"$TARGET_ABI" = x"host" ]; then
     --restart_round=1 \
     $OPTION_ARGS || exit 1
 else
-  if [[ "${TUNING_OR_NOT}" != "0" && "$PRODUCTION_MODE" != 1 ]];then
+  if [[ "${TUNING_OR_NOT}" != "0" ]];then
     tuning_flag=1
   else
     tuning_flag=0
   fi
   
   adb -s $DEVICE_ID shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
-  if [ "$PRODUCTION_MODE" = 0 ]; then
-    adb -s $DEVICE_ID shell "mkdir -p ${KERNEL_DIR}" || exit 1
-  fi
+  adb -s $DEVICE_ID shell "mkdir -p ${COMPILED_PROGRAM_DIR}" || exit 1
 
   IFS=',' read -r -a INPUT_NAMES <<< "${INPUT_NODES}"
   for NAME in "${INPUT_NAMES[@]}";do
@@ -72,7 +69,7 @@ else
     MACE_TUNING=${tuning_flag} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
-    MACE_KERNEL_PATH=$KERNEL_DIR \
+    MACE_CL_PROGRAM_PATH=$COMPILED_PROGRAM_DIR \
     MACE_LIMIT_OPENCL_KERNEL_TIME=${LIMIT_OPENCL_KERNEL_TIME} \
     ${PHONE_DATA_DIR}/mace_run \
     --input_node="${INPUT_NODES}" \

@@ -23,6 +23,7 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/env_time.h"
@@ -98,6 +99,20 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::HEXAGON;
   } else {
     return DeviceType::CPU;
+  }
+}
+
+void WriteOpenCLPlatformInfo(const std::string &output_dir) {
+  std::string platform_info = OpenCLRuntime::Global()->platform_info();
+  const std::string cl_platform_info_file_name = output_dir
+      + "/mace_cl_platform_info.txt";
+
+  std::ofstream ofs(cl_platform_info_file_name);
+  if (ofs.is_open()) {
+    ofs << platform_info;
+    ofs.close();
+  } else {
+    LOG(WARNING) << "Write opencl platform info failed.";
   }
 }
 
@@ -206,8 +221,16 @@ bool RunModel(const std::vector<std::string> &input_names,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
 
+  const char *kernel_path = getenv("MACE_CL_PROGRAM_PATH");
+  const std::string kernel_file_path =
+      std::string(kernel_path == nullptr ?
+                  "/data/local/tmp/mace_run/cl_program" : kernel_path);
+
   // Init model
   LOG(INFO) << "Run init";
+  std::shared_ptr<KVStorageFactory> storage_factory(
+      new FileStorageFactory(kernel_file_path));
+  ConfigKVStorageFactory(storage_factory);
   mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
   if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
@@ -284,6 +307,8 @@ bool RunModel(const std::vector<std::string> &input_names,
   printf("================================================================\n");
   printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
          mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
+
+  WriteOpenCLPlatformInfo(kernel_file_path);
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =
