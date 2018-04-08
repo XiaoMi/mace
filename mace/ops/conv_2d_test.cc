@@ -105,7 +105,8 @@ void TestNHWCSimple3x3SAME() {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
     "Filter", {3, 3, 1, 2},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
 
@@ -191,7 +192,8 @@ void TestNHWCSimple3x3WithoutBias() {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
     "Filter", {3, 3, 1, 2},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
   if (D == DeviceType::CPU) {
@@ -351,10 +353,12 @@ void TestFusedNHWCSimple3x3VALID() {
   // Add input data
   net.AddInputFromArray<D, float>(
       "Input", {1, 3, 3, 2},
-      {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
+      {-1, -1, -1, -1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, float>(
       "Filter", {3, 3, 1, 2},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f});
 
@@ -423,10 +427,13 @@ void TestFusedNHWCSimple3x3WithoutBias() {
   // Add input data
   net.AddInputFromArray<D, float>(
       "Input", {1, 3, 3, 2},
-      {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
+      {-1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1,
+       -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, float>(
       "Filter", {3, 3, 1, 2},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
   if (D == DeviceType::CPU) {

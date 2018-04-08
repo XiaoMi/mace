@@ -27,21 +27,40 @@ void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
                                                        StatsFuture *future) {
   bool swapped = false;
   if (input1 != nullptr) {
-    MACE_CHECK(input0->dim_size() == input1->dim_size())
+    MACE_CHECK(input0->dim_size() == input1->dim_size()
+                   || input0->dim_size() == 1
+                   || input1->dim_size() == 1)
       << "Inputs of Eltwise op must be same shape";
     if (input0->size() != input1->size()) {
       if (input0->size() < input1->size()) {
         std::swap(input0, input1);
         swapped = true;
       }
-      MACE_CHECK(input0->dim(0) == input1->dim(0) &&
-          input1->dim(1) == 1 &&
-          input1->dim(2) == 1 &&
-          input0->dim(3) == input1->dim(3))
-        << "Element-Wise op only support channel dimension broadcast";
+      if (input1->dim_size() == 1) {
+        MACE_CHECK(input0->dim(3) == input1->dim(0))
+          << "Element-Wise op only support channel dimension broadcast";
+      } else {
+        MACE_CHECK((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1) &&
+            input0->dim(3) == input1->dim(3) &&
+            input1->dim(1) == 1 &&
+            input1->dim(2) == 1)
+          << "Element-Wise op only support channel dimension broadcast";
+      }
     }
   }
-  output->ResizeLike(input0);
+
+  std::vector<index_t > output_shape(4);
+  output_shape[0] = input0->dim(0);
+  output_shape[1] = input0->dim(1);
+  output_shape[2] = input0->dim(2);
+  output_shape[3] = input0->dim(3);
+
+  std::vector<size_t> output_image_shape;
+  CalImage2DShape(output_shape,
+                  BufferType::IN_OUT_CHANNEL,
+                  &output_image_shape);
+  output->ResizeImage(output_shape, output_image_shape);
+
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -66,7 +85,10 @@ void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
     if (input1 == nullptr) {
       built_options.emplace("-DINPUT_TYPE=1");
     } else if (input0->size() != input1->size()) {
-      built_options.emplace("-DINPUT_TYPE=2");
+      if (input1->dim(0) == 1 || input1->dim_size() == 1)
+        built_options.emplace("-DINPUT_TYPE=3");
+      else
+        built_options.emplace("-DINPUT_TYPE=2");
       if (swapped) built_options.emplace("-DSWAPPED");
     }
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
