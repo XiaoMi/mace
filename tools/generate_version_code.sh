@@ -1,12 +1,9 @@
 #!/bin/bash
 
+CL_KERNEL_DIR_TAG=$1
+
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
-
-python mace/python/tools/encrypt_opencl_codegen.py \
-    --cl_kernel_dir=./mace/kernels/opencl/cl/ \
-    --output_path=${CODEGEN_DIR}/opencl/opencl_encrypt_program.cc || exit 1
-
 
 rm -rf ${CODEGEN_DIR}/version
 mkdir ${CODEGEN_DIR}/version

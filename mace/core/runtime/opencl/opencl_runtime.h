@@ -10,6 +10,7 @@
 #include <mutex>  // NOLINT(build/c++11)
 #include <set>
 #include <string>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -55,22 +56,27 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
   static void Configure(GPUPerfHint, GPUPriorityHint);
+  static void Configure(std::shared_ptr<KVStorage> storage_engine);
 
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
+  const GPUType gpu_type() const;
+  const std::string platform_info() const;
+
+  cl::Kernel BuildKernel(const std::string &program_name,
+                         const std::string &kernel_name,
+                         const std::set<std::string> &build_options);
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   const bool IsNonUniformWorkgroupsSupported();
-  const GPUType ParseGPUTypeFromDeviceName(const std::string &device_name);
-  const GPUType gpu_type() const;
-  cl::Kernel BuildKernel(const std::string &program_name,
-                         const std::string &kernel_name,
-                         const std::set<std::string> &build_options);
   const bool IsOutOfRangeCheckEnabled() const;
+  const GPUType ParseGPUType(const std::string &device_name);
+  const std::string ParseDeviceVersion(const std::string &device_version);
+  void SaveBuiltCLProgram();
 
  private:
   OpenCLRuntime(GPUPerfHint, GPUPriorityHint);
@@ -82,7 +88,19 @@ class OpenCLRuntime {
                     const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
-  std::string GenerateCLBinaryFilenamePrefix(const std::string &filename_msg);
+  bool BuildProgramFromBinary(
+      const std::string &built_program_key,
+      const std::string &build_options_str,
+      cl::Program *program);
+  bool BuildProgramFromCache(
+      const std::string &built_program_key,
+      const std::string &build_options_str,
+      cl::Program *program);
+  void BuildProgramFromSource(
+      const std::string &program_name,
+      const std::string &built_program_key,
+      const std::string &build_options_str,
+      cl::Program *program);
 
  private:
   // All OpenCL object must be a pointer and manually deleted before unloading
@@ -92,13 +110,15 @@ class OpenCLRuntime {
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
-  std::string kernel_path_;
   GPUType gpu_type_;
   std::string opencl_version_;
   bool out_of_range_check_;
+  std::string platform_info_;
+  bool program_map_changed_;
+  std::unique_ptr<KVStorage> storage_;
 
-  static GPUPerfHint gpu_perf_hint_;
-  static GPUPriorityHint gpu_priority_hint_;
+  static GPUPerfHint kGPUPerfHint;
+  static GPUPriorityHint kGPUPriorityHint;
 };
 
 }  // namespace mace

@@ -90,18 +90,22 @@ void DoActivation(const T *input_ptr,
 
 template <typename T>
 void PReLUActivation(const T *input_ptr,
-                     const index_t size,
+                     const index_t outer_size,
                      const index_t input_chan,
+                     const index_t inner_size,
                      const T *alpha_ptr,
                      T *output_ptr) {
-#pragma omp parallel for
-  for (index_t i = 0; i < size; ++i) {
-    const index_t chan_idx = i % input_chan;
-    T in = input_ptr[i];
-    if (in < 0) {
-      output_ptr[i] = in * alpha_ptr[chan_idx];
-    } else {
-      output_ptr[i] = in;
+#pragma omp parallel for collapse(3)
+  for (index_t i = 0; i < outer_size; ++i) {
+    for (index_t chan_idx = 0; chan_idx < input_chan; ++chan_idx) {
+      for (index_t j = 0; j < inner_size; ++j) {
+        index_t idx = i * input_chan * inner_size + chan_idx * inner_size + j;
+        if (input_ptr[idx] < 0) {
+          output_ptr[idx] = input_ptr[idx] * alpha_ptr[chan_idx];
+        } else {
+          output_ptr[idx] = input_ptr[idx];
+        }
+      }
     }
   }
 }
@@ -121,7 +125,9 @@ class ActivationFunctor {
     if (activation_ == PRELU) {
       MACE_CHECK_NOTNULL(alpha);
       const T *alpha_ptr = alpha->data<T>();
-      PReLUActivation(input_ptr, output->size(), input->dim(3), alpha_ptr,
+      const index_t outer_size = output->dim(0) * output->dim(1)
+          * output->dim(2);
+      PReLUActivation(input_ptr, outer_size, input->dim(3), 1, alpha_ptr,
                       output_ptr);
     } else {
       DoActivation(input_ptr, output_ptr, output->size(), activation_,

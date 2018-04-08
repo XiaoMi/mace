@@ -17,7 +17,9 @@ void ActivationFunctor<DeviceType::NEON, float>::operator()(
   if (activation_ == PRELU) {
     MACE_CHECK_NOTNULL(alpha);
     const float *alpha_ptr = alpha->data<float>();
-    PReLUActivation(input_ptr, output->size(), input->dim(1), alpha_ptr,
+    const index_t outer_size = output->dim(0);
+    const index_t inner_size = output->dim(2) * output->dim(3);
+    PReLUActivation(input_ptr, outer_size, input->dim(1), inner_size, alpha_ptr,
                     output_ptr);
   } else {
     DoActivation(input_ptr, output_ptr, output->size(), activation_,

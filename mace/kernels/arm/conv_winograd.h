@@ -21,6 +21,7 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t in_width,
                        const index_t in_channels,
                        const index_t out_channels,
+                       const int out_tile_size,
                        float *output);
 
 void WinoGradConv3x3s1(const float *input,
@@ -30,11 +31,21 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t in_width,
                        const index_t in_channels,
                        const index_t out_channels,
+                       const int out_tile_size,
                        float *transformed_input,
                        float *transformed_filter,
                        float *transformed_output,
                        bool is_filter_transformed,
                        float *output);
+
+void ConvRef3x3s1(const float *input,
+                  const float *filter,
+                  const index_t batch,
+                  const index_t in_height,
+                  const index_t in_width,
+                  const index_t in_channels,
+                  const index_t out_channels,
+                  float *output);
 
 }  // namespace kernels
 }  // namespace mace

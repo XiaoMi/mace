@@ -17,14 +17,8 @@ cc_library(
 )
 
 cc_library(
-    name = "generated_opencl_dev",
-    srcs = ["opencl/opencl_encrypt_program.cc"],
-    linkstatic = 1,
-)
-
-cc_library(
-    name = "generated_opencl_prod",
-    srcs = ["opencl/opencl_compiled_program.cc"],
+    name = "generated_opencl",
+    srcs = glob(["opencl/*.cc"]),
     linkstatic = 1,
 )
 

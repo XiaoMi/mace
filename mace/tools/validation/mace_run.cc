@@ -16,12 +16,14 @@
  */
 #include <malloc.h>
 #include <stdint.h>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <numeric>
 
 #include "gflags/gflags.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/env_time.h"
@@ -97,6 +99,20 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::HEXAGON;
   } else {
     return DeviceType::CPU;
+  }
+}
+
+void WriteOpenCLPlatformInfo(const std::string &output_dir) {
+  std::string platform_info = OpenCLRuntime::Global()->platform_info();
+  const std::string cl_platform_info_file_name = output_dir
+      + "/mace_cl_platform_info.txt";
+
+  std::ofstream ofs(cl_platform_info_file_name);
+  if (ofs.is_open()) {
+    ofs << platform_info;
+    ofs.close();
+  } else {
+    LOG(WARNING) << "Write opencl platform info failed.";
   }
 }
 
@@ -189,8 +205,8 @@ bool RunModel(const std::vector<std::string> &input_names,
       mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
   NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
   int64_t t1 = NowMicros();
-  LOG(INFO) << "CreateNetDef latency: " << t1 - t0 << " us";
-  int64_t init_micros = t1 - t0;
+  double create_net_millis = (t1 - t0) / 1000.0;
+  LOG(INFO) << "CreateNetDef latency: " << create_net_millis << " ms";
 
   DeviceType device_type = ParseDeviceType(FLAGS_device);
   LOG(INFO) << "Runing with device type: " << device_type;
@@ -205,17 +221,26 @@ bool RunModel(const std::vector<std::string> &input_names,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
 
+  const char *kernel_path = getenv("MACE_CL_PROGRAM_PATH");
+  const std::string kernel_file_path =
+      std::string(kernel_path == nullptr ?
+                  "/data/local/tmp/mace_run/cl_program" : kernel_path);
+
   // Init model
   LOG(INFO) << "Run init";
-  t0 = NowMicros();
+  std::shared_ptr<KVStorageFactory> storage_factory(
+      new FileStorageFactory(kernel_file_path));
+  ConfigKVStorageFactory(storage_factory);
   mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
   if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
   }
-  t1 = NowMicros();
-  init_micros += t1 - t0;
-  LOG(INFO) << "Net init latency: " << t1 - t0 << " us";
-  LOG(INFO) << "Total init latency: " << init_micros << " us";
+  int64_t t2 = NowMicros();
+  double mace_engine_ctor_millis = (t2 - t1) / 1000.0;
+  double init_millis = (t2 - t0) / 1000.0;
+  LOG(INFO) << "MaceEngine constructor latency: "
+            << mace_engine_ctor_millis << " ms";
+  LOG(INFO) << "Total init latency: " << init_millis << " ms";
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();
@@ -253,14 +278,16 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 
   LOG(INFO) << "Warm up run";
-  t0 = NowMicros();
+  int64_t t3 = NowMicros();
   engine.Run(inputs, &outputs);
-  t1 = NowMicros();
-  LOG(INFO) << "1st warm up run latency: " << t1 - t0 << " us";
+  int64_t t4 = NowMicros();
+  double warmup_millis = (t4 - t3) / 1000.0;
+  LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
 
+  double model_run_millis = -1;
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
-    t0 = NowMicros();
+    int64_t t0 = NowMicros();
     struct mallinfo prev = mallinfo();
     for (int i = 0; i < FLAGS_round; ++i) {
       engine.Run(inputs, &outputs);
@@ -269,9 +296,19 @@ bool RunModel(const std::vector<std::string> &input_names,
         prev = LogMallinfoChange(prev);
       }
     }
-    t1 = NowMicros();
-    LOG(INFO) << "Average latency: " << (t1 - t0) / FLAGS_round << " us";
+    int64_t t1 = NowMicros();
+    model_run_millis = (t1 - t0) / 1000.0 / FLAGS_round;
+    LOG(INFO) << "Average latency: " << model_run_millis << " ms";
   }
+
+  // Metrics reporting tools depends on the format, keep in consistent
+  printf("================================================================\n");
+  printf("      create_net engine_ctor        init      warmup     run_avg\n");
+  printf("================================================================\n");
+  printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
+         mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
+
+  WriteOpenCLPlatformInfo(kernel_file_path);
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =

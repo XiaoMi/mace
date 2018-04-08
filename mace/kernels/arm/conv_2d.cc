@@ -7,6 +7,7 @@
 
 // winograd is always superior to neon impl during benchmark
 #define USE_WINOGRAD 1
+#define WINOGRAD_OUT_TILE_SIZE 6
 
 namespace mace {
 namespace kernels {
@@ -162,10 +163,11 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
 
   if (USE_WINOGRAD && filter_h == 3 && filter_w == 3 && stride_h == 1
     && stride_w == 1
-    && dilation_h == 1 && dilation_w == 1) {
-    extra_output_height = RoundUp<index_t>(height, 2);
+    && dilation_h == 1 && dilation_w == 1
+    && input_channels >= 8 && channels >= 8) {
+    extra_output_height = RoundUp<index_t>(height, WINOGRAD_OUT_TILE_SIZE);
     extra_input_height = std::max(padded_input_height, extra_output_height + 2);
-    extra_output_width = RoundUp<index_t>(width, 2);
+    extra_output_width = RoundUp<index_t>(width, WINOGRAD_OUT_TILE_SIZE);
     extra_input_width = std::max(padded_input_width, extra_output_width + 2);
     if (extra_input_height != padded_input_height) {
       pad_bottom += (extra_input_height - padded_input_height);
@@ -174,12 +176,15 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
       pad_right += (extra_input_width - padded_input_width);
     }
 
-    index_t tile_height_count = (extra_output_height + 1) / 2;
-    index_t tile_width_count = (extra_output_width + 1) / 2;
+    index_t tile_height_count = extra_output_height / WINOGRAD_OUT_TILE_SIZE;
+    index_t tile_width_count = extra_output_width / WINOGRAD_OUT_TILE_SIZE;
     index_t tile_count = tile_height_count * tile_width_count;
-    transformed_input_.Resize({16, batch, input_channels, tile_count});
-    transformed_filter_.Resize({16, channels, input_channels});
-    transformed_output_.Resize({16, batch, channels, tile_count});
+    index_t in_tile_area =
+      (WINOGRAD_OUT_TILE_SIZE + 2) * (WINOGRAD_OUT_TILE_SIZE + 2);
+    transformed_input_.Resize({in_tile_area, batch, input_channels,
+                               tile_count});
+    transformed_filter_.Resize({in_tile_area, channels, input_channels});
+    transformed_output_.Resize({in_tile_area, batch, channels, tile_count});
 
     conv_func = [=](const float *pad_input, float *pad_output) {
       WinoGradConv3x3s1(pad_input,
@@ -189,6 +194,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                         extra_input_width,
                         input_channels,
                         channels,
+                        WINOGRAD_OUT_TILE_SIZE,
                         transformed_input_.mutable_data<float>(),
                         transformed_filter_.mutable_data<float>(),
                         transformed_output_.mutable_data<float>(),

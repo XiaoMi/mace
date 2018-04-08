@@ -58,11 +58,12 @@ TEST(ConvWinogradTest, winograd) {
                              in_width,
                              in_channels,
                              out_channels,
+                             6,
                              output_data);
 
   // test
   for (index_t i = 0; i < output_size; ++i) {
-    EXPECT_NEAR(output_data_ref[i], output_data[i], 0.1);
+    EXPECT_NEAR(output_data_ref[i], output_data[i], 0.1) << " with index " << i;
   }
 
   delete[]input_data;

@@ -4,8 +4,10 @@
 
 #include <memory>
 
+#include "mace/core/file_storage.h"
 #include "mace/core/net.h"
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
 
@@ -94,6 +96,7 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
       net_(nullptr),
       hexagon_controller_(nullptr) {
   LOG(INFO) << "MACE version: " << MaceVersion();
+  // Set storage path for internal usage
   for (auto input_name : input_nodes) {
     ws_->CreateTensor(MakeString("mace_input_node_", input_name, ":0"),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
@@ -173,6 +176,7 @@ MaceStatus MaceEngine::Impl::Run(
       LOG(FATAL) << "Net run failed";
     }
   }
+  OpenCLRuntime::Global()->SaveBuiltCLProgram();
   for (auto &output : *outputs) {
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));

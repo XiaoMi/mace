@@ -9,6 +9,7 @@
 import argparse
 import hashlib
 import os
+import sh
 import shutil
 import subprocess
 import sys
@@ -58,10 +59,41 @@ def get_global_runtime(configs):
   return global_runtime
 
 
-def generate_opencl_and_version_code():
-  command = "bash tools/generate_opencl_and_version_code.sh"
+def generate_version_code():
+  command = "bash tools/generate_version_code.sh"
   run_command(command)
 
+def generate_opencl_source_code():
+  command = "bash tools/generate_opencl_code.sh source"
+  run_command(command)
+
+def generate_opencl_binay_code(target_soc, model_output_dirs, pull_or_not):
+  cl_bin_dirs = []
+  for d in model_output_dirs:
+    cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
+  cl_bin_dirs_str = ",".join(cl_bin_dirs)
+  if not cl_bin_dirs:
+    command = "bash tools/generate_opencl_code.sh binary"
+  else:
+    command = "bash tools/generate_opencl_code.sh {} {} {} {}".format(
+      'binary', target_soc, cl_bin_dirs_str, int(pull_or_not))
+  run_command(command)
+
+def generate_tuning_param_code(target_soc, model_output_dirs, pull_or_not):
+  cl_bin_dirs = []
+  for d in model_output_dirs:
+    cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
+  cl_bin_dirs_str = ",".join(cl_bin_dirs)
+  if not cl_bin_dirs:
+    command = "bash tools/generate_tuning_param_code.sh"
+  else:
+    command = "bash tools/generate_tuning_param_code.sh {} {} {}".format(
+      target_soc, cl_bin_dirs_str, int(pull_or_not))
+  run_command(command)
+
+def generate_code(target_soc, model_output_dirs, pull_or_not):
+  generate_opencl_binay_code(target_soc, model_output_dirs, pull_or_not)
+  generate_tuning_param_code(target_soc, model_output_dirs, pull_or_not)
 
 def clear_env(target_soc):
   command = "bash tools/clear_env.sh {}".format(target_soc)
@@ -111,18 +143,41 @@ def build_mace_run(production_mode, model_output_dir, hexagon_mode):
   run_command(command)
 
 
-def tuning_run(target_soc,
+def tuning_run(model_name,
+               target_runtime,
+               target_abi,
+               target_soc,
                model_output_dir,
                running_round,
                tuning,
-               production_mode,
                restart_round,
                option_args=''):
-  command = "bash tools/tuning_run.sh {} {} {} {} {} {} \"{}\"".format(
-      target_soc, model_output_dir, running_round, int(tuning),
-      int(production_mode), restart_round, option_args)
-  run_command(command)
-
+  # TODO(yejianwu) refactoring the hackish code
+  stdout_buff = []
+  process_output = sh_commands.make_output_processor(stdout_buff)
+  p = sh.bash("tools/tuning_run.sh", target_soc, model_output_dir,
+              running_round, int(tuning),
+              restart_round, option_args, _out=process_output,
+              _bg=True, _err_to_out=True)
+  p.wait()
+  metrics = {}
+  for line in stdout_buff:
+    line = line.strip()
+    parts = line.split()
+    if len(parts) == 6 and parts[0].startswith("time"):
+      metrics["%s.create_net_ms" % model_name] = str(float(parts[1]))
+      metrics["%s.mace_engine_ctor_ms" % model_name] = str(float(parts[2]))
+      metrics["%s.init_ms" % model_name] = str(float(parts[3]))
+      metrics["%s.warmup_ms" % model_name] = str(float(parts[4]))
+      if float(parts[5]) > 0:
+        metrics["%s.avg_latency_ms" % model_name] = str(float(parts[5]))
+  tags = {"ro.board.platform": target_soc,
+          "abi": target_abi,
+          # "runtime": target_runtime, # TODO(yejianwu) Add the actual runtime
+          "round": running_round, # TODO(yejianwu) change this to source/binary
+          "tuning": tuning}
+  sh_commands.falcon_push_metrics(metrics, endpoint="mace_model_benchmark",
+                                  tags=tags)
 
 def benchmark_model(target_soc, model_output_dir, option_args=''):
   command = "bash tools/benchmark.sh {} {} \"{}\"".format(
@@ -130,9 +185,10 @@ def benchmark_model(target_soc, model_output_dir, option_args=''):
   run_command(command)
 
 
-def run_model(target_soc, model_output_dir, running_round, restart_round,
-              option_args):
-  tuning_run(target_soc, model_output_dir, running_round, False, False,
+def run_model(model_name, target_runtime, target_abi, target_soc,
+              model_output_dir, running_round, restart_round, option_args):
+  tuning_run(model_name, target_runtime, target_abi, target_soc,
+             model_output_dir, running_round, False,
              restart_round, option_args)
 
 
@@ -146,25 +202,28 @@ def generate_production_code(target_soc, model_output_dirs, pull_or_not):
   run_command(command)
 
 
-def build_mace_run_prod(target_soc, model_output_dir, tuning, global_runtime):
-  if "dsp" == global_runtime:
+def build_mace_run_prod(model_name, target_runtime, target_abi, target_soc,
+                        model_output_dir, tuning):
+  if "dsp" == target_runtime:
     hexagon_mode = True
   else:
     hexagon_mode = False
 
+  generate_code(target_soc, [], False)
   production_or_not = False
   build_mace_run(production_or_not, model_output_dir, hexagon_mode)
   tuning_run(
+      model_name,
+      target_runtime,
+      target_abi,
       target_soc,
       model_output_dir,
       running_round=0,
       tuning=tuning,
-      production_mode=production_or_not,
       restart_round=1)
 
+  generate_code(target_soc, [model_output_dir], True)
   production_or_not = True
-  pull_or_not = True
-  generate_production_code(target_soc, [model_output_dir], pull_or_not)
   build_mace_run(production_or_not, model_output_dir, hexagon_mode)
 
 
@@ -188,8 +247,7 @@ def build_production_code():
 
 
 def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
-  pull_or_not = False
-  generate_production_code(target_soc, model_output_dirs, pull_or_not)
+  generate_code(target_soc, model_output_dirs, False)
   build_production_code()
 
   model_output_dirs_str = ",".join(model_output_dirs)
@@ -201,6 +259,26 @@ def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
 def packaging_lib_file(output_dir):
   command = "bash tools/packaging_lib.sh {}".format(output_dir)
   run_command(command)
+
+def download_model_files(model_file_path,
+                         model_output_dir,
+                         weight_file_path=""):
+  if model_file_path.startswith("http://") or \
+      model_file_path.startswith("https://"):
+    os.environ["MODEL_FILE_PATH"] = model_output_dir + "/model.pb"
+    urllib.urlretrieve(model_file_path, os.environ["MODEL_FILE_PATH"])
+
+  if weight_file_path.startswith("http://") or \
+      weight_file_path.startswith("https://"):
+    os.environ[
+      "WEIGHT_FILE_PATH"] = model_output_dir + "/model.caffemodel"
+    urllib.urlretrieve(weight_file_path,
+      os.environ["WEIGHT_FILE_PATH"])
+
+def md5sum(str):
+  md5 = hashlib.md5()
+  md5.update(str)
+  return md5.hexdigest()
 
 
 def parse_model_configs():
@@ -268,7 +346,9 @@ def main(unused_args):
       shutil.rmtree(os.path.join(FLAGS.output_dir, os.environ["PROJECT_NAME"]))
       os.makedirs(os.path.join(FLAGS.output_dir, os.environ["PROJECT_NAME"]))
 
-  generate_opencl_and_version_code()
+    generate_version_code()
+    generate_opencl_source_code()
+
   option_args = ' '.join([arg for arg in unused_args if arg.startswith('--')])
 
   available_socs = sh_commands.adb_get_all_socs()
@@ -285,6 +365,7 @@ def main(unused_args):
       print("Error: devices with SoCs are not connected %s" % missing_socs)
       exit(1)
 
+
   for target_soc in target_socs:
     for target_abi in configs["target_abis"]:
       global_runtime = get_global_runtime(configs)
@@ -292,9 +373,9 @@ def main(unused_args):
       os.environ["TARGET_ABI"] = target_abi
       model_output_dirs = []
       for model_name in configs["models"]:
+        print '=======================', model_name, '======================='
         # Transfer params by environment
         os.environ["MODEL_TAG"] = model_name
-        print '=======================', model_name, '======================='
         model_config = configs["models"][model_name]
         input_file_list = model_config.get("validation_inputs_data", [])
         for key in model_config:
@@ -307,9 +388,8 @@ def main(unused_args):
           else:
             os.environ[key.upper()] = str(model_config[key])
 
-        md5 = hashlib.md5()
-        md5.update(model_config["model_file_path"])
-        model_path_digest = md5.hexdigest()
+        # Create model build directory
+        model_path_digest = md5sum(model_config["model_file_path"])
         model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (FLAGS.output_dir,
                                                      os.environ["PROJECT_NAME"],
                                                      "build", model_name,
@@ -323,21 +403,8 @@ def main(unused_args):
           os.makedirs(model_output_dir)
           clear_env(target_soc)
 
-        # Support http:// and https://
-        if model_config["model_file_path"].startswith(
-            "http://") or model_config["model_file_path"].startswith(
-                "https://"):
-          os.environ["MODEL_FILE_PATH"] = model_output_dir + "/model.pb"
-          urllib.urlretrieve(model_config["model_file_path"],
-                             os.environ["MODEL_FILE_PATH"])
-
-        if model_config["platform"] == "caffe" and (
-            model_config["weight_file_path"].startswith("http://") or
-            model_config["weight_file_path"].startswith("https://")):
-          os.environ[
-              "WEIGHT_FILE_PATH"] = model_output_dir + "/model.caffemodel"
-          urllib.urlretrieve(model_config["weight_file_path"],
-                             os.environ["WEIGHT_FILE_PATH"])
+        download_model_files(model_config["model_file_path"],
+          model_output_dir, model_config.get("weight_file_path", ""))
 
         if FLAGS.mode == "build" or FLAGS.mode == "run" or FLAGS.mode == "validate"\
             or FLAGS.mode == "benchmark" or FLAGS.mode == "all":
@@ -346,12 +413,13 @@ def main(unused_args):
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
           generate_model_code()
-          build_mace_run_prod(target_soc, model_output_dir, FLAGS.tuning,
-                              global_runtime)
+          build_mace_run_prod(model_name, global_runtime, target_abi,
+                              target_soc, model_output_dir, FLAGS.tuning)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or FLAGS.mode == "all":
-          run_model(target_soc, model_output_dir, FLAGS.round,
-                    FLAGS.restart_round, option_args)
+          run_model(model_name, global_runtime, target_abi, target_soc,
+                    model_output_dir, FLAGS.round, FLAGS.restart_round,
+                    option_args)
 
         if FLAGS.mode == "benchmark":
           benchmark_model(target_soc, model_output_dir, option_args)
