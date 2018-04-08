@@ -36,7 +36,7 @@ class KVStorage {
   virtual void Load() = 0;
   virtual bool Insert(const std::string &key,
                       const std::vector<unsigned char> &value) = 0;
-  virtual std::vector<unsigned char> *Find(const std::string &key) = 0;
+  virtual const std::vector<unsigned char> *Find(const std::string &key) = 0;
   virtual void Flush() = 0;
 };
 

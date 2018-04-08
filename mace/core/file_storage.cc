@@ -104,7 +104,6 @@ void FileStorage::Load() {
   if (res != 0) {
     LOG(WARNING) << "munmap file " << file_path_
                  << " failed, error code: " << errno;
-    return;
   }
   res = close(fd);
   if (res != 0) {
@@ -119,7 +118,7 @@ bool FileStorage::Insert(const std::string &key,
   return true;
 }
 
-std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
+const std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
   auto iter = data_.find(key);
   if (iter == data_.end()) return nullptr;
 
