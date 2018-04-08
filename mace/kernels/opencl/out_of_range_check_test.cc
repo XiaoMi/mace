@@ -18,7 +18,7 @@ namespace {
 
 const bool BufferToImageOpImpl(Tensor *buffer,
                                Tensor *image,
-                               std::vector<size_t> &image_shape) {
+                               const std::vector<size_t> &image_shape) {
   std::unique_ptr<BufferBase> kernel_error;
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -35,7 +35,8 @@ const bool BufferToImageOpImpl(Tensor *buffer,
     built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
   }
   if (buffer->dtype() == image->dtype()) {
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<float>::value));
+    built_options.emplace("-DDATA_TYPE=" +
+                          DtToCLDt(DataTypeToEnum<float>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<float>::value));
   } else {
@@ -102,7 +103,8 @@ const bool BufferToImageOpImpl(Tensor *buffer,
   bool is_out_of_range = false;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error->Map(nullptr);
-    is_out_of_range = *(kernel_error->mutable_data<char>()) == '1' ? true : false;
+    is_out_of_range =
+        *(kernel_error->mutable_data<char>()) == '1' ? true : false;
     kernel_error->UnMap();
   }
   return is_out_of_range;
