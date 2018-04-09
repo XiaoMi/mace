@@ -176,7 +176,9 @@ MaceStatus MaceEngine::Impl::Run(
       LOG(FATAL) << "Net run failed";
     }
   }
-  OpenCLRuntime::Global()->SaveBuiltCLProgram();
+  if (device_type_ == OPENCL) {
+    OpenCLRuntime::Global()->SaveBuiltCLProgram();
+  }
   for (auto &output : *outputs) {
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
