@@ -308,7 +308,9 @@ bool RunModel(const std::vector<std::string> &input_names,
   printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
          mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
 
-  WriteOpenCLPlatformInfo(kernel_file_path);
+  if (device_type == DeviceType::OPENCL) {
+    WriteOpenCLPlatformInfo(kernel_file_path);
+  }
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =
