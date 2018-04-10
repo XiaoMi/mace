@@ -168,6 +168,11 @@ class OpenCLLibraryImpl final {
                                                   size_t,
                                                   void *,
                                                   size_t *);
+  using clGetEventInfoFunc = cl_int (*)(cl_event event,
+                                        cl_event_info param_name,
+                                        size_t param_value_size,
+                                        void *param_value,
+                                        size_t *param_value_size_ret);
   using clGetEventProfilingInfoFunc = cl_int (*)(cl_event event,
                                                  cl_profiling_info param_name,
                                                  size_t param_value_size,
@@ -221,6 +226,7 @@ class OpenCLLibraryImpl final {
   MACE_CL_DEFINE_FUNC_PTR(clReleaseDevice);
   MACE_CL_DEFINE_FUNC_PTR(clRetainEvent);
   MACE_CL_DEFINE_FUNC_PTR(clGetKernelWorkGroupInfo);
+  MACE_CL_DEFINE_FUNC_PTR(clGetEventInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetEventProfilingInfo);
   MACE_CL_DEFINE_FUNC_PTR(clGetImageInfo);
 
@@ -344,6 +350,7 @@ void *OpenCLLibraryImpl::LoadFromPath(const std::string &path) {
   MACE_CL_ASSIGN_FROM_DLSYM(clReleaseDevice);
   MACE_CL_ASSIGN_FROM_DLSYM(clRetainEvent);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetKernelWorkGroupInfo);
+  MACE_CL_ASSIGN_FROM_DLSYM(clGetEventInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetEventProfilingInfo);
   MACE_CL_ASSIGN_FROM_DLSYM(clGetImageInfo);
 
@@ -879,6 +886,21 @@ CL_API_ENTRY cl_int clReleaseEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0 {
   MACE_CHECK_NOTNULL(func);
   MACE_LATENCY_LOGGER(3, "clReleaseEvent");
   return func(event);
+}
+
+// Event API
+CL_API_ENTRY cl_int clGetEventInfo(cl_event event,
+                                   cl_event_info param_name,
+                                   size_t param_value_size,
+                                   void *param_value,
+                                   size_t *param_value_size_ret)
+CL_API_SUFFIX__VERSION_1_0 {
+  MACE_CHECK_NOTNULL(mace::openclLibraryImpl);
+  auto func = mace::openclLibraryImpl->clGetEventInfo;
+  MACE_CHECK_NOTNULL(func);
+  MACE_LATENCY_LOGGER(3, "clGetEventInfo");
+  return func(event, param_name, param_value_size, param_value,
+              param_value_size_ret);
 }
 
 // Profiling APIs

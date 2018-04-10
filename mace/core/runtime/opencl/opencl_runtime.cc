@@ -236,7 +236,7 @@ void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
 
 OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
                              GPUPriorityHint gpu_priority_hint):
-    storage_(nullptr) {
+    storage_(nullptr), is_profiling_enabled_(false) {
   LoadOpenCLLibrary();
 
   std::vector<cl::Platform> all_platforms;
@@ -286,6 +286,7 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   if (Tuner<uint32_t>::Get()->IsTuning() ||
       (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
+    is_profiling_enabled_ = true;
   }
 
   cl_int err;
@@ -588,6 +589,10 @@ const std::string OpenCLRuntime::ParseDeviceVersion(
 
 const bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
   return out_of_range_check_;
+}
+
+const bool OpenCLRuntime::is_profiling_enabled() const {
+  return is_profiling_enabled_;
 }
 
 }  // namespace mace

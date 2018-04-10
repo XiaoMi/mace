@@ -77,6 +77,7 @@ class OpenCLRuntime {
   const GPUType ParseGPUType(const std::string &device_name);
   const std::string ParseDeviceVersion(const std::string &device_version);
   void SaveBuiltCLProgram();
+  const bool is_profiling_enabled() const;
 
  private:
   OpenCLRuntime(GPUPerfHint, GPUPriorityHint);
@@ -116,6 +117,7 @@ class OpenCLRuntime {
   std::string platform_info_;
   bool program_map_changed_;
   std::unique_ptr<KVStorage> storage_;
+  bool is_profiling_enabled_;
 
   static GPUPerfHint kGPUPerfHint;
   static GPUPriorityHint kGPUPriorityHint;

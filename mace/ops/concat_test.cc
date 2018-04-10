@@ -151,12 +151,17 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   int num_inputs = shapes.size();
   int concat_axis_size = 0;
   // Construct graph
+  std::vector<std::vector<float>> inputs(num_inputs, std::vector<float>());
+  std::vector<const float*> input_ptrs(num_inputs);
   OpsTestNet net;
   for (int i = 0; i < num_inputs; ++i) {
     const std::string input_name = MakeString("Input", i);
     const std::string image_name = MakeString("InputImage", i);
     concat_axis_size += shapes[i][axis];
-    net.AddRandomInput<DeviceType::OPENCL, float>(input_name, shapes[i]);
+    GenerateRandomRealTypeData(shapes[i], &inputs[i]);
+    input_ptrs[i] = inputs[i].data();
+    net.AddInputFromArray<DeviceType::OPENCL, float>(input_name,
+                                                     shapes[i], inputs[i]);
     BufferToImage<DeviceType::OPENCL, T>(&net, input_name, image_name,
                                          kernels::BufferType::IN_OUT_CHANNEL);
   }
@@ -186,17 +191,15 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
 
   Tensor::MappingGuard output_mapper(output);
   const float *output_ptr = output->data<float>();
+  const float *output_ptr_end = output_ptr + output->size();
   int k = 0;
-  while (output_ptr != (output->data<float>() + output->size())) {
+  while (output_ptr != output_ptr_end) {
     for (int i = 0; i < num_inputs; ++i) {
       index_t num_elements =
           std::accumulate(shapes[i].begin() + axis, shapes[i].end(), 1,
                           std::multiplies<index_t>());
 
-      const std::string input_name = MakeString("Input", i);
-      const Tensor *input_tensor = net.GetTensor(input_name.data());
-      Tensor::MappingGuard input_guard(input_tensor);
-      const float *input_ptr = input_tensor->data<float>() + k * num_elements;
+      const float *input_ptr = input_ptrs[i] + k * num_elements;
       for (int j = 0; j < num_elements; ++j) {
         EXPECT_NEAR(*(input_ptr + j), *output_ptr++, 1e-2)
             << "With index: " << i << ", " << j;

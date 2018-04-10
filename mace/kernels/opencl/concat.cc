@@ -137,6 +137,9 @@ static void ConcatN(cl::Kernel *kernel,
 
   const int inputs_count = input_list.size();
   index_t chan_blk_offset = 0;
+  cl::Event event;
+  CallStats call_stats{INT64_MAX, 0};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
   for (int i = 0; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
     index_t input_channel_blk = input->dim(3) / 4;
@@ -160,18 +163,45 @@ static void ConcatN(cl::Kernel *kernel,
     kernel->setArg(idx++, *(output->opencl_image()));
 
     chan_blk_offset += input_channel_blk;
-    const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
-    std::stringstream ss;
-    ss << "concat_n_opencl_kernel_" << input_channel_blk << "_" << width << "_"
-       << batch * height;
-    TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
+    cl_int error;
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          *kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    } else {
+      std::vector<uint32_t> roundup_gws(lws.size());
+      for (size_t j = 0; j < 3; ++j) {
+        roundup_gws[j] = RoundUp(gws[j], lws[j]);
+      }
 
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          *kernel, cl::NullRange,
+          cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    }
+    MACE_CHECK_CL_SUCCESS(error);
     if (runtime->IsOutOfRangeCheckEnabled()) {
       (*kernel_error)->Map(nullptr);
       char *kerror_code = (*kernel_error)->mutable_data<char>();
       MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
       (*kernel_error)->UnMap();
     }
+    if (runtime->is_profiling_enabled()) {
+      CallStats tmp_stats;
+      runtime->GetCallStats(event, &tmp_stats);
+      call_stats.start_micros = std::min<int64_t>(tmp_stats.start_micros,
+                                                   call_stats.start_micros);
+      call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
+    }
+  }
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event, call_stats](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        stats->start_micros = call_stats.start_micros;
+        stats->end_micros = stats->start_micros + call_stats.end_micros;
+      }
+    };
   }
 }
 

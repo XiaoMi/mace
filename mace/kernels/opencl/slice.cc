@@ -63,13 +63,8 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
   };
 
   const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
-  std::stringstream ss;
-  ss << "slice_opencl_kernel_"
-     << input->dim(0) << "_"
-     << input->dim(1) << "_"
-     << input->dim(2) << "_"
-     << input_channels << "_"
-     << outputs_count;
+  cl::Event event;
+  CallStats call_stats{INT64_MAX, 0};
   for (int i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -85,13 +80,45 @@ void SliceFunctor<DeviceType::OPENCL, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
     kernel_.setArg(idx++, *(output_list[i]->opencl_image()));
 
-    TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+    cl_int error;
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    } else {
+      std::vector<uint32_t> roundup_gws(lws.size());
+      for (size_t j = 0; j < 3; ++j) {
+        roundup_gws[j] = RoundUp(gws[j], lws[j]);
+      }
+
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange,
+          cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
+          cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
+    }
+    MACE_CHECK_CL_SUCCESS(error);
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_error_->Map(nullptr);
       char *kerror_code = kernel_error_->mutable_data<char>();
       MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
       kernel_error_->UnMap();
     }
+    if (runtime->is_profiling_enabled()) {
+      CallStats tmp_stats;
+      runtime->GetCallStats(event, &tmp_stats);
+      call_stats.start_micros = std::min<int64_t>(tmp_stats.start_micros,
+                                                   call_stats.start_micros);
+      call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
+    }
+  }
+  if (future != nullptr) {
+    future->wait_fn = [runtime, event, call_stats](CallStats *stats) {
+      event.wait();
+      if (stats != nullptr) {
+        stats->start_micros = call_stats.start_micros;
+        stats->end_micros = stats->start_micros + call_stats.end_micros;
+      }
+    };
   }
 }
 
