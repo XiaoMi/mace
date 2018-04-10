@@ -402,6 +402,19 @@ class TFConverter(object):
         final_op = op
         self.resolved_ops[op.name] = 1
 
+        # convert global conv to fc
+        filter_shape = get_input_tensor(op, 1).shape.as_list()
+        input_shape = get_input_tensor(op, 0).shape.as_list()
+        if op_def.type == "Conv2D" and input_shape[1] == filter_shape[0] and \
+                input_shape[2] == filter_shape[1] and \
+                (op.get_attr('padding') == 'VALID' or filter_shape[0] == 1 and
+                 filter_shape[1] == 1):
+            print "convert op %s from CONV to FC" % op.name
+            op_def.type = 'FC'
+            self.reshape_tensor[get_input_tensor(op, 1).name] = \
+                [filter_shape[3],
+                 filter_shape[2] * filter_shape[1] * filter_shape[0], 1, 1]
+
         if len(self.tf_graph.get(op.name, [])) == 1 and \
                 self.tf_graph[op.name][0].type == 'BiasAdd':
             bias_add_op = self.tf_graph[op.name][0]

@@ -308,7 +308,7 @@ void FullyConnectedTestNEON(const index_t batch,
 
   ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                           *net.GetOutput("OutputNeon"),
-                          0.001);
+                          0.01);
 }
 
 TEST_F(FullyConnectedOpTest, TestNEON) {
