@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void softmax(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void softmax(KERNEL_ERROR_PARAMS
+                      GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input,
                       __private const int channels,
                       __private const int remain_channels,

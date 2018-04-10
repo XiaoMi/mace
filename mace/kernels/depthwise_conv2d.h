@@ -9,6 +9,7 @@
 #include <arm_neon.h>
 #endif
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -454,6 +455,7 @@ struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
 

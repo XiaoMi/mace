@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void cwise(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void cwise(KERNEL_ERROR_PARAMS
+                    GLOBAL_WORK_GROUP_SIZE_DIM2
                     __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                     __private const float value,
                     __write_only image2d_t output) {

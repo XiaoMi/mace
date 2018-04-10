@@ -1,7 +1,8 @@
 #include <common.h>
 
 // assume channes_per_group mod 4 = 0 && groups mod 4 == 0
-__kernel void channel_shuffle(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void channel_shuffle(KERNEL_ERROR_PARAMS
+                              GLOBAL_WORK_GROUP_SIZE_DIM3
                               __read_only image2d_t input,
                               __private const int groups,
                               __private const int channels_per_group,
@@ -49,6 +50,7 @@ __kernel void channel_shuffle(GLOBAL_WORK_GROUP_SIZE_DIM3
     out_chan_data3 = (DATA_TYPE4)(in_chan_data0.w, in_chan_data1.w, in_chan_data2.w, in_chan_data3.w);
 
     int out_x = mad24(mad24(group_chan_blk_idx, groups, g_blk), width, width_idx);
+
     WRITE_IMAGET(output, (int2)(out_x, hb_idx), out_chan_data0);
     out_x += groups_blks_width;
 

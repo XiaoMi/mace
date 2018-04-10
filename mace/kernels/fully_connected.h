@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_FULLY_CONNECTED_H_
 #define MACE_KERNELS_FULLY_CONNECTED_H_
 
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -107,6 +108,7 @@ struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   std::vector<uint32_t> gws_;
   std::vector<uint32_t> lws_;
   std::vector<index_t> input_shape_;
+  std::unique_ptr<BufferBase> kernel_error_;
 };
 
 }  // namespace kernels

@@ -108,7 +108,8 @@ def main(unused_args):
                                       args=FLAGS.args,
                                       opencl_profiling=1,
                                       vlog_level=0,
-                                      device_bin_path="/data/local/tmp/mace")
+                                      device_bin_path="/data/local/tmp/mace",
+                                      out_of_range_check=1)
         device_properties = sh_commands.adb_getprop_by_serialno(serialno)
         globals()[FLAGS.stdout_processor](stdouts, device_properties, target_abi)
 

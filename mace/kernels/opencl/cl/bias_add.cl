@@ -1,6 +1,7 @@
 #include <common.h>
 // Supported data types: half/float
-__kernel void bias_add(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void bias_add(KERNEL_ERROR_PARAMS
+                       GLOBAL_WORK_GROUP_SIZE_DIM3
                        __read_only image2d_t input,
                        __read_only image2d_t bias,
                        __write_only image2d_t output) {
@@ -22,5 +23,6 @@ __kernel void bias_add(GLOBAL_WORK_GROUP_SIZE_DIM3
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));
   DATA_TYPE4 bias_value = READ_IMAGET(bias, SAMPLER, (int2)(ch_blk, 0));
   DATA_TYPE4 out = in + bias_value;
+
   WRITE_IMAGET(output, (int2)(pos, hb), out);
 }

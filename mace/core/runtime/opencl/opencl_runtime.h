@@ -73,6 +73,7 @@ class OpenCLRuntime {
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   const bool IsNonUniformWorkgroupsSupported();
+  const bool IsOutOfRangeCheckEnabled() const;
   const GPUType ParseGPUType(const std::string &device_name);
   const std::string ParseDeviceVersion(const std::string &device_version);
   void SaveBuiltCLProgram();
@@ -111,6 +112,7 @@ class OpenCLRuntime {
   std::mutex program_build_mutex_;
   GPUType gpu_type_;
   std::string opencl_version_;
+  bool out_of_range_check_;
   std::string platform_info_;
   bool program_map_changed_;
   std::unique_ptr<KVStorage> storage_;

@@ -19,7 +19,8 @@ void FCWXKernel(cl::Kernel *kernel,
                 std::vector<uint32_t> *gws,
                 std::vector<uint32_t> *lws,
                 const float relux_max_limit,
-                StatsFuture *future) {
+                StatsFuture *future,
+                std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK(input->dim(3) % 4 == 0)
     << "FC width kernel only support input with 4x channel.";
   MACE_CHECK_NOTNULL(gws);
@@ -33,8 +34,7 @@ void FCWXKernel(cl::Kernel *kernel,
 
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected");
-    kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected_width");
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected_width");
     built_options.emplace("-Dfully_connected_width=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
@@ -61,6 +61,14 @@ void FCWXKernel(cl::Kernel *kernel,
     }
     if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_QUALCOMM_ADRENO");
+    }
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      *kernel_error = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      (*kernel_error)->Map(nullptr);
+      *((*kernel_error)->mutable_data<char>()) = 0;
+      (*kernel_error)->UnMap();
     }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
@@ -95,6 +103,10 @@ void FCWXKernel(cl::Kernel *kernel,
     (*gws)[2] = static_cast<uint32_t>(batch * output_blocks);
 
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel->setArg(idx++,
+          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, (*gws)[0]);
       kernel->setArg(idx++, (*gws)[1]);
@@ -132,6 +144,12 @@ void FCWXKernel(cl::Kernel *kernel,
         cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
         cl::NDRange((*lws)[0], (*lws)[1], (*lws)[2]), nullptr, &event);
   }
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    (*kernel_error)->Map(nullptr);
+    char *kerror_code = (*kernel_error)->mutable_data<char>();
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+    (*kernel_error)->UnMap();
+  }
   MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
 
   if (future != nullptr) {
@@ -155,7 +173,8 @@ void FCWTXKernel(cl::Kernel *kernel,
                  std::vector<uint32_t> *gws,
                  std::vector<uint32_t> *lws,
                  const float relux_max_limit,
-                 StatsFuture *future) {
+                 StatsFuture *future,
+                 std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
   auto runtime = OpenCLRuntime::Global();
@@ -168,6 +187,14 @@ void FCWTXKernel(cl::Kernel *kernel,
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     if (bias != nullptr) {
       built_options.emplace("-DBIAS");
+    }
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      *kernel_error = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      (*kernel_error)->Map(nullptr);
+      *((*kernel_error)->mutable_data<char>()) = 0;
+      (*kernel_error)->UnMap();
     }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
@@ -206,6 +233,10 @@ void FCWTXKernel(cl::Kernel *kernel,
     };
 
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel->setArg(idx++,
+          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, (*gws)[0]);
       kernel->setArg(idx++, (*gws)[1]);
@@ -229,6 +260,13 @@ void FCWTXKernel(cl::Kernel *kernel,
   ss << "fc_opencl_kernel_" << output->dim(0) << "_" << output->dim(1) << "_"
      << output->dim(2) << "_" << output->dim(3);
   TuningOrRun2DKernel(*kernel, ss.str(), gws->data(), *lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    (*kernel_error)->Map(nullptr);
+    char *kerror_code = (*kernel_error)->mutable_data<char>();
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+    (*kernel_error)->UnMap();
+  }
 }
 
 template <typename T>
@@ -246,10 +284,12 @@ void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(
 
   if (weight_type_ == BufferType::WEIGHT_HEIGHT) {
     FCWTXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                   activation_, &gws_, &lws_, relux_max_limit_, future);
+                   activation_, &gws_, &lws_, relux_max_limit_, future,
+                   &kernel_error_);
   } else {
     FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                  activation_, &gws_, &lws_, relux_max_limit_, future);
+                  activation_, &gws_, &lws_, relux_max_limit_, future,
+                  &kernel_error_);
   }
 }
 

@@ -22,7 +22,8 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 }
 
 // Supported data type: half/float
-__kernel void concat_channel(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void concat_channel(KERNEL_ERROR_PARAMS
+                             GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input0,
                              __read_only image2d_t input1,
                              __private const int input0_chan,
@@ -79,11 +80,14 @@ __kernel void concat_channel(GLOBAL_WORK_GROUP_SIZE_DIM3
   }
 #endif
 
-  WRITE_IMAGET(output, (int2)(mad24(chan_blk_idx, width, width_idx), hb_idx), data);
+  const int pos = mad24(chan_blk_idx, width, width_idx);
+
+  WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }
 
 // Required: All input channels are divisible by 4
-__kernel void concat_channel_multi(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void concat_channel_multi(KERNEL_ERROR_PARAMS
+                                   GLOBAL_WORK_GROUP_SIZE_DIM3
                                    __read_only image2d_t input,
                                    __private const int chan_blk_offset,
                                    __write_only image2d_t output) {
@@ -106,7 +110,9 @@ __kernel void concat_channel_multi(GLOBAL_WORK_GROUP_SIZE_DIM3
                      SAMPLER,
                      (int2)(mad24(chan_blk_idx, width, width_idx), hb_idx));
 
-  WRITE_IMAGET(output, (int2)(mad24(chan_blk_idx + chan_blk_offset, width, width_idx), hb_idx), data);
+  const int pos = mad24(chan_blk_idx + chan_blk_offset, width, width_idx);
+
+  WRITE_IMAGET(output, (int2)(pos, hb_idx), data);
 }
 
 //__kernel void concat_width(__read_only image2d_t input0,

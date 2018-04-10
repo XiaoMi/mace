@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void resize_bilinear_nocache(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void resize_bilinear_nocache(KERNEL_ERROR_PARAMS
+                                      GLOBAL_WORK_GROUP_SIZE_DIM3
                                       __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                       __write_only image2d_t output,
                                       __private const float height_scale,
@@ -56,6 +57,7 @@ __kernel void resize_bilinear_nocache(GLOBAL_WORK_GROUP_SIZE_DIM3
 
   const int out_w_offset = mul24(ch_blk, out_width);
   const int out_h_offset = mul24(b, out_height);
+
   WRITE_IMAGET(output, (int2)(out_w_offset + w, out_h_offset + h), out);
 }
 

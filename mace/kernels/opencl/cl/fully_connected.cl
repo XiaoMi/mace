@@ -1,7 +1,8 @@
 #include <common.h>
 
 // output = weight * input + bias
-__kernel void fully_connected(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void fully_connected(KERNEL_ERROR_PARAMS
+                              GLOBAL_WORK_GROUP_SIZE_DIM2
                               __read_only image2d_t input,
                               __read_only image2d_t weight,
 #ifdef BIAS
@@ -58,11 +59,13 @@ __kernel void fully_connected(GLOBAL_WORK_GROUP_SIZE_DIM2
 #if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
   result = do_activation(result, relux_max_limit);
 #endif
+
   WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
 }
 
 // output = weight * input + bias
-__kernel void fully_connected_width(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void fully_connected_width(KERNEL_ERROR_PARAMS
+                                    GLOBAL_WORK_GROUP_SIZE_DIM3
                                     __read_only image2d_t input,
                                     __read_only image2d_t weight,
 #ifdef BIAS
@@ -147,6 +150,7 @@ __kernel void fully_connected_width(GLOBAL_WORK_GROUP_SIZE_DIM3
 #if defined(USE_RELU) || defined(USE_RELUX) || defined(USE_TANH) || defined(USE_SIGMOID)
     result = do_activation(result, relux_max_limit);
 #endif
+
     WRITE_IMAGET(output, (int2)(out_blk_idx, batch_idx), result);
   }
 }

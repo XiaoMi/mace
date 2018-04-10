@@ -45,6 +45,14 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DINPUT_NUM=", input_tensors.size()));
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      kernel_error_ = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      kernel_error_->Map(nullptr);
+      *(kernel_error_->mutable_data<char>()) = 0;
+      kernel_error_->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -71,6 +79,10 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     output_tensor->ResizeImage(output_shape, output_image_shape);
 
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel_.setArg(idx++,
+          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
@@ -88,6 +100,13 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
   ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
      << "_" << output_shape[2] << "_" << output_shape[3];
   TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    kernel_error_->Map(nullptr);
+    char *kerror_code = kernel_error_->mutable_data<char>();
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+    kernel_error_->UnMap();
+  }
 }
 
 template struct AddNFunctor<DeviceType::OPENCL, float>;

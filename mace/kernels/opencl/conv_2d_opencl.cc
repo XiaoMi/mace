@@ -21,7 +21,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
                              StatsFuture *future,
-                             uint32_t *kwg_size);
+                             uint32_t *kwg_size,
+                             std::unique_ptr<BufferBase> *kernel_error);
 
 extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              const Tensor *input,
@@ -36,7 +37,8 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
                              std::vector<index_t> *prev_input_shape,
                              Tensor *output,
                              StatsFuture *future,
-                             uint32_t *kwg_size);
+                             uint32_t *kwg_size,
+                             std::unique_ptr<BufferBase> *kernel_error);
 
 extern void Conv2dOpencl(cl::Kernel *kernel,
                          const Tensor *input,
@@ -51,7 +53,8 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          std::vector<index_t> *prev_input_shape,
                          Tensor *output,
                          StatsFuture *future,
-                         uint32_t *kwg_size);
+                         uint32_t *kwg_size,
+                         std::unique_ptr<BufferBase> *kernel_error);
 
 template <typename T>
 void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
@@ -65,7 +68,7 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       const int *dilations, const ActivationType activation,
       const float relux_max_limit, const DataType dt,
       std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future,
-      uint32_t *kwg_size);
+      uint32_t *kwg_size, std::unique_ptr<BufferBase> *kernel_error);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[5] = {
       Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3, nullptr, nullptr};
@@ -106,12 +109,12 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                 dilations_, activation_, relux_max_limit_,
                 DataTypeToEnum<T>::value, &input_shape_, output, future,
-                &kwg_size_);
+                &kwg_size_, &kernel_error_);
   } else {
     Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                  dilations_, activation_, relux_max_limit_,
                  DataTypeToEnum<T>::value, &input_shape_, output, future,
-                 &kwg_size_);
+                 &kwg_size_, &kernel_error_);
   }
 }
 

@@ -1,6 +1,7 @@
 #include <common.h>
 
-__kernel void conv_2d(GLOBAL_WORK_GROUP_SIZE_DIM3
+__kernel void conv_2d(KERNEL_ERROR_PARAMS
+                      GLOBAL_WORK_GROUP_SIZE_DIM3
                       __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                       __read_only image2d_t filter, /* cout%4 * cin, kh * kw * cout/4 */
 #ifdef BIAS
@@ -126,6 +127,7 @@ __kernel void conv_2d(GLOBAL_WORK_GROUP_SIZE_DIM3
 #endif
 
   const int out_x_base = mul24(out_ch_blk, out_width);
+
   int w = out_w_blk;
   WRITE_IMAGET(output, (int2)(out_x_base + w, out_hb), out0);
 

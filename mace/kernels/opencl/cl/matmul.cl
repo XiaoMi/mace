@@ -1,7 +1,8 @@
 #include <common.h>
 
 // C = A * B
-__kernel void matmul(GLOBAL_WORK_GROUP_SIZE_DIM2
+__kernel void matmul(KERNEL_ERROR_PARAMS
+                     GLOBAL_WORK_GROUP_SIZE_DIM2
                      __read_only image2d_t A,
                      __read_only image2d_t B,
                      __write_only image2d_t C,
@@ -46,11 +47,15 @@ __kernel void matmul(GLOBAL_WORK_GROUP_SIZE_DIM2
 
     c3 += (DATA_TYPE4)(dot(a0, b3), dot(a1, b3), dot(a2, b3), dot(a3, b3));
   }
+
   WRITE_IMAGET(C, (int2)(gx, gy), c0);
+
   if ((gx + 1) >= N) return;
   WRITE_IMAGET(C, (int2)(gx + 1, gy), c1);
+
   if ((gx + 2) >= N) return;
   WRITE_IMAGET(C, (int2)(gx + 2, gy), c2);
+
   if ((gx + 3) >= N) return;
   WRITE_IMAGET(C, (int2)(gx + 3, gy), c3);
 }

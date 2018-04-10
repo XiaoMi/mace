@@ -5,6 +5,7 @@
 #define MACE_KERNELS_CWISE_H_
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -115,6 +116,7 @@ struct CWiseFunctor<DeviceType::OPENCL, T> : CWiseFunctorBase {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
 

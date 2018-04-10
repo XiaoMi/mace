@@ -322,6 +322,14 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
       }
     }
   }
+
+  const char *out_of_range_check = getenv("MACE_OUT_OF_RANGE_CHECK");
+  if (out_of_range_check != nullptr && strlen(out_of_range_check) == 1
+      && out_of_range_check[0] == '1') {
+    this->out_of_range_check_ = true;
+  } else {
+    this->out_of_range_check_ = false;
+  }
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
@@ -576,6 +584,10 @@ const std::string OpenCLRuntime::ParseDeviceVersion(
   // <vendor-specific information>
   auto words = Split(device_version, ' ');
   return words[1];
+}
+
+const bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
+  return out_of_range_check_;
 }
 
 }  // namespace mace

@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_SLICE_H_
 #define MACE_KERNELS_SLICE_H_
 
+#include <memory>
 #include <functional>
 #include <vector>
 
@@ -79,6 +80,7 @@ struct SliceFunctor<DeviceType::OPENCL, T> : SliceFunctorBase {
                   StatsFuture *future);
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
 };
 
 }  // namespace kernels

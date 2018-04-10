@@ -6,6 +6,7 @@
 #define MACE_KERNELS_ACTIVATION_H_
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -171,6 +172,7 @@ class ActivationFunctor<DeviceType::OPENCL, T> {
   T relux_max_limit_;
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
   std::string tuning_key_prefix_;
   std::vector<index_t> input_shape_;
 };

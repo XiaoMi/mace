@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -198,6 +199,7 @@ struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
 

@@ -9,9 +9,10 @@
 #include <arm_neon.h>
 #endif
 
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -68,6 +69,7 @@ struct MatMulFunctor<DeviceType::OPENCL, T> {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
 };
 
 }  // namespace kernels

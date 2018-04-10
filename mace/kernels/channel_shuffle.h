@@ -5,6 +5,7 @@
 #ifndef MACE_KERNELS_CHANNEL_SHUFFLE_H_
 #define MACE_KERNELS_CHANNEL_SHUFFLE_H_
 
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -57,6 +58,7 @@ struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;
+  std::unique_ptr<BufferBase> kernel_error_;
   const int groups_;
   std::vector<index_t> input_shape_;
 };

@@ -36,6 +36,14 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      built_options.emplace("-DOUT_OF_RANGE_CHECK");
+      kernel_error_ = std::move(std::unique_ptr<Buffer>(
+            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+      kernel_error_->Map(nullptr);
+      *(kernel_error_->mutable_data<char>()) = 0;
+      kernel_error_->UnMap();
+    }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
@@ -46,6 +54,10 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   }
   if (!IsVecEqual(input_shape_, logits->shape())) {
     uint32_t idx = 0;
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel_.setArg(idx++,
+          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+    }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
       kernel_.setArg(idx++, gws[1]);
@@ -64,6 +76,13 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
   ss << "softmax_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+
+  if (runtime->IsOutOfRangeCheckEnabled()) {
+    kernel_error_->Map(nullptr);
+    char *kerror_code = kernel_error_->mutable_data<char>();
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+    kernel_error_->UnMap();
+  }
 }
 
 template struct SoftmaxFunctor<DeviceType::OPENCL, float>;
