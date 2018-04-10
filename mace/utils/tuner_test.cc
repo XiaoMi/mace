@@ -20,7 +20,8 @@ class TunerTest : public ::testing::Test {
 
 TEST_F(TunerTest, SimpleRun) {
   int expect = 1;
-  auto TunerFunc = [&](const std::vector<unsigned int> &params) -> int {
+  auto TunerFunc = [&](const std::vector<unsigned int> &params, Timer *timer,
+                       std::vector<uint32_t> *tuning_result) -> int {
     if (params.front() == 1) {
       return expect;
     } else {
@@ -43,13 +44,30 @@ TEST_F(TunerTest, SimpleRun) {
 
 TEST_F(TunerTest, SimpleTune) {
   int expect = 3;
-  auto TunerFunc = [&](const std::vector<unsigned int> &params) -> int {
-    if (params.front() == expect) {
-      return expect;
+  auto TunerFunc = [&](const std::vector<unsigned int> &params, Timer *timer,
+                       std::vector<uint32_t> *tuning_result) -> int {
+    int res = 0;
+    if (timer) {
+      timer->ClearTiming();
+      timer->StartTiming();
+      if (params.front() == expect) {
+        timer->AccumulateTiming();
+        res = expect;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        timer->AccumulateTiming();
+        res = params.front();
+      }
+      tuning_result->assign(params.begin(), params.end());
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      return params.front();
+      if (params.front() == expect) {
+        res = expect;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        res = params.front();
+      }
     }
+    return res;
   };
 
   std::vector<unsigned int> default_params(1, 1);
