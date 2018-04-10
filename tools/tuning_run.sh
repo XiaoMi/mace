@@ -1,10 +1,10 @@
 #!/bin/bash
 
 Usage() {
-  echo "Usage: bash tools/tuning_run.sh target_soc model_output_dir round tuning "
+  echo "Usage: bash tools/tuning_run.sh target_soc model_output_dir round tuning restart_round opt_args out_of_range_check"
 }
 
-if [ $# -lt 6 ]; then
+if [ $# -lt 7 ]; then
   Usage
   exit 1
 fi
@@ -18,6 +18,7 @@ ROUND=$3
 TUNING_OR_NOT=$4
 RESTART_ROUND=$5
 OPTION_ARGS=$6
+OUT_OF_RANGE_CHECK_OR_NOT=$7
 
 echo $OPTION_ARGS
 
@@ -49,6 +50,12 @@ else
   else
     tuning_flag=0
   fi
+
+  if [[ "${OUT_OF_RANGE_CHECK_OR_NOT}" != "0" ]]; then
+    out_of_range_check_flag=1
+  else
+    out_of_range_check_flag=0
+  fi
   
   adb -s $DEVICE_ID shell "mkdir -p ${PHONE_DATA_DIR}" || exit 1
   adb -s $DEVICE_ID shell "mkdir -p ${COMPILED_PROGRAM_DIR}" || exit 1
@@ -67,6 +74,7 @@ else
 
   ADB_CMD_STR="LD_LIBRARY_PATH=${PHONE_DATA_DIR} \
     MACE_TUNING=${tuning_flag} \
+    MACE_OUT_OF_RANGE_CHECK=${out_of_range_check_flag} \
     MACE_CPP_MIN_VLOG_LEVEL=$VLOG_LEVEL \
     MACE_RUN_PARAMETER_PATH=${PHONE_DATA_DIR}/mace_run.config \
     MACE_CL_PROGRAM_PATH=$COMPILED_PROGRAM_DIR \
