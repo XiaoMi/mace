@@ -162,7 +162,8 @@ def tuning_run(model_name,
                running_round,
                tuning,
                restart_round,
-               option_args=''):
+               option_args='',
+               out_of_range_check=False):
     # TODO(yejianwu) refactoring the hackish code
     stdout_buff = []
     process_output = sh_commands.make_output_processor(stdout_buff)
@@ -174,6 +175,7 @@ def tuning_run(model_name,
         int(tuning),
         restart_round,
         option_args,
+        int(out_of_range_check),
         _out=process_output,
         _bg=True,
         _err_to_out=True)
@@ -209,10 +211,11 @@ def benchmark_model(target_soc, model_output_dir, option_args=''):
 
 
 def run_model(model_name, target_runtime, target_abi, target_soc,
-              model_output_dir, running_round, restart_round, option_args):
+              model_output_dir, running_round, restart_round, option_args,
+              out_of_range_check):
     tuning_run(model_name, target_runtime, target_abi, target_soc,
                model_output_dir, running_round, False, restart_round,
-               option_args)
+               option_args, out_of_range_check)
 
 
 def generate_production_code(target_soc, model_output_dirs, pull_or_not):
@@ -235,6 +238,18 @@ def build_mace_run_prod(model_name, target_runtime, target_abi, target_soc,
     generate_code(target_soc, [], False)
     production_or_not = False
     build_mace_run(production_or_not, model_output_dir, hexagon_mode)
+
+    tuning_run(
+        model_name,
+        target_runtime,
+        target_abi,
+        target_soc,
+        model_output_dir,
+        running_round=0,
+        tuning=False,
+        restart_round=1,
+        out_of_range_check=True)
+
     tuning_run(
         model_name,
         target_runtime,
@@ -345,6 +360,11 @@ def parse_args():
         type=str,
         default="all",
         help="SoCs to build, comma seperated list (getprop ro.board.platform)")
+    parser.add_argument(
+        "--out_of_range_check",
+        type="bool",
+        default="false",
+        help="Enable out of range check for opencl.")
     return parser.parse_known_args()
 
 
@@ -454,7 +474,8 @@ def main(unused_args):
                         FLAGS.mode == "all":
                     run_model(model_name, global_runtime, target_abi,
                               target_soc, model_output_dir, FLAGS.round,
-                              FLAGS.restart_round, option_args)
+                              FLAGS.restart_round, option_args,
+                              FLAGS.out_of_range_check)
 
                 if FLAGS.mode == "benchmark":
                     benchmark_model(target_soc, model_output_dir, option_args)
