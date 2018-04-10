@@ -1,9 +1,9 @@
-#-*- coding:utf8 -*-
+import json
+import socket
+import itertools
 
-import json, socket, itertools
 
 class FalconCli(object):
-
     def __init__(self, addr, debug=True, buf_size=1000):
         self.socket_ = socket.create_connection(addr)
         self.stream = self.socket_.makefile()
@@ -16,16 +16,19 @@ class FalconCli(object):
         self.stream.close()
 
     @classmethod
-    def connect(cls, server="transfer.falcon.miliao.srv", port=8433, debug=True, buf_size=1000):
+    def connect(cls,
+                server="transfer.falcon.miliao.srv",
+                port=8433,
+                debug=True,
+                buf_size=1000):
         try:
             return FalconCli((server, port), debug, buf_size)
         except socket.error, exc:
-            print "error: connect to %s:%s error: %s" %(server, port, exc)
+            print "error: connect to %s:%s error: %s" % (server, port, exc)
 
     def call(self, name, *params):
-        request = dict(id=next(self.id_counter),
-                    params=list(params),
-                    method=name)
+        request = dict(
+            id=next(self.id_counter), params=list(params), method=name)
         payload = json.dumps(request).encode()
         if self.debug:
             print "--> req:", payload
@@ -49,7 +52,7 @@ class FalconCli(object):
         resp = []
 
         while True:
-            buf = lines[s:s+self.buf_size]
+            buf = lines[s:s + self.buf_size]
             s = s + self.buf_size
             if len(buf) == 0:
                 break
@@ -57,4 +60,3 @@ class FalconCli(object):
             resp.append(r)
 
         return resp
-
