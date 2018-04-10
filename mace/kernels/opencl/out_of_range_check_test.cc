@@ -48,7 +48,7 @@ const bool BufferToImageOpImpl(Tensor *buffer,
     kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
     kernel_error->Map(nullptr);
-    *(kernel_error->mutable_data<char>()) = '0';
+    *(kernel_error->mutable_data<char>()) = 0;
     kernel_error->UnMap();
   }
 
@@ -102,7 +102,7 @@ const bool BufferToImageOpImpl(Tensor *buffer,
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error->Map(nullptr);
     is_out_of_range =
-        *(kernel_error->mutable_data<char>()) == '1' ? true : false;
+        *(kernel_error->mutable_data<char>()) == 1 ? true : false;
     kernel_error->UnMap();
   }
   return is_out_of_range;

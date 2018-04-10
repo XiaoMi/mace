@@ -45,7 +45,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
             new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
       kernel_error_->Map(nullptr);
-      *(kernel_error_->mutable_data<char>()) = '0';
+      *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
     }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
@@ -83,7 +83,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);
     char *kerror_code = kernel_error_->mutable_data<char>();
-    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
 }

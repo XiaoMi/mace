@@ -50,7 +50,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
       *kernel_error = std::move(std::unique_ptr<Buffer>(
             new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
       (*kernel_error)->Map(nullptr);
-      *((*kernel_error)->mutable_data<char>()) = '0';
+      *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
     }
     if (runtime->IsNonUniformWorkgroupsSupported()) {
@@ -129,7 +129,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);
     char *kerror_code = (*kernel_error)->mutable_data<char>();
-    MACE_CHECK(*kerror_code == '0') << "Kernel error code: " << *kerror_code;
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
 }
