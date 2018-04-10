@@ -26,4 +26,3 @@ def tf_dtype_2_mace_dtype(tf_dtype):
     if not mace_dtype:
         raise Exception("Not supported tensorflow dtype: " + tf_dtype)
     return mace_dtype
-

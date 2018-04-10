@@ -1,5 +1,6 @@
 stages:
   - cpplint
+  - pycodestyle
   - ops_test
   - ops_benchmark
 
@@ -7,7 +8,12 @@ cpplint:
   stage: cpplint
   script:
     - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py
-    - python cpplint.py --linelength=80 --counting=detailed $(find mace -name *.h -or -name *.cc)
+    - python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc")
+
+pycodestyle:
+  stage: pycodestyle
+  script:
+    - pycodestyle $(find -name "*.py")
 
 ops_test:
   stage: ops_test
