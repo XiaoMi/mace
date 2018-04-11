@@ -20,7 +20,7 @@ ops_test:
   stage: ops_test
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=ops_test_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS 
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS 
 
 ops_benchmark:
   stage: ops_benchmark
@@ -32,5 +32,5 @@ extra_tests:
   stage: extra_tests
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=True --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
-    - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=True --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
+    - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
