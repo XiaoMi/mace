@@ -1,0 +1,9 @@
+MACE Documentations
+---
+
+How to build the documents
+```
+pip install sphinx sphinx-autobuild
+pip install recommonmark
+make html
+```
