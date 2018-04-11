@@ -20,7 +20,7 @@ class Workspace {
  public:
   typedef std::map<std::string, std::unique_ptr<Tensor>> TensorMap;
 
-  Workspace() {}
+  Workspace();
   ~Workspace() {}
 
   Tensor *CreateTensor(const std::string &name,
@@ -39,6 +39,8 @@ class Workspace {
 
   void LoadModelTensor(const NetDef &net_def, DeviceType type);
 
+  ScratchBuffer *GetScratchBuffer(DeviceType device_type);
+
  private:
   void CreateImageOutputTensor(const NetDef &net_def);
 
@@ -47,6 +49,8 @@ class Workspace {
   std::unique_ptr<BufferBase> tensor_buffer_;
 
   PreallocatedPooledAllocator preallocated_allocator_;
+
+  std::unique_ptr<ScratchBuffer> host_scratch_buffer_;
 
   DISABLE_COPY_AND_ASSIGN(Workspace);
 };

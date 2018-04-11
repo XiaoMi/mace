@@ -297,7 +297,8 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                 const std::vector<int> &paddings,
                 const int *dilations,
                 const ActivationType activation,
-                const float relux_max_limit)
+                const float relux_max_limit,
+                ScratchBuffer *scratch)
       : Conv2dFunctorBase(strides,
                           padding_type,
                           paddings,
@@ -422,14 +423,16 @@ struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
                 const std::vector<int> &paddings,
                 const int *dilations,
                 const ActivationType activation,
-                const float relux_max_limit)
+                const float relux_max_limit,
+                ScratchBuffer *scratch)
     : Conv2dFunctorBase(strides,
                         padding_type,
                         paddings,
                         dilations,
                         activation,
                         relux_max_limit),
-      is_filter_transformed_(false) {}
+      is_filter_transformed_(false),
+      scratch_(scratch) {}
 
   void operator()(const Tensor *input,
                   const Tensor *filter,
@@ -437,13 +440,9 @@ struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
                   Tensor *output,
                   StatsFuture *future);
 
-  // TODO(liyin): share tmp buffers among ops
-  Tensor padded_input_;
-  Tensor padded_output_;
-  Tensor transformed_input_;
   Tensor transformed_filter_;
-  Tensor transformed_output_;
   bool is_filter_transformed_;
+  ScratchBuffer *scratch_;
 };
 
 template <typename T>
@@ -453,7 +452,8 @@ struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
                 const std::vector<int> &paddings,
                 const int *dilations,
                 const ActivationType activation,
-                const float relux_max_limit)
+                const float relux_max_limit,
+                ScratchBuffer *scratch)
       : Conv2dFunctorBase(strides,
                           padding_type,
                           paddings,
