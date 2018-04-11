@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <algorithm>
+#include <memory>
 
 #include "mace/kernels/arm/conv_winograd.h"
 #include "mace/core/types.h"
@@ -25,51 +26,46 @@ TEST(ConvWinogradTest, winograd) {
   index_t filter_size = 3 * 3 * in_channels * out_channels;
   index_t output_size = batch * out_channels * out_height * out_width;
 
-  float *input_data = new float[input_size];
-  float *filter_data = new float[filter_size];
-  float *output_data = new float[output_size];
-  float *output_data_ref = new float[output_size];
+  std::unique_ptr<float[]> input_data(new float[input_size]);
+  std::unique_ptr<float[]> filter_data(new float[filter_size]);
+  std::unique_ptr<float[]> output_data(new float[output_size]);
+  std::unique_ptr<float[]> output_data_ref(new float[output_size]);
 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
-  std::generate(input_data, input_data + input_size,
+  std::generate(input_data.get(), input_data.get() + input_size,
                 [&gen, &nd] {
                   return std::max(-1.0f, std::min(1.0f, nd(gen)));
                 });
-  std::generate(filter_data, filter_data + filter_size,
+  std::generate(filter_data.get(), filter_data.get() + filter_size,
                 [&gen, &nd] {
                   return std::max(-1.0f, std::min(1.0f, nd(gen)));
                 });
 
-  kernels::ConvRef3x3s1(input_data,
-                        filter_data,
+  kernels::ConvRef3x3s1(input_data.get(),
+                        filter_data.get(),
                         batch,
                         in_height,
                         in_width,
                         in_channels,
                         out_channels,
-                        output_data_ref);
+                        output_data_ref.get());
 
-  kernels::WinoGradConv3x3s1(input_data,
-                             filter_data,
+  kernels::WinoGradConv3x3s1(input_data.get(),
+                             filter_data.get(),
                              batch,
                              in_height,
                              in_width,
                              in_channels,
                              out_channels,
                              6,
-                             output_data);
+                             output_data.get());
 
   // test
   for (index_t i = 0; i < output_size; ++i) {
     EXPECT_NEAR(output_data_ref[i], output_data[i], 0.1) << " with index " << i;
   }
-
-  delete[]input_data;
-  delete[]filter_data;
-  delete[]output_data;
-  delete[]output_data_ref;
 }
 
 }  // namespace kernels

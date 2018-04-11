@@ -25,7 +25,7 @@ void FullyConnectedFunctor<DeviceType::NEON,
   float *output_ptr = output->mutable_data<float>();
 
   for (int i = 0; i < N; ++i) {
-    Gemm(weight_ptr, input_ptr, 1, output_size, input_size, 1, output_ptr);
+    Gemv(weight_ptr, input_ptr, input_size, output_size, output_ptr);
     for (int j = 0; j < output_size; ++j) {
       output_ptr[j] += bias_ptr[j];
     }

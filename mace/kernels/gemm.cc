@@ -514,5 +514,115 @@ void GemmRef(const float *A,
   }
 }
 
+
+void GemvRef(const float *m_ptr,
+             const float *v_ptr,
+             const index_t width,
+             const index_t height,
+             float *out_ptr) {
+  memset(out_ptr, 0, sizeof(float) * height);
+  for (int h = 0; h < height; ++h) {
+    for (int w = 0; w < width; ++w) {
+      out_ptr[h] += v_ptr[w] * m_ptr[h * width + w];
+    }
+  }
+}
+
+void Gemv(const float *m_ptr,
+          const float *v_ptr,
+          const index_t width,
+          const index_t height,
+          float *out_ptr) {
+#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+  index_t height_d4 = height >> 2;
+  index_t width_d4 = width >> 2;
+  index_t remain_w = width - (width_d4 << 2);
+  index_t remain_h = height - (height_d4 << 2);
+
+#pragma omp parallel for
+  for (index_t h = 0; h < height_d4; ++h) {
+    const float *m_ptr0 = m_ptr + h * width * 4;
+    const float *m_ptr1 = m_ptr0 + width;
+    const float *m_ptr2 = m_ptr1 + width;
+    const float *m_ptr3 = m_ptr2 + width;
+    const float *v_ptr0 = v_ptr;
+    float *out_ptr0 = out_ptr + h * 4;
+
+    float32x4_t vm0, vm1, vm2, vm3;
+    float32x4_t vv;
+
+    float32x4_t vsum0 = vdupq_n_f32(0.f);
+    float32x4_t vsum1 = vdupq_n_f32(0.f);
+    float32x4_t vsum2 = vdupq_n_f32(0.f);
+    float32x4_t vsum3 = vdupq_n_f32(0.f);
+
+    for (index_t w = 0; w < width_d4; ++w) {
+      vm0 = vld1q_f32(m_ptr0);
+      vm1 = vld1q_f32(m_ptr1);
+      vm2 = vld1q_f32(m_ptr2);
+      vm3 = vld1q_f32(m_ptr3);
+      vv = vld1q_f32(v_ptr0);
+
+      vsum0 = vmlaq_f32(vsum0, vm0, vv);
+      vsum1 = vmlaq_f32(vsum1, vm1, vv);
+      vsum2 = vmlaq_f32(vsum2, vm2, vv);
+      vsum3 = vmlaq_f32(vsum3, vm3, vv);
+
+      m_ptr0 += 4;
+      m_ptr1 += 4;
+      m_ptr2 += 4;
+      m_ptr3 += 4;
+      v_ptr0 += 4;
+    }
+    float sum0 = vaddvq_f32(vsum0);
+    float sum1 = vaddvq_f32(vsum1);
+    float sum2 = vaddvq_f32(vsum2);
+    float sum3 = vaddvq_f32(vsum3);
+
+    // handle remaining w
+    for (index_t w = 0; w < remain_w; ++w) {
+      sum0 += m_ptr0[0] * v_ptr0[0];
+      sum1 += m_ptr1[0] * v_ptr0[0];
+      sum2 += m_ptr2[0] * v_ptr0[0];
+      sum3 += m_ptr3[0] * v_ptr0[0];
+      m_ptr0++;
+      m_ptr1++;
+      m_ptr2++;
+      m_ptr3++;
+      v_ptr0++;
+    }
+    *out_ptr0++ = sum0;
+    *out_ptr0++ = sum1;
+    *out_ptr0++ = sum2;
+    *out_ptr0++ = sum3;
+  }
+
+  // handle remaining h
+  index_t remain_start_height = height_d4 << 2;
+#pragma omp parallel for
+  for (index_t h = 0; h < remain_h; ++h) {
+    float32x4_t vsum0 = vdupq_n_f32(0.f);
+    const float *m_ptr0 = m_ptr + (h + remain_start_height) * width;
+    const float *v_ptr0 = v_ptr;
+    for (index_t w = 0; w < width_d4; ++w) {
+      float32x4_t vm = vld1q_f32(m_ptr0);
+      float32x4_t vv = vld1q_f32(v_ptr0);
+      vsum0 = vmlaq_f32(vsum0, vm, vv);
+      m_ptr0 += 4;
+      v_ptr0 += 4;
+    }
+    float sum = vaddvq_f32(vsum0);
+    for (index_t w = 0; w < remain_w; ++w) {
+      sum += m_ptr0[0] * v_ptr0[0];
+      m_ptr0++;
+      v_ptr0++;
+    }
+    out_ptr[remain_start_height + h] = sum;
+  }
+#else
+  GemvRef(m_ptr, v_ptr, width, height, out_ptr);
+#endif
+}
+
 }  // namespace kernels
 }  // namespace mace
