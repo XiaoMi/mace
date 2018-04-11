@@ -1,7 +1,8 @@
-import sh
-import re
-import time
 import falcon_cli
+import filelock
+import re
+import sh
+import time
 
 
 ################################
@@ -85,28 +86,33 @@ def adb_run(serialno,
     print(
         "====================================================================="
     )
-    print("Run on device: %s, %s, %s" % (serialno, props["ro.board.platform"],
-                                         props["ro.product.model"]))
-    sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
-    sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
-    print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
-    sh.adb("-s", serialno, "push", host_bin_full_path, device_bin_full_path)
-    print("Run %s" % device_bin_full_path)
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
-    p = sh.adb(
-        "-s",
-        serialno,
-        "shell",
-        "MACE_OUT_OF_RANGE_CHECK=%d MACE_OPENCL_PROFILING=%d "
-        "MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
-        (out_of_range_check, opencl_profiling, vlog_level,
-         device_bin_full_path, args),
-        _out=process_output,
-        _bg=True,
-        _err_to_out=True)
-    p.wait()
-    return "".join(stdout_buff)
+    lock_path = "/tmp/device-lock-%s" % serialno
+    print("Try to lock ", lock_path)
+    with filelock.FileLock(lock_path, timeout=3600):
+        print("Run on device: %s, %s, %s" % (serialno,
+                                             props["ro.board.platform"],
+                                             props["ro.product.model"]))
+        sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
+        sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
+        print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
+        sh.adb("-s", serialno, "push", host_bin_full_path,
+               device_bin_full_path)
+        print("Run %s" % device_bin_full_path)
+        stdout_buff = []
+        process_output = make_output_processor(stdout_buff)
+        p = sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            "MACE_OUT_OF_RANGE_CHECK=%d MACE_OPENCL_PROFILING=%d "
+            "MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
+            (out_of_range_check, opencl_profiling, vlog_level,
+                device_bin_full_path, args),
+            _out=process_output,
+            _bg=True,
+            _err_to_out=True)
+        p.wait()
+        return "".join(stdout_buff)
 
 
 ################################

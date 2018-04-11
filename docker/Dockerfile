@@ -109,12 +109,13 @@ RUN apt-get install -y --no-install-recommends \
 
 # Install tools
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.4.0 \
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.6.0 \
     scipy \
     jinja2 \
     pyyaml \
-    sh \
-    pycodestyle
+    sh==1.12.14 \
+    pycodestyle==2.4.0 \
+    filelock
 
 # Download tensorflow tools
 RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \
