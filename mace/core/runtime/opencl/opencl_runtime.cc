@@ -179,7 +179,7 @@ void OpenCLProfilingTimer::ClearTiming() {
   accumulated_micros_ = 0;
 }
 
-GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_DEFAULT;
+GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_NORMAL;
 GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
     GPUPriorityHint::PRIORITY_DEFAULT;
 
