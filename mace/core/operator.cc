@@ -83,6 +83,7 @@ extern void Register_FusedConv2D(OperatorRegistry *op_registry);
 extern void Register_GlobalAvgPooling(OperatorRegistry *op_registry);
 extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
 extern void Register_MatMul(OperatorRegistry *op_registry);
+extern void Register_Pad(OperatorRegistry *op_registry);
 extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
 extern void Register_PSROIAlign(OperatorRegistry *op_registry);
@@ -119,6 +120,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_GlobalAvgPooling(this);
   ops::Register_ImageToBuffer(this);
   ops::Register_MatMul(this);
+  ops::Register_Pad(this);
   ops::Register_Pooling(this);
   ops::Register_Proposal(this);
   ops::Register_PSROIAlign(this);
