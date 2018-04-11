@@ -992,6 +992,29 @@ class TFConverter(object):
         self.add_output_shape([shape], op_def)
         self.resolved_ops[reshape_op.name] = 1
 
+    def convert_pad(self, op):
+        op_def = self.net_def.op.add()
+        arg = op_def.arg.add()
+        arg.name = 'T'
+        arg.i = self.dt
+        op_def.name = op.name
+        op_def.type = "Pad"
+        op_def.input.extend([op.inputs[0].name])
+        op_def.output.extend([output.name for output in op.outputs])
+        paddings_arg = op_def.arg.add()
+        paddings_arg.name = 'paddings'
+        paddings_arg.ints.extend(
+            get_input_tensor(op, 1).eval().astype(np.int32).flat)
+        self.unused_tensor.add(get_input_tensor(op, 1).name)
+        if len(op.inputs) == 3:
+            constant_value_arg = op_def.arg.add()
+            constant_value_arg.name = 'constant_value'
+            constant_value_arg.i = \
+                get_input_tensor(op, 2).eval().astype(np.int32).flat[0]
+            self.unused_tensor.add(get_input_tensor(op, 2).name)
+        self.add_output_shape(op.outputs, op_def)
+        self.resolved_ops[op.name] = 1
+
     def convert_normal_op(self, op):
         op_def = self.net_def.op.add()
         arg = op_def.arg.add()
@@ -1084,6 +1107,8 @@ class TFConverter(object):
                 else:
                     raise Exception('Unknown Op: %s, type: %s' % (op.name,
                                                                   op.type))
+            elif op.type == 'Pad':
+                self.convert_pad(op)
             # elif op.type in ['']:
             #  self.convert_normal_op(op)
             else:

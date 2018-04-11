@@ -5,6 +5,7 @@
 #define MACE_KERNELS_PAD_H_
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -49,6 +50,7 @@ struct PadFunctor : public PadFunctorBase {
     const index_t height = input->dim(1);
     const index_t width = input->dim(2);
     const index_t channel = input->dim(3);
+#pragma omp parallel for collapse(3)
     for (index_t b = 0; b < batch; ++b) {
       for (index_t h = 0; h < height; ++h) {
         for (index_t w = 0; w < width; ++w) {
