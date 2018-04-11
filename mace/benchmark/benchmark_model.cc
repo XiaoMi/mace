@@ -215,8 +215,8 @@ DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
-DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_perf_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 4, "num of openmp threads");
 DEFINE_int32(cpu_power_option, 0,
              "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");

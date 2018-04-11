@@ -363,17 +363,15 @@ class TFConverter(object):
         op_def.name = op.name
         if op.type == 'DepthwiseConv2dNative':
             op_def.type = 'DepthwiseConv2d'
-            if self.device == 'neon':
-                self.transpose_filter_tensor[get_input_tensor(
-                    op, 1).name] = (3, 2, 0, 1)
         else:
             op_def.type = op.type
-            if self.device == 'neon':
-                self.transpose_filter_tensor[get_input_tensor(
-                    op, 1).name] = (3, 2, 0, 1)
-            else:
-                self.transpose_filter_tensor[get_input_tensor(
-                    op, 1).name] = (0, 1, 3, 2)
+
+        if self.device == 'neon':
+            self.transpose_filter_tensor[get_input_tensor(
+                op, 1).name] = (3, 2, 0, 1)
+        elif op.type == 'Conv2D':
+            self.transpose_filter_tensor[get_input_tensor(
+                op, 1).name] = (0, 1, 3, 2)
         if self.device == 'gpu':
             op_def.input.extend([op.inputs[0].name])
             if op_def.type == 'DepthwiseConv2d':
@@ -402,19 +400,6 @@ class TFConverter(object):
         final_op = op
         self.resolved_ops[op.name] = 1
 
-        # convert global conv to fc
-        filter_shape = get_input_tensor(op, 1).shape.as_list()
-        input_shape = get_input_tensor(op, 0).shape.as_list()
-        if op_def.type == "Conv2D" and input_shape[1] == filter_shape[0] and \
-                input_shape[2] == filter_shape[1] and \
-                (op.get_attr('padding') == 'VALID' or filter_shape[0] == 1 and
-                 filter_shape[1] == 1):
-            print "convert op %s from CONV to FC" % op.name
-            op_def.type = 'FC'
-            self.reshape_tensor[get_input_tensor(op, 1).name] = \
-                [filter_shape[3],
-                 filter_shape[2] * filter_shape[1] * filter_shape[0], 1, 1]
-
         if len(self.tf_graph.get(op.name, [])) == 1 and \
                 self.tf_graph[op.name][0].type == 'BiasAdd':
             bias_add_op = self.tf_graph[op.name][0]
@@ -432,6 +417,67 @@ class TFConverter(object):
             activation_op = self.tf_graph[final_op.name][0]
             if op_def.type == "Conv2D":
                 op_def.type = "FusedConv2D"
+            fused_act_arg = op_def.arg.add()
+            fused_act_arg.name = 'activation'
+            fused_act_arg.s = activation_name_map[activation_op.type]
+            if activation_op.type == 'Relu6':
+                max_limit_arg = op_def.arg.add()
+                max_limit_arg.name = 'max_limit'
+                max_limit_arg.f = 6
+            final_op = activation_op
+            self.resolved_ops[activation_op.name] = 1
+
+        op_def.output.extend([output.name for output in final_op.outputs])
+        self.add_output_shape(final_op.outputs, op_def)
+        self.net_def.op.extend([op_def])
+
+    def check_conv_to_fc(self, op):
+        if self.device != 'neon' or op.type != "Conv2D":
+            return False
+        filter_shape = get_input_tensor(op, 1).shape.as_list()
+        input_shape = get_input_tensor(op, 0).shape.as_list()
+        return input_shape[1] == filter_shape[0] and \
+               input_shape[2] == filter_shape[1] and \
+               (op.get_attr('padding') == 'VALID' or filter_shape[0] == 1 and
+                filter_shape[1] == 1)
+
+    def convert_global_conv_to_fc(self, op):
+        op_def = mace_pb2.OperatorDef()
+        arg = op_def.arg.add()
+        arg.name = 'T'
+        arg.i = self.dt
+        op_def.name = op.name
+        op_def.type = 'FC'
+        self.transpose_filter_tensor[get_input_tensor(op, 1).name] = \
+            (3, 2, 0, 1)
+        filter_shape = get_input_tensor(op, 1).shape.as_list()
+        self.reshape_tensor[get_input_tensor(op, 1).name] = \
+            [filter_shape[3],
+             filter_shape[2] * filter_shape[1] * filter_shape[0], 1, 1]
+        op_def.input.extend(
+            [get_input_tensor(op, i).name for i in range(len(op.inputs))])
+
+        data_format_arg = op_def.arg.add()
+        data_format_arg.name = 'data_format'
+        data_format_arg.s = 'NCHW'
+        final_op = op
+        self.resolved_ops[op.name] = 1
+
+        if len(self.tf_graph.get(op.name, [])) == 1 and \
+               self.tf_graph[op.name][0].type == 'BiasAdd':
+            bias_add_op = self.tf_graph[op.name][0]
+            if self.device == 'gpu':
+                output_name = self.add_buffer_to_image(
+                    get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
+                op_def.input.extend([output_name])
+            else:
+                op_def.input.extend([get_input_tensor(bias_add_op, 1).name])
+            final_op = bias_add_op
+            self.resolved_ops[bias_add_op.name] = 1
+
+        if len(self.tf_graph.get(final_op.name, [])) == 1 and \
+               self.tf_graph[final_op.name][0].type in activation_name_map:
+            activation_op = self.tf_graph[final_op.name][0]
             fused_act_arg = op_def.arg.add()
             fused_act_arg.name = 'activation'
             fused_act_arg.s = activation_name_map[activation_op.type]
@@ -985,6 +1031,8 @@ class TFConverter(object):
                 self.convert_reshape(op)
             elif self.is_atrous_conv2d(op):
                 self.convert_atrous_conv2d(op)
+            elif self.check_conv_to_fc(op):
+                self.convert_global_conv_to_fc(op)
             elif op.type == 'Conv2D' or op.type == 'DepthwiseConv2dNative':
                 if self.check_winograd_conv(op):
                     self.convert_winograd_conv(op)

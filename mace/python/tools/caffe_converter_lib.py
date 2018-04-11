@@ -450,18 +450,6 @@ class CaffeConverter(object):
             final_op.output_shape_map[final_op.layer.top[0]] = output_shape
             self.resolved_ops.add(activation_op.name)
 
-        if op_def.type in ("Conv2D", "FusedConv2D") and \
-                output_shape[2] == 1 and \
-                ((input_format == 'NCHW' and output_shape[3] == 1) or
-                 (input_format == 'NHWC' and output_shape[1] == 1)):
-            print "convert op %s from CONV to FC" % op.name
-            op_def.type = 'FC'
-            filter_shape = weight_data.shape
-            new_shape = [filter_shape[0],
-                         filter_shape[1] * filter_shape[2] * filter_shape[3],
-                         1, 1]
-            weight_data.reshape(new_shape)
-
         op_def.output.extend([final_op.name + ':0'])
         self.add_output_shape(op_def, output_shape)
         self.net_def.op.extend([op_def])
