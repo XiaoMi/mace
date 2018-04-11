@@ -401,7 +401,7 @@ class TFConverter(object):
         self.resolved_ops[op.name] = 1
 
         if len(self.tf_graph.get(op.name, [])) == 1 and \
-                self.tf_graph[op.name][0].type == 'BiasAdd':
+           self.tf_graph[op.name][0].type == 'BiasAdd':
             bias_add_op = self.tf_graph[op.name][0]
             if self.device == 'gpu':
                 output_name = self.add_buffer_to_image(
@@ -413,7 +413,7 @@ class TFConverter(object):
             self.resolved_ops[bias_add_op.name] = 1
 
         if len(self.tf_graph.get(final_op.name, [])) == 1 and \
-                self.tf_graph[final_op.name][0].type in activation_name_map:
+           self.tf_graph[final_op.name][0].type in activation_name_map:
             activation_op = self.tf_graph[final_op.name][0]
             if op_def.type == "Conv2D":
                 op_def.type = "FusedConv2D"
@@ -436,10 +436,10 @@ class TFConverter(object):
             return False
         filter_shape = get_input_tensor(op, 1).shape.as_list()
         input_shape = get_input_tensor(op, 0).shape.as_list()
-        return input_shape[1] == filter_shape[0] and \
-               input_shape[2] == filter_shape[1] and \
-               (op.get_attr('padding') == 'VALID' or filter_shape[0] == 1 and
-                filter_shape[1] == 1)
+        return input_shape[1] == filter_shape[0] \
+            and input_shape[2] == filter_shape[1] \
+            and (op.get_attr('padding') == 'VALID' or filter_shape[0] == 1
+                 and filter_shape[1] == 1)
 
     def convert_global_conv_to_fc(self, op):
         op_def = mace_pb2.OperatorDef()
@@ -464,7 +464,7 @@ class TFConverter(object):
         self.resolved_ops[op.name] = 1
 
         if len(self.tf_graph.get(op.name, [])) == 1 and \
-               self.tf_graph[op.name][0].type == 'BiasAdd':
+           self.tf_graph[op.name][0].type == 'BiasAdd':
             bias_add_op = self.tf_graph[op.name][0]
             if self.device == 'gpu':
                 output_name = self.add_buffer_to_image(
@@ -476,7 +476,7 @@ class TFConverter(object):
             self.resolved_ops[bias_add_op.name] = 1
 
         if len(self.tf_graph.get(final_op.name, [])) == 1 and \
-               self.tf_graph[final_op.name][0].type in activation_name_map:
+           self.tf_graph[final_op.name][0].type in activation_name_map:
             activation_op = self.tf_graph[final_op.name][0]
             fused_act_arg = op_def.arg.add()
             fused_act_arg.name = 'activation'
