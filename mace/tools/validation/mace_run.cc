@@ -188,8 +188,8 @@ DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
-DEFINE_int32(gpu_perf_hint, 2, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(gpu_priority_hint, 1, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_perf_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, 4, "num of openmp threads");
 DEFINE_int32(cpu_power_option,
              0,

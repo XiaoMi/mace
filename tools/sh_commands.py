@@ -30,9 +30,13 @@ def adb_split_stdout(stdout_str):
 
 
 def adb_devices(target_socs=None):
-    outputs = sh.grep(sh.adb("devices"), "^[A-Za-z0-9]\+[[:space:]]\+device$")
-    raw_lists = sh.cut(outputs, "-f1")
-    device_ids = adb_split_stdout(raw_lists)
+    device_ids = []
+    p = re.compile(r'(\w+)\s+device')
+    for line in adb_split_stdout(sh.adb("devices")):
+        m = p.match(line)
+        if m:
+            device_ids.append(m.group(1))
+
     if target_socs is not None:
         target_socs_set = set(target_socs)
         target_devices = []
@@ -49,7 +53,7 @@ def adb_getprop_by_serialno(serialno):
     outputs = sh.adb("-s", serialno, "shell", "getprop")
     raw_props = adb_split_stdout(outputs)
     props = {}
-    p = re.compile("\[(.+)\]: \[(.+)\]")
+    p = re.compile(r'\[(.+)\]: \[(.+)\]')
     for raw_prop in raw_props:
         m = p.match(raw_prop)
         if m:
