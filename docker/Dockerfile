@@ -118,5 +118,5 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     filelock
 
 # Download tensorflow tools
-RUN wget http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph && \
+RUN wget https://cnbj1.fds.api.xiaomi.com/mace/tools/transform_graph && \
     chmod +x transform_graph
