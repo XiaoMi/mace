@@ -20,6 +20,22 @@ def make_output_processor(buff):
     return process_output
 
 
+def device_lock_path(serialno):
+    return "/tmp/device-lock-%s" % serialno
+
+
+def device_lock(serialno, timeout=3600):
+    return filelock.FileLock(device_lock_path(serialno), timeout=timeout)
+
+
+def is_device_locked(serialno):
+    try:
+        with device_lock(serialno, timeout=0.000001):
+            return False
+    except filelock.Timeout:
+        return True
+
+
 ################################
 # adb commands
 ################################
@@ -90,12 +106,11 @@ def adb_run(serialno,
     print(
         "====================================================================="
     )
-    lock_path = "/tmp/device-lock-%s" % serialno
-    print("Try to lock ", lock_path)
-    with filelock.FileLock(lock_path, timeout=3600):
-        print("Run on device: %s, %s, %s" % (serialno,
-                                             props["ro.board.platform"],
-                                             props["ro.product.model"]))
+    print("Trying to lock device", serialno)
+    with device_lock(serialno):
+        print("Run on device: %s, %s, %s" %
+              (serialno, props["ro.board.platform"],
+               props["ro.product.model"]))
         sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
         sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
         print("Push %s to %s" % (host_bin_full_path, device_bin_full_path))
@@ -111,7 +126,7 @@ def adb_run(serialno,
             "MACE_OUT_OF_RANGE_CHECK=%d MACE_OPENCL_PROFILING=%d "
             "MACE_CPP_MIN_VLOG_LEVEL=%d %s %s" %
             (out_of_range_check, opencl_profiling, vlog_level,
-                device_bin_full_path, args),
+             device_bin_full_path, args),
             _out=process_output,
             _bg=True,
             _err_to_out=True)
