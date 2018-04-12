@@ -9,3 +9,4 @@ mace/codegen/opencl_bin/
 mace/codegen/tuning/
 mace/codegen/version/
 build/
+docs/_build/

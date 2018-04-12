@@ -86,7 +86,12 @@ def main(unused_args):
         target_socs = set(FLAGS.target_socs.split(','))
     target_devices = sh_commands.adb_devices(target_socs=target_socs)
     if FLAGS.target_socs == "random":
-        target_devices = [random.choice(target_devices)]
+        unlocked_devices = \
+            [d for d in target_devices if not sh_commands.is_device_locked(d)]
+        if len(unlocked_devices) > 0:
+            target_devices = [random.choice(unlocked_devices)]
+        else:
+            target_devices = [random.choice(target_devices)]
 
     target = FLAGS.target
     host_bin_path, bin_name = sh_commands.bazel_target_to_bin(target)
