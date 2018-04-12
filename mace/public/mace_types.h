@@ -326,9 +326,19 @@ struct CallStats {
   int64_t end_micros;
 };
 
+struct ConvPoolArgs {
+  std::vector<int> strides;
+  int padding_type;
+  std::vector<int> paddings;
+  std::vector<int> dilations;
+  std::vector<int64_t> kernels;
+};
+
 struct OperatorStats {
   std::string operator_name;
   std::string type;
+  std::vector<OutputShape> output_shape;
+  ConvPoolArgs args;
   CallStats stats;
 };
 

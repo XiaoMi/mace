@@ -14,6 +14,8 @@
 #include <string>
 #include <vector>
 
+#include "mace/public/mace_types.h"
+
 namespace mace {
 
 class RunMetadata;
@@ -175,6 +177,8 @@ class StatSummarizer {
   struct Detail {
     std::string name;
     std::string type;
+    std::vector<mace::OutputShape> output_shape;
+    ConvPoolArgs args;
     int64_t run_order;
     Stat<int64_t> start_us;
     Stat<int64_t> rel_end_us;
@@ -189,7 +193,6 @@ class StatSummarizer {
   std::string ColumnString(const Detail &detail,
                            const int64_t cumulative_stat_on_node,
                            const Stat<int64_t> &stat) const;
-
   Stat<int64_t> run_total_us_;
   Stat<int64_t> memory_;
 
