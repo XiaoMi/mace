@@ -215,11 +215,11 @@ DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
-DEFINE_int32(gpu_perf_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(gpu_priority_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(omp_num_threads, 4, "num of openmp threads");
-DEFINE_int32(cpu_power_option, 0,
-             "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
+DEFINE_int32(gpu_perf_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
+DEFINE_int32(cpu_affinity_policy, 1,
+             "0:AFFINITY_DEFAULT/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
 int Main(int argc, char **argv) {
   MACE_CHECK(FLAGS_device != "HEXAGON",
@@ -232,7 +232,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "gpu_perf_hint: [" << FLAGS_gpu_perf_hint << "]";
   LOG(INFO) << "gpu_priority_hint: [" << FLAGS_gpu_priority_hint << "]";
   LOG(INFO) << "omp_num_threads: [" << FLAGS_omp_num_threads << "]";
-  LOG(INFO) << "cpu_power_option: [" << FLAGS_cpu_power_option << "]";
+  LOG(INFO) << "cpu_affinity_policy: [" << FLAGS_cpu_affinity_policy << "]";
   LOG(INFO) << "Input node: [" << FLAGS_input_node<< "]";
   LOG(INFO) << "Input shapes: [" << FLAGS_input_shape << "]";
   LOG(INFO) << "Output node: [" << FLAGS_output_node<< "]";
@@ -267,11 +267,11 @@ int Main(int argc, char **argv) {
   mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
 
   // config runtime
-  mace::ConfigOmpThreads(FLAGS_omp_num_threads);
-  mace::ConfigCPUPowerOption(
-      static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
-  if (device_type == OPENCL) {
-    mace::ConfigOpenCLRuntime(
+  mace::SetOpenMPThreadPolicy(
+      FLAGS_omp_num_threads,
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+  if (device_type == DeviceType::OPENCL) {
+    mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }

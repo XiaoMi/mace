@@ -2,12 +2,14 @@
 // Copyright (c) 2017 XiaoMi All rights reserved.
 //
 
+#include "mace/core/runtime/cpu/cpu_runtime.h"
+
 #include <omp.h>
-#include <sys/syscall.h>
 #include <unistd.h>
+#include <algorithm>
+#include <utility>
 #include <vector>
 
-#include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 namespace mace {
@@ -76,53 +78,97 @@ void SetThreadAffinity(cpu_set_t mask) {
 
 }  // namespace
 
-void SetOmpThreads(int omp_num_threads) {
+MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
+                                  std::vector<int> *little_core_ids) {
+  MACE_CHECK_NOTNULL(big_core_ids);
+  MACE_CHECK_NOTNULL(little_core_ids);
   int cpu_count = omp_get_num_procs();
-  if (omp_num_threads > cpu_count) {
-    LOG(WARNING) << "set omp num threads greater than num of cpus can use: "
-                 << cpu_count;
+  std::vector<int> cpu_max_freq(cpu_count);
+  std::vector<int> cpu_ids(cpu_count);
+
+  // set cpu max frequency
+  for (int i = 0; i < cpu_count; ++i) {
+    cpu_max_freq[i] = GetCPUMaxFreq(i);
+    if (cpu_max_freq[i] == 0) {
+      LOG(WARNING) << "Cannot get cpu" << i
+                   << "'s max frequency info, maybe it is offline.";
+      return MACE_INVALID_ARGS;
+    }
+    cpu_ids[i] = i;
   }
-  omp_set_num_threads(omp_num_threads);
-}
 
-void SetThreadsAffinity(CPUPowerOption power_option) {
-  // There is no need to set affinity in default mode
-  if (power_option == CPUPowerOption::DEFAULT) {
-    return;
-  }
+  // sort cpu ids by max frequency asc
+  std::sort(cpu_ids.begin(), cpu_ids.end(),
+            [&cpu_max_freq](int a, int b) {
+              return cpu_max_freq[a] < cpu_max_freq[b];
+            });
 
-  int cpu_count = omp_get_num_procs();
-  std::vector<int> sorted_cpu_ids;
-  sorted_cpu_ids.resize(cpu_count);
-  int big_core_offset;
-  SortCPUIdsByMaxFreqAsc(&sorted_cpu_ids, &big_core_offset);
-
-  std::vector<int> use_cpu_ids;
-  if (power_option == CPUPowerOption::HIGH_PERFORMANCE) {
-    use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin() + big_core_offset,
-                                   sorted_cpu_ids.end());
-  } else {
-    if (big_core_offset > 0) {
-      use_cpu_ids = std::vector<int>(sorted_cpu_ids.begin(),
-                                     sorted_cpu_ids.begin() + big_core_offset);
-    } else {
-      use_cpu_ids = sorted_cpu_ids;
+  big_core_ids->reserve(cpu_count);
+  little_core_ids->reserve(cpu_count);
+  int little_core_freq = cpu_max_freq.front();
+  int big_core_freq = cpu_max_freq.back();
+  for (int i = 0; i < cpu_count; ++i) {
+    if (cpu_max_freq[i] == little_core_freq) {
+      little_core_ids->push_back(cpu_ids[i]);
+    }
+    if (cpu_max_freq[i] == big_core_freq) {
+      big_core_ids->push_back(cpu_ids[i]);
     }
   }
+
+  return MACE_SUCCESS;
+}
+
+void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
+                                     const std::vector<int> &cpu_ids) {
+  std::ostringstream oss;
+  for (auto cpu_id : cpu_ids) oss << cpu_id << ' ';
+  VLOG(1) << "Set CPU openmp num_threads: " << omp_num_threads
+          << ", cpu_ids: " << oss.str();
+
+  omp_set_num_threads(omp_num_threads);
 
   // compute mask
   cpu_set_t mask;
   CPU_ZERO(&mask);
-  for (auto cpu_id : use_cpu_ids) {
+  for (auto cpu_id : cpu_ids) {
     CPU_SET(cpu_id, &mask);
   }
   VLOG(3) << "Set cpu affinity with mask: " << mask.__bits[0];
 
-  int omp_num_threads = omp_get_max_threads();
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
     SetThreadAffinity(mask);
   }
+}
+
+MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
+                                             CPUAffinityPolicy policy) {
+  // There is no need to set affinity in default mode
+  if (policy == CPUAffinityPolicy::AFFINITY_DEFAULT) {
+    if (omp_num_threads_hint > 0) omp_set_num_threads(omp_num_threads_hint);
+    return MACE_SUCCESS;
+  }
+
+  std::vector<int> big_core_ids;
+  std::vector<int> little_core_ids;
+  MaceStatus res = GetCPUBigLittleCoreIDs(&big_core_ids, &little_core_ids);
+  if (res != MACE_SUCCESS) {
+    return res;
+  }
+
+  std::vector<int> use_cpu_ids;
+  if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
+    use_cpu_ids = std::move(big_core_ids);
+  } else {
+    use_cpu_ids = std::move(little_core_ids);
+  }
+
+  if (omp_num_threads_hint < 0) {
+    omp_num_threads_hint = use_cpu_ids.size();
+  }
+  SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
+  return MACE_SUCCESS;
 }
 
 }  // namespace mace

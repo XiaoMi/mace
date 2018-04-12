@@ -188,12 +188,11 @@ DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
-DEFINE_int32(gpu_perf_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(gpu_priority_hint, 0, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
-DEFINE_int32(omp_num_threads, 4, "num of openmp threads");
-DEFINE_int32(cpu_power_option,
-             0,
-             "0:DEFAULT/1:HIGH_PERFORMANCE/2:BATTERY_SAVE");
+DEFINE_int32(gpu_perf_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
+DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
+DEFINE_int32(cpu_affinity_policy, 1,
+             "0:AFFINITY_DEFAULT/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
 bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
@@ -212,11 +211,11 @@ bool RunModel(const std::vector<std::string> &input_names,
   LOG(INFO) << "Runing with device type: " << device_type;
 
   // config runtime
-  mace::ConfigOmpThreads(FLAGS_omp_num_threads);
-  mace::ConfigCPUPowerOption(
-      static_cast<CPUPowerOption>(FLAGS_cpu_power_option));
+  mace::SetOpenMPThreadPolicy(
+      FLAGS_omp_num_threads,
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (device_type == DeviceType::OPENCL) {
-    mace::ConfigOpenCLRuntime(
+    mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
@@ -230,7 +229,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   LOG(INFO) << "Run init";
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
-  ConfigKVStorageFactory(storage_factory);
+  SetKVStorageFactory(storage_factory);
   mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
   if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
@@ -350,7 +349,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "gpu_perf_hint: " << FLAGS_gpu_perf_hint;
   LOG(INFO) << "gpu_priority_hint: " << FLAGS_gpu_priority_hint;
   LOG(INFO) << "omp_num_threads: " << FLAGS_omp_num_threads;
-  LOG(INFO) << "cpu_power_option: " << FLAGS_cpu_power_option;
+  LOG(INFO) << "cpu_affinity_policy: " << FLAGS_cpu_affinity_policy;
 
   std::vector<std::string> input_names = str_util::Split(FLAGS_input_node, ',');
   std::vector<std::string> output_names =
