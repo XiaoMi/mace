@@ -154,17 +154,28 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   int pad_left = paddings[1] >> 1;
   int pad_right = paddings[1] - pad_left;
 
-  std::function<void(const float *input, float *output)> conv_func;
-
   auto input_data = input->data<float>();
   auto filter_data = filter->data<float>();
   auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
   auto output_data = output->mutable_data<float>();
 
-  if (USE_WINOGRAD && filter_h == 3 && filter_w == 3 && stride_h == 1
-    && stride_w == 1
-    && dilation_h == 1 && dilation_w == 1
-    && input_channels >= 8 && channels >= 8) {
+  std::function<void(const float *input, float *output)> conv_func;
+
+  bool use_winograd = USE_WINOGRAD && filter_h == 3 && filter_w == 3
+    && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1
+    && input_channels >= 8 && channels >= 8;
+  bool use_neon_3x3_s1 = filter_h == 3 && filter_w == 3
+    && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+  bool use_neon_3x3_s2 = filter_h == 3 && filter_w == 3
+    && stride_h == 2 && stride_w == 2 && dilation_h == 1 && dilation_w == 1;
+  bool use_neon_1x1_s1 = filter_h == 1 && filter_w == 1
+    && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+
+  std::vector<index_t> transformed_input_shape;
+  std::vector<index_t> transformed_output_shape;
+  std::vector<index_t> transformed_filter_shape;
+
+  if (use_winograd) {
     extra_output_height = RoundUp<index_t>(height, WINOGRAD_OUT_TILE_SIZE);
     extra_input_height = std::max(padded_input_height, extra_output_height + 2);
     extra_output_width = RoundUp<index_t>(width, WINOGRAD_OUT_TILE_SIZE);
@@ -181,29 +192,16 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     index_t tile_count = tile_height_count * tile_width_count;
     index_t in_tile_area =
       (WINOGRAD_OUT_TILE_SIZE + 2) * (WINOGRAD_OUT_TILE_SIZE + 2);
-    transformed_input_.Resize({in_tile_area, batch, input_channels,
-                               tile_count});
-    transformed_filter_.Resize({in_tile_area, channels, input_channels});
-    transformed_output_.Resize({in_tile_area, batch, channels, tile_count});
 
-    conv_func = [=](const float *pad_input, float *pad_output) {
-      WinoGradConv3x3s1(pad_input,
-                        filter_data,
-                        batch,
-                        extra_input_height,
-                        extra_input_width,
-                        input_channels,
-                        channels,
-                        WINOGRAD_OUT_TILE_SIZE,
-                        transformed_input_.mutable_data<float>(),
-                        transformed_filter_.mutable_data<float>(),
-                        transformed_output_.mutable_data<float>(),
-                        is_filter_transformed_,
-                        pad_output);
-      is_filter_transformed_ = true;
-    };
-  } else if (filter_h == 3 && filter_w == 3 && stride_h == 1 && stride_w == 1
-    && dilation_h == 1 && dilation_w == 1) {
+    transformed_input_shape.insert(transformed_input_shape.end(),
+                                   {in_tile_area, batch, input_channels,
+                                    tile_count});
+    transformed_output_shape.insert(transformed_output_shape.end(),
+                                    {in_tile_area, batch, channels,
+                                     tile_count});
+    transformed_filter_shape.insert(transformed_filter_shape.end(),
+                                    {in_tile_area, channels, input_channels});
+  } else if (use_neon_3x3_s1) {
     extra_output_height = RoundUp<index_t>(height, 2);
     extra_input_height = std::max(padded_input_height, extra_output_height + 2);
     extra_output_width = RoundUp<index_t>(width, 4);
@@ -214,21 +212,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     if (extra_input_width != padded_input_width) {
       pad_right += (extra_input_width - padded_input_width);
     }
-
-    conv_func = [=](const float *pad_input, float *pad_output) {
-      Conv2dNeonK3x3S1(pad_input,
-                       filter_data,
-                       batch,
-                       extra_input_height,
-                       extra_input_width,
-                       input_channels,
-                       extra_output_height,
-                       extra_output_width,
-                       channels,
-                       pad_output);
-    };
-  } else if (filter_h == 3 && filter_w == 3 && stride_h == 2 && stride_w == 2
-    && dilation_h == 1 && dilation_w == 1) {
+  } else if (use_neon_3x3_s2) {
     extra_output_height = height;
     extra_input_height =
       std::max(padded_input_height, (extra_output_height - 1) * 2 + 3);
@@ -241,7 +225,86 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     if (extra_input_width != padded_input_width) {
       pad_right += (extra_input_width - padded_input_width);
     }
+  }
 
+  // decide scratch size before allocate it
+  index_t total_scratch_size = 0;
+  index_t transformed_input_size = 0;
+  index_t transformed_output_size = 0;
+  index_t padded_input_size = 0;
+  index_t padded_output_size = 0;
+  if (use_winograd) {
+    transformed_input_size =
+      std::accumulate(transformed_input_shape.begin(),
+                      transformed_input_shape.end(),
+                      1,
+                      std::multiplies<index_t>()) * sizeof(float);
+    transformed_output_size =
+      std::accumulate(transformed_output_shape.begin(),
+                      transformed_output_shape.end(),
+                      1,
+                      std::multiplies<index_t>()) * sizeof(float);
+    total_scratch_size += transformed_input_size + transformed_output_size;
+  }
+  if (extra_input_height != input_height || extra_input_width != input_width) {
+    padded_input_size =
+      batch * input_channels * (input_height + pad_top + pad_bottom)
+        * (input_width + pad_left + pad_right) * sizeof(float);
+    total_scratch_size += padded_input_size;
+  }
+  if (extra_output_height != height || extra_output_width != width) {
+    padded_output_size =
+      batch * channels * extra_output_height * extra_output_width
+        * sizeof(float);
+    total_scratch_size += padded_output_size;
+  }
+  // Init scratch buffer
+  scratch_->Rewind();
+  scratch_->GrowSize(total_scratch_size);
+  Tensor transformed_input(scratch_->Scratch(transformed_input_size), DT_FLOAT);
+  Tensor
+    transformed_output(scratch_->Scratch(transformed_output_size), DT_FLOAT);
+  Tensor padded_input(scratch_->Scratch(padded_input_size), DT_FLOAT);
+  Tensor padded_output(scratch_->Scratch(padded_output_size), DT_FLOAT);
+
+  // decide which convolution function to call
+  if (use_winograd) {
+    transformed_input.Resize(transformed_input_shape);
+    transformed_output.Resize(transformed_output_shape);
+    if (!is_filter_transformed_) {
+      transformed_filter_.Resize(transformed_filter_shape);
+    }
+
+    conv_func = [&](const float *pad_input, float *pad_output) {
+      WinoGradConv3x3s1(pad_input,
+                        filter_data,
+                        batch,
+                        extra_input_height,
+                        extra_input_width,
+                        input_channels,
+                        channels,
+                        WINOGRAD_OUT_TILE_SIZE,
+                        transformed_input.mutable_data<float>(),
+                        transformed_filter_.mutable_data<float>(),
+                        transformed_output.mutable_data<float>(),
+                        is_filter_transformed_,
+                        pad_output);
+      is_filter_transformed_ = true;
+    };
+  } else if (use_neon_3x3_s1) {
+    conv_func = [=](const float *pad_input, float *pad_output) {
+      Conv2dNeonK3x3S1(pad_input,
+                       filter_data,
+                       batch,
+                       extra_input_height,
+                       extra_input_width,
+                       input_channels,
+                       extra_output_height,
+                       extra_output_width,
+                       channels,
+                       pad_output);
+    };
+  } else if (use_neon_3x3_s2) {
     conv_func = [=](const float *pad_input, float *pad_output) {
       Conv2dNeonK3x3S2(pad_input,
                        filter_data,
@@ -254,8 +317,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                        channels,
                        pad_output);
     };
-  } else if (filter_h == 1 && filter_w == 1 && stride_h == 1 && stride_w == 1
-    && dilation_h == 1 && dilation_w == 1) {
+  } else if (use_neon_1x1_s1) {
     conv_func = [=](const float *pad_input, float *pad_output) {
       Conv2dNeonK1x1S1(input_data,
                        filter_data,
@@ -287,28 +349,27 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     };
   }
 
+  // pad input and output
   const Tensor *pad_input_ptr = input;
-  // Keep this alive during kernel execution
   if (extra_input_height != input_height || extra_input_width != input_width) {
+    padded_input.Clear();
     ConstructNCHWInputWithSpecificPadding(input,
                                           pad_top,
                                           pad_bottom,
                                           pad_left,
                                           pad_right,
-                                          &padded_input_);
-    pad_input_ptr = &padded_input_;
+                                          &padded_input);
+    pad_input_ptr = &padded_input;
   }
-  const float *pad_input_data = pad_input_ptr->data<float>();
 
   Tensor *pad_output_ptr = output;
-  // Keep this alive during kernel execution
   if (extra_output_height != height || extra_output_width != width) {
-    std::vector<index_t> extra_output_shape
-      {batch, channels, extra_output_height, extra_output_width};
-    padded_output_.Resize(extra_output_shape);
-    padded_output_.Clear();
-    pad_output_ptr = &padded_output_;
+    padded_output.Resize({batch, channels, extra_output_height,
+                           extra_output_width});
+    padded_output.Clear();
+    pad_output_ptr = &padded_output;
   }
+  const float *pad_input_data = pad_input_ptr->data<float>();
   float *pad_output_data = pad_output_ptr->mutable_data<float>();
 
   conv_func(pad_input_data, pad_output_data);

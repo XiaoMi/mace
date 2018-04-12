@@ -12,6 +12,9 @@
 
 namespace mace {
 
+Workspace::Workspace() : host_scratch_buffer_(new ScratchBuffer(
+  GetDeviceAllocator(DeviceType::CPU))) {}
+
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
                                 DataType type) {
@@ -156,6 +159,14 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
         tensor_map_[op.output(i)] = std::move(tensor);
       }
     }
+  }
+}
+
+ScratchBuffer *Workspace::GetScratchBuffer(DeviceType device_type) {
+  if (device_type == CPU || device_type == NEON) {
+    return host_scratch_buffer_.get();
+  } else {
+    return nullptr;
   }
 }
 

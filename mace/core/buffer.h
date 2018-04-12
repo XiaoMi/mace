@@ -6,6 +6,7 @@
 #define MACE_CORE_BUFFER_H_
 
 #include <vector>
+#include <algorithm>
 #include <functional>
 
 #include "mace/core/allocator.h"
@@ -161,12 +162,10 @@ class Buffer : public BufferBase {
   bool OnHost() const { return allocator_->OnHost(); }
 
   void Clear() {
-    if (buf_ != nullptr) {
-      memset(buf_, 0, size_);
-    }
+    memset(reinterpret_cast<char*>(raw_mutable_data()), 0, size_);
   }
 
- private:
+ protected:
   Allocator *allocator_;
   void *buf_;
   void *mapped_buf_;
@@ -267,19 +266,23 @@ class Image : public BufferBase {
 class BufferSlice : public BufferBase {
  public:
   BufferSlice()
-      : buffer_(nullptr), mapped_buf_(nullptr), offset_(0), length_(0) {}
+      : BufferBase(0), buffer_(nullptr), mapped_buf_(nullptr), offset_(0) {}
   BufferSlice(BufferBase *buffer, index_t offset, index_t length)
-      : BufferBase(buffer->size()),
-        buffer_(buffer),
-        mapped_buf_(nullptr),
-        offset_(offset),
-        length_(length) {
+    : BufferBase(length),
+      buffer_(buffer),
+      mapped_buf_(nullptr),
+      offset_(offset) {
     MACE_CHECK(offset >= 0, "buffer slice offset should >= 0");
-    MACE_CHECK(offset + length <= size_, "buffer slice offset + length (",
-               offset, " + ", length, ") should <= ", size_);
+    MACE_CHECK(offset + length <= buffer->size(),
+               "buffer slice offset + length (",
+               offset,
+               " + ",
+               length,
+               ") should <= ",
+               buffer->size());
   }
   BufferSlice(const BufferSlice &other)
-      : BufferSlice(other.buffer_, other.offset_, other.length_) {}
+      : BufferSlice(other.buffer_, other.offset_, other.size_) {}
 
   ~BufferSlice() {
     if (buffer_ != nullptr && mapped_buf_ != nullptr) {
@@ -303,8 +306,13 @@ class BufferSlice : public BufferBase {
   }
 
   void *raw_mutable_data() {
-    MACE_NOT_IMPLEMENTED;
-    return nullptr;
+    if (OnHost()) {
+      MACE_CHECK_NOTNULL(buffer_);
+      return reinterpret_cast<char*>(buffer_->raw_mutable_data()) + offset_;
+    } else {
+      MACE_CHECK_NOTNULL(mapped_buf_);
+      return mapped_buf_;
+    }
   }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
@@ -317,7 +325,7 @@ class BufferSlice : public BufferBase {
   void Map(std::vector<size_t> *pitch) {
     MACE_CHECK_NOTNULL(buffer_);
     MACE_CHECK(mapped_buf_ == nullptr, "mapped buf is not null");
-    mapped_buf_ = buffer_->Map(offset_, length_, pitch);
+    mapped_buf_ = buffer_->Map(offset_, size_, pitch);
   }
 
   void UnMap() {
@@ -326,7 +334,10 @@ class BufferSlice : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
+  void Resize(index_t size) {
+    MACE_CHECK(size == size_, "resize buffer slice from ", size_,
+      " to ", size, " is illegal");
+  }
 
   void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
 
@@ -335,15 +346,58 @@ class BufferSlice : public BufferBase {
   bool OnHost() const { return buffer_->OnHost(); }
 
   void Clear() {
-    MACE_NOT_IMPLEMENTED;
+    memset(raw_mutable_data(), 0, size_);
   }
 
  private:
   BufferBase *buffer_;
   void *mapped_buf_;
   index_t offset_;
-  index_t length_;
 };
+
+class ScratchBuffer: public Buffer {
+ public:
+  explicit ScratchBuffer(Allocator *allocator)
+    : Buffer(allocator),
+      offset_(0) {}
+
+  ScratchBuffer(Allocator *allocator, index_t size)
+    : Buffer(allocator, size),
+      offset_(0) {}
+
+  ScratchBuffer(Allocator *allocator, void *data, index_t size)
+    : Buffer(allocator, data, size),
+      offset_(0) {}
+
+  virtual ~ScratchBuffer() {}
+
+  void GrowSize(index_t size) {
+    if (size > size_) {
+      Resize(size);
+    }
+  }
+
+  BufferSlice Scratch(index_t size) {
+    MACE_CHECK(offset_ + size <= size_,
+               "scratch size not enough: ",
+               offset_,
+               " + ",
+               size,
+               " > ",
+               size_);
+    BufferSlice slice(this, offset_, size);
+    offset_ += size;
+    return slice;
+  }
+
+  void Rewind() {
+    offset_ = 0;
+  }
+
+ private:
+  index_t offset_;
+};
+
 }  // namespace mace
 
 #endif  // MACE_CORE_BUFFER_H_
