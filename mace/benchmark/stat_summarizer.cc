@@ -11,7 +11,8 @@
 
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
-
+#include "mace/core/types.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 
 namespace mace {
 namespace benchmark {
@@ -55,6 +56,8 @@ void StatSummarizer::ProcessMetadata(const RunMetadata &run_metadata) {
     if (result.second) {
       detail->name = name;
       detail->type = op_type;
+      detail->output_shape = ops.output_shape;
+      detail->args = ops.args;
 
       detail->run_order = node_num;
 
@@ -83,7 +86,7 @@ std::string StatSummarizer::ShortSummary() const {
 }
 
 std::ostream &InitField(std::ostream &stream, int width) {
-  stream << "\t" << std::right << std::setw(width) << std::fixed
+  stream << std::right << std::setw(width) << std::fixed
          << std::setprecision(3);
   return stream;
 }
@@ -98,12 +101,72 @@ std::string StatSummarizer::HeaderString(const std::string &title) const {
   InitField(stream, 9) << "[start]";
   InitField(stream, 9) << "[first]";
   InitField(stream, 9) << "[avg ms]";
-  InitField(stream, 8) << "[%]";
-  InitField(stream, 8) << "[cdf%]";
+  InitField(stream, 9) << "[%]";
+  InitField(stream, 9) << "[cdf%]";
   InitField(stream, 10) << "[mem KB]";
-  InitField(stream, 9) << "[times called]";
-  stream << "\t"
-         << "[Name]";
+  InitField(stream, 10) << "[Name]";
+  InitField(stream, 8) << "[stride]";
+  InitField(stream, 10) << "[padding]";
+  InitField(stream, 10) << "[dilation]";
+  InitField(stream, 15) << "[kernel]";
+  stream << std::right << std::setw(45) << "[output shape]";
+
+  return stream.str();
+}
+
+std::string PaddingTypeToString(int padding_type) {
+  std::stringstream stream;
+  Padding type = static_cast<Padding>(padding_type);
+  switch (type) {
+    case VALID: stream << "VALID"; break;
+    case SAME: stream << "SAME"; break;
+    case FULL: stream << "FULL"; break;
+    default: stream << padding_type; break;
+  }
+
+  return stream.str();
+}
+
+std::string ShapeToString(const std::vector<OutputShape> &output_shape) {
+  if (output_shape.empty()) {
+    return "";
+  }
+
+  std::stringstream stream;
+  stream << "[";
+  for (int i = 0; i < output_shape.size(); ++i) {
+    const std::vector<index_t> &dims = output_shape[i].dims();
+    for (int j = 0; j < dims.size(); ++j) {
+      stream << dims[j];
+      if (j != dims.size() - 1) {
+        stream << ",";
+      }
+    }
+    if (i != output_shape.size() - 1) {
+      stream << ":";
+    }
+  }
+  stream << "]";
+
+  return stream.str();
+}
+
+template <typename T>
+std::string VectorToString(const std::vector<T> &vec) {
+  if (vec.empty()) {
+    return "";
+  }
+
+  std::stringstream stream;
+  stream << "[";
+  for (int i = 0; i < vec.size(); ++i) {
+    stream << vec[i];
+    if (i != vec.size() - 1) {
+      stream << ",";
+    }
+  }
+  stream << "]";
+
   return stream.str();
 }
 
@@ -115,18 +178,25 @@ std::string StatSummarizer::ColumnString(const StatSummarizer::Detail &detail,
   const double avg_time_ms = detail.rel_end_us.avg() / 1000.0;
   const double percentage = detail.rel_end_us.sum() * 100.0 / stat.sum();
   const double cdf_percentage = (cumulative_stat_on_node * 100.0f) / stat.sum();
-  const int64_t times_called = detail.times_called / num_runs();
 
   std::stringstream stream;
   InitField(stream, 24) << detail.type;
   InitField(stream, 9) << start_ms;
   InitField(stream, 9) << first_time_ms;
   InitField(stream, 9) << avg_time_ms;
-  InitField(stream, 7) << percentage << "%";
-  InitField(stream, 7) << cdf_percentage << "%";
+  InitField(stream, 8) << percentage << "%";
+  InitField(stream, 8) << cdf_percentage << "%";
   InitField(stream, 10) << detail.mem_used.newest() / 1000.0;
-  InitField(stream, 9) << times_called;
-  stream << "\t" << detail.name;
+  InitField(stream, 10) << detail.name;
+  InitField(stream, 8) << VectorToString<int>(detail.args.strides);
+  if (detail.args.padding_type != -1) {
+    InitField(stream, 10) << PaddingTypeToString(detail.args.padding_type);
+  } else {
+    InitField(stream, 10) << VectorToString<int>(detail.args.paddings);
+  }
+  InitField(stream, 10) << VectorToString<int>(detail.args.dilations);
+  InitField(stream, 15) << VectorToString<index_t>(detail.args.kernels);
+  stream << std::right << std::setw(45) << ShapeToString(detail.output_shape);
 
   return stream.str();
 }
@@ -138,6 +208,7 @@ void StatSummarizer::OrderNodesByMetric(
 
   for (const auto &det : details_) {
     const Detail *detail = &(det.second);
+
     std::stringstream stream;
     stream << std::setw(20) << std::right << std::setprecision(10)
            << std::fixed;

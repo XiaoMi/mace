@@ -67,8 +67,32 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
     }
 
     if (run_metadata != nullptr) {
+      std::vector<int> strides;
+      int padding_type = -1;
+      std::vector<int> paddings;
+      std::vector<int> dilations;
+      std::vector<index_t> kernels;
+      std::string type = op->debug_def().type();
+
+      if (type.compare("Conv2D") == 0 ||
+          type.compare("FusedConv2D") == 0 ||
+          type.compare("DepthwiseConv2d") == 0 ||
+          type.compare("Pooling") == 0) {
+        strides = op->GetRepeatedArgument<int>("strides");
+        padding_type = op->GetSingleArgument<int>("padding", -1);
+        paddings = op->GetRepeatedArgument<int>("padding_values");
+        dilations = op->GetRepeatedArgument<int>("dilations");
+        if (type.compare("Pooling") == 0) {
+          kernels = op->GetRepeatedArgument<index_t>("kernels");
+        } else {
+          kernels = op->Input(1)->shape();
+        }
+      }
+
       OperatorStats op_stats = {op->debug_def().name(), op->debug_def().type(),
-                                call_stats};
+                                op->debug_def().output_shape(),
+                                {strides, padding_type, paddings, dilations,
+                                 kernels}, call_stats};
       run_metadata->op_stats.emplace_back(op_stats);
     }
 
