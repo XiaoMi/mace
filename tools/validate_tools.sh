@@ -69,7 +69,7 @@ elif [ "$PLATFORM" == "caffe" ];then
 
   if [ ! "$(docker ps -qa -f name=${CONTAINER_NAME})" ]; then
     echo "Run caffe container"
-    docker run -d --name ${CONTAINER_NAME} ${IMAGE_NAME} /bin/bash || exit 1
+    docker run -d -it --name ${CONTAINER_NAME} ${IMAGE_NAME} /bin/bash || exit 1
   fi
 
   if [ "$(docker inspect -f {{.State.Running}} ${CONTAINER_NAME})" == "false" ];then
