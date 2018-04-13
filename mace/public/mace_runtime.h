@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "mace/public/mace.h"
+
 namespace mace {
 
 enum GPUPerfHint {
@@ -29,7 +31,11 @@ enum GPUPriorityHint {
   PRIORITY_HIGH = 3
 };
 
-enum CPUPowerOption { DEFAULT = 0, HIGH_PERFORMANCE = 1, BATTERY_SAVE = 2 };
+enum CPUAffinityPolicy {
+  AFFINITY_DEFAULT = 0,
+  AFFINITY_BIG_ONLY = 1,
+  AFFINITY_LITTLE_ONLY = 2,
+};
 
 class KVStorage {
  public:
@@ -60,12 +66,41 @@ class FileStorageFactory : public KVStorageFactory {
   std::unique_ptr<Impl> impl_;
 };
 
-void ConfigKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
+// Set KV store factory used as OpenCL cache
+void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 
-void ConfigOpenCLRuntime(GPUPerfHint, GPUPriorityHint);
-void ConfigOmpThreads(int omp_num_threads);
-void ConfigCPUPowerOption(CPUPowerOption power_option);
+// Set GPU hints, currently only supports Adreno GPU
+void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 
+// Set OpenMP threads number and affinity policy.
+//
+// num_threads_hint is only a hint, the function can change it when it's larger
+// than 0. When num_threads_hint is not positive, the function will set the
+// threads number equaling to the number of big + little, big or little cores
+// according to the policy.
+//
+// This function may not work well on some ships (e.g. MTK), and in such
+// cases (when it returns error MACE_INVALID_ARGS) you may try to use
+// SetOpenMPThreadAffinity to set affinity manually, or just set default policy.
+MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
+                                 CPUAffinityPolicy policy);
+
+// Set OpenMP threads number and processor affinity
+// This function may not work well on some chips (e.g. MTK). Set thread affinity
+// to offline cores may fail or run unexpectedly. In such cases, please use
+// SetOpenMPThreadPolicy with default policy instead.
+void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids);
+
+// Get ARM big.LITTLE configuration.
+//
+// This function may not work well on some chips (e.g. MTK) and miss the
+// offline cores, and the user should detect the configurations manually
+// in such case(when it returns error MACE_INVALID_ARGS).
+//
+// If all cpu's frequencies are equal(i.e. all cores are the same),
+// big_core_ids and little_core_ids will be set to all cpu ids.
+MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
+                               std::vector<int> *little_core_ids);
 
 }  // namespace mace
 
