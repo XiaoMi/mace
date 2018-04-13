@@ -127,9 +127,11 @@ void WinogradConvolution(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
+                            1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-4);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
+                            1e-5, 1e-4);
   }
 }
 }  // namespace
@@ -246,9 +248,11 @@ void WinogradConvolutionWithPad(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
+                            1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-3);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
+                            1e-5, 1e-4);
   }
 }
 }  // namespace

@@ -137,7 +137,7 @@ void Complex(const std::vector<index_t> &input_shape,
   auto output = net.GetTensor("OpenCLOutput");
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(expected, *output, 1e-1);
+    ExpectTensorNear<float>(expected, *output, 1e-2, 1e-2);
   } else {
     ExpectTensorNear<float>(expected, *output, 1e-5);
   }

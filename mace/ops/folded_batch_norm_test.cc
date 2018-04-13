@@ -72,10 +72,11 @@ void Simple() {
 
   // Check
   auto expected =
-      CreateTensor<float>({1, 6, 2, 1}, {-3.86, -3.86, -1.51, -1.51, 0.83, 0.83,
-                                         3.17, 3.17, 5.51, 5.51, 7.86, 7.86});
+      CreateTensor<float>({1, 6, 2, 1}, {-3.8543, -3.8543, -1.5125, -1.5125,
+                                         0.8291, 0.8291, 3.1708, 3.1708,
+                                         5.5125, 5.5125, 7.8543, 7.8543});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4);
 }
 }  // namespace
 
@@ -226,7 +227,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
 }
 
 TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
@@ -281,7 +282,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
@@ -334,7 +335,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
 }
 
 TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
@@ -388,7 +389,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
 }
 
 }  // namespace test

@@ -31,7 +31,7 @@ TEST_F(GlobalAvgPoolingOpTest, 3x7x7_CPU) {
   // Check
   auto expected = CreateTensor<float>({1, 3, 1, 1}, {1, 2, 3});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 }  // namespace test

@@ -18,14 +18,14 @@ template<DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -49,8 +49,8 @@ void TestNHWCSimple3x3VALID() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -69,7 +69,7 @@ void TestNHWCSimple3x3VALID() {
   }
 
   auto expected = CreateTensor<float>({1, 1, 1, 1}, {0.0f});
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 
 template<DeviceType D, typename T>
@@ -77,14 +77,14 @@ void TestNHWCSimple3x3SAME() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f});
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -108,8 +108,8 @@ void TestNHWCSimple3x3SAME() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -130,7 +130,7 @@ void TestNHWCSimple3x3SAME() {
   auto expected = CreateTensor<float>(
     {1, 3, 3, 1}, {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
 
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 }  // namespace
 
@@ -150,10 +150,10 @@ void TestNHWCSimple3x3WithoutBias() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
     "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
@@ -177,8 +177,8 @@ void TestNHWCSimple3x3WithoutBias() {
     // Run
     net.RunOp(D);
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
       .Input("Input")
@@ -198,7 +198,7 @@ void TestNHWCSimple3x3WithoutBias() {
   // Check
   auto expected = CreateTensor<float>({1, 1, 1, 1}, {0.0f});
 
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 }  // namespace
 
@@ -277,7 +277,7 @@ void TestConv1x1() {
      5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f,
      5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 }  // namespace
 
@@ -346,7 +346,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   };
 
   for (int kernel_size : {1, 3}) {
@@ -434,7 +435,8 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-2, 1e-1);
   };
 
   for (int kernel_size : {1, 3}) {
@@ -513,7 +515,8 @@ void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   };
 
   for (int stride : {1, 2}) {
@@ -594,7 +597,8 @@ void TestAtrousConvNxN(const std::vector<index_t> &shape,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   };
 
   for (int kernel_size : {3}) {
@@ -683,7 +687,8 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
 
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.7);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-2, 1e-1);
   };
 
   func(1, 1, VALID);
@@ -763,7 +768,7 @@ void TestNEONGeneralConvNxNS12(
 
     ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                             *net.GetOutput("OutputNeon"),
-                            0.001);
+                            1e-5, 1e-4);
   };
 
   for (int stride : {1, 2}) {

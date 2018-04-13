@@ -439,7 +439,9 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
     }
   }
 
-  static void Near(const Tensor &x, const Tensor &y, const double abs_err) {
+  static void Near(const Tensor &x, const Tensor &y,
+                   const double rel_err,
+                   const double abs_err) {
     ASSERT_EQ(x.dtype(), DataTypeToEnum<EXP_TYPE>::v());
     ASSERT_EQ(y.dtype(), DataTypeToEnum<RES_TYPE>::v());
     AssertSameDims(x, y);
@@ -452,8 +454,9 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
         for (int h = 0; h < x.dim(1); ++h) {
           for (int w = 0; w < x.dim(2); ++w) {
             for (int c = 0; c < x.dim(3); ++c) {
-              EXPECT_NEAR(*a, *b, abs_err) << "with index = [" << n << ", " << h
-                                           << ", " << w << ", " << c << "]";
+              const double error = abs_err + rel_err * std::abs(*a);
+              EXPECT_NEAR(*a, *b, error) << "with index = [" << n << ", " << h
+                                         << ", " << w << ", " << c << "]";
               a++;
               b++;
             }
@@ -462,26 +465,31 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
       }
     } else {
       for (int i = 0; i < x.size(); ++i) {
-        EXPECT_NEAR(a[i], b[i], abs_err) << "a = " << a << " b = " << b
-                                         << " index = " << i;
+        const double error = abs_err + rel_err * std::abs(a[i]);
+        EXPECT_NEAR(a[i], b[i], error) << "a = " << a << " b = " << b
+                                       << " index = " << i;
       }
     }
   }
 };
 
 template<typename T>
-void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
+void ExpectTensorNear(const Tensor &x, const Tensor &y,
+                      const double rel_err = 1e-5,
+                      const double abs_err = 1e-8) {
   static_assert(is_floating_point_type<T>::value,
                 "T is not a floating point type");
-  Expector<T, T>::Near(x, y, abs_err);
+  Expector<T, T>::Near(x, y, rel_err, abs_err);
 }
 
 template<typename EXP_TYPE, typename RES_TYPE>
-void ExpectTensorNear(const Tensor &x, const Tensor &y, const double abs_err) {
+void ExpectTensorNear(const Tensor &x, const Tensor &y,
+                      const double rel_err = 1e-5,
+                      const double abs_err = 1e-8) {
   static_assert(is_floating_point_type<EXP_TYPE>::value &&
                   is_floating_point_type<RES_TYPE>::value,
                 "T is not a floating point type");
-  Expector<EXP_TYPE, RES_TYPE>::Near(x, y, abs_err);
+  Expector<EXP_TYPE, RES_TYPE>::Near(x, y, rel_err, abs_err);
 }
 
 template<DeviceType D, typename T>

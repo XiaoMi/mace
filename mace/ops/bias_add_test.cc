@@ -53,7 +53,7 @@ void BiasAddSimple() {
       {1, 6, 2, 1},
       {5.5, 5.5, 7.5, 7.5, 9.5, 9.5, 11.5, 11.5, 13.5, 13.5, 15.5, 15.5});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -109,7 +109,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
 
 TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
@@ -158,7 +158,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
 
 }  // namespace test

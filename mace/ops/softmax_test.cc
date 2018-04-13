@@ -49,7 +49,7 @@ void Simple() {
     {1, 1, 2, 4},
     {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-7);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -89,7 +89,8 @@ void Complex(const std::vector<index_t> &logits_shape) {
   ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                          1e-5);
 }
 }  // namespace
 
@@ -138,7 +139,7 @@ void SoftMaxNEONTest(const std::vector<index_t> &logits_shape) {
 
   ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                           *net.GetOutput("OutputNeon"),
-                          0.01);
+                          1e-5, 1e-5);
 }
 }  // namespace
 

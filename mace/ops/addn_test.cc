@@ -42,28 +42,60 @@ template <DeviceType D>
 void SimpleAdd3() {
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("AddN", "AddNTest")
-      .Input("Input1")
-      .Input("Input2")
-      .Input("Input3")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddInputFromArray<D, float>("Input1", {1, 2, 3, 1}, {1, 2, 3, 4, 5, 6});
-  net.AddInputFromArray<D, float>("Input2", {1, 2, 3, 1}, {1, 2, 3, 4, 5, 6});
-  net.AddInputFromArray<D, float>("Input3", {1, 2, 3, 1}, {1, 2, 3, 4, 5, 6});
+  net.AddInputFromArray<D, float>("Input0", {1, 2, 3, 1},
+                                  {-2.06715, 2, 3, 4, 5, 6});
+  net.AddInputFromArray<D, float>("Input1", {1, 2, 3, 1},
+                                  {0.875977, 2, 3, 4, 5, 6});
+  net.AddInputFromArray<D, float>("Input2", {1, 2, 3, 1},
+                                  {1.34866, 2, 3, 4, 5, 6});
+  net.AddInputFromArray<D, float>("Input3", {1, 2, 3, 1},
+                                  {-0.1582, 2, 3, 4, 5, 6});
 
-  // Run
-  net.RunOp(D);
+  const int input_num = 4;
+  if (D == DeviceType::OPENCL) {
+    // run on gpu
+    for (int i = 0; i < input_num; ++i) {
+      BufferToImage<D, half>(&net, MakeString("Input", i),
+                             MakeString("InputImage", i),
+                             kernels::BufferType::IN_OUT_CHANNEL);
+    }
 
-  auto expected = CreateTensor<float>({1, 2, 3, 1}, {3, 6, 9, 12, 15, 18});
+    auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
+    for (int i = 0; i < input_num; ++i) {
+      op_def_cl.Input(MakeString("InputImage", i));
+    }
+    op_def_cl.Output("OutputImage")
+        .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
+        .Finalize(net.NewOperatorDef());
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+    // Run on device
+    net.RunOp(D);
+
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+  } else {
+    OpDefBuilder("AddN", "AddNTest")
+        .Input("Input0")
+        .Input("Input1")
+        .Input("Input2")
+        .Input("Input3")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+  }
+
+  auto expected = CreateTensor<float>({1, 2, 3, 1},
+                                      {-0.000713, 8, 12, 16, 20, 24});
+
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4, 1e-3);
 }
 }  // namespace
 
 TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
+TEST_F(AddnOpTest, GPUSimpleAdd3) { SimpleAdd3<DeviceType::OPENCL>(); }
 
 namespace {
 template <DeviceType D>
@@ -118,7 +150,8 @@ void RandomTest() {
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-2, 1e-2);
   }
 }
 }  // namespace
