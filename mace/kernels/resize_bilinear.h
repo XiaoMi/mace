@@ -31,10 +31,11 @@ inline float CalculateResizeScale(index_t in_size,
              : in_size / static_cast<float>(out_size);
 }
 
-inline void ComputeInterpolationWeights(const index_t out_size,
-                                        const index_t in_size,
-                                        const float scale,
-                                        CachedInterpolation *interpolation) {
+inline void ComputeInterpolationWeights(
+    const index_t out_size,
+    const index_t in_size,
+    const float scale,
+    CachedInterpolation *interpolation) {
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (index_t i = out_size - 1; i >= 0; --i) {

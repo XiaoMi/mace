@@ -11,6 +11,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D>
 void RunSpaceToBatch(const std::vector<index_t> &input_shape,
                      const std::vector<float> &input_data,
@@ -101,6 +102,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
   RunBatchToSpace<DeviceType::OPENCL>(batch_shape, batch_data, block_data,
                                       padding_data, space_tensor.get());
 }
+}  // namespace
 
 TEST(SpaceToBatchTest, SmallData) {
   TestBidirectionalTransform<float>({1, 2, 2, 1}, {1, 2, 3, 4}, {2, 2},

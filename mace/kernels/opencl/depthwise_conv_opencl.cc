@@ -11,21 +11,21 @@
 namespace mace {
 namespace kernels {
 
-void DepthwiseConv2d(cl::Kernel *kernel,
-                     const Tensor *input,   // NHWC
-                     const Tensor *filter,  // HWIM
-                     const Tensor *bias,
-                     const int stride,
-                     const int *paddings,
-                     const int *dilations,
-                     const ActivationType activation,
-                     const float relux_max_limit,
-                     const DataType dt,
-                     std::vector<index_t> *prev_input_shape,
-                     Tensor *output,
-                     StatsFuture *future,
-                     uint32_t *kwg_size,
-                     std::unique_ptr<BufferBase> *kernel_error) {
+static void DepthwiseConv2d(cl::Kernel *kernel,
+                            const Tensor *input,   // NHWC
+                            const Tensor *filter,  // HWIM
+                            const Tensor *bias,
+                            const int stride,
+                            const int *paddings,
+                            const int *dilations,
+                            const ActivationType activation,
+                            const float relux_max_limit,
+                            const DataType dt,
+                            std::vector<index_t> *prev_input_shape,
+                            Tensor *output,
+                            StatsFuture *future,
+                            uint32_t *kwg_size,
+                            std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);

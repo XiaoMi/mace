@@ -13,6 +13,7 @@ namespace test {
 
 class FusedConv2dOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
@@ -21,7 +22,7 @@ void TestNHWCSimple3x3VALID() {
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 2, 1},
+    "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
@@ -42,6 +43,7 @@ void TestNHWCSimple3x3VALID() {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
 
     net.RunOp(D);
@@ -60,6 +62,7 @@ void TestNHWCSimple3x3VALID() {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -78,7 +81,7 @@ void TestNHWCSimple3x3SAME() {
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 2, 1},
+    "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {-0.1f});
@@ -99,6 +102,7 @@ void TestNHWCSimple3x3SAME() {
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -117,6 +121,7 @@ void TestNHWCSimple3x3SAME() {
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -127,6 +132,7 @@ void TestNHWCSimple3x3SAME() {
 
   ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, CPUSimple) {
   TestNHWCSimple3x3VALID<DeviceType::CPU, float>();
@@ -138,6 +144,7 @@ TEST_F(FusedConv2dOpTest, OPENCLSimple) {
   TestNHWCSimple3x3SAME<DeviceType::OPENCL, float>();
 }
 
+namespace {
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3WithoutBias() {
   OpsTestNet net;
@@ -147,7 +154,7 @@ void TestNHWCSimple3x3WithoutBias() {
     "Input", {1, 3, 3, 2},
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 2, 1},
+    "Filter", {3, 3, 1, 2},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
@@ -165,6 +172,7 @@ void TestNHWCSimple3x3WithoutBias() {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -180,6 +188,7 @@ void TestNHWCSimple3x3WithoutBias() {
       .AddIntArg("padding", Padding::VALID)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
 
     // Run
@@ -191,6 +200,7 @@ void TestNHWCSimple3x3WithoutBias() {
 
   ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, CPUWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::CPU, float>();
@@ -200,6 +210,7 @@ TEST_F(FusedConv2dOpTest, OPENCLWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::OPENCL, float>();
 }
 
+namespace {
 template<DeviceType D>
 void TestConv1x1() {
   // Construct graph
@@ -216,8 +227,8 @@ void TestConv1x1() {
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, float>(
-    "Filter", {1, 1, 5, 2},
-    {1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 2.0f});
+    "Filter", {1, 1, 2, 5},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
   if (D == DeviceType::OPENCL) {
@@ -268,13 +279,15 @@ void TestConv1x1() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, CPUConv1x1) { TestConv1x1<DeviceType::CPU>(); }
 
 TEST_F(FusedConv2dOpTest, OPENCLConv1x1) { TestConv1x1<DeviceType::OPENCL>(); }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
+void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -343,13 +356,15 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape) {
     }
   }
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, OPENCLUnalignedConvNxNS12) {
   TestComplexConvNxNS12<DeviceType::OPENCL, float>({107, 113, 5, 7});
 }
 
+namespace {
 template<DeviceType D>
-static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
+void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -428,14 +443,16 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
     }
   }
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, OPENCLHalfAlignedConvNxNS12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64});
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
-                                  const std::vector<index_t> &filter_shape) {
+void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
+                           const std::vector<index_t> &filter_shape) {
   testing::internal::LogToStderr();
   auto func = [&](int stride_h, int stride_w, Padding type) {
     srand(time(NULL));
@@ -444,10 +461,10 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     index_t batch = 1;
     index_t height = image_shape[0];
     index_t width = image_shape[1];
-    index_t input_channels = filter_shape[2];
-    index_t output_channels = filter_shape[3];
     index_t kernel_h = filter_shape[0];
     index_t kernel_w = filter_shape[1];
+    index_t output_channels = filter_shape[2];
+    index_t input_channels = filter_shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -504,18 +521,20 @@ static void TestGeneralConvNxNS12(const std::vector<index_t> &image_shape,
     func(stride, stride, SAME);
   }
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, OPENCL7X7ConvNxNS12) {
-  TestGeneralConvNxNS12<DeviceType::OPENCL, float>({32, 32}, {7, 7, 3, 64});
+  TestGeneralConvNxNS12<DeviceType::OPENCL, float>({32, 32}, {7, 7, 64, 3});
 }
 
 TEST_F(FusedConv2dOpTest, OPENCL15X1ConvNxNS12) {
-  TestGeneralConvNxNS12<DeviceType::OPENCL, float>({40, 40}, {15, 1, 32, 64});
+  TestGeneralConvNxNS12<DeviceType::OPENCL, float>({40, 40}, {15, 1, 64, 32});
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestAtrousConvNxN(const std::vector<index_t> &shape,
-                              const int dilation) {
+void TestAtrousConvNxN(const std::vector<index_t> &shape,
+                       const int dilation) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -525,8 +544,8 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape,
     index_t batch = 1;
     index_t height = shape[0];
     index_t width = shape[1];
-    index_t input_channels = shape[2];
-    index_t output_channels = shape[3];
+    index_t output_channels = shape[2];
+    index_t input_channels = shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -585,6 +604,7 @@ static void TestAtrousConvNxN(const std::vector<index_t> &shape,
     }
   }
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, OPENCLalignedAtrousConvNxN2) {
   TestAtrousConvNxN<DeviceType::OPENCL, float>({128, 128, 16, 16}, 2);
@@ -598,10 +618,11 @@ TEST_F(FusedConv2dOpTest, OPENCLUnalignedAtrousConvNxN) {
   TestAtrousConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7}, 2);
 }
 
+namespace {
 template<DeviceType D>
-static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
-                                      const std::vector<index_t> &filter_shape,
-                                      const std::vector<int> &dilations) {
+void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
+                               const std::vector<index_t> &filter_shape,
+                               const std::vector<int> &dilations) {
   testing::internal::LogToStderr();
   auto func = [&](int stride_h, int stride_w, Padding type) {
     srand(time(NULL));
@@ -610,10 +631,10 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     index_t batch = 1;
     index_t height = image_shape[0];
     index_t width = image_shape[1];
-    index_t input_channels = filter_shape[2];
-    index_t output_channels = filter_shape[3];
     index_t kernel_h = filter_shape[0];
     index_t kernel_w = filter_shape[1];
+    index_t output_channels = filter_shape[2];
+    index_t input_channels = filter_shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -668,9 +689,10 @@ static void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
   func(1, 1, VALID);
   func(1, 1, SAME);
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, OPENCL7X7AtrousConvD2) {
-  TestGeneralHalfAtrousConv<DeviceType::OPENCL>({32, 32}, {7, 7, 3, 16},
+  TestGeneralHalfAtrousConv<DeviceType::OPENCL>({32, 32}, {7, 7, 16, 3},
                                                 {2, 2});
 }
 
@@ -679,7 +701,8 @@ TEST_F(FusedConv2dOpTest, OPENCL15X15AtrousConvD4) {
                                                 {2, 2});
 }
 
-static void TestNEONGeneralConvNxNS12(
+namespace {
+void TestNEONGeneralConvNxNS12(
   const std::vector<index_t> &image_shape,
   const std::vector<index_t> &filter_shape) {
   testing::internal::LogToStderr();
@@ -690,10 +713,10 @@ static void TestNEONGeneralConvNxNS12(
     index_t batch = 1;
     index_t height = image_shape[0];
     index_t width = image_shape[1];
-    index_t input_channels = filter_shape[2];
-    index_t output_channels = filter_shape[3];
     index_t kernel_h = filter_shape[0];
     index_t kernel_w = filter_shape[1];
+    index_t output_channels = filter_shape[2];
+    index_t input_channels = filter_shape[3];
     // Construct graph
     OpsTestNet net;
     OpDefBuilder("FusedConv2D", "FusedConv2dTest")
@@ -748,9 +771,10 @@ static void TestNEONGeneralConvNxNS12(
     func(stride, stride, SAME);
   }
 }
+}  // namespace
 
 TEST_F(FusedConv2dOpTest, NEONTest) {
-  TestNEONGeneralConvNxNS12({32, 32}, {7, 7, 3, 64});
+  TestNEONGeneralConvNxNS12({32, 32}, {7, 7, 64, 3});
 }
 }  // namespace test
 }  // namespace ops

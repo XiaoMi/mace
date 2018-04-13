@@ -28,10 +28,10 @@ class NetBase {
 
   virtual bool Run(RunMetadata *run_metadata = nullptr) = 0;
 
-  const string &Name() const { return name_; }
+  const std::string &Name() const { return name_; }
 
  protected:
-  string name_;
+  std::string name_;
   const std::shared_ptr<const OperatorRegistry> op_registry_;
 
   DISABLE_COPY_AND_ASSIGN(NetBase);

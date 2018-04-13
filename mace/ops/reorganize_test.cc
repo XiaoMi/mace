@@ -12,6 +12,7 @@ namespace test {
 
 class ReOrganizeTest : public OpsTestBase {};
 
+namespace {
 void TestReOrganize(const std::vector<index_t> &input_shape,
                     const std::vector<float> &input_data,
                     const std::vector<index_t> &output_shape,
@@ -69,6 +70,7 @@ void TestReOrganize(const std::vector<index_t> &input_shape,
     ASSERT_EQ(input_data[i], output_ptr[i]) << "With Index " << i;
   }
 }
+}  // namespace
 
 TEST_F(ReOrganizeTest, Simple) {
   TestReOrganize({1, 1, 4, 6},

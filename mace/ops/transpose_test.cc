@@ -11,6 +11,7 @@ namespace test {
 
 class TransposeOpTest : public OpsTestBase {};
 
+namespace {
 void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   // Construct graph
   OpsTestNet net;
@@ -32,6 +33,7 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
                           *net.GetOutput("Output"),
                           0.01);
 }
+}  // namespace
 
 TEST_F(TransposeOpTest, NCHW) {
   TransposeNCHWTest({3, 64, 64, 128});

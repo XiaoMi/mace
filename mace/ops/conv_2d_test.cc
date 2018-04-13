@@ -14,6 +14,7 @@ namespace test {
 
 class Conv2dOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
@@ -129,6 +130,7 @@ void TestNHWCSimple3x3SAME() {
 
   ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, CPUSimple) {
   TestNHWCSimple3x3VALID<DeviceType::CPU, float>();
@@ -140,6 +142,7 @@ TEST_F(Conv2dOpTest, OPENCLSimple) {
   TestNHWCSimple3x3SAME<DeviceType::OPENCL, float>();
 }
 
+namespace {
 template<DeviceType D, typename T>
 void TestNHWCSimple3x3WithoutBias() {
   OpsTestNet net;
@@ -193,6 +196,7 @@ void TestNHWCSimple3x3WithoutBias() {
 
   ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, CPUWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::CPU, float>();
@@ -202,8 +206,9 @@ TEST_F(Conv2dOpTest, OPENCLWithoutBias) {
   TestNHWCSimple3x3WithoutBias<DeviceType::OPENCL, float>();
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestNHWCCombined3x3() {
+void TestNHWCCombined3x3() {
   // Construct graph
   OpsTestNet net;
 
@@ -263,6 +268,7 @@ static void TestNHWCCombined3x3() {
                    9.2f, 12.1f, 6.2f, 8.1f, 4.2f, 12.1f, 6.2f, 8.1f, 4.2f});
   ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, CPUStride2) {
   TestNHWCCombined3x3<DeviceType::CPU, float>();
@@ -272,6 +278,7 @@ TEST_F(Conv2dOpTest, OPENCLStride2) {
   TestNHWCCombined3x3<DeviceType::OPENCL, float>();
 }
 
+namespace {
 template<DeviceType D>
 void TestConv1x1() {
   // Construct graph
@@ -340,14 +347,16 @@ void TestConv1x1() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, CPUConv1x1) { TestConv1x1<DeviceType::CPU>(); }
 
 TEST_F(Conv2dOpTest, OPENCLConv1x1) { TestConv1x1<DeviceType::OPENCL>(); }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestComplexConvNxNS12(const std::vector<index_t> &shape,
-                                  const int stride) {
+void TestComplexConvNxNS12(const std::vector<index_t> &shape,
+                           const int stride) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -414,6 +423,7 @@ static void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     func(kernel_size, kernel_size, stride, stride, SAME);
   }
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedConvNxNS12) {
   TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 16, 16, 32}, 1);
@@ -430,10 +440,11 @@ TEST_F(Conv2dOpTest, OPENCLUnalignedConvNxNS34) {
   TestComplexConvNxNS12<DeviceType::OPENCL, float>({32, 32, 13, 17}, 4);
 }
 
+namespace {
 template<DeviceType D>
-static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
-                                      const std::vector<index_t> &filter_shape,
-                                      const std::vector<int> &dilations) {
+void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
+                               const std::vector<index_t> &filter_shape,
+                               const std::vector<int> &dilations) {
   testing::internal::LogToStderr();
   srand(time(NULL));
 
@@ -515,6 +526,7 @@ static void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     func(2, 2, SAME);
   }
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32}, {1, 1, 32, 64},
@@ -566,9 +578,10 @@ TEST_F(Conv2dOpTest, OPENCLHalfConv7x7Dilation4) {
                                                 {4, 4});
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestDilationConvNxN(const std::vector<index_t> &shape,
-                                const int dilation_rate) {
+void TestDilationConvNxN(const std::vector<index_t> &shape,
+                         const int dilation_rate) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
@@ -638,6 +651,7 @@ static void TestDilationConvNxN(const std::vector<index_t> &shape,
     }
   }
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedDilation2) {
   TestDilationConvNxN<DeviceType::OPENCL, float>({32, 32, 32, 64}, 2);
@@ -651,9 +665,10 @@ TEST_F(Conv2dOpTest, OPENCLUnalignedDilation4) {
   TestDilationConvNxN<DeviceType::OPENCL, float>({107, 113, 5, 7}, 4);
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
-                                    const std::vector<int> &paddings) {
+void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
+                             const std::vector<int> &paddings) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w) {
     srand(time(NULL));
@@ -719,6 +734,7 @@ static void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
     }
   }
 }
+}  // namespace
 
 TEST_F(Conv2dOpTest, OPENCLAlignedPad1) {
   TestArbitraryPadConvNxN<DeviceType::OPENCL, float>({32, 32, 32, 64}, {1, 1});

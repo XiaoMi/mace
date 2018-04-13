@@ -12,8 +12,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void MatMulBenchmark(
+void MatMulBenchmark(
     int iters, int batch, int height, int channels, int out_width) {
   mace::testing::StopTiming();
 
@@ -54,6 +55,7 @@ static void MatMulBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                              \
   static void BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(int iters) { \

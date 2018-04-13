@@ -25,25 +25,26 @@ class OperatorBase {
   explicit OperatorBase(const OperatorDef &operator_def, Workspace *ws);
   virtual ~OperatorBase() noexcept {}
 
-  inline bool HasArgument(const string &name) const {
+  inline bool HasArgument(const std::string &name) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ArgumentHelper::HasArgument(*operator_def_, name);
   }
   template <typename T>
-  inline T GetSingleArgument(const string &name, const T &default_value) const {
+  inline T GetSingleArgument(const std::string &name,
+                             const T &default_value) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ArgumentHelper::GetSingleArgument<OperatorDef, T>(
         *operator_def_, name, default_value);
   }
   template <typename T>
-  inline bool HasSingleArgumentOfType(const string &name) const {
+  inline bool HasSingleArgumentOfType(const std::string &name) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ArgumentHelper::HasSingleArgumentOfType<OperatorDef, T>(
         *operator_def_, name);
   }
   template <typename T>
   inline std::vector<T> GetRepeatedArgument(
-      const string &name, const std::vector<T> &default_value = {}) const {
+      const std::string &name, const std::vector<T> &default_value = {}) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
     return ArgumentHelper::GetRepeatedArgument<OperatorDef, T>(
         *operator_def_, name, default_value);
@@ -90,14 +91,14 @@ class Operator : public OperatorBase {
  public:
   explicit Operator(const OperatorDef &operator_def, Workspace *ws)
       : OperatorBase(operator_def, ws) {
-    for (const string &input_str : operator_def.input()) {
+    for (const std::string &input_str : operator_def.input()) {
       const Tensor *tensor = ws->GetTensor(input_str);
       MACE_CHECK(tensor != nullptr, "op ", operator_def.type(),
                  ": Encountered a non-existing input tensor: ", input_str);
       inputs_.push_back(tensor);
     }
 
-    for (const string &output_str : operator_def.output()) {
+    for (const std::string &output_str : operator_def.output()) {
       if (ws->HasTensor(output_str)) {
         outputs_.push_back(ws->GetTensor(output_str));
       } else {

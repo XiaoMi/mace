@@ -15,6 +15,7 @@ namespace test {
 
 class SliceOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D, typename T>
 void RandomTest(const int num_outputs, const int axis) {
   static unsigned int seed = time(NULL);
@@ -104,6 +105,7 @@ void RandomTest(const int num_outputs, const int axis) {
     }
   }
 }
+}  // namespace
 
 TEST_F(SliceOpTest, CPU) {
   RandomTest<DeviceType::CPU, float>(2, 3);

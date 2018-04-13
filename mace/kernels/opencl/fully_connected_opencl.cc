@@ -8,6 +8,7 @@
 namespace mace {
 namespace kernels {
 
+namespace {
 template <typename T>
 void FCWXKernel(cl::Kernel *kernel,
                 const Tensor *input,
@@ -268,6 +269,7 @@ void FCWTXKernel(cl::Kernel *kernel,
     (*kernel_error)->UnMap();
   }
 }
+}  // namespace
 
 template <typename T>
 void FullyConnectedFunctor<DeviceType::OPENCL, T>::operator()(

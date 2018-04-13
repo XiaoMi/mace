@@ -11,8 +11,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D>
-static void GlobalAvgPooling(
+void GlobalAvgPooling(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -36,6 +37,7 @@ static void GlobalAvgPooling(
     net.RunOp(D);
   }
 }
+}  // namespace
 
 #define BM_GLOBAL_AVG_POOLING_MACRO(N, C, H, W, DEVICE)               \
   static void BM_GLOBAL_AVG_POOLING_##N##_##C##_##H##_##W##_##DEVICE( \

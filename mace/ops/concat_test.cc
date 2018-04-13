@@ -144,6 +144,7 @@ TEST_F(ConcatOpTest, CPURandom) {
   }
 }
 
+namespace {
 template <typename T>
 void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
                       const int axis) {
@@ -208,6 +209,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     k++;
   }
 }
+}  // namespace
 
 TEST_F(ConcatOpTest, OPENCLAligned) {
   OpenclRandomTest<float>({{3, 32, 32, 32}, {3, 32, 32, 64}}, 3);

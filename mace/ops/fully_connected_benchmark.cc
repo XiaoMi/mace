@@ -12,8 +12,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void FCBenchmark(
+void FCBenchmark(
     int iters, int batch, int height, int width, int channel, int out_channel) {
   mace::testing::StopTiming();
 
@@ -64,6 +65,7 @@ static void FCBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
   static void BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE( \

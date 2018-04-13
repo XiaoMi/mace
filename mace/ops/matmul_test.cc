@@ -13,6 +13,7 @@ namespace test {
 
 class MatMulOpTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void Simple(const std::vector<index_t> &A_shape,
             const std::vector<float> &A_value,
@@ -58,6 +59,7 @@ void Simple(const std::vector<index_t> &A_shape,
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(MatMulOpTest, SimpleCPU) {
   Simple<DeviceType::CPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
@@ -98,6 +100,7 @@ TEST_F(MatMulOpTest, SimpleGPUWithBatch) {
                           {2, 2, 2, 1}, {22, 28, 49, 64, 22, 28, 49, 64});
 }
 
+namespace {
 template <typename T>
 void Complex(const index_t batch,
              const index_t height,
@@ -150,6 +153,7 @@ void Complex(const index_t batch,
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-4);
   }
 }
+}  // namespace
 
 TEST_F(MatMulOpTest, OPENCLAlignedWithoutBatch) {
   Complex<float>(1, 64, 128, 32);

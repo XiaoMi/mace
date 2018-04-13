@@ -11,8 +11,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void BatchNorm(
+void BatchNorm(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -74,6 +75,7 @@ static void BatchNorm(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_BATCH_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                  \
   static void BM_BATCH_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \

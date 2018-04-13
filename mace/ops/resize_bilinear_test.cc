@@ -63,6 +63,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
+namespace {
 template <DeviceType D>
 void TestRandomResizeBilinear() {
   testing::internal::LogToStderr();
@@ -115,6 +116,7 @@ void TestRandomResizeBilinear() {
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.001);
   }
 }
+}  // namespace
 
 /*
 TEST_F(ResizeBilinearTest, NEONRandomResizeBilinear) {

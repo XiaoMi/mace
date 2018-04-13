@@ -11,6 +11,7 @@ namespace test {
 
 class ActivationOpTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void TestSimpleRelu() {
   OpsTestNet net;
@@ -52,6 +53,7 @@ void TestSimpleRelu() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleRelu) { TestSimpleRelu<DeviceType::CPU>(); }
 
@@ -59,6 +61,7 @@ TEST_F(ActivationOpTest, OPENCLSimpleRelu) {
   TestSimpleRelu<DeviceType::OPENCL>();
 }
 
+namespace {
 template <DeviceType D>
 void TestUnalignedSimpleRelu() {
   OpsTestNet net;
@@ -97,6 +100,7 @@ void TestUnalignedSimpleRelu() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUUnalignedSimpleRelu) {
   TestUnalignedSimpleRelu<DeviceType::CPU>();
@@ -106,6 +110,8 @@ TEST_F(ActivationOpTest, OPENCLUnalignedSimpleRelu) {
   TestUnalignedSimpleRelu<DeviceType::OPENCL>();
 }
 
+
+namespace {
 template <DeviceType D>
 void TestSimpleRelux() {
   OpsTestNet net;
@@ -149,6 +155,7 @@ void TestSimpleRelux() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimple) { TestSimpleRelux<DeviceType::CPU>(); }
 
@@ -156,6 +163,7 @@ TEST_F(ActivationOpTest, OPENCLSimple) {
   TestSimpleRelux<DeviceType::OPENCL>();
 }
 
+namespace {
 template <DeviceType D>
 void TestSimpleReluRelux() {
   OpsTestNet net;
@@ -199,6 +207,7 @@ void TestSimpleReluRelux() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleRelux) {
   TestSimpleReluRelux<DeviceType::CPU>();
@@ -208,6 +217,7 @@ TEST_F(ActivationOpTest, OPENCLSimpleRelux) {
   TestSimpleReluRelux<DeviceType::OPENCL>();
 }
 
+namespace {
 template <DeviceType D>
 void TestSimplePrelu() {
   OpsTestNet net;
@@ -261,6 +271,7 @@ void TestSimplePrelu() {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   }
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimplePrelu) {
   TestSimplePrelu<DeviceType::CPU>();
@@ -274,6 +285,7 @@ TEST_F(ActivationOpTest, OPENCLSimplePrelu) {
   TestSimplePrelu<DeviceType::OPENCL>();
 }
 
+namespace {
 template <DeviceType D>
 void TestSimpleTanh() {
   OpsTestNet net;
@@ -318,6 +330,7 @@ void TestSimpleTanh() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleTanh) { TestSimpleTanh<DeviceType::CPU>(); }
 
@@ -325,6 +338,7 @@ TEST_F(ActivationOpTest, OPENCLSimpleTanh) {
   TestSimpleTanh<DeviceType::OPENCL>();
 }
 
+namespace {
 template <DeviceType D>
 void TestSimpleSigmoid() {
   OpsTestNet net;
@@ -370,6 +384,7 @@ void TestSimpleSigmoid() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(ActivationOpTest, CPUSimpleSigmoid) {
   TestSimpleSigmoid<DeviceType::CPU>();

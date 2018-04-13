@@ -11,6 +11,7 @@ namespace test {
 
 class AddnOpTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void SimpleAdd2() {
   // Construct graph
@@ -32,9 +33,11 @@ void SimpleAdd2() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(AddnOpTest, CPUSimpleAdd2) { SimpleAdd2<DeviceType::CPU>(); }
 
+namespace {
 template <DeviceType D>
 void SimpleAdd3() {
   // Construct graph
@@ -58,9 +61,11 @@ void SimpleAdd3() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
 
+namespace {
 template <DeviceType D>
 void RandomTest() {
   testing::internal::LogToStderr();
@@ -116,6 +121,7 @@ void RandomTest() {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.1);
   }
 }
+}  // namespace
 
 TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<DeviceType::OPENCL>(); }
 

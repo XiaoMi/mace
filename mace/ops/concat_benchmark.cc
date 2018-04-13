@@ -10,8 +10,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void ConcatHelper(int iters, int concat_dim, int dim1) {
+void ConcatHelper(int iters, int concat_dim, int dim1) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -39,6 +40,7 @@ static void ConcatHelper(int iters, int concat_dim, int dim1) {
     net.RunOp(D);
   }
 }
+}  // namespace
 
 #define BM_CONCAT_CPU_MACRO(DIM0, DIM1)                      \
   static void BM_CONCAT_CPU_##DIM0##_##DIM1(int iters) {     \
@@ -51,11 +53,12 @@ BM_CONCAT_CPU_MACRO(0, 100000);
 BM_CONCAT_CPU_MACRO(1, 1000);
 BM_CONCAT_CPU_MACRO(1, 100000);
 
+namespace {
 template <typename T>
-static void OpenclConcatHelper(int iters,
-                               const std::vector<index_t> &shape0,
-                               const std::vector<index_t> &shape1,
-                               int concat_dim) {
+void OpenclConcatHelper(int iters,
+                        const std::vector<index_t> &shape0,
+                        const std::vector<index_t> &shape1,
+                        int concat_dim) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -91,6 +94,7 @@ static void OpenclConcatHelper(int iters,
     net.RunOp(DeviceType::OPENCL);
   }
 }
+}  // namespace
 
 #define BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE)                           \
   static void BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE(int iters) { \

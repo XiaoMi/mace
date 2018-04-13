@@ -11,6 +11,7 @@ namespace test {
 
 class BatchNormOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D>
 void Simple() {
   OpsTestNet net;
@@ -71,6 +72,7 @@ void Simple() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }
+}  // namespace
 
 TEST_F(BatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 

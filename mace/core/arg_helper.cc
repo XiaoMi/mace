@@ -28,7 +28,7 @@ ArgumentHelper::ArgumentHelper(const NetDef &netdef) {
   }
 }
 
-bool ArgumentHelper::HasArgument(const string &name) const {
+bool ArgumentHelper::HasArgument(const std::string &name) const {
   return arg_map_.count(name);
 }
 
@@ -44,7 +44,7 @@ bool SupportsLosslessConversion(const InputType &value) {
 #define INSTANTIATE_GET_SINGLE_ARGUMENT(T, fieldname,                         \
                                         enforce_lossless_conversion)          \
   template <>                                                                 \
-  T ArgumentHelper::GetSingleArgument<T>(const string &name,                  \
+  T ArgumentHelper::GetSingleArgument<T>(const std::string &name,             \
                                          const T &default_value) const {      \
     if (arg_map_.count(name) == 0) {                                          \
       VLOG(3) << "Using default parameter value " << default_value            \
@@ -63,7 +63,8 @@ bool SupportsLosslessConversion(const InputType &value) {
     return value;                                                             \
   }                                                                           \
   template <>                                                                 \
-  bool ArgumentHelper::HasSingleArgumentOfType<T>(const string &name) const { \
+  bool ArgumentHelper::HasSingleArgumentOfType<T>(                            \
+      const std::string &name) const {                                        \
     if (arg_map_.count(name) == 0) {                                          \
       return false;                                                           \
     }                                                                         \
@@ -80,28 +81,28 @@ INSTANTIATE_GET_SINGLE_ARGUMENT(int64_t, i, true)
 INSTANTIATE_GET_SINGLE_ARGUMENT(uint8_t, i, true)
 INSTANTIATE_GET_SINGLE_ARGUMENT(uint16_t, i, true)
 INSTANTIATE_GET_SINGLE_ARGUMENT(size_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(string, s, false)
+INSTANTIATE_GET_SINGLE_ARGUMENT(std::string, s, false)
 #undef INSTANTIATE_GET_SINGLE_ARGUMENT
 
-#define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                   \
-                                          enforce_lossless_conversion)    \
-  template <>                                                             \
-  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                  \
-      const string &name, const std::vector<T> &default_value) const {    \
-    if (arg_map_.count(name) == 0) {                                      \
-      return default_value;                                               \
-    }                                                                     \
-    std::vector<T> values;                                                \
-    for (const auto &v : arg_map_.at(name).fieldname()) {                 \
-      if (enforce_lossless_conversion) {                                  \
-        auto supportsConversion =                                         \
-            SupportsLosslessConversion<decltype(v), T>(v);                \
-        MACE_CHECK(supportsConversion, "Value", v, " of argument ", name, \
-                   "cannot be represented correctly in a target type");   \
-      }                                                                   \
-      values.push_back(v);                                                \
-    }                                                                     \
-    return values;                                                        \
+#define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                     \
+                                          enforce_lossless_conversion)      \
+  template <>                                                               \
+  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                    \
+      const std::string &name, const std::vector<T> &default_value) const { \
+    if (arg_map_.count(name) == 0) {                                        \
+      return default_value;                                                 \
+    }                                                                       \
+    std::vector<T> values;                                                  \
+    for (const auto &v : arg_map_.at(name).fieldname()) {                   \
+      if (enforce_lossless_conversion) {                                    \
+        auto supportsConversion =                                           \
+            SupportsLosslessConversion<decltype(v), T>(v);                  \
+        MACE_CHECK(supportsConversion, "Value", v, " of argument ", name,   \
+                   "cannot be represented correctly in a target type");     \
+      }                                                                     \
+      values.push_back(v);                                                  \
+    }                                                                       \
+    return values;                                                          \
   }
 
 INSTANTIATE_GET_REPEATED_ARGUMENT(float, floats, false)
@@ -114,7 +115,7 @@ INSTANTIATE_GET_REPEATED_ARGUMENT(int64_t, ints, true)
 INSTANTIATE_GET_REPEATED_ARGUMENT(uint8_t, ints, true)
 INSTANTIATE_GET_REPEATED_ARGUMENT(uint16_t, ints, true)
 INSTANTIATE_GET_REPEATED_ARGUMENT(size_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(string, strings, false)
+INSTANTIATE_GET_REPEATED_ARGUMENT(std::string, strings, false)
 #undef INSTANTIATE_GET_REPEATED_ARGUMENT
 
 }  // namespace mace

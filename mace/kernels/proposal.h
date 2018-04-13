@@ -15,7 +15,7 @@
 namespace mace {
 namespace kernels {
 
-static std::vector<float> WHCenters(const std::vector<float> &anchor) {
+inline std::vector<float> WHCenters(const std::vector<float> &anchor) {
   // width, height, width_center, height_center
   std::vector<float> window(4);
   window[0] = anchor[2] - anchor[0] + 1;
@@ -25,7 +25,7 @@ static std::vector<float> WHCenters(const std::vector<float> &anchor) {
   return window;
 }
 
-std::vector<std::vector<float>> GenerateAnchors(
+inline std::vector<std::vector<float>> GenerateAnchors(
     const std::vector<int> &scales,
     const std::vector<float> &ratios,
     const int base_size) {
@@ -65,10 +65,10 @@ std::vector<std::vector<float>> GenerateAnchors(
   return anchors;
 }
 
-std::vector<int> nms(const float *bboxes_ptr,
-                     const index_t num_bboxes,
-                     const float thresh,
-                     const int post_nms_top_n) {
+inline std::vector<int> nms(const float *bboxes_ptr,
+                            const index_t num_bboxes,
+                            const float thresh,
+                            const int post_nms_top_n) {
   std::vector<int> keep;
   std::vector<int> suppressed(num_bboxes, 0);
 
