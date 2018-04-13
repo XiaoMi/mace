@@ -48,7 +48,7 @@ void RunDepthToSpace(const bool d2s,
         kernels::BufferType::IN_OUT_CHANNEL);
   }
   auto expected = CreateTensor<float>(expected_shape, expected_data);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -194,10 +194,10 @@ void RandomTest(const bool d2s, const int block_size,
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-3);
+                            *net.GetOutput("OPENCLOutput"), 1e-5);
   } else {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-1);
+                            *net.GetOutput("OPENCLOutput"), 1e-3, 1e-4);
   }
 }
 }  // namespace

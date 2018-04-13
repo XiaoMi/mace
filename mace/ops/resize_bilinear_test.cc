@@ -35,7 +35,7 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   // Check
   auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
@@ -60,7 +60,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   // Check
   auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 namespace {
@@ -113,7 +113,8 @@ void TestRandomResizeBilinear() {
       // TODO(someone): support NEON
     }
     // Check
-    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"),
+                            1e-5, 1e-6);
   }
 }
 }  // namespace

@@ -68,7 +68,7 @@ void TestNHWCSimple3x3VALID() {
   }
 
   auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.1f});
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
 template<DeviceType D, typename T>
@@ -128,7 +128,7 @@ void TestNHWCSimple3x3SAME() {
     {1, 3, 3, 1},
     {8.1f, 12.1f, 8.1f, 12.1f, 18.1f, 12.1f, 8.1f, 12.1f, 8.1f});
 
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -194,7 +194,7 @@ void TestNHWCSimple3x3WithoutBias() {
   // Check
   auto expected = CreateTensor<float>({1, 1, 1, 1}, {18.0f});
 
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -266,7 +266,7 @@ void TestNHWCCombined3x3() {
   auto expected = CreateTensor<float>(
     {1, 3, 3, 2}, {8.1f, 4.2f, 12.1f, 6.2f, 8.1f, 4.2f, 12.1f, 6.2f, 18.1f,
                    9.2f, 12.1f, 6.2f, 8.1f, 4.2f, 12.1f, 6.2f, 8.1f, 4.2f});
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 0.01);
+  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -345,7 +345,7 @@ void TestConv1x1() {
      5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f,
      5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f, 5.1f, 10.2f});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -415,7 +415,8 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected,
+                            *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
   };
 
   for (int kernel_size : {1, 3, 7}) {
@@ -516,7 +517,8 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+    ExpectTensorNear<float>(expected,
+                            *net.GetOutput("OPENCLOutput"), 1e-2, 1e-1);
   };
 
   func(1, 1, VALID);
@@ -641,7 +643,8 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   };
 
   for (int kernel_size : {3}) {
@@ -725,7 +728,8 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   };
 
   for (int kernel_size : {3, 5}) {
@@ -807,7 +811,7 @@ static void TestNeonArbitraryPadConvNxN(const std::vector<index_t> &shape,
 
     ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                             *net.GetOutput("OutputNeon"),
-                            0.001);
+                            1e-5, 1e-3);
   };
 
   for (int kernel_size : {1, 3, 5}) {

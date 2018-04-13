@@ -67,10 +67,11 @@ void Simple() {
 
   // Check
   auto expected =
-    CreateTensor<float>({1, 6, 2, 1}, {-3.86, -3.86, -1.51, -1.51, 0.83, 0.83,
-                                       3.17, 3.17, 5.51, 5.51, 7.86, 7.86});
+    CreateTensor<float>({1, 6, 2, 1}, {-3.8543, -3.8543, -1.5125, -1.5125,
+                                       0.8291, 0.8291, 3.1708, 3.1708,
+                                       5.5125, 5.5125, 7.8543, 7.8543});
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4);
 }
 }  // namespace
 
@@ -81,8 +82,8 @@ TEST_F(BatchNormOpTest, SimpleOPENCL) { Simple<DeviceType::OPENCL>(); }
 TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   // generate random input
   static unsigned int seed = time(NULL);
-  index_t batch = 1 + rand_r(&seed) % 10;
-  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t batch = 1 + rand_r(&seed) % 5;
+  index_t channels = 3 + rand_r(&seed) % 25;
   index_t height = 64;
   index_t width = 64;
 
@@ -146,7 +147,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
 }
 
 TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
@@ -218,14 +219,14 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   // generate random input
   static unsigned int seed = time(NULL);
-  index_t batch = 1 + rand_r(&seed) % 10;
-  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t batch = 1 + rand_r(&seed) % 5;
+  index_t channels = 3 + rand_r(&seed) % 25;
   index_t height = 103;
   index_t width = 113;
 
@@ -289,14 +290,14 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   // generate random input
   static unsigned int seed = time(NULL);
-  index_t batch = 1 + rand_r(&seed) % 10;
-  index_t channels = 3 + rand_r(&seed) % 50;
+  index_t batch = 1 + rand_r(&seed) % 5;
+  index_t channels = 3 + rand_r(&seed) % 25;
   index_t height = 103;
   index_t width = 113;
 
@@ -361,7 +362,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 0.5);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
 }
 
 TEST_F(BatchNormOpTest, NEONTest) {
@@ -418,7 +419,7 @@ TEST_F(BatchNormOpTest, NEONTest) {
 
   ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                           *net.GetOutput("OutputNeon"),
-                          0.001);
+                          1e-5);
 }
 
 }  // namespace test

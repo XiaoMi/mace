@@ -60,7 +60,7 @@ void Simple(const kernels::EltwiseType type,
 
   auto expected = CreateTensor<float>(shape, output);
 
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -146,10 +146,10 @@ void RandomTest(const kernels::EltwiseType type,
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-3);
+                            *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
   } else {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-1);
+                            *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
   }
 }
 }  // namespace

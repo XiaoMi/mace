@@ -143,7 +143,7 @@ void TestDiffTypeBidirectionTransform(const int type,
 
   // Check
   ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
-                          1e-2);
+                          1e-3, 1e-6);
 }
 }  // namespace
 
@@ -185,7 +185,7 @@ void TestStringHalfBidirectionTransform(const int type,
 
   // Check
   ExpectTensorNear<half>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
-                         1e-2);
+                         1e-3, 1e-6);
 }
 }  // namespace
 

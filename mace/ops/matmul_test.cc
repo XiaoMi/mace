@@ -148,9 +148,11 @@ void Complex(const index_t batch,
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_HEIGHT);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-2, 1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-4);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-5);
   }
 }
 }  // namespace

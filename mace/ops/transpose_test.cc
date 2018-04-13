@@ -30,8 +30,7 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNCHW", "Input");
 
   ExpectTensorNear<float>(*net.GetOutput("InputNCHW"),
-                          *net.GetOutput("Output"),
-                          0.01);
+                          *net.GetOutput("Output"));
 }
 }  // namespace
 

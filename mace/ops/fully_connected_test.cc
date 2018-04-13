@@ -164,9 +164,11 @@ void Complex(const index_t batch,
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-1, 1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-3);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-5, 1e-4);
   }
 }
 }  // namespace
@@ -247,9 +249,11 @@ void TestWXFormat(const index_t batch,
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-1, 1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                            1e-3, 1e-3);
   }
 }
 }  // namespace
@@ -267,7 +271,7 @@ TEST_F(FullyConnectedOpTest, OPENCLWidthFormatMultiBatch) {
 }
 
 TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
-  TestWXFormat<float>(1, 2, 2, 512, 2);
+  TestWXFormat<half>(1, 2, 2, 512, 2);
   TestWXFormat<half>(1, 11, 11, 32, 16);
   TestWXFormat<half>(1, 16, 32, 32, 32);
 }
@@ -315,7 +319,7 @@ void FullyConnectedTestNEON(const index_t batch,
 
   ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                           *net.GetOutput("OutputNeon"),
-                          0.01);
+                          1e-3, 1e-3);
 }
 }  // namespace
 

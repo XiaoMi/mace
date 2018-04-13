@@ -46,8 +46,8 @@ void SimpleValidTest() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
@@ -64,11 +64,15 @@ void SimpleValidTest() {
   }
 
   // Check
-  auto expected = CreateTensor<T>(
-    {1, 2, 2, 2}, VectorStaticCast<T>({37.1f, 148.2f, 47.1f, 188.2f, 67.1f,
-                                       268.2f, 77.1f, 308.2f}));
+  auto expected = CreateTensor<float>(
+    {1, 2, 2, 2}, {37.1f, 148.2f, 47.1f, 188.2f,
+                   67.1f, 268.2f, 77.1f, 308.2f});
 
-  ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-5);
+  if (DataTypeToEnum<T>::value == DT_HALF) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3, 1e-3);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  }
 }
 }  // namespace
 
@@ -189,7 +193,11 @@ void ComplexValidTest() {
        9.13650036, 8.5095005, 8.92500019, 9.34349918, 8.69849968,
        9.12300014, 9.55049992, 4.55220032, 4.80690002, 5.06340027}));
 
-  ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 0.2);
+  if (DataTypeToEnum<T>::value == DT_FLOAT) {
+    ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-5);
+  } else {
+    ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-2);
+  }
 }
 }  // namespace
 
@@ -282,7 +290,13 @@ void TestNxNS12(const index_t height, const index_t width) {
     }
 
     // Check
-    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 0.1);
+    if (DataTypeToEnum<T>::value == DT_FLOAT) {
+      ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"),
+                              1e-5, 1e-4);
+    } else {
+      ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"),
+                              1e-2, 1e-2);
+    }
   };
 
   for (int kernel_size : {2, 3, 4}) {
@@ -303,12 +317,10 @@ TEST_F(DepthwiseConv2dOpTest, OpenCLSimpleNxNS12Half) {
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLAlignedNxNS12) {
-  TestNxNS12<DeviceType::OPENCL, float>(64, 64);
   TestNxNS12<DeviceType::OPENCL, float>(128, 128);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLAlignedNxNS12Half) {
-  TestNxNS12<DeviceType::OPENCL, half>(64, 64);
   TestNxNS12<DeviceType::OPENCL, half>(128, 128);
 }
 
@@ -380,7 +392,7 @@ void TestNEONNxNS12(const index_t height,
     // Check
     ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                             *net.GetOutput("OutputNeon"),
-                            0.001);
+                            1e-5, 1e-3);
   };
 
   for (int kernel_size : {1, 3, 5}) {

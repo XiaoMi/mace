@@ -36,7 +36,7 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                           kernels::BufferType::IN_OUT_CHANNEL);
   // Check
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-8);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 
 template <DeviceType D>
@@ -64,7 +64,7 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                           kernels::BufferType::IN_OUT_CHANNEL);
   // Check
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-8);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 
 template <typename T>
