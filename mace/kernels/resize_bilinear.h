@@ -23,15 +23,15 @@ struct CachedInterpolation {
   float lerp;
 };
 
-static inline float CalculateResizeScale(index_t in_size,
-                                         index_t out_size,
-                                         bool align_corners) {
+inline float CalculateResizeScale(index_t in_size,
+                                  index_t out_size,
+                                  bool align_corners) {
   return (align_corners && out_size > 1)
              ? (in_size - 1) / static_cast<float>(out_size - 1)
              : in_size / static_cast<float>(out_size);
 }
 
-static inline void ComputeInterpolationWeights(
+inline void ComputeInterpolationWeights(
     const index_t out_size,
     const index_t in_size,
     const float scale,
@@ -46,12 +46,12 @@ static inline void ComputeInterpolationWeights(
   }
 }
 
-static inline float ComputeLerp(const float top_left,
-                                const float top_right,
-                                const float bottom_left,
-                                const float bottom_right,
-                                const float x_lerp,
-                                const float y_lerp) {
+inline float ComputeLerp(const float top_left,
+                         const float top_right,
+                         const float bottom_left,
+                         const float bottom_right,
+                         const float x_lerp,
+                         const float y_lerp) {
   const float top = top_left + (top_right - top_left) * x_lerp;
   const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
   return top + (bottom - top) * y_lerp;

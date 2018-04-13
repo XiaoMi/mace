@@ -19,7 +19,7 @@
 namespace mace {
 namespace kernels {
 
-static constexpr int kCostPerGroup = 1024;
+constexpr int kCostPerGroup = 1024;
 
 template <DeviceType D, typename T>
 struct AddNFunctor {
