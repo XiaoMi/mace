@@ -14,7 +14,7 @@ DEFINE_int32(gpu_perf_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
-             "0:AFFINITY_DEFAULT/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
+             "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
 int main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
