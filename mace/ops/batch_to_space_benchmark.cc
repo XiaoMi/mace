@@ -10,8 +10,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void BMBatchToSpace(
+void BMBatchToSpace(
     int iters, int batch, int channels, int height, int width, int arg) {
   mace::testing::StopTiming();
 
@@ -38,6 +39,7 @@ static void BMBatchToSpace(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, DEVICE)             \
   static void                                                              \

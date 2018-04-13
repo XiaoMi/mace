@@ -45,7 +45,8 @@ extern const std::string ModelChecksum();
 }  // namespace mace
 
 namespace mace {
-namespace examples {
+namespace tools {
+namespace validation {
 
 namespace str_util {
 
@@ -384,7 +385,8 @@ int Main(int argc, char **argv) {
   }
 }
 
-}  // namespace examples
+}  // namespace validation
+}  // namespace tools
 }  // namespace mace
 
-int main(int argc, char **argv) { mace::examples::Main(argc, argv); }
+int main(int argc, char **argv) { mace::tools::validation::Main(argc, argv); }

@@ -10,8 +10,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void ChannelShuffle(
+void ChannelShuffle(
     int iters, int batch, int channels, int height, int width, int group) {
   mace::testing::StopTiming();
 
@@ -48,6 +49,7 @@ static void ChannelShuffle(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
   static void                                                             \

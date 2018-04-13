@@ -11,6 +11,7 @@ namespace test {
 
 class SoftmaxOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D>
 void Simple() {
   // Construct graph
@@ -50,10 +51,12 @@ void Simple() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-7);
 }
+}  // namespace
 
 TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
 TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::OPENCL>(); }
 
+namespace {
 template<DeviceType D>
 void Complex(const std::vector<index_t> &logits_shape) {
   // Construct graph
@@ -88,6 +91,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
 
   ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
+}  // namespace
 
 TEST_F(SoftmaxOpTest, OPENCLAligned) {
   Complex<DeviceType::OPENCL>({1, 256, 256, 3});
@@ -104,6 +108,7 @@ TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
   Complex<DeviceType::OPENCL>({5, 211, 107, 1});
 }
 
+namespace {
 void SoftMaxNEONTest(const std::vector<index_t> &logits_shape) {
   // Construct graph
   OpsTestNet net;
@@ -135,6 +140,7 @@ void SoftMaxNEONTest(const std::vector<index_t> &logits_shape) {
                           *net.GetOutput("OutputNeon"),
                           0.01);
 }
+}  // namespace
 
 TEST_F(SoftmaxOpTest, NEONTest) {
   SoftMaxNEONTest({5, 64, 64, 3});

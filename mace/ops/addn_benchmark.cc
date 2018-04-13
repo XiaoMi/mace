@@ -12,8 +12,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
+void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -57,6 +58,7 @@ static void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
     net.Sync();
   }
 }
+}  // namespace
 
 #define BM_ADDN_MACRO(INPUTS, N, H, W, C, TYPE, DEVICE)                       \
   static void BM_ADDN_##INPUTS##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(   \

@@ -12,6 +12,7 @@ namespace test {
 
 class EltwiseOpTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void Simple(const kernels::EltwiseType type,
             const std::vector<index_t> &shape,
@@ -61,6 +62,7 @@ void Simple(const kernels::EltwiseType type,
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3);
 }
+}  // namespace
 
 TEST_F(EltwiseOpTest, CPUSimple) {
   Simple<DeviceType::CPU>(kernels::EltwiseType::PROD, {1, 1, 2, 3},
@@ -98,6 +100,7 @@ TEST_F(EltwiseOpTest, GPUSimple) {
                              {1, 1, 3, 3, 5, 6});
 }
 
+namespace {
 template <DeviceType D, typename T>
 void RandomTest(const kernels::EltwiseType type,
                 const std::vector<index_t> &shape) {
@@ -149,6 +152,7 @@ void RandomTest(const kernels::EltwiseType type,
                             *net.GetOutput("OPENCLOutput"), 1e-1);
   }
 }
+}  // namespace
 
 TEST_F(EltwiseOpTest, OPENCLRandomFloat) {
   RandomTest<DeviceType::OPENCL, float>(kernels::EltwiseType::PROD,

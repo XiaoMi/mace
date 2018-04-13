@@ -11,9 +11,10 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void Pad(int iters, int batch, int height,
-                int width, int channels, int pad) {
+void Pad(int iters, int batch, int height,
+         int width, int channels, int pad) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -52,6 +53,7 @@ static void Pad(int iters, int batch, int height,
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_PAD_MACRO(N, H, W, C, PAD, TYPE, DEVICE)                  \
   static void BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE( \

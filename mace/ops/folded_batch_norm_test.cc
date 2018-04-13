@@ -11,6 +11,7 @@ namespace test {
 
 class FoldedBatchNormOpTest : public OpsTestBase {};
 
+namespace {
 void CalculateScaleOffset(const std::vector<float> &gamma,
                           const std::vector<float> &beta,
                           const std::vector<float> &mean,
@@ -21,7 +22,7 @@ void CalculateScaleOffset(const std::vector<float> &gamma,
   size_t size = gamma.size();
   for (int i = 0; i < size; ++i) {
     (*scale)[i] = gamma[i] / std::sqrt(var[i] + epsilon);
-    (*offset)[i] = (*offset)[i] - mean[i] * (*scale)[i];
+    (*offset)[i] = beta[i] - mean[i] * (*scale)[i];
   }
 }
 
@@ -76,6 +77,7 @@ void Simple() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }
+}  // namespace
 
 TEST_F(FoldedBatchNormOpTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 

@@ -11,8 +11,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void BiasAdd(int iters, int batch, int channels, int height, int width) {
+void BiasAdd(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -51,6 +52,7 @@ static void BiasAdd(int iters, int batch, int channels, int height, int width) {
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_BIAS_ADD_MACRO(N, C, H, W, TYPE, DEVICE)                  \
   static void BM_BIAS_ADD_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE( \

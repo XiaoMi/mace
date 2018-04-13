@@ -12,16 +12,17 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D>
-static void Pooling(int iters,
-                    int batch,
-                    int channels,
-                    int height,
-                    int width,
-                    int kernel,
-                    int stride,
-                    Padding padding,
-                    PoolingType pooling_type) {
+void Pooling(int iters,
+             int batch,
+             int channels,
+             int height,
+             int width,
+             int kernel,
+             int stride,
+             Padding padding,
+             PoolingType pooling_type) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -49,6 +50,7 @@ static void Pooling(int iters,
     net.RunOp(D);
   }
 }
+}  // namespace
 
 #define BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)          \
   static void                                                             \

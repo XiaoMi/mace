@@ -14,6 +14,7 @@
 namespace mace {
 namespace kernels {
 
+namespace {
 // [(C + 3) / 4 * W, N * H]
 void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
                            std::vector<size_t> *image_shape) {
@@ -97,6 +98,7 @@ void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* HW */
   (*image_shape)[0] = RoundUpDiv4(shape[1]);
   (*image_shape)[1] = shape[0];
 }
+}  // namespace
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,

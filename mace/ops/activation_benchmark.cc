@@ -12,8 +12,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void ReluBenchmark(
+void ReluBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -51,6 +52,7 @@ static void ReluBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_RELU_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_RELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
@@ -72,8 +74,9 @@ BM_RELU(1, 3, 512, 512);
 BM_RELU(1, 32, 112, 112);
 BM_RELU(1, 64, 256, 256);
 
+namespace {
 template <DeviceType D, typename T>
-static void ReluxBenchmark(
+void ReluxBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -113,6 +116,7 @@ static void ReluxBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_RELUX_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_RELUX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
@@ -134,8 +138,9 @@ BM_RELUX(1, 3, 512, 512);
 BM_RELUX(1, 32, 112, 112);
 BM_RELUX(1, 64, 256, 256);
 
+namespace {
 template <DeviceType D, typename T>
-static void PreluBenchmark(
+void PreluBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -178,6 +183,7 @@ static void PreluBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_PRELU_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_PRELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
@@ -199,8 +205,9 @@ BM_PRELU(1, 3, 512, 512);
 BM_PRELU(1, 32, 112, 112);
 BM_PRELU(1, 64, 256, 256);
 
+namespace {
 template <DeviceType D, typename T>
-static void TanhBenchmark(
+void TanhBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -238,6 +245,7 @@ static void TanhBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_TANH_MACRO(N, C, H, W, TYPE, DEVICE)                              \
   static void BM_TANH_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(int iters) { \
@@ -259,8 +267,9 @@ BM_TANH(1, 3, 512, 512);
 BM_TANH(1, 32, 112, 112);
 BM_TANH(1, 64, 256, 256);
 
+namespace {
 template <DeviceType D, typename T>
-static void SigmoidBenchmark(
+void SigmoidBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -298,6 +307,7 @@ static void SigmoidBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_SIGMOID_MACRO(N, C, H, W, TYPE, DEVICE)                   \
   static void BM_SIGMOID_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \

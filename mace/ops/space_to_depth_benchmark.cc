@@ -10,8 +10,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void SpaceToDepth(
+void SpaceToDepth(
     int iters, int batch, int channels, int height, int width, int block_size) {
   mace::testing::StopTiming();
 
@@ -48,6 +49,7 @@ static void SpaceToDepth(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
   static void                                                            \

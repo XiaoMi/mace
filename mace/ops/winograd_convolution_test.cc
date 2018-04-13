@@ -14,6 +14,7 @@ namespace test {
 
 class WinogradConvlutionTest : public OpsTestBase {};
 
+namespace {
 void TransposeFilter(const std::vector<float> &input,
                      const std::vector<index_t> &input_shape,
                      std::vector<float> *output) {
@@ -131,6 +132,7 @@ void WinogradConvolution(const index_t batch,
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-4);
   }
 }
+}  // namespace
 
 TEST_F(WinogradConvlutionTest, AlignedConvolution) {
   WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16,
@@ -153,6 +155,7 @@ TEST_F(WinogradConvlutionTest, BatchConvolution) {
                                                  Padding::SAME);
 }
 
+namespace {
 template <DeviceType D, typename T>
 void WinogradConvolutionWithPad(const index_t batch,
                                 const index_t height,
@@ -248,6 +251,7 @@ void WinogradConvolutionWithPad(const index_t batch,
     ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-3);
   }
 }
+}  // namespace
 
 }  // namespace test
 }  // namespace ops

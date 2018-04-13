@@ -10,10 +10,11 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template<DeviceType D, typename T>
-static void BMSliceHelper(int iters,
-                          const std::vector<index_t> &input_shape,
-                          const index_t num_outputs) {
+void BMSliceHelper(int iters,
+                   const std::vector<index_t> &input_shape,
+                   const index_t num_outputs) {
   mace::testing::StopTiming();
 
   // Construct graph
@@ -60,6 +61,7 @@ static void BMSliceHelper(int iters,
     net.Sync();
   }
 }
+}  // namespace
 
 #define BM_SLICE_MACRO(N, H, W, C, NO, TYPE, DEVICE)                         \
   static void                                                                \

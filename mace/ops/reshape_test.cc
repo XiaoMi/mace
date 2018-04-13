@@ -12,6 +12,7 @@ namespace test {
 
 class ReshapeTest : public OpsTestBase {};
 
+namespace {
 void TestReshape(const std::vector<index_t> &org_shape,
                  const std::vector<int> &output_shape,
                  const std::vector<index_t> &res_shape) {
@@ -41,6 +42,7 @@ void TestReshape(const std::vector<index_t> &org_shape,
     ASSERT_EQ(input_ptr[i], output_ptr[i]);
   }
 }
+}  // namespace
 
 TEST_F(ReshapeTest, Simple) {
   TestReshape({1, 2, 3, 4}, {1, 2, -1, 4}, {1, 2, 3, 4});

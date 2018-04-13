@@ -13,18 +13,19 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void Conv2d(int iters,
-                   int batch,
-                   int channels,
-                   int height,
-                   int width,
-                   int kernel_h,
-                   int kernel_w,
-                   int stride,
-                   int dilation,
-                   Padding padding,
-                   int output_channels) {
+void Conv2d(int iters,
+            int batch,
+            int channels,
+            int height,
+            int width,
+            int kernel_h,
+            int kernel_w,
+            int stride,
+            int dilation,
+            Padding padding,
+            int output_channels) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -88,6 +89,7 @@ static void Conv2d(int iters,
     net.Sync();
   }
 }
+}  // namespace
 
 // In common network, there are usually more than 1 layers, this is used to
 // approximate the amortized latency. The OpenCL runtime for Mali/Adreno is

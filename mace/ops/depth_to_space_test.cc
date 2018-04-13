@@ -11,6 +11,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D>
 void RunDepthToSpace(const bool d2s,
                      const std::vector<index_t> &input_shape,
@@ -49,6 +50,7 @@ void RunDepthToSpace(const bool d2s,
   auto expected = CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+}  // namespace
 
 
 class SpaceToDepthOpTest : public OpsTestBase {};
@@ -149,6 +151,7 @@ TEST_F(DepthToSpaceOpTest, InputLarger_B2_OPENCL) {
 }
 
 
+namespace {
 template <DeviceType D, typename T>
 void RandomTest(const bool d2s, const int block_size,
                 const std::vector<index_t> &shape) {
@@ -197,6 +200,7 @@ void RandomTest(const bool d2s, const int block_size,
                             *net.GetOutput("OPENCLOutput"), 1e-1);
   }
 }
+}  // namespace
 
 TEST_F(DepthToSpaceOpTest, OPENCLRandomFloat) {
   RandomTest<DeviceType::OPENCL, float>(true, 2, {1, 192, 192, 128});

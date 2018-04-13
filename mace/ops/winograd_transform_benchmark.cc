@@ -10,8 +10,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void BMWinogradTransform(
+void BMWinogradTransform(
     int iters, int batch, int height, int width, int channels) {
   mace::testing::StopTiming();
 
@@ -38,6 +39,7 @@ static void BMWinogradTransform(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)                  \
   static void BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
@@ -56,8 +58,9 @@ BM_WINOGRAD_TRANSFORM(1, 16, 16, 128);
 BM_WINOGRAD_TRANSFORM(1, 64, 64, 128);
 BM_WINOGRAD_TRANSFORM(1, 128, 128, 128);
 
+namespace {
 template <DeviceType D, typename T>
-static void BMWinogradInverseTransform(
+void BMWinogradInverseTransform(
     int iters, int batch, int height, int width, int channels) {
   mace::testing::StopTiming();
 
@@ -88,6 +91,7 @@ static void BMWinogradInverseTransform(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)          \
   static void                                                                  \

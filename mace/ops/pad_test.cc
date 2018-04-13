@@ -11,6 +11,7 @@ namespace test {
 
 class PadTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void Simple() {
   // Construct graph
@@ -57,6 +58,7 @@ void Simple() {
                                       });
   ExpectTensorNear<float>(*expected, *output, 1e-5);
 }
+}  // namespace
 
 TEST_F(PadTest, SimpleCPU) {
   Simple<DeviceType::CPU>();
@@ -94,6 +96,7 @@ TEST_F(PadTest, ComplexCPU) {
   ExpectTensorNear<float>(*expected, *output, 1e-5);
 }
 
+namespace {
 template <typename T>
 void Complex(const std::vector<index_t> &input_shape,
              const std::vector<int> &paddings) {
@@ -139,6 +142,7 @@ void Complex(const std::vector<index_t> &input_shape,
     ExpectTensorNear<float>(expected, *output, 1e-5);
   }
 }
+}  // namespace
 
 TEST_F(PadTest, ComplexFloat) {
   Complex<float>({1, 32, 32, 4}, {0, 0, 2, 2, 1, 1, 0, 0});

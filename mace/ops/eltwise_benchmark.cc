@@ -13,8 +13,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void EltwiseBenchmark(
+void EltwiseBenchmark(
     int iters, kernels::EltwiseType type, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
@@ -59,6 +60,7 @@ static void EltwiseBenchmark(
     net.Sync();
   }
 }
+}  // namespace
 
 #define BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, DEVICE)             \
   static void                                                            \

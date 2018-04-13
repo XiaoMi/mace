@@ -11,6 +11,7 @@ namespace test {
 
 class BiasAddOpTest : public OpsTestBase {};
 
+namespace {
 template <DeviceType D>
 void BiasAddSimple() {
   OpsTestNet net;
@@ -54,6 +55,7 @@ void BiasAddSimple() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }
+}  // namespace
 
 TEST_F(BiasAddOpTest, BiasAddSimpleCPU) { BiasAddSimple<DeviceType::CPU>(); }
 

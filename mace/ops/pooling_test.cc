@@ -123,8 +123,9 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
+namespace {
 template<DeviceType D>
-static void SimpleMaxPooling3S2() {
+void SimpleMaxPooling3S2() {
   // Construct graph
   OpsTestNet net;
 
@@ -168,6 +169,7 @@ static void SimpleMaxPooling3S2() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+}  // namespace
 
 TEST_F(PoolingOpTest, CPUSimpleMaxPooling3S2) { SimpleMaxPooling3S2<CPU>(); }
 
@@ -175,10 +177,11 @@ TEST_F(PoolingOpTest, OPENCLSimpleMaxPooling3S2) {
   SimpleMaxPooling3S2<OPENCL>();
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void MaxPooling3S2(const std::vector<index_t> &input_shape,
-                          const std::vector<int> strides,
-                          Padding padding) {
+void MaxPooling3S2(const std::vector<index_t> &input_shape,
+                   const std::vector<int> strides,
+                   Padding padding) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
@@ -218,6 +221,7 @@ static void MaxPooling3S2(const std::vector<index_t> &input_shape,
 
   ExpectTensorNear<T>(expected, *net.GetOutput("OPENCLOutput"), 0.001);
 }
+}  // namespace
 
 // TODO(chenghui) : there is a bug.
 // TEST_F(PoolingOpTest, NEONAlignedMaxPooling3S2) {
@@ -275,8 +279,9 @@ TEST_F(PoolingOpTest, AVG_VALID) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
 
+namespace {
 template<DeviceType D>
-static void SimpleAvgPoolingTest() {
+void SimpleAvgPoolingTest() {
   // Construct graph
   OpsTestNet net;
 
@@ -306,16 +311,18 @@ static void SimpleAvgPoolingTest() {
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.001);
 }
+}  // namespace
 
 TEST_F(PoolingOpTest, OPENCLSimpleAvgPooling) {
   SimpleAvgPoolingTest<OPENCL>();
 }
 
+namespace {
 template<DeviceType D, typename T>
-static void AvgPoolingTest(const std::vector<index_t> &shape,
-                           const std::vector<int> &kernels,
-                           const std::vector<int> &strides,
-                           Padding padding) {
+void AvgPoolingTest(const std::vector<index_t> &shape,
+                    const std::vector<int> &kernels,
+                    const std::vector<int> &strides,
+                    Padding padding) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
@@ -354,6 +361,7 @@ static void AvgPoolingTest(const std::vector<index_t> &shape,
 
   ExpectTensorNear<float, T>(expected, *net.GetOutput("OPENCLOutput"), 0.01);
 }
+}  // namespace
 
 TEST_F(PoolingOpTest, OPENCLAlignedAvgPooling) {
   AvgPoolingTest<OPENCL, float>({3, 15, 15, 128}, {4, 4}, {4, 4},
@@ -396,11 +404,12 @@ TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
                                 Padding::SAME);
 }
 
-static void AvgPoolingNEONTest(const std::vector<index_t> &shape,
-                               const std::vector<int> &kernels,
-                               const std::vector<int> &strides,
-                               Padding padding,
-                               PoolingType pooling_type) {
+namespace {
+void AvgPoolingNEONTest(const std::vector<index_t> &shape,
+                        const std::vector<int> &kernels,
+                        const std::vector<int> &strides,
+                        Padding padding,
+                        PoolingType pooling_type) {
   // Construct graph
   OpsTestNet net;
   OpDefBuilder("Pooling", "PoolingTest")
@@ -441,6 +450,7 @@ static void AvgPoolingNEONTest(const std::vector<index_t> &shape,
                           *net.GetOutput("OutputNeon"),
                           0.01);
 }
+}  // namespace
 
 TEST_F(PoolingOpTest, NEONTest) {
   AvgPoolingNEONTest({3, 31, 37, 128}, {8, 8}, {8, 8},

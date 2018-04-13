@@ -11,14 +11,15 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void ResizeBilinearBenchmark(int iters,
-                                    int batch,
-                                    int channels,
-                                    int input_height,
-                                    int input_width,
-                                    int output_height,
-                                    int output_width) {
+void ResizeBilinearBenchmark(int iters,
+                             int batch,
+                             int channels,
+                             int input_height,
+                             int input_width,
+                             int output_height,
+                             int output_width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -59,6 +60,7 @@ static void ResizeBilinearBenchmark(int iters,
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)        \
   static void                                                               \

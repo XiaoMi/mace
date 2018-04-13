@@ -9,6 +9,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
 void TestBidirectionTransform(const int type,
                               const std::vector<index_t> &input_shape) {
@@ -40,6 +41,7 @@ void TestBidirectionTransform(const int type,
   ExpectTensorNear<T>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
                       1e-5);
 }
+}  // namespace
 
 TEST(BufferToImageTest, ArgSmall) {
   TestBidirectionTransform<DeviceType::OPENCL, float>(kernels::ARGUMENT, {1});
@@ -112,6 +114,7 @@ TEST(BufferToImageTest, Filter3x3Large) {
                                                       {3, 3, 128, 256});
 }
 
+namespace {
 template <DeviceType D, typename T>
 void TestDiffTypeBidirectionTransform(const int type,
                                       const std::vector<index_t> &input_shape) {
@@ -142,12 +145,14 @@ void TestDiffTypeBidirectionTransform(const int type,
   ExpectTensorNear<float>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
                           1e-2);
 }
+}  // namespace
 
 TEST(BufferToImageTest, ArgFloatToHalfSmall) {
   TestDiffTypeBidirectionTransform<DeviceType::OPENCL, half>(kernels::ARGUMENT,
                                                              {11});
 }
 
+namespace {
 template <DeviceType D, typename T>
 void TestStringHalfBidirectionTransform(const int type,
                                         const std::vector<index_t> &input_shape,
@@ -182,6 +187,7 @@ void TestStringHalfBidirectionTransform(const int type,
   ExpectTensorNear<half>(*net.GetOutput("Input"), *net.GetOutput("I2BOutput"),
                          1e-2);
 }
+}  // namespace
 
 TEST(BufferToImageTest, ArgStringHalfToHalfSmall) {
   const unsigned char input_data[] = {

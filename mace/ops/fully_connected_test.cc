@@ -13,6 +13,7 @@ namespace test {
 
 class FullyConnectedOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
@@ -66,6 +67,7 @@ void Simple(const std::vector<index_t> &input_shape,
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(FullyConnectedOpTest, SimpleCPU) {
   Simple<DeviceType::CPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 8},
@@ -107,6 +109,7 @@ TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
                              {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
+namespace {
 template<typename T>
 void Complex(const index_t batch,
              const index_t height,
@@ -166,6 +169,7 @@ void Complex(const index_t batch,
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-3);
   }
 }
+}  // namespace
 
 TEST_F(FullyConnectedOpTest, OPENCLAlignedWithoutBatch) {
   Complex<float>(1, 16, 16, 32, 16);
@@ -189,6 +193,7 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>(31, 21, 11, 23, 103);
 }
 
+namespace {
 template<typename T>
 void TestWXFormat(const index_t batch,
                   const index_t height,
@@ -247,6 +252,7 @@ void TestWXFormat(const index_t batch,
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2);
   }
 }
+}  // namespace
 
 TEST_F(FullyConnectedOpTest, OPENCLWidthFormatAligned) {
   TestWXFormat<float>(1, 7, 7, 32, 16);
@@ -266,11 +272,12 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
   TestWXFormat<half>(1, 16, 32, 32, 32);
 }
 
+namespace {
 void FullyConnectedTestNEON(const index_t batch,
-              const index_t height,
-              const index_t width,
-              const index_t channels,
-              const index_t out_channel) {
+                            const index_t height,
+                            const index_t width,
+                            const index_t channels,
+                            const index_t out_channel) {
   srand(time(NULL));
 
   // Construct graph
@@ -310,6 +317,7 @@ void FullyConnectedTestNEON(const index_t batch,
                           *net.GetOutput("OutputNeon"),
                           0.01);
 }
+}  // namespace
 
 TEST_F(FullyConnectedOpTest, TestNEON) {
   FullyConnectedTestNEON(1, 7, 7, 32, 16);

@@ -13,17 +13,18 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void DepthwiseConv2d(int iters,
-                            int batch,
-                            int input_channels,
-                            int height,
-                            int width,
-                            int kernel_h,
-                            int kernel_w,
-                            int stride,
-                            Padding padding,
-                            int multiplier) {
+void DepthwiseConv2d(int iters,
+                     int batch,
+                     int input_channels,
+                     int height,
+                     int width,
+                     int kernel_h,
+                     int kernel_w,
+                     int stride,
+                     Padding padding,
+                     int multiplier) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -87,6 +88,7 @@ static void DepthwiseConv2d(int iters,
     net.Sync();
   }
 }
+}  // namespace
 
 #define BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, STRIDE, P, M, TYPE,    \
                                    DEVICE)                                    \

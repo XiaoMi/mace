@@ -12,7 +12,7 @@ namespace test {
 
 class CWiseOpTest : public OpsTestBase {};
 
-
+namespace {
 template <DeviceType D>
 void Simple(const kernels::CWiseType type,
             const std::vector<index_t> &shape,
@@ -56,6 +56,7 @@ void Simple(const kernels::CWiseType type,
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3);
 }
+}  // namespace
 
 TEST_F(CWiseOpTest, CPUSimple) {
   Simple<DeviceType::CPU>(kernels::CWiseType::MUL, {1, 1, 2, 3},
@@ -97,6 +98,7 @@ TEST_F(CWiseOpTest, GPUSimple) {
                     {1, -2, -0.0001, 4, 5, 6}, 2.0, {1, 2, 0.0001, 4, 5, 6});
 }
 
+namespace {
 template <DeviceType D, typename T>
 void RandomTest(const kernels::CWiseType type,
                 const std::vector<index_t> &shape) {
@@ -144,6 +146,7 @@ void RandomTest(const kernels::CWiseType type,
                             *net.GetOutput("OPENCLOutput"), 1e-1);
   }
 }
+}  // namespace
 
 TEST_F(CWiseOpTest, OPENCLRandomFloat) {
   RandomTest<DeviceType::OPENCL, float>(kernels::CWiseType::MUL,

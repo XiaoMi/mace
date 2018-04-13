@@ -11,6 +11,7 @@ namespace test {
 
 class DepthwiseConv2dOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D, typename T>
 void SimpleValidTest() {
   testing::internal::LogToStderr();
@@ -69,6 +70,7 @@ void SimpleValidTest() {
 
   ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+}  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, SimpleCPU) {
   SimpleValidTest<DeviceType::CPU, float>();
@@ -82,6 +84,7 @@ TEST_F(DepthwiseConv2dOpTest, SimpleOpenCLHalf) {
   SimpleValidTest<DeviceType::OPENCL, half>();
 }
 
+namespace {
 template<DeviceType D, typename T>
 void ComplexValidTest() {
   testing::internal::LogToStderr();
@@ -188,6 +191,7 @@ void ComplexValidTest() {
 
   ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 0.2);
 }
+}  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, ComplexCPU) {
   ComplexValidTest<DeviceType::CPU, float>();
@@ -201,6 +205,7 @@ TEST_F(DepthwiseConv2dOpTest, ComplexOpenCLHalf) {
   ComplexValidTest<DeviceType::OPENCL, half>();
 }
 
+namespace {
 template<DeviceType D, typename T>
 void TestNxNS12(const index_t height, const index_t width) {
   testing::internal::LogToStderr();
@@ -287,6 +292,7 @@ void TestNxNS12(const index_t height, const index_t width) {
     }
   }
 }
+}  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLSimpleNxNS12) {
   TestNxNS12<DeviceType::OPENCL, float>(4, 4);
@@ -314,6 +320,7 @@ TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12Half) {
   TestNxNS12<DeviceType::OPENCL, half>(107, 113);
 }
 
+namespace {
 void TestNEONNxNS12(const index_t height,
                     const index_t width,
                     const index_t input_channels,
@@ -385,6 +392,7 @@ void TestNEONNxNS12(const index_t height,
     }
   }
 }
+}  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, NEONTest) {
   TestNEONNxNS12(4, 4, 32, 1);

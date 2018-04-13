@@ -12,8 +12,9 @@ namespace mace {
 namespace ops {
 namespace test {
 
+namespace {
 template <DeviceType D, typename T>
-static void SoftmaxBenchmark(
+void SoftmaxBenchmark(
     int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
@@ -49,6 +50,7 @@ static void SoftmaxBenchmark(
   }
   net.Sync();
 }
+}  // namespace
 
 #define BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
   static void BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \

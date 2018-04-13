@@ -14,8 +14,6 @@
 
 namespace mace {
 
-using std::string;
-
 /**
  * @brief A helper class to index into arguments.
  *
@@ -27,45 +25,45 @@ using std::string;
 class ArgumentHelper {
  public:
   template <typename Def>
-  static bool HasArgument(const Def &def, const string &name) {
+  static bool HasArgument(const Def &def, const std::string &name) {
     return ArgumentHelper(def).HasArgument(name);
   }
 
   template <typename Def, typename T>
   static T GetSingleArgument(const Def &def,
-                             const string &name,
+                             const std::string &name,
                              const T &default_value) {
     return ArgumentHelper(def).GetSingleArgument<T>(name, default_value);
   }
 
   template <typename Def, typename T>
-  static bool HasSingleArgumentOfType(const Def &def, const string &name) {
+  static bool HasSingleArgumentOfType(const Def &def, const std::string &name) {
     return ArgumentHelper(def).HasSingleArgumentOfType<T>(name);
   }
 
   template <typename Def, typename T>
   static std::vector<T> GetRepeatedArgument(
       const Def &def,
-      const string &name,
+      const std::string &name,
       const std::vector<T> &default_value = std::vector<T>()) {
     return ArgumentHelper(def).GetRepeatedArgument<T>(name, default_value);
   }
 
   explicit ArgumentHelper(const OperatorDef &def);
   explicit ArgumentHelper(const NetDef &netdef);
-  bool HasArgument(const string &name) const;
+  bool HasArgument(const std::string &name) const;
 
   template <typename T>
-  T GetSingleArgument(const string &name, const T &default_value) const;
+  T GetSingleArgument(const std::string &name, const T &default_value) const;
   template <typename T>
-  bool HasSingleArgumentOfType(const string &name) const;
+  bool HasSingleArgumentOfType(const std::string &name) const;
   template <typename T>
   std::vector<T> GetRepeatedArgument(
-      const string &name,
+      const std::string &name,
       const std::vector<T> &default_value = std::vector<T>()) const;
 
  private:
-  std::map<string, Argument> arg_map_;
+  std::map<std::string, Argument> arg_map_;
 };
 
 }  // namespace mace
