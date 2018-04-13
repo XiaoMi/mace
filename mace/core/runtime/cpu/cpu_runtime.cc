@@ -121,10 +121,8 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
 
 void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                      const std::vector<int> &cpu_ids) {
-  std::ostringstream oss;
-  for (auto cpu_id : cpu_ids) oss << cpu_id << ' ';
-  VLOG(1) << "Set CPU openmp num_threads: " << omp_num_threads
-          << ", cpu_ids: " << oss.str();
+  VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
+          << ", CPU core IDs: " << MakeString(cpu_ids);
 
   omp_set_num_threads(omp_num_threads);
 
@@ -134,7 +132,6 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   for (auto cpu_id : cpu_ids) {
     CPU_SET(cpu_id, &mask);
   }
-  VLOG(3) << "Set cpu affinity with mask: " << mask.__bits[0];
 
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
@@ -144,9 +141,10 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 
 MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
                                              CPUAffinityPolicy policy) {
-  // There is no need to set affinity in default mode
-  if (policy == CPUAffinityPolicy::AFFINITY_DEFAULT) {
-    if (omp_num_threads_hint > 0) omp_set_num_threads(omp_num_threads_hint);
+  if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
+    if (omp_num_threads_hint > 0) {
+      omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
+    }
     return MACE_SUCCESS;
   }
 
@@ -164,7 +162,8 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
     use_cpu_ids = std::move(little_core_ids);
   }
 
-  if (omp_num_threads_hint < 0) {
+  if (omp_num_threads_hint <= 0 ||
+      omp_num_threads_hint > use_cpu_ids.size()) {
     omp_num_threads_hint = use_cpu_ids.size();
   }
   SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);

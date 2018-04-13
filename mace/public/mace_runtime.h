@@ -32,7 +32,7 @@ enum GPUPriorityHint {
 };
 
 enum CPUAffinityPolicy {
-  AFFINITY_DEFAULT = 0,
+  AFFINITY_NONE = 0,
   AFFINITY_BIG_ONLY = 1,
   AFFINITY_LITTLE_ONLY = 2,
 };
@@ -66,39 +66,52 @@ class FileStorageFactory : public KVStorageFactory {
   std::unique_ptr<Impl> impl_;
 };
 
-// Set KV store factory used as OpenCL cache
+// Set KV store factory used as OpenCL cache.
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 
-// Set GPU hints, currently only supports Adreno GPU
+// Set GPU hints, currently only supports Adreno GPU.
+//
+// Caution: this function may hurt performance if improper parameters provided.
 void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 
 // Set OpenMP threads number and affinity policy.
 //
-// num_threads_hint is only a hint, the function can change it when it's larger
-// than 0. When num_threads_hint is not positive, the function will set the
-// threads number equaling to the number of big + little, big or little cores
-// according to the policy.
+// Caution: this function may hurt performance if improper parameters provided.
 //
-// This function may not work well on some ships (e.g. MTK), and in such
-// cases (when it returns error MACE_INVALID_ARGS) you may try to use
-// SetOpenMPThreadAffinity to set affinity manually, or just set default policy.
+// num_threads_hint is only a hint. When num_threads_hint is zero or negative,
+// the function will set the threads number equaling to the number of
+// big (AFFINITY_BIG_ONLY), little (AFFINITY_LITTLE_ONLY) or all
+// (AFFINITY_NONE) cores according to the policy. The threads number will
+// also be truncated to the corresponding cores number when num_threads_hint
+// is larger than it.
+//
+// The OpenMP threads will be bind to (via sched_setaffinity) big cores
+// (AFFINITY_BIG_ONLY) and little cores (AFFINITY_LITTLE_ONLY).
+//
+// If successful, it returns MACE_SUCCESS and error if it can't reliabley
+// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
+// suggested to use AFFINITY_NONE to use all cores.
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy);
 
-// Set OpenMP threads number and processor affinity
-// This function may not work well on some chips (e.g. MTK). Set thread affinity
-// to offline cores may fail or run unexpectedly. In such cases, please use
-// SetOpenMPThreadPolicy with default policy instead.
+// Set OpenMP threads number and processor affinity.
+//
+// Caution: this function may hurt performance if improper parameters provided.
+//
+// This function may not work well on some chips (e.g. MTK). Setting thread
+// affinity to offline cores may run very slow or unexpectedly. In such cases,
+// please use SetOpenMPThreadPolicy with default policy instead.
 void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids);
 
 // Get ARM big.LITTLE configuration.
 //
-// This function may not work well on some chips (e.g. MTK) and miss the
-// offline cores, and the user should detect the configurations manually
-// in such case(when it returns error MACE_INVALID_ARGS).
+// This function will detect the max frequencies of all CPU cores, and assume
+// the cores with largest max frequencies as big cores, and all the remaining
+// cores as little. If all cpu core's max frequencies equals, big_core_ids and
+// little_core_ids will both be filled with all cpu core ids.
 //
-// If all cpu's frequencies are equal(i.e. all cores are the same),
-// big_core_ids and little_core_ids will be set to all cpu ids.
+// If successful, it returns MACE_SUCCESS and error if it can't reliabley
+// detect the frequency of big-LITTLE cores (e.g. MTK).
 MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                std::vector<int> *little_core_ids);
 
