@@ -219,7 +219,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1, 1e-2);
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
@@ -362,7 +362,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2, 1e-2);
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1, 1e-2);
 }
 
 TEST_F(BatchNormOpTest, NEONTest) {
