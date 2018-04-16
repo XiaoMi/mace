@@ -253,7 +253,7 @@ void TestWXFormat(const index_t batch,
                             1e-1, 1e-1);
   } else {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-3, 1e-3);
+                            1e-2, 1e-3);
   }
 }
 }  // namespace
