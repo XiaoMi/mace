@@ -416,7 +416,7 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected,
-                            *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
+                            *net.GetOutput("OPENCLOutput"), 1e-4, 1e-4);
   };
 
   for (int kernel_size : {1, 3, 7}) {
@@ -644,7 +644,7 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-5, 1e-4);
+                            1e-4, 1e-4);
   };
 
   for (int kernel_size : {3}) {
@@ -729,7 +729,7 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-5, 1e-4);
+                            1e-4, 1e-4);
   };
 
   for (int kernel_size : {3, 5}) {

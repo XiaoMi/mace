@@ -154,6 +154,15 @@ const std::string OpenCLErrorToString(cl_int error) {
   }
 }
 
+namespace {
+void CLCallback(const char *buffer,
+                size_t length,
+                size_t final,
+                void *user_data) {
+  fwrite(buffer, 1, length, stdout);
+}
+}
+
 void OpenCLProfilingTimer::StartTiming() {}
 
 void OpenCLProfilingTimer::StopTiming() {
@@ -299,8 +308,19 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
         new cl::Context({*device_}, context_properties.data(),
                         nullptr, nullptr, &err));
   } else {
-    context_ = std::shared_ptr<cl::Context>(
-        new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+    if (is_profiling_enabled_ && gpu_type_ == GPUType::MALI) {
+      std::vector<cl_context_properties> context_properties = {
+          CL_CONTEXT_PLATFORM, (cl_context_properties)default_platform(),
+          CL_PRINTF_CALLBACK_ARM, (cl_context_properties)CLCallback,
+          CL_PRINTF_BUFFERSIZE_ARM, 0x1000, 0
+      };
+      context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, context_properties.data(),
+                          nullptr, nullptr, &err));
+    } else {
+      context_ = std::shared_ptr<cl::Context>(
+          new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
+    }
   }
   MACE_CHECK_CL_SUCCESS(err);
 
