@@ -19,7 +19,7 @@ def stdout_processor(stdout, device_properties, abi):
     pass
 
 
-def ops_test_stdout_processor(stdout, device_properties, abi):
+def unittest_stdout_processor(stdout, device_properties, abi):
     stdout_lines = stdout.split("\n")
     for line in stdout_lines:
         if "Aborted" in line or "FAILED" in line:
