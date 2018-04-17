@@ -1,10 +1,6 @@
 #include <common.h>
 
-#ifdef FP16
-#define MIN_VALUE -USHRT_MAX
-#else
 #define MIN_VALUE -FLT_MAX
-#endif
 
 inline int calculate_avg_block_size(const int pool_size,
                                     const int pos_h,
