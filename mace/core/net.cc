@@ -15,7 +15,7 @@ NetBase::NetBase(const std::shared_ptr<const OperatorRegistry> op_registry,
                  const std::shared_ptr<const NetDef> net_def,
                  Workspace *ws,
                  DeviceType type)
-    : op_registry_(op_registry), name_(net_def->name()) {}
+    : name_(net_def->name()), op_registry_(op_registry) {}
 
 SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
                      const std::shared_ptr<const NetDef> net_def,

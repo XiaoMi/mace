@@ -12,6 +12,7 @@
 #include <vector>
 #include <utility>
 
+#include "mace/public/mace_runtime.h"
 #include "mace/core/file_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/public/mace.h"
@@ -24,6 +25,12 @@ extern const std::map<std::string, std::vector<unsigned char>>
 extern const std::string kCompiledProgramPlatform;
 extern const std::map<std::string, std::vector<unsigned char>>
     kEncryptedProgramMap;
+
+void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
+  VLOG(1) << "Set GPU configurations, gpu_perf_hint: " << gpu_perf_hint
+          << ", gpu_priority_hint: " << gpu_priority_hint;
+  OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
+}
 
 const std::string OpenCLErrorToString(cl_int error) {
   switch (error) {

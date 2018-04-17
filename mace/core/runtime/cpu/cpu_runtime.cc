@@ -6,12 +6,15 @@
 
 #include <omp.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <algorithm>
 #include <utility>
 #include <vector>
 
 #include "mace/public/mace.h"
+#include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
+
 namespace mace {
 
 namespace {
@@ -70,8 +73,11 @@ void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids, int *big_core_offset) {
 }
 
 void SetThreadAffinity(cpu_set_t mask) {
-  int sys_call_res;
+#if defined(__ANDROID__)
   pid_t pid = gettid();
+#else
+  pid_t pid = pthread_self();
+#endif
   int err = sched_setaffinity(pid, sizeof(mask), &mask);
   MACE_CHECK(err == 0, "set affinity error: ", errno);
 }
@@ -163,11 +169,27 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
   }
 
   if (omp_num_threads_hint <= 0 ||
-      omp_num_threads_hint > use_cpu_ids.size()) {
+      omp_num_threads_hint > static_cast<int>(use_cpu_ids.size())) {
     omp_num_threads_hint = use_cpu_ids.size();
   }
   SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
   return MACE_SUCCESS;
+}
+
+MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
+                                 CPUAffinityPolicy policy) {
+  VLOG(1) << "Set CPU openmp num_threads_hint: " << num_threads_hint
+          << ", affinity policy: " << policy;
+  return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint, policy);
+}
+
+void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids) {
+  return SetOpenMPThreadsAndAffinityCPUs(num_threads, cpu_ids);
+}
+
+MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
+                               std::vector<int> *little_core_ids) {
+  return GetCPUBigLittleCoreIDs(big_core_ids, little_core_ids);
 }
 
 }  // namespace mace

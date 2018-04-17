@@ -30,11 +30,18 @@ bool DataTypeCanUseMemcpy(DataType dt) {
 
 std::string DataTypeToString(const DataType dt) {
   static std::map<DataType, std::string> dtype_string_map = {
-      {DT_FLOAT, "DT_FLOAT"},   {DT_HALF, "DT_HALF"},
-      {DT_DOUBLE, "DT_DOUBLE"}, {DT_UINT8, "DT_UINT8"},
-      {DT_INT8, "DT_INT8"},     {DT_INT32, "DT_INT32"},
-      {DT_UINT32, "DT_UINT32"}, {DT_UINT16, "DT_UINT16"},
-      {DT_INT64, "DT_INT64"},   {DT_BOOL, "DT_BOOL"},
+      {DT_FLOAT, "DT_FLOAT"},
+#ifdef MACE_ENABLE_OPENCL
+      {DT_HALF, "DT_HALF"},
+#endif
+      {DT_DOUBLE, "DT_DOUBLE"},
+      {DT_UINT8, "DT_UINT8"},
+      {DT_INT8, "DT_INT8"},
+      {DT_INT32, "DT_INT32"},
+      {DT_UINT32, "DT_UINT32"},
+      {DT_UINT16, "DT_UINT16"},
+      {DT_INT64, "DT_INT64"},
+      {DT_BOOL, "DT_BOOL"},
       {DT_STRING, "DT_STRING"}};
   MACE_CHECK(dt != DT_INVALID) << "Not support Invalid data type";
   return dtype_string_map[dt];
@@ -44,8 +51,10 @@ size_t GetEnumTypeSize(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
       return sizeof(float);
+#ifdef MACE_ENABLE_OPENCL
     case DT_HALF:
       return sizeof(half);
+#endif
     case DT_UINT8:
       return sizeof(uint8_t);
     case DT_INT8:

@@ -23,36 +23,41 @@ cc_library(
         [
             "*.cc",
             "runtime/cpu/*.cc",
-            "runtime/opencl/*.cc",
-            "runtime/hexagon/*.cc",
         ],
         exclude = [
             "*_test.cc",
-            "runtime/hexagon/hexagon_controller_dummy.cc",
         ],
-    ) + if_not_hexagon_enabled([
-        "runtime/hexagon/hexagon_controller_dummy.cc",
-    ]) + if_hexagon_enabled([
+    ) + if_android(glob(
+        [
+            "runtime/opencl/*.cc",
+        ],
+    )) + if_hexagon_enabled(glob([
+        "runtime/hexagon/*.cc",
         "runtime/hexagon/libhexagon_controller.so",
-    ]),
+    ])),
     hdrs = glob([
         "*.h",
         "runtime/cpu/*.h",
-        "runtime/opencl/*.h",
-        "runtime/hexagon/*.h",
-    ]),
-    copts = if_openmp_enabled(["-fopenmp"]),
+    ]) + if_android(glob(
+        [
+            "runtime/opencl/*.h",
+        ],
+    )) + if_hexagon_enabled(glob(["runtime/hexagon/*.h"])),
+    copts = if_openmp_enabled(["-fopenmp"]) + if_android([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",
     ]),
     deps = [
+        "//mace/utils",
+    ] + if_android([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
         "//mace/codegen:generated_version",
-        "//mace/utils",
         "@half//:half",
-    ] + if_production_mode([
+    ]) + if_production_mode([
         "//mace/codegen:generated_tuning_params",
         "//mace/utils:utils_prod",
     ]) + if_not_production_mode([

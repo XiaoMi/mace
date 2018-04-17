@@ -22,8 +22,7 @@ Tensor *Workspace::CreateTensor(const std::string &name,
     VLOG(3) << "Tensor " << name << " already exists. Skipping.";
   } else {
     VLOG(3) << "Creating Tensor " << name;
-    tensor_map_[name] =
-        std::move(std::unique_ptr<Tensor>(new Tensor(alloc, type)));
+    tensor_map_[name] = std::unique_ptr<Tensor>(new Tensor(alloc, type));
     tensor_map_[name]->SetSourceOpName(name);
   }
   return GetTensor(name);
@@ -72,12 +71,12 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   }
   VLOG(3) << "Model data size: " << model_data_size;
 
-  if (type == DeviceType::CPU) {
-    tensor_buffer_ = std::move(std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(type), model_data_ptr, model_data_size)));
+  if (type == DeviceType::CPU || type == DeviceType::NEON) {
+    tensor_buffer_ = std::unique_ptr<Buffer>(
+        new Buffer(GetDeviceAllocator(type), model_data_ptr, model_data_size));
   } else {
-    tensor_buffer_ = std::move(std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(type), model_data_size)));
+    tensor_buffer_ = std::unique_ptr<Buffer>(
+        new Buffer(GetDeviceAllocator(type), model_data_size));
     tensor_buffer_->Map(nullptr);
     tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
     tensor_buffer_->UnMap();

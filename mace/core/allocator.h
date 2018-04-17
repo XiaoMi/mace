@@ -6,10 +6,11 @@
 #ifndef MACE_CORE_ALLOCATOR_H_
 #define MACE_CORE_ALLOCATOR_H_
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <map>
 #include <limits>
 #include <vector>
+#include <cstring>
 
 #include "mace/core/registry.h"
 #include "mace/core/types.h"
@@ -17,7 +18,9 @@
 
 namespace mace {
 
-#ifdef __ANDROID__
+#if defined(__hexagon__)
+constexpr size_t kMaceAlignment = 128;
+#elif defined(__ANDROID__)
 // 16 bytes = 128 bits = 32 * 4 (Neon)
 constexpr size_t kMaceAlignment = 16;
 #else
@@ -58,7 +61,7 @@ class CPUAllocator : public Allocator {
   void *New(size_t nbytes) const override {
     VLOG(3) << "Allocate CPU buffer: " << nbytes;
     void *data = nullptr;
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__hexagon__)
     data = memalign(kMaceAlignment, nbytes);
 #else
     MACE_CHECK(posix_memalign(&data, kMaceAlignment, nbytes) == 0);
