@@ -5,9 +5,15 @@
 #include <math.h>
 #include <algorithm>
 
+#if defined(MACE_ENABLE_NEON)
+#include <arm_neon.h>
+#endif
+
 #include "mace/kernels/gemm.h"
 #include "mace/utils/utils.h"
 #include "mace/utils/logging.h"
+
+
 
 namespace mace {
 namespace kernels {
@@ -119,12 +125,11 @@ inline void GemmTile(const float *A,
                      const index_t stride_w,
                      float *C) {
   index_t h, w, k;
+
+#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
   for (h = 0; h + 7 < height; h += 8) {
     for (k = 0; k + 7 < K; k += 8) {
       const float *a_ptr = A + (h * stride_k + k);
-
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
-
 #ifdef __clang__
       int nw = width >> 2;
       if (nw > 0) {
@@ -388,16 +393,7 @@ inline void GemmTile(const float *A,
         float *c_ptr = C + (h * stride_w + w);
         Gemm884(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
       }
-#endif
-
-#else
-      for (w = 0; w + 3 < width; w += 4) {
-        const float *b_ptr = B + (k * stride_w + w);
-        float *c_ptr = C + (h * stride_w + w);
-        GemmBlock(a_ptr, b_ptr, 8, 8, 4, stride_k, stride_w, c_ptr);
-      }
-#endif
-
+#endif  // clang
       if (w < width) {
         const float *a_ptr = A + (h * stride_k + k);
         const float *b_ptr = B + (k * stride_w + w);
@@ -433,6 +429,130 @@ inline void GemmTile(const float *A,
               stride_w,
               c_ptr);
   }
+#else
+
+#if defined(MACE_ENABLE_NEON)  // armv7
+  for (h = 0; h + 3 < height; h += 4) {
+    for (k = 0; k + 3 < K; k += 4) {
+      const float *a_ptr = A + (h * stride_k + k);
+      int nw = width >> 2;
+      if (nw > 0) {
+        // load A
+        float32x2_t a00, a01, a10, a11, a20, a21, a30, a31;
+        a00 = vld1_f32(a_ptr);
+        a01 = vld1_f32(a_ptr + 2);
+        a10 = vld1_f32(a_ptr + 1 * stride_k);
+        a11 = vld1_f32(a_ptr + 1 * stride_k + 2);
+        a20 = vld1_f32(a_ptr + 2 * stride_k);
+        a21 = vld1_f32(a_ptr + 2 * stride_k + 2);
+        a30 = vld1_f32(a_ptr + 3 * stride_k);
+        a31 = vld1_f32(a_ptr + 3 * stride_k + 2);
+
+        const float *b_ptr0 = B + k * stride_w;
+        const float *b_ptr1 = B + (k + 1) * stride_w;
+        const float *b_ptr2 = B + (k + 2) * stride_w;
+        const float *b_ptr3 = B + (k + 3) * stride_w;
+
+        float *c_ptr0 = C + h * stride_w;
+        float *c_ptr1 = C + (h + 1) * stride_w;
+        float *c_ptr2 = C + (h + 2) * stride_w;
+        float *c_ptr3 = C + (h + 3) * stride_w;
+
+        // TODO(liyin): asm v7 prefetch and load optimization
+        while (nw--) {
+          float32x4_t b0, b1, b2, b3;
+          float32x4_t c0;
+
+          c0 = vld1q_f32(c_ptr0);
+
+          b0 = vld1q_f32(b_ptr0);
+          b1 = vld1q_f32(b_ptr1);
+          b2 = vld1q_f32(b_ptr2);
+          b3 = vld1q_f32(b_ptr3);
+
+          c0 = vmlaq_lane_f32(c0, b0, a00, 0);
+          c0 = vmlaq_lane_f32(c0, b1, a00, 1);
+          c0 = vmlaq_lane_f32(c0, b2, a01, 0);
+          c0 = vmlaq_lane_f32(c0, b3, a01, 1);
+
+          vst1q_f32(c_ptr0, c0);
+          c0 = vld1q_f32(c_ptr1);
+
+          c0 = vmlaq_lane_f32(c0, b0, a10, 0);
+          c0 = vmlaq_lane_f32(c0, b1, a10, 1);
+          c0 = vmlaq_lane_f32(c0, b2, a11, 0);
+          c0 = vmlaq_lane_f32(c0, b3, a11, 1);
+
+          vst1q_f32(c_ptr1, c0);
+          c0 = vld1q_f32(c_ptr2);
+
+          c0 = vmlaq_lane_f32(c0, b0, a20, 0);
+          c0 = vmlaq_lane_f32(c0, b1, a20, 1);
+          c0 = vmlaq_lane_f32(c0, b2, a21, 0);
+          c0 = vmlaq_lane_f32(c0, b3, a21, 1);
+
+          vst1q_f32(c_ptr2, c0);
+          c0 = vld1q_f32(c_ptr3);
+
+          c0 = vmlaq_lane_f32(c0, b0, a30, 0);
+          c0 = vmlaq_lane_f32(c0, b1, a30, 1);
+          c0 = vmlaq_lane_f32(c0, b2, a31, 0);
+          c0 = vmlaq_lane_f32(c0, b3, a31, 1);
+
+          vst1q_f32(c_ptr3, c0);
+
+          b_ptr0 += 4;
+          b_ptr1 += 4;
+          b_ptr2 += 4;
+          b_ptr3 += 4;
+
+          c_ptr0 += 4;
+          c_ptr1 += 4;
+          c_ptr2 += 4;
+          c_ptr3 += 4;
+        }
+
+        w = (width >> 2) << 2;
+      }
+      if (w < width) {
+        const float *a_ptr = A + (h * stride_k + k);
+        const float *b_ptr = B + (k * stride_w + w);
+        float *c_ptr = C + (h * stride_w + w);
+        GemmBlock(a_ptr, b_ptr, 4, 4, width - w, stride_k, stride_w, c_ptr);
+      }
+    }
+    if (k < K) {
+      const float *a_ptr = A + (h * stride_k + k);
+      const float *b_ptr = B + k * stride_w;
+      float *c_ptr = C + h * stride_w;
+      GemmBlock(a_ptr,
+                b_ptr,
+                4,
+                K - k,
+                width,
+                stride_k,
+                stride_w,
+                c_ptr);
+    }
+  }
+  if (h < height) {
+    const float *a_ptr = A + (h * stride_k);
+    const float *b_ptr = B;
+    float *c_ptr = C + h * stride_w;
+    GemmBlock(a_ptr,
+              b_ptr,
+              height - h,
+              K,
+              width,
+              stride_k,
+              stride_w,
+              c_ptr);
+  }
+#else  // cpu
+  GemmBlock(A, B, height, K, width, stride_k, stride_w, C);
+#endif  // armv7
+
+#endif  // aarch64
 }
 }  // namespace
 
