@@ -143,7 +143,7 @@ class OpsTestNet {
   template<DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
-                      bool positive = false) {
+                      bool positive = true) {
     Tensor *input =
       ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
@@ -318,7 +318,8 @@ class OpsTestBase : public ::testing::Test {
 
 template<typename T>
 void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
-                                std::vector<T> *res) {
+                                std::vector<T> *res,
+                                bool positive = true) {
   MACE_CHECK_NOTNULL(res);
 
   std::random_device rd;
@@ -331,9 +332,14 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
     std::generate(res->begin(), res->end(),
-                  [&gen, &nd] { return half_float::half_cast<half>(nd(gen)); });
+                  [&gen, &nd, positive] {
+                    return half_float::half_cast<half>(
+                        positive ? std::abs(nd(gen)) : nd(gen));
+                  });
   } else {
-    std::generate(res->begin(), res->end(), [&gen, &nd] { return nd(gen); });
+    std::generate(res->begin(), res->end(), [&gen, &nd, positive] {
+      return positive ? std::abs(nd(gen)) : nd(gen);
+    });
   }
 }
 
