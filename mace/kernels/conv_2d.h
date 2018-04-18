@@ -308,6 +308,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
+                const bool is_filter_transformed,
                 ScratchBuffer *scratch)
       : Conv2dFunctorBase(strides,
                           padding_type,
@@ -317,7 +318,7 @@ struct Conv2dFunctor : Conv2dFunctorBase {
                           relux_max_limit) {}
 
   void operator()(const Tensor *input,   // NHWC
-                  const Tensor *filter,  // HWOI
+                  const Tensor *filter,  // HWOI or TOI
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
@@ -434,6 +435,7 @@ struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
+                const bool is_filter_transformed,
                 ScratchBuffer *scratch)
     : Conv2dFunctorBase(strides,
                         padding_type,
@@ -441,7 +443,7 @@ struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
                         dilations,
                         activation,
                         relux_max_limit),
-      is_filter_transformed_(false),
+      is_filter_transformed_(is_filter_transformed),
       scratch_(scratch) {}
 
   void operator()(const Tensor *input,
@@ -463,6 +465,7 @@ struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
+                const bool is_filter_transformed,
                 ScratchBuffer *scratch)
       : Conv2dFunctorBase(strides,
                           padding_type,

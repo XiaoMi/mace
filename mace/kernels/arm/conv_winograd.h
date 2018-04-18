@@ -24,6 +24,16 @@
 namespace mace {
 namespace kernels {
 
+void TransformFilter4x4(const float *filter,
+                        const index_t in_channels,
+                        const index_t out_channels,
+                        float *output);
+
+void TransformFilter8x8(const float *filter,
+                        const index_t in_channels,
+                        const index_t out_channels,
+                        float *output);
+
 void WinoGradConv3x3s1(const float *input,
                        const float *filter,
                        const index_t batch,
@@ -35,7 +45,7 @@ void WinoGradConv3x3s1(const float *input,
                        float *output);
 
 void WinoGradConv3x3s1(const float *input,
-                       const float *filter,
+                       const float *transformed_filter,
                        const index_t batch,
                        const index_t in_height,
                        const index_t in_width,
@@ -43,9 +53,7 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t out_channels,
                        const int out_tile_size,
                        float *transformed_input,
-                       float *transformed_filter,
                        float *transformed_output,
-                       bool is_filter_transformed,
                        float *output);
 
 void ConvRef3x3s1(const float *input,
