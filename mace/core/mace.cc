@@ -14,17 +14,23 @@
 
 #include <memory>
 
-#include "mace/core/file_storage.h"
 #include "mace/core/net.h"
-#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
+
+#ifdef MACE_ENABLE_HEXAGON
+#include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
+#endif  // MACE_ENABLE_HEXAGON
 
 namespace mace {
 
 // Mace Tensor
-struct MaceTensor::Impl {
+class MaceTensor::Impl {
+ public:
   std::vector<int64_t> shape;
   std::shared_ptr<float> data;
 };
@@ -49,8 +55,8 @@ MaceTensor::MaceTensor(const MaceTensor &other) {
 
 MaceTensor::MaceTensor(const MaceTensor &&other) {
   impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
-  impl_->shape = std::move(other.shape());
-  impl_->data = std::move(other.data());
+  impl_->shape = other.shape();
+  impl_->data = other.data();
 }
 
 MaceTensor &MaceTensor::operator=(const MaceTensor &other) {
@@ -60,8 +66,8 @@ MaceTensor &MaceTensor::operator=(const MaceTensor &other) {
 }
 
 MaceTensor &MaceTensor::operator=(const MaceTensor &&other) {
-  impl_->shape = std::move(other.shape());
-  impl_->data = std::move(other.data());
+  impl_->shape = other.shape();
+  impl_->data = other.data();
   return *this;
 }
 
@@ -91,7 +97,9 @@ class MaceEngine::Impl {
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
+#ifdef MACE_ENABLE_HEXAGON
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
+#endif
 
   DISABLE_COPY_AND_ASSIGN(Impl);
 };
@@ -103,8 +111,11 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
     : op_registry_(new OperatorRegistry()),
       device_type_(device_type),
       ws_(new Workspace()),
-      net_(nullptr),
-      hexagon_controller_(nullptr) {
+      net_(nullptr)
+#ifdef MACE_ENABLE_HEXAGON
+      , hexagon_controller_(nullptr)
+#endif
+{
   LOG(INFO) << "MACE version: " << MaceVersion();
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
@@ -115,6 +126,7 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
     ws_->CreateTensor(MakeString("mace_output_node_", output_name, ":0"),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
+#ifdef MACE_ENABLE_HEXAGON
   if (device_type == HEXAGON) {
     hexagon_controller_.reset(new HexagonControlWrapper());
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
@@ -130,6 +142,7 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
       hexagon_controller_->PrintGraph();
     }
   } else {
+#endif
     ws_->LoadModelTensor(*net_def, device_type);
 
     // Init model
@@ -138,11 +151,14 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
     if (!net->Run()) {
       LOG(FATAL) << "Net init run failed";
     }
-    net_ = std::move(CreateNet(op_registry_, *net_def, ws_.get(), device_type));
+    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type);
+#ifdef MACE_ENABLE_HEXAGON
   }
+#endif
 }
 
 MaceEngine::Impl::~Impl() {
+#ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->GetPerfInfo();
@@ -151,6 +167,7 @@ MaceEngine::Impl::~Impl() {
     MACE_CHECK(hexagon_controller_->TeardownGraph(), "hexagon teardown error");
     MACE_CHECK(hexagon_controller_->Finalize(), "hexagon finalize error");
   }
+#endif
 }
 
 MaceStatus MaceEngine::Impl::Run(
@@ -177,18 +194,25 @@ MaceStatus MaceEngine::Impl::Run(
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
     output_tensors.push_back(output_tensor);
   }
+#ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
     MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
                "HEXAGON not support multiple inputs and outputs yet.");
     hexagon_controller_->ExecuteGraph(*input_tensors[0], output_tensors[0]);
   } else {
+#endif
     if (!net_->Run(run_metadata)) {
       LOG(FATAL) << "Net run failed";
     }
+#ifdef MACE_ENABLE_HEXAGON
   }
+#endif
+
+#ifdef MACE_ENABLE_OPENCL
   if (device_type_ == OPENCL) {
     OpenCLRuntime::Global()->SaveBuiltCLProgram();
   }
+#endif
   for (auto &output : *outputs) {
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));

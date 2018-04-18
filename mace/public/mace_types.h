@@ -352,7 +352,8 @@ struct OperatorStats {
   CallStats stats;
 };
 
-struct RunMetadata {
+class RunMetadata {
+ public:
   std::vector<OperatorStats> op_stats;
 };
 

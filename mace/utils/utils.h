@@ -15,7 +15,6 @@
 #ifndef MACE_UTILS_UTILS_H_
 #define MACE_UTILS_UTILS_H_
 
-#include <sys/time.h>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -60,7 +59,7 @@ inline std::string ObfuscateString(const std::string &src,
   for (size_t i = 0; i < src.size(); i++) {
     dest[i] = src[i] ^ lookup_table[i % lookup_table.size()];
   }
-  return std::move(dest);
+  return dest;
 }
 
 // ObfuscateString(ObfuscateString(str)) ==> str
@@ -96,7 +95,7 @@ inline std::string ObfuscateSymbol(const std::string &src) {
     // There is no collision if it's true for every char at every position
     dest[i] = encode_dict[(idx + i + 31) % encode_dict.size()];
   }
-  return std::move(dest);
+  return dest;
 }
 
 #ifdef MACE_OBFUSCATE_LITERALS

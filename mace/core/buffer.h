@@ -17,6 +17,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <numeric>
 #include <functional>
 
 #include "mace/core/allocator.h"

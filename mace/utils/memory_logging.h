@@ -15,13 +15,16 @@
 #ifndef MACE_UTILS_MEMORY_LOGGING_H_
 #define MACE_UTILS_MEMORY_LOGGING_H_
 
+#ifndef __hexagon__
 #include <malloc.h>
+#endif
 #include <string>
 
 #include "mace/utils/logging.h"
 
 namespace mace {
 
+#ifdef MACE_ENABLE_MEMORY_LOGGING
 class MallinfoChangeLogger {
  public:
   explicit MallinfoChangeLogger(const std::string &name) : name_(name) {
@@ -97,7 +100,6 @@ class MallinfoChangeLogger {
   }
 };
 
-#ifdef MACE_ENABLE_MEMORY_LOGGING
 #define MACE_MEMORY_LOGGING_GUARD()                                        \
   MallinfoChangeLogger mem_logger_##__line__(std::string(__FILE__) + ":" + \
                                              std::string(__func__));

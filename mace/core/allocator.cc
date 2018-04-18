@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "mace/core/allocator.h"
+#ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_allocator.h"
+#endif
 
 namespace mace {
 
@@ -33,7 +35,9 @@ Allocator *GetDeviceAllocator(DeviceType type) {
 
 MACE_REGISTER_ALLOCATOR(DeviceType::CPU, new CPUAllocator());
 MACE_REGISTER_ALLOCATOR(DeviceType::NEON, new CPUAllocator());
+#ifdef MACE_ENABLE_OPENCL
 MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
+#endif
 MACE_REGISTER_ALLOCATOR(DeviceType::HEXAGON, new CPUAllocator());
 
 }  // namespace mace

@@ -7,7 +7,7 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled", "if_android_armv7")
+load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled", "if_android_armv7", "if_hexagon_enabled")
 
 cc_library(
     name = "kernels",
@@ -28,7 +28,9 @@ cc_library(
         "opencl/*.h",
         "arm/*.h",
     ]),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]),
+    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
@@ -46,24 +48,14 @@ cc_test(
             "opencl/*_test.cc",
         ],
     ),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
         ":kernels",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "benchmark",
-    testonly = 1,
-    srcs = glob(["benchmark/*.cc"]),
-    linkstatic = 1,
-    deps = [
-        ":kernels",
-        "//mace/core",
-        "//mace/core:test_benchmark_main",
     ],
 )

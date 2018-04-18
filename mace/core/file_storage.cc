@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
-
+#include <cstring>
 
 #include "mace/utils/logging.h"
 

@@ -21,7 +21,7 @@
 
 namespace mace {
 
-class CallStats;
+struct CallStats;
 
 // Wait the call to finish and get the stats if param is not nullptr
 struct StatsFuture {

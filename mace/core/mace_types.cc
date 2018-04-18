@@ -152,12 +152,12 @@ void OperatorDef::CopyFrom(const OperatorDef &from) {
   std::copy(from_output.begin(), from_output.end(), output_.begin());
   auto from_arg = from.arg();
   arg_.resize(from_arg.size());
-  for (int i = 0; i < from_arg.size(); ++i) {
+  for (size_t i = 0; i < from_arg.size(); ++i) {
     arg_[i].CopyFrom(from_arg[i]);
   }
   auto from_output_shape = from.output_shape();
   output_shape_.resize(from_output_shape.size());
-  for (int i = 0; i < from_output_shape.size(); ++i) {
+  for (size_t i = 0; i < from_output_shape.size(); ++i) {
     output_shape_[i].CopyFrom(from_output_shape[i]);
   }
   auto from_data_type = from.output_type();
@@ -174,7 +174,7 @@ void OperatorDef::CopyFrom(const OperatorDef &from) {
   padding_ = from.padding();
   auto from_node_input = from.node_input();
   node_input_.resize(from_node_input.size());
-  for (int i = 0; i < from_node_input.size(); ++i) {
+  for (size_t i = 0; i < from_node_input.size(); ++i) {
     node_input_[i].CopyFrom(from_node_input[i]);
   }
   auto from_out_max_byte_size = from.out_max_byte_size();
@@ -223,7 +223,7 @@ void OperatorDef::add_out_max_byte_size(int value) {
 }
 const std::vector<std::string> &OperatorDef::input() const { return input_; }
 const std::string &OperatorDef::input(int index) const {
-  MACE_CHECK(0 <= index && index <= input_.size());
+  MACE_CHECK(0 <= index && index <= static_cast<int>(input_.size()));
   return input_[index];
 }
 std::string *OperatorDef::add_input() {
@@ -240,7 +240,7 @@ void OperatorDef::set_input(const std::vector<std::string> &value) {
 }
 const std::vector<std::string> &OperatorDef::output() const { return output_; }
 const std::string &OperatorDef::output(int index) const {
-  MACE_CHECK(0 <= index && index <= output_.size());
+  MACE_CHECK(0 <= index && index <= static_cast<int>(output_.size()));
   return output_[index];
 }
 std::string *OperatorDef::add_output() {

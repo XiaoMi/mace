@@ -1,6 +1,7 @@
 stages:
   - cpplint
   - pycodestyle
+  - platform_compitable_tests
   - ops_test
   - ops_benchmark
   - extra_tests
@@ -34,3 +35,10 @@ extra_tests:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
     - python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
     - python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
+
+platform_compitable_tests:
+  stage: platform_compitable_tests
+  script:
+    - bazel build mace/core:core
+
+ 

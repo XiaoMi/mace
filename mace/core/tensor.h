@@ -21,8 +21,10 @@
 
 #include "mace/core/buffer.h"
 #include "mace/core/preallocated_pooled_allocator.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/types.h"
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
@@ -36,6 +38,7 @@ namespace mace {
     break;                            \
   }
 
+#ifdef MACE_ENABLE_OPENCL
 #define CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, INVALID, DEFAULT) \
   switch (TYPE_ENUM) {                                         \
     CASE(half, SINGLE_ARG(STMTS))                              \
@@ -56,6 +59,27 @@ namespace mace {
       DEFAULT;                                                 \
       break;                                                   \
   }
+#else
+#define CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, INVALID, DEFAULT) \
+  switch (TYPE_ENUM) {                                         \
+    CASE(float, SINGLE_ARG(STMTS))                             \
+    CASE(double, SINGLE_ARG(STMTS))                            \
+    CASE(int32_t, SINGLE_ARG(STMTS))                           \
+    CASE(uint8_t, SINGLE_ARG(STMTS))                           \
+    CASE(uint16_t, SINGLE_ARG(STMTS))                          \
+    CASE(int16_t, SINGLE_ARG(STMTS))                           \
+    CASE(int8_t, SINGLE_ARG(STMTS))                            \
+    CASE(std::string, SINGLE_ARG(STMTS))                       \
+    CASE(int64_t, SINGLE_ARG(STMTS))                           \
+    CASE(bool, SINGLE_ARG(STMTS))                              \
+    case DT_INVALID:                                           \
+      INVALID;                                                 \
+      break;                                                   \
+    default:                                                   \
+      DEFAULT;                                                 \
+      break;                                                   \
+  }
+#endif
 
 #define CASES(TYPE_ENUM, STMTS)                                      \
   CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, LOG(FATAL) << "Type not set"; \
@@ -137,6 +161,7 @@ class Tensor {
     return buffer_ != nullptr && !buffer_->OnHost() && !has_opencl_image();
   }
 
+#ifdef MACE_ENABLE_OPENCL
   inline cl::Image *opencl_image() const {
     MACE_CHECK(has_opencl_image(), "do not have image");
     return static_cast<cl::Image *>(buffer_->buffer());
@@ -146,6 +171,7 @@ class Tensor {
     MACE_CHECK(has_opencl_buffer(), "do not have opencl buffer");
     return static_cast<cl::Buffer *>(buffer_->buffer());
   }
+#endif
 
   inline index_t buffer_offset() const { return buffer_->offset(); }
 
