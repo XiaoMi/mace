@@ -128,34 +128,31 @@ class OutOfRangeCheckTest : public ::testing::Test {
 };
 
 TEST(OutOfRangeCheckTest, RandomTest) {
-  static unsigned int seed = time(NULL);
-  for (int round = 0; round < 10; ++round) {
-    index_t batch = 11 + rand_r(&seed) % 10;
-    index_t height = 12 + rand_r(&seed) % 100;
-    index_t width = 13 + rand_r(&seed) % 100;
-    index_t channels = 14 + rand_r(&seed) % 50;
+  index_t batch = 3;
+  index_t height = 5;
+  index_t width = 7;
+  index_t channels = 11;
 
-    std::vector<index_t> buffer_shape = {batch, height, width, channels};
-    Workspace ws;
-    Tensor *buffer = ws.CreateTensor("Buffer",
-                                     GetDeviceAllocator(DeviceType::OPENCL),
-                                     DataTypeToEnum<float>::v());
-    buffer->Resize(buffer_shape);
+  std::vector<index_t> buffer_shape = {batch, height, width, channels};
+  Workspace ws;
+  Tensor *buffer = ws.CreateTensor("Buffer",
+                                   GetDeviceAllocator(DeviceType::OPENCL),
+                                   DataTypeToEnum<float>::v());
+  buffer->Resize(buffer_shape);
 
-    std::vector<size_t> image_shape;
-    Tensor *image = ws.CreateTensor("Image",
-                                     GetDeviceAllocator(DeviceType::OPENCL),
-                                     DataTypeToEnum<float>::v());
-    CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
-    image->ResizeImage(buffer->shape(), image_shape);
-    ASSERT_FALSE(BufferToImageOpImpl(buffer, image, image_shape));
+  std::vector<size_t> image_shape;
+  Tensor *image = ws.CreateTensor("Image",
+                                  GetDeviceAllocator(DeviceType::OPENCL),
+                                  DataTypeToEnum<float>::v());
+  CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
+  image->ResizeImage(buffer->shape(), image_shape);
+  ASSERT_FALSE(BufferToImageOpImpl(buffer, image, image_shape));
 
-    std::vector<size_t> overflow_image_shape = image_shape;
-    for (int i = 0; i < overflow_image_shape.size(); ++i) {
-      overflow_image_shape[i] += 1;
-    }
-    ASSERT_TRUE(BufferToImageOpImpl(buffer, image, overflow_image_shape));
+  std::vector<size_t> overflow_image_shape = image_shape;
+  for (int i = 0; i < overflow_image_shape.size(); ++i) {
+    overflow_image_shape[i] += 1;
   }
+  ASSERT_TRUE(BufferToImageOpImpl(buffer, image, overflow_image_shape));
 }
 
 }  // namespace kernels

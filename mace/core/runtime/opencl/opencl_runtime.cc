@@ -178,47 +178,6 @@ void OpenCLPrintfCallback(const char *buffer,
                           void *user_data) {
   fwrite(buffer, 1, length, stdout);
 }
-}
-
-void OpenCLProfilingTimer::StartTiming() {}
-
-void OpenCLProfilingTimer::StopTiming() {
-  OpenCLRuntime::Global()->command_queue().finish();
-  start_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
-  stop_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
-}
-
-double OpenCLProfilingTimer::ElapsedMicros() {
-  return (stop_nanos_ - start_nanos_) / 1000.0;
-}
-
-double OpenCLProfilingTimer::AccumulatedMicros() { return accumulated_micros_; }
-
-void OpenCLProfilingTimer::AccumulateTiming() {
-  StopTiming();
-  accumulated_micros_ += (stop_nanos_ - start_nanos_) / 1000.0;
-}
-
-void OpenCLProfilingTimer::ClearTiming() {
-  start_nanos_ = 0;
-  stop_nanos_ = 0;
-  accumulated_micros_ = 0;
-}
-
-GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_NORMAL;
-GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
-    GPUPriorityHint::PRIORITY_DEFAULT;
-
-OpenCLRuntime *OpenCLRuntime::Global() {
-  static OpenCLRuntime runtime(kGPUPerfHint, kGPUPriorityHint);
-  return &runtime;
-}
-
-void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
-                              GPUPriorityHint gpu_priority_hint) {
-  OpenCLRuntime::kGPUPerfHint = gpu_perf_hint;
-  OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
-}
 
 void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
                                 GPUPerfHint gpu_perf_hint,
@@ -259,9 +218,50 @@ void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
   // The properties list should be terminated with 0
   properties->push_back(0);
 }
+}  // namespace
 
-OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
-                             GPUPriorityHint gpu_priority_hint):
+void OpenCLProfilingTimer::StartTiming() {}
+
+void OpenCLProfilingTimer::StopTiming() {
+  OpenCLRuntime::Global()->command_queue().finish();
+  start_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
+  stop_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
+}
+
+double OpenCLProfilingTimer::ElapsedMicros() {
+  return (stop_nanos_ - start_nanos_) / 1000.0;
+}
+
+double OpenCLProfilingTimer::AccumulatedMicros() { return accumulated_micros_; }
+
+void OpenCLProfilingTimer::AccumulateTiming() {
+  StopTiming();
+  accumulated_micros_ += (stop_nanos_ - start_nanos_) / 1000.0;
+}
+
+void OpenCLProfilingTimer::ClearTiming() {
+  start_nanos_ = 0;
+  stop_nanos_ = 0;
+  accumulated_micros_ = 0;
+}
+
+GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_NORMAL;
+GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
+    GPUPriorityHint::PRIORITY_DEFAULT;
+
+OpenCLRuntime *OpenCLRuntime::Global() {
+  static OpenCLRuntime runtime;
+  return &runtime;
+}
+
+void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
+                              GPUPriorityHint gpu_priority_hint) {
+  OpenCLRuntime::kGPUPerfHint = gpu_perf_hint;
+  OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
+}
+
+
+OpenCLRuntime::OpenCLRuntime():
     storage_(nullptr), is_profiling_enabled_(false) {
   LoadOpenCLLibrary();
 
@@ -319,8 +319,9 @@ OpenCLRuntime::OpenCLRuntime(GPUPerfHint gpu_perf_hint,
   if (gpu_type_ == GPUType::QUALCOMM_ADRENO) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
-    GetAdrenoContextProperties(&context_properties, gpu_perf_hint,
-                               gpu_priority_hint);
+    GetAdrenoContextProperties(&context_properties,
+                               OpenCLRuntime::kGPUPerfHint,
+                               OpenCLRuntime::kGPUPriorityHint);
     context_ = std::shared_ptr<cl::Context>(
         new cl::Context({*device_}, context_properties.data(),
                         nullptr, nullptr, &err));

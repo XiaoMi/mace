@@ -90,7 +90,7 @@ class OpenCLRuntime {
   const bool is_profiling_enabled() const;
 
  private:
-  OpenCLRuntime(GPUPerfHint, GPUPriorityHint);
+  OpenCLRuntime();
   ~OpenCLRuntime();
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
