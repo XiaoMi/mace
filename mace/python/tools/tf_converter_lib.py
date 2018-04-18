@@ -257,15 +257,19 @@ class TFConverter(object):
             return False
         width = output_shape[0] * ((output_shape[1] + 1) / 2) * ((
             output_shape[2] + 1) / 2)
-        return self.winograd and op.type != 'DepthwiseConv2dNative' and \
-            self.device == 'gpu' and filter_shape[0] == 3 and \
-            (filter_shape[0] == filter_shape[1]) and \
-            (strides[0] == 1) and (strides[0] == strides[1]) and \
-            (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
-            (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
-            (width < OPENCL_IMAGE_MAX_SIZE)
+        if self.winograd and op.type != 'DepthwiseConv2dNative' and \
+                filter_shape[0] == 3 and \
+                (filter_shape[0] == filter_shape[1]) and \
+                (strides[0] == 1) and (strides[0] == strides[1]):
+            if self.device == 'gpu':
+                return (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
+                       (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
+                       (width < OPENCL_IMAGE_MAX_SIZE)
+            elif self.device == 'neon':
+                return filter_shape[2] >= 8 and filter_shape[3] >= 8
+        return False
 
-    def convert_winograd_conv(self, op):
+    def convert_winograd_conv_gpu(self, op):
         filter_tensor = get_input_tensor(op, 1)
         filter_shape = filter_tensor.shape.as_list()
         output_shape = op.outputs[0].shape.as_list()
@@ -355,7 +359,55 @@ class TFConverter(object):
         self.add_output_shape(final_op.outputs, iwt_op)
         self.net_def.op.extend([wt_op, matmul_op, iwt_op])
 
+    def convert_conv_winograd_filter_neon(self, op, op_def):
+        weight_tensor = get_input_tensor(op, 1)
+        weight_tensor_value = weight_tensor.eval().astype(np.float32)
+        input_shape = get_input_tensor(op, 0).shape.as_list()
+        output_channels = weight_tensor_value.shape[3]
+        input_channels = weight_tensor_value.shape[2]
+        # HWIO -> OIHW
+        weight_tensor_value = weight_tensor_value.transpose(3, 2, 0, 1)
+        if input_shape[2] > 16 and input_shape[3] > 16:
+            G = np.array([
+                [1.0, 0.0, 0.0],
+                [-2.0 / 9, -2.0 / 9, -2.0 / 9],
+                [-2.0 / 9, 2.0 / 9, -2.0 / 9],
+                [1.0 / 90, 1.0 / 45, 2.0 / 45],
+                [1.0 / 90, -1.0 / 45, 2.0 / 45],
+                [1.0 / 45, 1.0 / 90, 1.0 / 180],
+                [1.0 / 45, -1.0 / 90, 1.0 / 180],
+                [0.0, 0.0, 1.0]
+            ], dtype=np.float32)
+            new_shape = [64, output_channels, input_channels]  # TOC
+        else:
+            G = np.array([
+                [1.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],
+                [0.5, -0.5, 0.5],
+                [0.0, 0.0, 1.0],
+            ], dtype=np.float32)
+            new_shape = [16, output_channels, input_channels]  # TOC
+        new_weight_value = G.dot(weight_tensor_value).dot(G.T)  # [t, O, I, t]
+        new_weight_value = new_weight_value.transpose(0, 3, 1, 2)
+
+        new_weight_value = new_weight_value.reshape(new_shape)
+        new_tensor_name = weight_tensor.name[:-2] + '/winograd_transformed:0'
+        self.add_tensor(new_tensor_name, new_shape,
+                        tf.float32, new_weight_value)
+
+        winograd_transformed_arg = op_def.arg.add()
+        winograd_transformed_arg.name = 'is_filter_transformed'
+        winograd_transformed_arg.i = 1
+
+        self.unused_tensor.add(weight_tensor.name)
+        op_def.input.extend([op.inputs[0].name])
+        op_def.input.extend([new_tensor_name])
+
     def convert_conv2d(self, op):
+        use_winograd = False
+        if self.device == 'neon':
+            use_winograd = self.check_winograd_conv(op)
+
         op_def = mace_pb2.OperatorDef()
         arg = op_def.arg.add()
         arg.name = 'T'
@@ -366,7 +418,7 @@ class TFConverter(object):
         else:
             op_def.type = op.type
 
-        if self.device == 'neon':
+        if self.device == 'neon' and not use_winograd:
             self.transpose_filter_tensor[get_input_tensor(
                 op, 1).name] = (3, 2, 0, 1)
         elif op.type == 'Conv2D':
@@ -381,6 +433,8 @@ class TFConverter(object):
             output_name = self.add_buffer_to_image(
                 get_input_tensor(op, 1).name, buffer_type)
             op_def.input.extend([output_name])
+        elif self.device == 'neon' and use_winograd:
+            self.convert_conv_winograd_filter_neon(op, op_def)
         else:
             op_def.input.extend(
                 [get_input_tensor(op, i).name for i in range(len(op.inputs))])
@@ -1057,8 +1111,8 @@ class TFConverter(object):
             elif self.check_conv_to_fc(op):
                 self.convert_global_conv_to_fc(op)
             elif op.type == 'Conv2D' or op.type == 'DepthwiseConv2dNative':
-                if self.check_winograd_conv(op):
-                    self.convert_winograd_conv(op)
+                if self.device == 'gpu' and self.check_winograd_conv(op):
+                    self.convert_winograd_conv_gpu(op)
                 else:
                     self.convert_conv2d(op)
             elif op.type == 'FusedBatchNorm':

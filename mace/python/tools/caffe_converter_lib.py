@@ -374,6 +374,10 @@ class CaffeConverter(object):
         return pad, stride, kernel
 
     def convert_conv2d(self, op):
+        use_winograd = False
+        if self.device == 'neon':
+            use_winograd = self.check_winograd_conv(op)
+
         param = op.layer.convolution_param
         is_depthwise = False
         if param.HasField('group'):
@@ -394,7 +398,11 @@ class CaffeConverter(object):
         else:
             # OIHW -> HWOI
             weight_data = op.data[0].transpose((2, 3, 0, 1))
-        self.add_tensor(weight_tensor_name, weight_data)
+
+        if self.device == 'neon' and use_winograd:
+            self.convert_winograd_conv_filter_neon(op, op_def)
+        else:
+            self.add_tensor(weight_tensor_name, weight_data)
 
         if self.device == 'gpu':
             buffer_type = "DW_CONV2D_FILTER" \
@@ -438,7 +446,7 @@ class CaffeConverter(object):
         op.output_shape_map[op.layer.top[0]] = output_shape
 
         if len(self.ops_map[final_op.name].children) == 1 and \
-            self.ops_map[final_op.name].children[0].type \
+                self.ops_map[final_op.name].children[0].type \
                 in activation_name_map:
             activation_op = self.ops_map[final_op.name].children[0]
             if not is_depthwise:
@@ -455,14 +463,17 @@ class CaffeConverter(object):
         self.net_def.op.extend([op_def])
 
     def check_winograd_conv(self, op):
-        # TODO: support winograd conv on neon
-        if self.device == 'neon':
-            return False
         param = op.layer.convolution_param
         filter_shape = np.asarray(op.data[0].shape)
         if self.device != 'neon':
             filter_shape = filter_shape[[2, 3, 0, 1]]  # OIHW -> HWOI
         paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
+
+        if param.HasField('group'):
+            if param.group == op.data[0].shape[0] and op.data[0].shape[1] == 1:
+                return False  # Depthwise conv not support winograd
+            else:
+                raise Exception("Mace do not support group convolution yet")
 
         dilations = [1, 1]
         if len(param.dilation) > 0:
@@ -476,23 +487,60 @@ class CaffeConverter(object):
             op.get_single_parent().output_shape_map[op.layer.bottom[0]],
             filter_shape, paddings, strides, dilations, math.floor,
             input_format)
-        width = output_shape[0] * ((output_shape[1] + 1) / 2) * ((
-            output_shape[2] + 1) / 2)
         if self.winograd and dilations[0] == 1 and \
                 (dilations[0] == dilations[1]) and \
                 (strides[0] == 1) and (strides[0] == strides[1]):
             if self.device == 'gpu':
+                width = output_shape[0] * ((output_shape[1] + 1) / 2) * \
+                        ((output_shape[2] + 1) / 2)
                 return filter_shape[0] == 3 and \
-                       (filter_shape[0] == filter_shape[1]) and \
-                       (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
-                       (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
-                       (width < OPENCL_IMAGE_MAX_SIZE)
+                    filter_shape[0] == filter_shape[1] and \
+                    (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
+                    (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
+                    (width < OPENCL_IMAGE_MAX_SIZE)
             elif self.device == 'neon':
-                return filter_shape[2] == 3 and (
-                    filter_shape[2] == filter_shape[3])
+                return filter_shape[2] == 3 and \
+                    filter_shape[2] == filter_shape[3] and \
+                    filter_shape[0] >= 8 and filter_shape[1] >= 8
         return False
 
-    def convert_winograd_conv(self, op):
+    def convert_winograd_conv_filter_neon(self, op, op_def):
+        # Add filter
+        weight_tensor_name = op.name + '_weight:0'
+        weight_data = op.data[0]  # OIHW
+        input_shape = op.data[1].shape
+        if input_shape[2] > 16 and input_shape[3] > 16:
+            G = np.array([
+                [1.0, 0.0, 0.0],
+                [-2.0 / 9, -2.0 / 9, -2.0 / 9],
+                [-2.0 / 9, 2.0 / 9, -2.0 / 9],
+                [1.0 / 90, 1.0 / 45, 2.0 / 45],
+                [1.0 / 90, -1.0 / 45, 2.0 / 45],
+                [1.0 / 45, 1.0 / 90, 1.0 / 180],
+                [1.0 / 45, -1.0 / 90, 1.0 / 180],
+                [0.0, 0.0, 1.0]
+            ], dtype=np.float32)
+            new_shape = [64, weight_data.shape[0], weight_data.shape[1]]  # TOC
+        else:
+            G = np.array([
+                [1.0, 0.0, 0.0],
+                [0.5, 0.5, 0.5],
+                [0.5, -0.5, 0.5],
+                [0.0, 0.0, 1.0],
+            ], dtype=np.float32)
+            new_shape = [16, weight_data.shape[0], weight_data.shape[1]]  # TOC
+        new_weight_value = G.dot(weight_data).dot(G.T)  # [8, O, I, 8]
+        new_weight_value = new_weight_value.transpose(0, 3, 1, 2)
+        new_weight_value = new_weight_value.reshape(new_shape)
+
+        self.add_tensor(weight_tensor_name, new_weight_value)
+
+        op_def.input.extend([weight_tensor_name])
+        winograd_transformed_arg = op_def.arg.add()
+        winograd_transformed_arg.name = 'is_filter_transformed'
+        winograd_transformed_arg.i = 1
+
+    def convert_winograd_conv_gpu(self, op):
         # Add filter
         weight_tensor_name = op.name + '_weight:0'
         self.add_tensor(weight_tensor_name, op.data[0])
@@ -504,10 +552,8 @@ class CaffeConverter(object):
         paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
 
         filter_shape = np.asarray(op.data[0].shape)
-        if self.device != 'neon':
-            filter_shape = filter_shape[[2, 3, 0, 1]]  # OIHW -> HWOI
 
-        input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
+        input_format = 'NHWC'
         output_shape = Shapes.conv_pool_shape(
             op.get_single_parent().output_shape_map[op.layer.bottom[0]],
             filter_shape, paddings, strides, [1, 1], math.floor, input_format)
@@ -526,16 +572,10 @@ class CaffeConverter(object):
         wt_output_name = wt_op.name + ":0"
         wt_op.output.extend([wt_output_name])
         wt_output_shape = mace_pb2.OutputShape()
-        if self.device != 'neon':
-            wt_output_width = output_shape[0] * ((
-                output_shape[1] + 1) / 2) * ((output_shape[2] + 1) / 2)
-            wt_output_shape.dims.extend(
-                [16, filter_shape[3], wt_output_width, 1])
-        else:
-            wt_output_width = output_shape[0] * ((
-                output_shape[2] + 1) / 2) * ((output_shape[3] + 1) / 2)
-            wt_output_shape.dims.extend(
-                [16, filter_shape[1], wt_output_width, 1])
+        wt_output_width = output_shape[0] * ((
+            output_shape[1] + 1) / 2) * ((output_shape[2] + 1) / 2)
+        wt_output_shape.dims.extend(
+            [16, filter_shape[3], wt_output_width, 1])
         wt_op.output_shape.extend([wt_output_shape])
 
         # MatMul
@@ -549,12 +589,8 @@ class CaffeConverter(object):
         matmul_output_name = matmul_op.name + ":0"
         matmul_op.output.extend([matmul_output_name])
         matmul_output_shape = mace_pb2.OutputShape()
-        if self.device != 'neon':
-            matmul_output_shape.dims.extend(
-                [16, filter_shape[2], wt_output_width, 1])
-        else:
-            matmul_output_shape.dims.extend(
-                [16, filter_shape[0], wt_output_width, 1])
+        matmul_output_shape.dims.extend(
+            [16, filter_shape[2], wt_output_width, 1])
         matmul_op.output_shape.extend([matmul_output_shape])
 
         # Inverse transform
@@ -567,12 +603,10 @@ class CaffeConverter(object):
         batch_arg.i = output_shape[0]
         height_arg = iwt_op.arg.add()
         height_arg.name = 'height'
-        height_arg.i = output_shape[
-            1] if self.device != 'neon' else output_shape[2]
+        height_arg.i = output_shape[1]
         width_arg = iwt_op.arg.add()
         width_arg.name = 'width'
-        width_arg.i = output_shape[
-            2] if self.device != 'neon' else output_shape[3]
+        width_arg.i = output_shape[2]
         iwt_op.name = op.name + '_inverse_transform'
         iwt_op.type = 'WinogradInverseTransform'
         iwt_op.input.extend([matmul_output_name])
@@ -591,7 +625,7 @@ class CaffeConverter(object):
         self.resolved_ops.add(op.name)
 
         if len(self.ops_map[final_op.name].children) == 1 and \
-            self.ops_map[final_op.name].children[0].type \
+                self.ops_map[final_op.name].children[0].type \
                 in activation_name_map:
             activation_op = self.ops_map[final_op.name].children[0]
             fused_act_arg = iwt_op.arg.add()
@@ -645,8 +679,8 @@ class CaffeConverter(object):
         output_shape = op.get_single_parent().output_shape_map[op.layer.bottom[
             0]]
 
-        if len(self.ops_map[final_op.name].children) == 1 \
-            and self.ops_map[final_op.name].children[0].type \
+        if len(self.ops_map[final_op.name].children) == 1 and \
+                self.ops_map[final_op.name].children[0].type \
                 in activation_name_map:
             activation_op = self.ops_map[final_op.name].children[0]
             fused_act_arg = op_def.arg.add()
@@ -727,13 +761,15 @@ class CaffeConverter(object):
                 op_def.input.extend([bias_tensor_name])
 
         self.resolved_ops.add(op.name)
+        input_format = 'NCHW' if self.device == 'neon' else 'NHWC'
         output_shape = Shapes.fully_connected_shape(input_shape,
-                                                    weight_data.shape)
+                                                    weight_data.shape,
+                                                    input_format)
         op.output_shape_map[op.layer.top[0]] = output_shape
         final_op = op
 
         if len(self.ops_map[final_op.name].children) == 1 \
-            and self.ops_map[final_op.name].children[0].type \
+                and self.ops_map[final_op.name].children[0].type \
                 in activation_name_map:
             activation_op = self.ops_map[final_op.name].children[0]
             fused_act_arg = op_def.arg.add()
@@ -764,7 +800,7 @@ class CaffeConverter(object):
         input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[
             0]]
         if param.HasField('global_pooling') and param.global_pooling:
-            kernels = [input_shape[1], input_shape[2]]
+            kernels = [input_shape[2], input_shape[3]]
 
         kernel_arg = op_def.arg.add()
         kernel_arg.name = 'kernels'
@@ -1054,8 +1090,8 @@ class CaffeConverter(object):
             if op.type == 'Input':
                 self.resolved_ops.add(op.name)
             elif op.type == 'Convolution':
-                if self.check_winograd_conv(op):
-                    self.convert_winograd_conv(op)
+                if self.device == 'gpu' and self.check_winograd_conv(op):
+                    self.convert_winograd_conv_gpu(op)
                 else:
                     self.convert_conv2d(op)
             elif op.type == 'BatchNorm':

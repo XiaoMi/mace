@@ -224,153 +224,6 @@ void TransformInput8x8(const float *input,
   }
 }
 
-// OCHW => TOC
-// no need to optimize, it will exist in converter
-void TransformFilter4x4(const float *filter,
-                        const index_t in_channels,
-                        const index_t out_channels,
-                        float *output) {
-  const index_t stride = out_channels * in_channels;
-
-#pragma omp parallel for collapse(2)
-  for (index_t m = 0; m < out_channels; ++m) {
-    for (index_t c = 0; c < in_channels; ++c) {
-      float g0, g1, g2, g3, g4, g5, g6, g7, g8;
-      float s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14,
-        s15;
-
-      // load filter
-      index_t filter_offset = (m * in_channels + c) * 9;
-      g0 = filter[filter_offset];
-      g1 = filter[filter_offset + 1];
-      g2 = filter[filter_offset + 2];
-      g3 = filter[filter_offset + 3];
-      g4 = filter[filter_offset + 4];
-      g5 = filter[filter_offset + 5];
-      g6 = filter[filter_offset + 6];
-      g7 = filter[filter_offset + 7];
-      g8 = filter[filter_offset + 8];
-
-      // s = G * g * GT
-      s0 = g0;
-      s1 = (g0 + g2 + g1) * 0.5f;
-      s2 = (g0 + g2 - g1) * 0.5f;
-      s3 = g2;
-      s4 = (g0 + g6 + g3) * 0.5f;
-      s5 = ((g0 + g6 + g3) + (g2 + g8 + g5) + (g1 + g7 + g4)) * 0.25f;
-      s6 = ((g0 + g6 + g3) + (g2 + g8 + g5) - (g1 + g7 + g4)) * 0.25f;
-      s7 = (g2 + g8 + g5) * 0.5f;
-      s8 = (g0 + g6 - g3) * 0.5f;
-      s9 = ((g0 + g6 - g3) + (g2 + g8 - g5) + (g1 + g7 - g4)) * 0.25f;
-      s10 = ((g0 + g6 - g3) + (g2 + g8 - g5) - (g1 + g7 - g4)) * 0.25f;
-      s11 = (g2 + g8 - g5) * 0.5f;
-      s12 = g6;
-      s13 = (g6 + g8 + g7) * 0.5f;
-      s14 = (g6 + g8 - g7) * 0.5f;
-      s15 = g8;
-
-      // store output
-      index_t output_offset = m * in_channels + c;
-      output[output_offset + 0 * stride] = s0;
-      output[output_offset + 1 * stride] = s1;
-      output[output_offset + 2 * stride] = s2;
-      output[output_offset + 3 * stride] = s3;
-
-      output[output_offset + 4 * stride] = s4;
-      output[output_offset + 5 * stride] = s5;
-      output[output_offset + 6 * stride] = s6;
-      output[output_offset + 7 * stride] = s7;
-
-      output[output_offset + 8 * stride] = s8;
-      output[output_offset + 9 * stride] = s9;
-      output[output_offset + 10 * stride] = s10;
-      output[output_offset + 11 * stride] = s11;
-
-      output[output_offset + 12 * stride] = s12;
-      output[output_offset + 13 * stride] = s13;
-      output[output_offset + 14 * stride] = s14;
-      output[output_offset + 15 * stride] = s15;
-    }
-  }
-}
-
-// OCHW => TOC
-// no need to optimize, it will exist in converter
-/**
- * G =
-⎡ 1      0      0  ⎤
-⎢                  ⎥
-⎢-2/9  -2/9   -2/9 ⎥
-⎢                  ⎥
-⎢-2/9   2/9   -2/9 ⎥
-⎢                  ⎥
-⎢1/90  1/45   2/45 ⎥
-⎢                  ⎥
-⎢1/90  -1/45  2/45 ⎥
-⎢                  ⎥
-⎢1/45  1/90   1/180⎥
-⎢                  ⎥
-⎢1/45  -1/90  1/180⎥
-⎢                  ⎥
-⎣ 0      0      1  ⎦
- *
- * @param filter
- * @param in_channels
- * @param out_channels
- * @param output
- */
-void TransformFilter8x8(const float *filter,
-                        const index_t in_channels,
-                        const index_t out_channels,
-                        float *output) {
-  const index_t stride = out_channels * in_channels;
-
-  const float G[8][3] = {
-    {1.0f, 0.0f, 0.0f},
-    {-2.0f / 9, -2.0f / 9, -2.0f / 9},
-    {-2.0f / 9, 2.0f / 9, -2.0f / 9},
-    {1.0f / 90, 1.0f / 45, 2.0f / 45},
-    {1.0f / 90, -1.0f / 45, 2.0f / 45},
-    {1.0f / 45, 1.0f / 90, 1.0f / 180},
-    {1.0f / 45, -1.0f / 90, 1.0f / 180},
-    {0.0f, 0.0f, 1.0f}
-  };
-
-#pragma omp parallel for collapse(2)
-  for (index_t m = 0; m < out_channels; ++m) {
-    for (index_t c = 0; c < in_channels; ++c) {
-      // load filter
-      index_t filter_offset = (m * in_channels + c) * 9;
-      float g0, g1, g2, g3, g4, g5, g6, g7, g8;
-      g0 = filter[filter_offset];
-      g1 = filter[filter_offset + 1];
-      g2 = filter[filter_offset + 2];
-      g3 = filter[filter_offset + 3];
-      g4 = filter[filter_offset + 4];
-      g5 = filter[filter_offset + 5];
-      g6 = filter[filter_offset + 6];
-      g7 = filter[filter_offset + 7];
-      g8 = filter[filter_offset + 8];
-
-      float s[3][8];
-      for (int i = 0; i < 8; ++i) {
-        s[0][i] = g0 * G[i][0] + g1 * G[i][1] + g2 * G[i][2];
-        s[1][i] = g3 * G[i][0] + g4 * G[i][1] + g5 * G[i][2];
-        s[2][i] = g6 * G[i][0] + g7 * G[i][1] + g8 * G[i][2];
-      }
-
-      // store output
-      index_t output_offset = m * in_channels + c;
-      for (int i = 0; i < 8; ++i) {
-        for (int j = 0; j < 8; ++j) {
-          output[output_offset + (i * 8 + j) * stride] =
-            G[i][0] * s[0][j] + G[i][1] * s[1][j] + G[i][2] * s[2][j];
-        }
-      }
-    }
-  }
-}
-
 // TOC * TNCB => TNOB
 void BatchGemm(const float *input,
                const float *filter,
@@ -581,8 +434,156 @@ void TransformOutput8x8(const float *input,
 }
 }  // namespace
 
+
+// OCHW => TOC
+// no need to optimize, it will exist in converter
+void TransformFilter4x4(const float *filter,
+                        const index_t in_channels,
+                        const index_t out_channels,
+                        float *output) {
+  const index_t stride = out_channels * in_channels;
+
+#pragma omp parallel for collapse(2)
+  for (index_t m = 0; m < out_channels; ++m) {
+    for (index_t c = 0; c < in_channels; ++c) {
+      float g0, g1, g2, g3, g4, g5, g6, g7, g8;
+      float s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14,
+          s15;
+
+      // load filter
+      index_t filter_offset = (m * in_channels + c) * 9;
+      g0 = filter[filter_offset];
+      g1 = filter[filter_offset + 1];
+      g2 = filter[filter_offset + 2];
+      g3 = filter[filter_offset + 3];
+      g4 = filter[filter_offset + 4];
+      g5 = filter[filter_offset + 5];
+      g6 = filter[filter_offset + 6];
+      g7 = filter[filter_offset + 7];
+      g8 = filter[filter_offset + 8];
+
+      // s = G * g * GT
+      s0 = g0;
+      s1 = (g0 + g2 + g1) * 0.5f;
+      s2 = (g0 + g2 - g1) * 0.5f;
+      s3 = g2;
+      s4 = (g0 + g6 + g3) * 0.5f;
+      s5 = ((g0 + g6 + g3) + (g2 + g8 + g5) + (g1 + g7 + g4)) * 0.25f;
+      s6 = ((g0 + g6 + g3) + (g2 + g8 + g5) - (g1 + g7 + g4)) * 0.25f;
+      s7 = (g2 + g8 + g5) * 0.5f;
+      s8 = (g0 + g6 - g3) * 0.5f;
+      s9 = ((g0 + g6 - g3) + (g2 + g8 - g5) + (g1 + g7 - g4)) * 0.25f;
+      s10 = ((g0 + g6 - g3) + (g2 + g8 - g5) - (g1 + g7 - g4)) * 0.25f;
+      s11 = (g2 + g8 - g5) * 0.5f;
+      s12 = g6;
+      s13 = (g6 + g8 + g7) * 0.5f;
+      s14 = (g6 + g8 - g7) * 0.5f;
+      s15 = g8;
+
+      // store output
+      index_t output_offset = m * in_channels + c;
+      output[output_offset + 0 * stride] = s0;
+      output[output_offset + 1 * stride] = s1;
+      output[output_offset + 2 * stride] = s2;
+      output[output_offset + 3 * stride] = s3;
+
+      output[output_offset + 4 * stride] = s4;
+      output[output_offset + 5 * stride] = s5;
+      output[output_offset + 6 * stride] = s6;
+      output[output_offset + 7 * stride] = s7;
+
+      output[output_offset + 8 * stride] = s8;
+      output[output_offset + 9 * stride] = s9;
+      output[output_offset + 10 * stride] = s10;
+      output[output_offset + 11 * stride] = s11;
+
+      output[output_offset + 12 * stride] = s12;
+      output[output_offset + 13 * stride] = s13;
+      output[output_offset + 14 * stride] = s14;
+      output[output_offset + 15 * stride] = s15;
+    }
+  }
+}
+
+// OCHW => TOC
+// no need to optimize, it will exist in converter
+/**
+ * G =
+⎡ 1      0      0  ⎤
+⎢                  ⎥
+⎢-2/9  -2/9   -2/9 ⎥
+⎢                  ⎥
+⎢-2/9   2/9   -2/9 ⎥
+⎢                  ⎥
+⎢1/90  1/45   2/45 ⎥
+⎢                  ⎥
+⎢1/90  -1/45  2/45 ⎥
+⎢                  ⎥
+⎢1/45  1/90   1/180⎥
+⎢                  ⎥
+⎢1/45  -1/90  1/180⎥
+⎢                  ⎥
+⎣ 0      0      1  ⎦
+ *
+ * @param filter
+ * @param in_channels
+ * @param out_channels
+ * @param output
+ */
+void TransformFilter8x8(const float *filter,
+                        const index_t in_channels,
+                        const index_t out_channels,
+                        float *output) {
+  const index_t stride = out_channels * in_channels;
+
+  const float G[8][3] = {
+      {1.0f, 0.0f, 0.0f},
+      {-2.0f / 9, -2.0f / 9, -2.0f / 9},
+      {-2.0f / 9, 2.0f / 9, -2.0f / 9},
+      {1.0f / 90, 1.0f / 45, 2.0f / 45},
+      {1.0f / 90, -1.0f / 45, 2.0f / 45},
+      {1.0f / 45, 1.0f / 90, 1.0f / 180},
+      {1.0f / 45, -1.0f / 90, 1.0f / 180},
+      {0.0f, 0.0f, 1.0f}
+  };
+
+#pragma omp parallel for collapse(2)
+  for (index_t m = 0; m < out_channels; ++m) {
+    for (index_t c = 0; c < in_channels; ++c) {
+      // load filter
+      index_t filter_offset = (m * in_channels + c) * 9;
+      float g0, g1, g2, g3, g4, g5, g6, g7, g8;
+      g0 = filter[filter_offset];
+      g1 = filter[filter_offset + 1];
+      g2 = filter[filter_offset + 2];
+      g3 = filter[filter_offset + 3];
+      g4 = filter[filter_offset + 4];
+      g5 = filter[filter_offset + 5];
+      g6 = filter[filter_offset + 6];
+      g7 = filter[filter_offset + 7];
+      g8 = filter[filter_offset + 8];
+
+      float s[3][8];
+      for (int i = 0; i < 8; ++i) {
+        s[0][i] = g0 * G[i][0] + g1 * G[i][1] + g2 * G[i][2];
+        s[1][i] = g3 * G[i][0] + g4 * G[i][1] + g5 * G[i][2];
+        s[2][i] = g6 * G[i][0] + g7 * G[i][1] + g8 * G[i][2];
+      }
+
+      // store output
+      index_t output_offset = m * in_channels + c;
+      for (int i = 0; i < 8; ++i) {
+        for (int j = 0; j < 8; ++j) {
+          output[output_offset + (i * 8 + j) * stride] =
+              G[i][0] * s[0][j] + G[i][1] * s[1][j] + G[i][2] * s[2][j];
+        }
+      }
+    }
+  }
+}
+
 void WinoGradConv3x3s1(const float *input,
-                       const float *filter,
+                       const float *transformed_filter,
                        const index_t batch,
                        const index_t in_height,
                        const index_t in_width,
@@ -590,9 +591,7 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t out_channels,
                        const int out_tile_size,
                        float *transformed_input,
-                       float *transformed_filter,
                        float *transformed_output,
-                       bool is_filter_transformed,
                        float *output) {
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
@@ -622,26 +621,6 @@ void WinoGradConv3x3s1(const float *input,
                         transformed_input);
       break;
     default:MACE_NOT_IMPLEMENTED;
-  }
-
-  // TODO(liyin): put it in model converter, but do not worry, it is fast and
-  // will only do once
-  if (!is_filter_transformed) {
-    switch (out_tile_size) {
-      case 2:
-        TransformFilter4x4(filter,
-                           in_channels,
-                           out_channels,
-                           transformed_filter);
-        break;
-      case 6:
-        TransformFilter8x8(filter,
-                           in_channels,
-                           out_channels,
-                           transformed_filter);
-        break;
-      default:MACE_NOT_IMPLEMENTED;
-    }
   }
 
   BatchGemm(transformed_input,
@@ -703,8 +682,24 @@ void WinoGradConv3x3s1(const float *input,
   float *transformed_filter = new float[transformed_filter_size];  // TOC
   float *transformed_output = new float[transformed_output_size];
 
+  switch (out_tile_size) {
+    case 2:
+      TransformFilter4x4(filter,
+                         in_channels,
+                         out_channels,
+                         transformed_filter);
+      break;
+    case 6:
+      TransformFilter8x8(filter,
+                         in_channels,
+                         out_channels,
+                         transformed_filter);
+      break;
+    default:MACE_NOT_IMPLEMENTED;
+  }
+
   WinoGradConv3x3s1(input,
-                    filter,
+                    transformed_filter,
                     batch,
                     in_height,
                     in_width,
@@ -712,9 +707,7 @@ void WinoGradConv3x3s1(const float *input,
                     out_channels,
                     out_tile_size,
                     transformed_input,
-                    transformed_filter,
                     transformed_output,
-                    false,
                     output);
 
   delete[]transformed_input;

@@ -15,10 +15,6 @@
 #include "mace/kernels/conv_2d.h"
 #include "mace/kernels/arm/conv_winograd.h"
 
-// winograd is always superior to neon impl during benchmark
-#define USE_WINOGRAD 1
-#define WINOGRAD_OUT_TILE_SIZE 6
-
 namespace mace {
 namespace kernels {
 
@@ -109,11 +105,21 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
 
+  std::vector<index_t> filter_shape(4);
+  if (is_filter_transformed_) {
+    // TOC -> OIHW
+    filter_shape[0] = filter->dim(1);
+    filter_shape[1] = filter->dim(2);
+    filter_shape[2] = filter_shape[3] = 3;
+  } else {
+    filter_shape = filter->shape();
+  }
+
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);
   if (paddings_.empty()) {
     CalcNCHWPaddingAndOutputSize(input->shape().data(),
-                                 filter->shape().data(),
+                                 filter_shape.data(),
                                  dilations_,
                                  strides_,
                                  padding_type_,
@@ -121,7 +127,7 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
                                  paddings.data());
   } else {
     paddings = paddings_;
-    CalcNCHWOutputSize(input->shape().data(), filter->shape().data(),
+    CalcNCHWOutputSize(input->shape().data(), filter_shape.data(),
                        paddings_.data(), dilations_, strides_, RoundType::FLOOR,
                        output_shape.data());
   }
@@ -138,10 +144,10 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   index_t input_height = input->dim(2);
   index_t input_width = input->dim(3);
 
-  index_t filter_h = filter->dim(2);
-  index_t filter_w = filter->dim(3);
-  MACE_CHECK(filter->dim(0) == channels, filter->dim(0), " != ", channels);
-  MACE_CHECK(filter->dim(1) == input_channels, filter->dim(1), " != ",
+  index_t filter_h = filter_shape[2];
+  index_t filter_w = filter_shape[3];
+  MACE_CHECK(filter_shape[0] == channels, filter_shape[0], " != ", channels);
+  MACE_CHECK(filter_shape[1] == input_channels, filter_shape[1], " != ",
              input_channels);
 
   index_t stride_h = strides_[0];
@@ -171,9 +177,9 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
 
   std::function<void(const float *input, float *output)> conv_func;
 
-  bool use_winograd = USE_WINOGRAD && filter_h == 3 && filter_w == 3
+  bool use_winograd = is_filter_transformed_ || (filter_h == 3 && filter_w == 3
     && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1
-    && input_channels >= 8 && channels >= 8;
+    && input_channels >= 8 && channels >= 8);
   bool use_neon_3x3_s1 = filter_h == 3 && filter_w == 3
     && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
   bool use_neon_3x3_s2 = filter_h == 3 && filter_w == 3
@@ -185,10 +191,17 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   std::vector<index_t> transformed_output_shape;
   std::vector<index_t> transformed_filter_shape;
 
+  // When size of input feature map is bigger than 16x16,
+  // set winograd out tile size to 6 to get higher performance.
+  index_t winograd_out_tile_size = 2;
+  if (input_height > 16 && input_width > 16) {
+    winograd_out_tile_size = 6;
+  }
+
   if (use_winograd) {
-    extra_output_height = RoundUp<index_t>(height, WINOGRAD_OUT_TILE_SIZE);
+    extra_output_height = RoundUp<index_t>(height, winograd_out_tile_size);
     extra_input_height = std::max(padded_input_height, extra_output_height + 2);
-    extra_output_width = RoundUp<index_t>(width, WINOGRAD_OUT_TILE_SIZE);
+    extra_output_width = RoundUp<index_t>(width, winograd_out_tile_size);
     extra_input_width = std::max(padded_input_width, extra_output_width + 2);
     if (extra_input_height != padded_input_height) {
       pad_bottom += (extra_input_height - padded_input_height);
@@ -197,11 +210,11 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
       pad_right += (extra_input_width - padded_input_width);
     }
 
-    index_t tile_height_count = extra_output_height / WINOGRAD_OUT_TILE_SIZE;
-    index_t tile_width_count = extra_output_width / WINOGRAD_OUT_TILE_SIZE;
+    index_t tile_height_count = extra_output_height / winograd_out_tile_size;
+    index_t tile_width_count = extra_output_width / winograd_out_tile_size;
     index_t tile_count = tile_height_count * tile_width_count;
     index_t in_tile_area =
-      (WINOGRAD_OUT_TILE_SIZE + 2) * (WINOGRAD_OUT_TILE_SIZE + 2);
+      (winograd_out_tile_size + 2) * (winograd_out_tile_size + 2);
 
     transformed_input_shape.insert(transformed_input_shape.end(),
                                    {in_tile_area, batch, input_channels,
@@ -281,25 +294,45 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
   if (use_winograd) {
     transformed_input.Resize(transformed_input_shape);
     transformed_output.Resize(transformed_output_shape);
-    if (!is_filter_transformed_) {
+    const float *transformed_filter_ptr;
+    if (transformed_filter_.dim_size() == 0) {
       transformed_filter_.Resize(transformed_filter_shape);
+      if (is_filter_transformed_) {
+        transformed_filter_ptr = filter_data;
+      } else {
+        switch (winograd_out_tile_size) {
+          case 2:
+            TransformFilter4x4(filter_data,
+                               filter_shape[1],
+                               filter_shape[0],
+                               transformed_filter_.mutable_data<float>());
+            break;
+          case 6:
+            TransformFilter8x8(filter_data,
+                               filter_shape[1],
+                               filter_shape[0],
+                               transformed_filter_.mutable_data<float>());
+            break;
+          default:MACE_NOT_IMPLEMENTED;
+        }
+        transformed_filter_ptr = transformed_filter_.data<float>();
+      }
+    } else {
+      transformed_filter_ptr = transformed_filter_.data<float>();
     }
 
     conv_func = [&](const float *pad_input, float *pad_output) {
       WinoGradConv3x3s1(pad_input,
-                        filter_data,
+                        transformed_filter_ptr,
                         batch,
                         extra_input_height,
                         extra_input_width,
                         input_channels,
                         channels,
-                        WINOGRAD_OUT_TILE_SIZE,
+                        winograd_out_tile_size,
                         transformed_input.mutable_data<float>(),
-                        transformed_filter_.mutable_data<float>(),
                         transformed_output.mutable_data<float>(),
-                        is_filter_transformed_,
                         pad_output);
-      is_filter_transformed_ = true;
     };
   } else if (use_neon_3x3_s1) {
     conv_func = [=](const float *pad_input, float *pad_output) {

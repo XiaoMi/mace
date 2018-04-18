@@ -35,6 +35,8 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  this->dilations_.data(),
                  kernels::ActivationType::NOOP,
                  0.0f,
+                 static_cast<bool>(OperatorBase::GetSingleArgument<int>(
+                     "is_filter_transformed", false)),
                  ws->GetScratchBuffer(D)) {}
 
   bool Run(StatsFuture *future) override {
