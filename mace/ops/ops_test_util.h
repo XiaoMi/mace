@@ -52,6 +52,11 @@ class OpDefBuilder {
     return *this;
   }
 
+  OpDefBuilder &OutputType(const std::vector<DataType> &output_type) {
+    op_def_.set_output_type(output_type);
+    return *this;
+  }
+
   OpDefBuilder AddIntArg(const std::string &name, const int value) {
     auto arg = op_def_.add_arg();
     arg->set_name(name);
@@ -461,7 +466,7 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
     auto a = x.data<EXP_TYPE>();
     auto b = y.data<RES_TYPE>();
     for (int i = 0; i < x.size(); ++i) {
-      ExpectEqual(a(i), b(i));
+      ExpectEqual(a[i], b[i]);
     }
   }
 
@@ -499,12 +504,35 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
   }
 };
 
+template<typename EXP_TYPE, typename RES_TYPE>
+struct Expector<EXP_TYPE, RES_TYPE, false> {
+  static void Equal(const EXP_TYPE &a, const RES_TYPE &b) { ExpectEqual(a, b); }
+
+  static void Equal(const Tensor &x, const Tensor &y) {
+    ASSERT_EQ(x.dtype(), DataTypeToEnum<EXP_TYPE>::v());
+    ASSERT_EQ(y.dtype(), DataTypeToEnum<RES_TYPE>::v());
+    AssertSameDims(x, y);
+    Tensor::MappingGuard x_mapper(&x);
+    Tensor::MappingGuard y_mapper(&y);
+    auto a = x.data<EXP_TYPE>();
+    auto b = y.data<RES_TYPE>();
+    for (int i = 0; i < x.size(); ++i) {
+      ExpectEqual(a[i], b[i]);
+    }
+  }
+
+  static void Near(const Tensor &x, const Tensor &y,
+                   const double rel_err,
+                   const double abs_err) {
+    Equal(x, y);
+  }
+};
+
+
 template<typename T>
 void ExpectTensorNear(const Tensor &x, const Tensor &y,
                       const double rel_err = 1e-5,
                       const double abs_err = 1e-8) {
-  static_assert(is_floating_point_type<T>::value,
-                "T is not a floating point type");
   Expector<T, T>::Near(x, y, rel_err, abs_err);
 }
 
@@ -512,9 +540,6 @@ template<typename EXP_TYPE, typename RES_TYPE>
 void ExpectTensorNear(const Tensor &x, const Tensor &y,
                       const double rel_err = 1e-5,
                       const double abs_err = 1e-8) {
-  static_assert(is_floating_point_type<EXP_TYPE>::value &&
-                  is_floating_point_type<RES_TYPE>::value,
-                "T is not a floating point type");
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, rel_err, abs_err);
 }
 
