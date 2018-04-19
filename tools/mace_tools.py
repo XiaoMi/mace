@@ -1,4 +1,16 @@
-#!/usr/bin/env python
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Must run at root dir of libmace project.
 # python tools/mace_tools.py \
@@ -7,10 +19,10 @@
 #     --mode=all
 
 import argparse
+import filelock
 import hashlib
 import os
 import sh
-import shutil
 import subprocess
 import sys
 import urllib
@@ -22,24 +34,50 @@ import sh_commands
 from ConfigParser import ConfigParser
 
 
-def run_command(command):
-    print("Run command: {}".format(command))
-    result = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = result.communicate()
+def get_target_socs(configs):
+    available_socs = sh_commands.adb_get_all_socs()
+    target_socs = available_socs
+    if hasattr(configs, "target_socs"):
+        target_socs = set(configs["target_socs"])
+        target_socs = target_socs & available_socs
 
-    if out:
-        print("Stdout msg:\n{}".format(out))
-    if err:
-        print("Stderr msg:\n{}".format(err))
+    if FLAGS.target_socs != "all":
+        socs = set(FLAGS.target_socs.split(','))
+        target_socs = target_socs & socs
+        missing_socs = socs.difference(target_socs)
+        if len(missing_socs) > 0:
+            print(
+                "Error: devices with SoCs are not connected %s" % missing_socs)
+            exit(1)
 
-    if result.returncode != 0:
-        raise Exception(
-            "Exit not 0 from bash with code: {}, command: {}".format(
-                result.returncode, command))
+    if not target_socs:
+        print("Error: no device to run")
+        exit(1)
+
+    return target_socs
 
 
-def get_global_runtime(configs):
+def get_data_and_device_type(runtime):
+    data_type = ""
+    device_type = ""
+
+    if runtime == "dsp":
+        data_type = "DT_UINT8"
+        device_type = "HEXAGON"
+    elif runtime == "gpu":
+        data_type = "DT_HALF"
+        device_type = "OPENCL"
+    elif runtime == "cpu":
+        data_type = "DT_FLOAT"
+        device_type = "CPU"
+    elif runtime == "neon":
+        data_type = "DT_FLOAT"
+        device_type = "NEON"
+
+    return data_type, device_type
+
+
+def get_hexagon_mode(configs):
     runtime_list = []
     for model_name in configs["models"]:
         model_runtime = configs["models"][model_name]["runtime"]
@@ -47,141 +85,29 @@ def get_global_runtime(configs):
 
     global_runtime = ""
     if "dsp" in runtime_list:
-        global_runtime = "dsp"
-    elif "gpu" in runtime_list:
-        global_runtime = "gpu"
-    elif "cpu" in runtime_list:
-        global_runtime = "cpu"
-    elif "neon" in runtime_list:
-        global_runtime = "neon"
-    else:
-        raise Exception("Not found available RUNTIME in config files!")
-
-    return global_runtime
+        return True
+    return False
 
 
-def generate_version_code():
-    command = "bash tools/generate_version_code.sh"
-    run_command(command)
+def generate_code(target_soc, target_abi, model_output_dirs, pull_or_not):
+    sh_commands.pull_binaries(
+            target_soc, target_abi, model_output_dirs, pull_or_not)
+    sh_commands.gen_opencl_binary_code(
+            target_soc, target_abi, model_output_dirs, pull_or_not)
+    sh_commands.gen_tuning_param_code(
+            target_soc, target_abi, model_output_dirs, pull_or_not)
 
 
-def generate_opencl_source_code():
-    command = "bash tools/generate_opencl_code.sh source"
-    run_command(command)
-
-
-def generate_opencl_binay_code(target_soc, model_output_dirs, pull_or_not):
-    cl_bin_dirs = []
-    for d in model_output_dirs:
-        cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
-    cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    if not cl_bin_dirs:
-        command = "bash tools/generate_opencl_code.sh binary"
-    else:
-        command = "bash tools/generate_opencl_code.sh {} {} {} {}".format(
-            'binary', target_soc, cl_bin_dirs_str, int(pull_or_not))
-    run_command(command)
-
-
-def generate_tuning_param_code(target_soc, model_output_dirs, pull_or_not):
-    cl_bin_dirs = []
-    for d in model_output_dirs:
-        cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
-    cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    if not cl_bin_dirs:
-        command = "bash tools/generate_tuning_param_code.sh"
-    else:
-        command = "bash tools/generate_tuning_param_code.sh {} {} {}".format(
-            target_soc, cl_bin_dirs_str, int(pull_or_not))
-    run_command(command)
-
-
-def generate_code(target_soc, model_output_dirs, pull_or_not):
-    generate_opencl_binay_code(target_soc, model_output_dirs, pull_or_not)
-    generate_tuning_param_code(target_soc, model_output_dirs, pull_or_not)
-
-
-def clear_env(target_soc):
-    command = "bash tools/clear_env.sh {}".format(target_soc)
-    run_command(command)
-
-
-def input_file_name(input_name):
-    return os.environ['INPUT_FILE_NAME'] + '_' + \
-           re.sub('[^0-9a-zA-Z]+', '_', input_name)
-
-
-def generate_random_input(target_soc, model_output_dir, input_names,
-                          input_files):
-    generate_data_or_not = True
-    command = "bash tools/validate_tools.sh {} {} {}".format(
-        target_soc, model_output_dir, int(generate_data_or_not))
-    run_command(command)
-
-    input_file_list = []
-    if isinstance(input_files, list):
-        input_file_list.extend(input_files)
-    else:
-        input_file_list.append(input_files)
-    if len(input_file_list) != 0:
-        input_name_list = []
-        if isinstance(input_names, list):
-            input_name_list.extend(input_names)
-        else:
-            input_name_list.append(input_names)
-        if len(input_file_list) != len(input_name_list):
-            raise Exception('If input_files set, the input files should '
-                            'match the input names.')
-        for i in range(len(input_file_list)):
-            if input_file_list[i] is not None:
-                dst_input_file = model_output_dir + '/' + input_file_name(
-                    input_name_list[i])
-                if input_file_list[i].startswith("http://") or \
-                        input_file_list[i].startswith("https://"):
-                    urllib.urlretrieve(input_file_list[i], dst_input_file)
-                else:
-                    shutil.copy(input_file_list[i], dst_input_file)
-
-
-def generate_model_code():
-    command = "bash tools/generate_model_code.sh"
-    run_command(command)
-
-
-def build_mace_run(production_mode, model_output_dir, hexagon_mode):
-    command = "bash tools/build_mace_run.sh {} {} {}".format(
-        int(production_mode), model_output_dir, int(hexagon_mode))
-    run_command(command)
-
-
-def tuning_run(model_name,
-               target_runtime,
-               target_abi,
-               target_soc,
-               model_output_dir,
-               running_round,
-               tuning,
-               restart_round,
-               option_args='',
-               out_of_range_check=False):
-    # TODO(yejianwu) refactoring the hackish code
-    stdout_buff = []
-    process_output = sh_commands.make_output_processor(stdout_buff)
-    p = sh.bash(
-        "tools/tuning_run.sh",
-        target_soc,
-        model_output_dir,
-        running_round,
-        int(tuning),
-        restart_round,
-        option_args,
-        int(out_of_range_check),
-        _out=process_output,
-        _bg=True,
-        _err_to_out=True)
-    p.wait()
+def ops_benchmark_stdout_processor(stdout,
+                                   target_soc,
+                                   abi,
+                                   runtime,
+                                   running_round,
+                                   tuning):
     metrics = {}
-    for line in stdout_buff:
+    for line in stdout:
+        if "Aborted" in line:
+            raise Exception("Command failed")
         line = line.strip()
         parts = line.split()
         if len(parts) == 6 and parts[0].startswith("time"):
@@ -195,8 +121,8 @@ def tuning_run(model_name,
                     float(parts[5]))
     tags = {
         "ro.board.platform": target_soc,
-        "abi": target_abi,
-        # "runtime": target_runtime, # TODO(yejianwu) Add the actual runtime
+        "abi": abi,
+        "runtime": runtime,
         "round": running_round,  # TODO(yejianwu) change this to source/binary
         "tuning": tuning
     }
@@ -204,113 +130,125 @@ def tuning_run(model_name,
         metrics, endpoint="mace_model_benchmark", tags=tags)
 
 
-def benchmark_model(target_soc, model_output_dir, option_args=''):
-    command = "bash tools/benchmark.sh {} {} \"{}\"".format(
-        target_soc, model_output_dir, option_args)
-    run_command(command)
+def tuning_run(runtime,
+               target_soc,
+               target_abi,
+               vlog_level,
+               embed_model_data,
+               model_output_dir,
+               input_nodes,
+               output_nodes,
+               input_shapes,
+               output_shapes,
+               model_name,
+               device_type,
+               running_round,
+               restart_round,
+               out_of_range_check,
+               tuning=False,
+               limit_opencl_kernel_time=0,
+               option_args=""):
+    stdout = sh_commands.tuning_run(
+            target_soc,
+            target_abi,
+            vlog_level,
+            embed_model_data,
+            model_output_dir,
+            input_nodes,
+            output_nodes,
+            input_shapes,
+            output_shapes,
+            model_name,
+            device_type,
+            running_round,
+            restart_round,
+            limit_opencl_kernel_time,
+            tuning,
+            out_of_range_check,
+            option_args)
+    ops_benchmark_stdout_processor(stdout,
+                                   target_soc,
+                                   target_abi,
+                                   runtime,
+                                   running_round,
+                                   tuning)
 
 
-def run_model(model_name, target_runtime, target_abi, target_soc,
-              model_output_dir, running_round, restart_round, option_args,
-              out_of_range_check):
-    tuning_run(model_name, target_runtime, target_abi, target_soc,
-               model_output_dir, running_round, False, restart_round,
-               option_args, out_of_range_check)
-
-
-def generate_production_code(target_soc, model_output_dirs, pull_or_not):
-    cl_bin_dirs = []
-    for d in model_output_dirs:
-        cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
-    cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    command = "bash tools/generate_production_code.sh {} {} {}".format(
-        target_soc, cl_bin_dirs_str, int(pull_or_not))
-    run_command(command)
-
-
-def build_mace_run_prod(model_name, target_runtime, target_abi, target_soc,
-                        model_output_dir, tuning):
-    if "dsp" == target_runtime:
-        hexagon_mode = True
-    else:
-        hexagon_mode = False
-
-    generate_code(target_soc, [], False)
+def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
+                        vlog_level, embed_model_data, model_output_dir,
+                        input_nodes, output_nodes, input_shapes, output_shapes,
+                        model_name, device_type, running_round, restart_round,
+                        tuning, limit_opencl_kernel_time):
+    generate_code(target_soc, target_abi, [], False)
     production_or_not = False
-    build_mace_run(production_or_not, model_output_dir, hexagon_mode)
+    mace_run_target = "//mace/tools/validation:mace_run"
+    sh_commands.bazel_build(
+            mace_run_target,
+            abi=target_abi,
+            model_tag=model_name,
+            production_mode=False,
+            hexagon_mode=hexagon_mode)
+    sh_commands.update_mace_run_lib(model_output_dir, target_abi, model_name,
+                                    embed_model_data)
 
-    tuning_run(
-        model_name,
-        target_runtime,
-        target_abi,
-        target_soc,
-        model_output_dir,
-        running_round=0,
-        tuning=False,
-        restart_round=1,
-        out_of_range_check=True)
+    tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
+               model_output_dir, input_nodes, output_nodes, input_shapes,
+               output_shapes, model_name, device_type, running_round=0,
+               restart_round=1, out_of_range_check=True, tuning=False)
 
-    tuning_run(
-        model_name,
-        target_runtime,
-        target_abi,
-        target_soc,
-        model_output_dir,
-        running_round=0,
-        tuning=tuning,
-        restart_round=1)
+    tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
+               model_output_dir, input_nodes, output_nodes, input_shapes,
+               output_shapes, model_name, device_type, running_round=0,
+               restart_round=1, out_of_range_check=False, tuning=tuning,
+               limit_opencl_kernel_time=limit_opencl_kernel_time)
 
-    generate_code(target_soc, [model_output_dir], True)
+    generate_code(target_soc, target_abi, [model_output_dir], True)
     production_or_not = True
-    build_mace_run(production_or_not, model_output_dir, hexagon_mode)
+    sh_commands.bazel_build(
+            mace_run_target,
+            abi=target_abi,
+            model_tag=model_name,
+            production_mode=True,
+            hexagon_mode=hexagon_mode)
+    sh_commands.update_mace_run_lib(model_output_dir, target_abi, model_name,
+                                    embed_model_data)
 
 
-def build_run_throughput_test(target_soc, run_seconds, merged_lib_file,
-                              model_input_dir):
-    command = "bash tools/build_run_throughput_test.sh {} {} {} {}".format(
-        target_soc, run_seconds, merged_lib_file, model_input_dir)
-    run_command(command)
+def merge_libs_and_tuning_results(target_soc,
+                                  target_abi,
+                                  project_name,
+                                  output_dir,
+                                  model_output_dirs,
+                                  hexagon_mode,
+                                  embed_model_data):
+    generate_code(target_soc, target_abi, model_output_dirs, False)
+    sh_commands.build_production_code(target_abi)
 
-
-def validate_model(target_soc, model_output_dir):
-    generate_data_or_not = False
-    command = "bash tools/validate_tools.sh {} {} {}".format(
-        target_soc, model_output_dir, int(generate_data_or_not))
-    run_command(command)
-
-
-def build_production_code():
-    command = "bash tools/build_production_code.sh"
-    run_command(command)
-
-
-def merge_libs_and_tuning_results(target_soc, output_dir, model_output_dirs):
-    generate_code(target_soc, model_output_dirs, False)
-    build_production_code()
-
-    model_output_dirs_str = ",".join(model_output_dirs)
-    command = "bash tools/merge_libs.sh {} {} {}".format(
-        target_soc, output_dir, model_output_dirs_str)
-    run_command(command)
-
-
-def packaging_lib_file(output_dir):
-    command = "bash tools/packaging_lib.sh {}".format(output_dir)
-    run_command(command)
+    sh_commands.merge_libs(target_soc,
+                           target_abi,
+                           project_name,
+                           output_dir,
+                           model_output_dirs,
+                           hexagon_mode,
+                           embed_model_data)
 
 
 def download_model_files(model_file_path,
                          model_output_dir,
                          weight_file_path=""):
+    model_file = ""
+    weight_file = ""
     if model_file_path.startswith("http://") or \
             model_file_path.startswith("https://"):
-        os.environ["MODEL_FILE_PATH"] = model_output_dir + "/model.pb"
-        urllib.urlretrieve(model_file_path, os.environ["MODEL_FILE_PATH"])
+        model_file = model_output_dir + "/model.pb"
+        urllib.urlretrieve(model_file_path, model_file)
 
     if weight_file_path.startswith("http://") or \
             weight_file_path.startswith("https://"):
-        os.environ["WEIGHT_FILE_PATH"] = model_output_dir + "/model.caffemodel"
-        urllib.urlretrieve(weight_file_path, os.environ["WEIGHT_FILE_PATH"])
+        weight_file = model_output_dir + "/model.caffemodel"
+        urllib.urlretrieve(weight_file_path, weight_file)
+
+    return model_file, weight_file
 
 
 def md5sum(str):
@@ -368,13 +306,177 @@ def parse_args():
     return parser.parse_known_args()
 
 
-def set_environment(configs):
-    os.environ["EMBED_MODEL_DATA"] = str(configs["embed_model_data"])
-    os.environ["VLOG_LEVEL"] = str(configs["vlog_level"])
-    os.environ["PROJECT_NAME"] = os.path.splitext(
-        os.path.basename(FLAGS.config))[0]
-    os.environ['INPUT_FILE_NAME'] = "model_input"
-    os.environ['OUTPUT_FILE_NAME'] = "model_out"
+def process_models(project_name, configs, embed_model_data, vlog_level,
+                   target_soc, target_abi, option_args):
+    hexagon_mode = get_hexagon_mode(configs)
+    model_output_dirs = []
+    for model_name in configs["models"]:
+        print '===================', model_name, '==================='
+        model_config = configs["models"][model_name]
+        input_file_list = model_config.get("validation_inputs_data",
+                                           [])
+        data_type, device_type = get_data_and_device_type(
+                model_config["runtime"])
+
+        for key in ["input_nodes", "output_nodes", "input_shapes",
+                    "output_shapes"]:
+            if not isinstance(model_config[key], list):
+                model_config[key] = [model_config[key]]
+
+        # Create model build directory
+        model_path_digest = md5sum(model_config["model_file_path"])
+        model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (
+            FLAGS.output_dir, project_name, "build",
+            model_name, model_path_digest, target_soc, target_abi)
+        model_output_dirs.append(model_output_dir)
+
+        if FLAGS.mode == "build" or FLAGS.mode == "all":
+            if os.path.exists(model_output_dir):
+                sh.rm("-rf", model_output_dir)
+            os.makedirs(model_output_dir)
+            sh_commands.clear_mace_run_data(target_abi, target_soc)
+
+        model_file_path, weight_file_path = download_model_files(
+                model_config["model_file_path"],
+                model_output_dir,
+                model_config.get("weight_file_path", ""))
+
+        if FLAGS.mode == "build" or FLAGS.mode == "run" or \
+                FLAGS.mode == "validate" or \
+                FLAGS.mode == "benchmark" or FLAGS.mode == "all":
+            sh_commands.gen_random_input(model_output_dir,
+                                         model_config["input_nodes"],
+                                         model_config["input_shapes"],
+                                         input_file_list)
+
+        if FLAGS.mode == "build" or FLAGS.mode == "all":
+            sh_commands.gen_model_code(
+                    "mace/codegen/models/%s" % model_name,
+                    model_config["platform"],
+                    model_file_path,
+                    weight_file_path,
+                    model_config["model_sha256_checksum"],
+                    ",".join(model_config["input_nodes"]),
+                    ",".join(model_config["output_nodes"]),
+                    data_type,
+                    model_config["runtime"],
+                    model_name,
+                    ":".join(model_config["input_shapes"]),
+                    model_config["dsp_mode"],
+                    embed_model_data,
+                    model_config["fast_conv"],
+                    model_config["obfuscate"])
+            build_mace_run_prod(hexagon_mode,
+                                model_config["runtime"],
+                                target_soc,
+                                target_abi,
+                                vlog_level,
+                                embed_model_data,
+                                model_output_dir,
+                                model_config["input_nodes"],
+                                model_config["output_nodes"],
+                                model_config["input_shapes"],
+                                model_config["output_shapes"],
+                                model_name,
+                                device_type,
+                                FLAGS.round,
+                                FLAGS.restart_round,
+                                FLAGS.tuning,
+                                model_config[
+                                    "limit_opencl_kernel_time"])
+
+        if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
+                FLAGS.mode == "all":
+            tuning_run(model_config["runtime"],
+                       target_soc,
+                       target_abi,
+                       vlog_level,
+                       embed_model_data,
+                       model_output_dir,
+                       model_config["input_nodes"],
+                       model_config["output_nodes"],
+                       model_config["input_shapes"],
+                       model_config["output_shapes"],
+                       model_name,
+                       device_type,
+                       FLAGS.round,
+                       FLAGS.restart_round,
+                       FLAGS.out_of_range_check)
+
+        if FLAGS.mode == "benchmark":
+            sh_commands.benchmark_model(target_soc,
+                                        target_abi,
+                                        vlog_level,
+                                        embed_model_data,
+                                        model_output_dir,
+                                        model_config["input_nodes"],
+                                        model_config["output_nodes"],
+                                        model_config["input_shapes"],
+                                        model_config["output_shapes"],
+                                        model_name,
+                                        device_type,
+                                        hexagon_mode,
+                                        option_args)
+
+        if FLAGS.mode == "validate" or FLAGS.mode == "all":
+            sh_commands.validate_model(target_soc,
+                                       target_abi,
+                                       model_file_path,
+                                       weight_file_path,
+                                       model_config["platform"],
+                                       model_config["runtime"],
+                                       model_config["input_nodes"],
+                                       model_config["output_nodes"],
+                                       model_config["input_shapes"],
+                                       model_config["output_shapes"],
+                                       model_output_dir)
+
+    if FLAGS.mode == "build" or FLAGS.mode == "merge" or \
+            FLAGS.mode == "all":
+        merge_libs_and_tuning_results(
+            target_soc,
+            target_abi,
+            project_name,
+            FLAGS.output_dir,
+            model_output_dirs,
+            hexagon_mode,
+            embed_model_data)
+
+    if FLAGS.mode == "throughput_test":
+        merged_lib_file = FLAGS.output_dir + \
+                "/%s/%s/libmace_%s.%s.a" % \
+                (project_name, target_abi, project_name, target_soc)
+        first_model = configs["models"].values()[0]
+        throughput_test_output_dir = "%s/%s/%s/%s" % (
+                FLAGS.output_dir, project_name, "build",
+                "throughput_test")
+        if os.path.exists(throughput_test_output_dir):
+            sh.rm("-rf", throughput_test_output_dir)
+        os.makedirs(throughput_test_output_dir)
+        input_file_list = model_config.get("validation_inputs_data",
+                                           [])
+        sh_commands.gen_random_input(throughput_test_output_dir,
+                                     first_model["input_nodes"],
+                                     first_model["input_shapes"],
+                                     input_file_list)
+        model_tag_dict = {}
+        for model_name in configs["models"]:
+            runtime = configs["models"][model_name]["runtime"]
+            model_tag_dict[runtime] = model_name
+        sh_commands.build_run_throughput_test(target_soc,
+                                              target_abi,
+                                              vlog_level,
+                                              FLAGS.run_seconds,
+                                              merged_lib_file,
+                                              throughput_test_output_dir,
+                                              embed_model_data,
+                                              model_config["input_nodes"],
+                                              model_config["output_nodes"],
+                                              model_config["input_shapes"],
+                                              model_config["output_shapes"],
+                                              model_tag_dict.get("cpu", ""),
+                                              model_tag_dict.get("gpu", ""),
+                                              model_tag_dict.get("dsp", ""))
 
 
 def main(unused_args):
@@ -384,126 +486,43 @@ def main(unused_args):
         FLAGS.round = 1
         FLAGS.restart_round = 1
 
-    set_environment(configs)
-
+    project_name = os.path.splitext(os.path.basename(FLAGS.config))[0]
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         # Remove previous output dirs
         if not os.path.exists(FLAGS.output_dir):
             os.makedirs(FLAGS.output_dir)
         elif os.path.exists(os.path.join(FLAGS.output_dir, "libmace")):
-            shutil.rmtree(
-                os.path.join(FLAGS.output_dir, os.environ["PROJECT_NAME"]))
-            os.makedirs(
-                os.path.join(FLAGS.output_dir, os.environ["PROJECT_NAME"]))
+            sh.rm("-rf", os.path.join(FLAGS.output_dir, project_name))
+            os.makedirs(os.path.join(FLAGS.output_dir, project_name))
 
-        generate_version_code()
-        generate_opencl_source_code()
+        # generate source
+        sh_commands.gen_mace_version()
+        sh_commands.gen_encrypted_opencl_source()
 
     option_args = ' '.join(
         [arg for arg in unused_args if arg.startswith('--')])
 
-    available_socs = sh_commands.adb_get_all_socs()
-    target_socs = available_socs
-    if hasattr(configs, "target_socs"):
-        target_socs = set(configs["target_socs"])
-        target_socs = target_socs & available_socs
+    target_socs = get_target_socs(configs)
 
-    if FLAGS.target_socs != "all":
-        socs = set(FLAGS.target_socs.split(','))
-        target_socs = target_socs & socs
-        missing_socs = socs.difference(target_socs)
-        if len(missing_socs) > 0:
-            print(
-                "Error: devices with SoCs are not connected %s" % missing_socs)
-            exit(1)
-
+    embed_model_data = configs.get("embed_model_data", 1)
+    vlog_level = configs.get("vlog_level", 0)
     for target_soc in target_socs:
         for target_abi in configs["target_abis"]:
-            global_runtime = get_global_runtime(configs)
-            # Transfer params by environment
-            os.environ["TARGET_ABI"] = target_abi
-            model_output_dirs = []
-            for model_name in configs["models"]:
-                print '===================', model_name, '==================='
-                # Transfer params by environment
-                os.environ["MODEL_TAG"] = model_name
-                model_config = configs["models"][model_name]
-                input_file_list = model_config.get("validation_inputs_data",
-                                                   [])
-                for key in model_config:
-                    if key in ['input_nodes', 'output_nodes'] and isinstance(
-                            model_config[key], list):
-                        os.environ[key.upper()] = ",".join(model_config[key])
-                    elif key in ['input_shapes', 'output_shapes'
-                                 ] and isinstance(model_config[key], list):
-                        os.environ[key.upper()] = ":".join(model_config[key])
-                    else:
-                        os.environ[key.upper()] = str(model_config[key])
-
-                # Create model build directory
-                model_path_digest = md5sum(model_config["model_file_path"])
-                model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (
-                    FLAGS.output_dir, os.environ["PROJECT_NAME"], "build",
-                    model_name, model_path_digest, target_soc, target_abi)
-                model_output_dirs.append(model_output_dir)
-
-                if FLAGS.mode == "build" or FLAGS.mode == "all":
-                    if os.path.exists(model_output_dir):
-                        shutil.rmtree(model_output_dir)
-                    os.makedirs(model_output_dir)
-                    clear_env(target_soc)
-
-                download_model_files(model_config["model_file_path"],
-                                     model_output_dir,
-                                     model_config.get("weight_file_path", ""))
-
-                if FLAGS.mode == "build" or FLAGS.mode == "run" or \
-                        FLAGS.mode == "validate" or \
-                        FLAGS.mode == "benchmark" or FLAGS.mode == "all":
-                    generate_random_input(target_soc, model_output_dir,
-                                          model_config['input_nodes'],
-                                          input_file_list)
-
-                if FLAGS.mode == "build" or FLAGS.mode == "all":
-                    generate_model_code()
-                    build_mace_run_prod(model_name, global_runtime, target_abi,
-                                        target_soc, model_output_dir,
-                                        FLAGS.tuning)
-
-                if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
-                        FLAGS.mode == "all":
-                    run_model(model_name, global_runtime, target_abi,
-                              target_soc, model_output_dir, FLAGS.round,
-                              FLAGS.restart_round, option_args,
-                              FLAGS.out_of_range_check)
-
-                if FLAGS.mode == "benchmark":
-                    benchmark_model(target_soc, model_output_dir, option_args)
-
-                if FLAGS.mode == "validate" or FLAGS.mode == "all":
-                    validate_model(target_soc, model_output_dir)
-
-            if FLAGS.mode == "build" or FLAGS.mode == "merge" or \
-                    FLAGS.mode == "all":
-                merge_libs_and_tuning_results(
-                    target_soc,
-                    FLAGS.output_dir + "/" + os.environ["PROJECT_NAME"],
-                    model_output_dirs)
-
-            if FLAGS.mode == "throughput_test":
-                merged_lib_file = FLAGS.output_dir + \
-                        "/%s/%s/libmace_%s.%s.a" % \
-                        (os.environ["PROJECT_NAME"], target_abi,
-                         os.environ["PROJECT_NAME"], target_soc)
-                generate_random_input(target_soc, FLAGS.output_dir, [], [])
-                for model_name in configs["models"]:
-                    runtime = configs["models"][model_name]["runtime"]
-                    os.environ["%s_MODEL_TAG" % runtime.upper()] = model_name
-                build_run_throughput_test(target_soc, FLAGS.run_seconds,
-                                          merged_lib_file, FLAGS.output_dir)
+            serialno = sh_commands.adb_devices([target_soc]).pop()
+            props = sh_commands.adb_getprop_by_serialno(serialno)
+            print(
+                "============================================================="
+            )
+            print("Trying to lock device", serialno)
+            with sh_commands.device_lock(serialno):
+                print("Run on device: %s, %s, %s" % (
+                      serialno, props["ro.board.platform"],
+                      props["ro.product.model"]))
+                process_models(project_name, configs, embed_model_data,
+                               vlog_level, target_soc, target_abi, option_args)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
-        packaging_lib_file(FLAGS.output_dir)
+        sh_commands.packaging_lib(FLAGS.output_dir, project_name)
 
 
 if __name__ == "__main__":
