@@ -10,3 +10,5 @@ mace/codegen/tuning/
 mace/codegen/version/
 build/
 docs/_build/
+
+\.project/

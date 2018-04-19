@@ -39,6 +39,8 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     output_height = input_height * block_size_;
     output_width = input_width * block_size_;
     output_depth = input_depth / (block_size_ * block_size_);
+    MACE_CHECK(output_depth % 4 == 0, "output channel not support:")
+          << output_depth;
     kernel_name = "depth_to_space";
 
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(output_depth));
@@ -50,6 +52,8 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     output_height = input_height / block_size_;
     output_width = input_width / block_size_;
     output_depth = input_depth * block_size_ * block_size_;
+    MACE_CHECK(input_depth % 4 == 0, "input channel not support:")
+      << input_depth;
     kernel_name = "space_to_depth";
 
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(input_depth));
