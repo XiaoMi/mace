@@ -34,10 +34,10 @@ void FullyConnectedFunctor<DeviceType::NEON,
   const float *bias_ptr = bias == nullptr ? nullptr : bias->data<float>();
   float *output_ptr = output->mutable_data<float>();
 
+  Gemv(weight_ptr, input_ptr, N, input_size, output_size, output_ptr);
   for (int i = 0; i < N; ++i) {
-    Gemv(weight_ptr, input_ptr, input_size, output_size, output_ptr);
     for (int j = 0; j < output_size; ++j) {
-      output_ptr[j] += bias_ptr[j];
+      output_ptr[j + i * output_size] += bias_ptr[j];
     }
   }
 

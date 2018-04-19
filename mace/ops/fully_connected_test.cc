@@ -337,6 +337,8 @@ TEST_F(FullyConnectedOpTest, TestNEON) {
   FullyConnectedTestNEON(1, 7, 7, 32, 16);
   FullyConnectedTestNEON(1, 7, 7, 512, 128);
   FullyConnectedTestNEON(1, 1, 1, 2048, 1024);
+  FullyConnectedTestNEON(3, 1, 1, 16, 8);
+  FullyConnectedTestNEON(3, 7, 7, 32, 16);
 }
 
 }  // namespace test
