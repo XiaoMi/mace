@@ -178,6 +178,9 @@ MaceStatus MaceEngine::Impl::Run(
   std::vector<Tensor *> input_tensors;
   std::vector<Tensor *> output_tensors;
   for (auto &input : inputs) {
+    MACE_CHECK(input.second.shape().size() == 4,
+               "The Inputs' shape must be 4-dimension with NHWC format,"
+                   " please use 1 to fill missing dimensions");
     Tensor *input_tensor =
         ws_->GetTensor(MakeString("mace_input_node_", input.first, ":0"));
     input_tensor->Resize(input.second.shape());
@@ -190,6 +193,9 @@ MaceStatus MaceEngine::Impl::Run(
     input_tensors.push_back(input_tensor);
   }
   for (auto &output : *outputs) {
+    MACE_CHECK(output.second.shape().size() == 4,
+               "The outputs' shape must be 4-dimension with NHWC format,"
+                   " please use 1 to fill missing dimensions");
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
     output_tensors.push_back(output_tensor);

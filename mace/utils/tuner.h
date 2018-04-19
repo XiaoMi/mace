@@ -94,8 +94,8 @@ class Tuner {
   Tuner &operator=(const Tuner &) = delete;
 
   inline void WriteRunParameters() {
-    VLOG(3) << "Write tuning result to " << path_;
     if (path_ != nullptr) {
+      VLOG(3) << "Write tuning result to " << path_;
       std::ofstream ofs(path_, std::ios::binary | std::ios::out);
       if (ofs.is_open()) {
         int64_t num_pramas = param_table_.size();

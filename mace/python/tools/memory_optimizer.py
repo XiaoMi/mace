@@ -32,7 +32,11 @@ class MemoryOptimizer(object):
                     self.ref_counter[tensor_name] = 0
 
     def is_buffer_image_op(self, op):
-        return op.type == 'BufferToImage' or op.type == 'ImageToBuffer'
+        if op.type == 'BufferToImage':
+            for arg in op.arg:
+                if arg.name == 'mode' and arg.i == 0:
+                    return True
+        return op.type == 'ImageToBuffer'
 
     def get_mem_size(self, op_type, output_shape):
         mem_size = [0, 0]
