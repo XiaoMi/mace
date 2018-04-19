@@ -800,7 +800,9 @@ class CaffeConverter(object):
         input_shape = op.get_single_parent().output_shape_map[op.layer.bottom[
             0]]
         if param.HasField('global_pooling') and param.global_pooling:
-            kernels = [input_shape[2], input_shape[3]]
+            kernels = [input_shape[2], input_shape[3]] \
+                if self.device == 'neon' else \
+                [input_shape[1], input_shape[2]]
 
         kernel_arg = op_def.arg.add()
         kernel_arg.name = 'kernels'
