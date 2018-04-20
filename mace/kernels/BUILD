@@ -28,9 +28,12 @@ cc_library(
         "opencl/*.h",
         "arm/*.h",
     ]),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
@@ -48,9 +51,12 @@ cc_test(
             "opencl/*_test.cc",
         ],
     ),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [

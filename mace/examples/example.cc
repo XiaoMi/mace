@@ -163,6 +163,8 @@ bool RunModel(const std::vector<std::string> &input_names,
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
 
+  // DO NOT USE tmp directory.
+  // please use APP's own directory
   const std::string kernel_file_path =
                   "/data/local/tmp/mace_run/cl";
 

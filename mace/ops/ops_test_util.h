@@ -283,6 +283,16 @@ class OpsTestNet {
     return RunOp(DeviceType::CPU);
   }
 
+  bool RunNet(const NetDef &net_def, const DeviceType device) {
+    device_ = device;
+    net_ = CreateNet(op_registry_, net_def, &ws_, device, NetMode::INIT);
+    if (!net_->Run()) {
+      return false;
+    }
+    net_ = CreateNet(op_registry_, net_def, &ws_, device);
+    return net_->Run();
+  }
+
   Tensor *GetOutput(const char *output_name) {
     return ws_.GetTensor(output_name);
   }

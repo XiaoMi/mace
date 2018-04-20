@@ -306,6 +306,13 @@ class CaffeConverter(object):
             arg.name = 'T'
             arg.i = self.dt
 
+            input_op = self.ops_map[name]
+            if input_op.layer is not None:
+                output_shape = input_op.output_shape_map[input_op.layer.top[0]]
+            else:
+                output_shape = input_op.output_shape_map[input_op.name]
+            self.add_output_shape(op_def, output_shape)
+
     def add_output_transform(self, names):
         for name in names:
             output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
@@ -1077,14 +1084,14 @@ class CaffeConverter(object):
             dims_arg.ints.extend([0, 2, 3, 1])  # NCHW -> NHWC
 
     def convert(self, input_nodes, input_shapes, output_nodes):
+        assert self.ops[0].type == 'Input'
+        self.add_input_op_shape(input_nodes, input_shapes)
+
         if self.device == 'gpu':
             self.add_input_transform(input_nodes)
 
         if self.device == 'neon':
             self.add_neon_input_transform(input_nodes)
-
-        assert self.ops[0].type == 'Input'
-        self.add_input_op_shape(input_nodes, input_shapes)
 
         for op in self.ops:
             if op.name in self.resolved_ops:
