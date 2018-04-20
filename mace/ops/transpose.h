@@ -28,16 +28,16 @@ class TransposeOp : public Operator<D, T> {
  public:
   TransposeOp(const OperatorDef &operator_def, Workspace *ws)
     : Operator<D, T>(operator_def, ws),
-      dims_(OperatorBase::GetRepeatedArgument<int>(
-        "dims")),
+      dims_(OperatorBase::GetRepeatedArgument<int>("dims")),
       functor_(dims_) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     const std::vector<index_t> &input_shape = input->shape();
-    MACE_CHECK(input_shape.size() == 4 && dims_.size() == 4,
-               "rank should be 4");
+    MACE_CHECK(input_shape.size() == 4 && dims_.size() == 4
+                 || input_shape.size() == 2 && dims_.size() == 2,
+               "rank should be 2 or 4");
     std::vector<index_t> output_shape;
     for (int i = 0; i < dims_.size(); ++i) {
       output_shape.push_back(input_shape[dims_[i]]);

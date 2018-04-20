@@ -49,6 +49,29 @@ TEST_F(TransposeOpTest, NCHW) {
   TransposeNCHWTest({1, 64, 48, 128});
 }
 
+TEST_F(TransposeOpTest, Rank2) {
+  // Construct graph
+  OpsTestNet net;
+  // Add input data
+  net.AddInputFromArray<CPU, float>("Input", {2, 3}, {1, 2, 3, 4, 5, 6});
+
+  OpDefBuilder("Transpose", "TransposeNCHWTest")
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("dims", {1, 0})
+    .Finalize(net.NewOperatorDef());
+
+  // Run on cpu
+  net.RunOp();
+
+  net.AddInputFromArray<CPU, float>("ExpectedOutput",
+                                    {3, 2},
+                                    {1, 4, 2, 5, 3, 6});
+
+  ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
+                          *net.GetOutput("Output"));
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
