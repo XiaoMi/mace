@@ -35,6 +35,7 @@ enum CWiseType {
   DIV = 5,
   NEG = 6,
   ABS = 7,
+  SQR_DIFF = 8,
 };
 
 struct CWiseFunctorBase {
@@ -92,6 +93,7 @@ struct CWiseFunctor : CWiseFunctorBase {
         }
         break;
       case DIV:
+        MACE_CHECK(fabs(coeff_) > 1e-6, "cannot divided by 0.");
 #pragma omp parallel for
         for (index_t i = 0; i < size; ++i) {
           output_ptr[i] =  input_ptr[i] / coeff_;

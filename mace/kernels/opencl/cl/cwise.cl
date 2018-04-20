@@ -31,7 +31,14 @@ __kernel void cwise(KERNEL_ERROR_PARAMS
 #elif CWISE_TYPE == 4
   out = in0 - in1;
 #elif CWISE_TYPE == 5
-  out = in0 / in1;
+  if (fabs(in1.x) > 0.000001f)
+      out.x = in0.x / in1.x;
+  if (fabs(in1.y) > 0.000001f)
+    out.y = in0.y / in1.y;
+  if (fabs(in1.z) > 0.000001f)
+    out.z = in0.z / in1.z;
+  if (fabs(in1.w) > 0.000001f)
+    out.w = in0.w / in1.w;
 #elif CWISE_TYPE == 6
   in1 = (DATA_TYPE4)(0, 0, 0, 0);
   out = in1 - in0;

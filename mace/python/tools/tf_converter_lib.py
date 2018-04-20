@@ -835,31 +835,19 @@ class TFConverter(object):
         arg.name = 'T'
         arg.i = self.dt
         op_def.name = op.name
-
-        if len(op.inputs) == 1:
-            op_def.type = "CWise"
-            op_def.input.extend([input.name for input in op.inputs])
-            x_arg = op_def.arg.add()
-            x_arg.name = 'x'
-            x_arg.f = 0
-        elif len(op.inputs) >= 2:
+        op_def.type = "Eltwise"
+        op_def.input.extend([input.name for input in op.inputs])
+        x_value = op.get_attr('x')
+        if len(op.inputs) >= 2:
             input_tensor0 = get_input_tensor(op, 0)
             input_tensor1 = get_input_tensor(op, 1)
-            if input_tensor0.shape == input_tensor1.shape:
-                op_def.type = "Eltwise"
-                op_def.input.extend([input.name for input in op.inputs])
-            else:
-                op_def.type = "CWise"
-                x_value = 0
-                if len(input_tensor1.shape) == 4:
-                    op_def.input.extend([op.inputs[1].name])
-                    x_value = get_input_tensor(op, 0).eval().astype(np.float32)
-                else:
-                    op_def.input.extend([op.inputs[0].name])
-                    x_value = get_input_tensor(op, 1).eval().astype(np.float32)
-                x_arg = op_def.arg.add()
-                x_arg.name = 'x'
-                x_arg.f = x_value
+            if len(input_tensor0) == 1:
+                x_value = input_tensor0.eval().astype(np.float32)
+            elif len(input_tensor1) == 1:
+                x_value = input_tensor1.eval().astype(np.float32)
+        x_arg = op_def.arg.add()
+        x_arg.name = 'x'
+        x_arg.f = x_value
         type_arg = op_def.arg.add()
         type_arg.name = 'type'
         type_arg.i = math_type_mode[math_type]
