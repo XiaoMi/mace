@@ -90,20 +90,21 @@ def get_hexagon_mode(configs):
 
 
 def generate_code(target_soc, target_abi, model_output_dirs, pull_or_not):
-    sh_commands.pull_binaries(
-            target_soc, target_abi, model_output_dirs, pull_or_not)
+    if pull_or_not:
+        sh_commands.pull_binaries(
+                target_soc, target_abi, model_output_dirs)
     sh_commands.gen_opencl_binary_code(
-            target_soc, target_abi, model_output_dirs, pull_or_not)
+            target_soc, target_abi, model_output_dirs)
     sh_commands.gen_tuning_param_code(
-            target_soc, target_abi, model_output_dirs, pull_or_not)
+            target_soc, target_abi, model_output_dirs)
 
 
-def ops_benchmark_stdout_processor(stdout,
-                                   target_soc,
-                                   abi,
-                                   runtime,
-                                   running_round,
-                                   tuning):
+def model_benchmark_stdout_processor(stdout,
+                                     target_soc,
+                                     abi,
+                                     runtime,
+                                     running_round,
+                                     tuning):
     metrics = {}
     for line in stdout:
         if "Aborted" in line:
@@ -145,6 +146,7 @@ def tuning_run(runtime,
                running_round,
                restart_round,
                out_of_range_check,
+               phone_data_dir,
                tuning=False,
                limit_opencl_kernel_time=0,
                option_args=""):
@@ -165,8 +167,9 @@ def tuning_run(runtime,
             limit_opencl_kernel_time,
             tuning,
             out_of_range_check,
+            phone_data_dir,
             option_args)
-    ops_benchmark_stdout_processor(stdout,
+    model_benchmark_stdout_processor(stdout,
                                    target_soc,
                                    target_abi,
                                    runtime,
@@ -178,7 +181,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
                         vlog_level, embed_model_data, model_output_dir,
                         input_nodes, output_nodes, input_shapes, output_shapes,
                         model_name, device_type, running_round, restart_round,
-                        tuning, limit_opencl_kernel_time):
+                        tuning, limit_opencl_kernel_time, phone_data_dir):
     generate_code(target_soc, target_abi, [], False)
     production_or_not = False
     mace_run_target = "//mace/tools/validation:mace_run"
@@ -194,12 +197,14 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
     tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
                model_output_dir, input_nodes, output_nodes, input_shapes,
                output_shapes, model_name, device_type, running_round=0,
-               restart_round=1, out_of_range_check=True, tuning=False)
+               restart_round=1, out_of_range_check=True,
+               phone_data_dir=phone_data_dir, tuning=False)
 
     tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
                model_output_dir, input_nodes, output_nodes, input_shapes,
                output_shapes, model_name, device_type, running_round=0,
-               restart_round=1, out_of_range_check=False, tuning=tuning,
+               restart_round=1, out_of_range_check=False,
+               phone_data_dir=phone_data_dir, tuning=tuning,
                limit_opencl_kernel_time=limit_opencl_kernel_time)
 
     generate_code(target_soc, target_abi, [model_output_dir], True)
@@ -307,7 +312,7 @@ def parse_args():
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_soc, target_abi, option_args):
+                   target_soc, target_abi, phone_data_dir, option_args):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
     for model_name in configs["models"]:
@@ -334,7 +339,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             if os.path.exists(model_output_dir):
                 sh.rm("-rf", model_output_dir)
             os.makedirs(model_output_dir)
-            sh_commands.clear_mace_run_data(target_abi, target_soc)
+            sh_commands.clear_mace_run_data(
+                    target_abi, target_soc, phone_data_dir)
 
         model_file_path, weight_file_path = download_model_files(
                 model_config["model_file_path"],
@@ -382,8 +388,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 FLAGS.round,
                                 FLAGS.restart_round,
                                 FLAGS.tuning,
-                                model_config[
-                                    "limit_opencl_kernel_time"])
+                                model_config["limit_opencl_kernel_time"],
+                                phone_data_dir)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
                 FLAGS.mode == "all":
@@ -401,7 +407,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        device_type,
                        FLAGS.round,
                        FLAGS.restart_round,
-                       FLAGS.out_of_range_check)
+                       FLAGS.out_of_range_check,
+                       phone_data_dir)
 
         if FLAGS.mode == "benchmark":
             sh_commands.benchmark_model(target_soc,
@@ -416,6 +423,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         model_name,
                                         device_type,
                                         hexagon_mode,
+                                        phone_data_dir,
                                         option_args)
 
         if FLAGS.mode == "validate" or FLAGS.mode == "all":
@@ -429,7 +437,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                        model_config["output_nodes"],
                                        model_config["input_shapes"],
                                        model_config["output_shapes"],
-                                       model_output_dir)
+                                       model_output_dir,
+                                       phone_data_dir)
 
     if FLAGS.mode == "build" or FLAGS.mode == "merge" or \
             FLAGS.mode == "all":
@@ -476,7 +485,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                               model_config["output_shapes"],
                                               model_tag_dict.get("cpu", ""),
                                               model_tag_dict.get("gpu", ""),
-                                              model_tag_dict.get("dsp", ""))
+                                              model_tag_dict.get("dsp", ""),
+                                              phone_data_dir)
 
 
 def main(unused_args):
@@ -506,6 +516,7 @@ def main(unused_args):
 
     embed_model_data = configs.get("embed_model_data", 1)
     vlog_level = configs.get("vlog_level", 0)
+    phone_data_dir = "/data/local/tmp/mace_run/"
     for target_soc in target_socs:
         for target_abi in configs["target_abis"]:
             serialno = sh_commands.adb_devices([target_soc]).pop()
@@ -519,7 +530,8 @@ def main(unused_args):
                       serialno, props["ro.board.platform"],
                       props["ro.product.model"]))
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_soc, target_abi, option_args)
+                               vlog_level, target_soc, target_abi,
+                               phone_data_dir, option_args)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         sh_commands.packaging_lib(FLAGS.output_dir, project_name)

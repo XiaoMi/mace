@@ -63,14 +63,14 @@ def formatted_file_name(input_name, input_file_name):
 ################################
 def clear_mace_run_data(abi,
                         target_soc,
-                        model_codegen_dir="mace/codegen/models",
-                        mace_run_phone_data_dir="/data/local/tmp/mace_run"):
+                        phone_data_dir,
+                        model_codegen_dir="mace/codegen/models"):
     if abi != "host":
         serialno = adb_devices([target_soc]).pop()
         sh.adb("-s",
                serialno,
                "shell",
-               "rm -rf %s" % mace_run_phone_data_dir)
+               "rm -rf %s" % phone_data_dir)
     if os.path.exists(model_codegen_dir):
         sh.rm("-rf", model_codegen_dir)
 
@@ -292,7 +292,7 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
         "--output_path=%s/opencl/opencl_encrypt_program.cc" % codegen_path)
 
 
-def pull_binaries(target_soc, abi, model_output_dirs, pull_or_not):
+def pull_binaries(target_soc, abi, model_output_dirs):
     serialno = adb_devices([target_soc]).pop()
     compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
     mace_run_config_file = "mace_run.config"
@@ -301,7 +301,7 @@ def pull_binaries(target_soc, abi, model_output_dirs, pull_or_not):
     for d in model_output_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
     cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    if cl_bin_dirs and pull_or_not:
+    if cl_bin_dirs:
         cl_bin_dir = cl_bin_dirs_str
         if os.path.exists(cl_bin_dir):
             sh.rm("-rf", cl_bin_dir)
@@ -315,7 +315,6 @@ def pull_binaries(target_soc, abi, model_output_dirs, pull_or_not):
 def gen_opencl_binary_code(target_soc,
                            abi,
                            model_output_dirs,
-                           pull_or_not,
                            codegen_path="mace/codegen"):
     cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
     cl_platform_info_file_name = "mace_cl_platform_info.txt"
@@ -347,30 +346,22 @@ def gen_opencl_binary_code(target_soc,
 def gen_tuning_param_code(target_soc,
                           abi,
                           model_output_dirs,
-                          pull_or_not,
                           codegen_path="mace/codegen"):
     mace_run_config_file = "mace_run.config"
     cl_bin_dirs = []
     for d in model_output_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
     cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    if not cl_bin_dirs:
-        opencl_codegen_dir = "%s/opencl/" % codegen_path
-        if not os.path.exists(opencl_codegen_dir):
-            sh.mkdir("-p", opencl_codegen_dir)
-        sh.python(
-                "mace/python/tools/binary_codegen.py",
-                "--binary_file_name=%s" % mace_run_config_file,
-                "--output_path=%s/opencl/tuning_params.cc" % codegen_path)
-    else:
-        tuning_codegen_dir = "%s/tuning/" % codegen_path
-        if not os.path.exists(tuning_codegen_dir):
-            sh.mkdir("-p", tuning_codegen_dir)
-        sh.python(
-                "mace/python/tools/binary_codegen.py",
-                "--binary_dirs=%s" % cl_bin_dirs_str,
-                "--binary_file_name=%s" % mace_run_config_file,
-                "--output_path=%s/tuning_params.cc" % tuning_codegen_dir)
+
+    tuning_codegen_dir = "%s/tuning/" % codegen_path
+    if not os.path.exists(tuning_codegen_dir):
+        sh.mkdir("-p", tuning_codegen_dir)
+
+    sh.python(
+            "mace/python/tools/binary_codegen.py",
+            "--binary_dirs=%s" % cl_bin_dirs_str,
+            "--binary_file_name=%s" % mace_run_config_file,
+            "--output_path=%s/tuning_params.cc" % tuning_codegen_dir)
 
 
 def gen_mace_version(codegen_path="mace/codegen"):
@@ -468,7 +459,7 @@ def gen_random_input(model_output_dir,
                         input_file_list[i].startswith("https://"):
                     urllib.urlretrieve(input_file_list[i], dst_input_file)
                 else:
-                    sh.cp(input_file_list[i], dst_input_file)
+                    sh.cp("-f", input_file_list[i], dst_input_file)
 
 
 def update_mace_run_lib(model_output_dir,
@@ -488,19 +479,19 @@ def update_mace_run_lib(model_output_dir,
 
     if os.path.exists(model_lib_path):
         sh.rm("-rf", model_lib_path)
-    sh.cp(generated_model_lib_dir + "/" + generated_model_lib_name,
+    sh.cp("-f", generated_model_lib_dir + "/" + generated_model_lib_name,
           model_lib_path)
 
     mace_run_filepath = model_output_dir + "/mace_run"
     if os.path.exists(mace_run_filepath):
         sh.rm("-rf", mace_run_filepath)
-    sh.cp("bazel-bin/mace/tools/validation/mace_run", model_output_dir)
+    sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run", model_output_dir)
 
     if embed_model_data == 0:
-        sh.cp("mace/codegen/models/%s/%s.data" % (model_tag, model_tag),
+        sh.cp("-f", "mace/codegen/models/%s/%s.data" % (model_tag, model_tag),
               model_output_dir)
 
-    sh.cp("mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
+    sh.cp("-f", "mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
           model_output_dir)
 
 
@@ -520,6 +511,7 @@ def tuning_run(target_soc,
                limit_opencl_kernel_time,
                tuning,
                out_of_range_check,
+               phone_data_dir,
                option_args="",
                input_file_name="model_input",
                output_file_name="model_out"):
@@ -546,7 +538,6 @@ def tuning_run(target_soc,
         p.wait()
     else:
         serialno = adb_devices([target_soc]).pop()
-        phone_data_dir = "/data/local/tmp/mace_run/"
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
         compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
         sh.adb("-s", serialno, "shell", "mkdir", "-p", compiled_opencl_dir)
@@ -609,11 +600,11 @@ def validate_model(target_soc,
                    input_shapes,
                    output_shapes,
                    model_output_dir,
+                   phone_data_dir,
                    input_file_name="model_input",
                    output_file_name="model_out"):
     print("* Validate with %s" % platform)
     serialno = adb_devices([target_soc]).pop()
-    phone_data_dir = "/data/local/tmp/mace_run"
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
 
@@ -750,10 +741,11 @@ def merge_libs(target_soc,
         sh.mkdir("-p", model_bin_dir)
     if not os.path.exists(model_header_dir):
         sh.mkdir("-p", model_header_dir)
+    sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
     if not os.path.exists(model_data_dir):
         sh.mkdir("-p", model_data_dir)
     if hexagon_mode:
-        sh.cp(hexagon_lib_file, model_bin_dir)
+        sh.cp("-f", hexagon_lib_file, model_bin_dir)
 
     mri_stream = ""
     mri_stream += "create %s/libmace_%s.%s.a\n" % \
@@ -796,12 +788,9 @@ def merge_libs(target_soc,
         for lib in sh.ls(glob.glob("%s/*.a" % model_output_dir), "-1"):
             mri_stream += "addlib %s\n" % lib
         if not embed_model_data:
-            for data_file in sh.ls(glob.glob("%s/*.data" %
-                                             model_output_dir), "-1"):
-                sh.cp(data_file.strip("\n"), model_data_dir)
-        for header_file in sh.ls(glob.glob("%s/*.h" % model_output_dir),
-                                 "-1"):
-            sh.cp(header_file.strip("\n"), model_header_dir)
+            sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
+                  model_data_dir)
+        sh.cp("-f", glob.glob("%s/*.h" % model_output_dir), model_header_dir)
 
     mri_stream += "save\n"
     mri_stream += "end\n"
@@ -854,6 +843,7 @@ def benchmark_model(target_soc,
                     model_tag,
                     device_type,
                     hexagon_mode,
+                    phone_data_dir,
                     option_args="",
                     input_file_name="model_input",
                     output_file_name="model_out"):
@@ -862,7 +852,7 @@ def benchmark_model(target_soc,
     if os.path.exists(benchmark_binary_file):
         sh.rm("-rf", benchmark_binary_file)
     if not embed_model_data:
-        sh.cp("codegen/models/%s/%s.data" % (model_tag, model_tag),
+        sh.cp("-f", "codegen/models/%s/%s.data" % (model_tag, model_tag),
               model_output_dir)
 
     benchmark_target = "//mace/benchmark:benchmark_model"
@@ -872,7 +862,7 @@ def benchmark_model(target_soc,
                 hexagon_mode=hexagon_mode)
 
     target_bin = "/".join(bazel_target_to_bin(benchmark_target))
-    sh.cp(target_bin, model_output_dir)
+    sh.cp("-f", target_bin, model_output_dir)
 
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
@@ -892,7 +882,6 @@ def benchmark_model(target_soc,
         p.wait()
     else:
         serialno = adb_devices([target_soc]).pop()
-        phone_data_dir = "/data/local/tmp/mace_run/"
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
 
         for input_name in input_nodes:
@@ -946,10 +935,10 @@ def build_run_throughput_test(target_soc,
                               cpu_model_tag,
                               gpu_model_tag,
                               dsp_model_tag,
+                              phone_data_dir,
                               strip="always",
                               input_file_name="model_input"):
     print("* Build and run throughput_test")
-    phone_data_dir = "/data/local/tmp/mace_run/"
     serialno = adb_devices([target_soc]).pop()
 
     model_tag_build_flag = ""
@@ -963,7 +952,7 @@ def build_run_throughput_test(target_soc,
         model_tag_build_flag += "--copt=-DMACE_DSP_MODEL_TAG=%s " % \
                                 dsp_model_tag
 
-    sh.cp(merged_lib_file, "mace/benchmark/libmace_merged.a")
+    sh.cp("-f", merged_lib_file, "mace/benchmark/libmace_merged.a")
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
     p = sh.bazel(
