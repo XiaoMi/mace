@@ -826,7 +826,7 @@ static void TestNeonArbitraryPadConvNxN(const std::vector<index_t> &shape,
 
   for (int kernel_size : {1, 3, 5}) {
     for (int stride : {1, 2}) {
-      if (stride < kernel_size) {
+      if (stride <= kernel_size) {
         func(kernel_size, kernel_size, stride, stride);
       }
     }
