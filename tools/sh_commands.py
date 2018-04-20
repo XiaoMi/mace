@@ -674,6 +674,9 @@ def validate_model(target_soc,
         sh.docker("cp", "tools/validate.py", "%s:/mace" % container_name)
         sh.docker("cp", model_file_path, "%s:/mace" % container_name)
         sh.docker("cp", weight_file_path, "%s:/mace" % container_name)
+
+        stdout_buff = []
+        process_output = make_output_processor(stdout_buff)
         p = sh.docker(
                 "exec",
                 container_name,
