@@ -27,12 +27,14 @@ import jinja2
 FLAGS = None
 
 
-def generate_cpp_source():
+def generate_cpp_source(cl_binary_dirs,
+                        built_kernel_file_name,
+                        platform_info_file_name):
     maps = {}
     platform_info = ''
-    binary_dirs = FLAGS.cl_binary_dirs.strip().split(",")
+    binary_dirs = cl_binary_dirs.strip().split(",")
     for binary_dir in binary_dirs:
-        binary_path = os.path.join(binary_dir, FLAGS.built_kernel_file_name)
+        binary_path = os.path.join(binary_dir, built_kernel_file_name)
         if not os.path.exists(binary_path):
             continue
 
@@ -59,7 +61,7 @@ def generate_cpp_source():
                 maps[key].append(hex(ele))
 
         cl_platform_info_path = os.path.join(binary_dir,
-                                             FLAGS.platform_info_file_name)
+                                             platform_info_file_name)
         with open(cl_platform_info_path, 'r') as f:
             curr_platform_info = f.read()
         if platform_info != "":
@@ -75,12 +77,16 @@ def generate_cpp_source():
     )
 
 
-def main(unused_args):
-
-    cpp_cl_binary_source = generate_cpp_source()
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
+def opencl_codegen(output_path,
+                   cl_binary_dirs="",
+                   built_kernel_file_name="",
+                   platform_info_file_name=""):
+    cpp_cl_binary_source = generate_cpp_source(cl_binary_dirs,
+                                               built_kernel_file_name,
+                                               platform_info_file_name)
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    w_file = open(output_path, "w")
     w_file.write(cpp_cl_binary_source)
     w_file.close()
 
@@ -113,4 +119,7 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    opencl_codegen(FLAGS.output_path,
+                   FLAGS.cl_binary_dirs,
+                   FLAGS.built_kernel_file_name,
+                   FLAGS.platform_info_file_name)

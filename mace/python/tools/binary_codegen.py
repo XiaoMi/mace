@@ -29,10 +29,10 @@ import numpy as np
 FLAGS = None
 
 
-def generate_cpp_source():
+def generate_cpp_source(binary_dirs, binary_file_name, variable_name):
     data_map = {}
-    for binary_dir in FLAGS.binary_dirs.split(","):
-        binary_path = os.path.join(binary_dir, FLAGS.binary_file_name)
+    for binary_dir in binary_dirs.split(","):
+        binary_path = os.path.join(binary_dir, binary_file_name)
         if not os.path.exists(binary_path):
             continue
 
@@ -63,14 +63,18 @@ def generate_cpp_source():
     return env.get_template('str2vec_maps.cc.jinja2').render(
         maps=data_map,
         data_type='unsigned int',
-        variable_name=FLAGS.variable_name)
+        variable_name=variable_name)
 
 
-def main(unused_args):
-    cpp_binary_source = generate_cpp_source()
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
+def tuning_param_codegen(binary_dirs,
+                         binary_file_name,
+                         output_path,
+                         variable_name):
+    cpp_binary_source = generate_cpp_source(
+            binary_dirs, binary_file_name, variable_name)
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    w_file = open(output_path, "w")
     w_file.write(cpp_binary_source)
     w_file.close()
 
@@ -101,4 +105,7 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    tuning_param_codegen(FLAGS.binary_dirs,
+                         FLAGS.binary_file_name,
+                         FLAGS.output_path,
+                         FLAGS.variable_name)

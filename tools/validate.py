@@ -46,18 +46,19 @@ def format_output_name(name):
     return re.sub('[^0-9a-zA-Z]+', '_', name)
 
 
-def compare_output(output_name, mace_out_value, out_value):
+def compare_output(platform, mace_runtime, output_name, mace_out_value,
+                   out_value):
     if mace_out_value.size != 0:
         out_value = out_value.reshape(-1)
         mace_out_value = mace_out_value.reshape(-1)
         assert len(out_value) == len(mace_out_value)
         similarity = (1 - spatial.distance.cosine(out_value, mace_out_value))
-        print output_name, 'MACE VS', FLAGS.platform.upper(
+        print output_name, 'MACE VS', platform.upper(
         ), 'similarity: ', similarity
-        if (FLAGS.mace_runtime == "cpu" and similarity > 0.999) or \
-            (FLAGS.mace_runtime == "neon" and similarity > 0.999) or \
-            (FLAGS.mace_runtime == "gpu" and similarity > 0.995) or \
-                (FLAGS.mace_runtime == "dsp" and similarity > 0.930):
+        if (mace_runtime == "cpu" and similarity > 0.999) or \
+            (mace_runtime == "neon" and similarity > 0.999) or \
+            (mace_runtime == "gpu" and similarity > 0.995) or \
+                (mace_runtime == "dsp" and similarity > 0.930):
             print '===================Similarity Test Passed=================='
         else:
             print '===================Similarity Test Failed=================='
@@ -67,14 +68,15 @@ def compare_output(output_name, mace_out_value, out_value):
         sys.exit(-1)
 
 
-def validate_tf_model(input_names, input_shapes, output_names):
+def validate_tf_model(platform, mace_runtime, model_file, input_file,
+                      mace_out_file, input_names, input_shapes, output_names):
     import tensorflow as tf
-    if not os.path.isfile(FLAGS.model_file):
-        print("Input graph file '" + FLAGS.model_file + "' does not exist!")
+    if not os.path.isfile(model_file):
+        print("Input graph file '" + model_file + "' does not exist!")
         sys.exit(-1)
 
     input_graph_def = tf.GraphDef()
-    with open(FLAGS.model_file, "rb") as f:
+    with open(model_file, "rb") as f:
         data = f.read()
         input_graph_def.ParseFromString(data)
         tf.import_graph_def(input_graph_def, name="")
@@ -85,7 +87,7 @@ def validate_tf_model(input_names, input_shapes, output_names):
                 input_dict = {}
                 for i in range(len(input_names)):
                     input_value = load_data(
-                        FLAGS.input_file + "_" + input_names[i])
+                        input_file + "_" + input_names[i])
                     input_value = input_value.reshape(input_shapes[i])
                     input_node = graph.get_tensor_by_name(
                         input_names[i] + ':0')
@@ -97,30 +99,31 @@ def validate_tf_model(input_names, input_shapes, output_names):
                         [graph.get_tensor_by_name(name + ':0')])
                 output_values = session.run(output_nodes, feed_dict=input_dict)
                 for i in range(len(output_names)):
-                    output_file_name = FLAGS.mace_out_file + "_" + \
+                    output_file_name = mace_out_file + "_" + \
                             format_output_name(output_names[i])
                     mace_out_value = load_data(output_file_name)
-                    compare_output(output_names[i], mace_out_value,
-                                   output_values[i])
+                    compare_output(platform, mace_runtime, output_names[i],
+                                   mace_out_value, output_values[i])
 
 
-def validate_caffe_model(input_names, input_shapes, output_names,
-                         output_shapes):
+def validate_caffe_model(platform, mace_runtime, model_file, input_file,
+                         mace_out_file, weight_file, input_names, input_shapes,
+                         output_names, output_shapes):
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
     import caffe
-    if not os.path.isfile(FLAGS.model_file):
-        print("Input graph file '" + FLAGS.model_file + "' does not exist!")
+    if not os.path.isfile(model_file):
+        print("Input graph file '" + model_file + "' does not exist!")
         sys.exit(-1)
-    if not os.path.isfile(FLAGS.weight_file):
-        print("Input weight file '" + FLAGS.weight_file + "' does not exist!")
+    if not os.path.isfile(weight_file):
+        print("Input weight file '" + weight_file + "' does not exist!")
         sys.exit(-1)
 
     caffe.set_mode_cpu()
 
-    net = caffe.Net(FLAGS.model_file, caffe.TEST, weights=FLAGS.weight_file)
+    net = caffe.Net(model_file, caffe.TEST, weights=weight_file)
 
     for i in range(len(input_names)):
-        input_value = load_data(FLAGS.input_file + "_" + input_names[i])
+        input_value = load_data(input_file + "_" + input_names[i])
         input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
                                                                       2))
         input_blob_name = input_names[i]
@@ -139,28 +142,33 @@ def validate_caffe_model(input_names, input_shapes, output_names,
         out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[
             1], out_shape[2]
         value = value.reshape(out_shape).transpose((0, 2, 3, 1))
-        output_file_name = FLAGS.mace_out_file + "_" + format_output_name(
+        output_file_name = mace_out_file + "_" + format_output_name(
             output_names[i])
         mace_out_value = load_data(output_file_name)
-        compare_output(output_names[i], mace_out_value, value)
+        compare_output(platform, mace_runtime, output_names[i], mace_out_value,
+                       value)
 
 
-def main(unused_args):
-    input_names = [name for name in FLAGS.input_node.split(',')]
-    input_shape_strs = [shape for shape in FLAGS.input_shape.split(':')]
+def validate(platform, model_file, weight_file, input_file, mace_out_file,
+             mace_runtime, input_shape, output_shape, input_node, output_node):
+    input_names = [name for name in input_node.split(',')]
+    input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
                     for shape in input_shape_strs]
-    output_names = [name for name in FLAGS.output_node.split(',')]
+    output_names = [name for name in output_node.split(',')]
     assert len(input_names) == len(input_shapes)
 
-    if FLAGS.platform == 'tensorflow':
-        validate_tf_model(input_names, input_shapes, output_names)
-    elif FLAGS.platform == 'caffe':
-        output_shape_strs = [shape for shape in FLAGS.output_shape.split(':')]
+    if platform == 'tensorflow':
+        validate_tf_model(platform, mace_runtime, model_file, input_file,
+                          mace_out_file, input_names, input_shapes,
+                          output_names)
+    elif platform == 'caffe':
+        output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
                          for shape in output_shape_strs]
-        validate_caffe_model(input_names, input_shapes, output_names,
-                             output_shapes)
+        validate_caffe_model(platform, mace_runtime, model_file, input_file,
+                             mace_out_file, weight_file, input_names,
+                             input_shapes, output_names, output_shapes)
 
 
 def parse_args():
@@ -202,4 +210,13 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    validate(FLAGS.platform,
+             FLAGS.model_file,
+             FLAGS.weight_file,
+             FLAGS.input_file,
+             FLAGS.mace_out_file,
+             FLAGS.mace_runtime,
+             FLAGS.input_shape,
+             FLAGS.output_shape,
+             FLAGS.input_node,
+             FLAGS.output_node)

@@ -19,7 +19,21 @@ import os
 import re
 import sh
 import subprocess
+import sys
 import time
+
+
+sys.path.insert(0, "mace/python/tools")
+try:
+    from encrypt_opencl_codegen import encrypt_opencl_codegen
+    from opencl_codegen import opencl_codegen
+    from binary_codegen import tuning_param_codegen
+    from generate_data import generate_input_data
+    from validate import validate
+except Exception:
+    print("Error: import error.")
+    print("Does the script run at the root dir of mace project?")
+    exit(1)
 
 
 ################################
@@ -283,19 +297,16 @@ def bazel_target_to_bin(target):
 ################################
 # mace commands
 ################################
-# TODO this should be refactored
 def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
     sh.mkdir("-p", "%s/opencl" % codegen_path)
-    sh.python(
-        "mace/python/tools/encrypt_opencl_codegen.py",
-        "--cl_kernel_dir=./mace/kernels/opencl/cl/",
-        "--output_path=%s/opencl/opencl_encrypt_program.cc" % codegen_path)
+    encrypt_opencl_codegen("./mace/kernels/opencl/cl/",
+                           "mace/codegen/opencl/opencl_encrypt_program.cc")
 
 
 def pull_binaries(target_soc, abi, model_output_dirs):
     serialno = adb_devices([target_soc]).pop()
     compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
-    mace_run_config_file = "mace_run.config"
+    mace_run_param_file = "mace_run.config"
 
     cl_bin_dirs = []
     for d in model_output_dirs:
@@ -308,46 +319,33 @@ def pull_binaries(target_soc, abi, model_output_dirs):
         sh.mkdir("-p", cl_bin_dir)
         if abi != "host":
             adb_pull(compiled_opencl_dir, cl_bin_dir, serialno)
-            adb_pull("/data/local/tmp/mace_run/%s" % mace_run_config_file,
+            adb_pull("/data/local/tmp/mace_run/%s" % mace_run_param_file,
                      cl_bin_dir, serialno)
 
 
 def gen_opencl_binary_code(target_soc,
-                           abi,
                            model_output_dirs,
                            codegen_path="mace/codegen"):
     cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
     cl_platform_info_file_name = "mace_cl_platform_info.txt"
+    opencl_codegen_file = "%s/opencl/opencl_compiled_program.cc" % codegen_path
 
     serialno = adb_devices([target_soc]).pop()
-    compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
 
     cl_bin_dirs = []
     for d in model_output_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
     cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    if not cl_bin_dirs:
-        sh.python(
-                "mace/python/tools/opencl_codegen.py",
-                "--built_kernel_file_name=%s" % cl_built_kernel_file_name,
-                "--platform_info_file_name=%s" % cl_platform_info_file_name,
-                "--output_path=%s/opencl/opencl_compiled_program.cc" %
-                codegen_path)
-    else:
-        sh.python(
-                "mace/python/tools/opencl_codegen.py",
-                "--built_kernel_file_name=%s" % cl_built_kernel_file_name,
-                "--platform_info_file_name=%s" % cl_platform_info_file_name,
-                "--cl_binary_dirs=%s" % cl_bin_dirs_str,
-                "--output_path=%s/opencl/opencl_compiled_program.cc" %
-                codegen_path)
+    opencl_codegen(opencl_codegen_file,
+                   cl_bin_dirs_str,
+                   cl_built_kernel_file_name,
+                   cl_platform_info_file_name)
 
 
 def gen_tuning_param_code(target_soc,
-                          abi,
                           model_output_dirs,
                           codegen_path="mace/codegen"):
-    mace_run_config_file = "mace_run.config"
+    mace_run_param_file = "mace_run.config"
     cl_bin_dirs = []
     for d in model_output_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
@@ -357,11 +355,11 @@ def gen_tuning_param_code(target_soc,
     if not os.path.exists(tuning_codegen_dir):
         sh.mkdir("-p", tuning_codegen_dir)
 
-    sh.python(
-            "mace/python/tools/binary_codegen.py",
-            "--binary_dirs=%s" % cl_bin_dirs_str,
-            "--binary_file_name=%s" % mace_run_config_file,
-            "--output_path=%s/tuning_params.cc" % tuning_codegen_dir)
+    tuning_param_variable_name = "kTuningParamsData"
+    tuning_param_codegen(cl_bin_dirs_str,
+                         mace_run_param_file,
+                         "%s/tuning_params.cc" % tuning_codegen_dir,
+                         tuning_param_variable_name)
 
 
 def gen_mace_version(codegen_path="mace/codegen"):
@@ -371,10 +369,9 @@ def gen_mace_version(codegen_path="mace/codegen"):
 
 
 def gen_compiled_opencl_source(codegen_path="mace/codegen"):
+    opencl_codegen_file = "%s/opencl/opencl_compiled_program.cc" % codegen_path
     sh.mkdir("-p", "%s/opencl" % codegen_path)
-    sh.python(
-        "mace/python/tools/opencl_codegen.py",
-        "--output_path=%s/opencl/opencl_compiled_program.cc" % codegen_path)
+    opencl_codegen(opencl_codegen_file)
 
 
 def gen_model_code(model_codegen_dir,
@@ -430,11 +427,9 @@ def gen_random_input(model_output_dir,
             sh.rm(formatted_name)
     input_nodes_str = ",".join(input_nodes)
     input_shapes_str = ":".join(input_shapes)
-    sh.python("-u",
-              "tools/generate_data.py",
-              "--input_node=%s" % input_nodes_str,
-              "--input_file=%s" % model_output_dir + "/" + input_file_name,
-              "--input_shape=%s" % input_shapes_str)
+    generate_input_data("%s/%s" % (model_output_dir, input_file_name),
+                        input_nodes_str,
+                        input_shapes_str)
 
     input_file_list = []
     if isinstance(input_files, list):
@@ -605,8 +600,6 @@ def validate_model(target_soc,
                    output_file_name="model_out"):
     print("* Validate with %s" % platform)
     serialno = adb_devices([target_soc]).pop()
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
 
     if platform == "tensorflow":
         if abi != "host":
@@ -617,23 +610,11 @@ def validate_model(target_soc,
                     sh.rm(formatted_name)
                 adb_pull("%s/%s" % (phone_data_dir, formatted_name),
                          model_output_dir, serialno)
-        p = sh.python(
-                "-u",
-                "tools/validate.py",
-                "--platform=%s" % platform,
-                "--model_file=%s" % model_file_path,
-                "--input_file=%s" % model_output_dir + "/" + input_file_name,
-                "--mace_out_file=%s" % model_output_dir + "/" +
-                output_file_name,
-                "--mace_runtime=%s" % runtime,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                _out=process_output,
-                _bg=True,
-                _err_to_out=True)
-        p.wait()
+        validate(platform, model_file_path, "",
+                 "%s/%s" % (model_output_dir, input_file_name),
+                 "%s/%s" % (model_output_dir, output_file_name), runtime,
+                 ":".join(input_shapes), ":".join(output_shapes),
+                 ",".join(input_nodes), ",".join(output_nodes))
     elif platform == "caffe":
         image_name = "mace-caffe:latest"
         container_name = "mace_caffe_validator"
@@ -715,7 +696,6 @@ def validate_model(target_soc,
         p.wait()
 
     print("Validation done!\n")
-    return "".join(stdout_buff)
 
 
 def build_production_code(abi):

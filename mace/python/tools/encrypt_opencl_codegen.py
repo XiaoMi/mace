@@ -36,20 +36,20 @@ def encrypt_code(code_str):
     return encrypted_arr
 
 
-def main(unused_args):
-    if not os.path.exists(FLAGS.cl_kernel_dir):
-        print("Input cl_kernel_dir " + FLAGS.cl_kernel_dir + " doesn't exist!")
+def encrypt_opencl_codegen(cl_kernel_dir, output_path):
+    if not os.path.exists(cl_kernel_dir):
+        print("Input cl_kernel_dir " + cl_kernel_dir + " doesn't exist!")
 
     header_code = ""
-    for file_name in os.listdir(FLAGS.cl_kernel_dir):
-        file_path = os.path.join(FLAGS.cl_kernel_dir, file_name)
+    for file_name in os.listdir(cl_kernel_dir):
+        file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-2:] == ".h":
             f = open(file_path, "r")
             header_code += f.read()
 
     encrypted_code_maps = {}
-    for file_name in os.listdir(FLAGS.cl_kernel_dir):
-        file_path = os.path.join(FLAGS.cl_kernel_dir, file_name)
+    for file_name in os.listdir(cl_kernel_dir):
+        file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-3:] == ".cl":
             f = open(file_path, "r")
             code_str = ""
@@ -68,9 +68,9 @@ def main(unused_args):
             data_type='unsigned char',
             variable_name='kEncryptedProgramMap')
 
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    w_file = open(output_path, "w")
     w_file.write(cpp_cl_encrypted_kernel)
     w_file.close()
 
@@ -95,4 +95,4 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    encrypt_opencl_codegen(FLAGS.cl_kernel_dir, FLAGS.output_path)

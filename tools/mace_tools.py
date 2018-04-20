@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Must run at root dir of libmace project.
 # python tools/mace_tools.py \
 #     --config=tools/example.yaml \
 #     --round=100 \
@@ -89,14 +88,21 @@ def get_hexagon_mode(configs):
     return False
 
 
-def generate_code(target_soc, target_abi, model_output_dirs, pull_or_not):
+def gen_opencl_and_tuning_code(target_soc,
+                               target_abi,
+                               model_output_dirs,
+                               pull_or_not):
     if pull_or_not:
         sh_commands.pull_binaries(
                 target_soc, target_abi, model_output_dirs)
-    sh_commands.gen_opencl_binary_code(
-            target_soc, target_abi, model_output_dirs)
+
+    codegen_path = "mace/codegen"
+
+    # generate opencl binary code
+    sh_commands.gen_opencl_binary_code(target_soc, model_output_dirs)
+
     sh_commands.gen_tuning_param_code(
-            target_soc, target_abi, model_output_dirs)
+            target_soc, model_output_dirs)
 
 
 def model_benchmark_stdout_processor(stdout,
@@ -170,11 +176,11 @@ def tuning_run(runtime,
             phone_data_dir,
             option_args)
     model_benchmark_stdout_processor(stdout,
-                                   target_soc,
-                                   target_abi,
-                                   runtime,
-                                   running_round,
-                                   tuning)
+                                     target_soc,
+                                     target_abi,
+                                     runtime,
+                                     running_round,
+                                     tuning)
 
 
 def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
@@ -182,7 +188,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
                         input_nodes, output_nodes, input_shapes, output_shapes,
                         model_name, device_type, running_round, restart_round,
                         tuning, limit_opencl_kernel_time, phone_data_dir):
-    generate_code(target_soc, target_abi, [], False)
+    gen_opencl_and_tuning_code(target_soc, target_abi, [], False)
     production_or_not = False
     mace_run_target = "//mace/tools/validation:mace_run"
     sh_commands.bazel_build(
@@ -207,7 +213,8 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
                phone_data_dir=phone_data_dir, tuning=tuning,
                limit_opencl_kernel_time=limit_opencl_kernel_time)
 
-    generate_code(target_soc, target_abi, [model_output_dir], True)
+    gen_opencl_and_tuning_code(
+            target_soc, target_abi, [model_output_dir], True)
     production_or_not = True
     sh_commands.bazel_build(
             mace_run_target,
@@ -226,7 +233,8 @@ def merge_libs_and_tuning_results(target_soc,
                                   model_output_dirs,
                                   hexagon_mode,
                                   embed_model_data):
-    generate_code(target_soc, target_abi, model_output_dirs, False)
+    gen_opencl_and_tuning_code(
+            target_soc, target_abi, model_output_dirs, False)
     sh_commands.build_production_code(target_abi)
 
     sh_commands.merge_libs(target_soc,
