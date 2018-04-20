@@ -193,9 +193,11 @@ MaceStatus MaceEngine::Impl::Run(
     input_tensors.push_back(input_tensor);
   }
   for (auto &output : *outputs) {
-    MACE_CHECK(output.second.shape().size() == 4,
-               "The outputs' shape must be 4-dimension with NHWC format,"
-                   " please use 1 to fill missing dimensions");
+    if (device_type_ == DeviceType::OPENCL) {
+      MACE_CHECK(output.second.shape().size() == 4,
+                 "The outputs' shape must be 4-dimension with NHWC format,"
+                     " please use 1 to fill missing dimensions");
+    }
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
     output_tensors.push_back(output_tensor);

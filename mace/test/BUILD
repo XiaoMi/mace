@@ -15,8 +15,9 @@ cc_test(
     srcs = ["mace_api_test.cc"],
     copts = if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
-      if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) +
-      if_android(["-DMACE_ENABLE_OPENCL",]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
       if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
