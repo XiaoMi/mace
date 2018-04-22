@@ -155,6 +155,8 @@ class TFConverter(object):
             arg.name = 'T'
             arg.i = self.dt
 
+            self.add_output_shape(self.ops[name].outputs, op_def)
+
     def add_neon_input_transform(self, names):
         for name in names:
             new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"

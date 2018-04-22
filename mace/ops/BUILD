@@ -34,9 +34,12 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     deps = [
         "//mace/kernels",
     ],
@@ -49,9 +52,12 @@ cc_test(
     srcs = glob(
         ["*_test.cc"],
     ),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
@@ -65,9 +71,12 @@ cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_neon_enabled(["-DMACE_ENABLE_NEON"]) + if_android_armv7(["-mfpu=neon -mfloat-abi=softfp"]) + if_android([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [

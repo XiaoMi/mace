@@ -42,7 +42,7 @@ def load_data(file):
         return np.empty([0])
 
 
-def format_output_name(name):
+def format_name(name):
     return re.sub('[^0-9a-zA-Z]+', '_', name)
 
 
@@ -87,7 +87,7 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
                 input_dict = {}
                 for i in range(len(input_names)):
                     input_value = load_data(
-                        input_file + "_" + input_names[i])
+                        input_file + "_" + format_name(input_names[i]))
                     input_value = input_value.reshape(input_shapes[i])
                     input_node = graph.get_tensor_by_name(
                         input_names[i] + ':0')
@@ -100,7 +100,7 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
                 output_values = session.run(output_nodes, feed_dict=input_dict)
                 for i in range(len(output_names)):
                     output_file_name = mace_out_file + "_" + \
-                            format_output_name(output_names[i])
+                            format_name(output_names[i])
                     mace_out_value = load_data(output_file_name)
                     compare_output(platform, mace_runtime, output_names[i],
                                    mace_out_value, output_values[i])
@@ -123,7 +123,7 @@ def validate_caffe_model(platform, mace_runtime, model_file, input_file,
     net = caffe.Net(model_file, caffe.TEST, weights=weight_file)
 
     for i in range(len(input_names)):
-        input_value = load_data(input_file + "_" + input_names[i])
+        input_value = load_data(input_file + "_" + format_name(input_names[i]))
         input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
                                                                       2))
         input_blob_name = input_names[i]
@@ -142,7 +142,7 @@ def validate_caffe_model(platform, mace_runtime, model_file, input_file,
         out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[
             1], out_shape[2]
         value = value.reshape(out_shape).transpose((0, 2, 3, 1))
-        output_file_name = mace_out_file + "_" + format_output_name(
+        output_file_name = mace_out_file + "_" + format_name(
             output_names[i])
         mace_out_value = load_data(output_file_name)
         compare_output(platform, mace_runtime, output_names[i], mace_out_value,

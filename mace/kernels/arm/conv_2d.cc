@@ -362,14 +362,14 @@ void Conv2dFunctor<DeviceType::NEON, float>::operator()(const Tensor *input,
     };
   } else if (use_neon_1x1_s1) {
     conv_func = [=](const float *pad_input, float *pad_output) {
-      Conv2dNeonK1x1S1(input_data,
+      Conv2dNeonK1x1S1(pad_input,
                        filter_data,
                        batch,
-                       height,
-                       width,
+                       extra_input_height,
+                       extra_input_width,
                        input_channels,
                        channels,
-                       output_data);
+                       pad_output);
     };
   } else {
     conv_func = [=](const float *pad_input, float *pad_output) {

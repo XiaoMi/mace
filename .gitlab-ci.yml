@@ -3,6 +3,7 @@ stages:
   - pycodestyle
   - platform_compitable_tests
   - ops_test
+  - api_test
   - ops_benchmark
   - extra_tests
 
@@ -21,7 +22,13 @@ ops_test:
   stage: ops_test
   script:
     - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
-    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS 
+    - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
+
+api_test:
+  stage: api_test
+  script:
+    - if [ -z "$TARGET_SOCS" ]; then TARGET_SOCS=random; fi
+    - python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=True --stdout_processor=unittest_stdout_processor --target_abis=armeabi-v7a,arm64-v8a --target_socs=$TARGET_SOCS
 
 ops_benchmark:
   stage: ops_benchmark

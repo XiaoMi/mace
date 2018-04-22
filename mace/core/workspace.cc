@@ -81,15 +81,19 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   }
   VLOG(3) << "Model data size: " << model_data_size;
 
-  if (type == DeviceType::CPU || type == DeviceType::NEON) {
-    tensor_buffer_ = std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(type), model_data_ptr, model_data_size));
-  } else {
-    tensor_buffer_ = std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(type), model_data_size));
-    tensor_buffer_->Map(nullptr);
-    tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
-    tensor_buffer_->UnMap();
+  if (model_data_size > 0) {
+    if (type == DeviceType::CPU || type == DeviceType::NEON) {
+      tensor_buffer_ = std::unique_ptr<Buffer>(
+          new Buffer(GetDeviceAllocator(type),
+                     model_data_ptr,
+                     model_data_size));
+    } else {
+      tensor_buffer_ = std::unique_ptr<Buffer>(
+          new Buffer(GetDeviceAllocator(type), model_data_size));
+      tensor_buffer_->Map(nullptr);
+      tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
+      tensor_buffer_->UnMap();
+    }
   }
 
   for (auto &const_tensor : net_def.tensors()) {

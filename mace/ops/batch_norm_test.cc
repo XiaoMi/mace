@@ -429,7 +429,7 @@ TEST_F(BatchNormOpTest, NEONTest) {
 
   ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
                           *net.GetOutput("OutputNeon"),
-                          1e-5);
+                          1e-5, 1e-4);
 }
 
 }  // namespace test

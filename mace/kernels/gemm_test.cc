@@ -70,8 +70,8 @@ TEST(GEMMTest, gemv) {
                 [&gen, &nd] {
                   return nd(gen);
                 });
-  kernels::Gemv(A.get(), B.get(), K, N, C.get());
-  kernels::GemvRef(A.get(), B.get(), K, N, C_ref.get());
+  kernels::Gemv(A.get(), B.get(), 1, K, N, C.get());
+  kernels::GemvRef(A.get(), B.get(), 1, K, N, C_ref.get());
 
   for (int i = 0; i < N; ++i) {
     EXPECT_NEAR(C_ref[i], C[i], 0.1);

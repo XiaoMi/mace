@@ -108,12 +108,25 @@ class Operator : public OperatorBase {
       inputs_.push_back(tensor);
     }
 
-    for (const std::string &output_str : operator_def.output()) {
+    for (size_t i = 0; i < operator_def.output().size(); ++i) {
+      const std::string output_str = operator_def.output()[i];
       if (ws->HasTensor(output_str)) {
         outputs_.push_back(ws->GetTensor(output_str));
       } else {
+        MACE_CHECK(
+          operator_def.output_type().size() == 0
+          || operator_def.output().size() == operator_def.output_type().size(),
+          "operator output size != operator output type size",
+          operator_def.output().size(),
+          operator_def.output_type().size());
+        DataType output_type;
+        if (i < operator_def.output_type().size()) {
+          output_type = operator_def.output_type()[i];
+        } else {
+          output_type = DataTypeToEnum<T>::v();
+        }
         outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-            output_str, GetDeviceAllocator(D), DataTypeToEnum<T>::v())));
+          output_str, GetDeviceAllocator(D), output_type)));
       }
     }
   }

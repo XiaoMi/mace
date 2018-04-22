@@ -375,90 +375,92 @@ TEST_F(FusedConv2dOpTest, OPENCLUnalignedConvNxNS12) {
 
 namespace {
 template<DeviceType D>
-void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape) {
+void TestHalfComplexConvNxNS12(const std::vector<index_t> &shape,
+                               const int kernel, const int stride,
+                               Padding type) {
   testing::internal::LogToStderr();
-  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
-                  Padding type) {
-    // generate random input
-    static unsigned int seed = time(NULL);
-    index_t batch = 3 + (rand_r(&seed) % 10);
-    index_t height = shape[0];
-    index_t width = shape[1];
-    index_t input_channels = shape[2] + (rand_r(&seed) % 10);
-    index_t output_channels = shape[3] + (rand_r(&seed) % 10);
-    // Construct graph
-    OpsTestNet net;
-    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+  // generate random input
+  srand(time(NULL));
+  index_t batch = 3;
+  index_t height = shape[0];
+  index_t width = shape[1];
+  index_t input_channels = shape[2];
+  index_t output_channels = shape[3];
+  // Construct graph
+  OpsTestNet net;
+  OpDefBuilder("FusedConv2D", "FusedConv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
       .Output("Output")
-      .AddIntsArg("strides", {stride_h, stride_w})
+      .AddIntsArg("strides", {stride, stride})
       .AddIntArg("padding", type)
       .AddIntsArg("dilations", {1, 1})
       .Finalize(net.NewOperatorDef());
 
-    std::vector<float> float_input_data;
-    GenerateRandomRealTypeData({batch, height, width, input_channels},
-                               &float_input_data);
-    std::vector<float> float_filter_data;
-    GenerateRandomRealTypeData(
-      {kernel_h, kernel_w, output_channels, input_channels},
+  std::vector<float> float_input_data;
+  GenerateRandomRealTypeData({batch, height, width, input_channels},
+                             &float_input_data);
+  std::vector<float> float_filter_data;
+  GenerateRandomRealTypeData(
+      {kernel, kernel, output_channels, input_channels},
       &float_filter_data);
-    std::vector<float> float_bias_data;
-    GenerateRandomRealTypeData({output_channels}, &float_bias_data);
-    // Add input data
-    net.AddInputFromArray<D, float>(
+  std::vector<float> float_bias_data;
+  GenerateRandomRealTypeData({output_channels}, &float_bias_data);
+  // Add input data
+  net.AddInputFromArray<D, float>(
       "Input", {batch, height, width, input_channels}, float_input_data);
-    net.AddInputFromArray<D, float>(
-      "Filter", {kernel_h, kernel_w, output_channels, input_channels},
+  net.AddInputFromArray<D, float>(
+      "Filter", {kernel, kernel, output_channels, input_channels},
       float_filter_data);
-    net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data);
+  net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data);
 
-    // run on cpu
-    net.RunOp();
-    // Check
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
+  // run on cpu
+  net.RunOp();
+  // Check
+  Tensor expected;
+  expected.Copy(*net.GetOutput("Output"));
 
-    // run on gpu
-    BufferToImage<D, half>(&net, "Input", "InputImage",
-                           kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(&net, "Filter", "FilterImage",
-                           kernels::BufferType::CONV2D_FILTER);
-    BufferToImage<D, half>(&net, "Bias", "BiasImage",
-                           kernels::BufferType::ARGUMENT);
+  // run on gpu
+  BufferToImage<D, half>(&net, "Input", "InputImage",
+                         kernels::BufferType::IN_OUT_CHANNEL);
+  BufferToImage<D, half>(&net, "Filter", "FilterImage",
+                         kernels::BufferType::CONV2D_FILTER);
+  BufferToImage<D, half>(&net, "Bias", "BiasImage",
+                         kernels::BufferType::ARGUMENT);
 
-    OpDefBuilder("FusedConv2D", "FusedConv2dTest")
+  OpDefBuilder("FusedConv2D", "FusedConv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
       .Input("BiasImage")
       .Output("OutputImage")
-      .AddIntsArg("strides", {stride_h, stride_w})
+      .AddIntsArg("strides", {stride, stride})
       .AddIntArg("padding", type)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
-    // Run on device
-    net.RunOp(D);
+  // Run on device
+  net.RunOp(D);
 
-    ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+  ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
+                          kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-2, 1e-1);
-  };
-
-  for (int kernel_size : {1, 3}) {
-    for (int stride : {1, 2}) {
-      func(kernel_size, kernel_size, stride, stride, VALID);
-    }
-  }
+  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
+                          1e-2, 1e-1);
 }
 }  // namespace
 
-TEST_F(FusedConv2dOpTest, OPENCLHalfAlignedConvNxNS12) {
-  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64});
+TEST_F(FusedConv2dOpTest, OPENCLHalfAlignedConv1x1S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64}, 1, 1, VALID);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({31, 37, 31, 37}, 1, 1, SAME);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64}, 1, 2, VALID);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({31, 37, 31, 37}, 1, 2, SAME);
+}
+TEST_F(FusedConv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64}, 3, 1, VALID);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({31, 37, 31, 37}, 3, 1, SAME);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({32, 32, 32, 64}, 3, 2, VALID);
+  TestHalfComplexConvNxNS12<DeviceType::OPENCL>({31, 37, 31, 37}, 3, 2, SAME);
 }
 
 namespace {
