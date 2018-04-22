@@ -81,7 +81,7 @@ void SoftmaxFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *logits,
     input_shape_ = logits->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   std::stringstream ss;
   ss << "softmax_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);

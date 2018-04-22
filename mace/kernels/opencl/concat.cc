@@ -95,7 +95,7 @@ static void Concat2(cl::Kernel *kernel,
     *prev_input_shape = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
   std::stringstream ss;
   ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);

@@ -559,6 +559,7 @@ class CaffeConverter(object):
         paddings, strides, _ = self.add_stride_pad_kernel_arg(param, None)
 
         filter_shape = np.asarray(op.data[0].shape)
+        filter_shape = filter_shape[[2, 3, 0, 1]]  # OIHW -> HWOI
 
         input_format = 'NHWC'
         output_shape = Shapes.conv_pool_shape(

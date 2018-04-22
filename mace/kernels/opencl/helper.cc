@@ -223,23 +223,23 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         std::min<uint32_t>(gws[2], kwg_size / (local_ws[0] * local_ws[1]));
     return {
         // TODO(heliangliang): tuning these magic numbers
-        {local_ws[0], local_ws[1], local_ws[2], 1},
-        {kwg_size / 16, 4, 4, 1},
-        {kwg_size / 32, 4, 8, 1},
-        {kwg_size / 32, 8, 4, 1},
-        {kwg_size / 64, 8, 8, 1},
-        {kwg_size / 64, 16, 4, 1},
-        {kwg_size / 128, 8, 16, 1},
-        {kwg_size / 128, 16, 8, 1},
-        {kwg_size / 128, 32, 4, 1},
-        {1, kwg_size / 32, 32, 1},
-        {1, kwg_size / 64, 64, 1},
-        {1, kwg_size / 128, 128, 1},
-        {4, kwg_size / 16, 4, 1},
-        {4, kwg_size / 28, 7, 1},
-        {4, kwg_size / 32, 8, 1},
-        {4, kwg_size / 56, 14, 1},
-        {1, kwg_size, 1, 1},
+        {local_ws[0], local_ws[1], local_ws[2], 0},
+        {kwg_size / 16, 4, 4, 0},
+        {kwg_size / 32, 4, 8, 0},
+        {kwg_size / 32, 8, 4, 0},
+        {kwg_size / 64, 8, 8, 0},
+        {kwg_size / 64, 16, 4, 0},
+        {kwg_size / 128, 8, 16, 0},
+        {kwg_size / 128, 16, 8, 0},
+        {kwg_size / 128, 32, 4, 0},
+        {1, kwg_size / 32, 32, 0},
+        {1, kwg_size / 64, 64, 0},
+        {1, kwg_size / 128, 128, 0},
+        {4, kwg_size / 16, 4, 0},
+        {4, kwg_size / 28, 7, 0},
+        {4, kwg_size / 32, 8, 0},
+        {4, kwg_size / 56, 14, 0},
+        {1, kwg_size, 1, 0},
     };
   };
   cl::Event event;
@@ -248,46 +248,35 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
     MACE_CHECK(params.size() == 4)
         << "Tuning parameters of 3D kernel must be 4D";
     cl_int error = CL_SUCCESS;
-    std::vector<uint32_t> roundup_gws(3);
+    std::vector<uint32_t> internal_gws(gws, gws+3);
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       for (size_t i = 0; i < 3; ++i) {
-        roundup_gws[i] = RoundUp(gws[i], params[i]);
+        internal_gws[i] = RoundUp(gws[i], params[i]);
       }
     }
 
     if (timer == nullptr) {
-      uint32_t num_blocks = params[3];
-      const uint32_t block_size = gws[2] / num_blocks;
-      if (gws[2] % num_blocks > 0) num_blocks++;
+      uint32_t block_size = params[3] == 0 ? internal_gws[2] : params[3];
+      const uint32_t num_blocks = RoundUpDiv<uint32_t>(internal_gws[2],
+                                                       block_size);
       for (uint32_t i = 0; i < num_blocks; ++i) {
-        uint32_t gws2 =
-            (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-        if (runtime->IsNonUniformWorkgroupsSupported()) {
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, 0, i * block_size),
-              cl::NDRange(gws[0], gws[1], gws2),
-              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
-        } else {
-          uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, 0, i * block_size),
-              cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
-              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+        uint32_t gws2 = block_size;
+        if (runtime->IsNonUniformWorkgroupsSupported()
+            && (i == num_blocks - 1)) {
+          gws2 = (internal_gws[2] - (i * block_size));
         }
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NDRange(0, 0, i * block_size),
+            cl::NDRange(internal_gws[0], internal_gws[1], gws2),
+            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
         MACE_CHECK_CL_SUCCESS(error);
       }
     } else {
       timer->ClearTiming();
-      if (runtime->IsNonUniformWorkgroupsSupported()) {
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NullRange, cl::NDRange(gws[0], gws[1], gws[2]),
-            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
-      } else {
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NullRange,
-            cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
-            cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
-      }
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel, cl::NullRange,
+          cl::NDRange(internal_gws[0], internal_gws[1], internal_gws[2]),
+          cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
       MACE_CHECK_CL_SUCCESS(error);
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
@@ -297,24 +286,22 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
         timer->ClearTiming();
         uint32_t num_blocks = std::min(
             static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[2]);
-        (*tuning_result)[3] = num_blocks;
-        const uint32_t block_size = gws[2] / num_blocks;
-        if (gws[2] % num_blocks > 0) num_blocks++;
+        uint32_t block_size = gws[2] / num_blocks;
+        if (!runtime->IsNonUniformWorkgroupsSupported()) {
+          block_size = RoundUp(block_size, params[2]);
+        }
+        (*tuning_result)[3] = block_size;
+        num_blocks = RoundUpDiv<uint32_t>(internal_gws[2], block_size);
         for (uint32_t i = 0; i < num_blocks; ++i) {
-          uint32_t gws2 =
-              (i == num_blocks - 1) ? (gws[2] - (i * block_size)) : block_size;
-          if (runtime->IsNonUniformWorkgroupsSupported()) {
-            error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, 0, i * block_size),
-                cl::NDRange(gws[0], gws[1], gws2),
-                cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
-          } else {
-            uint32_t roundup_gws2 = RoundUp(gws2, params[2]);
-            error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, 0, i * block_size),
-                cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws2),
-                cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
+          uint32_t gws2 = block_size;
+          if (runtime->IsNonUniformWorkgroupsSupported()
+              && (i == num_blocks - 1)) {
+            gws2 = (internal_gws[2] - (i * block_size));
           }
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, 0, i * block_size),
+              cl::NDRange(internal_gws[0], internal_gws[1], gws2),
+              cl::NDRange(params[0], params[1], params[2]), nullptr, &event);
           MACE_CHECK_CL_SUCCESS(error);
           timer->AccumulateTiming();
         }
@@ -349,16 +336,16 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
     uint32_t local_ws[2];
     local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
     local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1], 1},
-            {local_ws[1], local_ws[0], 1},
-            {kwg_size / 4, 4, 1},
-            {kwg_size / 16, 16, 1},
-            {kwg_size / 32, 32, 1},
-            {kwg_size / 64, 64, 1},
-            {kwg_size / 128, 128, 1},
-            {kwg_size / 256, 256, 1},
-            {kwg_size, 1, 1},
-            {1, kwg_size, 1}};
+    return {{local_ws[0], local_ws[1], 0},
+            {local_ws[1], local_ws[0], 0},
+            {kwg_size / 4, 4, 0},
+            {kwg_size / 16, 16, 0},
+            {kwg_size / 32, 32, 0},
+            {kwg_size / 64, 64, 0},
+            {kwg_size / 128, 128, 0},
+            {kwg_size / 256, 256, 0},
+            {kwg_size, 1, 0},
+            {1, kwg_size, 0}};
   };
   cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params, Timer *timer,
@@ -366,44 +353,34 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
     MACE_CHECK(params.size() == 3)
         << "Tuning parameters of 2D kernel must be 3d";
     cl_int error = CL_SUCCESS;
-    std::vector<uint32_t> roundup_gws(2);
+    std::vector<uint32_t> internal_gws(gws, gws+2);
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       for (size_t i = 0; i < 2; ++i) {
-        roundup_gws[i] = RoundUp(gws[i], params[i]);
+        internal_gws[i] = RoundUp(gws[i], params[i]);
       }
     }
 
     if (timer == nullptr) {
-      uint32_t num_blocks = params[2];
-      const uint32_t block_size = gws[1] / num_blocks;
-      if (gws[1] % num_blocks > 0) num_blocks++;
+      uint32_t block_size = params[2] == 0 ? internal_gws[1] : params[2];
+      const uint32_t num_blocks = RoundUpDiv<uint32_t>(internal_gws[1],
+                                                       block_size);
       for (uint32_t i = 0; i < num_blocks; ++i) {
-        uint32_t gws1 =
-            (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-        if (runtime->IsNonUniformWorkgroupsSupported()) {
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, i * block_size), cl::NDRange(gws[0], gws1),
-              cl::NDRange(params[0], params[1]), nullptr, &event);
-        } else {
-          uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
-          error = runtime->command_queue().enqueueNDRangeKernel(
-              kernel, cl::NDRange(0, i * block_size),
-              cl::NDRange(roundup_gws[0], roundup_gws1),
-              cl::NDRange(params[0], params[1]), nullptr, &event);
+        uint32_t gws1 = block_size;
+        if (runtime->IsNonUniformWorkgroupsSupported()
+            && (i == num_blocks - 1)) {
+          gws1 = (internal_gws[1] - (i * block_size));
         }
+        error = runtime->command_queue().enqueueNDRangeKernel(
+            kernel, cl::NDRange(0, i * block_size),
+            cl::NDRange(internal_gws[0], gws1),
+            cl::NDRange(params[0], params[1]), nullptr, &event);
         MACE_CHECK_CL_SUCCESS(error);
       }
     } else {
       timer->ClearTiming();
-      if (runtime->IsNonUniformWorkgroupsSupported()) {
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
-            cl::NDRange(params[0], params[1]), nullptr, &event);
-      } else {
-        error = runtime->command_queue().enqueueNDRangeKernel(
-            kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
-            cl::NDRange(params[0], params[1]), nullptr, &event);
-      }
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel, cl::NullRange, cl::NDRange(internal_gws[0], internal_gws[1]),
+          cl::NDRange(params[0], params[1]), nullptr, &event);
       MACE_CHECK_CL_SUCCESS(error);
       timer->AccumulateTiming();
       tuning_result->assign(params.begin(), params.end());
@@ -413,24 +390,22 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
         timer->ClearTiming();
         uint32_t num_blocks = std::min(
             static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[1]);
-        (*tuning_result)[2] = num_blocks;
-        const uint32_t block_size = gws[1] / num_blocks;
-        if (gws[1] % num_blocks > 0) num_blocks++;
+        uint32_t block_size = gws[1] / num_blocks;
+        if (!runtime->IsNonUniformWorkgroupsSupported()) {
+          block_size = RoundUp(block_size, params[1]);
+        }
+        (*tuning_result)[2] = block_size;
+        num_blocks = RoundUpDiv<uint32_t>(internal_gws[1], block_size);
         for (uint32_t i = 0; i < num_blocks; ++i) {
-          uint32_t gws1 =
-              (i == num_blocks - 1) ? (gws[1] - (i * block_size)) : block_size;
-          if (runtime->IsNonUniformWorkgroupsSupported()) {
-            error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, i * block_size),
-                cl::NDRange(gws[0], gws1), cl::NDRange(params[0], params[1]),
-                nullptr, &event);
-          } else {
-            uint32_t roundup_gws1 = RoundUp(gws1, params[1]);
-            error = runtime->command_queue().enqueueNDRangeKernel(
-                kernel, cl::NDRange(0, i * block_size),
-                cl::NDRange(roundup_gws[0], roundup_gws1),
-                cl::NDRange(params[0], params[1]), nullptr, &event);
+          uint32_t gws1 = block_size;
+          if (runtime->IsNonUniformWorkgroupsSupported()
+              && (i == num_blocks - 1)) {
+            gws1 = (internal_gws[1] - (i * block_size));
           }
+          error = runtime->command_queue().enqueueNDRangeKernel(
+              kernel, cl::NDRange(0, i * block_size),
+              cl::NDRange(internal_gws[0], gws1),
+              cl::NDRange(params[0], params[1]), nullptr, &event);
           MACE_CHECK_CL_SUCCESS(error);
           timer->AccumulateTiming();
         }

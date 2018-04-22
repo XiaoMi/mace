@@ -105,7 +105,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     space_shape_ = space_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   std::stringstream ss;
   ss << kernel_name << "_" << batch_tensor->dim(0) << "_"
      << batch_tensor->dim(1) << "_" << batch_tensor->dim(2) << "_"

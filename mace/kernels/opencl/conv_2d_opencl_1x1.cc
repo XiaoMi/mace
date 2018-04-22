@@ -130,7 +130,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
   std::string tuning_key =
       Concat("conv2d_1x1_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

@@ -233,7 +233,7 @@ void FCWTXKernel(cl::Kernel *kernel,
 
     uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-    *lws = {16, kwg_size/16, 1};
+    *lws = {16, kwg_size/16, 0};
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t batch = output->dim(0);

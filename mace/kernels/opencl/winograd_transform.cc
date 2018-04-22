@@ -54,7 +54,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   std::vector<index_t> output_shape(4);
-  std::vector<index_t> filter_shape = {3, 3, input_tensor->dim(3), 1};
+  std::vector<index_t> filter_shape = {3, 3, 1, input_tensor->dim(3)};
   std::vector<int> paddings(2);
   if (paddings_.empty()) {
     kernels::CalcNHWCPaddingAndOutputSize(
@@ -101,7 +101,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
   std::stringstream ss;
   ss << "winograd_transform_kernel_" << input_tensor->dim(0) << "_"
      << input_tensor->dim(1) << "_" << input_tensor->dim(2) << "_"
@@ -215,7 +215,7 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
 
   std::stringstream ss;
   ss << "winograd_inverse_transform_kernel_" << input_tensor->dim(0) << "_"
