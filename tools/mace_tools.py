@@ -108,11 +108,12 @@ def gen_opencl_and_tuning_code(target_soc,
 def model_benchmark_stdout_processor(stdout,
                                      target_soc,
                                      abi,
+                                     model_name,
                                      runtime,
                                      running_round,
                                      tuning):
     metrics = {}
-    for line in stdout:
+    for line in stdout.split("\n"):
         if "Aborted" in line:
             raise Exception("Command failed")
         line = line.strip()
@@ -178,6 +179,7 @@ def tuning_run(runtime,
     model_benchmark_stdout_processor(stdout,
                                      target_soc,
                                      target_abi,
+                                     model_name,
                                      runtime,
                                      running_round,
                                      tuning)
