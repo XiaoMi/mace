@@ -423,8 +423,8 @@ def gen_random_input(model_output_dir,
                      input_file_name="model_input"):
     for input_name in input_nodes:
         formatted_name = formatted_file_name(input_name, input_file_name)
-        if os.path.exists(formatted_name):
-            sh.rm(formatted_name)
+        if os.path.exists("%s/%s" % (model_output_dir, formatted_name)):
+            sh.rm("%s/%s" % (model_output_dir, formatted_name))
     input_nodes_str = ",".join(input_nodes)
     input_shapes_str = ":".join(input_shapes)
     generate_input_data("%s/%s" % (model_output_dir, input_file_name),
@@ -606,8 +606,9 @@ def validate_model(target_soc,
             for output_name in output_nodes:
                 formatted_name = formatted_file_name(
                         output_name, output_file_name)
-                if os.path.exists(formatted_name):
-                    sh.rm(formatted_name)
+                if os.path.exists("%s/%s" % (model_output_dir,
+                                             formatted_name)):
+                    sh.rm("%s/%s" % (model_output_dir, formatted_name))
                 adb_pull("%s/%s" % (phone_data_dir, formatted_name),
                          model_output_dir, serialno)
         validate(platform, model_file_path, "",

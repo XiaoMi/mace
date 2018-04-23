@@ -75,6 +75,7 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
         print("Input graph file '" + model_file + "' does not exist!")
         sys.exit(-1)
 
+    tf.reset_default_graph()
     input_graph_def = tf.GraphDef()
     with open(model_file, "rb") as f:
         data = f.read()
