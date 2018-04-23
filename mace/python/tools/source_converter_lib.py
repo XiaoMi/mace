@@ -173,9 +173,8 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
     with open(output_dir + 'tensor_data' + '.cc', "wb") as f:
         f.write(source)
     if not embed_model_data:
-        f = open(output_dir + model_tag + '.data', "wb")
-        f.write(bytearray(model_data))
-        f.close()
+        with open(output_dir + model_tag + '.data', "wb") as f:
+            f.write(bytearray(model_data))
 
     # generate op source files
     template_name = 'operator.jinja2'

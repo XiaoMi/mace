@@ -86,9 +86,8 @@ def opencl_codegen(output_path,
                                                platform_info_file_name)
     if os.path.isfile(output_path):
         os.remove(output_path)
-    w_file = open(output_path, "w")
-    w_file.write(cpp_cl_binary_source)
-    w_file.close()
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_cl_binary_source)
 
 
 def parse_args():

@@ -74,9 +74,8 @@ def tuning_param_codegen(binary_dirs,
             binary_dirs, binary_file_name, variable_name)
     if os.path.isfile(output_path):
         os.remove(output_path)
-    w_file = open(output_path, "w")
-    w_file.write(cpp_binary_source)
-    w_file.close()
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_binary_source)
 
 
 def parse_args():

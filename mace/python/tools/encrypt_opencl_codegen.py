@@ -44,22 +44,22 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
     for file_name in os.listdir(cl_kernel_dir):
         file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-2:] == ".h":
-            f = open(file_path, "r")
-            header_code += f.read()
+            with open(file_path, "r") as f:
+                header_code += f.read()
 
     encrypted_code_maps = {}
     for file_name in os.listdir(cl_kernel_dir):
         file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-3:] == ".cl":
-            f = open(file_path, "r")
-            code_str = ""
-            for line in f.readlines():
-                if "#include <common.h>" in line:
-                    code_str += header_code
-                else:
-                    code_str += line
-            encrypted_code_arr = encrypt_code(code_str)
-            encrypted_code_maps[file_name[:-3]] = encrypted_code_arr
+            with open(file_path, "r") as f:
+                code_str = ""
+                for line in f.readlines():
+                    if "#include <common.h>" in line:
+                        code_str += header_code
+                    else:
+                        code_str += line
+                encrypted_code_arr = encrypt_code(code_str)
+                encrypted_code_maps[file_name[:-3]] = encrypted_code_arr
 
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
     cpp_cl_encrypted_kernel = env.get_template(
@@ -70,9 +70,8 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
 
     if os.path.isfile(output_path):
         os.remove(output_path)
-    w_file = open(output_path, "w")
-    w_file.write(cpp_cl_encrypted_kernel)
-    w_file.close()
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_cl_encrypted_kernel)
 
     print("Generate encrypted opencl source done!")
 
