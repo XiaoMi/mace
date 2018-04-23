@@ -394,7 +394,9 @@ def gen_model_code(model_codegen_dir,
     if os.path.exists(model_codegen_dir):
         sh.rm("-rf", model_codegen_dir)
     sh.mkdir("-p", model_codegen_dir)
-    sh.python("bazel-bin/mace/python/tools/converter",
+    stdout_buff = []
+    process_output = make_output_processor(stdout_buff)
+    p = sh.python("bazel-bin/mace/python/tools/converter",
               "-u",
               "--platform=%s" % platform,
               "--model_file=%s" % model_file_path,
@@ -412,7 +414,11 @@ def gen_model_code(model_codegen_dir,
               "--dsp_mode=%s" % dsp_mode,
               "--embed_model_data=%s" % embed_model_data,
               "--winograd=%s" % fast_conv,
-              "--obfuscate=%s" % obfuscate)
+              "--obfuscate=%s" % obfuscate,
+              _out=process_output,
+              _bg=True,
+              _err_to_out=True)
+    p.wait()
     print("Model code gen done!\n")
 
 
