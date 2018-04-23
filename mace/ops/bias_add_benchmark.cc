@@ -29,10 +29,22 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
   net.AddRandomInput<D, T>("Bias", {channels}, true);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("BiasAdd", "BiasAddBM")
+      .Input("Input")
+      .Input("Bias")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
@@ -43,11 +55,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("BiasAdd", "BiasAddBM")
-        .Input("Input")
-        .Input("Bias")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up

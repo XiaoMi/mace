@@ -56,7 +56,6 @@ def compare_output(platform, mace_runtime, output_name, mace_out_value,
         print output_name, 'MACE VS', platform.upper(
         ), 'similarity: ', similarity
         if (mace_runtime == "cpu" and similarity > 0.999) or \
-            (mace_runtime == "neon" and similarity > 0.999) or \
             (mace_runtime == "gpu" and similarity > 0.995) or \
                 (mace_runtime == "dsp" and similarity > 0.930):
             print '===================Similarity Test Passed=================='

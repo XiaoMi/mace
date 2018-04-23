@@ -13,12 +13,6 @@ void Register_LocalResponseNorm(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     LocalResponseNormOp<DeviceType::CPU, float>);
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("LocalResponseNorm")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    LocalResponseNormOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

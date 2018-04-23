@@ -35,6 +35,8 @@ namespace mace {
 namespace ops {
 namespace test {
 
+enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4 };
+
 class OpDefBuilder {
  public:
   OpDefBuilder(const char *type, const std::string &name) {
@@ -173,6 +175,140 @@ class OpsTestNet {
   }
 
   template<DeviceType D, typename T>
+  void Transpose2D(const std::string &src_name,
+                   const std::string &dst_name) {
+    Tensor *input = ws_.GetTensor(src_name);
+    Tensor *output = ws_.CreateTensor(dst_name,
+                                      GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+    const std::vector<index_t> input_shape = input->shape();
+    MACE_CHECK(input_shape.size() == 2, "input shape != 2");
+    output->Resize({input_shape[1], input_shape[0]});
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
+    for (index_t i = 0; i < input_shape[0]; ++i) {
+      for (index_t j = 0; j < input_shape[1]; ++j) {
+        output_data[j * input_shape[0] + i] =
+          input_data[i * input_shape[1] + j];
+      }
+    }
+  }
+
+  template<DeviceType D, typename T>
+  void TransformDataFormat(const std::string &src_name,
+                           const DataFormat src_format,
+                           const std::string &dst_name,
+                           const DataFormat dst_format) {
+    Tensor *input = ws_.GetTensor(src_name);
+    Tensor *output = ws_.CreateTensor(dst_name,
+                                      GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+    const std::vector<index_t> input_shape = input->shape();
+    MACE_CHECK(input_shape.size() == 4, "input shape != 4");
+
+    if (src_format == NHWC && dst_format == NCHW) {
+      index_t batch = input_shape[0];
+      index_t height = input_shape[1];
+      index_t width = input_shape[2];
+      index_t channels = input_shape[3];
+      output->Resize({batch, channels, height, width});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channels; ++c) {
+          for (index_t h = 0; h < height; ++h) {
+            for (index_t w = 0; w < width; ++w) {
+              output_data[((b * channels + c) * height + h) * width + w] =
+                input_data[((b * height + h) * width + w) * channels + c];
+            }
+          }
+        }
+      }
+    } else if (src_format == NCHW && dst_format == NHWC) {
+      index_t batch = input_shape[0];
+      index_t channels = input_shape[1];
+      index_t height = input_shape[2];
+      index_t width = input_shape[3];
+      output->Resize({batch, height, width, channels});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t h = 0; h < height; ++h) {
+          for (index_t w = 0; w < width; ++w) {
+            for (index_t c = 0; c < channels; ++c) {
+              output_data[((b * height + h) * width + w) * channels + c] =
+                input_data[((b * channels + c) * height + h) * width + w];
+            }
+          }
+        }
+      }
+    } else if (src_format == HWOI && dst_format == OIHW) {
+      index_t height = input_shape[0];
+      index_t width = input_shape[1];
+      index_t out_channels = input_shape[2];
+      index_t in_channels = input_shape[3];
+      index_t hw = height * width;
+      index_t oi = out_channels * in_channels;
+      output->Resize({out_channels, in_channels, height, width});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t i = 0; i < oi; ++i) {
+        for (index_t j = 0; j < hw; ++j) {
+          output_data[i * height * width + j] =
+            input_data[j * out_channels * in_channels + i];
+        }
+      }
+    } else if (src_format == OIHW && dst_format == HWOI) {
+      index_t out_channels = input_shape[0];
+      index_t in_channels = input_shape[1];
+      index_t height = input_shape[2];
+      index_t width = input_shape[3];
+      index_t hw = height * width;
+      index_t oi = out_channels * in_channels;
+      output->Resize({height, width, out_channels, in_channels});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t i = 0; i < hw; ++i) {
+        for (index_t j = 0; j < oi; ++j) {
+          output_data[i * out_channels * in_channels + j] =
+            input_data[j * height * width + i];
+        }
+      }
+    } else if (src_format == HWIO && dst_format == OIHW) {
+      index_t height = input_shape[0];
+      index_t width = input_shape[1];
+      index_t in_channels = input_shape[2];
+      index_t out_channels = input_shape[3];
+      index_t hw = height * width;
+      output->Resize({out_channels, in_channels, height, width});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t m = 0; m < out_channels; ++m) {
+        for (index_t c = 0; c < in_channels; ++c) {
+          for (index_t k = 0; k < hw; ++k) {
+            output_data[((m * in_channels) + c) * height * width + k] =
+              input_data[k * out_channels * in_channels + c * out_channels + m];
+          }
+        }
+      }
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+
+  template<DeviceType D, typename T>
   void FillNHWCInputToNCHWInput(const std::string &name_nchw,
                                 const std::string &name_nhwc) {
     Tensor *input = ws_.GetTensor(name_nhwc);
@@ -194,57 +330,6 @@ class OpsTestNet {
             output_data[((b * channels + c) * height + h) * width + w] =
               input_data[((b * height + h) * width + w) * channels + c];
           }
-        }
-      }
-    }
-  }
-
-  template<DeviceType D, typename T>
-  void FillHWOIInputToOIHWInput(const std::string &name_oihw,
-                                const std::string &name_hwoi) {
-    Tensor *input = ws_.GetTensor(name_hwoi);
-    Tensor *output = ws_.CreateTensor(name_oihw,
-                                      GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
-    const std::vector<index_t> input_shape = input->shape();
-    index_t height = input_shape[0];
-    index_t width = input_shape[1];
-    index_t out_channels = input_shape[2];
-    index_t in_channels = input_shape[3];
-    index_t hw = height * width;
-    index_t oi = out_channels * in_channels;
-    output->Resize({out_channels, in_channels, height, width});
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
-    for (index_t i = 0; i < oi; ++i) {
-      for (index_t j = 0; j < hw; ++j) {
-        output_data[i * height * width + j] =
-          input_data[j * out_channels * in_channels + i];
-      }
-    }
-  }
-
-  template<DeviceType D, typename T>
-  void FillHWIOInputToOIHWInput(const std::string &name_oihw,
-                                const std::string &name_hwio) {
-    Tensor *input = ws_.GetTensor(name_hwio);
-    Tensor *output = ws_.CreateTensor(name_oihw,
-                                      GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
-    const std::vector<index_t> input_shape = input->shape();
-    index_t height = input_shape[0];
-    index_t width = input_shape[1];
-    index_t in_channels = input_shape[2];
-    index_t out_channels = input_shape[3];
-    index_t hw = height * width;
-    output->Resize({out_channels, in_channels, height, width});
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
-    for (index_t m = 0; m < out_channels; ++m) {
-      for (index_t c = 0; c < in_channels; ++c) {
-        for (index_t k = 0; k < hw; ++k) {
-          output_data[((m * in_channels) + c) * height * width + k] =
-            input_data[k * out_channels * in_channels + c * out_channels + m];
         }
       }
     }
@@ -349,7 +434,7 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
     std::generate(res->begin(), res->end(),
                   [&gen, &nd, positive] {
                     return half_float::half_cast<half>(
-                        positive ? std::abs(nd(gen)) : nd(gen));
+                      positive ? std::abs(nd(gen)) : nd(gen));
                   });
   } else {
     std::generate(res->begin(), res->end(), [&gen, &nd, positive] {
@@ -527,7 +612,6 @@ struct Expector<EXP_TYPE, RES_TYPE, false> {
     Equal(x, y);
   }
 };
-
 
 template<typename T>
 void ExpectTensorNear(const Tensor &x, const Tensor &y,

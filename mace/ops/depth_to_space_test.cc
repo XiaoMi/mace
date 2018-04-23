@@ -36,11 +36,21 @@ void RunDepthToSpace(const bool d2s,
   const char *ops_test_name = (d2s) ? "DepthToSpaceTest" : "SpaceToDepthTest";
   // Construct graph
   if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
     OpDefBuilder(ops_name, ops_test_name)
-        .Input("Input")
-        .Output("Output")
+        .Input("InputNCHW")
+        .Output("OutputNCHW")
         .AddIntArg("block_size", block_size)
         .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
 
   } else {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -50,9 +60,10 @@ void RunDepthToSpace(const bool d2s,
         .Output("OutputImage")
         .AddIntArg("block_size", block_size)
         .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
   }
-  // Run
-  net.RunOp(D);
+
 
   if (D == DeviceType::OPENCL) {
     ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "Output",
@@ -176,22 +187,31 @@ void RandomTest(const bool d2s, const int block_size,
   const char *ops_test_name = (d2s) ? "DepthToSpaceTest" : "SpaceToDepthTest";
 
   // Add input data
-  net.AddRandomInput<D, float>("Input1", shape);
-
+  net.AddRandomInput<D, float>("Input", shape);
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
   OpDefBuilder(ops_name, ops_test_name)
-      .Input("Input1")
+      .Input("InputNCHW")
       .AddIntArg("block_size", block_size)
-      .Output("Output")
+      .Output("OutputNCHW")
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp();
 
-  BufferToImage<D, T>(&net, "Input1", "InputImg1",
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "Output",
+                                                  NHWC);
+
+
+  BufferToImage<D, T>(&net, "Input", "InputImg",
                       kernels::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder(ops_name, ops_test_name)
-      .Input("InputImg1")
+      .Input("InputImg")
       .AddIntArg("block_size", block_size)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Output("OutputImg")

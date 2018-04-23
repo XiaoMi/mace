@@ -91,7 +91,6 @@ extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
 extern void Register_FusedConv2D(OperatorRegistry *op_registry);
-extern void Register_GlobalAvgPooling(OperatorRegistry *op_registry);
 extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
 extern void Register_LocalResponseNorm(OperatorRegistry *op_registry);
 extern void Register_MatMul(OperatorRegistry *op_registry);
@@ -132,7 +131,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_FoldedBatchNorm(this);
   ops::Register_FullyConnected(this);
   ops::Register_FusedConv2D(this);
-  ops::Register_GlobalAvgPooling(this);
   ops::Register_ImageToBuffer(this);
   ops::Register_LocalResponseNorm(this);
   ops::Register_MatMul(this);

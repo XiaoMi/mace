@@ -16,7 +16,7 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/types.h"
+#include "mace/kernels/arm/conv_2d_neon.h"
 
 namespace mace {
 namespace kernels {

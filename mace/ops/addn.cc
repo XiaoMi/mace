@@ -35,12 +35,6 @@ void Register_AddN(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     AddNOp<DeviceType::OPENCL, half>);
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

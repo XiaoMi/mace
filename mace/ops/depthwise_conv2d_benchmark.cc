@@ -40,21 +40,34 @@ void DepthwiseConv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::NEON) {
+  if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, input_channels, height, width});
     net.AddRandomInput<D, float>(
       "Filter", {multiplier, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
-  } else {
+  } else if (D == DeviceType::OPENCL) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, height, width, input_channels});
     net.AddRandomInput<D, float>(
       "Filter", {kernel_h, kernel_w, input_channels, multiplier});
     net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+  } else {
+    MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -72,16 +85,7 @@ void DepthwiseConv2d(int iters,
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
-        .Input("Input")
-        .Input("Filter")
-        .Input("Bias")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   net.Setup(D);
@@ -131,8 +135,7 @@ void DepthwiseConv2d(int iters,
 #define BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, M)                 \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, CPU);    \
   BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, OPENCL); \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, OPENCL);  \
-  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, NEON);
+  BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, OPENCL);
 
 BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 1, SAME, 1);
 BM_DEPTHWISE_CONV_2D(1, 32, 56, 56, 3, 3, 2, VALID, 1);

@@ -35,11 +35,6 @@ void Register_BatchNorm(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     BatchNormOp<DeviceType::OPENCL, half>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchNorm")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    BatchNormOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

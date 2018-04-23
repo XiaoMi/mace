@@ -23,11 +23,6 @@ void Register_Quantize(OperatorRegistry *op_registry) {
                                      .TypeConstraint<uint8_t>("T")
                                      .Build(),
                     QuantizeOp<DeviceType::CPU, uint8_t>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Quantize")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<uint8_t>("T")
-                                     .Build(),
-                    QuantizeOp<DeviceType::CPU, uint8_t>);
 }
 
 void Register_Dequantize(OperatorRegistry *op_registry) {
@@ -36,21 +31,11 @@ void Register_Dequantize(OperatorRegistry *op_registry) {
                                      .TypeConstraint<uint8_t>("T")
                                      .Build(),
                     DequantizeOp<DeviceType::CPU, uint8_t>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Dequantize")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<uint8_t>("T")
-                                     .Build(),
-                    DequantizeOp<DeviceType::CPU, uint8_t>);
 }
 
 void Register_Requantize(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Requantize")
                                     .Device(DeviceType::CPU)
-                                    .TypeConstraint<uint8_t>("T")
-                                    .Build(),
-                    RequantizeOp<DeviceType::CPU, uint8_t>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Requantize")
-                                    .Device(DeviceType::NEON)
                                     .TypeConstraint<uint8_t>("T")
                                     .Build(),
                     RequantizeOp<DeviceType::CPU, uint8_t>);

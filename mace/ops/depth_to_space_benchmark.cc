@@ -29,9 +29,20 @@ void DepthToSpace(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("DepthToSpace", "DepthToSpaceBM")
+      .Input("Input")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -41,10 +52,7 @@ void DepthToSpace(
         .AddIntArg("block_size", block_size)
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("DepthToSpace", "DepthToSpaceBM")
-        .Input("Input")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up

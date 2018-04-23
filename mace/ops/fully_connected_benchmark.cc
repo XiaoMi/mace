@@ -36,8 +36,14 @@ void FCBenchmark(
                                {out_channel, height * width * channel});
   net.AddRandomInput<D, float>("Bias", {out_channel});
 
-  if (D == DeviceType::OPENCL) {
-    const int width_size = height * width * channel;
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("FC", "FullyConnectedTest")
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
     BufferToImage<D, T>(&net, "Weight", "WeightImage",
                         weight_type);
@@ -55,12 +61,7 @@ void FCBenchmark(
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("FC", "FullyConnectedTest")
-        .Input("Input")
-        .Input("Weight")
-        .Input("Bias")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up
