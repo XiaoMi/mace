@@ -115,7 +115,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels});
 
   // run cpu
   net.RunOp();
@@ -176,7 +176,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
     .Input("Offset")
     .Input("Mean")
     .Input("Var")
-    .AddFloatArg("epsilon", 1e-3)
+    .AddFloatArg("epsilon", 1e-1)
     .Output("Output")
     .Finalize(net.NewOperatorDef());
 
@@ -186,7 +186,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels});
 
   // run cpu
   net.RunOp();
@@ -213,7 +213,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
     .Input("OffsetImage")
     .Input("MeanImage")
     .Input("VarImage")
-    .AddFloatArg("epsilon", 1e-3)
+    .AddFloatArg("epsilon", 1e-1)
     .Output("OutputImage")
     .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
     .Finalize(net.NewOperatorDef());
@@ -258,7 +258,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels});
 
   // run cpu
   net.RunOp();
@@ -319,7 +319,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
     .Input("Offset")
     .Input("Mean")
     .Input("Var")
-    .AddFloatArg("epsilon", 1e-3)
+    .AddFloatArg("epsilon", 1e-1)
     .Output("Output")
     .Finalize(net.NewOperatorDef());
 
@@ -329,7 +329,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   net.AddRandomInput<DeviceType::OPENCL, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Mean", {channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels}, true);
+  net.AddRandomInput<DeviceType::OPENCL, float>("Var", {channels});
 
   // run cpu
   net.RunOp();
@@ -356,7 +356,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
     .Input("OffsetImage")
     .Input("MeanImage")
     .Input("VarImage")
-    .AddFloatArg("epsilon", 1e-3)
+    .AddFloatArg("epsilon", 1e-1)
     .Output("OutputImage")
     .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
     .Finalize(net.NewOperatorDef());
@@ -403,7 +403,7 @@ TEST_F(BatchNormOpTest, NEONTest) {
   net.AddRandomInput<DeviceType::CPU, float>("Scale", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Offset", {channels});
   net.AddRandomInput<DeviceType::CPU, float>("Mean", {channels});
-  net.AddRandomInput<DeviceType::CPU, float>("Var", {channels}, true);
+  net.AddRandomInput<DeviceType::CPU, float>("Var", {channels});
 
   // run cpu
   net.RunOp();
