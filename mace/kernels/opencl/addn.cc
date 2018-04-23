@@ -105,7 +105,7 @@ void AddNFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input_tensors[0]->shape();
   }
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 0};
   std::stringstream ss;
   ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
      << "_" << output_shape[2] << "_" << output_shape[3];

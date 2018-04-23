@@ -90,7 +90,7 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   std::stringstream ss;
   ss << "channel_shuffle_opencl_kernel_"
      << output->dim(0) << "_"

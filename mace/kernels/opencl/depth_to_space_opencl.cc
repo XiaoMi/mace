@@ -134,7 +134,7 @@ void DepthToSpaceOpFunctor<DeviceType::OPENCL, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

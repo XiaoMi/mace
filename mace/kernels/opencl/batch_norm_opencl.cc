@@ -116,7 +116,7 @@ void BatchNormFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel_", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);

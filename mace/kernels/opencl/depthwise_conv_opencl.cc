@@ -149,7 +149,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
+  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
   std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel_", activation,
                                   batch, height, width, channels, multiplier);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);

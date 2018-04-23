@@ -84,7 +84,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, static_cast<int>(height_blocks));
   kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::stringstream ss;
   ss << "matmul_opencl_kernel_" << C->dim(0) << "_" << C->dim(1) << "_"
      << C->dim(2) << "_" << C->dim(3);

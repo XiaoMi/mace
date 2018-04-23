@@ -134,7 +134,7 @@ void PoolingFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     };
   }
 
-  std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
   std::stringstream ss;
   ss << "pooling_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
      << "_" << output->dim(2) << "_" << output->dim(3);
