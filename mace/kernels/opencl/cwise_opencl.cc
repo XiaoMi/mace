@@ -71,6 +71,8 @@ void CWiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
       kernel_.setArg(idx++, gws[1]);
     }
     kernel_.setArg(idx++, *(input->opencl_image()));
+    kernel_.setArg(idx++, static_cast<int32_t>(width));
+    kernel_.setArg(idx++, static_cast<int32_t>(channels));
     kernel_.setArg(idx++, static_cast<float>(coeff_));
     kernel_.setArg(idx++, *(output->opencl_image()));
     input_shape_ = input->shape();
