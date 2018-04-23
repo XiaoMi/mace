@@ -21,6 +21,7 @@ import sh
 import subprocess
 import sys
 import time
+import urllib
 
 
 sys.path.insert(0, "mace/python/tools")
@@ -76,11 +77,10 @@ def formatted_file_name(input_name, input_file_name):
 # clear data
 ################################
 def clear_mace_run_data(abi,
-                        target_soc,
+                        serialno,
                         phone_data_dir,
                         model_codegen_dir="mace/codegen/models"):
     if abi != "host":
-        serialno = adb_devices([target_soc]).pop()
         sh.adb("-s",
                serialno,
                "shell",
@@ -98,24 +98,36 @@ def adb_split_stdout(stdout_str):
     return [l.strip() for l in stdout_str.split('\n') if len(l.strip()) > 0]
 
 
-def adb_devices(target_socs=None):
-    device_ids = []
+def adb_devices():
+    serialnos = []
     p = re.compile(r'(\w+)\s+device')
     for line in adb_split_stdout(sh.adb("devices")):
         m = p.match(line)
         if m:
-            device_ids.append(m.group(1))
+            serialnos.append(m.group(1))
 
-    if target_socs is not None:
-        target_socs_set = set(target_socs)
-        target_devices = []
-        for serialno in device_ids:
-            props = adb_getprop_by_serialno(serialno)
-            if props["ro.board.platform"] in target_socs_set:
-                target_devices.append(serialno)
-        return target_devices
-    else:
-        return device_ids
+    return serialnos
+
+
+def get_soc_serialnos_map():
+    serialnos = adb_devices()
+    soc_serialnos_map = {}
+    for serialno in serialnos:
+        props = adb_getprop_by_serialno(serialno)
+        soc_serialnos_map.setdefault(props["ro.board.platform"], [])\
+            .append(serialno)
+
+    return soc_serialnos_map
+
+
+def get_target_socs_serialnos(target_socs=None):
+    soc_serialnos_map = get_soc_serialnos_map()
+    serialnos = []
+    if target_socs is None:
+        target_socs = soc_serialnos_map.keys()
+    for target_soc in target_socs:
+        serialnos.extend(soc_serialnos_map[target_soc])
+    return serialnos
 
 
 def adb_getprop_by_serialno(serialno):
@@ -128,6 +140,11 @@ def adb_getprop_by_serialno(serialno):
         if m:
             props[m.group(1)] = m.group(2)
     return props
+
+
+def adb_get_device_name_by_serialno(serialno):
+    props = adb_getprop_by_serialno(serialno)
+    return props.get("ro.product.model", "")
 
 
 def adb_supported_abis(serialno):
@@ -303,8 +320,7 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
                            "mace/codegen/opencl/opencl_encrypt_program.cc")
 
 
-def pull_binaries(target_soc, abi, model_output_dirs):
-    serialno = adb_devices([target_soc]).pop()
+def pull_binaries(abi, serialno, model_output_dirs):
     compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
     mace_run_param_file = "mace_run.config"
 
@@ -323,14 +339,11 @@ def pull_binaries(target_soc, abi, model_output_dirs):
                      cl_bin_dir, serialno)
 
 
-def gen_opencl_binary_code(target_soc,
-                           model_output_dirs,
+def gen_opencl_binary_code(model_output_dirs,
                            codegen_path="mace/codegen"):
     cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
     cl_platform_info_file_name = "mace_cl_platform_info.txt"
     opencl_codegen_file = "%s/opencl/opencl_compiled_program.cc" % codegen_path
-
-    serialno = adb_devices([target_soc]).pop()
 
     cl_bin_dirs = []
     for d in model_output_dirs:
@@ -342,8 +355,7 @@ def gen_opencl_binary_code(target_soc,
                    cl_platform_info_file_name)
 
 
-def gen_tuning_param_code(target_soc,
-                          model_output_dirs,
+def gen_tuning_param_code(model_output_dirs,
                           codegen_path="mace/codegen"):
     mace_run_param_file = "mace_run.config"
     cl_bin_dirs = []
@@ -438,10 +450,10 @@ def gen_random_input(model_output_dir,
         input_file_list.append(input_files)
     if len(input_file_list) != 0:
         input_name_list = []
-        if isinstance(input_names, list):
-            input_name_list.extend(input_names)
+        if isinstance(input_nodes, list):
+            input_name_list.extend(input_nodes)
         else:
-            input_name_list.append(input_names)
+            input_name_list.append(input_nodes)
         if len(input_file_list) != len(input_name_list):
             raise Exception('If input_files set, the input files should '
                             'match the input names.')
@@ -490,8 +502,8 @@ def update_mace_run_lib(model_output_dir,
           model_output_dir)
 
 
-def tuning_run(target_soc,
-               abi,
+def tuning_run(abi,
+               serialno,
                vlog_level,
                embed_model_data,
                model_output_dir,
@@ -532,7 +544,6 @@ def tuning_run(target_soc,
                 "%s" % option_args])
         p.wait()
     else:
-        serialno = adb_devices([target_soc]).pop()
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
         compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
         sh.adb("-s", serialno, "shell", "mkdir", "-p", compiled_opencl_dir)
@@ -584,8 +595,8 @@ def tuning_run(target_soc,
     return "".join(stdout_buff)
 
 
-def validate_model(target_soc,
-                   abi,
+def validate_model(abi,
+                   serialno,
                    model_file_path,
                    weight_file_path,
                    platform,
@@ -599,7 +610,6 @@ def validate_model(target_soc,
                    input_file_name="model_input",
                    output_file_name="model_out"):
     print("* Validate with %s" % platform)
-    serialno = adb_devices([target_soc]).pop()
 
     if platform == "tensorflow":
         if abi != "host":
@@ -815,8 +825,8 @@ def packaging_lib(libmace_output_dir, project_name):
     print("Packaging Done!\n")
 
 
-def benchmark_model(target_soc,
-                    abi,
+def benchmark_model(abi,
+                    serialno,
                     vlog_level,
                     embed_model_data,
                     model_output_dir,
@@ -836,7 +846,7 @@ def benchmark_model(target_soc,
     if os.path.exists(benchmark_binary_file):
         sh.rm("-rf", benchmark_binary_file)
     if not embed_model_data:
-        sh.cp("-f", "codegen/models/%s/%s.data" % (model_tag, model_tag),
+        sh.cp("-f", "mace/codegen/models/%s/%s.data" % (model_tag, model_tag),
               model_output_dir)
 
     benchmark_target = "//mace/benchmark:benchmark_model"
@@ -865,7 +875,6 @@ def benchmark_model(target_soc,
                 "%s" % option_args])
         p.wait()
     else:
-        serialno = adb_devices([target_soc]).pop()
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
 
         for input_name in input_nodes:
@@ -905,8 +914,8 @@ def benchmark_model(target_soc,
     return "".join(stdout_buff)
 
 
-def build_run_throughput_test(target_soc,
-                              abi,
+def build_run_throughput_test(abi,
+                              serialno,
                               vlog_level,
                               run_seconds,
                               merged_lib_file,
@@ -923,7 +932,6 @@ def build_run_throughput_test(target_soc,
                               strip="always",
                               input_file_name="model_input"):
     print("* Build and run throughput_test")
-    serialno = adb_devices([target_soc]).pop()
 
     model_tag_build_flag = ""
     if cpu_model_tag:

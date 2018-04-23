@@ -96,7 +96,7 @@ def main(unused_args):
     target_socs = None
     if FLAGS.target_socs != "all" and FLAGS.target_socs != "random":
         target_socs = set(FLAGS.target_socs.split(','))
-    target_devices = sh_commands.adb_devices(target_socs=target_socs)
+    target_devices = sh_commands.get_target_socs_serialnos(target_socs)
     if FLAGS.target_socs == "random":
         unlocked_devices = \
             [d for d in target_devices if not sh_commands.is_device_locked(d)]
