@@ -394,25 +394,31 @@ def gen_model_code(model_codegen_dir,
     if os.path.exists(model_codegen_dir):
         sh.rm("-rf", model_codegen_dir)
     sh.mkdir("-p", model_codegen_dir)
-    sh.python("bazel-bin/mace/python/tools/converter",
-              "-u",
-              "--platform=%s" % platform,
-              "--model_file=%s" % model_file_path,
-              "--weight_file=%s" % weight_file_path,
-              "--model_checksum=%s" % model_sha256_checksum,
-              "--output=%s" % model_codegen_dir + "/model.cc",
-              "--input_node=%s" % input_nodes,
-              "--output_node=%s" % output_nodes,
-              "--data_type=%s" % data_type,
-              "--runtime=%s" % runtime,
-              "--output_type=source",
-              "--template=%s" % "mace/python/tools",
-              "--model_tag=%s" % model_tag,
-              "--input_shape=%s" % input_shapes,
-              "--dsp_mode=%s" % dsp_mode,
-              "--embed_model_data=%s" % embed_model_data,
-              "--winograd=%s" % fast_conv,
-              "--obfuscate=%s" % obfuscate)
+    stdout_buff = []
+    process_output = make_output_processor(stdout_buff)
+    p = sh.python("bazel-bin/mace/python/tools/converter",
+                  "-u",
+                  "--platform=%s" % platform,
+                  "--model_file=%s" % model_file_path,
+                  "--weight_file=%s" % weight_file_path,
+                  "--model_checksum=%s" % model_sha256_checksum,
+                  "--output=%s" % model_codegen_dir + "/model.cc",
+                  "--input_node=%s" % input_nodes,
+                  "--output_node=%s" % output_nodes,
+                  "--data_type=%s" % data_type,
+                  "--runtime=%s" % runtime,
+                  "--output_type=source",
+                  "--template=%s" % "mace/python/tools",
+                  "--model_tag=%s" % model_tag,
+                  "--input_shape=%s" % input_shapes,
+                  "--dsp_mode=%s" % dsp_mode,
+                  "--embed_model_data=%s" % embed_model_data,
+                  "--winograd=%s" % fast_conv,
+                  "--obfuscate=%s" % obfuscate,
+                  _out=process_output,
+                  _bg=True,
+                  _err_to_out=True)
+    p.wait()
     print("Model code gen done!\n")
 
 
