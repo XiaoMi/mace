@@ -21,9 +21,9 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <utility>
-#include <cstring>
 
 #include "mace/utils/logging.h"
 

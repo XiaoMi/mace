@@ -1,3 +1,17 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import argparse
 import os
 import sys
@@ -15,10 +29,10 @@ import numpy as np
 FLAGS = None
 
 
-def generate_cpp_source():
+def generate_cpp_source(binary_dirs, binary_file_name, variable_name):
     data_map = {}
-    for binary_dir in FLAGS.binary_dirs.split(","):
-        binary_path = os.path.join(binary_dir, FLAGS.binary_file_name)
+    for binary_dir in binary_dirs.split(","):
+        binary_path = os.path.join(binary_dir, binary_file_name)
         if not os.path.exists(binary_path):
             continue
 
@@ -49,16 +63,19 @@ def generate_cpp_source():
     return env.get_template('str2vec_maps.cc.jinja2').render(
         maps=data_map,
         data_type='unsigned int',
-        variable_name=FLAGS.variable_name)
+        variable_name=variable_name)
 
 
-def main(unused_args):
-    cpp_binary_source = generate_cpp_source()
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
-    w_file.write(cpp_binary_source)
-    w_file.close()
+def tuning_param_codegen(binary_dirs,
+                         binary_file_name,
+                         output_path,
+                         variable_name):
+    cpp_binary_source = generate_cpp_source(
+            binary_dirs, binary_file_name, variable_name)
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_binary_source)
 
 
 def parse_args():
@@ -87,4 +104,7 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    tuning_param_codegen(FLAGS.binary_dirs,
+                         FLAGS.binary_file_name,
+                         FLAGS.output_path,
+                         FLAGS.variable_name)

@@ -1,3 +1,17 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import argparse
 import os
 import sys
@@ -22,30 +36,30 @@ def encrypt_code(code_str):
     return encrypted_arr
 
 
-def main(unused_args):
-    if not os.path.exists(FLAGS.cl_kernel_dir):
-        print("Input cl_kernel_dir " + FLAGS.cl_kernel_dir + " doesn't exist!")
+def encrypt_opencl_codegen(cl_kernel_dir, output_path):
+    if not os.path.exists(cl_kernel_dir):
+        print("Input cl_kernel_dir " + cl_kernel_dir + " doesn't exist!")
 
     header_code = ""
-    for file_name in os.listdir(FLAGS.cl_kernel_dir):
-        file_path = os.path.join(FLAGS.cl_kernel_dir, file_name)
+    for file_name in os.listdir(cl_kernel_dir):
+        file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-2:] == ".h":
-            f = open(file_path, "r")
-            header_code += f.read()
+            with open(file_path, "r") as f:
+                header_code += f.read()
 
     encrypted_code_maps = {}
-    for file_name in os.listdir(FLAGS.cl_kernel_dir):
-        file_path = os.path.join(FLAGS.cl_kernel_dir, file_name)
+    for file_name in os.listdir(cl_kernel_dir):
+        file_path = os.path.join(cl_kernel_dir, file_name)
         if file_path[-3:] == ".cl":
-            f = open(file_path, "r")
-            code_str = ""
-            for line in f.readlines():
-                if "#include <common.h>" in line:
-                    code_str += header_code
-                else:
-                    code_str += line
-            encrypted_code_arr = encrypt_code(code_str)
-            encrypted_code_maps[file_name[:-3]] = encrypted_code_arr
+            with open(file_path, "r") as f:
+                code_str = ""
+                for line in f.readlines():
+                    if "#include <common.h>" in line:
+                        code_str += header_code
+                    else:
+                        code_str += line
+                encrypted_code_arr = encrypt_code(code_str)
+                encrypted_code_maps[file_name[:-3]] = encrypted_code_arr
 
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(sys.path[0]))
     cpp_cl_encrypted_kernel = env.get_template(
@@ -54,11 +68,10 @@ def main(unused_args):
             data_type='unsigned char',
             variable_name='kEncryptedProgramMap')
 
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
-    w_file.write(cpp_cl_encrypted_kernel)
-    w_file.close()
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_cl_encrypted_kernel)
 
     print("Generate encrypted opencl source done!")
 
@@ -81,4 +94,4 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    encrypt_opencl_codegen(FLAGS.cl_kernel_dir, FLAGS.output_path)

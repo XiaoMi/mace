@@ -1,3 +1,17 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import argparse
 import os
 import sys
@@ -13,12 +27,14 @@ import jinja2
 FLAGS = None
 
 
-def generate_cpp_source():
+def generate_cpp_source(cl_binary_dirs,
+                        built_kernel_file_name,
+                        platform_info_file_name):
     maps = {}
     platform_info = ''
-    binary_dirs = FLAGS.cl_binary_dirs.strip().split(",")
+    binary_dirs = cl_binary_dirs.strip().split(",")
     for binary_dir in binary_dirs:
-        binary_path = os.path.join(binary_dir, FLAGS.built_kernel_file_name)
+        binary_path = os.path.join(binary_dir, built_kernel_file_name)
         if not os.path.exists(binary_path):
             continue
 
@@ -45,7 +61,7 @@ def generate_cpp_source():
                 maps[key].append(hex(ele))
 
         cl_platform_info_path = os.path.join(binary_dir,
-                                             FLAGS.platform_info_file_name)
+                                             platform_info_file_name)
         with open(cl_platform_info_path, 'r') as f:
             curr_platform_info = f.read()
         if platform_info != "":
@@ -61,14 +77,17 @@ def generate_cpp_source():
     )
 
 
-def main(unused_args):
-
-    cpp_cl_binary_source = generate_cpp_source()
-    if os.path.isfile(FLAGS.output_path):
-        os.remove(FLAGS.output_path)
-    w_file = open(FLAGS.output_path, "w")
-    w_file.write(cpp_cl_binary_source)
-    w_file.close()
+def opencl_codegen(output_path,
+                   cl_binary_dirs="",
+                   built_kernel_file_name="",
+                   platform_info_file_name=""):
+    cpp_cl_binary_source = generate_cpp_source(cl_binary_dirs,
+                                               built_kernel_file_name,
+                                               platform_info_file_name)
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+    with open(output_path, "w") as w_file:
+        w_file.write(cpp_cl_binary_source)
 
 
 def parse_args():
@@ -99,4 +118,7 @@ def parse_args():
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    main(unused_args=[sys.argv[0]] + unparsed)
+    opencl_codegen(FLAGS.output_path,
+                   FLAGS.cl_binary_dirs,
+                   FLAGS.built_kernel_file_name,
+                   FLAGS.platform_info_file_name)
