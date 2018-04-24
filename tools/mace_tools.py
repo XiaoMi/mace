@@ -369,7 +369,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                          model_config["input_shapes"],
                                          input_file_list)
 
-        if FLAGS.mode == "build" or FLAGS.mode == "all":
+        if FLAGS.mode == "build" or FLAGS.mode == "benchmark" or \
+                FLAGS.mode == "all":
             sh_commands.gen_model_code(
                     "mace/codegen/models/%s" % model_name,
                     model_config["platform"],
