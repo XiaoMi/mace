@@ -88,59 +88,69 @@ def get_hexagon_mode(configs):
     return False
 
 
-def gen_opencl_and_tuning_code(target_soc,
-                               target_abi,
+def gen_opencl_and_tuning_code(target_abi,
+                               serialno,
                                model_output_dirs,
                                pull_or_not):
     if pull_or_not:
-        sh_commands.pull_binaries(
-                target_soc, target_abi, model_output_dirs)
+        sh_commands.pull_binaries(target_abi, serialno, model_output_dirs)
 
     codegen_path = "mace/codegen"
 
     # generate opencl binary code
-    sh_commands.gen_opencl_binary_code(target_soc, model_output_dirs)
+    sh_commands.gen_opencl_binary_code(model_output_dirs)
 
-    sh_commands.gen_tuning_param_code(
-            target_soc, model_output_dirs)
+    sh_commands.gen_tuning_param_code(model_output_dirs)
 
 
 def model_benchmark_stdout_processor(stdout,
-                                     target_soc,
                                      abi,
+                                     serialno,
                                      model_name,
-                                     runtime,
-                                     running_round,
-                                     tuning):
-    metrics = {}
-    for line in stdout.split("\n"):
-        if "Aborted" in line:
-            raise Exception("Command failed")
+                                     runtime):
+    metrics = [0] * 5
+    for line in stdout.split('\n'):
         line = line.strip()
         parts = line.split()
         if len(parts) == 6 and parts[0].startswith("time"):
-            metrics["%s.create_net_ms" % model_name] = str(float(parts[1]))
-            metrics["%s.mace_engine_ctor_ms" % model_name] = str(
-                float(parts[2]))
-            metrics["%s.init_ms" % model_name] = str(float(parts[3]))
-            metrics["%s.warmup_ms" % model_name] = str(float(parts[4]))
-            if float(parts[5]) > 0:
-                metrics["%s.avg_latency_ms" % model_name] = str(
-                    float(parts[5]))
-    tags = {
-        "ro.board.platform": target_soc,
-        "abi": abi,
-        "runtime": runtime,
-        "round": running_round,  # TODO(yejianwu) change this to source/binary
-        "tuning": tuning
-    }
-    sh_commands.falcon_push_metrics(
-        metrics, endpoint="mace_model_benchmark", tags=tags)
+            metrics[0] = str(float(parts[1]))
+            metrics[1] = str(float(parts[2]))
+            metrics[2] = str(float(parts[3]))
+            metrics[3] = str(float(parts[4]))
+            metrics[4] = str(float(parts[5]))
+            break
+
+    props = sh_commands.adb_getprop_by_serialno(serialno)
+    device_type = props.get("ro.product.model", "")
+    target_soc = props.get("ro.board.platform", "")
+
+    report_filename = "build/report.csv"
+    if not os.path.exists(report_filename):
+        with open(report_filename, 'w') as f:
+            f.write("model_name,device_type,soc,abi,runtime,create_net,"
+                    "engine_ctor,init,warmup,run_avg\n")
+
+    data_str = "{model_name},{device_type},{soc},{abi},{runtime}," \
+               "{create_net},{engine_ctor},{init},{warmup},{run_avg}\n" \
+        .format(
+            model_name=model_name,
+            device_type=device_type,
+            soc=target_soc,
+            abi=abi,
+            runtime=runtime,
+            create_net=metrics[0],
+            engine_ctor=metrics[1],
+            init=metrics[2],
+            warmup=metrics[3],
+            run_avg=metrics[4]
+        )
+    with open(report_filename, 'a') as f:
+        f.write(data_str)
 
 
 def tuning_run(runtime,
-               target_soc,
                target_abi,
+               serialno,
                vlog_level,
                embed_model_data,
                model_output_dir,
@@ -158,8 +168,8 @@ def tuning_run(runtime,
                limit_opencl_kernel_time=0,
                option_args=""):
     stdout = sh_commands.tuning_run(
-            target_soc,
             target_abi,
+            serialno,
             vlog_level,
             embed_model_data,
             model_output_dir,
@@ -176,21 +186,19 @@ def tuning_run(runtime,
             out_of_range_check,
             phone_data_dir,
             option_args)
-    model_benchmark_stdout_processor(stdout,
-                                     target_soc,
-                                     target_abi,
-                                     model_name,
-                                     runtime,
-                                     running_round,
-                                     tuning)
+
+    if running_round > 0 and FLAGS.collect_report:
+        model_benchmark_stdout_processor(
+            stdout, target_abi, serialno, model_name, runtime)
 
 
-def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
-                        vlog_level, embed_model_data, model_output_dir,
-                        input_nodes, output_nodes, input_shapes, output_shapes,
-                        model_name, device_type, running_round, restart_round,
-                        tuning, limit_opencl_kernel_time, phone_data_dir):
-    gen_opencl_and_tuning_code(target_soc, target_abi, [], False)
+def build_mace_run_prod(hexagon_mode, runtime, target_abi,
+                        serialno, vlog_level, embed_model_data,
+                        model_output_dir, input_nodes, output_nodes,
+                        input_shapes, output_shapes, model_name, device_type,
+                        running_round, restart_round, tuning,
+                        limit_opencl_kernel_time, phone_data_dir):
+    gen_opencl_and_tuning_code(target_abi, serialno, [], False)
     production_or_not = False
     mace_run_target = "//mace/tools/validation:mace_run"
     sh_commands.bazel_build(
@@ -202,21 +210,20 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
     sh_commands.update_mace_run_lib(model_output_dir, target_abi, model_name,
                                     embed_model_data)
 
-    tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
-               model_output_dir, input_nodes, output_nodes, input_shapes,
-               output_shapes, model_name, device_type, running_round=0,
-               restart_round=1, out_of_range_check=True,
+    tuning_run(runtime, target_abi, serialno, vlog_level,
+               embed_model_data, model_output_dir, input_nodes, output_nodes,
+               input_shapes, output_shapes, model_name, device_type,
+               running_round=0, restart_round=1, out_of_range_check=True,
                phone_data_dir=phone_data_dir, tuning=False)
 
-    tuning_run(runtime, target_soc, target_abi, vlog_level, embed_model_data,
-               model_output_dir, input_nodes, output_nodes, input_shapes,
-               output_shapes, model_name, device_type, running_round=0,
-               restart_round=1, out_of_range_check=False,
+    tuning_run(runtime, target_abi, serialno, vlog_level,
+               embed_model_data, model_output_dir, input_nodes, output_nodes,
+               input_shapes, output_shapes, model_name, device_type,
+               running_round=0, restart_round=1, out_of_range_check=False,
                phone_data_dir=phone_data_dir, tuning=tuning,
                limit_opencl_kernel_time=limit_opencl_kernel_time)
 
-    gen_opencl_and_tuning_code(
-            target_soc, target_abi, [model_output_dir], True)
+    gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir], True)
     production_or_not = True
     sh_commands.bazel_build(
             mace_run_target,
@@ -230,13 +237,14 @@ def build_mace_run_prod(hexagon_mode, runtime, target_soc, target_abi,
 
 def merge_libs_and_tuning_results(target_soc,
                                   target_abi,
+                                  serialno,
                                   project_name,
                                   output_dir,
                                   model_output_dirs,
                                   hexagon_mode,
                                   embed_model_data):
     gen_opencl_and_tuning_code(
-            target_soc, target_abi, model_output_dirs, False)
+            target_abi, serialno, model_output_dirs, False)
     sh_commands.build_production_code(target_abi)
 
     sh_commands.merge_libs(target_soc,
@@ -322,11 +330,17 @@ def parse_args():
         type="bool",
         default="false",
         help="Enable out of range check for opencl.")
+    parser.add_argument(
+        "--collect_report",
+        type="bool",
+        default="false",
+        help="Collect report.")
     return parser.parse_known_args()
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_soc, target_abi, phone_data_dir, option_args):
+                   target_soc, target_abi, serialno, phone_data_dir,
+                   option_args):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
     for model_name in configs["models"]:
@@ -344,9 +358,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         # Create model build directory
         model_path_digest = md5sum(model_config["model_file_path"])
-        model_output_dir = "%s/%s/%s/%s/%s/%s/%s" % (
+        device_name = sh_commands.adb_get_device_name_by_serialno(serialno)
+        model_output_dir = "%s/%s/%s/%s/%s/%s_%s/%s" % (
             FLAGS.output_dir, project_name, "build",
-            model_name, model_path_digest, target_soc, target_abi)
+            model_name, model_path_digest, device_name.replace(' ', ''),
+            target_soc, target_abi)
         model_output_dirs.append(model_output_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -354,7 +370,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                 sh.rm("-rf", model_output_dir)
             os.makedirs(model_output_dir)
             sh_commands.clear_mace_run_data(
-                    target_abi, target_soc, phone_data_dir)
+                    target_abi, serialno, phone_data_dir)
 
         model_file_path, weight_file_path = get_model_files(
                 model_config["model_file_path"],
@@ -389,8 +405,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                     model_config["obfuscate"])
             build_mace_run_prod(hexagon_mode,
                                 model_config["runtime"],
-                                target_soc,
                                 target_abi,
+                                serialno,
                                 vlog_level,
                                 embed_model_data,
                                 model_output_dir,
@@ -409,8 +425,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
                 FLAGS.mode == "all":
             tuning_run(model_config["runtime"],
-                       target_soc,
                        target_abi,
+                       serialno,
                        vlog_level,
                        embed_model_data,
                        model_output_dir,
@@ -426,8 +442,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        phone_data_dir)
 
         if FLAGS.mode == "benchmark":
-            sh_commands.benchmark_model(target_soc,
-                                        target_abi,
+            sh_commands.benchmark_model(target_abi,
+                                        serialno,
                                         vlog_level,
                                         embed_model_data,
                                         model_output_dir,
@@ -442,8 +458,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         option_args)
 
         if FLAGS.mode == "validate" or FLAGS.mode == "all":
-            sh_commands.validate_model(target_soc,
-                                       target_abi,
+            sh_commands.validate_model(target_abi,
+                                       serialno,
                                        model_file_path,
                                        weight_file_path,
                                        model_config["platform"],
@@ -460,6 +476,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         merge_libs_and_tuning_results(
             target_soc,
             target_abi,
+            serialno,
             project_name,
             FLAGS.output_dir,
             model_output_dirs,
@@ -487,8 +504,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         for model_name in configs["models"]:
             runtime = configs["models"][model_name]["runtime"]
             model_tag_dict[runtime] = model_name
-        sh_commands.build_run_throughput_test(target_soc,
-                                              target_abi,
+        sh_commands.build_run_throughput_test(target_abi,
+                                              serialno,
                                               vlog_level,
                                               FLAGS.run_seconds,
                                               merged_lib_file,
@@ -534,18 +551,26 @@ def main(unused_args):
     phone_data_dir = "/data/local/tmp/mace_run/"
     for target_soc in target_socs:
         for target_abi in configs["target_abis"]:
-            serialno = sh_commands.adb_devices([target_soc]).pop()
-            props = sh_commands.adb_getprop_by_serialno(serialno)
-            print(
-                "============================================================="
-            )
-            print("Trying to lock device", serialno)
-            with sh_commands.device_lock(serialno):
-                print("Run on device: %s, %s, %s" % (
-                      serialno, props["ro.board.platform"],
-                      props["ro.product.model"]))
+            if target_abi != 'host':
+                serialnos = sh_commands.get_target_socs_serialnos([target_soc])
+                for serialno in serialnos:
+                    props = sh_commands.adb_getprop_by_serialno(serialno)
+                    print(
+                        "===================================================="
+                    )
+                    print("Trying to lock device", serialno)
+                    with sh_commands.device_lock(serialno):
+                        print("Run on device: %s, %s, %s" % (
+                            serialno, props["ro.board.platform"],
+                              props["ro.product.model"]))
+                        process_models(project_name, configs, embed_model_data,
+                                       vlog_level, target_soc, target_abi,
+                                       serialno, phone_data_dir, option_args)
+            else:
+                print("====================================================")
+                print("Run on host")
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_soc, target_abi,
+                               vlog_level, target_soc, target_abi, '',
                                phone_data_dir, option_args)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
