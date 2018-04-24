@@ -87,7 +87,7 @@ __kernel void conv_2d(KERNEL_ERROR_PARAMS
 
 #undef READ_INPUT
 
-        // int filter_idx = (hb_idx * filter_width + width_idx) * rounded_in_ch + (in_ch_blk << 2);
+        // int filter_idx = (hb_idx * filter_width + width_idx) * in_ch + (in_ch_blk << 2);
         weights0 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 0, filter_y_idx));
         weights1 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 1, filter_y_idx));
         weights2 = READ_IMAGET(filter, SAMPLER, (int2)(filter_x_idx + 2, filter_y_idx));
