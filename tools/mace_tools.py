@@ -124,7 +124,7 @@ def model_benchmark_stdout_processor(stdout,
     device_type = props.get("ro.product.model", "")
     target_soc = props.get("ro.board.platform", "")
 
-    report_filename = "build/report.csv"
+    report_filename = FLAGS.output_dir + "/report.csv"
     if not os.path.exists(report_filename):
         with open(report_filename, 'w') as f:
             f.write("model_name,device_type,soc,abi,runtime,create_net,"
