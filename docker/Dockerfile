@@ -30,7 +30,8 @@ RUN apt-get install -y --no-install-recommends \
     openjdk-8-jdk \
     openjdk-8-jre-headless \
     openssh-server \
-    wget
+    wget \
+    bsdmainutils
 RUN pip install --upgrade pip
 
 ENV ANDROID_NDK_HOME /opt/android-ndk
