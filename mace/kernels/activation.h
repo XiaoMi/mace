@@ -121,45 +121,36 @@ void PReLUActivation(const T *input_ptr,
 }
 
 template <DeviceType D, typename T>
-class ActivationFunctor {
+class ActivationFunctor;
+
+template <>
+class ActivationFunctor<DeviceType::CPU, float> {
  public:
-  ActivationFunctor(ActivationType type, T relux_max_limit)
+  ActivationFunctor(ActivationType type, float relux_max_limit)
       : activation_(type), relux_max_limit_(relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *alpha,
                   Tensor *output,
                   StatsFuture *future) {
-    const T *input_ptr = input->data<T>();
-    T *output_ptr = output->mutable_data<T>();
+    const float *input_ptr = input->data<float>();
+    float *output_ptr = output->mutable_data<float>();
     if (activation_ == PRELU) {
       MACE_CHECK_NOTNULL(alpha);
-      const T *alpha_ptr = alpha->data<T>();
-      const index_t outer_size = output->dim(0) * output->dim(1)
-          * output->dim(2);
-      PReLUActivation(input_ptr, outer_size, input->dim(3), 1, alpha_ptr,
+      const float *alpha_ptr = alpha->data<float>();
+      const index_t outer_size = output->dim(0);
+      const index_t inner_size = output->dim(2) * output->dim(3);
+      PReLUActivation(input_ptr,
+                      outer_size,
+                      input->dim(1),
+                      inner_size,
+                      alpha_ptr,
                       output_ptr);
     } else {
       DoActivation(input_ptr, output_ptr, output->size(), activation_,
                    relux_max_limit_);
     }
   }
-
- private:
-  ActivationType activation_;
-  T relux_max_limit_;
-};
-
-template <>
-class ActivationFunctor<DeviceType::NEON, float> {
- public:
-  ActivationFunctor(ActivationType type, float relux_max_limit)
-    : activation_(type), relux_max_limit_(relux_max_limit) {}
-
-  void operator()(const Tensor *input,
-                  const Tensor *alpha,
-                  Tensor *output,
-                  StatsFuture *future);
 
  private:
   ActivationType activation_;

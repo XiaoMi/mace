@@ -35,11 +35,27 @@ void ResizeBilinearBenchmark(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input",
-                               {batch, input_height, input_width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, channels, input_height, input_width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, input_height, input_width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
   net.AddInputFromArray<D, index_t>("OutSize", {2},
                                     {output_height, output_width});
-  if (D == DeviceType::OPENCL) {
+
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
+      .Input("Input")
+      .Input("OutSize")
+      .Output("Output")
+      .AddIntsArg("size", {output_height, output_width})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
@@ -50,13 +66,7 @@ void ResizeBilinearBenchmark(int iters,
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
-        .Input("Input")
-        .Input("OutSize")
-        .Output("Output")
-        .AddIntsArg("size", {output_height, output_width})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up

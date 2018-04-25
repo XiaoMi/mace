@@ -318,6 +318,7 @@ class Tensor {
    public:
     explicit MappingGuard(const Tensor *tensor) : tensor_(tensor) {
       if (tensor_ != nullptr) {
+        MACE_CHECK_NOTNULL(tensor_->buffer_);
         tensor_->buffer_->Map(&mapped_image_pitch_);
       }
     }

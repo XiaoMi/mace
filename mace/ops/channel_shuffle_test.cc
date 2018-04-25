@@ -22,21 +22,31 @@ namespace test {
 class ChannelShuffleOpTest : public OpsTestBase {};
 
 TEST_F(ChannelShuffleOpTest, C8G4_CPU) {
-  // Construct graph
   OpsTestNet net;
-  OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("group", 4)
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddInputFromArray<DeviceType::CPU, float>(
       "Input", {1, 1, 2, 8},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
+
+  // Construct graph
+  OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
+    .Input("InputNCHW")
+    .Output("OutputNCHW")
+    .AddIntArg("group", 4)
+    .Finalize(net.NewOperatorDef());
+
   // Run
   net.RunOp();
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "Output",
+                                                  NHWC);
 
   // Check
   auto expected = CreateTensor<float>(

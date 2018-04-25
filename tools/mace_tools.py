@@ -69,9 +69,6 @@ def get_data_and_device_type(runtime):
     elif runtime == "cpu":
         data_type = "DT_FLOAT"
         device_type = "CPU"
-    elif runtime == "neon":
-        data_type = "DT_FLOAT"
-        device_type = "NEON"
 
     return data_type, device_type
 

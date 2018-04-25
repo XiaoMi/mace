@@ -18,7 +18,9 @@ static void LocalResponseNorm(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+  }
 
   OpDefBuilder("LocalResponseNorm", "LocalResponseNormBM")
       .Input("Input")
@@ -54,8 +56,7 @@ static void LocalResponseNorm(
   BENCHMARK(BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
 #define BM_LOCAL_RESPONSE_NORM(N, C, H, W)                 \
-  BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, CPU);    \
-  BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, NEON);
+  BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, CPU);
 
 BM_LOCAL_RESPONSE_NORM(1, 1, 512, 512);
 BM_LOCAL_RESPONSE_NORM(1, 3, 128, 128);

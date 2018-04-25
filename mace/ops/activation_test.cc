@@ -269,15 +269,10 @@ void TestSimplePrelu() {
     net.RunOp(D);
   }
 
-  if (D == DeviceType::NEON) {
+  if (D == DeviceType::CPU) {
     auto expected = CreateTensor<float>(
         {2, 2, 2, 2},
         {-14, 7, -12, 6, -15, -15, -12, -12, -6, 3, -4, 2, -3, -3, 0, 0});
-    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
-  } else {
-    auto expected = CreateTensor<float>(
-        {2, 2, 2, 2},
-        {-14, 7, -12, 6, -10, -15, -8, -12, -6, 3, -4, 2, -2, -3, 0, 0});
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   }
 }
@@ -285,10 +280,6 @@ void TestSimplePrelu() {
 
 TEST_F(ActivationOpTest, CPUSimplePrelu) {
   TestSimplePrelu<DeviceType::CPU>();
-}
-
-TEST_F(ActivationOpTest, NEONSimplePrelu) {
-  TestSimplePrelu<DeviceType::NEON>();
 }
 
 TEST_F(ActivationOpTest, OPENCLSimplePrelu) {

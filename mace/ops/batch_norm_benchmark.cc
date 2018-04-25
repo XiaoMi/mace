@@ -30,13 +30,29 @@ void BatchNorm(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
   net.AddRandomInput<D, T>("Scale", {channels});
   net.AddRandomInput<D, T>("Offset", {channels});
   net.AddRandomInput<D, T>("Mean", {channels});
   net.AddRandomInput<D, T>("Var", {channels}, true);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("BatchNorm", "BatchNormBM")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Input("Mean")
+      .Input("Var")
+      .AddFloatArg("epsilon", 1e-3)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Scale", "ScaleImage",
@@ -57,15 +73,7 @@ void BatchNorm(
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("BatchNorm", "BatchNormBM")
-        .Input("Input")
-        .Input("Scale")
-        .Input("Offset")
-        .Input("Mean")
-        .Input("Var")
-        .AddFloatArg("epsilon", 1e-3)
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // tuning

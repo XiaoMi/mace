@@ -34,7 +34,14 @@ class ChannelShuffleOp : public Operator<D, T> {
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
-    int channels = input->dim(3);
+    int channels;
+    if (D == OPENCL) {
+      channels = input->dim(3);
+    } else if (D == CPU) {
+      channels = input->dim(1);
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
     MACE_CHECK(channels % group_ == 0,
                "input channels must be an integral multiple of group. ",
                input->dim(3));

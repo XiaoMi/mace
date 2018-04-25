@@ -31,9 +31,21 @@ void ReluBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("Activation", "ReluBM")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELU")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -43,11 +55,7 @@ void ReluBenchmark(
         .AddStringArg("activation", "RELU")
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("Activation", "ReluBM")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up
@@ -93,7 +101,11 @@ void ReluxBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  }
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -157,10 +169,23 @@ void PreluBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
   net.AddRandomInput<D, float>("Alpha", {channels});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("Activation", "PreluBM")
+      .Input("Input")
+      .Input("Alpha")
+      .Output("Output")
+      .AddStringArg("activation", "PRELU")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
@@ -173,12 +198,7 @@ void PreluBenchmark(
         .AddStringArg("activation", "PRELU")
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("Activation", "PreluBM")
-        .Input("Input")
-        .Input("Alpha")
-        .Output("Output")
-        .AddStringArg("activation", "PRELU")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up
@@ -224,7 +244,11 @@ void TanhBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  }
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -286,7 +310,11 @@ void SigmoidBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  }
 
   if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",

@@ -40,7 +40,18 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Weight", weight_shape, weight_value);
   net.AddInputFromArray<D, float>("Bias", bias_shape, bias_value);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    net.Transpose2D<D, float>("Weight", "WeightTranspose");
+    OpDefBuilder("FC", "FullyConnectedTest")
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Weight", "WeightImage",
@@ -62,14 +73,7 @@ void Simple(const std::vector<index_t> &input_shape,
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
-    OpDefBuilder("FC", "FullyConnectedTest")
-      .Input("Input")
-      .Input("Weight")
-      .Input("Bias")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Check
@@ -130,12 +134,6 @@ void Complex(const index_t batch,
 
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("FC", "FullyConnectedTest")
-    .Input("Input")
-    .Input("Weight")
-    .Input("Bias")
-    .Output("Output")
-    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
@@ -144,8 +142,17 @@ void Complex(const index_t batch,
     "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
 
+  OpDefBuilder("FC", "FullyConnectedTest")
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("OutputNCHW")
+    .Finalize(net.NewOperatorDef());
+
   // run cpu
   net.RunOp();
+
+  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
 
   // Check
   Tensor expected;
@@ -216,12 +223,6 @@ void TestWXFormat(const index_t batch,
 
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("FC", "FullyConnectedTest")
-    .Input("Input")
-    .Input("Weight")
-    .Input("Bias")
-    .Output("Output")
-    .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
@@ -230,8 +231,17 @@ void TestWXFormat(const index_t batch,
     "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
 
+  OpDefBuilder("FC", "FullyConnectedTest")
+    .Input("Input")
+    .Input("Weight")
+    .Input("Bias")
+    .Output("OutputNCHW")
+    .Finalize(net.NewOperatorDef());
+
   // run cpu
   net.RunOp();
+
+  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
 
   // Check
   Tensor expected;
@@ -284,61 +294,6 @@ TEST_F(FullyConnectedOpTest, OPENCLHalfWidthFormatAligned) {
   TestWXFormat<half>(1, 2, 2, 512, 2);
   TestWXFormat<half>(1, 11, 11, 32, 16);
   TestWXFormat<half>(1, 16, 32, 32, 32);
-}
-
-namespace {
-void FullyConnectedTestNEON(const index_t batch,
-                            const index_t height,
-                            const index_t width,
-                            const index_t channels,
-                            const index_t out_channel) {
-  srand(time(NULL));
-
-  // Construct graph
-  OpsTestNet net;
-  OpDefBuilder("FC", "FullyConnectedTest")
-    .Input("Input")
-    .Input("Weight")
-    .Input("Bias")
-    .Output("Output")
-    .Finalize(net.NewOperatorDef());
-
-  // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>(
-    "Input", {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::CPU, float>(
-    "Weight", {out_channel, height * width * channels});
-  net.AddRandomInput<DeviceType::CPU, float>("Bias", {out_channel});
-
-  // run cpu
-  net.RunOp();
-
-  // Run on neon
-  OpDefBuilder("FC", "FullyConnectedTest")
-    .Input("Input")
-    .Input("Weight")
-    .Input("Bias")
-    .Output("OutputNeon")
-    .Finalize(net.NewOperatorDef());
-
-  // Run on device
-  net.RunOp(DeviceType::NEON);
-
-  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
-                                                       "Output");
-
-  ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
-                          *net.GetOutput("OutputNeon"),
-                          1e-3, 1e-3);
-}
-}  // namespace
-
-TEST_F(FullyConnectedOpTest, TestNEON) {
-  FullyConnectedTestNEON(1, 7, 7, 32, 16);
-  FullyConnectedTestNEON(1, 7, 7, 512, 128);
-  FullyConnectedTestNEON(1, 1, 1, 2048, 1024);
-  FullyConnectedTestNEON(3, 1, 1, 16, 8);
-  FullyConnectedTestNEON(3, 7, 7, 32, 16);
 }
 
 }  // namespace test
