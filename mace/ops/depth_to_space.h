@@ -37,10 +37,17 @@ class DepthToSpaceOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
 
-    int input_depth = input->dim(3);
+    int input_depth;
+    if (D == CPU) {
+      input_depth = input->dim(1);
+    } else if (D == OPENCL) {
+      input_depth = input->dim(3);
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
     MACE_CHECK(input_depth % (block_size_ * block_size_) == 0,
                "input depth should be dividable by block_size * block_size",
-               input->dim(3));
+               input_depth);
     MACE_CHECK((input_depth % 4) == 0,
                "input channel should be dividable by 4");
     functor_(input, output, future);

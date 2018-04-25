@@ -37,12 +37,6 @@ void Register_Pooling(OperatorRegistry *op_registry) {
                                      .Build(),
                     PoolingOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    PoolingOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

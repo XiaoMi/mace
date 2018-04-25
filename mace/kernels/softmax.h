@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <limits>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -32,51 +33,67 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
-struct SoftmaxFunctor {
-  void operator()(const Tensor *logits, Tensor *output, StatsFuture *future) {
-    Tensor::MappingGuard logits_guard(logits);
-    Tensor::MappingGuard output_guard(output);
-    const T *logits_ptr = logits->data<T>();
-    T *output_ptr = output->mutable_data<T>();
-    auto &logits_shape = logits->shape();
-    const index_t batch_size =
-        std::accumulate(logits_shape.begin(), logits_shape.end() - 1, 1,
-                        std::multiplies<index_t>());
-    const index_t num_classes = logits_shape.back();
+template<DeviceType D, typename T>
+struct SoftmaxFunctor;
 
-#pragma omp parallel
-    {
-      // Allocate per thread buffer
-      std::vector<T> exp_data(num_classes);
-#pragma omp for
-      for (index_t i = 0; i < batch_size; ++i) {
-        const index_t pos = i * num_classes;
-        T max_value = logits_ptr[pos];
-        for (index_t c = 1; c < num_classes; ++c) {
-          max_value = std::max(max_value, logits_ptr[pos + c]);
+template<>
+struct SoftmaxFunctor<DeviceType::CPU, float> {
+  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+    const index_t batch = input->dim(0);
+    const index_t class_count = input->dim(1);
+    const index_t class_size = input->dim(2) * input->dim(3);
+
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
+    const float *input_data = input->data<float>();
+    float *output_data = output->mutable_data<float>();
+
+    for (index_t b = 0; b < batch; ++b) {
+      std::vector<float>
+        max_val(class_size, std::numeric_limits<float>::lowest());
+      std::vector<float> sum_val(class_size, 0.f);
+
+      // calculate max for each class
+      for (index_t c = 0; c < class_count; ++c) {
+        const float
+          *input_ptr = input_data + (b * class_count + c) * class_size;
+        for (index_t k = 0; k < class_size; ++k) {
+          max_val[k] = std::max(max_val[k], input_ptr[k]);
         }
-        // TODO(liuqi): check overflow?
-        T sum = 0;
-        for (index_t c = 0; c < num_classes; ++c) {
-          exp_data[c] = ::exp((logits_ptr[pos + c] - max_value));
-          sum += exp_data[c];
+      }
+
+      // calculate data - max for each class
+#pragma omp parallel for
+      for (index_t c = 0; c < class_count; ++c) {
+        const float
+          *input_ptr = input_data + (b * class_count + c) * class_size;
+        float *output_ptr = output_data + (b * class_count + c) * class_size;
+        for (index_t k = 0; k < class_size; ++k) {
+          output_ptr[k] = ::exp(input_ptr[k] - max_val[k]);
         }
-        for (index_t c = 0; c < num_classes; ++c) {
-          output_ptr[pos + c] = exp_data[c] / sum;
+      }
+
+      // calculate sum for each class
+      for (index_t c = 0; c < class_count; ++c) {
+        float *output_ptr = output_data + (b * class_count + c) * class_size;
+        for (index_t k = 0; k < class_size; ++k) {
+          sum_val[k] += output_ptr[k];
+        }
+      }
+
+      // calculate (data - max) / sum for each class
+      for (index_t c = 0; c < class_count; ++c) {
+        float *output_ptr = output_data + (b * class_count + c) * class_size;
+        for (index_t k = 0; k < class_size; ++k) {
+          output_ptr[k] /= sum_val[k];
         }
       }
     }
   }
 };
 
-template <>
-struct SoftmaxFunctor<DeviceType::NEON, float> {
-  void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
-};
-
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
+template<typename T>
 struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
 

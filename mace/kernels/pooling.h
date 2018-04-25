@@ -60,7 +60,10 @@ struct PoolingFunctorBase {
 };
 
 template <DeviceType D, typename T>
-struct PoolingFunctor : PoolingFunctorBase {
+struct PoolingFunctor;
+
+template <>
+struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
@@ -71,43 +74,141 @@ struct PoolingFunctor : PoolingFunctorBase {
             pooling_type, kernels, strides, padding_type, paddings, dilations) {
   }
 
+  void MaxPooling(const float *input,
+                  const index_t batch,
+                  const index_t in_height,
+                  const index_t in_width,
+                  const index_t channels,
+                  const index_t out_height,
+                  const index_t out_width,
+                  const int filter_height,
+                  const int filter_width,
+                  const int stride_h,
+                  const int stride_w,
+                  const int dilation_h,
+                  const int dilation_w,
+                  const int pad_top,
+                  const int pad_left,
+                  float *output) {
+    const index_t in_image_size = in_height * in_width;
+    const index_t out_image_size = out_height * out_width;
+    const index_t in_batch_size = channels * in_image_size;
+    const index_t out_batch_size = channels * out_image_size;
+
+#pragma omp parallel for collapse(2)
+    for (index_t b = 0; b < batch; ++b) {
+      for (index_t c = 0; c < channels; ++c) {
+        const index_t out_base = b * out_batch_size + c * out_image_size;
+        const index_t in_base = b * in_batch_size + c * in_image_size;
+        for (index_t h = 0; h < out_height; ++h) {
+          for (index_t w = 0; w < out_width; ++w) {
+            const index_t out_offset = out_base + h * out_width + w;
+            float res = std::numeric_limits<float>::lowest();
+            for (int fh = 0; fh < filter_height; ++fh) {
+              for (int fw = 0; fw < filter_width; ++fw) {
+                int inh = h * stride_h + dilation_h * fh - pad_top;
+                int inw = w * stride_w + dilation_w * fw - pad_left;
+                if (inh >= 0 && inh < in_height && inw >= 0 && inw < in_width) {
+                  index_t input_offset = in_base + inh * in_width + inw;
+                  res = std::max(res, input[input_offset]);
+                }
+              }
+            }
+            output[out_offset] = res;
+          }
+        }
+      }
+    }
+  }
+
+  void AvgPooling(const float *input,
+                  const index_t batch,
+                  const index_t in_height,
+                  const index_t in_width,
+                  const index_t channels,
+                  const index_t out_height,
+                  const index_t out_width,
+                  const int filter_height,
+                  const int filter_width,
+                  const int stride_h,
+                  const int stride_w,
+                  const int dilation_h,
+                  const int dilation_w,
+                  const int pad_top,
+                  const int pad_left,
+                  float *output) {
+    const index_t in_image_size = in_height * in_width;
+    const index_t out_image_size = out_height * out_width;
+    const index_t in_batch_size = channels * in_image_size;
+    const index_t out_batch_size = channels * out_image_size;
+
+#pragma omp parallel for collapse(2)
+    for (index_t b = 0; b < batch; ++b) {
+      for (index_t c = 0; c < channels; ++c) {
+        const index_t out_base = b * out_batch_size + c * out_image_size;
+        const index_t in_base = b * in_batch_size + c * in_image_size;
+        for (index_t h = 0; h < out_height; ++h) {
+          for (index_t w = 0; w < out_width; ++w) {
+            const index_t out_offset = out_base + h * out_width + w;
+            float res = 0;
+            int block_size = 0;
+            for (int fh = 0; fh < filter_height; ++fh) {
+              for (int fw = 0; fw < filter_width; ++fw) {
+                int inh = h * stride_h + dilation_h * fh - pad_top;
+                int inw = w * stride_w + dilation_w * fw - pad_left;
+                if (inh >= 0 && inh < in_height && inw >= 0 && inw < in_width) {
+                  index_t input_offset = in_base + inh * in_width + inw;
+                  res += input[input_offset];
+                  ++block_size;
+                }
+              }
+            }
+            output[out_offset] = res / block_size;
+          }
+        }
+      }
+    }
+  }
+
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future) {
     std::vector<index_t> output_shape(4);
     std::vector<index_t> filter_shape = {
-        kernels_[0], kernels_[1], input_tensor->dim(3), input_tensor->dim(3)};
+      input_tensor->dim(1), input_tensor->dim(1), kernels_[0], kernels_[1]};
 
     std::vector<int> paddings(2);
     if (paddings_.empty()) {
-      kernels::CalcNHWCPaddingAndOutputSize(
-          input_tensor->shape().data(), filter_shape.data(), dilations_,
-          strides_, padding_type_, output_shape.data(), paddings.data());
+      kernels::CalcNCHWPaddingAndOutputSize(
+        input_tensor->shape().data(), filter_shape.data(), dilations_,
+        strides_, padding_type_, output_shape.data(), paddings.data());
     } else {
       paddings = paddings_;
-      CalcOutputSize(input_tensor->shape().data(), filter_shape.data(),
-                     paddings_.data(), dilations_, strides_, RoundType::CEIL,
-                     output_shape.data());
+      CalcNCHWOutputSize(input_tensor->shape().data(),
+                         filter_shape.data(),
+                         paddings_.data(),
+                         dilations_,
+                         strides_,
+                         RoundType::CEIL,
+                         output_shape.data());
     }
     output_tensor->Resize(output_shape);
 
-    Tensor::MappingGuard in_guard(input_tensor);
-    Tensor::MappingGuard out_guard(output_tensor);
-    const T *input = input_tensor->data<T>();
-    T *output = output_tensor->mutable_data<T>();
+    Tensor::MappingGuard input_guard(input_tensor);
+    Tensor::MappingGuard output_guard(output_tensor);
+    const float *input = input_tensor->data<float>();
+    float *output = output_tensor->mutable_data<float>();
     const index_t *input_shape = input_tensor->shape().data();
     index_t batch = output_shape[0];
-    index_t height = output_shape[1];
-    index_t width = output_shape[2];
-    index_t channels = output_shape[3];
+    index_t channels = output_shape[1];
+    index_t height = output_shape[2];
+    index_t width = output_shape[3];
 
-    index_t input_height = input_shape[1];
-    index_t input_width = input_shape[2];
-    index_t input_channels = input_shape[3];
-    index_t in_image_size = input_height * input_width;
+    index_t input_height = input_shape[2];
+    index_t input_width = input_shape[3];
 
-    int kernel_h = kernels_[0];
-    int kernel_w = kernels_[1];
+    int filter_h = kernels_[0];
+    int filter_w = kernels_[1];
 
     int stride_h = strides_[0];
     int stride_w = strides_[1];
@@ -115,84 +216,47 @@ struct PoolingFunctor : PoolingFunctorBase {
     int dilation_h = dilations_[0];
     int dilation_w = dilations_[1];
 
-    // The left-upper most offset of the padded input
-    int padded_h_start = 0 - paddings[0] / 2;
-    int padded_w_start = 0 - paddings[1] / 2;
+    int pad_top = paddings[0] / 2;
+    int pad_left = paddings[1] / 2;
 
-    if (pooling_type_ == MAX) {
-#pragma omp parallel for collapse(4)
-      for (int b = 0; b < batch; ++b) {
-        for (int h = 0; h < height; ++h) {
-          for (int w = 0; w < width; ++w) {
-            for (int c = 0; c < channels; ++c) {
-              index_t out_offset =
-                  (((b * height) + h) * width + w) * channels + c;
-              index_t in_offset = b * in_image_size * input_channels + c;
-              T res = std::numeric_limits<T>::lowest();
-              for (int kh = 0; kh < kernel_h; ++kh) {
-                for (int kw = 0; kw < kernel_w; ++kw) {
-                  int inh = padded_h_start + h * stride_h + dilation_h * kh;
-                  int inw = padded_w_start + w * stride_w + dilation_w * kw;
-                  if (inh >= 0 && inh < input_height && inw >= 0 &&
-                      inw < input_width) {
-                    index_t input_offset =
-                        in_offset + (inh * input_width + inw) * input_channels;
-                    res = std::max(res, input[input_offset]);
-                  }
-                }
-              }
-              output[out_offset] = res;
-            }
-          }
-        }
-      }
-    } else if (pooling_type_ == AVG) {
-#pragma omp parallel for collapse(4)
-      for (int b = 0; b < batch; ++b) {
-        for (int h = 0; h < height; ++h) {
-          for (int w = 0; w < width; ++w) {
-            for (int c = 0; c < channels; ++c) {
-              index_t out_offset =
-                  (((b * height) + h) * width + w) * channels + c;
-              index_t in_offset = b * in_image_size * input_channels + c;
-              T sum = static_cast<T>(0);
-              int block_size = 0;
-              for (int kh = 0; kh < kernel_h; ++kh) {
-                for (int kw = 0; kw < kernel_w; ++kw) {
-                  int inh = padded_h_start + h * stride_h + dilation_h * kh;
-                  int inw = padded_w_start + w * stride_w + dilation_w * kw;
-                  if (inh >= 0 && inh < input_height && inw >= 0 &&
-                      inw < input_width) {
-                    index_t input_offset =
-                        in_offset + (inh * input_width + inw) * input_channels;
-                    sum += input[input_offset];
-                    block_size += 1;
-                  }
-                }
-              }
-              output[out_offset] = sum / block_size;
-            }
-          }
-        }
-      }
+    if (pooling_type_ == PoolingType::MAX) {
+      MaxPooling(input,
+                 batch,
+                 input_height,
+                 input_width,
+                 channels,
+                 height,
+                 width,
+                 filter_h,
+                 filter_w,
+                 stride_h,
+                 stride_w,
+                 dilation_h,
+                 dilation_w,
+                 pad_top,
+                 pad_left,
+                 output);
+    } else if (pooling_type_ == PoolingType::AVG) {
+      AvgPooling(input,
+                 batch,
+                 input_height,
+                 input_width,
+                 channels,
+                 height,
+                 width,
+                 filter_h,
+                 filter_w,
+                 stride_h,
+                 stride_w,
+                 dilation_h,
+                 dilation_w,
+                 pad_top,
+                 pad_left,
+                 output);
+    } else {
+      MACE_NOT_IMPLEMENTED;
     }
   }
-};
-
-template <>
-struct PoolingFunctor<DeviceType::NEON, float> : PoolingFunctorBase {
-  PoolingFunctor(const PoolingType pooling_type,
-                 const int *kernels,
-                 const int *strides,
-                 const Padding padding_type,
-                 const std::vector<int> &paddings,
-                 const int *dilations)
-    : PoolingFunctorBase(
-    pooling_type, kernels, strides, padding_type, paddings, dilations) {
-  }
-  void operator()(const Tensor *input_tensor,
-                  Tensor *output_tensor,
-                  StatsFuture *future);
 };
 
 #ifdef MACE_ENABLE_OPENCL

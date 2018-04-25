@@ -23,18 +23,18 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, class T>
+template<DeviceType D, class T>
 class FullyConnectedOp : public Operator<D, T> {
  public:
   FullyConnectedOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>(
-                         "weight_type",
-                         7 /*static_cast<int>(kernels::WEIGHT_WIDTH)*/),
-                 kernels::StringToActivationType(
-                     OperatorBase::GetSingleArgument<std::string>("activation",
-                                                                  "NOOP")),
-                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
+    : Operator<D, T>(operator_def, ws),
+      functor_(OperatorBase::GetSingleArgument<int>(
+                   "weight_type",
+                   7 /*static_cast<int>(kernels::WEIGHT_WIDTH)*/),
+               kernels::StringToActivationType(
+                 OperatorBase::GetSingleArgument<std::string>("activation",
+                                                              "NOOP")),
+               OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -43,8 +43,17 @@ class FullyConnectedOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
 
     const index_t input_size = input->dim(1) * input->dim(2) * input->dim(3);
-    MACE_CHECK(input_size == weight->dim(1) && weight->dim(0) == bias->dim(0))
-        << "The size of Input, Weight and Bias don't match.";
+    MACE_CHECK(input_size == weight->dim(1) && weight->dim(0) == bias->dim(0),
+               "The size of Input: ",
+               input_size,
+               " Weight: ",
+               weight->dim(1),
+               ",",
+               weight->dim(
+                 0),
+               " and Bias ",
+               bias->dim(0),
+               " don't match.");
 
     functor_(input, weight, bias, output, future);
     return true;

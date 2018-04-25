@@ -37,12 +37,6 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                                      .Build(),
                     EltwiseOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    EltwiseOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

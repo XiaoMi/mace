@@ -37,12 +37,6 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                                      .Build(),
                     FullyConnectedOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    FullyConnectedOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

@@ -28,15 +28,15 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct DepthToSpaceOpFunctor {
   explicit DepthToSpaceOpFunctor(const int block_size, bool d2s)
-      : block_size_(block_size), d2s_(d2s) {}
+    : block_size_(block_size), d2s_(d2s) {}
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
     const int batch_size = input->dim(0);
-    const int input_height = input->dim(1);
-    const int input_width = input->dim(2);
-    const int input_depth = input->dim(3);
+    const int input_depth = input->dim(1);
+    const int input_height = input->dim(2);
+    const int input_width = input->dim(3);
 
     index_t output_depth, output_width, output_height;
 
@@ -49,8 +49,8 @@ struct DepthToSpaceOpFunctor {
       output_width = input_width / block_size_;
       output_height = input_height / block_size_;
     }
-    std::vector<index_t> output_shape = {batch_size, output_height,
-                                         output_width, output_depth};
+    std::vector<index_t> output_shape = {batch_size, output_depth,
+                                         output_height, output_width};
 
     output->Resize(output_shape);
 
@@ -62,23 +62,22 @@ struct DepthToSpaceOpFunctor {
     if (d2s_) {
 #pragma omp parallel for
       for (int b = 0; b < batch_size; ++b) {
-        for (int h = 0; h < output_height; ++h) {
-          const int in_h = h / block_size_;
-          const int offset_h = (h % block_size_);
-          for (int w = 0; w < output_width; ++w) {
-            const int in_w = w / block_size_;
-            const int offset_w = w % block_size_;
-            const int offset_d =
+        for (int d = 0; d < output_depth; ++d) {
+          for (int h = 0; h < output_height; ++h) {
+            const int in_h = h / block_size_;
+            const int offset_h = (h % block_size_);
+            for (int w = 0; w < output_width; ++w) {
+              const index_t in_w = w / block_size_;
+              const index_t offset_w = w % block_size_;
+              const index_t offset_d =
                 (offset_h * block_size_ + offset_w) * output_depth;
-            for (int d = 0; d < output_depth; ++d) {
-              const int in_d = d + offset_d;
-              const int o_index =
-                  ((b * output_height + h) * output_width + w) * output_depth +
-                  d;
-              const int i_index =
-                  ((b * input_height + in_h) * input_width + in_w) *
-                      input_depth +
-                  in_d;
+
+              const index_t in_d = d + offset_d;
+              const index_t o_index =
+                ((b * output_depth + d) * output_height + h) * output_width + w;
+              const index_t i_index =
+                ((b * input_depth + in_d) * input_height + in_h) * input_width
+                  + in_w;
               output_ptr[o_index] = input_ptr[i_index];
             }
           }
@@ -87,22 +86,23 @@ struct DepthToSpaceOpFunctor {
     } else {
 #pragma omp parallel for
       for (int b = 0; b < batch_size; ++b) {
-        for (int h = 0; h < input_height; ++h) {
-          const int out_h = h / block_size_;
-          const int offset_h = (h % block_size_);
-          for (int w = 0; w < input_width; ++w) {
-            const int out_w = w / block_size_;
-            const int offset_w = (w % block_size_);
-            const int offset_d =
+        for (int d = 0; d < input_depth; ++d) {
+          for (int h = 0; h < input_height; ++h) {
+            const int out_h = h / block_size_;
+            const int offset_h = (h % block_size_);
+            for (int w = 0; w < input_width; ++w) {
+              const int out_w = w / block_size_;
+              const int offset_w = (w % block_size_);
+              const int offset_d =
                 (offset_h * block_size_ + offset_w) * input_depth;
-            for (int d = 0; d < input_depth; ++d) {
+
               const int out_d = d + offset_d;
-              const int o_index =
-                  ((b * output_height + out_h) * output_width + out_w) *
-                      output_depth +
-                  out_d;
-              const int i_index =
-                  ((b * input_height + h) * input_width + w) * input_depth + d;
+              const index_t o_index =
+                ((b * output_depth + out_d) * output_height + out_h)
+                  * output_width + out_w;
+              const index_t i_index =
+                ((b * input_depth + d) * input_height + h) * input_width
+                  + w;
               output_ptr[o_index] = input_ptr[i_index];
             }
           }
@@ -116,10 +116,10 @@ struct DepthToSpaceOpFunctor {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
+template<typename T>
 struct DepthToSpaceOpFunctor<DeviceType::OPENCL, T> {
   DepthToSpaceOpFunctor(const int block_size, bool d2s)
-      : block_size_(block_size), d2s_(d2s) {}
+    : block_size_(block_size), d2s_(d2s) {}
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
 
   const int block_size_;

@@ -37,12 +37,6 @@ void Register_Conv2D(OperatorRegistry *op_registry) {
                                      .Build(),
                     Conv2dOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                                      Conv2dOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

@@ -31,7 +31,23 @@ void BiasAddSimple() {
                                   {5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15});
   net.AddInputFromArray<D, float>("Bias", {1}, {0.5f});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    OpDefBuilder("BiasAdd", "BiasAddTest")
+      .Input("InputNCHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Bias", "BiasImage",
@@ -49,13 +65,7 @@ void BiasAddSimple() {
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
-    OpDefBuilder("BiasAdd", "BiasAddTest")
-        .Input("Input")
-        .Input("Bias")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Check
@@ -81,21 +91,32 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   index_t height = 64 + rand_r(&seed) % 50;
   index_t width = 64 + rand_r(&seed) % 50;
 
-  // Construct graph
   OpsTestNet net;
-  OpDefBuilder("BiasAdd", "BiasAddTest")
-      .Input("Input")
-      .Input("Bias")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {channels}, true);
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
+
+  // Construct graph
+  OpDefBuilder("BiasAdd", "BiasAddTest")
+      .Input("InputNCHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
 
   // run cpu
   net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "Output",
+                                                  NHWC);
 
   // Check
   Tensor expected;
@@ -130,22 +151,32 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   index_t height = 103 + rand_r(&seed) % 100;
   index_t width = 113 + rand_r(&seed) % 100;
 
-  // Construct graph
   OpsTestNet net;
-  OpDefBuilder("BiasAdd", "BiasAddTest")
-      .Input("Input")
-      .Input("Bias")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::OPENCL, float>(
-      "Input", {batch, height, width, channels});
+    "Input", {batch, height, width, channels});
   net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {channels}, true);
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
+
+  // Construct graph
+  OpDefBuilder("BiasAdd", "BiasAddTest")
+      .Input("InputNCHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
 
   // run cpu
   net.RunOp();
 
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "Output",
+                                                  NHWC);
   // Check
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));

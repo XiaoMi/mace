@@ -41,21 +41,34 @@ void Conv2d(int iters,
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::NEON) {
+  if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
     net.AddRandomInput<D, float>("Filter",
                                  {output_channels, channels, kernel_h,
                                   kernel_w});
     net.AddRandomInput<D, float>("Bias", {output_channels});
-  } else {
+  } else if (D == DeviceType::OPENCL) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
     net.AddRandomInput<D, float>("Filter",
                                  {kernel_h, kernel_w, output_channels,
                                   channels});
     net.AddRandomInput<D, float>("Bias", {output_channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {dilation, dilation})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -73,16 +86,7 @@ void Conv2d(int iters,
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("Conv2D", "Conv2dTest")
-        .Input("Input")
-        .Input("Filter")
-        .Input("Bias")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {dilation, dilation})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   net.Setup(D);
@@ -134,7 +138,6 @@ void Conv2d(int iters,
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, NEON);   \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, OPENCL); \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);
 

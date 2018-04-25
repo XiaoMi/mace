@@ -157,7 +157,7 @@ class TFConverter(object):
 
             self.add_output_shape(self.ops[name].outputs, op_def)
 
-    def add_neon_input_transform(self, names):
+    def add_cpu_input_transform(self, names):
         for name in names:
             new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
             op_def = self.net_def.op.add()
@@ -187,7 +187,7 @@ class TFConverter(object):
             epsilon_arg.name = 'buffer_type'
             epsilon_arg.i = buffer_type_map['IN_OUT_CHANNEL']
 
-    def add_neon_output_transform(self, names):
+    def add_cpu_output_transform(self, names):
         for name in names:
             output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
             op_def = self.net_def.op.add()
@@ -281,7 +281,7 @@ class TFConverter(object):
                 return (16 * filter_shape[2] < OPENCL_IMAGE_MAX_SIZE) and \
                        (16 * filter_shape[3] < OPENCL_IMAGE_MAX_SIZE) and \
                        (width < OPENCL_IMAGE_MAX_SIZE)
-            elif self.device == 'neon':
+            elif self.device == 'cpu':
                 return filter_shape[2] >= 8 and filter_shape[3] >= 8
         return False
 
@@ -375,7 +375,7 @@ class TFConverter(object):
         self.add_output_shape(final_op.outputs, iwt_op)
         self.net_def.op.extend([wt_op, matmul_op, iwt_op])
 
-    def convert_conv_winograd_filter_neon(self, op, op_def):
+    def convert_conv_winograd_filter_cpu(self, op, op_def):
         weight_tensor = get_input_tensor(op, 1)
         weight_tensor_value = weight_tensor.eval().astype(np.float32)
         input_shape = get_input_tensor(op, 0).shape.as_list()
@@ -421,7 +421,7 @@ class TFConverter(object):
 
     def convert_conv2d(self, op):
         use_winograd = False
-        if self.device == 'neon':
+        if self.device == 'cpu':
             use_winograd = self.check_winograd_conv(op)
 
         op_def = mace_pb2.OperatorDef()
@@ -434,7 +434,7 @@ class TFConverter(object):
         else:
             op_def.type = op.type
 
-        if self.device == 'neon' and not use_winograd:
+        if self.device == 'cpu' and not use_winograd:
             self.transpose_filter_tensor[get_input_tensor(
                 op, 1).name] = (3, 2, 0, 1)
         elif op.type == 'Conv2D':
@@ -449,8 +449,8 @@ class TFConverter(object):
             output_name = self.add_buffer_to_image(
                 get_input_tensor(op, 1).name, buffer_type)
             op_def.input.extend([output_name])
-        elif self.device == 'neon' and use_winograd:
-            self.convert_conv_winograd_filter_neon(op, op_def)
+        elif self.device == 'cpu' and use_winograd:
+            self.convert_conv_winograd_filter_cpu(op, op_def)
         else:
             op_def.input.extend(
                 [get_input_tensor(op, i).name for i in range(len(op.inputs))])
@@ -463,7 +463,7 @@ class TFConverter(object):
         strides_arg.ints.extend(op.get_attr('strides')[1:3])
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -502,7 +502,7 @@ class TFConverter(object):
         self.net_def.op.extend([op_def])
 
     def check_conv_to_fc(self, op):
-        if self.device != 'neon' or op.type != "Conv2D":
+        if self.device != 'cpu' or op.type != "Conv2D":
             return False
         filter_shape = get_input_tensor(op, 1).shape.as_list()
         input_shape = get_input_tensor(op, 0).shape.as_list()
@@ -569,7 +569,7 @@ class TFConverter(object):
         arg.i = self.dt
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -675,7 +675,7 @@ class TFConverter(object):
         epsilon_arg.f = get_input_tensor(op, 1).eval().astype(np.float)
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -709,7 +709,7 @@ class TFConverter(object):
         kernels_arg.ints.extend(op.get_attr('ksize')[1:3])
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -739,7 +739,7 @@ class TFConverter(object):
         kernels_arg.ints.extend(op.inputs[0].shape.as_list()[1:3])
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -802,7 +802,7 @@ class TFConverter(object):
         axis_arg = op_def.arg.add()
         axis_arg.name = 'axis'
         axis = get_input_tensor(op, len(op.inputs) - 1).eval().astype(np.int32)
-        if self.device == 'neon' and axis == 3:
+        if self.device == 'cpu' and axis == 3:
             axis = 1
         axis_arg.i = axis
         self.add_output_shape(op.outputs, op_def)
@@ -969,7 +969,7 @@ class TFConverter(object):
         strides_arg.ints.extend([1, 1])
         data_format_arg = op_def.arg.add()
         data_format_arg.name = 'data_format'
-        if self.device == 'neon':
+        if self.device == 'cpu':
             data_format_arg.s = 'NCHW'
         else:
             data_format_arg.s = 'NHWC'
@@ -1109,8 +1109,8 @@ class TFConverter(object):
     def convert(self, input_nodes, output_nodes):
         if self.device == 'gpu':
             self.add_gpu_input_transform(input_nodes)
-        if self.device == 'neon':
-            self.add_neon_input_transform(input_nodes)
+        if self.device == 'cpu':
+            self.add_cpu_input_transform(input_nodes)
 
         for op in self.tf_ops:
             if self.resolved_ops[op.name] == 1:
@@ -1197,11 +1197,8 @@ class TFConverter(object):
         if self.device == 'gpu':
             self.add_gpu_output_transform(output_nodes)
 
-        if self.device == 'neon':
-            self.add_neon_output_transform(output_nodes)
-
         if self.device == 'cpu':
-            self.replace_in_out_name(input_nodes, output_nodes)
+            self.add_cpu_output_transform(output_nodes)
 
         for key in self.resolved_ops:
             if self.resolved_ops[key] != 1:
@@ -1252,7 +1249,7 @@ class Optimizer:
                 scale_tensor = self.tensor_map[scale_buffer_name]
                 weight_shape = weight_tensor.dims
                 idx = 0
-                if self.device == 'neon':  # OIHW
+                if self.device == 'cpu':  # OIHW
                     for oc in range(weight_shape[0]):
                         for ic in range(weight_shape[1]):
                             for i in range(weight_shape[2]):

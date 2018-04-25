@@ -37,12 +37,6 @@ void Register_AddN(OperatorRegistry *op_registry) {
                                      .Build(),
                     AddNOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

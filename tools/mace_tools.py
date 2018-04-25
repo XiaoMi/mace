@@ -73,9 +73,6 @@ def get_data_and_device_type(runtime):
     elif runtime == "cpu":
         data_type = "DT_FLOAT"
         device_type = "CPU"
-    elif runtime == "neon":
-        data_type = "DT_FLOAT"
-        device_type = "NEON"
 
     return data_type, device_type
 
@@ -567,7 +564,7 @@ def main(unused_args):
                     print(
                         "===================================================="
                     )
-                    print("Trying to lock device", serialno)
+                    print("Trying to lock device %s" % serialno)
                     with sh_commands.device_lock(serialno):
                         print("Run on device: %s, %s, %s" % (
                             serialno, props["ro.board.platform"],

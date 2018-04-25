@@ -31,9 +31,20 @@ void SoftmaxBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("Softmax", "SoftmaxBM")
+      .Input("Input")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -42,10 +53,7 @@ void SoftmaxBenchmark(
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   } else {
-    OpDefBuilder("Softmax", "SoftmaxBM")
-        .Input("Input")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Warm-up

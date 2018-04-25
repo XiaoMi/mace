@@ -46,7 +46,7 @@ def strip_invalid_utf8(str):
 
 def make_output_processor(buff):
     def process_output(line):
-        print(line.strip())
+        print(line.rstrip())
         buff.append(line)
 
     return process_output
@@ -189,7 +189,7 @@ def adb_run(serialno,
     print(
         "====================================================================="
     )
-    print("Trying to lock device", serialno)
+    print("Trying to lock device %s" % serialno)
     with device_lock(serialno):
         print("Run on device: %s, %s, %s" %
               (serialno, props["ro.board.platform"],
@@ -1058,7 +1058,7 @@ def falcon_push_metrics(metrics, endpoint="mace_dev", tags={}):
         "tags": falcon_tags(tags),
         "timestamp": ts,
         "value": value,
-        "step": 86400,
+        "step": 600,
         "counterType": "GAUGE"
     } for key, value in metrics.iteritems()]
     cli.update(falcon_metrics)

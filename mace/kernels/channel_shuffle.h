@@ -24,7 +24,7 @@
 namespace mace {
 namespace kernels {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct ChannelShuffleFunctor {
   explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 
@@ -39,20 +39,25 @@ struct ChannelShuffleFunctor {
     T *output_ptr = output->mutable_data<T>();
 
     index_t batch = input->dim(0);
-    index_t height = input->dim(1);
-    index_t width = input->dim(2);
-    index_t channels = input->dim(3);
+    index_t channels = input->dim(1);
+    index_t height = input->dim(2);
+    index_t width = input->dim(3);
 
-    index_t bhw_fuse = batch * height * width;
-    int channels_per_group = channels / groups_;
+    index_t image_size = height * width;
+    index_t batch_size = channels * image_size;
+    index_t channels_per_group = channels / groups_;
 
-#pragma omp parallel for
-    for (int bhw = 0; bhw < bhw_fuse; ++bhw) {
-      for (int c = 0; c < channels; ++c) {
-        index_t channel_base = bhw * channels;
-        output_ptr[channel_base + c] =
-          input_ptr[channel_base + c % groups_ * channels_per_group
-            + c / groups_];
+#pragma omp parallel for collapse(2)
+    for (index_t b = 0; b < batch; ++b) {
+      for (index_t c = 0; c < channels; ++c) {
+        const T *input_base = input_ptr + b * batch_size;
+        T *output_base = output_ptr + b * batch_size;
+        index_t g = c % groups_;
+        index_t idx = c / groups_;
+        for (index_t hw = 0; hw < height * width; ++hw) {
+          output_base[c * image_size + hw] = input_base[
+            (c % groups_ * channels_per_group + c / groups_) * image_size + hw];
+        }
       }
     }
   }
@@ -61,7 +66,7 @@ struct ChannelShuffleFunctor {
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
+template<typename T>
 struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
   explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 

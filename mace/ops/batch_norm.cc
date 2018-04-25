@@ -37,12 +37,6 @@ void Register_BatchNorm(OperatorRegistry *op_registry) {
                                      .Build(),
                     BatchNormOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchNorm")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    BatchNormOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

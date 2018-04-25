@@ -37,21 +37,24 @@ struct BatchNormFunctorBase {
   BatchNormFunctorBase(bool folded_constant,
                        const ActivationType activation,
                        const float relux_max_limit)
-      : folded_constant_(folded_constant),
-        activation_(activation),
-        relux_max_limit_(relux_max_limit) {}
+    : folded_constant_(folded_constant),
+      activation_(activation),
+      relux_max_limit_(relux_max_limit) {}
 
   const bool folded_constant_;
   const ActivationType activation_;
   const float relux_max_limit_;
 };
 
-template <DeviceType D, typename T>
-struct BatchNormFunctor : BatchNormFunctorBase {
+template<DeviceType D, typename T>
+struct BatchNormFunctor;
+
+template<>
+struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-      : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
+    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *scale,
@@ -70,29 +73,29 @@ struct BatchNormFunctor : BatchNormFunctorBase {
     // new_offset = \offset - mean * common_val;
     // Y = new_scale * X + new_offset;
     const index_t batch = input->dim(0);
-    const index_t height = input->dim(1);
-    const index_t width = input->dim(2);
-    const index_t channels = input->dim(3);
+    const index_t channels = input->dim(1);
+    const index_t height = input->dim(2);
+    const index_t width = input->dim(3);
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard scale_mapper(scale);
     Tensor::MappingGuard offset_mapper(offset);
     Tensor::MappingGuard output_mapper(output);
 
-    const T *input_ptr = input->data<T>();
-    const T *scale_ptr = scale->data<T>();
-    const T *offset_ptr = offset->data<T>();
-    T *output_ptr = output->mutable_data<T>();
+    const float *input_ptr = input->data<float>();
+    const float *scale_ptr = scale->data<float>();
+    const float *offset_ptr = offset->data<float>();
+    float *output_ptr = output->mutable_data<float>();
 
-    std::vector<T> new_scale;
-    std::vector<T> new_offset;
+    std::vector<float> new_scale;
+    std::vector<float> new_offset;
     if (!folded_constant_) {
       new_scale.resize(channels);
       new_offset.resize(channels);
       Tensor::MappingGuard mean_mapper(mean);
       Tensor::MappingGuard var_mapper(var);
-      const T *mean_ptr = mean->data<T>();
-      const T *var_ptr = var->data<T>();
+      const float *mean_ptr = mean->data<float>();
+      const float *var_ptr = var->data<float>();
 #pragma omp parallel for
       for (index_t c = 0; c < channels; ++c) {
         new_scale[c] = scale_ptr[c] / std::sqrt(var_ptr[c] + epsilon);
@@ -100,44 +103,21 @@ struct BatchNormFunctor : BatchNormFunctorBase {
       }
     }
 
-    const T *scale_data = folded_constant_ ? scale_ptr : new_scale.data();
-    const T *offset_data = folded_constant_ ? offset_ptr : new_offset.data();
+    const float *scale_data = folded_constant_ ? scale_ptr : new_scale.data();
+    const float
+      *offset_data = folded_constant_ ? offset_ptr : new_offset.data();
 
-    const int elements = batch * height * width;
-    constexpr int c_tile_size = 4;
-    const int c_tiles = channels / c_tile_size;
-    const index_t remains_start = c_tiles * c_tile_size;
+    index_t channel_size = height * width;
+    index_t batch_size = channels * channel_size;
 
-    if (c_tiles > 0) {
+    // NEON is slower, so stick to the trivial implementaion
 #pragma omp parallel for collapse(2)
-      for (index_t i = 0; i < elements; ++i) {
-        for (int cb = 0; cb < c_tiles; ++cb) {
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
-          static_assert(c_tile_size == 4, "channels tile size must be 4");
-          int c = cb * c_tile_size;
-          int pos = i * channels + c;
-
-          float32x4_t scales = vld1q_f32(scale_data + c);
-          float32x4_t offsets = vld1q_f32(offset_data + c);
-          float32x4_t in = vld1q_f32(input_ptr + pos);
-          float32x4_t out = vfmaq_f32(offsets, scales, in);
-          vst1q_f32(output_ptr + pos, out);
-#else
-          for (int ci = 0; ci < c_tile_size; ++ci) {
-            int c = cb * c_tile_size + ci;
-            index_t pos = i * channels + c;
-            output_ptr[pos] = scale_data[c] * input_ptr[pos] + offset_data[c];
-          }
-#endif
-        }
-      }
-    }
-    if (remains_start < channels) {
-#pragma omp parallel for collapse(2)
-      for (index_t i = 0; i < elements; ++i) {
-        for (index_t c = remains_start; c < channels; ++c) {
-          index_t pos = i * channels + c;
-          output_ptr[pos] = scale_data[c] * input_ptr[pos] + offset_data[c];
+    for (index_t b = 0; b < batch; ++b) {
+      for (index_t c = 0; c < channels; ++c) {
+        index_t offset = b * batch_size + c * channel_size;
+        for (index_t hw = 0; hw < height * width; ++hw) {
+          output_ptr[offset + hw] =
+            scale_data[c] * input_ptr[offset + hw] + offset_data[c];
         }
       }
     }
@@ -146,29 +126,13 @@ struct BatchNormFunctor : BatchNormFunctorBase {
   }
 };
 
-template <>
-struct BatchNormFunctor<DeviceType::NEON, float> : BatchNormFunctorBase {
-  BatchNormFunctor(const bool folded_constant,
-                   const ActivationType activation,
-                   const float relux_max_limit)
-    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
-  void operator()(const Tensor *input,
-                  const Tensor *scale,
-                  const Tensor *offset,
-                  const Tensor *mean,
-                  const Tensor *var,
-                  const float epsilon,
-                  Tensor *output,
-                  StatsFuture *future);
-};
-
 #ifdef MACE_ENABLE_OPENCL
-template <typename T>
+template<typename T>
 struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-      : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
+    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
   void operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,

@@ -748,7 +748,7 @@ void Gemv(const float *m_ptr,
     for (index_t h = 0; h < remain_h; ++h) {
       float32x4_t vsum0 = vdupq_n_f32(0.f);
       const float *m_ptr0 = m_ptr + (h + remain_start_height) * width;
-      const float *v_ptr0 = v_ptr;
+      const float *v_ptr0 = v_ptr + b * width;
       for (index_t w = 0; w < width_d4; ++w) {
         float32x4_t vm = vld1q_f32(m_ptr0);
         float32x4_t vv = vld1q_f32(v_ptr0);
@@ -762,7 +762,7 @@ void Gemv(const float *m_ptr,
         m_ptr0++;
         v_ptr0++;
       }
-      out_ptr[remain_start_height + h] = sum;
+      out_ptr[remain_start_height + h + b * height] = sum;
     }
   }
 #else

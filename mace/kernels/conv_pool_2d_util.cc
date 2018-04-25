@@ -368,7 +368,6 @@ void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
                                            const int pad_left,
                                            const int pad_right,
                                            Tensor *output_tensor) {
-  Tensor::MappingGuard input_mapper(input_tensor);
   const float *input = input_tensor->data<float>();
   const index_t *input_shape = input_tensor->shape().data();
 

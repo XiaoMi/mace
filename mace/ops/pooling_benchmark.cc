@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template <DeviceType D>
+template<DeviceType D>
 void Pooling(int iters,
              int batch,
              int channels,
@@ -36,7 +36,20 @@ void Pooling(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  OpDefBuilder("Pooling", "PoolingTest")
+
+  // Add input data
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, channels, height, width});
+  } else if (D == DeviceType::OPENCL) {
+    net.AddRandomInput<D, float>("Input",
+                                 {batch, height, width, channels});
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
       .AddIntArg("pooling_type", pooling_type)
@@ -45,10 +58,22 @@ void Pooling(int iters,
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
       .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::OPENCL) {
+    BufferToImage<D, float>(&net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
-  // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input",
-                                             {batch, channels, height, width});
+    OpDefBuilder("Pooling", "PoolingTest")
+      .Input("InputImage")
+      .Output("OutputImage")
+      .AddIntArg("pooling_type", pooling_type)
+      .AddIntsArg("kernels", {kernel, kernel})
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -78,8 +103,8 @@ void Pooling(int iters,
         ##DEVICE)
 
 #define BM_POOLING(N, C, H, W, K, S, PA, PO) \
-  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);
-//  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, NEON);
+  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU); \
+  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, OPENCL);
 
 BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);

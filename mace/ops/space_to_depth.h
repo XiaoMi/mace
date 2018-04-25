@@ -24,12 +24,12 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 class SpaceToDepthOp : public Operator<D, T> {
  public:
   SpaceToDepthOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("block_size", 1), false) {
+    : Operator<D, T>(op_def, ws),
+      functor_(OperatorBase::GetSingleArgument<int>("block_size", 1), false) {
   }
 
   bool Run(StatsFuture *future) override {
@@ -37,16 +37,27 @@ class SpaceToDepthOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
     const int block_size =
-        OperatorBase::GetSingleArgument<int>("block_size", 1);
-    const int input_height = input->dim(1);
-    const int input_width = input->dim(2);
-    const int input_depth = input->dim(3);
+      OperatorBase::GetSingleArgument<int>("block_size", 1);
+    index_t input_height;
+    index_t input_width;
+    index_t input_depth;
+    if (D == CPU) {
+      input_height = input->dim(2);
+      input_width = input->dim(3);
+      input_depth = input->dim(1);
+    } else if (D == OPENCL) {
+      input_height = input->dim(1);
+      input_width = input->dim(2);
+      input_depth = input->dim(3);
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
     MACE_CHECK((input_depth % 4) == 0,
                "input channel should be dividable by 4");
     MACE_CHECK(
-        (input_width%block_size == 0)&&(input_height%block_size == 0),
-        "input width and height should be dividable by block_size",
-        input->dim(3));
+      (input_width % block_size == 0) && (input_height % block_size == 0),
+      "input width and height should be dividable by block_size",
+      input->dim(3));
     functor_(input, output, future);
     return true;
   }

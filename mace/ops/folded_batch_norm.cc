@@ -37,12 +37,6 @@ void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
                                      .Build(),
                     FoldedBatchNormOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    FoldedBatchNormOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

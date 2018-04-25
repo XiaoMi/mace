@@ -35,7 +35,31 @@ void SimpleValidTest() {
   net.AddInputFromArray<D, float>(
     "Filter", {2, 2, 2, 1}, {1.0f, 2.0f, 2.0f, 4.0f, 3.0f, 6.0f, 4.0f, 8.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f});
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
+                                                    HWIO,
+                                                    "FilterOIHW",
+                                                    OIHW);
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("InputNCHW")
+      .Input("FilterOIHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -60,17 +84,7 @@ void SimpleValidTest() {
                             kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {1, 1})
-      .AddIntArg("padding", Padding::VALID)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Check
@@ -144,7 +158,33 @@ void ComplexValidTest() {
      0.66, 0.67, 0.68, 0.69, 0.7, 0.71, 0.72, 0.73, 0.74});
   net.AddInputFromArray<D, float>("Bias", {6},
                                   {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
-  if (D == DeviceType::OPENCL) {
+
+  if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
+                                                    HWIO,
+                                                    "FilterOIHW",
+                                                    OIHW);
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("InputNCHW")
+      .Input("FilterOIHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+  } else if (D == DeviceType::OPENCL) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -169,18 +209,7 @@ void ComplexValidTest() {
                         kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {2, 2})
-      .AddIntArg("padding", Padding::SAME)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
+    MACE_NOT_IMPLEMENTED;
   }
 
   // Check
@@ -224,7 +253,7 @@ TEST_F(DepthwiseConv2dOpTest, ComplexOpenCLHalf) {
 }
 
 namespace {
-template<DeviceType D, typename T>
+template<typename T>
 void TestNxNS12(const index_t height, const index_t width) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
@@ -238,16 +267,28 @@ void TestNxNS12(const index_t height, const index_t width) {
     OpsTestNet net;
 
     // Add input data
-    net.AddRandomInput<D, float>("Input",
-                                 {batch, height, width, input_channels});
-    net.AddRandomInput<D, float>(
+    net.AddRandomInput<DeviceType::OPENCL, float>("Input",
+                                                  {batch, height, width,
+                                                   input_channels});
+    net.AddRandomInput<DeviceType::OPENCL, float>(
       "Filter", {kernel_h, kernel_w, input_channels, multiplier});
-    net.AddRandomInput<D, float>("Bias", {multiplier * input_channels});
+    net.AddRandomInput<DeviceType::OPENCL, float>("Bias",
+                                                  {multiplier
+                                                     * input_channels});
+
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
+                                                    HWIO,
+                                                    "FilterOIHW",
+                                                    OIHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-      .Input("Input")
-      .Input("Filter")
+      .Input("InputNCHW")
+      .Input("FilterOIHW")
       .Input("Bias")
-      .Output("Output")
+      .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})
       .AddIntArg("padding", type)
       .AddIntsArg("dilations", {1, 1})
@@ -256,48 +297,41 @@ void TestNxNS12(const index_t height, const index_t width) {
 
     // Run on cpu
     net.RunOp();
+
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+
     // Check
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-    if (D == DeviceType::OPENCL) {
-      BufferToImage<D, T>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
-      BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                          kernels::BufferType::DW_CONV2D_FILTER);
-      BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                          kernels::BufferType::ARGUMENT);
-      OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Input("BiasImage")
-        .Output("OutputImage")
-        .AddIntsArg("strides", {stride_h, stride_w})
-        .AddIntArg("padding", type)
-        .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
+    BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
+                                         kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<DeviceType::OPENCL, T>(&net, "Filter", "FilterImage",
+                                         kernels::BufferType::DW_CONV2D_FILTER);
+    BufferToImage<DeviceType::OPENCL, T>(&net, "Bias", "BiasImage",
+                                         kernels::BufferType::ARGUMENT);
+    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("InputImage")
+      .Input("FilterImage")
+      .Input("BiasImage")
+      .Output("OutputImage")
+      .AddIntsArg("strides", {stride_h, stride_w})
+      .AddIntArg("padding", type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
-      net.RunOp(D);
+    net.RunOp(DeviceType::OPENCL);
 
-      // Transfer output
-      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
-                              kernels::BufferType::IN_OUT_CHANNEL);
-    } else {
-      OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-        .Input("Input")
-        .Input("Filter")
-        .Input("Bias")
-        .Output("DeviceOutput")
-        .AddIntsArg("strides", {stride_h, stride_w})
-        .AddIntArg("padding", type)
-        .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
+    // Transfer output
+    ImageToBuffer<DeviceType::OPENCL, float>(&net,
+                                         "OutputImage",
+                                         "DeviceOutput",
+                                         kernels::BufferType::IN_OUT_CHANNEL);
 
-      // Run
-      net.RunOp(D);
-    }
 
     // Check
     if (DataTypeToEnum<T>::value == DT_FLOAT) {
@@ -319,109 +353,27 @@ void TestNxNS12(const index_t height, const index_t width) {
 }  // namespace
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLSimpleNxNS12) {
-  TestNxNS12<DeviceType::OPENCL, float>(4, 4);
+  TestNxNS12<float>(4, 4);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLSimpleNxNS12Half) {
-  TestNxNS12<DeviceType::OPENCL, half>(4, 4);
+  TestNxNS12<half>(4, 4);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLAlignedNxNS12) {
-  TestNxNS12<DeviceType::OPENCL, float>(128, 128);
+  TestNxNS12<float>(128, 128);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLAlignedNxNS12Half) {
-  TestNxNS12<DeviceType::OPENCL, half>(128, 128);
+  TestNxNS12<half>(128, 128);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12) {
-  TestNxNS12<DeviceType::OPENCL, float>(107, 113);
+  TestNxNS12<float>(107, 113);
 }
 
 TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12Half) {
-  TestNxNS12<DeviceType::OPENCL, half>(107, 113);
-}
-
-namespace {
-void TestNEONNxNS12(const index_t height,
-                    const index_t width,
-                    const index_t input_channels,
-                    const index_t multiplier) {
-  testing::internal::LogToStderr();
-  auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
-                  Padding type) {
-    // generate random input
-    index_t batch = 1;
-    // Construct graph
-    OpsTestNet net;
-
-    // Add input data
-    net.AddRandomInput<CPU, float>("Input",
-                                   {batch, height, width, input_channels});
-    net.AddRandomInput<CPU, float>(
-      "Filter", {kernel_h, kernel_w, input_channels, multiplier});
-    net.AddRandomInput<CPU, float>("Bias", {multiplier * input_channels});
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-      .Input("Input")
-      .Input("Filter")
-      .Input("Bias")
-      .Output("Output")
-      .AddIntsArg("strides", {stride_h, stride_w})
-      .AddIntArg("padding", type)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
-      .Finalize(net.NewOperatorDef());
-
-    // Run on cpu
-    net.RunOp();
-    // Check
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
-
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
-      .Input("InputNeon")
-      .Input("FilterNeon")
-      .Input("Bias")
-      .Output("OutputNeon")
-      .AddIntsArg("strides", {stride_h, stride_w})
-      .AddIntArg("padding", type)
-      .AddIntsArg("dilations", {1, 1})
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
-      .Finalize(net.NewOperatorDef());
-
-    net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNeon", "Input");
-    net.FillHWIOInputToOIHWInput<DeviceType::CPU, float>("FilterNeon",
-                                                         "Filter");
-
-    // Run
-    net.RunOp(NEON);
-
-    net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("OutputExptected",
-                                                         "Output");
-
-    // Check
-    ExpectTensorNear<float>(*net.GetOutput("OutputExptected"),
-                            *net.GetOutput("OutputNeon"),
-                            1e-5, 1e-3);
-  };
-
-  for (int kernel_size : {1, 3, 5}) {
-    for (int stride : {1, 2}) {
-      if (kernel_size > stride) {
-        func(kernel_size, kernel_size, stride, stride, VALID);
-        func(kernel_size, kernel_size, stride, stride, SAME);
-      }
-    }
-  }
-}
-}  // namespace
-
-TEST_F(DepthwiseConv2dOpTest, NEONTest) {
-  TestNEONNxNS12(4, 4, 32, 1);
-  TestNEONNxNS12(64, 64, 32, 1);
-  TestNEONNxNS12(112, 112, 32, 1);
-  TestNEONNxNS12(128, 128, 15, 1);
-  TestNEONNxNS12(107, 113, 15, 1);
+  TestNxNS12<half>(107, 113);
 }
 
 }  // namespace test

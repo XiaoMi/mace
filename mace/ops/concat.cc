@@ -37,12 +37,6 @@ void Register_Concat(OperatorRegistry *op_registry) {
                                      .Build(),
                     ConcatOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    ConcatOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops

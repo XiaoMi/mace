@@ -37,12 +37,6 @@ void Register_Slice(OperatorRegistry *op_registry) {
                                      .Build(),
                     SliceOp<DeviceType::OPENCL, half>);
 #endif  // MACE_ENABLE_OPENCL
-
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::NEON)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    SliceOp<DeviceType::NEON, float>);
 }
 
 }  // namespace ops
