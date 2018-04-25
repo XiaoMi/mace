@@ -25,10 +25,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/gemm.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -70,6 +73,7 @@ struct MatMulFunctor {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct MatMulFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *A,
@@ -81,6 +85,7 @@ struct MatMulFunctor<DeviceType::OPENCL, T> {
   uint32_t kwg_size_;
   std::unique_ptr<BufferBase> kernel_error_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

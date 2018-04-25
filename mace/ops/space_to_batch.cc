@@ -18,16 +18,19 @@ namespace mace {
 namespace ops {
 
 void Register_SpaceToBatchND(OperatorRegistry *op_registry) {
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToBatchND")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     SpaceToBatchNDOp<DeviceType::OPENCL, float>);
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToBatchND")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     SpaceToBatchNDOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

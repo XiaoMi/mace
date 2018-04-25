@@ -23,16 +23,20 @@ void Register_ChannelShuffle(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ChannelShuffleOp<DeviceType::CPU, float>);
+
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ChannelShuffle")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ChannelShuffleOp<DeviceType::OPENCL, float>);
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ChannelShuffle")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     ChannelShuffleOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

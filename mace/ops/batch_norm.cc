@@ -24,6 +24,7 @@ void Register_BatchNorm(OperatorRegistry *op_registry) {
                                      .Build(),
                     BatchNormOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchNorm")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,8 @@ void Register_BatchNorm(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     BatchNormOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchNorm")
                                      .Device(DeviceType::NEON)
                                      .TypeConstraint<float>("T")

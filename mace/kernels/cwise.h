@@ -20,8 +20,11 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -116,6 +119,7 @@ struct CWiseFunctor : CWiseFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct CWiseFunctor<DeviceType::OPENCL, T> : CWiseFunctorBase {
   CWiseFunctor(const CWiseType type, const float coeff)
@@ -130,6 +134,7 @@ struct CWiseFunctor<DeviceType::OPENCL, T> : CWiseFunctorBase {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

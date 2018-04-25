@@ -60,6 +60,7 @@ struct ChannelShuffleFunctor {
   const int groups_;
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
   explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
@@ -72,6 +73,7 @@ struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
   const int groups_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

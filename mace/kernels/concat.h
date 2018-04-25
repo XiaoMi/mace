@@ -19,10 +19,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -88,6 +91,7 @@ struct ConcatFunctor : ConcatFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
   explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
@@ -100,6 +104,7 @@ struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

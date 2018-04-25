@@ -16,6 +16,7 @@
 
 #include <omp.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <algorithm>
 #include <utility>
@@ -86,7 +87,7 @@ void SetThreadAffinity(cpu_set_t mask) {
 #if defined(__ANDROID__)
   pid_t pid = gettid();
 #else
-  pid_t pid = pthread_self();
+  pid_t pid = syscall(SYS_gettid);
 #endif
   int err = sched_setaffinity(pid, sizeof(mask), &mask);
   MACE_CHECK(err == 0, "set affinity error: ", errno);

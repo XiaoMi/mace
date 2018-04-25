@@ -33,11 +33,14 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
 
 // #include "mace/codegen/models/${MACE_MODEL_TAG}/${MACE_MODEL_TAG}.h" instead
 namespace mace {
@@ -113,6 +116,7 @@ DeviceType ParseDeviceType(const std::string &device_str) {
   }
 }
 
+#ifdef MACE_ENABLE_OPENCL
 void WriteOpenCLPlatformInfo(const std::string &output_dir) {
   std::string platform_info = OpenCLRuntime::Global()->platform_info();
   const std::string cl_platform_info_file_name = output_dir
@@ -126,6 +130,7 @@ void WriteOpenCLPlatformInfo(const std::string &output_dir) {
     LOG(WARNING) << "Write opencl platform info failed.";
   }
 }
+#endif  // MACE_ENABLE_OPENCL
 
 struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
@@ -225,11 +230,13 @@ bool RunModel(const std::vector<std::string> &input_names,
   mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+#ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::OPENCL) {
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
+#endif  // MACE_ENABLE_OPENCL
 
   const char *kernel_path = getenv("MACE_CL_PROGRAM_PATH");
   const std::string kernel_file_path =
@@ -318,9 +325,11 @@ bool RunModel(const std::vector<std::string> &input_names,
   printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
          mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
 
+#ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::OPENCL) {
     WriteOpenCLPlatformInfo(kernel_file_path);
   }
+#endif  // MACE_ENABLE_OPENCL
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =

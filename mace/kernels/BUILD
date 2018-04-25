@@ -14,20 +14,30 @@ cc_library(
     srcs = glob(
         [
             "*.cc",
-            "opencl/*.cc",
             "arm/*.cc",
         ],
         exclude = [
             "*_test.cc",
             "arm/*_test.cc",
-            "opencl/*_test.cc",
         ],
-    ),
-    hdrs = glob([
-        "*.h",
-        "opencl/*.h",
-        "arm/*.h",
-    ]),
+    ) + if_android(glob([
+            "opencl/*.cc",
+        ],
+        exclude = [
+            "opencl/*_test.cc",
+        ])),
+    hdrs = glob(
+        [
+            "*.h",
+            "arm/*.h",
+        ],
+        exclude = [
+            "buffer_to_image.h",
+        ],
+    ) + if_android(glob([
+            "opencl/*.h",
+            "buffer_to_image.h",
+        ])),
     copts = if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +

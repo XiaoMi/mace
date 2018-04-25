@@ -24,16 +24,20 @@ void Register_Slice(OperatorRegistry *op_registry) {
                                      .Build(),
                     SliceOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     SliceOp<DeviceType::OPENCL, float>);
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     SliceOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                      .Device(DeviceType::NEON)
                                      .TypeConstraint<float>("T")

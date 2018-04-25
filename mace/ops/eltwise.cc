@@ -24,6 +24,7 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                                      .Build(),
                     EltwiseOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,8 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     EltwiseOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
                                      .Device(DeviceType::NEON)
                                      .TypeConstraint<float>("T")

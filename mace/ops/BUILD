@@ -28,8 +28,14 @@ cc_library(
         exclude = [
             "*_test.cc",
             "*_benchmark.cc",
+            "buffer_to_image.cc",
+            "image_to_buffer.cc",
         ],
-    ),
+    ) + if_android(
+        [
+            "buffer_to_image.cc",
+            "image_to_buffer.cc",
+        ]),
     hdrs = glob(
         ["*.h"],
         exclude = ["ops_test_util.h"],

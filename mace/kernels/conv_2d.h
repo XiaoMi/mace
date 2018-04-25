@@ -23,11 +23,14 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -457,6 +460,7 @@ struct Conv2dFunctor<DeviceType::NEON, float> : Conv2dFunctorBase {
   ScratchBuffer *scratch_;
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
@@ -485,6 +489,7 @@ struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

@@ -23,10 +23,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/kernels/activation.h"
 #include "mace/public/mace.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -441,6 +444,7 @@ struct DepthwiseConv2dFunctor<DeviceType::NEON, float>
                   StatsFuture *future);
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
     : DepthwiseConv2dFunctorBase {
@@ -468,6 +472,7 @@ struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

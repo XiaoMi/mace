@@ -24,6 +24,7 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                                      .Build(),
                     FullyConnectedOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,7 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     FullyConnectedOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
                                      .Device(DeviceType::NEON)

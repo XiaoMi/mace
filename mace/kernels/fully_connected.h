@@ -19,16 +19,19 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/kernels/opencl/helper.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
 
 struct FullyConnectedBase {
-  FullyConnectedBase(const BufferType weight_type,
+  FullyConnectedBase(const int /*BufferType*/ weight_type,
                      const ActivationType activation,
                      const float relux_max_limit)
       : weight_type_(weight_type),
@@ -42,7 +45,7 @@ struct FullyConnectedBase {
 
 template <DeviceType D, typename T>
 struct FullyConnectedFunctor : FullyConnectedBase {
-  FullyConnectedFunctor(const BufferType weight_type,
+  FullyConnectedFunctor(const int /*BufferType*/ weight_type,
                         const ActivationType activation,
                         const float relux_max_limit)
       : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
@@ -89,7 +92,7 @@ struct FullyConnectedFunctor : FullyConnectedBase {
 
 template <>
 struct FullyConnectedFunctor<DeviceType::NEON, float> : FullyConnectedBase {
-  FullyConnectedFunctor(const BufferType weight_type,
+  FullyConnectedFunctor(const int /*BufferType*/ weight_type,
                         const ActivationType activation,
                         const float relux_max_limit)
     : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
@@ -101,9 +104,10 @@ struct FullyConnectedFunctor<DeviceType::NEON, float> : FullyConnectedBase {
                   StatsFuture *future);
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
-  FullyConnectedFunctor(const BufferType weight_type,
+  FullyConnectedFunctor(const int /*BufferType*/ weight_type,
                         const ActivationType activation,
                         const float relux_max_limit)
       : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
@@ -120,6 +124,7 @@ struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
   std::vector<index_t> input_shape_;
   std::unique_ptr<BufferBase> kernel_error_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

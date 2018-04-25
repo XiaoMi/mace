@@ -24,6 +24,7 @@ void Register_AddN(OperatorRegistry *op_registry) {
                                      .Build(),
                     AddNOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,7 @@ void Register_AddN(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     AddNOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
                                      .Device(DeviceType::NEON)

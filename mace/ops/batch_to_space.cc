@@ -18,6 +18,7 @@ namespace mace {
 namespace ops {
 
 void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -28,6 +29,7 @@ void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     BatchToSpaceNDOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops
