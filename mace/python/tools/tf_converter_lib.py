@@ -1367,8 +1367,11 @@ def convert_to_mace_pb(model_file, input_node, input_shape, output_node,
             print "Model Converted."
             if device == 'gpu':
                 print "start optimize memory."
-                mem_optimizer = memory_optimizer.MemoryOptimizer(net_def)
-                mem_optimizer.optimize()
+                memory_optimizer.optimize_gpu_memory(net_def)
+                print "Memory optimization done."
+            elif device == 'cpu':
+                print "start optimize memory."
+                memory_optimizer.optimize_cpu_memory(net_def)
                 print "Memory optimization done."
 
     return net_def
