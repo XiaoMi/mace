@@ -341,7 +341,7 @@ def parse_args():
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
                    target_abi, phone_data_dir, option_args,
-                   target_soc="", serialno="", device_name=""):
+                   target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
     for model_name in configs["models"]:
@@ -365,6 +365,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                 FLAGS.output_dir, project_name, "build",
                 model_name, model_path_digest, target_abi)
         else:
+            device_name = sh_commands.adb_get_device_name_by_serialno(serialno)
             model_output_dir = "%s/%s/%s/%s/%s/%s_%s/%s" % (
                 FLAGS.output_dir, project_name, "build",
                 model_name, model_path_digest, device_name.replace(' ', ''),
@@ -569,13 +570,9 @@ def main(unused_args):
                         print("Run on device: %s, %s, %s" % (
                             serialno, props["ro.board.platform"],
                               props["ro.product.model"]))
-                        device_name = \
-                                sh_commands.adb_get_device_name_by_serialno(
-                                        serialno)
                         process_models(project_name, configs, embed_model_data,
                                        vlog_level, target_abi, phone_data_dir,
-                                       option_args, target_soc, serialno,
-                                       device_name)
+                                       option_args, target_soc, serialno)
             else:
                 print("====================================================")
                 print("Run on host")
