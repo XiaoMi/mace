@@ -22,13 +22,13 @@ class MemoryOptimizer(object):
         self.net_def = net_def
         self.idle_mem = set()
         self.op_mem = {}  # op_name->mem_id
-        self.mem_block = {}  # mem_id->[x, y]
+        self.mem_block = {}  # mem_id->[size] or mem_id->[x, y]
         self.total_mem_count = 0
         self.ref_counter = {}
 
         consumers = {}
         for op in net_def.op:
-            if self.is_buffer_image_op(op):
+            if not self.op_need_optimize_memory(op):
                 continue
             for ipt in op.input:
                 if ipt not in consumers:
@@ -36,7 +36,7 @@ class MemoryOptimizer(object):
                 consumers[ipt].append(op)
         # only ref op's output tensor
         for op in net_def.op:
-            if self.is_buffer_image_op(op):
+            if not self.op_need_optimize_memory(op):
                 continue
             for output in op.output:
                 tensor_name = output
@@ -45,29 +45,47 @@ class MemoryOptimizer(object):
                 else:
                     self.ref_counter[tensor_name] = 0
 
-    def is_buffer_image_op(self, op):
-        if op.type == 'BufferToImage':
-            for arg in op.arg:
-                if arg.name == 'mode' and arg.i == 0:
-                    return True
-        return op.type == 'ImageToBuffer'
+    def op_need_optimize_memory(self, op):
+        return True
 
-    def get_mem_size(self, op_type, output_shape):
-        mem_size = [0, 0]
-        if op_type == 'WinogradTransform' or op_type == 'MatMul':
-            mem_size[0] = output_shape[2] * output_shape[3]
-            mem_size[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
-        else:
-            mem_size[0] = output_shape[2] * int((output_shape[3] + 3) / 4)
-            mem_size[1] = output_shape[0] * output_shape[1]
-        return mem_size
+    def get_op_mem_block(self, op_type, output_shape):
+        return [reduce(operator.mul, output_shape, 1)]
 
-    def mem_area(self, memory_size):
-        return memory_size[0] * memory_size[1]
+    def mem_size(self, memory_block):
+        return memory_block[0]
+
+    def sub_mem_block(self, mem_block1, mem_block2):
+        return self.mem_size(mem_block1) - self.mem_size(mem_block2)
+
+    def resize_mem_block(self, old_mem_block, op_mem_block):
+        return [max(old_mem_block[0], op_mem_block[0])]
+
+    def add_net_mem_blocks(self):
+        for mem in self.mem_block:
+            arena = self.net_def.mem_arena
+            block = arena.mem_block.add()
+            block.mem_id = mem
+            block.x = self.mem_block[mem][0]
+            block.y = 1
+
+    def get_total_origin_mem_size(self):
+        origin_mem_size = 0
+        for op in self.net_def.op:
+            if not self.op_need_optimize_memory(op):
+                continue
+            origin_mem_size += reduce(operator.mul, op.output_shape[0].dims, 1)
+        return origin_mem_size
+
+    def get_total_optimized_mem_size(self):
+        optimized_mem_size = 0
+        for mem in self.mem_block:
+            print mem, self.mem_block[mem]
+            optimized_mem_size += self.mem_size(self.mem_block[mem])
+        return optimized_mem_size
 
     def optimize(self):
         for op in self.net_def.op:
-            if self.is_buffer_image_op(op):
+            if not self.op_need_optimize_memory(op):
                 continue
             if not op.output_shape:
                 print('WARNING: There is no output shape information to '
@@ -78,38 +96,42 @@ class MemoryOptimizer(object):
                       'the number of output.')
                 return
             for i in range(len(op.output)):
-                op_mem_size = self.get_mem_size(op.type,
-                                                op.output_shape[i].dims)
+                op_mem_block = self.get_op_mem_block(op.type,
+                                                     op.output_shape[i].dims)
                 mem_id = -1
                 if len(self.idle_mem) > 0:
-                    best_mem_candidate_id = -1
-                    best_mem_candidate_delta_area = sys.maxint
-                    best_mem_candidate_shape = []
+                    best_mem_add_size = sys.maxint
+                    best_mem_waste_size = sys.maxint
                     for mid in self.idle_mem:
-                        reuse_mem_size = self.mem_block[mid]
-                        resize_mem_size = [
-                            max(reuse_mem_size[0], op_mem_size[0]),
-                            max(reuse_mem_size[1], op_mem_size[1])
-                        ]
-                        delta_mem_area = self.mem_area(
-                            resize_mem_size) - self.mem_area(reuse_mem_size)
-                        if delta_mem_area < best_mem_candidate_delta_area:
-                            best_mem_candidate_id = mid
-                            best_mem_candidate_delta_area = delta_mem_area
-                            best_mem_candidate_shape = resize_mem_size
+                        old_mem_block = self.mem_block[mid]
+                        new_mem_block = self.resize_mem_block(
+                            old_mem_block, op_mem_block)
+                        add_mem_size = self.sub_mem_block(new_mem_block,
+                                                          old_mem_block)
+                        waste_mem_size = self.sub_mem_block(new_mem_block,
+                                                            op_mem_block)
 
-                    if best_mem_candidate_delta_area <= self.mem_area(
-                            op_mem_size):
-                        # reuse
-                        self.mem_block[
-                            best_mem_candidate_id] = best_mem_candidate_shape
-                        mem_id = best_mem_candidate_id
+                        # minimize add_mem_size; if best_mem_add_size is 0,
+                        # then minimize waste_mem_size
+                        if (best_mem_add_size > 0 and
+                                add_mem_size < best_mem_add_size) \
+                                or (best_mem_add_size == 0 and
+                                    waste_mem_size < best_mem_waste_size):
+                            best_mem_id = mid
+                            best_mem_add_size = add_mem_size
+                            best_mem_waste_size = waste_mem_size
+                            best_mem_block = new_mem_block
+
+                    # if add mem size < op mem size, then reuse it
+                    if best_mem_add_size <= self.mem_size(op_mem_block):
+                        self.mem_block[best_mem_id] = best_mem_block
+                        mem_id = best_mem_id
                         self.idle_mem.remove(mem_id)
 
                 if mem_id == -1:
                     mem_id = self.total_mem_count
                     self.total_mem_count += 1
-                    self.mem_block[mem_id] = op_mem_size
+                    self.mem_block[mem_id] = op_mem_block
 
                 op.mem_id.extend([mem_id])
                 self.op_mem[op.output[i]] = mem_id
@@ -123,6 +145,43 @@ class MemoryOptimizer(object):
                     elif self.ref_counter[ipt] < 0:
                         raise Exception('ref count is less than 0')
 
+        self.add_net_mem_blocks()
+
+        print('total op: %d', len(self.net_def.op))
+        print('origin mem: %d, optimized mem: %d',
+              self.get_total_origin_mem_size(),
+              self.get_total_optimized_mem_size())
+
+
+class GPUMemoryOptimizer(MemoryOptimizer):
+    def op_need_optimize_memory(self, op):
+        if op.type == 'BufferToImage':
+            for arg in op.arg:
+                if arg.name == 'mode' and arg.i == 0:
+                    return False
+        return op.type != 'ImageToBuffer'
+
+    def get_op_mem_block(self, op_type, output_shape):
+        mem_block = [0, 0]
+        if op_type == 'WinogradTransform' or op_type == 'MatMul':
+            mem_block[0] = output_shape[2] * output_shape[3]
+            mem_block[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
+        else:
+            mem_block[0] = output_shape[2] * int((output_shape[3] + 3) / 4)
+            mem_block[1] = output_shape[0] * output_shape[1]
+        return mem_block
+
+    def mem_size(self, memory_block):
+        return memory_block[0] * memory_block[1] * 4
+
+    def resize_mem_block(self, old_mem_block, op_mem_block):
+        resize_mem_block = [
+            max(old_mem_block[0], op_mem_block[0]),
+            max(old_mem_block[1], op_mem_block[1])
+        ]
+        return resize_mem_block
+
+    def add_net_mem_blocks(self):
         for mem in self.mem_block:
             arena = self.net_def.mem_arena
             block = arena.mem_block.add()
@@ -130,21 +189,12 @@ class MemoryOptimizer(object):
             block.x = self.mem_block[mem][0]
             block.y = self.mem_block[mem][1]
 
-        print('total op: %d', len(self.net_def.op))
-        origin_mem_size = 0
-        optimized_mem_size = 0
-        for op in self.net_def.op:
-            if self.is_buffer_image_op(op):
-                continue
-            origin_mem_size += reduce(operator.mul, op.output_shape[0].dims, 1)
-        for mem in self.mem_block:
-            print mem, self.mem_block[mem]
-            optimized_mem_size += reduce(operator.mul, self.mem_block[mem], 4)
 
-        print('origin mem: %d, optimized mem: %d', origin_mem_size,
-              optimized_mem_size)
+def optimize_gpu_memory(net_def):
+    mem_optimizer = GPUMemoryOptimizer(net_def)
+    mem_optimizer.optimize()
 
 
-def optimize_memory(net_def):
+def optimize_cpu_memory(net_def):
     mem_optimizer = MemoryOptimizer(net_def)
     mem_optimizer.optimize()
