@@ -829,7 +829,7 @@ class TFConverter(object):
         self.resolved_ops[op.name] = 1
         self.unused_tensor.add(get_input_tensor(op, 1).name)
 
-    def convert_math(self, op, math_type):
+    def convert_eltwise(self, op, math_type):
         op_def = self.net_def.op.add()
         arg = op_def.arg.add()
         arg.name = 'T'
@@ -1144,11 +1144,11 @@ class TFConverter(object):
             elif op.type == 'SpaceToDepth':
                 self.convert_depth_to_space(op, False)
             elif op.type in ['Neg', 'neg', 'Negative', 'negative']:
-                self.convert_math(op, 'NEG')
+                self.convert_eltwise(op, 'NEG')
             elif op.type == 'Mul':
-                self.convert_math(op, 'MUL')
+                self.convert_eltwise(op, 'MUL')
             elif op.type == 'Sub':
-                self.convert_math(op, 'SUB')
+                self.convert_eltwise(op, 'SUB')
             elif self.is_softmax(op):
                 self.convert_softmax(op)
             elif op.type in ['Relu', 'Sigmoid', 'Tanh']:
