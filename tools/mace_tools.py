@@ -558,7 +558,7 @@ def main(unused_args):
                     print(
                         "===================================================="
                     )
-                    print("Trying to lock device", serialno)
+                    print("Trying to lock device %s" % serialno)
                     with sh_commands.device_lock(serialno):
                         print("Run on device: %s, %s, %s" % (
                             serialno, props["ro.board.platform"],
