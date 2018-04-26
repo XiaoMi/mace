@@ -643,6 +643,11 @@ def validate_model(abi,
             sh.docker("build", "-t", image_name, "docker/caffe")
 
         container_id = sh.docker("ps", "-qa", "-f", "name=%s" % container_name)
+        if container_id and not sh.docker("ps", "-qa", "--filter",
+                                          "status=running", "-f",
+                                          "name=%s" % container_name):
+            sh.docker("rm", "-f", container_name)
+            container_id = ""
         if not container_id:
             print("Run caffe container")
             sh.docker(
@@ -653,14 +658,6 @@ def validate_model(abi,
                     container_name,
                     image_name,
                     "/bin/bash")
-
-        container_status = sh.docker("inspect",
-                                     "-f",
-                                     "{{.State.Running}}",
-                                     container_name)
-        if container_status == "false":
-            print("Start caffe container")
-            sh.docker("start", container_name)
 
         for input_name in input_nodes:
             formatted_input_name = formatted_file_name(
