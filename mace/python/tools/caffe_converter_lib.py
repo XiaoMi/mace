@@ -529,7 +529,8 @@ class CaffeConverter(object):
         # Add filter
         weight_tensor_name = op.name + '_weight:0'
         weight_data = op.data[0]  # OIHW
-        input_shape = op.data[1].shape
+        input_shape = op.get_single_parent().output_shape_map[
+            op.layer.bottom[0]]
         if input_shape[2] > 16 and input_shape[3] > 16:
             G = np.array([
                 [1.0, 0.0, 0.0],
@@ -1085,6 +1086,13 @@ class CaffeConverter(object):
             arg.name = 'T'
             arg.i = self.dt
 
+            input_op = self.ops_map[name]
+            if input_op.layer is not None:
+                output_shape = input_op.output_shape_map[input_op.layer.top[0]]
+            else:
+                output_shape = input_op.output_shape_map[input_op.name]
+            self.add_output_shape(op_def, output_shape)
+
     def add_cpu_output_transform(self, names):
         for name in names:
             output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
@@ -1097,6 +1105,13 @@ class CaffeConverter(object):
             dims_arg = op_def.arg.add()
             dims_arg.name = 'dims'
             dims_arg.ints.extend([0, 2, 3, 1])  # NCHW -> NHWC
+
+            input_op = self.ops_map[name]
+            if input_op.layer is not None:
+                output_shape = input_op.output_shape_map[input_op.layer.top[0]]
+            else:
+                output_shape = input_op.output_shape_map[input_op.name]
+            self.add_output_shape(op_def, output_shape)
 
     def convert(self, input_nodes, input_shapes, output_nodes):
         assert self.ops[0].type == 'Input'
