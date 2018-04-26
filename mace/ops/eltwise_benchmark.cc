@@ -35,10 +35,10 @@ void EltwiseBenchmark(
   net.AddRandomInput<D, T>("Input1", {n, h, w, c});
 
   if (D == DeviceType::OPENCL) {
-    BufferToImage<D, half>(&net, "Input0", "InputImg0",
-                           kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(&net, "Input1", "InputImg1",
-                           kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, T>(&net, "Input0", "InputImg0",
+                        kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, T>(&net, "Input1", "InputImg1",
+                        kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -48,9 +48,13 @@ void EltwiseBenchmark(
         .Output("OutputImg")
         .Finalize(net.NewOperatorDef());
   } else {
+    net.TransformDataFormat<D, float>("Input0", NHWC,
+                                      "TInput0", NCHW);
+    net.TransformDataFormat<D, float>("Input1", NHWC,
+                                      "TInput1", NCHW);
     OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("Input0")
-        .Input("Input1")
+        .Input("TInput0")
+        .Input("TInput1")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatsArg("coeff", {1.2, 2.1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
@@ -89,13 +93,13 @@ void EltwiseBenchmark(
   BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, OPENCL); \
   BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, OPENCL);
 
-BM_ELTWISE(0, 1, 256, 256, 32);
-BM_ELTWISE(0, 1, 128, 128, 32);
-BM_ELTWISE(1, 1, 128, 128, 32);
 BM_ELTWISE(2, 1, 128, 128, 32);
-BM_ELTWISE(0, 1, 240, 240, 256);
-BM_ELTWISE(1, 1, 240, 240, 256);
 BM_ELTWISE(2, 1, 240, 240, 256);
+BM_ELTWISE(2, 1, 256, 256, 32);
+BM_ELTWISE(0, 1, 128, 128, 32);
+BM_ELTWISE(0, 1, 240, 240, 256);
+BM_ELTWISE(5, 1, 128, 128, 32);
+BM_ELTWISE(5, 1, 240, 240, 256);
 
 }  // namespace test
 }  // namespace ops

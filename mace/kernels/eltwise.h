@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include <utility>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -30,216 +31,302 @@ namespace mace {
 namespace kernels {
 
 enum EltwiseType {
-  PROD = 0,
-  SUM = 1,
-  MAX = 2,
-  MIN = 3,
-  SUB = 4,
-  DIV = 5,
+  SUM = 0,
+  SUB = 1,
+  PROD = 2,
+  DIV = 3,
+  MIN = 4,
+  MAX = 5,
   NEG = 6,
   ABS = 7,
   SQR_DIFF = 8,
+  NONE = 9,
 };
+
+inline void TensorScalar(const EltwiseType type,
+                         const float *input0,
+                         const float value,
+                         const index_t size,
+                         float *output) {
+  switch (type) {
+    case SUM:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] + value;
+      }
+      break;
+    case SUB:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] - value;
+      }
+      break;
+    case PROD:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] * value;
+      }
+      break;
+    case DIV:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] / value;
+      }
+      break;
+    case MIN:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::min<float>(input0[i], value);
+      }
+      break;
+    case MAX:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::max<float>(input0[i], value);
+      }
+      break;
+    case NEG:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = -input0[i];
+      }
+      break;
+    case ABS:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::abs(input0[i]);
+      }
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::pow(input0[i] - value, 2.f);
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
+
+inline void TensorVector(const EltwiseType type,
+                         const float *input0,
+                         const float *input1,
+                         const index_t batch,
+                         const index_t channel,
+                         const index_t hw,
+                         float *output) {
+  switch (type) {
+    case SUM:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = input0[idx0] + input1[idx1];
+          }
+        }
+      }
+      break;
+    case SUB:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = input0[idx0] - input1[idx1];
+          }
+        }
+      }
+      break;
+    case PROD:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = input0[idx0] * input1[idx1];
+          }
+        }
+      }
+      break;
+    case DIV:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = input0[idx0] / input1[idx1];
+          }
+        }
+      }
+      break;
+    case MIN:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = std::min<float>(input0[idx0], input1[idx1]);
+          }
+        }
+      }
+      break;
+    case MAX:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = std::max<float>(input0[idx0], input1[idx1]);
+          }
+        }
+      }
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          for (index_t i = 0; i < hw; ++i) {
+            const index_t idx0 = (b * channel + c) * hw + i;
+            const index_t idx1 = b * channel + c;
+            output[idx0] = std::pow(input0[idx0] - input1[idx1], 2.f);
+          }
+        }
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
+inline void TensorEltwise(const EltwiseType type,
+                          const float *input0,
+                          const float *input1,
+                          const index_t size,
+                          float *output) {
+  switch (type) {
+    case SUM:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] + input1[i];
+      }
+      break;
+    case SUB:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] - input1[i];
+      }
+      break;
+    case PROD:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] * input1[i];
+      }
+      break;
+    case DIV:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = input0[i] / input1[i];
+      }
+      break;
+    case MIN:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::min<float>(input0[i], input1[i]);
+      }
+      break;
+    case MAX:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::max<float>(input0[i], input1[i]);
+      }
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::pow(input0[i] - input1[i], 2.f);
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
+
 
 struct EltwiseFunctorBase {
   EltwiseFunctorBase(const EltwiseType type,
-                     const std::vector<float> &coeff)
-      : type_(type), coeff_(coeff) {}
+                     const std::vector<float> &coeff,
+                     const float value)
+      : type_(type), coeff_(coeff), value_(value) {}
 
   EltwiseType type_;
   std::vector<float> coeff_;
+  float value_;
 };
 
 template <DeviceType D, typename T>
-struct EltwiseFunctor : EltwiseFunctorBase {
+struct EltwiseFunctor;
+
+template <>
+struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
-                 const std::vector<float> &coeff)
-      : EltwiseFunctorBase(type, coeff) {}
+                 const std::vector<float> &coeff,
+                 const float value)
+      : EltwiseFunctorBase(type, coeff, value) {}
 
   void operator()(const Tensor *input0,
                   const Tensor *input1,
-                  const index_t start_axis,
-                  const bool is_scaler,
-                  const float value,
-                  const bool swap,
                   Tensor *output,
                   StatsFuture *future) {
-    if (is_scaler) {
-      Tensor::MappingGuard input0_guard(input0);
-      Tensor::MappingGuard output_guard(output);
-
-      const T *input0_ptr = input0->data<T>();
-      T *output_ptr = output->mutable_data<T>();
-      const index_t num = input0->size();
-      switch (type_) {
-        case PROD:
-#pragma omp parallel for
-          for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = input0_ptr[i] * value;
-          }
-          break;
-        case SUM:
-          if (coeff_.empty()) {
-#pragma omp parallel for
-            for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = input0_ptr[i] + value;
-            }
-          } else {
-            const float coeff_0 = swap ? coeff_[1] : coeff_[0];
-            const float coeff_1 = swap ? coeff_[0] : coeff_[1];
-#pragma omp parallel for
-            for (index_t i = 0; i < num; ++i) {
-                output_ptr[i] = coeff_0 * input0_ptr[i] +
-                        coeff_1 * value;
-            }
-          }
-          break;
-        case MAX:
-#pragma omp parallel for
-          for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = std::max<T>(input0_ptr[i], value);
-          }
-          break;
-        case MIN:
-#pragma omp parallel for
-          for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = std::min<T>(input0_ptr[i], value);
-          }
-          break;
-        case SUB:
-#pragma omp parallel for
-          for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = swap ? value - input0_ptr[i] :
-                              input0_ptr[i] - value;
-          }
-          break;
-        case DIV:
-          if (!swap) {
-            MACE_CHECK(fabs(value) > 1e-6, "cannot divided by 0.");
-#pragma omp parallel for
-            for (index_t i = 0; i < num; ++i) {
-              output_ptr[i] = input0_ptr[i] / value;
-            }
-          } else {
-#pragma omp parallel for
-            for (index_t i = 0; i < num; ++i) {
-              MACE_CHECK(fabs(input0_ptr[i]) > 1e-6, "cannot divided by 0.");
-              output_ptr[i] = value / input0_ptr[i];
-            }
-          }
-          break;
-        case SQR_DIFF:
-#pragma omp parallel for
-          for (index_t i = 0; i < num; ++i) {
-              const float tmp = input0_ptr[i] - value;
-              output_ptr[i] = tmp * tmp;
-          }
-          break;
-        default:
-          LOG(FATAL) << "Eltwise op not support type " << type_;
+    if (input1 != nullptr) {
+      MACE_CHECK(input0->dim_size() == input1->dim_size())
+        << "Inputs of Eltwise op must be same shape";
+      if (input0->size() != input1->size()) {
+        if (input0->size() < input1->size()) {
+          std::swap(input0, input1);
+        }
+        MACE_CHECK(input0->dim(0) == input1->dim(0) &&
+            input0->dim(1) == input1->dim(1) &&
+            input1->dim(2) == 1 &&
+            input1->dim(3) == 1)
+          << "Element-Wise op only support channel dimension broadcast";
       }
+    }
+    output->ResizeLike(input0);
+
+    Tensor::MappingGuard input0_guard(input0);
+    Tensor::MappingGuard output_guard(output);
+
+    const float *input0_ptr = input0->data<float>();
+    float *output_ptr = output->mutable_data<float>();
+    const index_t size = input0->size();
+    if (input1 == nullptr) {
+      TensorScalar(type_, input0_ptr, value_, size, output_ptr);
     } else {
-      MACE_CHECK_NOTNULL(input0);
-      MACE_CHECK_NOTNULL(input1);
-      Tensor::MappingGuard input0_guard(input0);
       Tensor::MappingGuard input1_guard(input1);
-      Tensor::MappingGuard output_guard(output);
 
-      const T *input0_ptr = input0->data<T>();
-      const T *input1_ptr = input1->data<T>();
-      T *output_ptr = output->mutable_data<T>();
-      const index_t size0 = input0->size();
-      const index_t size1 = input1->size();
-
-      const index_t num = size0 / size1;
-      switch (type_) {
-        case PROD:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j= 0; j < size1; ++j) {
-              output_ptr[i * size1 + j] =
-                  input0_ptr[i * size1 + j] * input1_ptr[j];
-            }
+      const float *input1_ptr = input1->data<float>();
+      if (input1->size() != input0->size()) {
+        const index_t batch = input0->dim(0);
+        const index_t channel = input0->dim(1);
+        const index_t hw = input0->dim(2) * input0->dim(3);
+        TensorVector(type_, input0_ptr, input1_ptr,
+                     batch, channel, hw, output_ptr);
+      } else {
+        if (!coeff_.empty() && type_ == SUM) {
+#pragma omp parallel for
+          for (index_t i = 0; i < size; ++i) {
+            output_ptr[i] = coeff_[0] * input0_ptr[i] +
+                coeff_[1] * input1_ptr[i];
           }
-          break;
-        case SUM:
-          if (coeff_.empty()) {
-#pragma omp parallel for collapse(2)
-            for (index_t i = 0; i < num; ++i) {
-              for (index_t j = 0; j < size1; ++j) {
-                output_ptr[i * size1 + j] =
-                    input0_ptr[i * size1 + j] + input1_ptr[j];
-              }
-            }
-          } else {
-            const float coeff_0 = swap ? coeff_[1] : coeff_[0];
-            const float coeff_1 = swap ? coeff_[0] : coeff_[1];
-#pragma omp parallel for collapse(2)
-            for (index_t i = 0; i < num; ++i) {
-              for (index_t j = 0; j < size1; ++j) {
-                output_ptr[i * size1 + j] =
-                    coeff_0 * input0_ptr[i * size1 + j] +
-                        coeff_1 * input1_ptr[j];
-              }
-            }
-          }
-          break;
-        case MAX:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j = 0; j < size1; ++j) {
-              output_ptr[i * size1 + j] =
-                  std::max<T>(input0_ptr[i * size1 + j], input1_ptr[j]);
-            }
-          }
-          break;
-        case MIN:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j = 0; j < size1; ++j) {
-              output_ptr[i * size1 + j] =
-                  std::min<T>(input0_ptr[i * size1 + j], input1_ptr[j]);
-            }
-          }
-          break;
-        case SUB:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j = 0; j < size1; ++j) {
-              output_ptr[i * size1 + j] = swap ?
-                  input0_ptr[i * size1 + j] - input1_ptr[j] :
-                  input1_ptr[j] - input0_ptr[i * size1 + j];
-            }
-          }
-          break;
-        case DIV:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j = 0; j < size1; ++j) {
-              if (!swap) {
-                MACE_CHECK(fabs(input1_ptr[j]) > 1e-6, "cannot divided by 0.");
-                output_ptr[i * size1 + j] =
-                    input0_ptr[i * size1 + j] / input1_ptr[j];
-              } else {
-                MACE_CHECK(fabs(input0_ptr[i * size1 + j]) > 1e-6,
-                           "cannot divided by 0.");
-                output_ptr[i * size1 + j] =
-                    input1_ptr[j] / input0_ptr[i * size1 + j];
-              }
-            }
-          }
-          break;
-        case SQR_DIFF:
-#pragma omp parallel for collapse(2)
-          for (index_t i = 0; i < num; ++i) {
-            for (index_t j = 0; j < size1; ++j) {
-              const T tmp = input0_ptr[i * size1 + j] - input1_ptr[j];
-              output_ptr[i * size1 + j] = tmp * tmp;
-            }
-          }
-          break;
-        default:
-          LOG(FATAL) << "Eltwise op not support type " << type_;
+        } else {
+          TensorEltwise(type_, input0_ptr, input1_ptr, size, output_ptr);
+        }
       }
     }
   }
@@ -249,15 +336,12 @@ struct EltwiseFunctor : EltwiseFunctorBase {
 template <typename T>
 struct EltwiseFunctor<DeviceType::OPENCL, T> : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
-                 const std::vector<float> &coeff)
-      : EltwiseFunctorBase(type, coeff) {}
+                 const std::vector<float> &coeff,
+                 const float value)
+      : EltwiseFunctorBase(type, coeff, value) {}
 
   void operator()(const Tensor *input0,
                   const Tensor *input1,
-                  const index_t start_axis,
-                  const bool is_scaler,
-                  const float value,
-                  const bool swap,
                   Tensor *output,
                   StatsFuture *future);
 

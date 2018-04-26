@@ -30,14 +30,14 @@ pooling_type_mode = {'AvgPool': 1, 'MaxPool': 2}
 # and also cwise type's in mace/kernels/cwise.h
 # cuz these math ops should have compatible with "EltWise" and "CWise"
 math_type_mode = {
-    'MUL': 0,
-    'ADD': 1,
-    'MAX': 2,
-    'MIN': 3,
-    'SUB': 4,
-    'DIV': 5,
+    'ADD': 0,
+    'SUB': 1,
+    'MUL': 2,
+    'DIV': 3,
+    'MIN': 4,
+    'MAX': 5,
     'NEG': 6,
-    'ABS': 7
+    'ABS': 7,
 }
 
 buffer_type_map = {
@@ -836,18 +836,26 @@ class TFConverter(object):
         arg.i = self.dt
         op_def.name = op.name
         op_def.type = "Eltwise"
-        op_def.input.extend([input.name for input in op.inputs])
-        x_value = op.get_attr('x')
-        if len(op.inputs) >= 2:
+        if len(op.inputs) == 2:
             input_tensor0 = get_input_tensor(op, 0)
             input_tensor1 = get_input_tensor(op, 1)
-            if len(input_tensor0) == 1:
-                x_value = input_tensor0.eval().astype(np.float32)
-            elif len(input_tensor1) == 1:
-                x_value = input_tensor1.eval().astype(np.float32)
-        x_arg = op_def.arg.add()
-        x_arg.name = 'x'
-        x_arg.f = x_value
+            x_value = None
+            if np.asarray(input_tensor1.shape).size == 0:
+                x_value = input_tensor1.eval()
+                op_def.input.extend([op.inputs[0].name])
+                self.unused_tensor.add(input_tensor1.name)
+            elif np.asarray(input_tensor0.shape).size == 0:
+                x_value = input_tensor0.eval()
+                op_def.input.extend([op.inputs[1].name])
+                self.unused_tensor.add(input_tensor0.name)
+            else:
+                op_def.input.extend([input.name for input in op.inputs])
+            if x_value is not None:
+                x_arg = op_def.arg.add()
+                x_arg.name = 'x'
+                x_arg.f = x_value
+        else:
+            op_def.input.extend([input.name for input in op.inputs])
         type_arg = op_def.arg.add()
         type_arg.name = 'type'
         type_arg.i = math_type_mode[math_type]
