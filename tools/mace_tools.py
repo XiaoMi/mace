@@ -546,8 +546,8 @@ def main(unused_args):
     embed_model_data = configs.get("embed_model_data", 1)
     vlog_level = configs.get("vlog_level", 0)
     phone_data_dir = "/data/local/tmp/mace_run/"
-    for target_soc in target_socs:
-        for target_abi in configs["target_abis"]:
+    for target_abi in configs["target_abis"]:
+        for target_soc in target_socs:
             if target_abi != 'host':
                 serialnos = sh_commands.get_target_socs_serialnos([target_soc])
                 for serialno in serialnos:
