@@ -18,16 +18,19 @@ namespace mace {
 namespace ops {
 
 void Register_WinogradTransform(OperatorRegistry *op_registry) {
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     WinogradTransformOp<DeviceType::OPENCL, float>);
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     WinogradTransformOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

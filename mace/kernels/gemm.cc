@@ -14,6 +14,7 @@
 
 #include <math.h>
 #include <algorithm>
+#include <cstring>
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>

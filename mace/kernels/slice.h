@@ -20,10 +20,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -81,6 +84,7 @@ struct SliceFunctor : SliceFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct SliceFunctor<DeviceType::OPENCL, T> : SliceFunctorBase {
   explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
@@ -92,6 +96,7 @@ struct SliceFunctor<DeviceType::OPENCL, T> : SliceFunctorBase {
   uint32_t kwg_size_;
   std::unique_ptr<BufferBase> kernel_error_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

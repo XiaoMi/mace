@@ -34,26 +34,30 @@ from ConfigParser import ConfigParser
 
 
 def get_target_socs(configs):
-    available_socs = sh_commands.adb_get_all_socs()
-    target_socs = available_socs
-    if hasattr(configs, "target_socs"):
-        target_socs = set(configs["target_socs"])
-        target_socs = target_socs & available_socs
+    if "host" in configs["target_abis"]:
+        return [""]
+    else:
+        available_socs = sh_commands.adb_get_all_socs()
+        target_socs = available_socs
+        if hasattr(configs, "target_socs"):
+            target_socs = set(configs["target_socs"])
+            target_socs = target_socs & available_socs
 
-    if FLAGS.target_socs != "all":
-        socs = set(FLAGS.target_socs.split(','))
-        target_socs = target_socs & socs
-        missing_socs = socs.difference(target_socs)
-        if len(missing_socs) > 0:
-            print(
-                "Error: devices with SoCs are not connected %s" % missing_socs)
+        if FLAGS.target_socs != "all":
+            socs = set(FLAGS.target_socs.split(','))
+            target_socs = target_socs & socs
+            missing_socs = socs.difference(target_socs)
+            if len(missing_socs) > 0:
+                print(
+                    "Error: devices with SoCs are not connected %s" %
+                    missing_socs)
+                exit(1)
+
+        if not target_socs:
+            print("Error: no device to run")
             exit(1)
 
-    if not target_socs:
-        print("Error: no device to run")
-        exit(1)
-
-    return target_socs
+        return target_socs
 
 
 def get_data_and_device_type(runtime):
@@ -336,8 +340,8 @@ def parse_args():
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_soc, target_abi, serialno, phone_data_dir,
-                   option_args):
+                   target_abi, phone_data_dir, option_args,
+                   target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
     for model_name in configs["models"]:
@@ -355,11 +359,17 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         # Create model build directory
         model_path_digest = md5sum(model_config["model_file_path"])
-        device_name = sh_commands.adb_get_device_name_by_serialno(serialno)
-        model_output_dir = "%s/%s/%s/%s/%s/%s_%s/%s" % (
-            FLAGS.output_dir, project_name, "build",
-            model_name, model_path_digest, device_name.replace(' ', ''),
-            target_soc, target_abi)
+
+        if target_abi == "host":
+            model_output_dir = "%s/%s/%s/%s/%s/%s" % (
+                FLAGS.output_dir, project_name, "build",
+                model_name, model_path_digest, target_abi)
+        else:
+            device_name = sh_commands.adb_get_device_name_by_serialno(serialno)
+            model_output_dir = "%s/%s/%s/%s/%s/%s_%s/%s" % (
+                FLAGS.output_dir, project_name, "build",
+                model_name, model_path_digest, device_name.replace(' ', ''),
+                target_soc, target_abi)
         model_output_dirs.append(model_output_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -561,14 +571,14 @@ def main(unused_args):
                             serialno, props["ro.board.platform"],
                               props["ro.product.model"]))
                         process_models(project_name, configs, embed_model_data,
-                                       vlog_level, target_soc, target_abi,
-                                       serialno, phone_data_dir, option_args)
+                                       vlog_level, target_abi, phone_data_dir,
+                                       option_args, target_soc, serialno)
             else:
                 print("====================================================")
                 print("Run on host")
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_soc, target_abi, '',
-                               phone_data_dir, option_args)
+                               vlog_level, target_abi, phone_data_dir,
+                               option_args)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         sh_commands.packaging_lib(FLAGS.output_dir, project_name)

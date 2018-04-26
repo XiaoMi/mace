@@ -24,6 +24,7 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
                                      .Build(),
                     BiasAddOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,7 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     BiasAddOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

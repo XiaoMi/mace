@@ -23,16 +23,20 @@ void Register_Concat(OperatorRegistry *op_registry) {
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ConcatOp<DeviceType::CPU, float>);
+
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
                                      .Build(),
                     ConcatOp<DeviceType::OPENCL, float>);
+
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     ConcatOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

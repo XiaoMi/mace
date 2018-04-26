@@ -21,9 +21,12 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -157,6 +160,7 @@ class ActivationFunctor<DeviceType::CPU, float> {
   float relux_max_limit_;
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 class ActivationFunctor<DeviceType::OPENCL, T> {
  public:
@@ -177,6 +181,7 @@ class ActivationFunctor<DeviceType::OPENCL, T> {
   std::string tuning_key_prefix_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

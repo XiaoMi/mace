@@ -19,10 +19,13 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -52,6 +55,7 @@ struct WinogradTransformFunctor : WinogradTransformFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct WinogradTransformFunctor<DeviceType::OPENCL, T>
     : WinogradTransformFunctorBase {
@@ -66,6 +70,7 @@ struct WinogradTransformFunctor<DeviceType::OPENCL, T>
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 struct WinogradInverseTransformFunctorBase {
   WinogradInverseTransformFunctorBase(const int batch,
@@ -104,6 +109,7 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T>
     : WinogradInverseTransformFunctorBase {
@@ -125,6 +131,7 @@ struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T>
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

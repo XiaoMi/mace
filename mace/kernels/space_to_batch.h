@@ -19,9 +19,12 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -54,6 +57,7 @@ struct SpaceToBatchFunctor : SpaceToBatchFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct SpaceToBatchFunctor<DeviceType::OPENCL, T> : SpaceToBatchFunctorBase {
   SpaceToBatchFunctor(const std::vector<int> &paddings,
@@ -71,6 +75,7 @@ struct SpaceToBatchFunctor<DeviceType::OPENCL, T> : SpaceToBatchFunctorBase {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> space_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

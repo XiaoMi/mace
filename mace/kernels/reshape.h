@@ -18,8 +18,11 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {

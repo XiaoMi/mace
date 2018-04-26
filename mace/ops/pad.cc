@@ -24,6 +24,7 @@ void Register_Pad(OperatorRegistry *op_registry) {
                                      .Build(),
                     PadOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pad")
                                      .Device(DeviceType::OPENCL)
                                      .TypeConstraint<float>("T")
@@ -34,6 +35,7 @@ void Register_Pad(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     PadOp<DeviceType::OPENCL, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

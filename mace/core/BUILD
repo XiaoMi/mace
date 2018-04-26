@@ -52,10 +52,10 @@ cc_library(
     ]),
     deps = [
         "//mace/utils",
+        "//mace/codegen:generated_version",
     ] + if_android([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
-        "//mace/codegen:generated_version",
         "@half//:half",
     ]) + if_production_mode([
         "//mace/codegen:generated_tuning_params",

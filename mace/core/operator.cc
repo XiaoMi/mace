@@ -79,7 +79,6 @@ extern void Register_AddN(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
 extern void Register_BatchToSpaceND(OperatorRegistry *op_registry);
 extern void Register_BiasAdd(OperatorRegistry *op_registry);
-extern void Register_BufferToImage(OperatorRegistry *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
@@ -90,7 +89,6 @@ extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
 extern void Register_FusedConv2D(OperatorRegistry *op_registry);
-extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
 extern void Register_LocalResponseNorm(OperatorRegistry *op_registry);
 extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_Pad(OperatorRegistry *op_registry);
@@ -109,6 +107,11 @@ extern void Register_SpaceToDepth(OperatorRegistry *op_registry);
 extern void Register_Transpose(OperatorRegistry *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
 extern void Register_WinogradTransform(OperatorRegistry *op_registry);
+
+#ifdef MACE_ENABLE_OPENCL
+extern void Register_BufferToImage(OperatorRegistry *op_registry);
+extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
+#endif  // MACE_ENABLE_OPENCL
 }  // namespace ops
 
 OperatorRegistry::OperatorRegistry() {
@@ -118,7 +121,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_BatchNorm(this);
   ops::Register_BatchToSpaceND(this);
   ops::Register_BiasAdd(this);
-  ops::Register_BufferToImage(this);
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
@@ -129,7 +131,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_FoldedBatchNorm(this);
   ops::Register_FullyConnected(this);
   ops::Register_FusedConv2D(this);
-  ops::Register_ImageToBuffer(this);
   ops::Register_LocalResponseNorm(this);
   ops::Register_MatMul(this);
   ops::Register_Pad(this);
@@ -148,6 +149,11 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Transpose(this);
   ops::Register_WinogradInverseTransform(this);
   ops::Register_WinogradTransform(this);
+
+#ifdef MACE_ENABLE_OPENCL
+  ops::Register_BufferToImage(this);
+  ops::Register_ImageToBuffer(this);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace mace

@@ -22,10 +22,13 @@
 #include <limits>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -89,6 +92,7 @@ struct SoftmaxFunctor<DeviceType::CPU, float> {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
@@ -98,6 +102,7 @@ struct SoftmaxFunctor<DeviceType::OPENCL, T> {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace
