@@ -154,8 +154,21 @@ NetDef CreateNet(const unsigned char *model_data) {
   return net_def;
 }
 
+const std::string ModelName() {
+  return {{ tag|tojson }};
+}
+
 const std::string ModelChecksum() {
   return {{ model_pb_checksum|tojson }};
+}
+
+const std::string ModelBuildTime() {
+  return {{ build_time|tojson }};
+}
+
+const std::string ModelBuildOptions() {
+  return {{ "runtime: {}, obfuscate: {}, embed_model_data: {}, winograd: {}"
+        .format(runtime, obfuscate, embed_model_data, winograd_conv)|tojson }};
 }
 
 }  // namespace {{tag}}

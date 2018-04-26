@@ -84,7 +84,7 @@ def main(unused_args):
         source_converter_lib.convert_to_source(
             output_graph_def, model_checksum, FLAGS.template, FLAGS.obfuscate,
             FLAGS.model_tag, FLAGS.output, FLAGS.runtime,
-            FLAGS.embed_model_data)
+            FLAGS.embed_model_data, FLAGS.winograd)
     else:
         with open(FLAGS.output, "wb") as f:
             f.write(output_graph_def.SerializeToString())

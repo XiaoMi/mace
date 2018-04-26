@@ -47,7 +47,10 @@ extern void UnloadModelData(const unsigned char *model_data);
 
 extern NetDef CreateNet(const unsigned char *model_data);
 
+extern const std::string ModelName();
 extern const std::string ModelChecksum();
+extern const std::string ModelBuildTime();
+extern const std::string ModelBuildOptions();
 
 }  // namespace MACE_MODEL_TAG
 }  // namespace mace
@@ -246,7 +249,10 @@ int Main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
+  LOG(INFO) << "model name: " << mace::MACE_MODEL_TAG::ModelName();
   LOG(INFO) << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum();
+  LOG(INFO) << "build time: " << mace::MACE_MODEL_TAG::ModelBuildTime();
+  LOG(INFO) << "build options: " << mace::MACE_MODEL_TAG::ModelBuildOptions();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
   LOG(INFO) << "output node: " << FLAGS_output_node;
