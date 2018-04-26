@@ -30,7 +30,13 @@ void UnloadModelData(const unsigned char *model_data);
 
 NetDef CreateNet(const unsigned char *model_data);
 
+const std::string ModelName();
+
 const std::string ModelChecksum();
+
+const std::string ModelBuildTime();
+
+const std::string ModelBuildOptions();
 
 }  // namespace {{ tag }}
 }  // namespace mace

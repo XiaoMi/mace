@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import os
 import uuid
 import numpy as np
@@ -124,7 +125,8 @@ def stringfy(value):
 
 
 def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
-                      model_tag, output, runtime, embed_model_data):
+                      model_tag, output, runtime, embed_model_data,
+                      winograd_conv):
     if obfuscate:
         obfuscate_name(net_def)
     else:
@@ -193,6 +195,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
         counter += 1
 
     # generate model source files
+    build_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     template_name = 'model.jinja2'
     tensors = [
         TensorInfo(i, net_def.tensors[i], runtime)
@@ -203,7 +206,11 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
         net=net_def,
         tag=model_tag,
         runtime=runtime,
-        model_pb_checksum=mode_pb_checksum)
+        obfuscate=obfuscate,
+        embed_model_data=embed_model_data,
+        winograd_conv=winograd_conv,
+        model_pb_checksum=mode_pb_checksum,
+        build_time=build_time)
     with open(output, "wb") as f:
         f.write(source)
 
