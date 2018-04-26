@@ -516,7 +516,7 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
                             *net.GetOutput("OPENCLOutput"), 1e-4, 1e-4);
   };
 
-  for (int kernel_size : {1, 3, 7}) {
+  for (int kernel_size : {1, 3, 5, 7}) {
     func(kernel_size, kernel_size, stride, stride, VALID);
     func(kernel_size, kernel_size, stride, stride, SAME);
   }

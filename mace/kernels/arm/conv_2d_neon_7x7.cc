@@ -16,7 +16,7 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/core/types.h"
+#include "mace/kernels/arm/conv_2d_neon.h"
 
 namespace mace {
 namespace kernels {
@@ -88,15 +88,15 @@ namespace kernels {
   vo0 = vmlaq_lane_f32(vo0, vi6, vget_high_f32(vf01), 0);
 
 inline void Conv2dCPUK7x7Calc(const float *in_ptr_base,
-                       const float *filter_ptr0,
-                       const index_t in_width,
-                       const index_t in_channels,
-                       const index_t out_height,
-                       const index_t out_width,
-                       const index_t out_image_size,
-                       float *out_ptr0_base,
-                       const index_t io,
-                       const int stride) {
+                              const float *filter_ptr0,
+                              const index_t in_width,
+                              const index_t in_channels,
+                              const index_t out_height,
+                              const index_t out_width,
+                              const index_t out_image_size,
+                              float *out_ptr0_base,
+                              const index_t io,
+                              const int stride) {
   for (index_t ih = 0; ih < out_height; ++ih) {
     for (index_t iw = 0; iw < out_width; ++iw) {
       for (int i = 0; i < 7; ++i) {
