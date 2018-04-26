@@ -30,6 +30,7 @@ class FullyConnectedOp : public Operator<D, T> {
     : Operator<D, T>(operator_def, ws),
       functor_(OperatorBase::GetSingleArgument<int>(
                    "weight_type",
+                   // TODO(liuqi): 8 is stand for kernels::WEIGHT_WIDTH
                    8 /*static_cast<int>(kernels::WEIGHT_WIDTH)*/),
                kernels::StringToActivationType(
                  OperatorBase::GetSingleArgument<std::string>("activation",

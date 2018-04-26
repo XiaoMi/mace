@@ -46,6 +46,5 @@ extra_tests:
 platform_compitable_tests:
   stage: platform_compitable_tests
   script:
+    - mkdir -p mace/codegen/version && bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc
     - bazel build mace/core:core
-
- 
