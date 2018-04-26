@@ -150,7 +150,8 @@ class OpsTestNet {
   template<DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
-                      bool positive = true) {
+                      bool positive = true,
+                      bool truncate = false) {
     Tensor *input =
       ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
@@ -162,14 +163,24 @@ class OpsTestNet {
     std::normal_distribution<float> nd(0, 1);
     if (DataTypeToEnum<T>::value == DT_HALF) {
       std::generate(
-        input_data, input_data + input->size(), [&gen, &nd, positive] {
-          return half_float::half_cast<half>(positive ? std::abs(nd(gen))
-                                                      : nd(gen));
+        input_data, input_data + input->size(),
+        [&gen, &nd, positive, truncate] {
+          float d = nd(gen);
+          if (truncate) {
+            if (std::abs(d) > 100.f) d = 100.f;
+            if (std::abs(d) < 0.001f) d = 0.001f;
+          }
+          return half_float::half_cast<half>(positive ?std::abs(d) : d);
         });
     } else {
       std::generate(input_data, input_data + input->size(),
-                    [&gen, &nd, positive] {
-                      return positive ? std::abs(nd(gen)) : nd(gen);
+                    [&gen, &nd, positive, truncate] {
+                      float d = nd(gen);
+                      if (truncate) {
+                        if (std::abs(d) > 100.f) d = 100.f;
+                        if (std::abs(d) < 0.001f) d = 0.001f;
+                      }
+                      return (positive ?std::abs(d) : d);
                     });
     }
   }
