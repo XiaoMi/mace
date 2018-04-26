@@ -199,41 +199,51 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
                         input_shapes, output_shapes, model_name, device_type,
                         running_round, restart_round, tuning,
                         limit_opencl_kernel_time, phone_data_dir):
-    gen_opencl_and_tuning_code(target_abi, serialno, [], False)
-    production_or_not = False
     mace_run_target = "//mace/tools/validation:mace_run"
-    sh_commands.bazel_build(
-            mace_run_target,
-            abi=target_abi,
-            model_tag=model_name,
-            production_mode=False,
-            hexagon_mode=hexagon_mode)
-    sh_commands.update_mace_run_lib(model_output_dir, target_abi, model_name,
-                                    embed_model_data)
+    if runtime == "gpu":
+        gen_opencl_and_tuning_code(target_abi, serialno, [], False)
+        sh_commands.bazel_build(
+                mace_run_target,
+                abi=target_abi,
+                model_tag=model_name,
+                production_mode=False,
+                hexagon_mode=hexagon_mode)
+        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+                                        model_name, embed_model_data)
 
-    tuning_run(runtime, target_abi, serialno, vlog_level,
-               embed_model_data, model_output_dir, input_nodes, output_nodes,
-               input_shapes, output_shapes, model_name, device_type,
-               running_round=0, restart_round=1, out_of_range_check=True,
-               phone_data_dir=phone_data_dir, tuning=False)
+        tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
+                   model_output_dir, input_nodes, output_nodes, input_shapes,
+                   output_shapes, model_name, device_type, running_round=0,
+                   restart_round=1, out_of_range_check=True,
+                   phone_data_dir=phone_data_dir, tuning=False)
 
-    tuning_run(runtime, target_abi, serialno, vlog_level,
-               embed_model_data, model_output_dir, input_nodes, output_nodes,
-               input_shapes, output_shapes, model_name, device_type,
-               running_round=0, restart_round=1, out_of_range_check=False,
-               phone_data_dir=phone_data_dir, tuning=tuning,
-               limit_opencl_kernel_time=limit_opencl_kernel_time)
+        tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
+                   model_output_dir, input_nodes, output_nodes, input_shapes,
+                   output_shapes, model_name, device_type, running_round=0,
+                   restart_round=1, out_of_range_check=False,
+                   phone_data_dir=phone_data_dir, tuning=tuning,
+                   limit_opencl_kernel_time=limit_opencl_kernel_time)
 
-    gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir], True)
-    production_or_not = True
-    sh_commands.bazel_build(
-            mace_run_target,
-            abi=target_abi,
-            model_tag=model_name,
-            production_mode=True,
-            hexagon_mode=hexagon_mode)
-    sh_commands.update_mace_run_lib(model_output_dir, target_abi, model_name,
-                                    embed_model_data)
+        gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir],
+                                   True)
+        sh_commands.bazel_build(
+                mace_run_target,
+                abi=target_abi,
+                model_tag=model_name,
+                production_mode=True,
+                hexagon_mode=hexagon_mode)
+        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+                                        model_name, embed_model_data)
+    else:
+        gen_opencl_and_tuning_code(target_abi, serialno, [], False)
+        sh_commands.bazel_build(
+                mace_run_target,
+                abi=target_abi,
+                model_tag=model_name,
+                production_mode=True,
+                hexagon_mode=hexagon_mode)
+        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+                                        model_name, embed_model_data)
 
 
 def merge_libs_and_tuning_results(target_soc,
