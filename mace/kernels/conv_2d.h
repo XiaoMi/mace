@@ -227,6 +227,12 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       && stride_h == 2 && stride_w == 2 && dilation_h == 1 && dilation_w == 1;
     bool use_neon_1x1_s1 = filter_h == 1 && filter_w == 1
       && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+    bool use_neon_7x7_s1 = filter_h == 7 && filter_w == 7
+        && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+    bool use_neon_7x7_s2 = filter_h == 7 && filter_w == 7
+        && stride_h == 2 && stride_w == 2 && dilation_h == 1 && dilation_w == 1;
+    bool use_neon_7x7_s3 = filter_h == 7 && filter_w == 7
+        && stride_h == 3 && stride_w == 3 && dilation_h == 1 && dilation_w == 1;
 
     std::vector<index_t> transformed_input_shape;
     std::vector<index_t> transformed_output_shape;
@@ -285,6 +291,44 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       extra_output_width = RoundUp<index_t>(width, 4);
       extra_input_width =
         std::max(padded_input_width, (extra_output_width - 1) * 2 + 3);
+      if (extra_input_height != padded_input_height) {
+        pad_bottom += (extra_input_height - padded_input_height);
+      }
+      if (extra_input_width != padded_input_width) {
+        pad_right += (extra_input_width - padded_input_width);
+      }
+    } else if (use_neon_7x7_s1) {
+      extra_output_height = height;
+      extra_input_height =
+          std::max(padded_input_height, extra_output_height + 6);
+      extra_output_width = RoundUp<index_t>(width, 4);
+      extra_input_width = std::max(padded_input_width, extra_output_width + 6);
+      if (extra_input_height != padded_input_height) {
+        pad_bottom += (extra_input_height - padded_input_height);
+      }
+      if (extra_input_width != padded_input_width) {
+        pad_right += (extra_input_width - padded_input_width);
+      }
+    } else if (use_neon_7x7_s2) {
+      extra_output_height = height;
+      extra_input_height =
+          std::max(padded_input_height, (extra_output_height - 1) * 2 + 7);
+      extra_output_width = RoundUp<index_t>(width, 4);
+      extra_input_width =
+          std::max(padded_input_width, (extra_output_width - 1) * 2 + 7);
+      if (extra_input_height != padded_input_height) {
+        pad_bottom += (extra_input_height - padded_input_height);
+      }
+      if (extra_input_width != padded_input_width) {
+        pad_right += (extra_input_width - padded_input_width);
+      }
+    } else if (use_neon_7x7_s3) {
+      extra_output_height = height;
+      extra_input_height =
+          std::max(padded_input_height, (extra_output_height - 1) * 3 + 7);
+      extra_output_width = RoundUp<index_t>(width, 4);
+      extra_input_width =
+          std::max(padded_input_width, (extra_output_width - 1) * 3 + 7);
       if (extra_input_height != padded_input_height) {
         pad_bottom += (extra_input_height - padded_input_height);
       }
@@ -413,6 +457,45 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          extra_input_height,
                          extra_input_width,
                          input_channels,
+                         channels,
+                         pad_output);
+      };
+    } else if (use_neon_7x7_s1) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK7x7S1(pad_input,
+                         filter_data,
+                         batch,
+                         extra_input_height,
+                         extra_input_width,
+                         input_channels,
+                         extra_output_height,
+                         extra_output_width,
+                         channels,
+                         pad_output);
+      };
+    } else if (use_neon_7x7_s2) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK7x7S2(pad_input,
+                         filter_data,
+                         batch,
+                         extra_input_height,
+                         extra_input_width,
+                         input_channels,
+                         extra_output_height,
+                         extra_output_width,
+                         channels,
+                         pad_output);
+      };
+    } else if (use_neon_7x7_s3) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK7x7S3(pad_input,
+                         filter_data,
+                         batch,
+                         extra_input_height,
+                         extra_input_width,
+                         input_channels,
+                         extra_output_height,
+                         extra_output_width,
                          channels,
                          pad_output);
       };

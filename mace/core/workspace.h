@@ -52,7 +52,7 @@ class Workspace {
   ScratchBuffer *GetScratchBuffer(DeviceType device_type);
 
  private:
-  void CreateImageOutputTensor(const NetDef &net_def);
+  void CreateOutputTensorBuffer(const NetDef &net_def, DeviceType device_type);
 
   TensorMap tensor_map_;
 

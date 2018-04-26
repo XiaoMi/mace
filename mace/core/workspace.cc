@@ -119,19 +119,20 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
     tensor_map_[const_tensor.name()] = std::move(tensor);
   }
 
-  if (type == DeviceType::OPENCL) {
-    CreateImageOutputTensor(net_def);
+  if (type == DeviceType::CPU || type == DeviceType::OPENCL) {
+    CreateOutputTensorBuffer(net_def, type);
   }
 }
 
-void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
+void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
+                                         DeviceType device_type) {
   if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
     return;
   }
 
   DataType dtype = DataType::DT_INVALID;
-  // We use the data type of the first op (with mem id, must be image),
-  // as GPU have consistent data type for each layer for now.
+  // We use the data type of the first op with mem id,
+  // as CPU&GPU have consistent data type for each layer for now.
   // As DSP may have different data output type for each op,
   // we stick to the same concept.
   for (auto &op : net_def.op()) {
@@ -148,11 +149,19 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   }
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
-    std::unique_ptr<BufferBase> image_buf(
-        new Image({mem_block.x(), mem_block.y()}, dtype));
-    preallocated_allocator_.SetBuffer(mem_block.mem_id(), std::move(image_buf));
+    if (device_type == DeviceType::OPENCL) {
+      std::unique_ptr<BufferBase> image_buf(
+          new Image({mem_block.x(), mem_block.y()}, dtype));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(image_buf));
+    } else {
+      std::unique_ptr<BufferBase> tensor_buf(
+          new Buffer(GetDeviceAllocator(device_type), mem_block.x()));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(tensor_buf));
+    }
   }
-  VLOG(3) << "Preallocate image to tensors";
+  VLOG(3) << "Preallocate buffer to tensors";
   for (auto &op : net_def.op()) {
     if (!op.mem_id().empty()) {
       auto mem_ids = op.mem_id();
@@ -161,15 +170,17 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
         std::unique_ptr<Tensor> tensor
             (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
         tensor->SetSourceOpName(op.name());
-        VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
-                << " Mem: "  << mem_ids[i]
-                << " Image shape: "
-                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                    ->image_shape()[0]
-                << ", "
-                << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                    ->image_shape()[1];
         tensor_map_[op.output(i)] = std::move(tensor);
+        if (device_type == DeviceType::OPENCL) {
+          VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
+                  << " Mem: "  << mem_ids[i]
+                  << " Image shape: "
+                  << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                      ->image_shape()[0]
+                  << ", "
+                  << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                      ->image_shape()[1];
+        }
       }
     }
   }

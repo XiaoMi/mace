@@ -829,37 +829,25 @@ class TFConverter(object):
         self.resolved_ops[op.name] = 1
         self.unused_tensor.add(get_input_tensor(op, 1).name)
 
-    def convert_math(self, op, math_type):
+    def convert_eltwise(self, op, math_type):
         op_def = self.net_def.op.add()
         arg = op_def.arg.add()
         arg.name = 'T'
         arg.i = self.dt
         op_def.name = op.name
-
-        if len(op.inputs) == 1:
-            op_def.type = "CWise"
-            op_def.input.extend([input.name for input in op.inputs])
-            x_arg = op_def.arg.add()
-            x_arg.name = 'x'
-            x_arg.f = 0
-        elif len(op.inputs) >= 2:
+        op_def.type = "Eltwise"
+        op_def.input.extend([input.name for input in op.inputs])
+        x_value = op.get_attr('x')
+        if len(op.inputs) >= 2:
             input_tensor0 = get_input_tensor(op, 0)
             input_tensor1 = get_input_tensor(op, 1)
-            if input_tensor0.shape == input_tensor1.shape:
-                op_def.type = "Eltwise"
-                op_def.input.extend([input.name for input in op.inputs])
-            else:
-                op_def.type = "CWise"
-                x_value = 0
-                if len(input_tensor1.shape) == 4:
-                    op_def.input.extend([op.inputs[1].name])
-                    x_value = get_input_tensor(op, 0).eval().astype(np.float32)
-                else:
-                    op_def.input.extend([op.inputs[0].name])
-                    x_value = get_input_tensor(op, 1).eval().astype(np.float32)
-                x_arg = op_def.arg.add()
-                x_arg.name = 'x'
-                x_arg.f = x_value
+            if len(input_tensor0) == 1:
+                x_value = input_tensor0.eval().astype(np.float32)
+            elif len(input_tensor1) == 1:
+                x_value = input_tensor1.eval().astype(np.float32)
+        x_arg = op_def.arg.add()
+        x_arg.name = 'x'
+        x_arg.f = x_value
         type_arg = op_def.arg.add()
         type_arg.name = 'type'
         type_arg.i = math_type_mode[math_type]
@@ -1156,11 +1144,11 @@ class TFConverter(object):
             elif op.type == 'SpaceToDepth':
                 self.convert_depth_to_space(op, False)
             elif op.type in ['Neg', 'neg', 'Negative', 'negative']:
-                self.convert_math(op, 'NEG')
+                self.convert_eltwise(op, 'NEG')
             elif op.type == 'Mul':
-                self.convert_math(op, 'MUL')
+                self.convert_eltwise(op, 'MUL')
             elif op.type == 'Sub':
-                self.convert_math(op, 'SUB')
+                self.convert_eltwise(op, 'SUB')
             elif self.is_softmax(op):
                 self.convert_softmax(op)
             elif op.type in ['Relu', 'Sigmoid', 'Tanh']:
@@ -1367,8 +1355,11 @@ def convert_to_mace_pb(model_file, input_node, input_shape, output_node,
             print "Model Converted."
             if device == 'gpu':
                 print "start optimize memory."
-                mem_optimizer = memory_optimizer.MemoryOptimizer(net_def)
-                mem_optimizer.optimize()
+                memory_optimizer.optimize_gpu_memory(net_def)
+                print "Memory optimization done."
+            elif device == 'cpu':
+                print "start optimize memory."
+                memory_optimizer.optimize_cpu_memory(net_def)
                 print "Memory optimization done."
 
     return net_def

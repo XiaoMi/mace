@@ -82,7 +82,6 @@ extern void Register_BiasAdd(OperatorRegistry *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
-extern void Register_CWise(OperatorRegistry *op_registry);
 extern void Register_DepthToSpace(OperatorRegistry *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
 extern void Register_Dequantize(OperatorRegistry *op_registry);
@@ -125,7 +124,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
-  ops::Register_CWise(this);
   ops::Register_DepthToSpace(this);
   ops::Register_DepthwiseConv2d(this);
   ops::Register_Dequantize(this);

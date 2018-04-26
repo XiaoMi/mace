@@ -878,7 +878,7 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
                             1e-4, 1e-4);
   };
 
-  for (int kernel_size : {3, 5}) {
+  for (int kernel_size : {3, 5, 7}) {
     for (int stride : {2, 3}) {
       func(kernel_size, kernel_size, stride, stride);
     }

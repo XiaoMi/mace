@@ -51,6 +51,39 @@ extern void Conv2dNeonK3x3S2(const float *input,
                              const index_t out_channels,
                              float *output);
 
+extern void Conv2dNeonK7x7S1(const float *input,
+                             const float *filter,
+                             const index_t batch,
+                             const index_t in_height,
+                             const index_t in_width,
+                             const index_t in_channels,
+                             const index_t out_height,
+                             const index_t out_width,
+                             const index_t out_channels,
+                             float *output);
+
+extern void Conv2dNeonK7x7S2(const float *input,
+                             const float *filter,
+                             const index_t batch,
+                             const index_t in_height,
+                             const index_t in_width,
+                             const index_t in_channels,
+                             const index_t out_height,
+                             const index_t out_width,
+                             const index_t out_channels,
+                             float *output);
+
+extern void Conv2dNeonK7x7S3(const float *input,
+                             const float *filter,
+                             const index_t batch,
+                             const index_t in_height,
+                             const index_t in_width,
+                             const index_t in_channels,
+                             const index_t out_height,
+                             const index_t out_width,
+                             const index_t out_channels,
+                             float *output);
+
 }  // namespace kernels
 }  // namespace mace
 
