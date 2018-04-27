@@ -261,7 +261,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct PoolingFunctor<DeviceType::OPENCL, T> : PoolingFunctorBase {
+struct PoolingFunctor<DeviceType::GPU, T> : PoolingFunctorBase {
   PoolingFunctor(const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,

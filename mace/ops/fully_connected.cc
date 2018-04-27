@@ -26,16 +26,16 @@ void Register_FullyConnected(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    FullyConnectedOp<DeviceType::OPENCL, float>);
+                    FullyConnectedOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FC")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    FullyConnectedOp<DeviceType::OPENCL, half>);
+                    FullyConnectedOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

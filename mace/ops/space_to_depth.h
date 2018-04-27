@@ -45,7 +45,7 @@ class SpaceToDepthOp : public Operator<D, T> {
       input_height = input->dim(2);
       input_width = input->dim(3);
       input_depth = input->dim(1);
-    } else if (D == OPENCL) {
+    } else if (D == GPU) {
       input_height = input->dim(1);
       input_width = input->dim(2);
       input_depth = input->dim(3);

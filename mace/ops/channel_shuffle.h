@@ -35,7 +35,7 @@ class ChannelShuffleOp : public Operator<D, T> {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     int channels;
-    if (D == OPENCL) {
+    if (D == GPU) {
       channels = input->dim(3);
     } else if (D == CPU) {
       channels = input->dim(1);

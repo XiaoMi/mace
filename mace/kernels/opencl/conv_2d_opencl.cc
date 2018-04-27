@@ -67,7 +67,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          std::unique_ptr<BufferBase> *kernel_error);
 
 template <typename T>
-void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
+void Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                       const Tensor *filter,
                                                       const Tensor *bias,
                                                       Tensor *output,
@@ -128,8 +128,8 @@ void Conv2dFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 }
 
-template struct Conv2dFunctor<DeviceType::OPENCL, float>;
-template struct Conv2dFunctor<DeviceType::OPENCL, half>;
+template struct Conv2dFunctor<DeviceType::GPU, float>;
+template struct Conv2dFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

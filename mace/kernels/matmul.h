@@ -75,7 +75,7 @@ struct MatMulFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct MatMulFunctor<DeviceType::OPENCL, T> {
+struct MatMulFunctor<DeviceType::GPU, T> {
   void operator()(const Tensor *A,
                   const Tensor *B,
                   Tensor *C,

@@ -26,16 +26,16 @@ void Register_Concat(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ConcatOp<DeviceType::OPENCL, float>);
+                    ConcatOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    ConcatOp<DeviceType::OPENCL, half>);
+                    ConcatOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

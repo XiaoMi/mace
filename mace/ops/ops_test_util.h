@@ -403,7 +403,7 @@ class OpsTestNet {
   }
 
   void Sync() {
-    if (net_ && device_ == DeviceType::OPENCL) {
+    if (net_ && device_ == DeviceType::GPU) {
       OpenCLRuntime::Global()->command_queue().finish();
     }
   }

@@ -43,7 +43,7 @@ void FCBenchmark(
       .Input("Bias")
       .Output("Output")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
     BufferToImage<D, T>(&net, "Weight", "WeightImage",
                         weight_type);
@@ -93,8 +93,8 @@ void FCBenchmark(
 
 #define BM_FC(N, H, W, C, OC)                 \
   BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
-  BM_FC_MACRO(N, H, W, C, OC, float, OPENCL); \
-  BM_FC_MACRO(N, H, W, C, OC, half, OPENCL);
+  BM_FC_MACRO(N, H, W, C, OC, float, GPU); \
+  BM_FC_MACRO(N, H, W, C, OC, half, GPU);
 
 BM_FC(1, 16, 16, 32, 32);
 BM_FC(1, 8, 8, 32, 1000);

@@ -34,9 +34,8 @@ Allocator *GetDeviceAllocator(DeviceType type) {
 }
 
 MACE_REGISTER_ALLOCATOR(DeviceType::CPU, new CPUAllocator());
-MACE_REGISTER_ALLOCATOR(DeviceType::NEON, new CPUAllocator());
 #ifdef MACE_ENABLE_OPENCL
-MACE_REGISTER_ALLOCATOR(DeviceType::OPENCL, new OpenCLAllocator());
+MACE_REGISTER_ALLOCATOR(DeviceType::GPU, new OpenCLAllocator());
 #endif
 MACE_REGISTER_ALLOCATOR(DeviceType::HEXAGON, new CPUAllocator());
 

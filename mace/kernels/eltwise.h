@@ -363,7 +363,7 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct EltwiseFunctor<DeviceType::OPENCL, T> : EltwiseFunctorBase {
+struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float value)

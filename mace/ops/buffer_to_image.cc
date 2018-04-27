@@ -19,16 +19,16 @@ namespace ops {
 
 void Register_BufferToImage(OperatorRegistry *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferToImage")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    BufferToImageOp<DeviceType::OPENCL, float>);
+                    BufferToImageOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferToImage")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    BufferToImageOp<DeviceType::OPENCL, half>);
+                    BufferToImageOp<DeviceType::GPU, half>);
 }
 
 }  // namespace ops

@@ -82,7 +82,7 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   VLOG(3) << "Model data size: " << model_data_size;
 
   if (model_data_size > 0) {
-    if (type == DeviceType::CPU || type == DeviceType::NEON) {
+    if (type == DeviceType::CPU) {
       tensor_buffer_ = std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(type),
                      model_data_ptr,
@@ -119,7 +119,7 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
     tensor_map_[const_tensor.name()] = std::move(tensor);
   }
 
-  if (type == DeviceType::CPU || type == DeviceType::OPENCL) {
+  if (type == DeviceType::CPU || type == DeviceType::GPU) {
     CreateOutputTensorBuffer(net_def, type);
   }
 }
@@ -149,7 +149,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   }
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
-    if (device_type == DeviceType::OPENCL) {
+    if (device_type == DeviceType::GPU) {
       std::unique_ptr<BufferBase> image_buf(
           new Image({mem_block.x(), mem_block.y()}, dtype));
       preallocated_allocator_.SetBuffer(mem_block.mem_id(),
@@ -170,7 +170,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         std::unique_ptr<Tensor> tensor
             (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
         tensor->SetSourceOpName(op.name());
-        if (device_type == DeviceType::OPENCL) {
+        if (device_type == DeviceType::GPU) {
           VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
                   << " Mem: "  << mem_ids[i]
                   << " Image shape: "
@@ -191,7 +191,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
 }
 
 ScratchBuffer *Workspace::GetScratchBuffer(DeviceType device_type) {
-  if (device_type == CPU || device_type == NEON) {
+  if (device_type == CPU) {
     return host_scratch_buffer_.get();
   } else {
     return nullptr;

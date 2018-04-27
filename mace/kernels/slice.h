@@ -86,7 +86,7 @@ struct SliceFunctor : SliceFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct SliceFunctor<DeviceType::OPENCL, T> : SliceFunctorBase {
+struct SliceFunctor<DeviceType::GPU, T> : SliceFunctorBase {
   explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
 
   void operator()(const Tensor *input,

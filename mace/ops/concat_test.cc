@@ -171,9 +171,9 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     concat_axis_size += shapes[i][axis];
     GenerateRandomRealTypeData(shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::OPENCL, float>(input_name,
+    net.AddInputFromArray<DeviceType::GPU, float>(input_name,
                                                      shapes[i], inputs[i]);
-    BufferToImage<DeviceType::OPENCL, T>(&net, input_name, image_name,
+    BufferToImage<DeviceType::GPU, T>(&net, input_name, image_name,
                                          kernels::BufferType::IN_OUT_CHANNEL);
   }
 
@@ -188,9 +188,9 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
       .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::OPENCL);
+  net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "Output",
+  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
                                            kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check

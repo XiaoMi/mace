@@ -22,7 +22,7 @@
  *          --input_file=input_data \
  *          --output_file=mace.out  \
  *          --model_data_file=model_data.data \
- *          --device=OPENCL
+ *          --device=GPU
  */
 #include <malloc.h>
 #include <stdint.h>
@@ -102,10 +102,8 @@ std::string FormatName(const std::string input) {
 DeviceType ParseDeviceType(const std::string &device_str) {
   if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
-  } else if (device_str.compare("NEON") == 0) {
-    return DeviceType::NEON;
-  } else if (device_str.compare("OPENCL") == 0) {
-    return DeviceType::OPENCL;
+  } else if (device_str.compare("GPU") == 0) {
+    return DeviceType::GPU;
   } else if (device_str.compare("HEXAGON") == 0) {
     return DeviceType::HEXAGON;
   } else {
@@ -135,7 +133,7 @@ DEFINE_string(output_file,
 DEFINE_string(model_data_file,
               "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
-DEFINE_string(device, "OPENCL", "CPU/NEON/OPENCL/HEXAGON");
+DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
 DEFINE_int32(malloc_check_cycle, -1, "malloc debug check cycle, -1 to disable");
@@ -160,7 +158,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   MaceStatus res = mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
-  if (device_type == DeviceType::OPENCL) {
+  if (device_type == DeviceType::GPU) {
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
@@ -178,7 +176,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   // Init model
   mace::MaceEngine engine(&net_def, device_type, input_names,
                           output_names);
-  if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
+  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
   }
 

@@ -32,7 +32,7 @@ TEST(CoreTest, INIT_MODE) {
       .Finalize(&op_defs[op_defs.size() - 1]);
 
   Tensor *input =
-      ws.CreateTensor("Input", GetDeviceAllocator(DeviceType::OPENCL),
+      ws.CreateTensor("Input", GetDeviceAllocator(DeviceType::GPU),
                       DataTypeToEnum<float>::v());
   input->Resize({1, 3, 3, 3});
   {
@@ -54,13 +54,13 @@ TEST(CoreTest, INIT_MODE) {
   }
   std::shared_ptr<OperatorRegistry> op_registry(new OperatorRegistry());
   auto net =
-      CreateNet(op_registry, net_def, &ws, DeviceType::OPENCL, NetMode::INIT);
+      CreateNet(op_registry, net_def, &ws, DeviceType::GPU, NetMode::INIT);
   net->Run();
 
   EXPECT_TRUE(ws.GetTensor("B2IOutput") != nullptr);
   EXPECT_TRUE(ws.GetTensor("Output") == nullptr);
 
-  net = CreateNet(op_registry, net_def, &ws, DeviceType::OPENCL);
+  net = CreateNet(op_registry, net_def, &ws, DeviceType::GPU);
   net->Run();
   EXPECT_TRUE(ws.GetTensor("Output") != nullptr);
 

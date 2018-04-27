@@ -33,7 +33,7 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
     net.AddRandomInput<D, float>(MakeString("Input", i).c_str(), {n, h, w, c});
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     for (int i = 0; i < inputs; ++i) {
       BufferToImage<D, T>(&net, MakeString("Input", i).c_str(),
                           MakeString("InputImage", i).c_str(),
@@ -82,8 +82,8 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
 
 #define BM_ADDN(INPUTS, N, H, W, C)                 \
   BM_ADDN_MACRO(INPUTS, N, H, W, C, float, CPU);    \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, OPENCL); \
-  BM_ADDN_MACRO(INPUTS, N, H, W, C, half, OPENCL);
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, float, GPU); \
+  BM_ADDN_MACRO(INPUTS, N, H, W, C, half, GPU);
 
 BM_ADDN(2, 1, 256, 256, 32);
 BM_ADDN(2, 1, 128, 128, 32);

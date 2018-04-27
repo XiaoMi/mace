@@ -20,7 +20,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
+void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     Tensor *buffer, const BufferType type, Tensor *image, StatsFuture *future) {
   std::vector<size_t> image_shape;
 
@@ -95,7 +95,7 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
     built_options.emplace("-DOUT_OF_RANGE_CHECK");
     if (!kernel_error_) {
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -177,8 +177,8 @@ void BufferToImageFunctor<DeviceType::OPENCL, T>::operator()(
   }
 }
 
-template struct BufferToImageFunctor<DeviceType::OPENCL, float>;
-template struct BufferToImageFunctor<DeviceType::OPENCL, half>;
+template struct BufferToImageFunctor<DeviceType::GPU, float>;
+template struct BufferToImageFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

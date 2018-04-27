@@ -248,7 +248,7 @@ void MaceRun(const int in_out_size,
   std::string filter_tensor_name = "filter";
   std::string filter_tensor_img_name = filter_tensor_name + "_image";
 
-  const DeviceType device = DeviceType::OPENCL;
+  const DeviceType device = DeviceType::GPU;
 
   NetDef net_def;
 
@@ -300,7 +300,7 @@ void MaceRun(const int in_out_size,
     }
   }
 
-  CheckOutputs<DeviceType::OPENCL, T>(net_def, inputs, outputs);
+  CheckOutputs<DeviceType::GPU, T>(net_def, inputs, outputs);
 }
 
 }  // namespace

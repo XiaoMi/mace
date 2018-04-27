@@ -61,21 +61,21 @@ struct PadFunctor : public PadFunctorBase {
     std::fill(output_ptr, output_ptr + output->size(), this->constant_value_);
 
     const index_t batch = input->dim(0);
-    const index_t height = input->dim(1);
-    const index_t width = input->dim(2);
-    const index_t channel = input->dim(3);
+    const index_t channel = input->dim(1);
+    const index_t height = input->dim(2);
+    const index_t width = input->dim(3);
 #pragma omp parallel for collapse(3)
     for (index_t b = 0; b < batch; ++b) {
-      for (index_t h = 0; h < height; ++h) {
-        for (index_t w = 0; w < width; ++w) {
-          const index_t in_offset = (((b * height + h) * width) + w) * channel;
+      for (index_t c = 0; c < channel; ++c) {
+        for (index_t h = 0; h < height; ++h) {
+          const index_t in_offset = (((b * channel + c) * height) + h) * width;
           const index_t out_offset = (((b + this->paddings_[0]) * output->dim(1)
-              + (h + this->paddings_[2])) * output->dim(2)
-              + (w + this->paddings_[4])) * output->dim(3)
+              + (c + this->paddings_[2])) * output->dim(2)
+              + (h + this->paddings_[4])) * output->dim(3)
               + this->paddings_[6];
           memcpy(output_ptr + out_offset,
                  input_ptr + in_offset,
-                 channel * sizeof(T));
+                 width * sizeof(T));
         }
       }
     }
@@ -84,7 +84,7 @@ struct PadFunctor : public PadFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct PadFunctor<DeviceType::OPENCL, T> : PadFunctorBase {
+struct PadFunctor<DeviceType::GPU, T> : PadFunctorBase {
   PadFunctor(const std::vector<int> &paddings,
              const float constant_value)
       : PadFunctorBase(paddings, constant_value) {}

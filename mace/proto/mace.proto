@@ -9,8 +9,7 @@ enum NetMode {
 
 enum DeviceType {
   CPU    = 0;                    // In default, we will use CPU.
-  NEON   = 1;
-  OPENCL = 2;
+  GPU    = 2;
 }
 
 enum DataType {

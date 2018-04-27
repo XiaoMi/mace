@@ -33,7 +33,7 @@ void ReluBenchmark(
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -45,7 +45,7 @@ void ReluBenchmark(
       .Output("Output")
       .AddStringArg("activation", "RELU")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -83,8 +83,8 @@ void ReluBenchmark(
 
 #define BM_RELU(N, C, H, W)                 \
   BM_RELU_MACRO(N, C, H, W, float, CPU);    \
-  BM_RELU_MACRO(N, C, H, W, float, OPENCL); \
-  BM_RELU_MACRO(N, C, H, W, half, OPENCL);
+  BM_RELU_MACRO(N, C, H, W, float, GPU); \
+  BM_RELU_MACRO(N, C, H, W, half, GPU);
 
 BM_RELU(1, 1, 512, 512);
 BM_RELU(1, 3, 128, 128);
@@ -107,7 +107,7 @@ void ReluxBenchmark(
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -151,8 +151,8 @@ void ReluxBenchmark(
 
 #define BM_RELUX(N, C, H, W)                 \
   BM_RELUX_MACRO(N, C, H, W, float, CPU);    \
-  BM_RELUX_MACRO(N, C, H, W, float, OPENCL); \
-  BM_RELUX_MACRO(N, C, H, W, half, OPENCL);
+  BM_RELUX_MACRO(N, C, H, W, float, GPU); \
+  BM_RELUX_MACRO(N, C, H, W, half, GPU);
 
 BM_RELUX(1, 1, 512, 512);
 BM_RELUX(1, 3, 128, 128);
@@ -171,7 +171,7 @@ void PreluBenchmark(
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -185,7 +185,7 @@ void PreluBenchmark(
       .Output("Output")
       .AddStringArg("activation", "PRELU")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
@@ -226,8 +226,8 @@ void PreluBenchmark(
 
 #define BM_PRELU(N, C, H, W)                 \
   BM_PRELU_MACRO(N, C, H, W, float, CPU);    \
-  BM_PRELU_MACRO(N, C, H, W, float, OPENCL); \
-  BM_PRELU_MACRO(N, C, H, W, half, OPENCL);
+  BM_PRELU_MACRO(N, C, H, W, float, GPU); \
+  BM_PRELU_MACRO(N, C, H, W, half, GPU);
 
 BM_PRELU(1, 1, 512, 512);
 BM_PRELU(1, 3, 128, 128);
@@ -250,7 +250,7 @@ void TanhBenchmark(
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -292,8 +292,8 @@ void TanhBenchmark(
 
 #define BM_TANH(N, C, H, W)                 \
   BM_TANH_MACRO(N, C, H, W, float, CPU);    \
-  BM_TANH_MACRO(N, C, H, W, float, OPENCL); \
-  BM_TANH_MACRO(N, C, H, W, half, OPENCL);
+  BM_TANH_MACRO(N, C, H, W, float, GPU); \
+  BM_TANH_MACRO(N, C, H, W, half, GPU);
 
 BM_TANH(1, 1, 512, 512);
 BM_TANH(1, 3, 128, 128);
@@ -316,7 +316,7 @@ void SigmoidBenchmark(
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -359,8 +359,8 @@ void SigmoidBenchmark(
 
 #define BM_SIGMOID(N, C, H, W)                 \
   BM_SIGMOID_MACRO(N, C, H, W, float, CPU);    \
-  BM_SIGMOID_MACRO(N, C, H, W, float, OPENCL); \
-  BM_SIGMOID_MACRO(N, C, H, W, half, OPENCL);
+  BM_SIGMOID_MACRO(N, C, H, W, float, GPU); \
+  BM_SIGMOID_MACRO(N, C, H, W, half, GPU);
 
 BM_SIGMOID(1, 1, 512, 512);
 BM_SIGMOID(1, 3, 128, 128);

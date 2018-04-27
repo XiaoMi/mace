@@ -20,15 +20,15 @@ namespace ops {
 void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    BatchToSpaceNDOp<DeviceType::OPENCL, float>);
+                    BatchToSpaceNDOp<DeviceType::GPU, float>);
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    BatchToSpaceNDOp<DeviceType::OPENCL, half>);
+                    BatchToSpaceNDOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

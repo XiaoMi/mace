@@ -297,7 +297,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct DepthwiseConv2dFunctor<DeviceType::OPENCL, T>
+struct DepthwiseConv2dFunctor<DeviceType::GPU, T>
   : DepthwiseConv2dFunctorBase {
   DepthwiseConv2dFunctor(const int *strides,
                          const Padding padding_type,

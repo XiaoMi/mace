@@ -26,15 +26,15 @@ void Register_Pad(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pad")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    PadOp<DeviceType::OPENCL, float>);
+                    PadOp<DeviceType::GPU, float>);
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pad")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    PadOp<DeviceType::OPENCL, half>);
+                    PadOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

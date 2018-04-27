@@ -31,7 +31,7 @@ void SpaceToDepth(
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, channels, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -42,7 +42,7 @@ void SpaceToDepth(
       .Input("Input")
       .Output("Output")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -82,8 +82,8 @@ void SpaceToDepth(
 
 #define BM_SPACE_TO_DEPTH(N, C, H, W, G)                 \
   BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, float, CPU);    \
-  BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, float, OPENCL); \
-  BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, half, OPENCL);
+  BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, float, GPU); \
+  BM_SPACE_TO_DEPTH_MACRO(N, C, H, W, G, half, GPU);
 
 BM_SPACE_TO_DEPTH(1, 64, 64, 64, 4);
 BM_SPACE_TO_DEPTH(1, 64, 128, 128, 4);

@@ -28,7 +28,7 @@ namespace mace {
 
 const char *MaceVersion();
 
-enum DeviceType { CPU = 0, NEON = 1, OPENCL = 2, HEXAGON = 3 };
+enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
 
 enum MaceStatus { MACE_SUCCESS = 0, MACE_INVALID_ARGS = 1 };
 

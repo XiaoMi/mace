@@ -26,16 +26,16 @@ void Register_Conv2D(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    Conv2dOp<DeviceType::OPENCL, float>);
+                    Conv2dOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    Conv2dOp<DeviceType::OPENCL, half>);
+                    Conv2dOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

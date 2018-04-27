@@ -26,16 +26,16 @@ void Register_BiasAdd(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    BiasAddOp<DeviceType::OPENCL, float>);
+                    BiasAddOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    BiasAddOp<DeviceType::OPENCL, half>);
+                    BiasAddOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

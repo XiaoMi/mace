@@ -57,7 +57,7 @@ struct WinogradTransformFunctor : WinogradTransformFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct WinogradTransformFunctor<DeviceType::OPENCL, T>
+struct WinogradTransformFunctor<DeviceType::GPU, T>
     : WinogradTransformFunctorBase {
   WinogradTransformFunctor(const Padding &padding_type,
                            const std::vector<int> &paddings)
@@ -111,7 +111,7 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct WinogradInverseTransformFunctor<DeviceType::OPENCL, T>
+struct WinogradInverseTransformFunctor<DeviceType::GPU, T>
     : WinogradInverseTransformFunctorBase {
   WinogradInverseTransformFunctor(const int batch,
                                   const int height,

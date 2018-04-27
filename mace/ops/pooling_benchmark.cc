@@ -41,7 +41,7 @@ void Pooling(int iters,
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, channels, height, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, height, width, channels});
   } else {
@@ -58,7 +58,7 @@ void Pooling(int iters,
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -104,7 +104,7 @@ void Pooling(int iters,
 
 #define BM_POOLING(N, C, H, W, K, S, PA, PO) \
   BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU); \
-  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, OPENCL);
+  BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, GPU);
 
 BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);

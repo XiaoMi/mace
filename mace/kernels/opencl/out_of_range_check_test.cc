@@ -56,7 +56,7 @@ const bool BufferToImageOpImpl(Tensor *buffer,
   if (runtime->IsOutOfRangeCheckEnabled()) {
     built_options.emplace("-DOUT_OF_RANGE_CHECK");
     kernel_error = std::move(std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+          new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
     kernel_error->Map(nullptr);
     *(kernel_error->mutable_data<char>()) = 0;
     kernel_error->UnMap();
@@ -136,13 +136,13 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   std::vector<index_t> buffer_shape = {batch, height, width, channels};
   Workspace ws;
   Tensor *buffer = ws.CreateTensor("Buffer",
-                                   GetDeviceAllocator(DeviceType::OPENCL),
+                                   GetDeviceAllocator(DeviceType::GPU),
                                    DataTypeToEnum<float>::v());
   buffer->Resize(buffer_shape);
 
   std::vector<size_t> image_shape;
   Tensor *image = ws.CreateTensor("Image",
-                                  GetDeviceAllocator(DeviceType::OPENCL),
+                                  GetDeviceAllocator(DeviceType::GPU),
                                   DataTypeToEnum<float>::v());
   CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
   image->ResizeImage(buffer->shape(), image_shape);

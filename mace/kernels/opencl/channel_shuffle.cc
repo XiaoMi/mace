@@ -23,7 +23,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
+void ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     Tensor *output,
     StatsFuture *future) {
@@ -56,7 +56,7 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -108,8 +108,8 @@ void ChannelShuffleFunctor<DeviceType::OPENCL, T>::operator()(
 }
 
 template
-struct ChannelShuffleFunctor<DeviceType::OPENCL, float>;
+struct ChannelShuffleFunctor<DeviceType::GPU, float>;
 template
-struct ChannelShuffleFunctor<DeviceType::OPENCL, half>;
+struct ChannelShuffleFunctor<DeviceType::GPU, half>;
 }  // namespace kernels
 }  // namespace mace

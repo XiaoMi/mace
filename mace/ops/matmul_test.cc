@@ -37,7 +37,7 @@ void Simple(const std::vector<index_t> &A_shape,
   net.AddInputFromArray<D, float>("A", A_shape, A_value);
   net.AddInputFromArray<D, float>("B", B_shape, B_value);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "A", "AImage",
                             kernels::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, float>(&net, "B", "BImage",
@@ -91,10 +91,10 @@ TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
 }
 
 TEST_F(MatMulOpTest, SimpleOPENCL) {
-  Simple<DeviceType::OPENCL>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
+  Simple<DeviceType::GPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
                              {1, 2, 3, 4, 5, 6}, {1, 2, 2, 1},
                              {22, 28, 49, 64});
-  Simple<DeviceType::OPENCL>(
+  Simple<DeviceType::GPU>(
       {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
                      14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
       {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
@@ -127,9 +127,9 @@ void Complex(const index_t batch,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::OPENCL, float>("A",
+  net.AddRandomInput<DeviceType::GPU, float>("A",
                                                 {batch, height, channels, 1});
-  net.AddRandomInput<DeviceType::OPENCL, float>(
+  net.AddRandomInput<DeviceType::GPU, float>(
       "B", {batch, channels, out_width, 1});
 
   // run cpu
@@ -140,9 +140,9 @@ void Complex(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(&net, "A", "AImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "A", "AImage",
                                        kernels::BufferType::IN_OUT_WIDTH);
-  BufferToImage<DeviceType::OPENCL, T>(&net, "B", "BImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "B", "BImage",
                                        kernels::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("MatMul", "MatMulTest")
@@ -153,9 +153,9 @@ void Complex(const index_t batch,
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
-  net.RunOp(DeviceType::OPENCL);
+  net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_HEIGHT);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),

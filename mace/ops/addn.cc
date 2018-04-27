@@ -26,16 +26,16 @@ void Register_AddN(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    AddNOp<DeviceType::OPENCL, float>);
+                    AddNOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    AddNOp<DeviceType::OPENCL, half>);
+                    AddNOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

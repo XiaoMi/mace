@@ -93,7 +93,7 @@ struct ConcatFunctor : ConcatFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct ConcatFunctor<DeviceType::OPENCL, T> : ConcatFunctorBase {
+struct ConcatFunctor<DeviceType::GPU, T> : ConcatFunctorBase {
   explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
 
   void operator()(const std::vector<const Tensor *> &input_list,

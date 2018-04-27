@@ -66,7 +66,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -163,7 +163,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
 }
 
 template <typename T>
-void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
+void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
@@ -215,8 +215,8 @@ void DepthwiseConv2dFunctor<DeviceType::OPENCL, T>::operator()(
                   &kwg_size_, &kernel_error_);
 }
 
-template struct DepthwiseConv2dFunctor<DeviceType::OPENCL, float>;
-template struct DepthwiseConv2dFunctor<DeviceType::OPENCL, half>;
+template struct DepthwiseConv2dFunctor<DeviceType::GPU, float>;
+template struct DepthwiseConv2dFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

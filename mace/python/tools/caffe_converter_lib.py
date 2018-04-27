@@ -475,8 +475,6 @@ class CaffeConverter(object):
                 self.ops_map[final_op.name].children[0].type \
                 in activation_name_map:
             activation_op = self.ops_map[final_op.name].children[0]
-            if not is_depthwise:
-                op_def.type = "FusedConv2D"
             fused_act_arg = op_def.arg.add()
             fused_act_arg.name = 'activation'
             fused_act_arg.s = activation_name_map[activation_op.type]
@@ -984,15 +982,10 @@ class CaffeConverter(object):
         self.resolved_ops.add(op.name)
 
     def convert_reshape(self, op):
-        if self.device == 'cpu':
-            op_def = self.CommonConvert(op, 'Reshape')
-        else:
-            op_def = self.CommonConvert(op, 'ReOrganize')
+        op_def = self.CommonConvert(op, 'Reshape')
         input_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
         output_shape = input_shape
         shape_param = np.asarray(op.layer.reshape_param.shape.dim)
-        if self.device != 'cpu':
-            shape_param = shape_param[[0, 3, 1, 2]]
         for i in range(len(shape_param)):
             if shape_param[i] != 0:
                 output_shape[i] = shape_param[i]

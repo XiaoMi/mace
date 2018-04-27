@@ -67,7 +67,7 @@ struct ChannelShuffleFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct ChannelShuffleFunctor<DeviceType::OPENCL, T> {
+struct ChannelShuffleFunctor<DeviceType::GPU, T> {
   explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);

@@ -69,7 +69,7 @@ def get_data_and_device_type(runtime):
         device_type = "HEXAGON"
     elif runtime == "gpu":
         data_type = "DT_HALF"
-        device_type = "OPENCL"
+        device_type = "GPU"
     elif runtime == "cpu":
         data_type = "DT_FLOAT"
         device_type = "CPU"

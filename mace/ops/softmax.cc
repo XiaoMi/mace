@@ -26,16 +26,16 @@ void Register_Softmax(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Softmax")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    SoftmaxOp<DeviceType::OPENCL, float>);
+                    SoftmaxOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Softmax")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    SoftmaxOp<DeviceType::OPENCL, half>);
+                    SoftmaxOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

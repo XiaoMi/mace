@@ -38,7 +38,7 @@ void BMSliceHelper(int iters,
   GenerateRandomRealTypeData(input_shape, &input_data);
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -85,8 +85,8 @@ void BMSliceHelper(int iters,
 
 #define BM_SLICE(N, H, W, C, NO)                 \
   BM_SLICE_MACRO(N, H, W, C, NO, float, CPU);    \
-  BM_SLICE_MACRO(N, H, W, C, NO, float, OPENCL); \
-  BM_SLICE_MACRO(N, H, W, C, NO, half, OPENCL);
+  BM_SLICE_MACRO(N, H, W, C, NO, float, GPU); \
+  BM_SLICE_MACRO(N, H, W, C, NO, half, GPU);
 
 BM_SLICE(1, 32, 32, 32, 2);
 BM_SLICE(1, 32, 32, 128, 2);

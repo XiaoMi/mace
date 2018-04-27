@@ -59,7 +59,7 @@ void SimpleValidTest() {
                                                     NCHW,
                                                     "Output",
                                                     NHWC);
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -105,11 +105,11 @@ TEST_F(DepthwiseConv2dOpTest, SimpleCPU) {
 }
 
 TEST_F(DepthwiseConv2dOpTest, SimpleOpenCL) {
-  SimpleValidTest<DeviceType::OPENCL, float>();
+  SimpleValidTest<DeviceType::GPU, float>();
 }
 
 TEST_F(DepthwiseConv2dOpTest, SimpleOpenCLHalf) {
-  SimpleValidTest<DeviceType::OPENCL, half>();
+  SimpleValidTest<DeviceType::GPU, half>();
 }
 
 namespace {
@@ -184,7 +184,7 @@ void ComplexValidTest() {
                                                     NCHW,
                                                     "Output",
                                                     NHWC);
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -245,11 +245,11 @@ TEST_F(DepthwiseConv2dOpTest, ComplexCPU) {
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexOpenCL) {
-  ComplexValidTest<DeviceType::OPENCL, float>();
+  ComplexValidTest<DeviceType::GPU, float>();
 }
 
 TEST_F(DepthwiseConv2dOpTest, ComplexOpenCLHalf) {
-  ComplexValidTest<DeviceType::OPENCL, half>();
+  ComplexValidTest<DeviceType::GPU, half>();
 }
 
 namespace {
@@ -267,12 +267,12 @@ void TestNxNS12(const index_t height, const index_t width) {
     OpsTestNet net;
 
     // Add input data
-    net.AddRandomInput<DeviceType::OPENCL, float>("Input",
+    net.AddRandomInput<DeviceType::GPU, float>("Input",
                                                   {batch, height, width,
                                                    input_channels});
-    net.AddRandomInput<DeviceType::OPENCL, float>(
+    net.AddRandomInput<DeviceType::GPU, float>(
       "Filter", {kernel_h, kernel_w, input_channels, multiplier});
-    net.AddRandomInput<DeviceType::OPENCL, float>("Bias",
+    net.AddRandomInput<DeviceType::GPU, float>("Bias",
                                                   {multiplier
                                                      * input_channels});
 
@@ -307,11 +307,11 @@ void TestNxNS12(const index_t height, const index_t width) {
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-    BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
+    BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
                                          kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<DeviceType::OPENCL, T>(&net, "Filter", "FilterImage",
+    BufferToImage<DeviceType::GPU, T>(&net, "Filter", "FilterImage",
                                          kernels::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<DeviceType::OPENCL, T>(&net, "Bias", "BiasImage",
+    BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
                                          kernels::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("InputImage")
@@ -324,10 +324,10 @@ void TestNxNS12(const index_t height, const index_t width) {
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
-    net.RunOp(DeviceType::OPENCL);
+    net.RunOp(DeviceType::GPU);
 
     // Transfer output
-    ImageToBuffer<DeviceType::OPENCL, float>(&net,
+    ImageToBuffer<DeviceType::GPU, float>(&net,
                                          "OutputImage",
                                          "DeviceOutput",
                                          kernels::BufferType::IN_OUT_CHANNEL);

@@ -34,7 +34,7 @@ void MatMulBenchmark(
   net.AddRandomInput<D, float>("A", {batch, height, channels, 1});
   net.AddRandomInput<D, float>("B", {batch, channels, out_width, 1});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, T>(&net, "B", "BImage",
                         kernels::BufferType::IN_OUT_HEIGHT);
@@ -79,8 +79,8 @@ void MatMulBenchmark(
 
 #define BM_MATMUL(N, H, C, W)                 \
   BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
-  BM_MATMUL_MACRO(N, H, C, W, float, OPENCL); \
-  BM_MATMUL_MACRO(N, H, C, W, half, OPENCL);
+  BM_MATMUL_MACRO(N, H, C, W, float, GPU); \
+  BM_MATMUL_MACRO(N, H, C, W, half, GPU);
 
 BM_MATMUL(16, 32, 128, 49);
 BM_MATMUL(16, 32, 128, 961);

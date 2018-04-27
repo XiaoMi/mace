@@ -26,16 +26,16 @@ void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    FoldedBatchNormOp<DeviceType::OPENCL, float>);
+                    FoldedBatchNormOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    FoldedBatchNormOp<DeviceType::OPENCL, half>);
+                    FoldedBatchNormOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

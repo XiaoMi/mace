@@ -108,10 +108,8 @@ inline int64_t NowMicros() {
 DeviceType ParseDeviceType(const std::string &device_str) {
   if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
-  } else if (device_str.compare("NEON") == 0) {
-    return DeviceType::NEON;
-  } else if (device_str.compare("OPENCL") == 0) {
-    return DeviceType::OPENCL;
+  } else if (device_str.compare("GPU") == 0) {
+    return DeviceType::GPU;
   } else if (device_str.compare("HEXAGON") == 0) {
     return DeviceType::HEXAGON;
   } else {
@@ -198,7 +196,7 @@ bool Run(MaceEngine *engine,
   return true;
 }
 
-DEFINE_string(device, "CPU", "Device [CPU|NEON|OPENCL]");
+DEFINE_string(device, "CPU", "Device [CPU|GPU|DSP]");
 DEFINE_string(input_node, "input_node0,input_node1",
               "input nodes, separated by comma");
 DEFINE_string(output_node, "output_node0,output_node1",
@@ -279,7 +277,7 @@ int Main(int argc, char **argv) {
   mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
-  if (device_type == DeviceType::OPENCL) {
+  if (device_type == DeviceType::GPU) {
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
@@ -347,7 +345,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "Run init";
   std::unique_ptr<mace::MaceEngine> engine_ptr(
       new mace::MaceEngine(&net_def, device_type, input_names, output_names));
-  if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
+  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
   }
 

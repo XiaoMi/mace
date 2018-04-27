@@ -65,7 +65,7 @@ struct BiasAddFunctor<DeviceType::CPU, float> {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct BiasAddFunctor<DeviceType::OPENCL, T> {
+struct BiasAddFunctor<DeviceType::GPU, T> {
   void operator()(const Tensor *input,
                   const Tensor *bias,
                   Tensor *output,

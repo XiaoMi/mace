@@ -179,7 +179,7 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct ResizeBilinearFunctor<DeviceType::OPENCL, T>
+struct ResizeBilinearFunctor<DeviceType::GPU, T>
   : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
     : ResizeBilinearFunctorBase(size, align_corners) {}

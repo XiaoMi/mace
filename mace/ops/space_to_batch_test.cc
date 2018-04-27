@@ -85,7 +85,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
                                 const std::vector<index_t> &batch_shape,
                                 const std::vector<float> &batch_data) {
   auto space_tensor = std::unique_ptr<Tensor>(new Tensor(
-      GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<T>::v()));
+      GetDeviceAllocator(DeviceType::GPU), DataTypeToEnum<T>::v()));
   space_tensor->Resize(space_shape);
   {
     Tensor::MappingGuard space_mapper(space_tensor.get());
@@ -97,7 +97,7 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
   }
 
   auto batch_tensor = std::unique_ptr<Tensor>(new Tensor(
-      GetDeviceAllocator(DeviceType::OPENCL), DataTypeToEnum<T>::v()));
+      GetDeviceAllocator(DeviceType::GPU), DataTypeToEnum<T>::v()));
   batch_tensor->Resize(batch_shape);
   {
     Tensor::MappingGuard batch_mapper(batch_tensor.get());
@@ -106,10 +106,10 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
     memcpy(batch_ptr, batch_data.data(), batch_data.size() * sizeof(T));
   }
 
-  RunSpaceToBatch<DeviceType::OPENCL>(space_shape, space_data, block_data,
+  RunSpaceToBatch<DeviceType::GPU>(space_shape, space_data, block_data,
                                       padding_data, batch_tensor.get());
 
-  RunBatchToSpace<DeviceType::OPENCL>(batch_shape, batch_data, block_data,
+  RunBatchToSpace<DeviceType::GPU>(batch_shape, batch_data, block_data,
                                       padding_data, space_tensor.get());
 }
 }  // namespace

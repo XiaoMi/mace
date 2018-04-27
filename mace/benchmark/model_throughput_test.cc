@@ -141,10 +141,8 @@ std::string FormatName(const std::string input) {
 DeviceType ParseDeviceType(const std::string &device_str) {
   if (device_str.compare("CPU") == 0) {
     return DeviceType::CPU;
-  } else if (device_str.compare("NEON") == 0) {
-    return DeviceType::NEON;
-  } else if (device_str.compare("OPENCL") == 0) {
-    return DeviceType::OPENCL;
+  } else if (device_str.compare("GPU") == 0) {
+    return DeviceType::GPU;
   } else if (device_str.compare("HEXAGON") == 0) {
     return DeviceType::HEXAGON;
   } else {
@@ -277,7 +275,7 @@ int Main(int argc, char **argv) {
       FLAGS_gpu_model_data_file.c_str());
   NetDef gpu_net_def = mace::MACE_GPU_MODEL_TAG::CreateNet(gpu_model_data);
 
-  mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::OPENCL, input_names,
+  mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::GPU, input_names,
                               output_names);
   mace::MACE_GPU_MODEL_TAG::UnloadModelData(gpu_model_data);
 

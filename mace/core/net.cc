@@ -54,7 +54,7 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
     auto &op = *iter;
     MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(), "(",
                         op->debug_def().type(), ")");
-    bool future_wait = (device_type_ == DeviceType::OPENCL &&
+    bool future_wait = (device_type_ == DeviceType::GPU &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
 

@@ -63,7 +63,7 @@ void BMBatchToSpace(
   BENCHMARK(BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
 
 #define BM_BATCH_TO_SPACE(N, H, W, C, ARG) \
-  BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, OPENCL);
+  BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, GPU);
 
 BM_BATCH_TO_SPACE(128, 8, 8, 128, 2);
 BM_BATCH_TO_SPACE(4, 128, 128, 32, 2);
