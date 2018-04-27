@@ -349,6 +349,11 @@ def parse_args():
         type="bool",
         default="false",
         help="Collect report.")
+    parser.add_argument(
+        "--vlog_level",
+        type=int,
+        default=0,
+        help="VLOG level.")
     return parser.parse_known_args()
 
 
@@ -567,7 +572,7 @@ def main(unused_args):
     target_socs = get_target_socs(configs)
 
     embed_model_data = configs.get("embed_model_data", 1)
-    vlog_level = configs.get("vlog_level", 0)
+    vlog_level = FLAGS.vlog_level
     phone_data_dir = "/data/local/tmp/mace_run/"
     for target_abi in configs["target_abis"]:
         for target_soc in target_socs:
