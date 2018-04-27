@@ -303,7 +303,7 @@ class CaffeConverter(object):
         arg.i = self.dt
         return output_name
 
-    def add_input_transform(self, names):
+    def add_gpu_input_transform(self, names):
         for name in names:
             new_input_name = MACE_INPUT_NODE_NAME + '_' + name + ":0"
             op_def = self.net_def.op.add()
@@ -327,7 +327,7 @@ class CaffeConverter(object):
                 output_shape = input_op.output_shape_map[input_op.name]
             self.add_output_shape(op_def, output_shape)
 
-    def add_output_transform(self, names):
+    def add_gpu_output_transform(self, names):
         for name in names:
             output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
             op_def = self.net_def.op.add()
@@ -420,18 +420,16 @@ class CaffeConverter(object):
             # OIHW -> HWOI
             weight_data = op.data[0].transpose((2, 3, 0, 1))
 
-        if self.device == 'cpu' and use_winograd:
+        if use_winograd:
             self.convert_winograd_conv_filter_cpu(op, op_def)
-        else:
-            self.add_tensor(weight_tensor_name, weight_data)
-
-        if self.device == 'gpu':
+        elif self.device == 'gpu':
             buffer_type = "DW_CONV2D_FILTER" \
                 if is_depthwise else "CONV2D_FILTER"
             output_name = self.add_buffer_to_image(weight_tensor_name,
                                                    buffer_type)
             op_def.input.extend([output_name])
         else:
+            self.add_tensor(weight_tensor_name, weight_data)
             op_def.input.extend([weight_tensor_name])
 
         # Add Bias
@@ -1111,14 +1109,16 @@ class CaffeConverter(object):
                 output_shape = input_op.output_shape_map[input_op.layer.top[0]]
             else:
                 output_shape = input_op.output_shape_map[input_op.name]
-            self.add_output_shape(op_def, output_shape)
+            self.add_output_shape(op_def,
+                                  [output_shape[0], output_shape[2],
+                                   output_shape[3], output_shape[1]])
 
     def convert(self, input_nodes, input_shapes, output_nodes):
         assert self.ops[0].type == 'Input'
         self.add_input_op_shape(input_nodes, input_shapes)
 
         if self.device == 'gpu':
-            self.add_input_transform(input_nodes)
+            self.add_gpu_input_transform(input_nodes)
 
         if self.device == 'cpu':
             self.add_cpu_input_transform(input_nodes)
@@ -1164,7 +1164,7 @@ class CaffeConverter(object):
                                                               op.type))
 
         if self.device == 'gpu':
-            self.add_output_transform(output_nodes)
+            self.add_gpu_output_transform(output_nodes)
 
         if self.device == 'cpu':
             self.add_cpu_output_transform(output_nodes)

@@ -202,20 +202,39 @@ class TFConverter(object):
             dims_arg.name = 'dims'
             dims_arg.ints.extend([0, 2, 3, 1])
 
-            self.add_output_shape(self.ops[name].outputs, op_def)
+            output_shapes = []
+            for output in self.ops[name].outputs:
+                old_shape = output.shape.as_list()
+                # NCHW -> NHWC
+                if len(old_shape) == 2:
+                    new_shape = [old_shape[0], 1, 1, old_shape[1]]
+                else:
+                    new_shape = [old_shape[0], old_shape[2],
+                                 old_shape[3], old_shape[1]]
+                output_shape = mace_pb2.OutputShape()
+                output_shape.dims.extend(new_shape)
+                output_shapes.append(output_shape)
+            op_def.output_shape.extend(output_shapes)
 
-    @staticmethod
-    def add_output_shape(outputs, op):
+    def add_output_shape(self, outputs, op):
         output_shapes = []
         for output in outputs:
-            output_shape = mace_pb2.OutputShape()
+            old_shape = []
             if isinstance(output, list):
-                output_shape.dims.extend(output)
+                old_shape = output
             elif isinstance(output, tf.Tensor):
                 if output.shape.num_elements() is not None:
-                    output_shape.dims.extend(output.shape.as_list())
+                    old_shape = output.shape.as_list()
             else:
                 raise ValueError('output type not supported: ', type(output))
+            if len(old_shape) == 2:
+                old_shape = [old_shape[0], old_shape[1], 1, 1]
+
+            if self.device == 'cpu':  # NHWC -> NCHW
+                old_shape = [old_shape[0], old_shape[3],
+                             old_shape[1], old_shape[2]]
+            output_shape = mace_pb2.OutputShape()
+            output_shape.dims.extend(old_shape)
             output_shapes.append(output_shape)
         op.output_shape.extend(output_shapes)
 
@@ -1088,15 +1107,6 @@ class TFConverter(object):
         op_def.output.extend([output.name for output in op.outputs])
         self.add_output_shape(op.outputs, op_def)
         self.resolved_ops[op.name] = 1
-
-    def replace_in_out_name(self, input_names, output_names):
-        in_names = set([input_name + ":0" for input_name in input_names])
-        out_names = set([output_name + ":0" for output_name in output_names])
-        for op in self.net_def.op:
-            if op.input[0] in in_names:
-                op.input[0] = MACE_INPUT_NODE_NAME + '_' + op.input[0]
-            if op.output[0] in out_names:
-                op.output[0] = MACE_OUTPUT_NODE_NAME + '_' + op.output[0]
 
     def convert(self, input_nodes, output_nodes):
         if self.device == 'gpu':
