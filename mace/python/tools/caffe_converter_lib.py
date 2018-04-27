@@ -423,6 +423,7 @@ class CaffeConverter(object):
         if use_winograd:
             self.convert_winograd_conv_filter_cpu(op, op_def)
         elif self.device == 'gpu':
+            self.add_tensor(weight_tensor_name, weight_data)
             buffer_type = "DW_CONV2D_FILTER" \
                 if is_depthwise else "CONV2D_FILTER"
             output_name = self.add_buffer_to_image(weight_tensor_name,
