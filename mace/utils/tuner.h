@@ -141,13 +141,18 @@ class Tuner {
       double *time_us,
       std::vector<param_type> *tuning_result) {
     RetType res;
+    int iter = 0;
     int64_t total_time_us = 0;
-    for (int i = 0; i < num_runs; ++i) {
+    for (iter = 0; iter < num_runs; ++iter) {
       res = func(params, timer, tuning_result);
       total_time_us += timer->AccumulatedMicros();
+      if (iter >= 1 && total_time_us > 100000 || total_time_us > 200000) {
+        ++iter;
+        break;
+      }
     }
 
-    *time_us = total_time_us * 1.0 / num_runs;
+    *time_us = total_time_us * 1.0 / iter;
     return res;
   }
 
@@ -167,7 +172,7 @@ class Tuner {
     for (auto param : params) {
       double tmp_time = 0.0;
       // warm up
-      Run<RetType>(func, param, timer, 2, &tmp_time, &tuning_result);
+      Run<RetType>(func, param, timer, 1, &tmp_time, &tuning_result);
 
       // run
       RetType tmp_res =
