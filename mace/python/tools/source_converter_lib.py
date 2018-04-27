@@ -124,8 +124,8 @@ def stringfy(value):
     return ', '.join('"{0}"'.format(w) for w in value)
 
 
-def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
-                      model_tag, output, runtime, embed_model_data,
+def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
+                      obfuscate, model_tag, output, runtime, embed_model_data,
                       winograd_conv):
     if obfuscate:
         obfuscate_name(net_def)
@@ -201,6 +201,9 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
         TensorInfo(i, net_def.tensors[i], runtime)
         for i in range(len(net_def.tensors))
     ]
+    checksum = model_checksum
+    if weight_checksum is not None:
+        checksum = "{},{}".format(model_checksum, weight_checksum)
     source = j2_env.get_template(template_name).render(
         tensors=tensors,
         net=net_def,
@@ -209,7 +212,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate,
         obfuscate=obfuscate,
         embed_model_data=embed_model_data,
         winograd_conv=winograd_conv,
-        model_pb_checksum=mode_pb_checksum,
+        checksum=checksum,
         build_time=build_time)
     with open(output, "wb") as f:
         f.write(source)

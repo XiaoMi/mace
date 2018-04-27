@@ -159,7 +159,7 @@ const std::string ModelName() {
 }
 
 const std::string ModelChecksum() {
-  return {{ model_pb_checksum|tojson }};
+  return {{ checksum|tojson }};
 }
 
 const std::string ModelBuildTime() {

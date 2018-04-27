@@ -45,6 +45,7 @@ def main(unused_args):
                                                      FLAGS.model_checksum))
         sys.exit(-1)
 
+    weight_checksum = None
     if FLAGS.platform == 'caffe':
         if not os.path.isfile(FLAGS.weight_file):
             print("Input weight file '" + FLAGS.weight_file +
@@ -82,8 +83,8 @@ def main(unused_args):
 
     if FLAGS.output_type == 'source':
         source_converter_lib.convert_to_source(
-            output_graph_def, model_checksum, FLAGS.template, FLAGS.obfuscate,
-            FLAGS.model_tag, FLAGS.output, FLAGS.runtime,
+            output_graph_def, model_checksum, weight_checksum, FLAGS.template,
+            FLAGS.obfuscate, FLAGS.model_tag, FLAGS.output, FLAGS.runtime,
             FLAGS.embed_model_data, FLAGS.winograd)
     else:
         with open(FLAGS.output, "wb") as f:
