@@ -33,7 +33,7 @@ void Pad(int iters, int batch, int height,
   net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
 
   const std::vector<int> paddings = {0, 0, pad, pad, pad, pad, 0, 0};
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pad", "PadTest")
@@ -77,8 +77,8 @@ void Pad(int iters, int batch, int height,
 
 #define BM_PAD(N, H, W, C, PAD)                 \
   BM_PAD_MACRO(N, H, W, C, PAD, float, CPU);    \
-  BM_PAD_MACRO(N, H, W, C, PAD, float, OPENCL); \
-  BM_PAD_MACRO(N, H, W, C, PAD, half, OPENCL);
+  BM_PAD_MACRO(N, H, W, C, PAD, float, GPU); \
+  BM_PAD_MACRO(N, H, W, C, PAD, half, GPU);
 
 BM_PAD(1, 512, 512, 1, 2);
 BM_PAD(1, 112, 112, 64, 1);

@@ -93,7 +93,7 @@ struct AddNFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct AddNFunctor<DeviceType::OPENCL, T> {
+struct AddNFunctor<DeviceType::GPU, T> {
   void operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor,
                   StatsFuture *future);

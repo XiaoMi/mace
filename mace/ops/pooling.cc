@@ -26,16 +26,16 @@ void Register_Pooling(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    PoolingOp<DeviceType::OPENCL, float>);
+                    PoolingOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    PoolingOp<DeviceType::OPENCL, half>);
+                    PoolingOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

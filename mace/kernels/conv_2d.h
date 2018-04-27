@@ -615,7 +615,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct Conv2dFunctor<DeviceType::OPENCL, T> : Conv2dFunctorBase {
+struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
   Conv2dFunctor(const int *strides,
                 const Padding &padding_type,
                 const std::vector<int> &paddings,

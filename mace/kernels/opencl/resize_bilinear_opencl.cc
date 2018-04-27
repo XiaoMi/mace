@@ -23,7 +23,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
+void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input, Tensor *output, StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
@@ -50,7 +50,7 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -113,8 +113,8 @@ void ResizeBilinearFunctor<DeviceType::OPENCL, T>::operator()(
   }
 }
 
-template struct ResizeBilinearFunctor<DeviceType::OPENCL, float>;
-template struct ResizeBilinearFunctor<DeviceType::OPENCL, half>;
+template struct ResizeBilinearFunctor<DeviceType::GPU, float>;
+template struct ResizeBilinearFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

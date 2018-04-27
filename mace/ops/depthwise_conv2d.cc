@@ -26,16 +26,16 @@ void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    DepthwiseConv2dOp<DeviceType::OPENCL, float>);
+                    DepthwiseConv2dOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    DepthwiseConv2dOp<DeviceType::OPENCL, half>);
+                    DepthwiseConv2dOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

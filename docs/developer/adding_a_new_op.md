@@ -24,16 +24,16 @@ void Register_Custom_Op(OperatorRegistry *op_registry) {
                     Custom_Op<DeviceType::CPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("op_name")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    Custom_Op<DeviceType::OPENCL, float>);
+                    Custom_Op<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("op_name")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    Custom_Op<DeviceType::OPENCL, half>);
+                    Custom_Op<DeviceType::GPU, half>);
 }
 
 }  // namespace ops

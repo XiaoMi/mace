@@ -40,7 +40,7 @@ void Simple() {
     // Run
     net.RunOp(D);
     net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -68,7 +68,7 @@ void Simple() {
 }  // namespace
 
 TEST_F(SoftmaxOpTest, CPUSimple) { Simple<DeviceType::CPU>(); }
-TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::OPENCL>(); }
+TEST_F(SoftmaxOpTest, OPENCLSimple) { Simple<DeviceType::GPU>(); }
 
 namespace {
 template<DeviceType D>
@@ -114,18 +114,18 @@ void Complex(const std::vector<index_t> &logits_shape) {
 }  // namespace
 
 TEST_F(SoftmaxOpTest, OPENCLAligned) {
-  Complex<DeviceType::OPENCL>({1, 256, 256, 3});
-  Complex<DeviceType::OPENCL>({1, 128, 128, 16});
+  Complex<DeviceType::GPU>({1, 256, 256, 3});
+  Complex<DeviceType::GPU>({1, 128, 128, 16});
 }
 
 TEST_F(SoftmaxOpTest, OPENCLMulBatchAligned) {
-  Complex<DeviceType::OPENCL>({5, 64, 64, 3});
-  Complex<DeviceType::OPENCL>({8, 128, 128, 8});
+  Complex<DeviceType::GPU>({5, 64, 64, 3});
+  Complex<DeviceType::GPU>({8, 128, 128, 8});
 }
 
 TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
-  Complex<DeviceType::OPENCL>({1, 113, 107, 13});
-  Complex<DeviceType::OPENCL>({5, 211, 107, 1});
+  Complex<DeviceType::GPU>({1, 113, 107, 13});
+  Complex<DeviceType::GPU>({5, 211, 107, 1});
 }
 
 }  // namespace test

@@ -74,12 +74,12 @@ void OpenclConcatHelper(int iters,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::OPENCL, float>("Input0", shape0);
-  net.AddRandomInput<DeviceType::OPENCL, float>("Input1", shape1);
+  net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0);
+  net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
 
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Input0", "InputImage0",
+  BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImage0",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Input1", "InputImage1",
+  BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImage1",
                                        kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Concat", "ConcatBM")
       .Input("InputImage0")
@@ -91,7 +91,7 @@ void OpenclConcatHelper(int iters,
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
-    net.RunOp(DeviceType::OPENCL);
+    net.RunOp(DeviceType::GPU);
   }
 
   const int64_t tot =
@@ -101,7 +101,7 @@ void OpenclConcatHelper(int iters,
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(DeviceType::OPENCL);
+    net.RunOp(DeviceType::GPU);
   }
 }
 }  // namespace

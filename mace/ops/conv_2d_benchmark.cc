@@ -47,7 +47,7 @@ void Conv2d(int iters,
                                  {output_channels, channels, kernel_h,
                                   kernel_w});
     net.AddRandomInput<D, float>("Bias", {output_channels});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
     net.AddRandomInput<D, float>("Filter",
                                  {kernel_h, kernel_w, output_channels,
@@ -68,7 +68,7 @@ void Conv2d(int iters,
       .AddIntsArg("dilations", {dilation, dilation})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
@@ -138,8 +138,8 @@ void Conv2d(int iters,
 
 #define BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, OPENCL); \
-  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, OPENCL);
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU); \
+  BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU);
 
 
 

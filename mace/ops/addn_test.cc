@@ -64,7 +64,7 @@ void SimpleAdd3() {
                                   {-0.1582, 2, 3, 4, 5, 6});
 
   const int input_num = 4;
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     // run on gpu
     for (int i = 0; i < input_num; ++i) {
       BufferToImage<D, half>(&net, MakeString("Input", i),
@@ -105,7 +105,7 @@ void SimpleAdd3() {
 }  // namespace
 
 TEST_F(AddnOpTest, CPUSimpleAdd3) { SimpleAdd3<DeviceType::CPU>(); }
-TEST_F(AddnOpTest, GPUSimpleAdd3) { SimpleAdd3<DeviceType::OPENCL>(); }
+TEST_F(AddnOpTest, GPUSimpleAdd3) { SimpleAdd3<DeviceType::GPU>(); }
 
 namespace {
 template <DeviceType D>
@@ -166,7 +166,7 @@ void RandomTest() {
 }
 }  // namespace
 
-TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<DeviceType::OPENCL>(); }
+TEST_F(AddnOpTest, OPENCLRandom) { RandomTest<DeviceType::GPU>(); }
 
 }  // namespace test
 }  // namespace ops

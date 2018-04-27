@@ -31,7 +31,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -44,7 +44,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
       .Input("Bias")
       .Output("Output")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
@@ -84,8 +84,8 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
 
 #define BM_BIAS_ADD(N, C, H, W)                 \
   BM_BIAS_ADD_MACRO(N, C, H, W, float, CPU);    \
-  BM_BIAS_ADD_MACRO(N, C, H, W, float, OPENCL); \
-  BM_BIAS_ADD_MACRO(N, C, H, W, half, OPENCL);
+  BM_BIAS_ADD_MACRO(N, C, H, W, float, GPU); \
+  BM_BIAS_ADD_MACRO(N, C, H, W, half, GPU);
 
 BM_BIAS_ADD(1, 1, 512, 512);
 BM_BIAS_ADD(1, 3, 128, 128);

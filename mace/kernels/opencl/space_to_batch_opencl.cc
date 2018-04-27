@@ -25,7 +25,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
+void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     Tensor *space_tensor,
     const std::vector<index_t> &output_shape,
     Tensor *batch_tensor,
@@ -60,7 +60,7 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -120,8 +120,8 @@ void SpaceToBatchFunctor<DeviceType::OPENCL, T>::operator()(
   }
 }
 
-template struct SpaceToBatchFunctor<DeviceType::OPENCL, float>;
-template struct SpaceToBatchFunctor<DeviceType::OPENCL, half>;
+template struct SpaceToBatchFunctor<DeviceType::GPU, float>;
+template struct SpaceToBatchFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

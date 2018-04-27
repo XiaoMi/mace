@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
+void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
                                                       const Tensor *B,
                                                       Tensor *C,
                                                       StatsFuture *future) {
@@ -53,7 +53,7 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -98,9 +98,9 @@ void MatMulFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *A,
   }
 }
 
-template struct MatMulFunctor<DeviceType::OPENCL, float>;
+template struct MatMulFunctor<DeviceType::GPU, float>;
 
-template struct MatMulFunctor<DeviceType::OPENCL, half>;
+template struct MatMulFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

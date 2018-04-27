@@ -26,16 +26,16 @@ void Register_Slice(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    SliceOp<DeviceType::OPENCL, float>);
+                    SliceOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    SliceOp<DeviceType::OPENCL, half>);
+                    SliceOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

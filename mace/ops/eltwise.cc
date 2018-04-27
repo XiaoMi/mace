@@ -26,16 +26,16 @@ void Register_Eltwise(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    EltwiseOp<DeviceType::OPENCL, float>);
+                    EltwiseOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Eltwise")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    EltwiseOp<DeviceType::OPENCL, half>);
+                    EltwiseOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

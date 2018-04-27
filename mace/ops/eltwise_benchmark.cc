@@ -34,11 +34,11 @@ void EltwiseBenchmark(
   net.AddRandomInput<D, T>("Input0", {n, h, w, c});
   net.AddRandomInput<D, T>("Input1", {n, h, w, c});
 
-  if (D == DeviceType::OPENCL) {
-    BufferToImage<D, T>(&net, "Input0", "InputImg0",
-                        kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Input1", "InputImg1",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+  if (D == DeviceType::GPU) {
+    BufferToImage<D, half>(&net, "Input0", "InputImg0",
+                           kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, half>(&net, "Input1", "InputImg1",
+                           kernels::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -90,8 +90,8 @@ void EltwiseBenchmark(
 
 #define BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
   BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, OPENCL); \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, OPENCL);
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, GPU); \
+  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU);
 
 BM_ELTWISE(2, 1, 128, 128, 32);
 BM_ELTWISE(2, 1, 240, 240, 256);

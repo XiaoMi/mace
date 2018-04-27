@@ -51,7 +51,7 @@ void RandomTest(const int num_outputs, const int axis) {
   GenerateRandomRealTypeData(input_shape, &input_data);
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -75,7 +75,7 @@ void RandomTest(const int num_outputs, const int axis) {
   // Run
   net.RunOp(D);
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     for (int i = 0; i < num_outputs; ++i) {
       ImageToBuffer<D, float>(&net,
                               MakeString("OutputImage", i),
@@ -130,15 +130,15 @@ TEST_F(SliceOpTest, CPUAxis1) {
 }
 
 TEST_F(SliceOpTest, OPENCLFloat) {
-  RandomTest<DeviceType::OPENCL, float>(2, 3);
-  RandomTest<DeviceType::OPENCL, float>(4, 3);
-  RandomTest<DeviceType::OPENCL, float>(11, 3);
+  RandomTest<DeviceType::GPU, float>(2, 3);
+  RandomTest<DeviceType::GPU, float>(4, 3);
+  RandomTest<DeviceType::GPU, float>(11, 3);
 }
 
 TEST_F(SliceOpTest, OPENCLHalf) {
-  RandomTest<DeviceType::OPENCL, half>(2, 3);
-  RandomTest<DeviceType::OPENCL, half>(4, 3);
-  RandomTest<DeviceType::OPENCL, half>(11, 3);
+  RandomTest<DeviceType::GPU, half>(2, 3);
+  RandomTest<DeviceType::GPU, half>(4, 3);
+  RandomTest<DeviceType::GPU, half>(11, 3);
 }
 
 }  // namespace test

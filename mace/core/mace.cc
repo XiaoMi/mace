@@ -193,7 +193,7 @@ MaceStatus MaceEngine::Impl::Run(
     input_tensors.push_back(input_tensor);
   }
   for (auto &output : *outputs) {
-    if (device_type_ == DeviceType::OPENCL) {
+    if (device_type_ == DeviceType::GPU) {
       MACE_CHECK(output.second.shape().size() == 4,
                  "The outputs' shape must be 4-dimension with NHWC format,"
                      " please use 1 to fill missing dimensions");
@@ -217,7 +217,7 @@ MaceStatus MaceEngine::Impl::Run(
 #endif
 
 #ifdef MACE_ENABLE_OPENCL
-  if (device_type_ == OPENCL) {
+  if (device_type_ == GPU) {
     OpenCLRuntime::Global()->SaveBuiltCLProgram();
   }
 #endif

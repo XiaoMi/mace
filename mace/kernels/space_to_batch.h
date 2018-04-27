@@ -59,7 +59,7 @@ struct SpaceToBatchFunctor : SpaceToBatchFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct SpaceToBatchFunctor<DeviceType::OPENCL, T> : SpaceToBatchFunctorBase {
+struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
   SpaceToBatchFunctor(const std::vector<int> &paddings,
                       const std::vector<int> &block_shape,
                       bool b2s)

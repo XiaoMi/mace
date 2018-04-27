@@ -44,7 +44,7 @@ struct BufferToImageFunctor : BufferToImageFunctorBase {
 };
 
 template <typename T>
-struct BufferToImageFunctor<DeviceType::OPENCL, T> : BufferToImageFunctorBase {
+struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
   explicit BufferToImageFunctor(bool i2b = false)
       : BufferToImageFunctorBase(i2b) {}
   void operator()(Tensor *input,

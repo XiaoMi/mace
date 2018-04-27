@@ -23,7 +23,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
+void ActivationFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                           const Tensor *alpha,
                                                           Tensor *output,
                                                           StatsFuture *future) {
@@ -46,7 +46,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -124,7 +124,7 @@ void ActivationFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input,
   }
 }
 
-template struct ActivationFunctor<DeviceType::OPENCL, float>;
-template struct ActivationFunctor<DeviceType::OPENCL, half>;
+template struct ActivationFunctor<DeviceType::GPU, float>;
+template struct ActivationFunctor<DeviceType::GPU, half>;
 }  // namespace kernels
 }  // namespace mace

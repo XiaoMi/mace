@@ -162,7 +162,7 @@ class ActivationFunctor<DeviceType::CPU, float> {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-class ActivationFunctor<DeviceType::OPENCL, T> {
+class ActivationFunctor<DeviceType::GPU, T> {
  public:
   ActivationFunctor(ActivationType type, T relux_max_limit)
       : activation_(type), relux_max_limit_(static_cast<T>(relux_max_limit)) {}

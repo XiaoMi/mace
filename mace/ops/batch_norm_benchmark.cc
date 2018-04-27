@@ -32,7 +32,7 @@ void BatchNorm(
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -52,7 +52,7 @@ void BatchNorm(
       .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Scale", "ScaleImage",
@@ -107,8 +107,8 @@ void BatchNorm(
 
 #define BM_BATCH_NORM(N, C, H, W)                 \
   BM_BATCH_NORM_MACRO(N, C, H, W, float, CPU);    \
-  BM_BATCH_NORM_MACRO(N, C, H, W, float, OPENCL); \
-  BM_BATCH_NORM_MACRO(N, C, H, W, half, OPENCL);
+  BM_BATCH_NORM_MACRO(N, C, H, W, float, GPU); \
+  BM_BATCH_NORM_MACRO(N, C, H, W, half, GPU);
 
 BM_BATCH_NORM(1, 1, 512, 512);
 BM_BATCH_NORM(1, 3, 128, 128);

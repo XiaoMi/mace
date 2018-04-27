@@ -117,7 +117,7 @@ struct DepthToSpaceOpFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct DepthToSpaceOpFunctor<DeviceType::OPENCL, T> {
+struct DepthToSpaceOpFunctor<DeviceType::GPU, T> {
   DepthToSpaceOpFunctor(const int block_size, bool d2s)
     : block_size_(block_size), d2s_(d2s) {}
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future);

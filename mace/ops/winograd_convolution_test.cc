@@ -147,23 +147,23 @@ void WinogradConvolution(const index_t batch,
 }  // namespace
 
 TEST_F(WinogradConvlutionTest, AlignedConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16,
+  WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                  Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 32, 32, 32, 16,
+  WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                  Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 31, 37,
+  WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                  Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(1, 61, 67, 37, 31,
+  WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                  Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolution) {
-  WinogradConvolution<DeviceType::OPENCL, float>(3, 64, 64, 32, 32,
+  WinogradConvolution<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                  Padding::VALID);
-  WinogradConvolution<DeviceType::OPENCL, float>(5, 61, 67, 37, 31,
+  WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31,
                                                  Padding::SAME);
 }
 

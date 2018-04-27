@@ -26,16 +26,16 @@ void Register_ResizeBilinear(OperatorRegistry *op_registry) {
 
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
                                      .Build(),
-                    ResizeBilinearOp<DeviceType::OPENCL, float>);
+                    ResizeBilinearOp<DeviceType::GPU, float>);
 
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("ResizeBilinear")
-                                     .Device(DeviceType::OPENCL)
+                                     .Device(DeviceType::GPU)
                                      .TypeConstraint<half>("T")
                                      .Build(),
-                    ResizeBilinearOp<DeviceType::OPENCL, half>);
+                    ResizeBilinearOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

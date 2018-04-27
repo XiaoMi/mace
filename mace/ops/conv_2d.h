@@ -16,6 +16,7 @@
 #define MACE_OPS_CONV_2D_H_
 
 #include <memory>
+#include <string>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_2d.h"
@@ -33,8 +34,10 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  this->padding_type_,
                  this->paddings_,
                  this->dilations_.data(),
-                 kernels::ActivationType::NOOP,
-                 0.0f,
+                 kernels::StringToActivationType(
+                     OperatorBase::GetSingleArgument<std::string>("activation",
+                                                                  "NOOP")),
+                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f),
                  static_cast<bool>(OperatorBase::GetSingleArgument<int>(
                      "is_filter_transformed", false)),
                  ws->GetScratchBuffer(D)) {}

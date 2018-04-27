@@ -22,7 +22,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
+void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future) {
 
   auto runtime = OpenCLRuntime::Global();
@@ -39,7 +39,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -117,7 +117,7 @@ void WinogradTransformFunctor<DeviceType::OPENCL, T>::operator()(
 }
 
 template <typename T>
-void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
+void WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input_tensor,
     const Tensor *bias,
     Tensor *output_tensor,
@@ -138,7 +138,7 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::OPENCL), 1)));
+            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -231,11 +231,11 @@ void WinogradInverseTransformFunctor<DeviceType::OPENCL, T>::operator()(
   }
 }
 
-template struct WinogradTransformFunctor<DeviceType::OPENCL, float>;
-template struct WinogradTransformFunctor<DeviceType::OPENCL, half>;
+template struct WinogradTransformFunctor<DeviceType::GPU, float>;
+template struct WinogradTransformFunctor<DeviceType::GPU, half>;
 
-template struct WinogradInverseTransformFunctor<DeviceType::OPENCL, float>;
-template struct WinogradInverseTransformFunctor<DeviceType::OPENCL, half>;
+template struct WinogradInverseTransformFunctor<DeviceType::GPU, float>;
+template struct WinogradInverseTransformFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

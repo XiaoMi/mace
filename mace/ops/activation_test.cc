@@ -31,7 +31,7 @@ void TestSimpleRelu() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -68,7 +68,7 @@ void TestSimpleRelu() {
 TEST_F(ActivationOpTest, CPUSimpleRelu) { TestSimpleRelu<DeviceType::CPU>(); }
 
 TEST_F(ActivationOpTest, OPENCLSimpleRelu) {
-  TestSimpleRelu<DeviceType::OPENCL>();
+  TestSimpleRelu<DeviceType::GPU>();
 }
 
 namespace {
@@ -79,7 +79,7 @@ void TestUnalignedSimpleRelu() {
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 3, 2, 1}, {-7, 7, -6, 6, -5, 5});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -117,7 +117,7 @@ TEST_F(ActivationOpTest, CPUUnalignedSimpleRelu) {
 }
 
 TEST_F(ActivationOpTest, OPENCLUnalignedSimpleRelu) {
-  TestUnalignedSimpleRelu<DeviceType::OPENCL>();
+  TestUnalignedSimpleRelu<DeviceType::GPU>();
 }
 
 
@@ -131,7 +131,7 @@ void TestSimpleRelux() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -170,7 +170,7 @@ void TestSimpleRelux() {
 TEST_F(ActivationOpTest, CPUSimple) { TestSimpleRelux<DeviceType::CPU>(); }
 
 TEST_F(ActivationOpTest, OPENCLSimple) {
-  TestSimpleRelux<DeviceType::OPENCL>();
+  TestSimpleRelux<DeviceType::GPU>();
 }
 
 namespace {
@@ -183,7 +183,7 @@ void TestSimpleReluRelux() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -224,7 +224,7 @@ TEST_F(ActivationOpTest, CPUSimpleRelux) {
 }
 
 TEST_F(ActivationOpTest, OPENCLSimpleRelux) {
-  TestSimpleReluRelux<DeviceType::OPENCL>();
+  TestSimpleReluRelux<DeviceType::GPU>();
 }
 
 namespace {
@@ -238,7 +238,7 @@ void TestSimplePrelu() {
       {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
   net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
@@ -283,7 +283,7 @@ TEST_F(ActivationOpTest, CPUSimplePrelu) {
 }
 
 TEST_F(ActivationOpTest, OPENCLSimplePrelu) {
-  TestSimplePrelu<DeviceType::OPENCL>();
+  TestSimplePrelu<DeviceType::GPU>();
 }
 
 namespace {
@@ -296,7 +296,7 @@ void TestSimpleTanh() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -336,7 +336,7 @@ void TestSimpleTanh() {
 TEST_F(ActivationOpTest, CPUSimpleTanh) { TestSimpleTanh<DeviceType::CPU>(); }
 
 TEST_F(ActivationOpTest, OPENCLSimpleTanh) {
-  TestSimpleTanh<DeviceType::OPENCL>();
+  TestSimpleTanh<DeviceType::GPU>();
 }
 
 namespace {
@@ -349,7 +349,7 @@ void TestSimpleSigmoid() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::OPENCL) {
+  if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -392,7 +392,7 @@ TEST_F(ActivationOpTest, CPUSimpleSigmoid) {
 }
 
 TEST_F(ActivationOpTest, OPENCLSimpleSigmoid) {
-  TestSimpleSigmoid<DeviceType::OPENCL>();
+  TestSimpleSigmoid<DeviceType::GPU>();
 }
 
 }  // namespace test

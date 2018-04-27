@@ -189,7 +189,7 @@ class Image : public BufferBase {
  public:
   Image()
       : BufferBase(0),
-        allocator_(GetDeviceAllocator(OPENCL)),
+        allocator_(GetDeviceAllocator(GPU)),
         buf_(nullptr),
         mapped_buf_(nullptr) {}
 
@@ -198,7 +198,7 @@ class Image : public BufferBase {
             std::accumulate(
                 shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
             GetEnumTypeSize(data_type)),
-        allocator_(GetDeviceAllocator(OPENCL)),
+        allocator_(GetDeviceAllocator(GPU)),
         mapped_buf_(nullptr) {
     shape_ = shape;
     data_type_ = data_type;

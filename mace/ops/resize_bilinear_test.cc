@@ -132,7 +132,7 @@ void TestRandomResizeBilinear() {
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
 
-    if (D == DeviceType::OPENCL) {
+    if (D == DeviceType::GPU) {
       BufferToImage<D, float>(&net, "Input", "InputImage",
                               kernels::BufferType::IN_OUT_CHANNEL);
 
@@ -147,8 +147,6 @@ void TestRandomResizeBilinear() {
 
       ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
                               kernels::BufferType::IN_OUT_CHANNEL);
-    } else {
-      // TODO(someone): support NEON
     }
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"),
@@ -158,7 +156,7 @@ void TestRandomResizeBilinear() {
 }  // namespace
 
 TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
-  TestRandomResizeBilinear<DeviceType::OPENCL>();
+  TestRandomResizeBilinear<DeviceType::GPU>();
 }
 
 }  // namespace test

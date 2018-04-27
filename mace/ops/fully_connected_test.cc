@@ -51,7 +51,7 @@ void Simple(const std::vector<index_t> &input_shape,
     // Run
     net.RunOp(D);
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
-  } else if (D == DeviceType::OPENCL) {
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Weight", "WeightImage",
@@ -104,14 +104,14 @@ TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
 }
 
 TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
-  Simple<DeviceType::OPENCL>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 8},
+  Simple<DeviceType::GPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 8},
                              {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
                              {206});
-  Simple<DeviceType::OPENCL>(
+  Simple<DeviceType::GPU>(
     {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 10},
     {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
     {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
-  Simple<DeviceType::OPENCL>(
+  Simple<DeviceType::GPU>(
     {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 6},
     {1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3,
      4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3, 4, 5, 6},
@@ -119,7 +119,7 @@ TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
 }
 
 TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
-  Simple<DeviceType::OPENCL>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 4},
+  Simple<DeviceType::GPU>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 4},
                              {1, 2, 3, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
@@ -136,11 +136,11 @@ void Complex(const index_t batch,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::OPENCL, float>(
+  net.AddRandomInput<DeviceType::GPU, float>(
     "Input", {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>(
+  net.AddRandomInput<DeviceType::GPU, float>(
     "Weight", {out_channel, height * width * channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
+  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
 
   OpDefBuilder("FC", "FullyConnectedTest")
     .Input("Input")
@@ -159,11 +159,11 @@ void Complex(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Weight", "WeightImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "Weight", "WeightImage",
                                        kernels::BufferType::WEIGHT_HEIGHT);
-  BufferToImage<DeviceType::OPENCL, float>(&net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::GPU, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
@@ -176,9 +176,9 @@ void Complex(const index_t batch,
     .Finalize(net.NewOperatorDef());
 
   // Run on opencl
-  net.RunOp(DeviceType::OPENCL);
+  net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
@@ -225,11 +225,11 @@ void TestWXFormat(const index_t batch,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::OPENCL, float>(
+  net.AddRandomInput<DeviceType::GPU, float>(
     "Input", {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>(
+  net.AddRandomInput<DeviceType::GPU, float>(
     "Weight", {out_channel, height * width * channels});
-  net.AddRandomInput<DeviceType::OPENCL, float>("Bias", {out_channel});
+  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
 
   OpDefBuilder("FC", "FullyConnectedTest")
     .Input("Input")
@@ -248,11 +248,11 @@ void TestWXFormat(const index_t batch,
   expected.Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Input", "InputImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
                                        kernels::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Weight", "WeightImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "Weight", "WeightImage",
                                        kernels::BufferType::WEIGHT_WIDTH);
-  BufferToImage<DeviceType::OPENCL, T>(&net, "Bias", "BiasImage",
+  BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FC", "FullyConnectedTest")
@@ -264,9 +264,9 @@ void TestWXFormat(const index_t batch,
     .Finalize(net.NewOperatorDef());
 
   // Run
-  net.RunOp(DeviceType::OPENCL);
+  net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::OPENCL, float>(&net, "OutputImage", "OPENCLOutput",
+  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                            kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),

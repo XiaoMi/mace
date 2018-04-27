@@ -88,7 +88,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct FullyConnectedFunctor<DeviceType::OPENCL, T> : FullyConnectedBase {
+struct FullyConnectedFunctor<DeviceType::GPU, T> : FullyConnectedBase {
   FullyConnectedFunctor(const int /*BufferType*/ weight_type,
                         const ActivationType activation,
                         const float relux_max_limit)

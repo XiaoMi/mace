@@ -40,7 +40,7 @@ class DepthToSpaceOp : public Operator<D, T> {
     int input_depth;
     if (D == CPU) {
       input_depth = input->dim(1);
-    } else if (D == OPENCL) {
+    } else if (D == GPU) {
       input_depth = input->dim(3);
     } else {
       MACE_NOT_IMPLEMENTED;

@@ -316,7 +316,7 @@ unsigned char *model_data = mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data
 NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
 
 //3. 声明设备类型
-DeviceType device_type = DeviceType::OPENCL;
+DeviceType device_type = DeviceType::GPU;
 
 //4. 定义输入输出名称数组
 std::vector<std::string> input_names = {...};
@@ -350,8 +350,8 @@ for (size_t i = 0; i < output_count; ++i) {
 //6. 创建MaceEngine对象
 mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
 
-//7. 如果设备类型是OPENCL或HEXAGON，可以在此释放model_data
-if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
+//7. 如果设备类型是GPU或者HEXAGON，可以在此释放model_data
+if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
   mace::MACE_MODEL_TAG::UnloadModelData(model_data);
 }
 

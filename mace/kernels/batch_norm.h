@@ -128,7 +128,7 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct BatchNormFunctor<DeviceType::OPENCL, T> : BatchNormFunctorBase {
+struct BatchNormFunctor<DeviceType::GPU, T> : BatchNormFunctorBase {
   BatchNormFunctor(const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)

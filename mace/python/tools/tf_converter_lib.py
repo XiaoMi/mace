@@ -508,8 +508,6 @@ class TFConverter(object):
         if len(self.tf_graph.get(final_op.name, [])) == 1 and \
            self.tf_graph[final_op.name][0].type in activation_name_map:
             activation_op = self.tf_graph[final_op.name][0]
-            if op_def.type == "Conv2D":
-                op_def.type = "FusedConv2D"
             fused_act_arg = op_def.arg.add()
             fused_act_arg.name = 'activation'
             fused_act_arg.s = activation_name_map[activation_op.type]
@@ -958,14 +956,17 @@ class TFConverter(object):
         conv_op = self.tf_graph[op.name][0]
         op_def.name = conv_op.name
         op_def.type = conv_op.type
-        self.transpose_filter_tensor[get_input_tensor(conv_op,
-                                                      1).name] = (0, 1, 3, 2)
+
         if self.device == 'gpu':
+            self.transpose_filter_tensor[
+                get_input_tensor(conv_op, 1).name] = (0, 1, 3, 2)
             op_def.input.extend([op.inputs[0].name])
             output_name = self.add_buffer_to_image(
                 get_input_tensor(conv_op, 1).name, "CONV2D_FILTER")
             op_def.input.extend([output_name])
         else:
+            self.transpose_filter_tensor[
+                get_input_tensor(conv_op, 1).name] = (3, 2, 0, 1)
             op_def.input.extend([get_input_tensor(op, 0).name])
             op_def.input.extend([get_input_tensor(conv_op, 1).name])
 
@@ -1020,7 +1021,6 @@ class TFConverter(object):
         if len(self.tf_graph[final_op.name]) == 1 and \
                 self.tf_graph[final_op.name][0].type == 'Relu':
             relu_op = self.tf_graph[final_op.name][0]
-            op_def.type = "FusedConv2D"
             fused_relu_arg = op_def.arg.add()
             fused_relu_arg.name = 'activation'
             fused_relu_arg.s = "RELU"
@@ -1092,8 +1092,12 @@ class TFConverter(object):
         op_def.output.extend([output.name for output in op.outputs])
         paddings_arg = op_def.arg.add()
         paddings_arg.name = 'paddings'
-        paddings_arg.ints.extend(
-            get_input_tensor(op, 1).eval().astype(np.int32).flat)
+        if self.device == 'gpu':
+            paddings_value = get_input_tensor(op, 1).eval().astype(np.int32)
+        else:
+            paddings_value = get_input_tensor(op, 1).eval().astype(np.int32)
+            paddings_value = paddings_value[[0, 3, 1, 2]]
+        paddings_arg.ints.extend(paddings_value.flat)
         self.unused_tensor.add(get_input_tensor(op, 1).name)
         if len(op.inputs) == 3:
             constant_value_arg = op_def.arg.add()

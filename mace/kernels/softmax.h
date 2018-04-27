@@ -94,7 +94,7 @@ struct SoftmaxFunctor<DeviceType::CPU, float> {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct SoftmaxFunctor<DeviceType::OPENCL, T> {
+struct SoftmaxFunctor<DeviceType::GPU, T> {
   void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
 
   cl::Kernel kernel_;
