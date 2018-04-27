@@ -212,7 +212,7 @@ class Tensor {
     image_shape_.clear();
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
-      buffer_->Resize(raw_size());
+      if (raw_size() > buffer_->size()) buffer_->Resize(raw_size());
     } else {
       MACE_CHECK(is_buffer_owner_);
       buffer_ = new Buffer(allocator_, raw_size());

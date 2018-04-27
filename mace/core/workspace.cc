@@ -170,7 +170,6 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         std::unique_ptr<Tensor> tensor
             (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
         tensor->SetSourceOpName(op.name());
-        tensor_map_[op.output(i)] = std::move(tensor);
         if (device_type == DeviceType::OPENCL) {
           VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
                   << " Mem: "  << mem_ids[i]
@@ -180,7 +179,12 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
                   << ", "
                   << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
                       ->image_shape()[1];
+        } else if (device_type == DeviceType::CPU) {
+          VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
+                  << " Mem: "  << mem_ids[i]
+                  << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
         }
+        tensor_map_[op.output(i)] = std::move(tensor);
       }
     }
   }

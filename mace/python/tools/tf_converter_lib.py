@@ -174,6 +174,8 @@ class TFConverter(object):
             arg.name = 'T'
             arg.i = self.dt
 
+            self.add_output_shape(self.ops[name].outputs, op_def)
+
     def add_gpu_output_transform(self, names):
         for name in names:
             output_name = MACE_OUTPUT_NODE_NAME + '_' + name + ":0"
@@ -199,6 +201,8 @@ class TFConverter(object):
             dims_arg = op_def.arg.add()
             dims_arg.name = 'dims'
             dims_arg.ints.extend([0, 2, 3, 1])
+
+            self.add_output_shape(self.ops[name].outputs, op_def)
 
     @staticmethod
     def add_output_shape(outputs, op):
