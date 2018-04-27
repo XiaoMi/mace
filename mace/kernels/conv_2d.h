@@ -399,10 +399,10 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       transformed_output.Resize(transformed_output_shape);
       const float *transformed_filter_ptr;
       if (transformed_filter_.dim_size() == 0) {
-        transformed_filter_.Resize(transformed_filter_shape);
         if (is_filter_transformed_) {
           transformed_filter_ptr = filter_data;
         } else {
+          transformed_filter_.Resize(transformed_filter_shape);
           switch (winograd_out_tile_size) {
             case 2:
               TransformFilter4x4(filter_data,
