@@ -23,16 +23,29 @@ namespace kernels {
 template <typename T>
 void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
                                                        const Tensor *input1,
-                                                       const index_t start_axis,
-                                                       const bool is_scaler,
-                                                       const float value,
-                                                       const bool swap,
                                                        Tensor *output,
                                                        StatsFuture *future) {
-  const index_t batch = input0->dim(0);
-  const index_t height = input0->dim(1);
-  const index_t width = input0->dim(2);
-  const index_t channels = input0->dim(3);
+  bool swapped = false;
+  if (input1 != nullptr) {
+    MACE_CHECK(input0->dim_size() == input1->dim_size())
+      << "Inputs of Eltwise op must be same shape";
+    if (input0->size() != input1->size()) {
+      if (input0->size() < input1->size()) {
+        std::swap(input0, input1);
+        swapped = true;
+      }
+      MACE_CHECK(input0->dim(0) == input1->dim(0) &&
+          input1->dim(1) == 1 &&
+          input1->dim(2) == 1 &&
+          input0->dim(3) == input1->dim(3))
+        << "Element-Wise op only support channel dimension broadcast";
+    }
+  }
+  output->ResizeLike(input0);
+  const index_t batch = output->dim(0);
+  const index_t height = output->dim(1);
+  const index_t width = output->dim(2);
+  const index_t channels = output->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t batch_height_pixels = batch * height;
@@ -41,8 +54,6 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(batch_height_pixels)};
 
-  const int scaler = is_scaler ? 1 : 0;
-  const int need_swap = swap ? 1 : 0;
   auto runtime = OpenCLRuntime::Global();
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
@@ -52,9 +63,14 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
-    built_options.emplace(MakeString("-DSTART_AXIS=", start_axis));
-    built_options.emplace(MakeString("-DIS_SCALER=", scaler));
-    built_options.emplace(MakeString("-DNEEDSWAP=", need_swap));
+    if (input1 == nullptr) {
+      built_options.emplace("-DINPUT_TYPE=1");
+    } else if (input0->size() != input1->size()) {
+      built_options.emplace("-DINPUT_TYPE=2");
+      if (swapped) built_options.emplace("-DSWAPPED");
+    }
+    if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
+
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
@@ -66,7 +82,6 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
     kernel_ = runtime->BuildKernel("eltwise", kernel_name, built_options);
 
     kwg_size_ =
@@ -84,8 +99,11 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
       kernel_.setArg(idx++, gws[2]);
     }
     kernel_.setArg(idx++, *(input0->opencl_image()));
-    kernel_.setArg(idx++, *(input1->opencl_image()));
-    kernel_.setArg(idx++, value);
+    if (input1 == nullptr) {
+      kernel_.setArg(idx++, value_);
+    } else {
+      kernel_.setArg(idx++, *(input1->opencl_image()));
+    }
     kernel_.setArg(idx++, static_cast<int32_t>(height));
     kernel_.setArg(idx++, static_cast<int32_t>(width));
     kernel_.setArg(idx++, static_cast<int32_t>(channels));

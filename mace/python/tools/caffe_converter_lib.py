@@ -41,6 +41,12 @@ activation_name_map = {
     'TanH': 'TANH',
 }
 
+math_type_mode = {
+    0: 2,  # PROD
+    1: 0,  # SUM
+    2: 5,  # MAX
+}
+
 MACE_INPUT_NODE_NAME = "mace_input_node"
 MACE_OUTPUT_NODE_NAME = "mace_output_node"
 
@@ -921,11 +927,11 @@ class CaffeConverter(object):
         param = op.layer.eltwise_param
         type_arg = op_def.arg.add()
         type_arg.name = 'type'
-        type_arg.i = param.operation
+        type_arg.i = math_type_mode[param.operation]
         if len(param.coeff) > 0:
             coeff_arg = op_def.arg.add()
             coeff_arg.name = 'coeff'
-            coeff_arg.ints.extend(list(param.coeff))
+            coeff_arg.floats.extend(list(param.coeff))
 
         output_shape = op.parents[0].output_shape_map[op.layer.bottom[0]]
         op.output_shape_map[op.layer.top[0]] = output_shape
