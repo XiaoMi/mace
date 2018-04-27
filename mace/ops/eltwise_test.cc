@@ -238,6 +238,12 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
                                               {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
                                               {1, 1, 1, 5}, {1, 2, 3, 4, 5},
                                               {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
+  SimpleTensorEltwise<DeviceType::CPU, float>(kernels::EltwiseType::SUB,
+                                              {1, 1, 1, 5}, {1, 2, 3, 4, 5},
+                                              {1, 2, 1, 5},
+                                              {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+                                              {0, 0, 0, 0, 0,
+                                               -5, -5, -5, -5, -5});
   SimpleTensorEltwise<DeviceType::CPU, float>(kernels::EltwiseType::PROD,
                                               {1, 1, 1, 3}, {1, 2, 3},
                                               {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
@@ -247,6 +253,11 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
                                               {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
                                               {1, 1, 1, 5}, {1, 1, 1, 1, 5},
                                               {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
+  SimpleTensorEltwise<DeviceType::CPU, float>(kernels::EltwiseType::DIV,
+                                              {1, 1, 1, 5}, {1, 1, 1, 2, 4},
+                                              {1, 2, 1, 5},
+                                              {1, 1, 1, 2, 2, 1, 1, 1, 1, 1},
+                                              {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::CPU, float>(kernels::EltwiseType::MIN,
                                               {1, 1, 1, 5}, {1, 2, 3, 4, 5},
                                               {1, 2, 1, 5},
@@ -277,6 +288,12 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorVector) {
       {1, 1, 1, 5}, {1, 2, 3, 4, 5},
       {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
   SimpleTensorEltwise<DeviceType::OPENCL, float>(
+      kernels::EltwiseType::SUB,
+      {1, 1, 1, 5}, {1, 2, 3, 4, 5},
+      {1, 2, 1, 5},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {0, 0, 0, 0, 0, -5, -5, -5, -5, -5});
+  SimpleTensorEltwise<DeviceType::OPENCL, float>(
       kernels::EltwiseType::PROD,
       {1, 1, 1, 3}, {1, 2, 3},
       {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
@@ -286,6 +303,12 @@ TEST_F(EltwiseOpTest, GPUSimpleTensorVector) {
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 1, 1, 1, 5},
       {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
+  SimpleTensorEltwise<DeviceType::OPENCL, float>(
+      kernels::EltwiseType::DIV,
+      {1, 1, 1, 5}, {1, 1, 1, 2, 4},
+      {1, 2, 1, 5},
+      {1, 1, 1, 2, 2, 1, 1, 1, 1, 1},
+      {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::OPENCL, float>(
       kernels::EltwiseType::MIN,
       {1, 1, 1, 5}, {1, 2, 3, 4, 5},
@@ -530,6 +553,10 @@ TEST_F(EltwiseOpTest, RandomTensorVecFloat) {
                             {1, 32, 32, 16}, {1, 1, 1, 16});
   RandomTensorEltwise<float>(kernels::EltwiseType::SUB,
                             {5, 32, 32, 16}, {5, 1, 1, 16});
+  RandomTensorEltwise<float>(kernels::EltwiseType::SUB,
+                             {5, 1, 1, 16}, {5, 32, 32, 16});
+  RandomTensorEltwise<float>(kernels::EltwiseType::PROD,
+                             {1, 31, 37, 17}, {1, 1, 1, 17});
   RandomTensorEltwise<float>(kernels::EltwiseType::PROD,
                             {1, 1, 1, 17}, {1, 31, 37, 17});
   RandomTensorEltwise<float>(kernels::EltwiseType::DIV,
@@ -547,8 +574,12 @@ TEST_F(EltwiseOpTest, RandomTensorVecHalf) {
                            {1, 32, 32, 16}, {1, 1, 1, 16});
   RandomTensorEltwise<half>(kernels::EltwiseType::SUB,
                            {3, 32, 32, 16}, {3, 1, 1, 16});
+  RandomTensorEltwise<half>(kernels::EltwiseType::SUB,
+                            {3, 1, 1, 16}, {3, 32, 32, 16});
   RandomTensorEltwise<half>(kernels::EltwiseType::PROD,
                            {1, 1, 1, 17}, {1, 31, 37, 17});
+  RandomTensorEltwise<half>(kernels::EltwiseType::DIV,
+                            {5, 31, 37, 17}, {5, 1, 1, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::DIV,
                            {5, 1, 1, 17}, {5, 31, 37, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::MIN,

@@ -25,12 +25,14 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
                                                        const Tensor *input1,
                                                        Tensor *output,
                                                        StatsFuture *future) {
+  bool swapped = false;
   if (input1 != nullptr) {
     MACE_CHECK(input0->dim_size() == input1->dim_size())
       << "Inputs of Eltwise op must be same shape";
     if (input0->size() != input1->size()) {
       if (input0->size() < input1->size()) {
         std::swap(input0, input1);
+        swapped = true;
       }
       MACE_CHECK(input0->dim(0) == input1->dim(0) &&
           input1->dim(1) == 1 &&
@@ -62,9 +64,10 @@ void EltwiseFunctor<DeviceType::OPENCL, T>::operator()(const Tensor *input0,
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
     if (input1 == nullptr) {
-      built_options.emplace(MakeString("-DINPUT_TYPE=1"));
+      built_options.emplace("-DINPUT_TYPE=1");
     } else if (input0->size() != input1->size()) {
-      built_options.emplace(MakeString("-DINPUT_TYPE=2"));
+      built_options.emplace("-DINPUT_TYPE=2");
+      if (swapped) built_options.emplace("-DSWAPPED");
     }
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
 

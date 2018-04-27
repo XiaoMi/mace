@@ -45,11 +45,19 @@ __kernel void eltwise(KERNEL_ERROR_PARAMS
     out = in0 + in1;
   #endif
 #elif ELTWISE_TYPE == 1
-  out = in0 - in1;
+  #ifdef SWAPPED
+    out = in1 - in0;
+  #else
+    out = in0 - in1;
+  #endif
 #elif ELTWISE_TYPE == 2
   out = in0 * in1;
 #elif ELTWISE_TYPE == 3
-  out = in0 / in1;
+  #ifdef SWAPPED
+    out = in1 / in0;
+  #else
+    out = in0 / in1;
+  #endif
 #elif ELTWISE_TYPE == 4
   out = fmin(in0, in1);
 #elif ELTWISE_TYPE == 5

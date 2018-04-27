@@ -114,6 +114,7 @@ inline void TensorVector(const EltwiseType type,
                          const index_t batch,
                          const index_t channel,
                          const index_t hw,
+                         const bool swapped,
                          float *output) {
   switch (type) {
     case SUM:
@@ -129,13 +130,26 @@ inline void TensorVector(const EltwiseType type,
       }
       break;
     case SUB:
+      if (swapped) {
 #pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = input0[idx0] - input1[idx1];
+        for (index_t b = 0; b < batch; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            for (index_t i = 0; i < hw; ++i) {
+              const index_t idx0 = (b * channel + c) * hw + i;
+              const index_t idx1 = b * channel + c;
+              output[idx0] = input1[idx1] - input0[idx0];
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(3)
+        for (index_t b = 0; b < batch; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            for (index_t i = 0; i < hw; ++i) {
+              const index_t idx0 = (b * channel + c) * hw + i;
+              const index_t idx1 = b * channel + c;
+              output[idx0] = input0[idx0] - input1[idx1];
+            }
           }
         }
       }
@@ -153,13 +167,26 @@ inline void TensorVector(const EltwiseType type,
       }
       break;
     case DIV:
+      if (swapped) {
 #pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = input0[idx0] / input1[idx1];
+        for (index_t b = 0; b < batch; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            for (index_t i = 0; i < hw; ++i) {
+              const index_t idx0 = (b * channel + c) * hw + i;
+              const index_t idx1 = b * channel + c;
+              output[idx0] = input1[idx1] / input0[idx0];
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(3)
+        for (index_t b = 0; b < batch; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            for (index_t i = 0; i < hw; ++i) {
+              const index_t idx0 = (b * channel + c) * hw + i;
+              const index_t idx1 = b * channel + c;
+              output[idx0] = input0[idx0] / input1[idx1];
+            }
           }
         }
       }
@@ -283,12 +310,14 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
                   const Tensor *input1,
                   Tensor *output,
                   StatsFuture *future) {
+    bool swapped = false;
     if (input1 != nullptr) {
       MACE_CHECK(input0->dim_size() == input1->dim_size())
         << "Inputs of Eltwise op must be same shape";
       if (input0->size() != input1->size()) {
         if (input0->size() < input1->size()) {
           std::swap(input0, input1);
+          swapped = true;
         }
         MACE_CHECK(input0->dim(0) == input1->dim(0) &&
             input0->dim(1) == input1->dim(1) &&
@@ -316,7 +345,7 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
         const index_t channel = input0->dim(1);
         const index_t hw = input0->dim(2) * input0->dim(3);
         TensorVector(type_, input0_ptr, input1_ptr,
-                     batch, channel, hw, output_ptr);
+                     batch, channel, hw, swapped, output_ptr);
       } else {
         if (!coeff_.empty() && type_ == SUM) {
 #pragma omp parallel for
