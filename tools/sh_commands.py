@@ -530,8 +530,6 @@ def tuning_run(abi,
                output_file_name="model_out"):
     print("* Run '%s' with round=%s, restart_round=%s, tuning=%s" %
           (model_tag, running_round, restart_round, str(tuning)))
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     if abi == "host":
         p = subprocess.Popen([
                 "env",
@@ -547,8 +545,14 @@ def tuning_run(abi,
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
                 "--restart_round=%s" % restart_round,
-                "%s" % option_args])
-        p.wait()
+                "%s" % option_args],
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        stdout = err + out
+        print stdout
+        print("Running finished!\n")
+        return stdout
     else:
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
         compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
@@ -567,6 +571,8 @@ def tuning_run(abi,
         adb_push("mace/core/runtime/hexagon/libhexagon_controller.so",
                  phone_data_dir, serialno)
 
+        stdout_buff = []
+        process_output = make_output_processor(stdout_buff)
         p = sh.adb(
                 "-s",
                 serialno,
@@ -596,9 +602,8 @@ def tuning_run(abi,
                 _bg=True,
                 _err_to_out=True)
         p.wait()
-
-    print("Running finished!\n")
-    return "".join(stdout_buff)
+        print("Running finished!\n")
+        return "".join(stdout_buff)
 
 
 def validate_model(abi,

@@ -121,21 +121,24 @@ def model_benchmark_stdout_processor(stdout,
             metrics[4] = str(float(parts[5]))
             break
 
-    props = sh_commands.adb_getprop_by_serialno(serialno)
-    device_type = props.get("ro.product.model", "")
-    target_soc = props.get("ro.board.platform", "")
+    device_name = ""
+    target_soc = ""
+    if abi != "host":
+        props = sh_commands.adb_getprop_by_serialno(serialno)
+        device_name = props.get("ro.product.model", "")
+        target_soc = props.get("ro.board.platform", "")
 
     report_filename = FLAGS.output_dir + "/report.csv"
     if not os.path.exists(report_filename):
         with open(report_filename, 'w') as f:
-            f.write("model_name,device_type,soc,abi,runtime,create_net,"
+            f.write("model_name,device_name,soc,abi,runtime,create_net,"
                     "engine_ctor,init,warmup,run_avg\n")
 
-    data_str = "{model_name},{device_type},{soc},{abi},{runtime}," \
+    data_str = "{model_name},{device_name},{soc},{abi},{runtime}," \
                "{create_net},{engine_ctor},{init},{warmup},{run_avg}\n" \
         .format(
             model_name=model_name,
-            device_type=device_type,
+            device_name=device_name,
             soc=target_soc,
             abi=abi,
             runtime=runtime,
