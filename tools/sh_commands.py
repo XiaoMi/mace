@@ -215,6 +215,55 @@ def adb_run(serialno,
         return "".join(stdout_buff)
 
 
+def adb_run_valgrind(serialno,
+                     host_bin_path,
+                     bin_name,
+                     valgrind_path="/data/local/valgrind",
+                     valgrind_args="",
+                     args="",
+                     opencl_profiling=1,
+                     vlog_level=0,
+                     device_bin_path="/data/local/tmp/mace",
+                     out_of_range_check=1):
+    valgrind_lib = valgrind_path + "/lib/valgrind"
+    valgrind_bin = valgrind_path + "/bin/valgrind"
+    host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
+    device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
+    props = adb_getprop_by_serialno(serialno)
+    print(
+        "====================================================================="
+    )
+    print("Trying to lock device %s" % serialno)
+    with device_lock(serialno):
+        print("Run on device: %s, %s, %s" %
+              (serialno, props["ro.board.platform"],
+               props["ro.product.model"]))
+        result = sh.adb("-s", serialno, "shell", "ls %s" % valgrind_path)
+        if result.startswith("ls:"):
+            print("Please install valgrind to %s manually." % valgrind_path)
+            return result
+        sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
+        sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
+        adb_push(host_bin_full_path, device_bin_full_path, serialno)
+        print("Run %s" % device_bin_full_path)
+        stdout_buff = []
+        process_output = make_output_processor(stdout_buff)
+        p = sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            "MACE_OUT_OF_RANGE_CHECK=%d MACE_OPENCL_PROFILING=%d "
+            "MACE_CPP_MIN_VLOG_LEVEL=%d VALGRIND_LIB=%s %s %s %s %s " %
+            (out_of_range_check, opencl_profiling, vlog_level,
+             valgrind_lib, valgrind_bin, valgrind_args,
+             device_bin_full_path, args),
+            _out=process_output,
+            _bg=True,
+            _err_to_out=True)
+        p.wait()
+        return "".join(stdout_buff)
+
+
 ################################
 # bazel commands
 ################################
@@ -224,7 +273,8 @@ def bazel_build(target,
                 model_tag="",
                 production_mode=False,
                 hexagon_mode=False,
-                disable_no_tuning_warning=False):
+                disable_no_tuning_warning=False,
+                debug=False):
     print("* Build %s with ABI %s" % (target, abi))
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
@@ -278,6 +328,8 @@ def bazel_build(target,
             "hexagon=%s" % str(hexagon_mode).lower())
         if disable_no_tuning_warning:
             bazel_args += ("--copt=-DMACE_DISABLE_NO_TUNING_WARNING",)
+        if debug:
+            bazel_args += ("--copt=-g",)
         p = sh.bazel(
             _out=process_output,
             _bg=True,
