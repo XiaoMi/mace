@@ -1,19 +1,9 @@
-// Copyright 2018 Xiaomi, Inc.  All rights reserved.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Copyright (c) 2017 XiaoMi All rights reserved.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 
 #include <fstream>
+#include <thread>  // NOLINT(build/c++11)
 
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_pool_2d_util.h"
@@ -23,7 +13,7 @@
 namespace mace {
 namespace test {
 
-class MaceAPITest  : public ::testing::Test {};
+class MaceMTAPITest  : public ::testing::Test {};
 
 namespace {
 
@@ -246,11 +236,7 @@ std::map<std::string, int> AddMemoryOptimization(
 }
 
 // The height and width of input and output must be equal.
-template <typename T>
-void MaceRun(const int in_out_size,
-             const std::vector<std::vector<int64_t>> &input_shapes,
-             const std::vector<std::vector<int64_t>> &output_shapes,
-             const std::vector<int64_t> &filter_shape) {
+void MaceRunFunc(const int in_out_size) {
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
   for (int i = 0; i < in_out_size; ++i) {
@@ -262,6 +248,10 @@ void MaceRun(const int in_out_size,
 
   const DeviceType device = DeviceType::GPU;
 
+  const std::vector<std::vector<int64_t>> input_shapes = {{1, 32, 32, 16}};
+  const std::vector<std::vector<int64_t>> output_shapes = {{1, 32, 32, 16}};
+  const std::vector<int64_t> filter_shape = {3, 3, 16, 16};
+
   NetDef net_def;
 
   // Add memory optimization
@@ -269,9 +259,9 @@ void MaceRun(const int in_out_size,
                                        input_shapes, output_shapes,
                                        &net_def);
 
-  std::vector<T> data;
-  ops::test::GenerateRandomRealTypeData<T>(filter_shape, &data);
-  AddTensor<T>(filter_tensor_name, filter_shape, data.data(), &net_def);
+  std::vector<half> data;
+  ops::test::GenerateRandomRealTypeData<half>(filter_shape, &data);
+  AddTensor<half>(filter_tensor_name, filter_shape, data.data(), &net_def);
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     std::string input_name = MakeString("mace_input_node_",
@@ -296,6 +286,11 @@ void MaceRun(const int in_out_size,
                          mace::kernels::IN_OUT_CHANNEL, &net_def);
   }
 
+  const std::string file_path ="/data/local/tmp/mace";
+  std::shared_ptr<KVStorageFactory> storage_factory(
+      new FileStorageFactory(file_path));
+  mace::SetKVStorageFactory(storage_factory);
+
   MaceEngine engine(&net_def, device, input_names, output_names);
 
   std::map<std::string, mace::MaceTensor> inputs;
@@ -312,36 +307,21 @@ void MaceRun(const int in_out_size,
     }
   }
 
-  CheckOutputs<DeviceType::GPU, T>(net_def, inputs, outputs);
+  CheckOutputs<DeviceType::GPU, half>(net_def, inputs, outputs);
 }
 
 }  // namespace
 
-TEST_F(MaceAPITest, GPUSingleInputOutput) {
-  MaceRun<float>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {3, 3, 16, 16});
-  MaceRun<half>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {3, 3, 16, 16});
+TEST_F(MaceMTAPITest, MultipleThread) {
+  const int thread_num = 10;
+  std::vector<std::thread> threads;
+  for (int i = 0; i < thread_num; ++i) {
+    threads.push_back(std::thread(MaceRunFunc, i));
+  }
+  for (auto &t : threads) {
+    t.join();
+  }
 }
 
-TEST_F(MaceAPITest, GPUMultipleInputOutput) {
-  MaceRun<float>(2,
-                 {{1, 16, 32, 16}},
-                 {{1, 16, 32, 16}},
-                 {3, 3, 16, 16});
-  MaceRun<half>(2,
-                {{1, 16, 32, 16}},
-                {{1, 16, 32, 16}},
-                {3, 3, 16, 16});
-}
-
-TEST_F(MaceAPITest, GPUVariableInputShape) {
-  MaceRun<float>(1,
-                 {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                 {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                 {3, 3, 16, 16});
-  MaceRun<half>(2,
-                {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                {3, 3, 16, 16});
-}
 }  // namespace test
 }  // namespace mace

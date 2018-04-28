@@ -512,6 +512,7 @@ void OpenCLRuntime::BuildProgramFromSource(
 
     if (this->storage_ != nullptr) {
       this->storage_->Insert(built_program_key, content);
+      std::lock_guard<std::mutex> lock(program_map_changed_mutex_);
       this->program_map_changed_ = true;
     }
 
@@ -565,11 +566,15 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 }
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
-  if (program_map_changed_ && storage_ != nullptr) {
-    if (storage_->Flush() != 0) {
-      LOG(FATAL) << "Store opencl compiled kernel to file failed";
+  if (storage_ != nullptr) {
+    std::lock_guard<std::mutex> lock(program_map_changed_mutex_);
+    if (program_map_changed_) {
+      if (storage_->Flush() != 0) {
+        LOG(FATAL) << "Store OPENCL compiled kernel to file failed."
+            " Please Make sure the storage directory exist.";
+      }
+      program_map_changed_ = false;
     }
-    program_map_changed_ = false;
   }
 }
 
