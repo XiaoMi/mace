@@ -528,8 +528,10 @@ def tuning_run(abi,
                option_args="",
                input_file_name="model_input",
                output_file_name="model_out"):
-    print("* Run '%s' with round=%s, restart_round=%s, tuning=%s" %
-          (model_tag, running_round, restart_round, str(tuning)))
+    print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
+          "out_of_range_check=%s" %
+          (model_tag, running_round, restart_round, str(tuning),
+              str(out_of_range_check)))
     if abi == "host":
         p = subprocess.Popen([
                 "env",
@@ -750,10 +752,9 @@ def merge_libs(target_soc,
         sh.cp("-f", hexagon_lib_file, model_bin_dir)
 
     mri_stream = ""
-    mri_stream += "create %s/libmace_%s.%s.a\n" % \
-                  (model_bin_dir, project_name, target_soc)
-
     if abi == "host":
+        mri_stream += "create %s/libmace_%s.a\n" % \
+                      (model_bin_dir, project_name)
         mri_stream += (
                 "addlib "
                 "bazel-bin/mace/codegen/libgenerated_opencl.pic.a\n")
@@ -761,6 +762,8 @@ def merge_libs(target_soc,
                 "addlib "
                 "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
     else:
+        mri_stream += "create %s/libmace_%s.%s.a\n" % \
+                      (model_bin_dir, project_name, target_soc)
         mri_stream += (
                 "addlib "
                 "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
@@ -861,6 +864,7 @@ def benchmark_model(abi,
     bazel_build(benchmark_target,
                 abi=abi,
                 model_tag=model_tag,
+                production_mode=True,
                 hexagon_mode=hexagon_mode)
 
     target_bin = "/".join(bazel_target_to_bin(benchmark_target))

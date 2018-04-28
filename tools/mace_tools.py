@@ -217,15 +217,15 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
                    model_output_dir, input_nodes, output_nodes, input_shapes,
                    output_shapes, model_name, device_type, running_round=0,
-                   restart_round=1, out_of_range_check=True,
-                   phone_data_dir=phone_data_dir, tuning=False)
+                   restart_round=1, out_of_range_check=False,
+                   phone_data_dir=phone_data_dir, tuning=tuning,
+                   limit_opencl_kernel_time=limit_opencl_kernel_time)
 
         tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
                    model_output_dir, input_nodes, output_nodes, input_shapes,
                    output_shapes, model_name, device_type, running_round=0,
-                   restart_round=1, out_of_range_check=False,
-                   phone_data_dir=phone_data_dir, tuning=tuning,
-                   limit_opencl_kernel_time=limit_opencl_kernel_time)
+                   restart_round=1, out_of_range_check=True,
+                   phone_data_dir=phone_data_dir, tuning=False)
 
         gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir],
                                    True)
@@ -394,6 +394,9 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             if os.path.exists(model_output_dir):
                 sh.rm("-rf", model_output_dir)
             os.makedirs(model_output_dir)
+
+        if FLAGS.mode == "build" or FLAGS.mode == "benchmark" or \
+                FLAGS.mode == "all":
             sh_commands.clear_mace_run_data(
                     target_abi, serialno, phone_data_dir)
 
@@ -428,6 +431,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                     embed_model_data,
                     model_config["fast_conv"],
                     model_config["obfuscate"])
+
+        if FLAGS.mode == "build" or FLAGS.mode == "all":
             build_mace_run_prod(hexagon_mode,
                                 model_config["runtime"],
                                 target_abi,
@@ -467,6 +472,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        phone_data_dir)
 
         if FLAGS.mode == "benchmark":
+            gen_opencl_and_tuning_code(
+                    target_abi, serialno, [model_output_dir], False)
             sh_commands.benchmark_model(target_abi,
                                         serialno,
                                         vlog_level,
