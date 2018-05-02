@@ -424,7 +424,9 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
         transformed_filter_ptr = transformed_filter_.data<float>();
       }
 
-      conv_func = [&](const float *pad_input, float *pad_output) {
+      float *transformed_input_data = transformed_input.mutable_data<float>();
+      float *transformed_output_data = transformed_output.mutable_data<float>();
+      conv_func = [=](const float *pad_input, float *pad_output) {
         WinoGradConv3x3s1(pad_input,
                           transformed_filter_ptr,
                           batch,
@@ -433,8 +435,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                           input_channels,
                           channels,
                           winograd_out_tile_size,
-                          transformed_input.mutable_data<float>(),
-                          transformed_output.mutable_data<float>(),
+                          transformed_input_data,
+                          transformed_output_data,
                           pad_output);
       };
     } else if (use_neon_3x3_s1) {
