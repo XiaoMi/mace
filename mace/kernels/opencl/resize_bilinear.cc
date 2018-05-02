@@ -22,6 +22,34 @@
 namespace mace {
 namespace kernels {
 
+namespace {
+std::vector<uint32_t> LocalWS(const uint32_t *gws,
+                              const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size =
+    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  if (lws[1] >= base) {
+    lws[0] = std::min<uint32_t>(gws[0], base);
+  } else {
+    lws[0] = gws[0] / 8;
+    if (lws[0] == 0) {
+      lws[0] = gws[0];
+    }
+  }
+  lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
+  const uint32_t lws_size = lws[0] * lws[1];
+  lws[2] = gws[2] / 8;
+  if (lws[2] == 0) {
+    lws[2] = gws[2];
+  }
+  lws[2] = std::min<uint32_t>(lws[2], kwg_size / lws_size);
+  return lws;
+}
+
+}  // namespace
+
 template <typename T>
 void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input, Tensor *output, StatsFuture *future) {
@@ -99,11 +127,11 @@ void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
-  std::stringstream ss;
-  ss << "resize_bilinear_opencl_kernel_" << output->dim(0) << "_"
-     << output->dim(1) << "_" << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+  const std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
+  std::string tuning_key =
+      Concat("resize_bilinear_opencl_kernel", output->dim(0), 
+             output->dim(1), output->dim(2), output->dim(3));
+  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

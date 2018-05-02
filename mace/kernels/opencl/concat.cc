@@ -21,6 +21,23 @@
 namespace mace {
 namespace kernels {
 
+namespace {
+std::vector<uint32_t> LocalWS(const uint32_t *gws,
+                              const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size = 
+    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
+  const uint32_t lws_size = lws[0] * lws[1];
+  lws[2] = std::min<uint32_t>(base, kwg_size / lws_size);
+  return lws;
+}
+
+}  // namespace
+
+
 static void Concat2(cl::Kernel *kernel,
                     const Tensor *input0,
                     const Tensor *input1,
@@ -95,11 +112,11 @@ static void Concat2(cl::Kernel *kernel,
     *prev_input_shape = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
-  std::stringstream ss;
-  ss << "concat_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
-     << "_" << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun3DKernel(*kernel, ss.str(), gws, lws, future);
+  const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  std::string tuning_key =
+      Concat("concat_opencl_kernel", output->dim(0), 
+             output->dim(1), output->dim(2), output->dim(3));
+  TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);
@@ -149,7 +166,6 @@ static void ConcatN(cl::Kernel *kernel,
   index_t chan_blk_offset = 0;
   cl::Event event;
   CallStats call_stats{INT64_MAX, 0};
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 1};
   for (int i = 0; i < inputs_count; ++i) {
     const Tensor *input = input_list[i];
     index_t input_channel_blk = input->dim(3) / 4;
@@ -157,6 +173,7 @@ static void ConcatN(cl::Kernel *kernel,
         static_cast<uint32_t>(input_channel_blk), static_cast<uint32_t>(width),
         static_cast<uint32_t>(batch * height),
     };
+    const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
 
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -183,6 +200,7 @@ static void ConcatN(cl::Kernel *kernel,
       for (size_t j = 0; j < 3; ++j) {
         roundup_gws[j] = RoundUp(gws[j], lws[j]);
       }
+      const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
 
       error = runtime->command_queue().enqueueNDRangeKernel(
           *kernel, cl::NullRange,

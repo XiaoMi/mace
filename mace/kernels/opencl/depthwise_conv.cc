@@ -21,6 +21,37 @@
 namespace mace {
 namespace kernels {
 
+namespace {
+// (inputs + weights + outputs) * array_size * sizeof(float)
+const uint32_t kernel_cache_size = (4 + 4 + 1) * 4 * 4;
+std::vector<uint32_t> LocalWS(const uint32_t *gws,
+                              const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t min_lws0 = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  if (lws[1] >= min_lws0) {
+    lws[0] = std::min<uint32_t>(gws[0], min_lws0);
+  } else { 
+    lws[0] = std::min<uint32_t>(gws[0] / 8, kwg_size / lws[1]);
+    if (lws[0] < min_lws0) {
+      lws[0] = std::min<uint32_t>(std::max<uint32_t>(gws[0] / 4, min_lws0),
+                                  kwg_size / lws[1]);
+    }
+  }
+  const uint32_t lws_size = lws[0] * lws[1];
+  lws[2] = std::min<uint32_t>(
+      (cache_size / kernel_cache_size / lws_size) * 4,
+      gws[2]);
+  if (lws[2] == 0) {
+    lws[2] = gws[2];
+  }
+  lws[2] = std::min<uint32_t>(lws[2], kwg_size / lws_size);
+  return lws;
+}
+
+}  // namespace
+
 static void DepthwiseConv2d(cl::Kernel *kernel,
                             const Tensor *input,   // NHWC
                             const Tensor *filter,  // HWIM
@@ -149,9 +180,9 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
-  std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel_", activation,
-                                  batch, height, width, channels, multiplier);
+  const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel",
+                                  gws[0], gws[1], gws[2], multiplier);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

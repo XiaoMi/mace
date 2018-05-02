@@ -21,7 +21,6 @@
 
 namespace mace {
 namespace kernels {
-
 template <typename T>
 void ActivationFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                           const Tensor *alpha,
@@ -56,23 +55,23 @@ void ActivationFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     }
     switch (activation_) {
       case RELU:
-        tuning_key_prefix_ = "relu_opencl_kernel_";
+        tuning_key_prefix_ = "relu_opencl_kernel";
         built_options.emplace("-DUSE_RELU");
         break;
       case RELUX:
-        tuning_key_prefix_ = "relux_opencl_kernel_";
+        tuning_key_prefix_ = "relux_opencl_kernel";
         built_options.emplace("-DUSE_RELUX");
         break;
       case PRELU:
-        tuning_key_prefix_ = "prelu_opencl_kernel_";
+        tuning_key_prefix_ = "prelu_opencl_kernel";
         built_options.emplace("-DUSE_PRELU");
         break;
       case TANH:
-        tuning_key_prefix_ = "tanh_opencl_kernel_";
+        tuning_key_prefix_ = "tanh_opencl_kernel";
         built_options.emplace("-DUSE_TANH");
         break;
       case SIGMOID:
-        tuning_key_prefix_ = "sigmoid_opencl_kernel_";
+        tuning_key_prefix_ = "sigmoid_opencl_kernel";
         built_options.emplace("-DUSE_SIGMOID");
         break;
       default:
@@ -110,7 +109,7 @@ void ActivationFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key =
       Concat(tuning_key_prefix_, output->dim(0), output->dim(1), output->dim(2),
              output->dim(3));

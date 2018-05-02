@@ -29,6 +29,8 @@ namespace kernels {
 
 const float kMaxKernelExeTime = 1000.0;  // microseconds
 
+const int32_t kBaseGPUMemCacheSize = 16384;
+
 enum BufferType {
   CONV2D_FILTER = 0,
   IN_OUT_CHANNEL = 1,
@@ -111,6 +113,11 @@ std::string Concat(Args... args) {
   AppendToStream(&ss, "_", args...);
   return ss.str();
 }
+
+std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
+                                       const uint32_t kwg_size);
+std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
+                                       const uint32_t kwg_size);
 
 }  // namespace kernels
 }  // namespace mace

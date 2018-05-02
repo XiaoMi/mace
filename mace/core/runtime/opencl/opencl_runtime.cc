@@ -362,6 +362,11 @@ OpenCLRuntime::OpenCLRuntime():
     }
   }
 
+  device_->getInfo(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,
+                   &device_gloabl_mem_cache_size_);
+
+  device_->getInfo(CL_DEVICE_MAX_COMPUTE_UNITS,
+                   &device_compute_units_);
   const char *out_of_range_check = getenv("MACE_OUT_OF_RANGE_CHECK");
   if (out_of_range_check != nullptr && strlen(out_of_range_check) == 1
       && out_of_range_check[0] == '1') {
@@ -385,6 +390,14 @@ cl::Context &OpenCLRuntime::context() { return *context_; }
 cl::Device &OpenCLRuntime::device() { return *device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
+
+const uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
+  return device_gloabl_mem_cache_size_;
+}
+
+const uint32_t OpenCLRuntime::device_compute_units() const {
+  return device_compute_units_;
+}
 
 bool OpenCLRuntime::BuildProgramFromBinary(
     const std::string &built_program_key,

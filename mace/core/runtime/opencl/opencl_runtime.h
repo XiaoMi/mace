@@ -73,6 +73,8 @@ class OpenCLRuntime {
   cl::CommandQueue &command_queue();
   const GPUType gpu_type() const;
   const std::string platform_info() const;
+  const uint64_t device_global_mem_cache_size() const;
+  const uint32_t device_compute_units() const;
 
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
@@ -128,6 +130,9 @@ class OpenCLRuntime {
   bool program_map_changed_;
   std::unique_ptr<KVStorage> storage_;
   bool is_profiling_enabled_;
+  uint64_t device_gloabl_mem_cache_size_;
+  uint32_t device_compute_units_;
+
 
   static GPUPerfHint kGPUPerfHint;
   static GPUPriorityHint kGPUPriorityHint;

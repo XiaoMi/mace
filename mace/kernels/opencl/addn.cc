@@ -106,10 +106,10 @@ void AddNFunctor<DeviceType::GPU, T>::operator()(
   }
 
   const std::vector<uint32_t> lws = {kwg_size_ / 16, 16, 0};
-  std::stringstream ss;
-  ss << "addn_opencl_kernel_" << output_shape[0] << "_" << output_shape[1]
-     << "_" << output_shape[2] << "_" << output_shape[3];
-  TuningOrRun2DKernel(kernel_, ss.str(), gws, lws, future);
+  std::string tuning_key =
+      Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
+             output_tensor->dim(2), output_tensor->dim(3));
+  TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);
