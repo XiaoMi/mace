@@ -31,9 +31,8 @@ try:
     from binary_codegen import tuning_param_codegen
     from generate_data import generate_input_data
     from validate import validate
-except Exception:
-    print("Error: import error.")
-    print("Does the script run at the root dir of mace project?")
+except Exception as e:
+    print("Import error:\n%s" % e)
     exit(1)
 
 
