@@ -14,7 +14,10 @@
 
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 
+#ifdef MACE_ENABLE_OPENMP
 #include <omp.h>
+#endif
+
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -29,6 +32,24 @@
 namespace mace {
 
 namespace {
+
+int GetCPUCount() {
+  char path[32];
+  int cpu_count = 0;
+  int result = 0;
+
+  while (true) {
+    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d", cpu_count);
+    result = access(path, F_OK);
+    if (result != 0) {
+      if (errno != ENOENT) {
+        LOG(ERROR) << "Access " << path << " failed, errno: " << errno;
+      }
+      return cpu_count;
+    }
+    cpu_count++;
+  }
+}
 
 int GetCPUMaxFreq(int cpu_id) {
   char path[64];
@@ -99,7 +120,11 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                   std::vector<int> *little_core_ids) {
   MACE_CHECK_NOTNULL(big_core_ids);
   MACE_CHECK_NOTNULL(little_core_ids);
+#ifdef MACE_ENABLE_OPENMP
   int cpu_count = omp_get_num_procs();
+#else
+  int cpu_count = GetCPUCount();
+#endif
   std::vector<int> cpu_max_freq(cpu_count);
   std::vector<int> cpu_ids(cpu_count);
 
@@ -141,7 +166,11 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
 
+#ifdef MACE_ENABLE_OPENMP
   omp_set_num_threads(omp_num_threads);
+#else
+  LOG(WARNING) << "OpenMP not enabled. Set OpenMP threads number failed.";
+#endif
 
   // compute mask
   cpu_set_t mask;
@@ -150,18 +179,27 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
     CPU_SET(cpu_id, &mask);
   }
 
+#ifdef MACE_ENABLE_OPENMP
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
     SetThreadAffinity(mask);
   }
+#else
+  SetThreadAffinity(mask);
+  LOG(INFO) << "SetThreadAffinity: " << mask.__bits[0];
+#endif
 }
 
 MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
                                              CPUAffinityPolicy policy) {
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
+#ifdef MACE_ENABLE_OPENMP
     if (omp_num_threads_hint > 0) {
       omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
     }
+#else
+    LOG(WARNING) << "OpenMP not enabled. Set OpenMP threads number failed.";
+#endif
     return MACE_SUCCESS;
   }
 
