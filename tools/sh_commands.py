@@ -15,6 +15,7 @@
 import falcon_cli
 import filelock
 import glob
+import logging
 import os
 import re
 import sh
@@ -23,6 +24,7 @@ import sys
 import time
 import urllib
 
+import common
 
 sys.path.insert(0, "mace/python/tools")
 try:
@@ -35,10 +37,12 @@ except Exception as e:
     print("Import error:\n%s" % e)
     exit(1)
 
-
 ################################
 # common
 ################################
+logger = logging.getLogger('MACE')
+
+
 def strip_invalid_utf8(str):
     return sh.iconv(str, "-c", "-t", "UTF-8")
 
@@ -65,11 +69,6 @@ def is_device_locked(serialno):
             return False
     except filelock.Timeout:
         return True
-
-
-def formatted_file_name(input_name, input_file_name):
-    return input_file_name + '_' + \
-           re.sub('[^0-9a-zA-Z]+', '_', input_name)
 
 
 ################################
@@ -491,7 +490,8 @@ def gen_random_input(model_output_dir,
                      input_files,
                      input_file_name="model_input"):
     for input_name in input_nodes:
-        formatted_name = formatted_file_name(input_name, input_file_name)
+        formatted_name = common.formatted_file_name(
+            input_file_name, input_name)
         if os.path.exists("%s/%s" % (model_output_dir, formatted_name)):
             sh.rm("%s/%s" % (model_output_dir, formatted_name))
     input_nodes_str = ",".join(input_nodes)
@@ -517,8 +517,8 @@ def gen_random_input(model_output_dir,
         for i in range(len(input_file_list)):
             if input_file_list[i] is not None:
                 dst_input_file = model_output_dir + '/' + \
-                        formatted_file_name(input_name_list[i],
-                                            input_file_name)
+                        common.formatted_file_name(input_file_name,
+                                                   input_name_list[i])
                 if input_file_list[i].startswith("http://") or \
                         input_file_list[i].startswith("https://"):
                     urllib.urlretrieve(input_file_list[i], dst_input_file)
@@ -612,8 +612,8 @@ def tuning_run(abi,
         sh.adb("-s", serialno, "shell", "mkdir", "-p", compiled_opencl_dir)
 
         for input_name in input_nodes:
-            formatted_name = formatted_file_name(input_name,
-                                                 input_file_name)
+            formatted_name = common.formatted_file_name(input_file_name,
+                                                        input_name)
             adb_push("%s/%s" % (model_output_dir, formatted_name),
                      phone_data_dir, serialno)
         adb_push("%s/mace_run" % model_output_dir, phone_data_dir,
@@ -671,20 +671,21 @@ def validate_model(abi,
                    output_shapes,
                    model_output_dir,
                    phone_data_dir,
+                   caffe_env,
                    input_file_name="model_input",
                    output_file_name="model_out"):
     print("* Validate with %s" % platform)
+    if abi != "host":
+        for output_name in output_nodes:
+            formatted_name = common.formatted_file_name(
+                output_file_name, output_name)
+            if os.path.exists("%s/%s" % (model_output_dir,
+                                         formatted_name)):
+                sh.rm("-rf", "%s/%s" % (model_output_dir, formatted_name))
+            adb_pull("%s/%s" % (phone_data_dir, formatted_name),
+                     model_output_dir, serialno)
 
     if platform == "tensorflow":
-        if abi != "host":
-            for output_name in output_nodes:
-                formatted_name = formatted_file_name(
-                        output_name, output_file_name)
-                if os.path.exists("%s/%s" % (model_output_dir,
-                                             formatted_name)):
-                    sh.rm("%s/%s" % (model_output_dir, formatted_name))
-                adb_pull("%s/%s" % (phone_data_dir, formatted_name),
-                         model_output_dir, serialno)
         validate(platform, model_file_path, "",
                  "%s/%s" % (model_output_dir, input_file_name),
                  "%s/%s" % (model_output_dir, output_file_name), runtime,
@@ -695,80 +696,85 @@ def validate_model(abi,
         container_name = "mace_caffe_validator"
         res_file = "validation.result"
 
-        docker_image_id = sh.docker("images", "-q", image_name)
-        if not docker_image_id:
-            print("Build caffe docker")
-            sh.docker("build", "-t", image_name, "docker/caffe")
+        if caffe_env == common.CaffeEnvType.LOCAL:
+            import imp
+            try:
+                imp.find_module('caffe')
+            except ImportError:
+                logger.error('There is no caffe python module.')
+            validate(platform, model_file_path, weight_file_path,
+                     "%s/%s" % (model_output_dir, input_file_name),
+                     "%s/%s" % (model_output_dir, output_file_name), runtime,
+                     ":".join(input_shapes), ":".join(output_shapes),
+                     ",".join(input_nodes), ",".join(output_nodes))
+        elif caffe_env == common.CaffeEnvType.DOCKER:
+            docker_image_id = sh.docker("images", "-q", image_name)
+            if not docker_image_id:
+                print("Build caffe docker")
+                sh.docker("build", "-t", image_name,
+                          "mace/third_party/caffe")
 
-        container_id = sh.docker("ps", "-qa", "-f", "name=%s" % container_name)
-        if container_id and not sh.docker("ps", "-qa", "--filter",
-                                          "status=running", "-f",
-                                          "name=%s" % container_name):
-            sh.docker("rm", "-f", container_name)
-            container_id = ""
-        if not container_id:
-            print("Run caffe container")
-            sh.docker(
-                    "run",
-                    "-d",
-                    "-it",
-                    "--name",
-                    container_name,
-                    image_name,
-                    "/bin/bash")
+            container_id = sh.docker("ps", "-qa", "-f",
+                                     "name=%s" % container_name)
+            if container_id and not sh.docker("ps", "-qa", "--filter",
+                                              "status=running", "-f",
+                                              "name=%s" % container_name):
+                sh.docker("rm", "-f", container_name)
+                container_id = ""
+            if not container_id:
+                print("Run caffe container")
+                sh.docker(
+                        "run",
+                        "-d",
+                        "-it",
+                        "--name",
+                        container_name,
+                        image_name,
+                        "/bin/bash")
 
-        for input_name in input_nodes:
-            formatted_input_name = formatted_file_name(
-                    input_name, input_file_name)
-            sh.docker(
-                    "cp",
-                    "%s/%s" % (model_output_dir, formatted_input_name),
-                    "%s:/mace" % container_name)
+            for input_name in input_nodes:
+                formatted_input_name = common.formatted_file_name(
+                        input_file_name, input_name)
+                sh.docker(
+                        "cp",
+                        "%s/%s" % (model_output_dir, formatted_input_name),
+                        "%s:/mace" % container_name)
 
-        if abi != "host":
             for output_name in output_nodes:
-                formatted_output_name = formatted_file_name(
-                        output_name, output_file_name)
-                sh.rm("-rf",
-                      "%s/%s" % (model_output_dir, formatted_output_name))
-                adb_pull("%s/%s" % (phone_data_dir, formatted_output_name),
-                         model_output_dir, serialno)
+                formatted_output_name = common.formatted_file_name(
+                        output_file_name, output_name)
+                sh.docker(
+                        "cp",
+                        "%s/%s" % (model_output_dir, formatted_output_name),
+                        "%s:/mace" % container_name)
+            model_file_name = os.path.basename(model_file_path)
+            weight_file_name = os.path.basename(weight_file_path)
+            sh.docker("cp", "tools/validate.py", "%s:/mace" % container_name)
+            sh.docker("cp", model_file_path, "%s:/mace" % container_name)
+            sh.docker("cp", weight_file_path, "%s:/mace" % container_name)
 
-        for output_name in output_nodes:
-            formatted_output_name = formatted_file_name(
-                    output_name, output_file_name)
-            sh.docker(
-                    "cp",
-                    "%s/%s" % (model_output_dir, formatted_output_name),
-                    "%s:/mace" % container_name)
-        model_file_name = os.path.basename(model_file_path)
-        weight_file_name = os.path.basename(weight_file_path)
-        sh.docker("cp", "tools/validate.py", "%s:/mace" % container_name)
-        sh.docker("cp", model_file_path, "%s:/mace" % container_name)
-        sh.docker("cp", weight_file_path, "%s:/mace" % container_name)
-
-        stdout_buff = []
-        process_output = make_output_processor(stdout_buff)
-        p = sh.docker(
-                "exec",
-                container_name,
-                "python",
-                "-u",
-                "/mace/validate.py",
-                "--platform=caffe",
-                "--model_file=/mace/%s" % model_file_name,
-                "--weight_file=/mace/%s" % weight_file_name,
-                "--input_file=/mace/%s" % input_file_name,
-                "--mace_out_file=/mace/%s" % output_file_name,
-                "--mace_runtime=%s" % runtime,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                _out=process_output,
-                _bg=True,
-                _err_to_out=True)
-        p.wait()
+            stdout_buff = []
+            process_output = make_output_processor(stdout_buff)
+            p = sh.docker(
+                    "exec",
+                    container_name,
+                    "python",
+                    "-u",
+                    "/mace/validate.py",
+                    "--platform=caffe",
+                    "--model_file=/mace/%s" % model_file_name,
+                    "--weight_file=/mace/%s" % weight_file_name,
+                    "--input_file=/mace/%s" % input_file_name,
+                    "--mace_out_file=/mace/%s" % output_file_name,
+                    "--mace_runtime=%s" % runtime,
+                    "--input_node=%s" % ",".join(input_nodes),
+                    "--output_node=%s" % ",".join(output_nodes),
+                    "--input_shape=%s" % ":".join(input_shapes),
+                    "--output_shape=%s" % ":".join(output_shapes),
+                    _out=process_output,
+                    _bg=True,
+                    _err_to_out=True)
+            p.wait()
 
     print("Validation done!\n")
 
@@ -941,8 +947,8 @@ def benchmark_model(abi,
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
 
         for input_name in input_nodes:
-            formatted_name = formatted_file_name(input_name,
-                                                 input_file_name)
+            formatted_name = common.formatted_file_name(input_file_name,
+                                                        input_name)
             adb_push("%s/%s" % (model_output_dir, formatted_name),
                      phone_data_dir, serialno)
         adb_push("%s/benchmark_model" % model_output_dir, phone_data_dir,
