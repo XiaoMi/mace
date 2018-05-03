@@ -21,7 +21,7 @@ http_archive(
 
 new_http_archive(
     name = "gtest",
-    build_file = "mace/third_party/gtest.BUILD",
+    build_file = "mace/third_party/googletest/googletest.BUILD",
     sha256 = "a0b43a0a43cda0cc401a46d75519d961ef27f6674d4126366e47d9c946c4bbcd",
     strip_prefix = "googletest-release-1.8.0-ec44c6c1675c25b9827aacd08c02433cccde7780",
     url = "http://v9.git.n.xiaomi.com/deep-computing/googletest/repository/archive.zip?ref=release-1.8.0",
@@ -29,7 +29,7 @@ new_http_archive(
 
 new_http_archive(
     name = "six_archive",
-    build_file = "mace/third_party/six.BUILD",
+    build_file = "mace/third_party/six/six.BUILD",
     sha256 = "105f8d68616f8248e24bf0e9372ef04d3cc10104f1980f54d57b2ce73a5ad56a",
     strip_prefix = "six-1.10.0",
     urls = [
@@ -45,7 +45,7 @@ bind(
 
 new_http_archive(
     name = "opencl_headers",
-    build_file = "mace/third_party/opencl-headers.BUILD",
+    build_file = "mace/third_party/opencl-headers/opencl-headers.BUILD",
     sha256 = "439dbdb4e7a02a218dd90d82170c9f7671487cd0e626a20e136690a91f173ad2",
     strip_prefix = "OpenCL-Headers-master-f039db6764d52388658ef15c30b2237bbda49803",
     urls = ["http://v9.git.n.xiaomi.com/deep-computing/OpenCL-Headers/repository/archive.zip?ref=master"],
@@ -53,14 +53,14 @@ new_http_archive(
 
 new_git_repository(
     name = "opencl_clhpp",
-    build_file = "mace/third_party/opencl-clhpp.BUILD",
+    build_file = "mace/third_party/opencl-clhpp/opencl-clhpp.BUILD",
     commit = "4c6f7d56271727e37fb19a9b47649dd175df2b12",
     remote = "http://v9.git.n.xiaomi.com/deep-computing/OpenCL-CLHPP-Mirror.git",
 )
 
 new_git_repository(
     name = "half",
-    build_file = "mace/third_party/half.BUILD",
+    build_file = "mace/third_party/half/half.BUILD",
     commit = "87d7f25f7ba2c7d3b051f6c857031de0ecac5afd",
     remote = "http://v9.git.n.xiaomi.com/deep-computing/half.git",
 )

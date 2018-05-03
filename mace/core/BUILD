@@ -33,7 +33,6 @@ cc_library(
         ],
     )) + if_hexagon_enabled(glob([
         "runtime/hexagon/*.cc",
-        "runtime/hexagon/libhexagon_controller.so",
     ])),
     hdrs = glob([
         "*.h",
@@ -62,6 +61,8 @@ cc_library(
         "//mace/utils:utils_prod",
     ]) + if_not_production_mode([
         "//mace/utils:utils_dev",
+    ]) + if_hexagon_enabled([
+        "//mace/third_party/nnlib:libhexagon",
     ]),
 )
 

@@ -1,3 +1,7 @@
+licenses(["notice"])
+
+exports_files(["LICENSE"])
+
 cc_library(
     name = "opencl10_headers",
     hdrs = glob([
