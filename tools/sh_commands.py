@@ -273,7 +273,8 @@ def bazel_build(target,
                 production_mode=False,
                 hexagon_mode=False,
                 disable_no_tuning_warning=False,
-                debug=False):
+                debug=False,
+                enable_openmp=True):
     print("* Build %s with ABI %s" % (target, abi))
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
@@ -292,7 +293,7 @@ def bazel_build(target,
             "--copt=-DMACE_MODEL_TAG=%s" % model_tag,
             "--copt=-O3",
             "--define",
-            "openmp=true",
+            "openmp=%s" % str(enable_openmp).lower(),
             "--define",
             "production=%s" % str(production_mode).lower(),
             _out=process_output,
@@ -320,7 +321,7 @@ def bazel_build(target,
             "--define",
             "neon=true",
             "--define",
-            "openmp=true",
+            "openmp=%s" % str(enable_openmp).lower(),
             "--define",
             "production=%s" % str(production_mode).lower(),
             "--define",
@@ -576,15 +577,21 @@ def tuning_run(abi,
                tuning,
                out_of_range_check,
                phone_data_dir,
-               option_args="",
+               omp_num_threads=-1,
+               cpu_affinity_policy=1,
+               gpu_perf_hint=3,
+               gpu_priority_hint=3,
                input_file_name="model_input",
                output_file_name="model_out"):
     print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
-          "out_of_range_check=%s" %
+          "out_of_range_check=%s, omp_num_threads=%s, cpu_affinity_policy=%s, "
+          "gpu_perf_hint=%s, gpu_priority_hint=%s" %
           (model_tag, running_round, restart_round, str(tuning),
-              str(out_of_range_check)))
+           str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
+           gpu_perf_hint, gpu_priority_hint))
     if abi == "host":
-        p = subprocess.Popen([
+        p = subprocess.Popen(
+            [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/mace_run" % model_output_dir,
@@ -598,9 +605,13 @@ def tuning_run(abi,
                 "--device=%s" % device_type,
                 "--round=%s" % running_round,
                 "--restart_round=%s" % restart_round,
-                "%s" % option_args],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
+                "--omp_num_threads=%s" % omp_num_threads,
+                "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+                "--gpu_perf_hint=%s" % gpu_perf_hint,
+                "--gpu_priority_hint=%s" % gpu_priority_hint,
+            ],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE)
         out, err = p.communicate()
         stdout = err + out
         print stdout
@@ -627,33 +638,36 @@ def tuning_run(abi,
         stdout_buff = []
         process_output = make_output_processor(stdout_buff)
         p = sh.adb(
-                "-s",
-                serialno,
-                "shell",
-                "LD_LIBRARY_PATH=%s" % phone_data_dir,
-                "MACE_TUNING=%s" % int(tuning),
-                "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
-                phone_data_dir,
-                "MACE_CL_PROGRAM_PATH=%s/cl_program" % phone_data_dir,
-                "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" %
-                limit_opencl_kernel_time,
-                "%s/mace_run" % phone_data_dir,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                "--input_file=%s/%s" % (phone_data_dir, input_file_name),
-                "--output_file=%s/%s" % (phone_data_dir, output_file_name),
-                "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
-                "--device=%s" % device_type,
-                "--round=%s" % running_round,
-                "--restart_round=%s" % restart_round,
-                "%s" % option_args,
-                _out=process_output,
-                _bg=True,
-                _err_to_out=True)
+            "-s",
+            serialno,
+            "shell",
+            "LD_LIBRARY_PATH=%s" % phone_data_dir,
+            "MACE_TUNING=%s" % int(tuning),
+            "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
+            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
+            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
+            phone_data_dir,
+            "MACE_CL_PROGRAM_PATH=%s/cl_program" % phone_data_dir,
+            "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" %
+            limit_opencl_kernel_time,
+            "%s/mace_run" % phone_data_dir,
+            "--input_node=%s" % ",".join(input_nodes),
+            "--output_node=%s" % ",".join(output_nodes),
+            "--input_shape=%s" % ":".join(input_shapes),
+            "--output_shape=%s" % ":".join(output_shapes),
+            "--input_file=%s/%s" % (phone_data_dir, input_file_name),
+            "--output_file=%s/%s" % (phone_data_dir, output_file_name),
+            "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
+            "--device=%s" % device_type,
+            "--round=%s" % running_round,
+            "--restart_round=%s" % restart_round,
+            "--omp_num_threads=%s" % omp_num_threads,
+            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+            "--gpu_perf_hint=%s" % gpu_perf_hint,
+            "--gpu_priority_hint=%s" % gpu_priority_hint,
+            _out=process_output,
+            _bg=True,
+            _err_to_out=True)
         p.wait()
         print("Running finished!\n")
         return "".join(stdout_buff)
@@ -900,7 +914,10 @@ def benchmark_model(abi,
                     device_type,
                     hexagon_mode,
                     phone_data_dir,
-                    option_args="",
+                    omp_num_threads=-1,
+                    cpu_affinity_policy=1,
+                    gpu_perf_hint=3,
+                    gpu_priority_hint=3,
                     input_file_name="model_input",
                     output_file_name="model_out"):
     print("* Benchmark for %s" % model_tag)
@@ -924,7 +941,8 @@ def benchmark_model(abi,
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
     if abi == "host":
-        p = subprocess.Popen([
+        p = subprocess.Popen(
+            [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/benchmark_model" % model_output_dir,
@@ -935,7 +953,11 @@ def benchmark_model(abi,
                 "--input_file=%s/%s" % (model_output_dir, input_file_name),
                 "--model_data_file=%s/%s.data" % (model_output_dir, model_tag),
                 "--device=%s" % device_type,
-                "%s" % option_args])
+                "--omp_num_threads=%s" % omp_num_threads,
+                "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+                "--gpu_perf_hint=%s" % gpu_perf_hint,
+                "--gpu_priority_hint=%s" % gpu_priority_hint,
+            ])
         p.wait()
     else:
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
@@ -951,26 +973,29 @@ def benchmark_model(abi,
             adb_push("%s/%s.data" % (model_output_dir, model_tag),
                      phone_data_dir, serialno)
         p = sh.adb(
-                "-s",
-                serialno,
-                "shell",
-                "LD_LIBRARY_PATH=%s" % phone_data_dir,
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
-                phone_data_dir,
-                "MACE_OPENCL_PROFILING=1",
-                "%s/benchmark_model" % phone_data_dir,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                "--input_file=%s/%s" % (phone_data_dir, input_file_name),
-                "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
-                "--device=%s" % device_type,
-                "%s" % option_args,
-                _out=process_output,
-                _bg=True,
-                _err_to_out=True)
+            "-s",
+            serialno,
+            "shell",
+            "LD_LIBRARY_PATH=%s" % phone_data_dir,
+            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
+            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
+            phone_data_dir,
+            "MACE_OPENCL_PROFILING=1",
+            "%s/benchmark_model" % phone_data_dir,
+            "--input_node=%s" % ",".join(input_nodes),
+            "--output_node=%s" % ",".join(output_nodes),
+            "--input_shape=%s" % ":".join(input_shapes),
+            "--output_shape=%s" % ":".join(output_shapes),
+            "--input_file=%s/%s" % (phone_data_dir, input_file_name),
+            "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
+            "--device=%s" % device_type,
+            "--omp_num_threads=%s" % omp_num_threads,
+            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+            "--gpu_perf_hint=%s" % gpu_perf_hint,
+            "--gpu_priority_hint=%s" % gpu_priority_hint,
+            _out=process_output,
+            _bg=True,
+            _err_to_out=True)
         p.wait()
 
     print("Benchmark done!\n")

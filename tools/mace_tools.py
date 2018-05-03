@@ -170,26 +170,33 @@ def tuning_run(runtime,
                phone_data_dir,
                tuning=False,
                limit_opencl_kernel_time=0,
-               option_args=""):
+               omp_num_threads=-1,
+               cpu_affinity_policy=1,
+               gpu_perf_hint=3,
+               gpu_priority_hint=3):
     stdout = sh_commands.tuning_run(
-            target_abi,
-            serialno,
-            vlog_level,
-            embed_model_data,
-            model_output_dir,
-            input_nodes,
-            output_nodes,
-            input_shapes,
-            output_shapes,
-            model_name,
-            device_type,
-            running_round,
-            restart_round,
-            limit_opencl_kernel_time,
-            tuning,
-            out_of_range_check,
-            phone_data_dir,
-            option_args)
+        target_abi,
+        serialno,
+        vlog_level,
+        embed_model_data,
+        model_output_dir,
+        input_nodes,
+        output_nodes,
+        input_shapes,
+        output_shapes,
+        model_name,
+        device_type,
+        running_round,
+        restart_round,
+        limit_opencl_kernel_time,
+        tuning,
+        out_of_range_check,
+        phone_data_dir,
+        omp_num_threads,
+        cpu_affinity_policy,
+        gpu_perf_hint,
+        gpu_priority_hint
+    )
 
     if running_round > 0 and FLAGS.collect_report:
         model_benchmark_stdout_processor(
@@ -201,16 +208,19 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
                         model_output_dir, input_nodes, output_nodes,
                         input_shapes, output_shapes, model_name, device_type,
                         running_round, restart_round, tuning,
-                        limit_opencl_kernel_time, phone_data_dir):
+                        limit_opencl_kernel_time, phone_data_dir,
+                        enable_openmp):
     mace_run_target = "//mace/tools/validation:mace_run"
     if runtime == "gpu":
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
         sh_commands.bazel_build(
-                mace_run_target,
-                abi=target_abi,
-                model_tag=model_name,
-                production_mode=False,
-                hexagon_mode=hexagon_mode)
+            mace_run_target,
+            abi=target_abi,
+            model_tag=model_name,
+            production_mode=False,
+            hexagon_mode=hexagon_mode,
+            enable_openmp=enable_openmp
+        )
         sh_commands.update_mace_run_lib(model_output_dir, target_abi,
                                         model_name, embed_model_data)
 
@@ -230,21 +240,25 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir],
                                    True)
         sh_commands.bazel_build(
-                mace_run_target,
-                abi=target_abi,
-                model_tag=model_name,
-                production_mode=True,
-                hexagon_mode=hexagon_mode)
+            mace_run_target,
+            abi=target_abi,
+            model_tag=model_name,
+            production_mode=True,
+            hexagon_mode=hexagon_mode,
+            enable_openmp=enable_openmp
+        )
         sh_commands.update_mace_run_lib(model_output_dir, target_abi,
                                         model_name, embed_model_data)
     else:
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
         sh_commands.bazel_build(
-                mace_run_target,
-                abi=target_abi,
-                model_tag=model_name,
-                production_mode=True,
-                hexagon_mode=hexagon_mode)
+            mace_run_target,
+            abi=target_abi,
+            model_tag=model_name,
+            production_mode=True,
+            hexagon_mode=hexagon_mode,
+            enable_openmp=enable_openmp
+        )
         sh_commands.update_mace_run_lib(model_output_dir, target_abi,
                                         model_name, embed_model_data)
 
@@ -345,6 +359,31 @@ def parse_args():
         default="false",
         help="Enable out of range check for opencl.")
     parser.add_argument(
+        "--enable_openmp",
+        type="bool",
+        default="true",
+        help="Enable openmp.")
+    parser.add_argument(
+        "--omp_num_threads",
+        type=int,
+        default=-1,
+        help="num of openmp threads")
+    parser.add_argument(
+        "--cpu_affinity_policy",
+        type=int,
+        default=1,
+        help="0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY")
+    parser.add_argument(
+        "--gpu_perf_hint",
+        type=int,
+        default=3,
+        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
+    parser.add_argument(
+        "--gpu_priority_hint",
+        type=int,
+        default=3,
+        help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
+    parser.add_argument(
         "--collect_report",
         type="bool",
         default="false",
@@ -358,8 +397,7 @@ def parse_args():
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_abi, phone_data_dir, option_args,
-                   target_soc="", serialno=""):
+                   target_abi, phone_data_dir, target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
     for model_name in configs["models"]:
@@ -450,7 +488,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 FLAGS.restart_round,
                                 FLAGS.tuning,
                                 model_config["limit_opencl_kernel_time"],
-                                phone_data_dir)
+                                phone_data_dir,
+                                FLAGS.enable_openmp)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
                 FLAGS.mode == "all":
@@ -469,7 +508,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        FLAGS.round,
                        FLAGS.restart_round,
                        FLAGS.out_of_range_check,
-                       phone_data_dir)
+                       phone_data_dir,
+                       omp_num_threads=FLAGS.omp_num_threads,
+                       cpu_affinity_policy=FLAGS.cpu_affinity_policy,
+                       gpu_perf_hint=FLAGS.gpu_perf_hint,
+                       gpu_priority_hint=FLAGS.gpu_priority_hint)
 
         if FLAGS.mode == "benchmark":
             gen_opencl_and_tuning_code(
@@ -487,7 +530,10 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         device_type,
                                         hexagon_mode,
                                         phone_data_dir,
-                                        option_args)
+                                        FLAGS.omp_num_threads,
+                                        FLAGS.cpu_affinity_policy,
+                                        FLAGS.gpu_perf_hint,
+                                        FLAGS.gpu_priority_hint)
 
         if FLAGS.mode == "validate" or FLAGS.mode == "all":
             sh_commands.validate_model(target_abi,
@@ -573,9 +619,6 @@ def main(unused_args):
         sh_commands.gen_mace_version()
         sh_commands.gen_encrypted_opencl_source()
 
-    option_args = ' '.join(
-        [arg for arg in unused_args if arg.startswith('--')])
-
     target_socs = get_target_socs(configs)
 
     embed_model_data = configs.get("embed_model_data", 1)
@@ -597,13 +640,12 @@ def main(unused_args):
                               props["ro.product.model"]))
                         process_models(project_name, configs, embed_model_data,
                                        vlog_level, target_abi, phone_data_dir,
-                                       option_args, target_soc, serialno)
+                                       target_soc, serialno)
             else:
                 print("====================================================")
                 print("Run on host")
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_abi, phone_data_dir,
-                               option_args)
+                               vlog_level, target_abi, phone_data_dir)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         sh_commands.packaging_lib(FLAGS.output_dir, project_name)

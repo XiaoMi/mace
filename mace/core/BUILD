@@ -42,7 +42,10 @@ cc_library(
             "runtime/opencl/*.h",
         ],
     )) + if_hexagon_enabled(glob(["runtime/hexagon/*.h"])),
-    copts = if_openmp_enabled(["-fopenmp"]) + if_android([
+    copts = if_openmp_enabled([
+        "-fopenmp",
+        "-DMACE_ENABLE_OPENMP",
+    ]) + if_android([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
     linkopts = ["-ldl"] + if_android([
