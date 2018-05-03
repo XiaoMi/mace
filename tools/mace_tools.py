@@ -197,7 +197,10 @@ def tuning_run(runtime,
         omp_num_threads,
         cpu_affinity_policy,
         gpu_perf_hint,
-        gpu_priority_hint
+        gpu_priority_hint,
+        valgrind=FLAGS.valgrind,
+        valgrind_path=FLAGS.valgrind_path,
+        valgrind_args=FLAGS.valgrind_args
     )
 
     if running_round > 0 and FLAGS.collect_report:
@@ -213,6 +216,12 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
                         limit_opencl_kernel_time, phone_data_dir,
                         enable_openmp):
     mace_run_target = "//mace/tools/validation:mace_run"
+    strip = "always"
+    debug = False
+    if FLAGS.valgrind:
+        strip = "never"
+        debug = True
+
     if runtime == "gpu":
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
         sh_commands.bazel_build(
@@ -243,10 +252,12 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
                                    True)
         sh_commands.bazel_build(
             mace_run_target,
+            strip,
             abi=target_abi,
             model_tag=model_name,
             production_mode=True,
             hexagon_mode=hexagon_mode,
+            debug=debug,
             enable_openmp=enable_openmp
         )
         sh_commands.update_mace_run_lib(model_output_dir, target_abi,
@@ -255,10 +266,12 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
         sh_commands.bazel_build(
             mace_run_target,
+            strip,
             abi=target_abi,
             model_tag=model_name,
             production_mode=True,
             hexagon_mode=hexagon_mode,
+            debug=debug,
             enable_openmp=enable_openmp
         )
         sh_commands.update_mace_run_lib(model_output_dir, target_abi,
@@ -490,6 +503,21 @@ def parse_args():
         type=str_to_caffe_env_type,
         default='docker',
         help="[docker | local] caffe environment.")
+    parser.add_argument(
+        "--valgrind",
+        type=bool,
+        default=False,
+        help="Whether to use valgrind to check memory error.")
+    parser.add_argument(
+        "--valgrind_path",
+        type=str,
+        default="/data/local/tmp/valgrind",
+        help="Valgrind install path.")
+    parser.add_argument(
+        "--valgrind_args",
+        type=str,
+        default="",
+        help="Valgrind command args.")
     return parser.parse_known_args()
 
 

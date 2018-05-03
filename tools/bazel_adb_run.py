@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument(
         "--valgrind_path",
         type=str,
-        default="/data/local/valgrind",
+        default="/data/local/tmp/valgrind",
         help="Valgrind install path.")
     parser.add_argument(
         "--valgrind_args",
