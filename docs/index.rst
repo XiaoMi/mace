@@ -1,18 +1,32 @@
-MACE documentation
-================================
-Welcome to MACE documentation.
+MiAI Compute Engine Documentation
+=================================
+Welcome to MiAI Compute Engine documentation.
 
-
-Contents
---------
+The main documentation is organized into the following sections:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Getting started
+   :name: sec-start
 
-   self
-   user/introduction
-   docker/usage
-   developer/adding_a_new_op
-   developer/opencl_memory_layout
-   developer/logging
-   release_note
+   getting_started/introduction
+   getting_started/create_a_model_deployment
+   getting_started/how_to_build
+   getting_started/docker
+   getting_started/op_lists
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+   :name: sec-devel
+
+   development/contributing
+   development/adding_a_new_op
+   development/memory_layout
+
+.. toctree::
+   :maxdepth: 1
+   :caption: FAQ
+   :name: sec-faq
+
+   faq
