@@ -103,7 +103,7 @@ void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
 
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
   std::string tuning_key =
-      Concat("winograd_transform_kernel", output_tensor->dim(0), 
+      Concat("winograd_transform_kernel", output_tensor->dim(0),
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3));
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
@@ -217,7 +217,7 @@ void WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
 
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
   std::string tuning_key =
-      Concat("winograd_inverse_transform_kernel", output_tensor->dim(0), 
+      Concat("winograd_inverse_transform_kernel", output_tensor->dim(0),
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3), input_tensor->dim(2));
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);

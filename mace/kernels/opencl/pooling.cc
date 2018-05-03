@@ -158,7 +158,7 @@ void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
 
   const std::vector<uint32_t> lws = LocalWS(gws.data(), kwg_size_);
   std::string tuning_key =
-      Concat("pooling_opencl_kernel_", output->dim(0), 
+      Concat("pooling_opencl_kernel_", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws.data(), lws, future);
 

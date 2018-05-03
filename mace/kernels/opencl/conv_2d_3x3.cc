@@ -21,7 +21,6 @@
 
 namespace mace {
 namespace kernels {
-
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (5 + 4 + 5) * 4 * 4;
@@ -157,7 +156,7 @@ extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
   std::string tuning_key =
       Concat("conv2d_3x3_opencl_kernel", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

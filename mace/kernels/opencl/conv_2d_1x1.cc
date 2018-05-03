@@ -23,15 +23,19 @@ namespace kernels {
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (4 + 4 + 4) * 4 * 4;
+// TODO(liuqi): Fix the specific value.
+const uint32_t lws_limit = 128;
 std::vector<uint32_t> LocalWS(const uint32_t *gws,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = 
+  uint64_t cache_size =
     OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   if (lws[1] >= base) {
+    lws[0] = std::min<uint32_t>(gws[0], base);
+  } else if ((1 < lws[1] && lws[1] < base) && gws[0] >= lws_limit) {
     lws[0] = std::min<uint32_t>(gws[0], base);
   } else {
     lws[0] = gws[0] / 8;
@@ -165,7 +169,7 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
 
   std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
   std::string tuning_key =
-      Concat("conv2d_1x1_opencl_kernel", output->dim(0), 
+      Concat("conv2d_1x1_opencl_kernel", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 

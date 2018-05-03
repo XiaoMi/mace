@@ -86,7 +86,7 @@ void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
 
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key =
-      Concat("matmul_opencl_kernel", C->dim(0), 
+      Concat("matmul_opencl_kernel", C->dim(0),
              C->dim(1), C->dim(2), C->dim(3));
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
 

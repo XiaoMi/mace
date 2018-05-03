@@ -129,7 +129,7 @@ void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
 
   const std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("resize_bilinear_opencl_kernel", output->dim(0), 
+      Concat("resize_bilinear_opencl_kernel", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 

@@ -32,7 +32,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   if (lws[1] >= min_lws0) {
     lws[0] = std::min<uint32_t>(gws[0], min_lws0);
-  } else { 
+  } else {
     lws[0] = std::min<uint32_t>(gws[0] / 8, kwg_size / lws[1]);
     if (lws[0] < min_lws0) {
       lws[0] = std::min<uint32_t>(std::max<uint32_t>(gws[0] / 4, min_lws0),

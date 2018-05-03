@@ -118,7 +118,6 @@ std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
                                        const uint32_t kwg_size);
 std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
                                        const uint32_t kwg_size);
-
 }  // namespace kernels
 }  // namespace mace
 #endif  // MACE_KERNELS_OPENCL_HELPER_H_

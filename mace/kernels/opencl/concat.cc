@@ -25,7 +25,7 @@ namespace {
 std::vector<uint32_t> LocalWS(const uint32_t *gws,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = 
+  uint64_t cache_size =
     OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
@@ -114,7 +114,7 @@ static void Concat2(cl::Kernel *kernel,
 
   const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
   std::string tuning_key =
-      Concat("concat_opencl_kernel", output->dim(0), 
+      Concat("concat_opencl_kernel", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 

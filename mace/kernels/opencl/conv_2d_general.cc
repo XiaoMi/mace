@@ -168,7 +168,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
 
   std::string tuning_key =
       Concat("conv2d_general_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3), 
+             output->dim(1), output->dim(2), output->dim(3),
              filter->dim(0), filter->dim(1));
   std::vector<uint32_t> lws =
     LocalWS(gws, filter->dim(0) * filter->dim(1), *kwg_size);

@@ -215,7 +215,6 @@ std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
   lws[0] = std::min<uint32_t>(base, kwg_size);
   lws[1] = kwg_size / lws[1];
   return lws;
-
 }
 
 std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
