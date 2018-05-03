@@ -21,6 +21,28 @@
 namespace mace {
 namespace kernels {
 
+namespace {
+
+std::vector<uint32_t> LocalWS(const uint32_t *gws,
+                              const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size =
+    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  lws[2] = std::min<uint32_t>(std::min<uint32_t>(gws[2], base),
+                              kwg_size / lws[1]);
+  const uint32_t lws_size = lws[1] * lws[2];
+  lws[0] = gws[0] / 4;
+  if (lws[0] == 0) {
+    lws[0] = gws[0];
+  }
+  lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws_size);
+  return lws;
+}
+
+}  // namespace
+
 template <typename T>
 void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                        Tensor *output,
@@ -134,11 +156,11 @@ void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     };
   }
 
-  std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
-  std::stringstream ss;
-  ss << "pooling_opencl_kernel_" << output->dim(0) << "_" << output->dim(1)
-     << "_" << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun3DKernel(kernel_, ss.str(), gws.data(), lws, future);
+  const std::vector<uint32_t> lws = LocalWS(gws.data(), kwg_size_);
+  std::string tuning_key =
+      Concat("pooling_opencl_kernel_", output->dim(0),
+             output->dim(1), output->dim(2), output->dim(3));
+  TuningOrRun3DKernel(kernel_, tuning_key, gws.data(), lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

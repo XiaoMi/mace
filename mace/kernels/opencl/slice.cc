@@ -72,7 +72,7 @@ void SliceFunctor<DeviceType::GPU, T>::operator()(
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 1};
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   cl::Event event;
   CallStats call_stats{INT64_MAX, 0};
   for (int i = 0; i < outputs_count; ++i) {

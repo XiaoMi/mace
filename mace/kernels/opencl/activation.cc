@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/batch_norm.h"
+#include "mace/kernels/activation.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
@@ -21,18 +21,11 @@
 
 namespace mace {
 namespace kernels {
-
 template <typename T>
-void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                         const Tensor *scale,
-                                                         const Tensor *offset,
-                                                         const Tensor *mean,
-                                                         const Tensor *var,
-                                                         const float epsilon,
-                                                         Tensor *output,
-                                                         StatsFuture *future) {
-  MACE_CHECK(folded_constant_ || (mean != nullptr && var != nullptr));
-
+void ActivationFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+                                                          const Tensor *alpha,
+                                                          Tensor *output,
+                                                          StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -40,17 +33,13 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width),
-                           static_cast<uint32_t>(height * batch)};
-
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("activation");
+    built_options.emplace("-Dactivation=" + kernel_name);
     auto dt = DataTypeToEnum<T>::value;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("batch_norm");
-    built_options.emplace("-Dbatch_norm=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -64,35 +53,42 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    if (folded_constant_) {
-      built_options.emplace("-DFOLDED_CONSTANT");
-    }
     switch (activation_) {
-      case NOOP:
-        break;
       case RELU:
+        tuning_key_prefix_ = "relu_opencl_kernel";
         built_options.emplace("-DUSE_RELU");
         break;
       case RELUX:
+        tuning_key_prefix_ = "relux_opencl_kernel";
         built_options.emplace("-DUSE_RELUX");
         break;
+      case PRELU:
+        tuning_key_prefix_ = "prelu_opencl_kernel";
+        built_options.emplace("-DUSE_PRELU");
+        break;
       case TANH:
+        tuning_key_prefix_ = "tanh_opencl_kernel";
         built_options.emplace("-DUSE_TANH");
         break;
       case SIGMOID:
+        tuning_key_prefix_ = "sigmoid_opencl_kernel";
         built_options.emplace("-DUSE_SIGMOID");
         break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
-
-    kernel_ = runtime->BuildKernel("batch_norm", kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("activation", kernel_name, built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
+
+  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
+                           static_cast<uint32_t>(width),
+                           static_cast<uint32_t>(height * batch)};
+
   if (!IsVecEqual(input_shape_, input->shape())) {
-    uint32_t idx = 0;
+    int idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
           *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
@@ -103,23 +99,20 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       kernel_.setArg(idx++, gws[2]);
     }
     kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(scale->opencl_image()));
-    kernel_.setArg(idx++, *(offset->opencl_image()));
-    if (!folded_constant_) {
-      kernel_.setArg(idx++, *(mean->opencl_image()));
-      kernel_.setArg(idx++, *(var->opencl_image()));
-      kernel_.setArg(idx++, epsilon);
+    if (activation_ == PRELU) {
+      MACE_CHECK_NOTNULL(alpha);
+      kernel_.setArg(idx++, *(alpha->opencl_image()));
     }
+    kernel_.setArg(idx++, static_cast<float>(relux_max_limit_));
     kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, relux_max_limit_);
 
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("batch_norm_opencl_kernel_", activation_, output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3), folded_constant_);
+      Concat(tuning_key_prefix_, output->dim(0), output->dim(1), output->dim(2),
+             output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -130,7 +123,7 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   }
 }
 
-template struct BatchNormFunctor<DeviceType::GPU, float>;
-template struct BatchNormFunctor<DeviceType::GPU, half>;
+template struct ActivationFunctor<DeviceType::GPU, float>;
+template struct ActivationFunctor<DeviceType::GPU, half>;
 }  // namespace kernels
 }  // namespace mace

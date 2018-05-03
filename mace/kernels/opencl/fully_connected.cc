@@ -267,10 +267,10 @@ void FCWTXKernel(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  std::stringstream ss;
-  ss << "fc_opencl_kernel_" << output->dim(0) << "_" << output->dim(1) << "_"
-     << output->dim(2) << "_" << output->dim(3);
-  TuningOrRun2DKernel(*kernel, ss.str(), gws->data(), *lws, future);
+  std::string tuning_key =
+      Concat("fc_opencl_kernel", output->dim(0),
+             output->dim(1), output->dim(2), output->dim(3));
+  TuningOrRun2DKernel(*kernel, tuning_key, gws->data(), *lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);

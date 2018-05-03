@@ -21,6 +21,42 @@
 
 namespace mace {
 namespace kernels {
+namespace {
+// (inputs + weights + outputs) * array_size * sizeof(float)
+const uint32_t kernel_cache_size = (4 + 4 + 4) * 4 * 4;
+// TODO(liuqi): Fix the specific value.
+const uint32_t lws_limit = 20;
+std::vector<uint32_t> LocalWS(const uint32_t *gws,
+                              const uint32_t kernel_size,
+                              const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size =
+    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  lws[0] = gws[0] / 4;
+  if (lws[0] == 0) {
+    lws[0] = gws[0];
+  }
+  lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
+  const uint32_t lws_size = lws[0] * lws[1];
+  lws[2] = std::min<uint32_t>(
+      (cache_size / kernel_cache_size / kernel_size / lws_size / compute_units)
+          * 8,
+      gws[2]);
+  if (lws[2] == 0) {
+    if (gws[2] < lws_limit) {
+      lws[2] = gws[2];
+    } else {
+      lws[2] = base;
+    }
+  }
+  lws[2] = std::min<uint32_t>(lws[2], kwg_size / lws_size);
+  return lws;
+}
+
+}  // namespace
 
 extern void Conv2dOpencl(cl::Kernel *kernel,
                          const Tensor *input,
@@ -130,10 +166,12 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
   std::string tuning_key =
-      Concat("conv2d_general_opencl_kernel_", activation, output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("conv2d_general_opencl_kernel", output->dim(0),
+             output->dim(1), output->dim(2), output->dim(3),
+             filter->dim(0), filter->dim(1));
+  std::vector<uint32_t> lws =
+    LocalWS(gws, filter->dim(0) * filter->dim(1), *kwg_size);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

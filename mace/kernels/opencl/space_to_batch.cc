@@ -105,12 +105,11 @@ void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     space_shape_ = space_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
-  std::stringstream ss;
-  ss << kernel_name << "_" << batch_tensor->dim(0) << "_"
-     << batch_tensor->dim(1) << "_" << batch_tensor->dim(2) << "_"
-     << batch_tensor->dim(3);
-  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  std::string tuning_key =
+      Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
+             batch_tensor->dim(2), batch_tensor->dim(3));
+  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

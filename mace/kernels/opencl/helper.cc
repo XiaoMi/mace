@@ -206,6 +206,31 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
   }
 }
 
+std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
+                                       const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(3, 0);
+  uint64_t cache_size =
+      OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[0] = std::min<uint32_t>(base, kwg_size);
+  lws[1] = kwg_size / lws[1];
+  return lws;
+}
+
+std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
+                                       const uint32_t kwg_size) {
+  std::vector<uint32_t> lws(4, 0);
+  uint64_t cache_size =
+      OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+  lws[2] = std::min<uint32_t>(std::min<uint32_t>(gws[2], base),
+                              kwg_size / lws[1]);
+  const uint32_t lws_size = lws[1] * lws[2];
+  lws[0] = std::min<uint32_t>(base, kwg_size / lws_size);
+  return lws;
+}
+
 void TuningOrRun3DKernel(const cl::Kernel &kernel,
                          const std::string tuning_key,
                          const uint32_t *gws,
@@ -216,31 +241,47 @@ void TuningOrRun3DKernel(const cl::Kernel &kernel,
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
-    std::vector<uint32_t> local_ws(3, 0);
-    local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
-    local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    local_ws[2] =
-        std::min<uint32_t>(gws[2], kwg_size / (local_ws[0] * local_ws[1]));
-    return {
+    std::vector<std::vector<uint32_t>> results;
+    std::vector<std::vector<uint32_t>> candidates = {
         // TODO(heliangliang): tuning these magic numbers
-        {local_ws[0], local_ws[1], local_ws[2], 0},
-        {kwg_size / 16, 4, 4, 0},
-        {kwg_size / 32, 4, 8, 0},
-        {kwg_size / 32, 8, 4, 0},
-        {kwg_size / 64, 8, 8, 0},
-        {kwg_size / 64, 16, 4, 0},
-        {kwg_size / 128, 8, 16, 0},
-        {kwg_size / 128, 16, 8, 0},
-        {kwg_size / 128, 32, 4, 0},
-        {1, kwg_size / 32, 32, 0},
-        {1, kwg_size / 64, 64, 0},
-        {1, kwg_size / 128, 128, 0},
-        {4, kwg_size / 16, 4, 0},
-        {4, kwg_size / 28, 7, 0},
-        {4, kwg_size / 32, 8, 0},
-        {4, kwg_size / 56, 14, 0},
-        {1, kwg_size, 1, 0},
+        {gws[0], gws[1], gws[2], 0},
+        {gws[0], gws[1], gws[2] / 8, 0},
+        {gws[0], gws[1], gws[2] / 4, 0},
+        {gws[0], gws[1], 8, 0},
+        {gws[0], gws[1], 4, 0},
+        {gws[0], gws[1], 1, 0},
+        {gws[0] / 4, gws[1], gws[2], 0},
+        {gws[0] / 4, gws[1], gws[2] / 8, 0},
+        {gws[0] / 4, gws[1], gws[2] / 4, 0},
+        {gws[0] / 4, gws[1], 8, 0},
+        {gws[0] / 4, gws[1], 4, 0},
+        {gws[0] / 4, gws[1], 1, 0},
+        {gws[0] / 8, gws[1], gws[2], 0},
+        {gws[0] / 8, gws[1], gws[2] / 8, 0},
+        {gws[0] / 8, gws[1], gws[2] / 4, 0},
+        {gws[0] / 8, gws[1], 8, 0},
+        {gws[0] / 8, gws[1], 4, 0},
+        {gws[0] / 8, gws[1], 1, 0},
+        {4, gws[1], gws[2], 0},
+        {4, gws[1], gws[2] / 8, 0},
+        {4, gws[1], gws[2] / 4, 0},
+        {4, gws[1], 8, 0},
+        {4, gws[1], 4, 0},
+        {4, gws[1], 1, 0},
+        {1, gws[1], gws[2], 0},
+        {1, gws[1], gws[2] / 8, 0},
+        {1, gws[1], gws[2] / 4, 0},
+        {1, gws[1], 8, 0},
+        {1, gws[1], 4, 0},
+        {1, gws[1], 1, 0},
     };
+    for (auto &ele : candidates) {
+      const uint32_t tmp = ele[0] * ele[1] * ele[2];
+      if (0 < tmp && tmp <= kwg_size) {
+        results.push_back(ele);
+      }
+    }
+    return results;
   };
   cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params, Timer *timer,
@@ -333,19 +374,26 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
-    uint32_t local_ws[2];
-    local_ws[0] = std::min<uint32_t>(gws[0], kwg_size);
-    local_ws[1] = std::min<uint32_t>(gws[1], kwg_size / local_ws[0]);
-    return {{local_ws[0], local_ws[1], 0},
-            {local_ws[1], local_ws[0], 0},
-            {kwg_size / 4, 4, 0},
-            {kwg_size / 16, 16, 0},
-            {kwg_size / 32, 32, 0},
-            {kwg_size / 64, 64, 0},
-            {kwg_size / 128, 128, 0},
-            {kwg_size / 256, 256, 0},
-            {kwg_size, 1, 0},
-            {1, kwg_size, 0}};
+    std::vector<std::vector<uint32_t>> results;
+    std::vector<std::vector<uint32_t>> candidates = {
+        {kwg_size / 2, 2, 0},
+        {kwg_size / 4, 4, 0},
+        {kwg_size / 8, 8, 0},
+        {kwg_size / 16, 16, 0},
+        {kwg_size / 32, 32, 0},
+        {kwg_size / 64, 64, 0},
+        {kwg_size / 128, 128, 0},
+        {kwg_size / 256, 256, 0},
+        {kwg_size, 1, 0},
+        {1, kwg_size, 0}
+    };
+    for (auto &ele : candidates) {
+      const uint32_t tmp = ele[0] * ele[1] * ele[2];
+      if (0 < tmp && tmp <= kwg_size) {
+        results.push_back(ele);
+      }
+    }
+    return results;
   };
   cl::Event event;
   auto func = [&](const std::vector<uint32_t> &params, Timer *timer,
@@ -425,6 +473,7 @@ void TuningOrRun2DKernel(const cl::Kernel &kernel,
     };
   }
 }
+
 
 }  // namespace kernels
 }  // namespace mace

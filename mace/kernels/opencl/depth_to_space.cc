@@ -33,7 +33,7 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
   const char *kernel_name = nullptr;
 
   uint32_t gws[3];
-  std::stringstream ss;
+  std::string tuning_key;
   index_t output_height, output_width, output_depth;
   if (d2s_) {
     output_height = input_height * block_size_;
@@ -46,8 +46,8 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(output_depth));
     gws[1] = static_cast<uint32_t>(output_width);
     gws[2] = static_cast<uint32_t>(output_height * batch);
-    ss << "depth_to_space_opencl_kernel_" << batch << "_"
-       << output_height << "_" << output_width << "_" << output_depth;
+    tuning_key = Concat("depth_to_space_opencl_kernel", batch, output_height,
+                        output_width, output_depth);
   } else {
     output_height = input_height / block_size_;
     output_width = input_width / block_size_;
@@ -59,8 +59,8 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(input_depth));
     gws[1] = static_cast<uint32_t>(input_width);
     gws[2] = static_cast<uint32_t>(input_height * batch);
-    ss << "space_to_depth_opencl_kernel_" << input->dim(0) << "_"
-       << input->dim(1) << "_" << input->dim(2) << "_" << input->dim(3);
+    tuning_key = Concat("space_to_depth_opencl_kernel", input->dim(0),
+                        input->dim(1), input->dim(2), input->dim(3));
   }
   const index_t input_depth_blocks = RoundUpDiv4(input_depth);
   const index_t output_depth_blocks = RoundUpDiv4(output_depth);
@@ -134,8 +134,8 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, kwg_size_ / 64, 8, 0};
-  TuningOrRun3DKernel(kernel_, ss.str(), gws, lws, future);
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);
