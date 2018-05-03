@@ -461,7 +461,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       || extra_input_width != input_width) {
       padded_input_size =
         batch * input_channels * (input_height + pad_top + pad_bottom)
-          * (input_width + pad_left + pad_right) * sizeof(float);
+          * (input_width + pad_left + pad_right) * sizeof(float) +
+            EXTRA_BUFFER_PAD_SIZE;
       total_scratch_size += padded_input_size;
     }
     if (extra_output_height != height || extra_output_width != width) {
@@ -482,8 +483,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
     // decide which convolution function to call
     if (use_winograd) {
-      transformed_input.Resize(transformed_input_shape);
-      transformed_output.Resize(transformed_output_shape);
+      transformed_input.Reshape(transformed_input_shape);
+      transformed_output.Reshape(transformed_output_shape);
       const float *transformed_filter_ptr;
       if (transformed_filter_.dim_size() == 0) {
         if (is_filter_transformed_) {
@@ -652,7 +653,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
     Tensor *pad_output_ptr = output;
     if (extra_output_height != height || extra_output_width != width) {
-      padded_output.Resize({batch, channels, extra_output_height,
+      padded_output.Reshape({batch, channels, extra_output_height,
                             extra_output_width});
       padded_output.Clear();
       pad_output_ptr = &padded_output;

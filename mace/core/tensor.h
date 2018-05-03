@@ -28,6 +28,13 @@
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
+#ifdef MACE_ENABLE_NEON
+// Avoid over-bound accessing memory
+#define EXTRA_BUFFER_PAD_SIZE 64
+#else
+#define EXTRA_BUFFER_PAD_SIZE 0
+#endif
+
 namespace mace {
 
 #define SINGLE_ARG(...) __VA_ARGS__
@@ -212,10 +219,11 @@ class Tensor {
     image_shape_.clear();
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
-      if (raw_size() > buffer_->size()) buffer_->Resize(raw_size());
+      if (raw_size() + EXTRA_BUFFER_PAD_SIZE > buffer_->size())
+        buffer_->Resize(raw_size() + EXTRA_BUFFER_PAD_SIZE);
     } else {
       MACE_CHECK(is_buffer_owner_);
-      buffer_ = new Buffer(allocator_, raw_size());
+      buffer_ = new Buffer(allocator_, raw_size() + EXTRA_BUFFER_PAD_SIZE);
     }
   }
 
