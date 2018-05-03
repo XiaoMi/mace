@@ -1,3 +1,4 @@
+# This file is copied from TensorFlow
 # Description:
 #   BUILD rules for generating flatbuffer files.
 
@@ -94,7 +95,6 @@ def flatbuffer_library_public(name,
         ],
         visibility=reflection_visiblity
     )
-
 
 def flatbuffer_cc_library(name, srcs, srcs_filegroup_name="",
                           out_prefix="", includes=[], include_paths=[],

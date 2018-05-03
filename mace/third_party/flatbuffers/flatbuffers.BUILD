@@ -1,3 +1,5 @@
+# This build file is copied from TensorFlow
+
 package(
     default_visibility = ["//visibility:public"],
 )
