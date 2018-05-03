@@ -1,3 +1,7 @@
+licenses(["notice"])
+
+exports_files(["LICENSE.txt"])
+
 genrule(
     name = "gen_opencl_clhpp",
     srcs = glob([

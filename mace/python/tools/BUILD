@@ -21,7 +21,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":memory_optimizer",
-        "//mace/proto:caffe_py",
+        "//mace/third_party/caffe:caffe_py",
     ],
 )
 
@@ -41,9 +41,9 @@ py_binary(
     srcs = ["converter.py"],
     srcs_version = "PY2AND3",
     deps = [
-        ":tf_converter_lib",
         ":caffe_converter_lib",
         ":source_converter_lib",
+        ":tf_converter_lib",
         "@six_archive//:six",
     ],
 )

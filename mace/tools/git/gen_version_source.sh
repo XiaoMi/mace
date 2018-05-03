@@ -22,7 +22,7 @@ fi
 DATE_STR=$(date +%Y%m%d)
 GIT_VERSION=$(git describe --long --tags)
 if [[ $? != 0 ]]; then
-  GIT_VERSION=unknown
+  GIT_VERSION=unknown-${DATE_STR}
 else
   GIT_VERSION=${GIT_VERSION}-${DATE_STR}
 fi
@@ -45,6 +45,6 @@ cat <<EOF > ${OUTPUT_FILENAME}
 // This is a generated file. DO NOT EDIT!
 
 namespace mace {
-  const char *MaceVersion() { return "${GIT_VERSION}"; }
+const char *MaceVersion() { return "MACEVER-${GIT_VERSION}" + 8; }
 }  // namespace mace
 EOF

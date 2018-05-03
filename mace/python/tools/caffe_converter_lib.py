@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from mace.proto import mace_pb2
-from mace.proto import caffe_pb2
+from mace.third_party.caffe import caffe_pb2
 from mace.python.tools import memory_optimizer
 import google.protobuf.text_format
 import numpy as np

@@ -621,7 +621,7 @@ def tuning_run(abi,
         if not embed_model_data:
             adb_push("%s/%s.data" % (model_output_dir, model_tag),
                      phone_data_dir, serialno)
-        adb_push("mace/core/runtime/hexagon/libhexagon_controller.so",
+        adb_push("mace/third_party/nnlib/libhexagon_controller.so",
                  phone_data_dir, serialno)
 
         stdout_buff = []
@@ -789,7 +789,7 @@ def merge_libs(target_soc,
     project_output_dir = "%s/%s" % (libmace_output_dir, project_name)
     model_header_dir = "%s/include/mace/public" % project_output_dir
     model_data_dir = "%s/data" % project_output_dir
-    hexagon_lib_file = "mace/core/runtime/hexagon/libhexagon_controller.so"
+    hexagon_lib_file = "mace/third_party/nnlib/libhexagon_controller.so"
     model_bin_dir = "%s/%s/" % (project_output_dir, abi)
 
     if not os.path.exists(model_bin_dir):
@@ -1059,7 +1059,7 @@ def build_run_throughput_test(abi,
         adb_push("codegen/models/%s/%s.data" % dsp_model_tag,
                  phone_data_dir,
                  serialno)
-    adb_push("mace/core/runtime/hexagon/libhexagon_controller.so",
+    adb_push("mace/third_party/nnlib/libhexagon_controller.so",
              phone_data_dir,
              serialno)
 
