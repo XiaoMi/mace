@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "mace/public/mace_runtime.h"
+#include "mace/utils/rwlock.h"
 
 namespace mace {
 
@@ -35,8 +36,10 @@ class FileStorage : public KVStorage {
   int Flush() override;
 
  private:
+  bool data_changed_;
   std::string file_path_;
   std::map<std::string, std::vector<unsigned char>> data_;
+  utils::RWMutex data_mutex_;
 };
 
 }  // namespace mace

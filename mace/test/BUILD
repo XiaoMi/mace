@@ -28,3 +28,23 @@ cc_test(
         "@gtest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "mace_api_mt_test",
+    testonly = 1,
+    srcs = ["mace_api_mt_test.cc"],
+    copts = if_openmp_enabled(["-fopenmp"]) +
+      if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
+      if_android_armv7(["-mfpu=neon"]) +
+      if_android_armv7(["-mfloat-abi=softfp"]) +
+      if_android(["-DMACE_ENABLE_OPENCL"]) +
+      if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    linkopts = ["-fopenmp"],
+    linkstatic = 1,
+    deps = [
+        "//mace/ops:test",
+        "//mace/kernels:kernels",
+        "//mace/ops:ops",
+        "@gtest//:gtest_main",
+    ],
+)

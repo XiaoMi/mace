@@ -165,7 +165,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 
   // DO NOT USE tmp directory.
-  // please use APP's own directory
+  // Please use APP's own directory and make sure the directory exists.
   const std::string kernel_file_path =
                   "/data/local/tmp/mace_run/cl";
 

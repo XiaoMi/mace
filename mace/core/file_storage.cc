@@ -57,7 +57,7 @@ std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
 }
 
 FileStorage::FileStorage(const std::string &file_path):
-    file_path_(file_path) {}
+    data_changed_(false), file_path_(file_path) {}
 
 int FileStorage::Load() {
   struct stat st;
@@ -72,6 +72,7 @@ int FileStorage::Load() {
       return -1;
     }
   }
+  utils::WriteLock lock(&data_mutex_);
   int fd = open(file_path_.c_str(), O_RDONLY);
   if (fd < 0) {
     if (errno == ENOENT) {
@@ -148,11 +149,14 @@ int FileStorage::Load() {
 
 bool FileStorage::Insert(const std::string &key,
                          const std::vector<unsigned char> &value) {
+  utils::WriteLock lock(&data_mutex_);
   data_.emplace(key, value);
+  data_changed_ = true;
   return true;
 }
 
 const std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
+  utils::ReadLock lock(&data_mutex_);
   auto iter = data_.find(key);
   if (iter == data_.end()) return nullptr;
 
@@ -160,6 +164,8 @@ const std::vector<unsigned char> *FileStorage::Find(const std::string &key) {
 }
 
 int FileStorage::Flush() {
+  utils::WriteLock lock(&data_mutex_);
+  if (!data_changed_)  return 0;
   int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT, 0600);
   if (fd < 0) {
     LOG(WARNING) << "open file " << file_path_
@@ -220,6 +226,7 @@ int FileStorage::Flush() {
                  << " failed, error code: " << errno;
     return -1;
   }
+  data_changed_ = false;
   return 0;
 }
 

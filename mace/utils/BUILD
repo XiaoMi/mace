@@ -24,6 +24,7 @@ cc_library(
         "timer.h",
         "tuner.h",
         "utils.h",
+        "rwlock.h",
     ],
     linkopts = if_android([
         "-llog",

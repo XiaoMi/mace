@@ -66,7 +66,6 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
   static void Configure(GPUPerfHint, GPUPriorityHint);
-  static void Configure(std::shared_ptr<KVStorage> storage_engine);
 
   cl::Context &context();
   cl::Device &device();
@@ -76,20 +75,19 @@ class OpenCLRuntime {
   const uint64_t device_global_mem_cache_size() const;
   const uint32_t device_compute_units() const;
 
-  cl::Kernel BuildKernel(const std::string &program_name,
-                         const std::string &kernel_name,
-                         const std::set<std::string> &build_options);
-
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   const bool IsNonUniformWorkgroupsSupported();
   const bool IsOutOfRangeCheckEnabled() const;
-  const GPUType ParseGPUType(const std::string &device_name);
-  const std::string ParseDeviceVersion(const std::string &device_version);
-  void SaveBuiltCLProgram();
   const bool is_profiling_enabled() const;
+
+  cl::Kernel BuildKernel(const std::string &program_name,
+                         const std::string &kernel_name,
+                         const std::set<std::string> &build_options);
+
+  void SaveBuiltCLProgram();
 
  private:
   OpenCLRuntime();
@@ -114,8 +112,12 @@ class OpenCLRuntime {
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
+  const GPUType ParseGPUType(const std::string &device_name);
+  const std::string ParseDeviceVersion(const std::string &device_version);
 
  private:
+  std::unique_ptr<KVStorage> storage_;
+  bool is_profiling_enabled_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
   std::shared_ptr<cl::Context> context_;
@@ -123,16 +125,12 @@ class OpenCLRuntime {
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
-  GPUType gpu_type_;
+  std::string platform_info_;
   std::string opencl_version_;
   bool out_of_range_check_;
-  std::string platform_info_;
-  bool program_map_changed_;
-  std::unique_ptr<KVStorage> storage_;
-  bool is_profiling_enabled_;
   uint64_t device_gloabl_mem_cache_size_;
   uint32_t device_compute_units_;
-
+  GPUType gpu_type_;
 
   static GPUPerfHint kGPUPerfHint;
   static GPUPriorityHint kGPUPriorityHint;
