@@ -125,11 +125,9 @@ class OpenCLRuntime {
   std::shared_ptr<cl::CommandQueue> command_queue_;
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
-  std::mutex program_map_changed_mutex_;
   std::string platform_info_;
   std::string opencl_version_;
   bool out_of_range_check_;
-  bool program_map_changed_;
   uint64_t device_gloabl_mem_cache_size_;
   uint32_t device_compute_units_;
   GPUType gpu_type_;

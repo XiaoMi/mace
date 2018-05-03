@@ -43,29 +43,22 @@ class RWMutex {
 class ReadLock {
  public:
   explicit ReadLock(RWMutex *rw_mutex): rw_mutex_(rw_mutex) {
-    if (rw_mutex_ == nullptr) {
-      return;
-    }
+    MACE_CHECK_NOTNULL(rw_mutex);
     std::unique_lock<std::mutex> lock(rw_mutex->mutex_);
-    rw_mutex->waiting_readers_++;
+    rw_mutex->waiting_readers_ += 1;
     rw_mutex->reader_cv_.wait(lock, [&]() -> bool {
       return rw_mutex->waiting_writers_ == 0 && rw_mutex->counter_ >= 0;
     });
-    rw_mutex->waiting_readers_--;
-    rw_mutex->counter_++;
+    rw_mutex->waiting_readers_ -= 1;
+    rw_mutex->counter_ += 1;
   }
   ~ReadLock() {
-    if (rw_mutex_ == nullptr) {
-      return;
-    }
     std::unique_lock<std::mutex> lock(rw_mutex_->mutex_);
     rw_mutex_->counter_ -= 1;
     if (rw_mutex_->waiting_writers_ > 0) {
       if (rw_mutex_->counter_ == 0) {
         rw_mutex_->writer_cv_.notify_one();
       }
-    } else {
-      rw_mutex_->reader_cv_.notify_all();
     }
   }
   ReadLock(const ReadLock &) = delete;
@@ -80,21 +73,16 @@ class ReadLock {
 class WriteLock {
  public:
   explicit WriteLock(RWMutex *rw_mutex): rw_mutex_(rw_mutex) {
-    if (rw_mutex_ == nullptr) {
-      return;
-    }
+    MACE_CHECK_NOTNULL(rw_mutex);
     std::unique_lock<std::mutex> lock(rw_mutex->mutex_);
-    rw_mutex->waiting_writers_++;
+    rw_mutex->waiting_writers_ += 1;
     rw_mutex->writer_cv_.wait(lock, [&]() -> bool {
       return rw_mutex->counter_ == 0;
     });
-    rw_mutex->waiting_writers_--;
-    rw_mutex->counter_--;
+    rw_mutex->waiting_writers_ -= 1;
+    rw_mutex->counter_ -= 1;
   }
   ~WriteLock() {
-    if (rw_mutex_ == nullptr) {
-      return;
-    }
     std::unique_lock<std::mutex> lock(rw_mutex_->mutex_);
     rw_mutex_->counter_ = 0;
     if (rw_mutex_->waiting_writers_ > 0) {

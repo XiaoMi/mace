@@ -36,6 +36,7 @@ class FileStorage : public KVStorage {
   int Flush() override;
 
  private:
+  bool data_changed_;
   std::string file_path_;
   std::map<std::string, std::vector<unsigned char>> data_;
   utils::RWMutex data_mutex_;

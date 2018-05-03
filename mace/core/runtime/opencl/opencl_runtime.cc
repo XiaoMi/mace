@@ -348,8 +348,6 @@ OpenCLRuntime::OpenCLRuntime():
                                                       &err);
   MACE_CHECK_CL_SUCCESS(err);
 
-  this->program_map_changed_ = false;
-
   extern std::shared_ptr<KVStorageFactory> kStorageFactory;
   if (kStorageFactory != nullptr) {
     const std::string cl_compiled_file_name = "mace_cl_compiled_program.bin";
@@ -512,8 +510,6 @@ void OpenCLRuntime::BuildProgramFromSource(
 
     if (this->storage_ != nullptr) {
       this->storage_->Insert(built_program_key, content);
-      std::lock_guard<std::mutex> lock(program_map_changed_mutex_);
-      this->program_map_changed_ = true;
     }
 
     VLOG(3) << "Program from source: " << built_program_key;
@@ -567,13 +563,9 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
   if (storage_ != nullptr) {
-    std::lock_guard<std::mutex> lock(program_map_changed_mutex_);
-    if (program_map_changed_) {
-      if (storage_->Flush() != 0) {
-        LOG(FATAL) << "Store OPENCL compiled kernel to file failed."
-            " Please Make sure the storage directory exist.";
-      }
-      program_map_changed_ = false;
+    if (storage_->Flush() != 0) {
+      LOG(FATAL) << "Store OPENCL compiled kernel to file failed."
+          " Please Make sure the storage directory exist.";
     }
   }
 }
