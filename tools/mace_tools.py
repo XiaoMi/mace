@@ -386,8 +386,8 @@ def parse_args():
         help="Enable out of range check for opencl.")
     parser.add_argument(
         "--enable_openmp",
-        type="bool",
-        default="true",
+        type=str2bool,
+        default=True,
         help="Enable openmp.")
     parser.add_argument(
         "--omp_num_threads",
