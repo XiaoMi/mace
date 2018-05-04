@@ -26,55 +26,55 @@ namespace kernels {
   float32x4_t vf00, vf10, vf20, vf30;                            \
   float32x2_t vf01, vf11, vf21, vf31;                            \
   vf00 = vld1q_f32(filter_ptr0);                                 \
-  vf01 = vld1_f32(filter_ptr0 + 4);                              \
+  vf01 = vld1_f32(filter_ptr0 + 3);                              \
   vf10 = vld1q_f32(filter_ptr1);                                 \
-  vf11 = vld1_f32(filter_ptr1 + 4);                              \
+  vf11 = vld1_f32(filter_ptr1 + 3);                              \
   vf20 = vld1q_f32(filter_ptr2);                                 \
-  vf21 = vld1_f32(filter_ptr2 + 4);                              \
+  vf21 = vld1_f32(filter_ptr2 + 3);                              \
   vf30 = vld1q_f32(filter_ptr3);                                 \
-  vf31 = vld1_f32(filter_ptr3 + 4);                              \
+  vf31 = vld1_f32(filter_ptr3 + 3);                              \
                                                                  \
   /* outch 0 */                                                  \
   vo0 = vmlaq_lane_f32(vo0, vi0, vget_low_f32(vf00), 0);         \
   vo0 = vmlaq_lane_f32(vo0, vi1, vget_low_f32(vf00), 1);         \
   vo0 = vmlaq_lane_f32(vo0, vi2, vget_high_f32(vf00), 0);        \
   vo0 = vmlaq_lane_f32(vo0, vi3, vget_high_f32(vf00), 1);        \
-  vo0 = vmlaq_lane_f32(vo0, vi4, vf01, 0);                       \
+  vo0 = vmlaq_lane_f32(vo0, vi4, vf01, 1);                       \
                                                                  \
   /* outch 1 */                                                  \
   vo1 = vmlaq_lane_f32(vo1, vi0, vget_low_f32(vf10), 0);         \
   vo1 = vmlaq_lane_f32(vo1, vi1, vget_low_f32(vf10), 1);         \
   vo1 = vmlaq_lane_f32(vo1, vi2, vget_high_f32(vf10), 0);        \
   vo1 = vmlaq_lane_f32(vo1, vi3, vget_high_f32(vf10), 1);        \
-  vo1 = vmlaq_lane_f32(vo1, vi4, vf11, 0);                       \
+  vo1 = vmlaq_lane_f32(vo1, vi4, vf11, 1);                       \
                                                                  \
   /* outch 2 */                                                  \
   vo2 = vmlaq_lane_f32(vo2, vi0, vget_low_f32(vf20), 0);         \
   vo2 = vmlaq_lane_f32(vo2, vi1, vget_low_f32(vf20), 1);         \
   vo2 = vmlaq_lane_f32(vo2, vi2, vget_high_f32(vf20), 0);        \
   vo2 = vmlaq_lane_f32(vo2, vi3, vget_high_f32(vf20), 1);        \
-  vo2 = vmlaq_lane_f32(vo2, vi4, vf21, 0);                       \
+  vo2 = vmlaq_lane_f32(vo2, vi4, vf21, 1);                       \
                                                                  \
   /* outch 3 */                                                  \
   vo3 = vmlaq_lane_f32(vo3, vi0, vget_low_f32(vf30), 0);         \
   vo3 = vmlaq_lane_f32(vo3, vi1, vget_low_f32(vf30), 1);         \
   vo3 = vmlaq_lane_f32(vo3, vi2, vget_high_f32(vf30), 0);        \
   vo3 = vmlaq_lane_f32(vo3, vi3, vget_high_f32(vf30), 1);        \
-  vo3 = vmlaq_lane_f32(vo3, vi4, vf31, 0);
+  vo3 = vmlaq_lane_f32(vo3, vi4, vf31, 1);
 
 #define Conv2dNeonK5x5SnLoadCalc1                                \
   /* load filter (1 outch x 1 height x 4 width) */               \
   float32x4_t vf00;                                              \
   float32x2_t vf01;                                              \
   vf00 = vld1q_f32(filter_ptr0);                                 \
-  vf01 = vld1_f32(filter_ptr0 + 4);                              \
+  vf01 = vld1_f32(filter_ptr0 + 3);                              \
                                                                  \
   /* outch 0 */                                                  \
   vo0 = vmlaq_lane_f32(vo0, vi0, vget_low_f32(vf00), 0);         \
   vo0 = vmlaq_lane_f32(vo0, vi1, vget_low_f32(vf00), 1);         \
   vo0 = vmlaq_lane_f32(vo0, vi2, vget_high_f32(vf00), 0);        \
   vo0 = vmlaq_lane_f32(vo0, vi3, vget_high_f32(vf00), 1);        \
-  vo0 = vmlaq_lane_f32(vo0, vi4, vf01, 0);
+  vo0 = vmlaq_lane_f32(vo0, vi4, vf01, 1);
 
 inline void Conv2dCPUK5x5Calc(const float *in_ptr_base,
                               const float *filter_ptr0,
