@@ -21,6 +21,8 @@ import re
 from scipy import spatial
 from scipy import stats
 
+import common
+
 # Validation Flow:
 # 1. Generate input data
 # 2. Use mace_run to run model on phone.
@@ -40,10 +42,6 @@ def load_data(file):
         return np.fromfile(file=file, dtype=np.float32)
     else:
         return np.empty([0])
-
-
-def format_name(name):
-    return re.sub('[^0-9a-zA-Z]+', '_', name)
 
 
 def compare_output(platform, mace_runtime, output_name, mace_out_value,
@@ -87,7 +85,7 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
                 input_dict = {}
                 for i in range(len(input_names)):
                     input_value = load_data(
-                        input_file + "_" + format_name(input_names[i]))
+                        common.formatted_file_name(input_file, input_names[i]))
                     input_value = input_value.reshape(input_shapes[i])
                     input_node = graph.get_tensor_by_name(
                         input_names[i] + ':0')
@@ -99,8 +97,8 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
                         [graph.get_tensor_by_name(name + ':0')])
                 output_values = session.run(output_nodes, feed_dict=input_dict)
                 for i in range(len(output_names)):
-                    output_file_name = mace_out_file + "_" + \
-                            format_name(output_names[i])
+                    output_file_name = common.formatted_file_name(
+                        mace_out_file, output_names[i])
                     mace_out_value = load_data(output_file_name)
                     compare_output(platform, mace_runtime, output_names[i],
                                    mace_out_value, output_values[i])
@@ -123,7 +121,8 @@ def validate_caffe_model(platform, mace_runtime, model_file, input_file,
     net = caffe.Net(model_file, caffe.TEST, weights=weight_file)
 
     for i in range(len(input_names)):
-        input_value = load_data(input_file + "_" + format_name(input_names[i]))
+        input_value = load_data(
+            common.formatted_file_name(input_file, input_names[i]))
         input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
                                                                       2))
         input_blob_name = input_names[i]
@@ -142,8 +141,8 @@ def validate_caffe_model(platform, mace_runtime, model_file, input_file,
         out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[
             1], out_shape[2]
         value = value.reshape(out_shape).transpose((0, 2, 3, 1))
-        output_file_name = mace_out_file + "_" + format_name(
-            output_names[i])
+        output_file_name = common.formatted_file_name(
+            mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
         compare_output(platform, mace_runtime, output_names[i], mace_out_value,
                        value)

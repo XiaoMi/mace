@@ -18,6 +18,7 @@
 #     --mode=all
 
 import argparse
+import enum
 import filelock
 import hashlib
 import os
@@ -28,6 +29,7 @@ import urllib
 import yaml
 import re
 
+import common
 import sh_commands
 
 from ConfigParser import ConfigParser
@@ -312,6 +314,27 @@ def md5sum(str):
     return md5.hexdigest()
 
 
+################################
+# Parsing arguments
+################################
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def str_to_caffe_env_type(v):
+    if v.lower() == 'docker':
+        return common.CaffeEnvType.DOCKER
+    elif v.lower() == 'local':
+        return common.CaffeEnvType.LOCAL
+    else:
+        raise argparse.ArgumentTypeError('[docker | local] expected.')
+
+
 def parse_model_configs():
     with open(FLAGS.config) as f:
         configs = yaml.load(f)
@@ -321,11 +344,11 @@ def parse_model_configs():
 def parse_args():
     """Parses command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.register("type", "bool", lambda v: v.lower() == "true")
     parser.add_argument(
         "--config",
         type=str,
         default="./tool/config",
+        required=True,
         help="The global config file of models.")
     parser.add_argument(
         "--output_dir", type=str, default="build", help="The output dir.")
@@ -342,12 +365,15 @@ def parse_args():
         default=1,
         help="The model restart round.")
     parser.add_argument(
-        "--tuning", type="bool", default="true", help="Tune opencl params.")
+        "--tuning",
+        type=str2bool,
+        default=True,
+        help="Tune opencl params.")
     parser.add_argument(
         "--mode",
         type=str,
         default="all",
-        help="[build|run|validate|merge|all|throughput_test].")
+        help="[build|run|validate|benchmark|merge|all|throughput_test].")
     parser.add_argument(
         "--target_socs",
         type=str,
@@ -355,8 +381,8 @@ def parse_args():
         help="SoCs to build, comma seperated list (getprop ro.board.platform)")
     parser.add_argument(
         "--out_of_range_check",
-        type="bool",
-        default="false",
+        type=str2bool,
+        default=False,
         help="Enable out of range check for opencl.")
     parser.add_argument(
         "--enable_openmp",
@@ -385,14 +411,19 @@ def parse_args():
         help="0:DEFAULT/1:LOW/2:NORMAL/3:HIGH")
     parser.add_argument(
         "--collect_report",
-        type="bool",
-        default="false",
+        type=str2bool,
+        default=False,
         help="Collect report.")
     parser.add_argument(
         "--vlog_level",
         type=int,
         default=0,
         help="VLOG level.")
+    parser.add_argument(
+        "--caffe_env",
+        type=str_to_caffe_env_type,
+        default='docker',
+        help="[docker | local] caffe environment.")
     return parser.parse_known_args()
 
 
@@ -547,7 +578,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                        model_config["input_shapes"],
                                        model_config["output_shapes"],
                                        model_output_dir,
-                                       phone_data_dir)
+                                       phone_data_dir,
+                                       FLAGS.caffe_env)
 
     if FLAGS.mode == "build" or FLAGS.mode == "merge" or \
             FLAGS.mode == "all":
@@ -600,6 +632,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
 
 def main(unused_args):
+    common.init_logging()
     configs = parse_model_configs()
 
     if FLAGS.mode == "validate":
