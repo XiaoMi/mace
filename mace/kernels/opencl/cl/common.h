@@ -32,8 +32,8 @@
 #define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)
 #endif
 
-#define READ_IMAGET(image, coord, value) \
-  CMD_TYPE(read_image, CMD_DATA_TYPE)(image, coord, value)
+#define READ_IMAGET(image, sampler, coord) \
+  CMD_TYPE(read_image, CMD_DATA_TYPE)(image, sampler, coord)
 #define WRITE_IMAGET(image, coord, value)        \
   CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)   \
   CMD_TYPE(write_image, CMD_DATA_TYPE)(image, coord, value);
