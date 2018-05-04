@@ -390,8 +390,8 @@ def parse_model_configs():
                 value = model_config.get(key, "")
                 if value == "":
                     model_config[key] = 0
-                    print("'%s' for %s is set to default value: 0"
-                            % (key, model_name))
+                    print("'%s' for %s is set to default value: 0" %
+                          (key, model_name))
 
             validation_inputs_data = model_config.get("validation_inputs_data",
                                                       [])

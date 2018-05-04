@@ -175,7 +175,10 @@ def parse_args():
     parser.add_argument(
         "--platform", type=str, default="tensorflow", help="tensorflow/caffe")
     parser.add_argument(
-        "--embed_model_data", type=str2bool, default=True, help="embed model data.")
+        "--embed_model_data",
+        type=str2bool,
+        default=True,
+        help="embed model data.")
     return parser.parse_known_args()
 
 
