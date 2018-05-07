@@ -216,7 +216,7 @@ def adb_run(serialno,
 def adb_run_valgrind(serialno,
                      host_bin_path,
                      bin_name,
-                     valgrind_path="/data/local/valgrind",
+                     valgrind_path="/data/local/tmp/valgrind",
                      valgrind_args="",
                      args="",
                      opencl_profiling=1,
@@ -581,6 +581,9 @@ def tuning_run(abi,
                cpu_affinity_policy=1,
                gpu_perf_hint=3,
                gpu_priority_hint=3,
+               valgrind=False,
+               valgrind_path="/data/local/tmp/valgrind",
+               valgrind_args="",
                input_file_name="model_input",
                output_file_name="model_out"):
     print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
@@ -637,19 +640,22 @@ def tuning_run(abi,
 
         stdout_buff = []
         process_output = make_output_processor(stdout_buff)
-        p = sh.adb(
-            "-s",
-            serialno,
-            "shell",
+        adb_cmd = [
             "LD_LIBRARY_PATH=%s" % phone_data_dir,
             "MACE_TUNING=%s" % int(tuning),
             "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
             "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
-            phone_data_dir,
+            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % phone_data_dir,
             "MACE_CL_PROGRAM_PATH=%s/cl_program" % phone_data_dir,
-            "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" %
-            limit_opencl_kernel_time,
+            "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
+        ]
+        if valgrind:
+            adb_cmd.extend([
+                "VALGRIND_LIB=%s" % valgrind_path + "/lib/valgrind",
+                valgrind_path + "/bin/valgrind",
+                valgrind_args
+            ])
+        adb_cmd.extend([
             "%s/mace_run" % phone_data_dir,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
@@ -665,6 +671,13 @@ def tuning_run(abi,
             "--cpu_affinity_policy=%s" % cpu_affinity_policy,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
+        ])
+        adb_cmd = ' '.join(adb_cmd)
+        p = sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            adb_cmd,
             _out=process_output,
             _bg=True,
             _err_to_out=True)
