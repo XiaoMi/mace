@@ -27,7 +27,7 @@ namespace mace {
 typedef enum op_type_enum {
 #define DEF_OP(NAME, ...) OP_##NAME,
 
-#include "mace/core/runtime/hexagon/ops.h"  // NOLINT(build/include)
+#include "mace/third_party/nnlib/ops.h"  // NOLINT(build/include)
   NN_OPS_MAX
 
 #undef DEF_OP
@@ -38,7 +38,7 @@ class OpMap {
   void Init() {
 #define DEF_OP(NAME) op_map_[#NAME] = OP_##NAME;
 
-#include "mace/core/runtime/hexagon/ops.h"  // NOLINT(build/include)
+#include "mace/third_party/nnlib/ops.h"  // NOLINT(build/include)
 
 #undef DEF_OP
   }

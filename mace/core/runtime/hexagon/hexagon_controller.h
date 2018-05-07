@@ -15,7 +15,7 @@
 #ifndef MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROLLER_H_
 #define MACE_CORE_RUNTIME_HEXAGON_HEXAGON_CONTROLLER_H_
 
-#include "mace/core/runtime/hexagon/hexagon_nn.h"
+#include "mace/third_party/nnlib/hexagon_nn.h"
 
 #ifdef __cplusplus
 extern "C" {
