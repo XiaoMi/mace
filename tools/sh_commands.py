@@ -776,6 +776,7 @@ def validate_model(abi,
                         "%s:/mace" % container_name)
             model_file_name = os.path.basename(model_file_path)
             weight_file_name = os.path.basename(weight_file_path)
+            sh.docker("cp", "tools/common.py", "%s:/mace" % container_name)
             sh.docker("cp", "tools/validate.py", "%s:/mace" % container_name)
             sh.docker("cp", model_file_path, "%s:/mace" % container_name)
             sh.docker("cp", weight_file_path, "%s:/mace" % container_name)
