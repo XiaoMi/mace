@@ -37,6 +37,13 @@ inline void MakeStringInternal(std::stringstream &ss,
   MakeStringInternal(ss, args...);
 }
 
+class StringFormatter {
+ public:
+  static std::string Table(const std::string &title,
+                           const std::vector<std::string> &header,
+                           const std::vector<std::vector<std::string>> &data);
+};
+
 }  // namespace string_util
 
 template <typename... Args>
