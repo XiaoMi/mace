@@ -75,8 +75,9 @@ std::string StringFormatter::Table(
       FormatRow(stream, max_column_len[h_idx]) << data[data_idx][h_idx];
       stream << " |";
     }
-    stream << std::endl << dash_line << std::endl;
+    stream << std::endl;
   }
+  stream << dash_line << std::endl;
   return stream.str();
 }
 
