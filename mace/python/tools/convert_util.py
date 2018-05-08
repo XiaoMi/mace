@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import tensorflow as tf
 from mace.proto import mace_pb2
 
@@ -40,3 +41,8 @@ def tf_dtype_2_mace_dtype(tf_dtype):
     if not mace_dtype:
         raise Exception("Not supported tensorflow dtype: " + tf_dtype)
     return mace_dtype
+
+
+def mace_check(condition, msg):
+    if not condition:
+        raise Exception(msg)

@@ -16,7 +16,16 @@ import argparse
 import sys
 import hashlib
 import os.path
+
+from mace.proto import mace_pb2
+from mace.python.tools import tf_dsp_converter_lib
+from mace.python.tools import memory_optimizer
 from mace.python.tools import source_converter_lib
+from mace.python.tools.converter_tool import base_converter as cvt
+from mace.python.tools.converter_tool import tensorflow_converter
+from mace.python.tools.converter_tool import caffe_converter
+from mace.python.tools.converter_tool import transformer
+
 
 # ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb \
 #                                            --output quantized_test_dsp.pb \
@@ -25,6 +34,12 @@ from mace.python.tools import source_converter_lib
 
 FLAGS = None
 
+data_type_map = {'DT_HALF': mace_pb2.DT_HALF,
+                 'DT_FLOAT': mace_pb2.DT_FLOAT}
+device_type_map = {'cpu': mace_pb2.CPU,
+                   'gpu': mace_pb2.GPU,
+                   'dsp': mace_pb2.HEXAGON}
+
 
 def file_checksum(fname):
     hash_func = hashlib.sha256()
@@ -32,6 +47,10 @@ def file_checksum(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_func.update(chunk)
     return hash_func.hexdigest()
+
+
+def parse_int_array_from_str(ints_str):
+    return [int(int_str) for int_str in ints_str.split(',')]
 
 
 def main(unused_args):
@@ -59,27 +78,64 @@ def main(unused_args):
                   (weight_checksum, FLAGS.weight_checksum))
             sys.exit(-1)
 
-        if FLAGS.runtime == 'dsp':
-            print("DSP not support caffe model yet.")
-            sys.exit(-1)
+    if FLAGS.platform not in ['tensorflow', 'caffe']:
+        print ("platform %s is not supported." % FLAGS.platform)
+        sys.exit(-1)
+    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp']:
+        print ("runtime %s is not supported." % FLAGS.runtime)
+        sys.exit(-1)
 
-        from mace.python.tools import caffe_converter_lib
-        output_graph_def = caffe_converter_lib.convert_to_mace_pb(
-            FLAGS.model_file, FLAGS.weight_file, FLAGS.input_node,
-            FLAGS.input_shape, FLAGS.output_node, FLAGS.data_type,
-            FLAGS.runtime, FLAGS.winograd)
-    elif FLAGS.platform == 'tensorflow':
-        if FLAGS.runtime == 'dsp':
-            from mace.python.tools import tf_dsp_converter_lib
+    if FLAGS.runtime == 'dsp':
+        if FLAGS.platform == 'tensorflow':
             output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
                 FLAGS.model_file, FLAGS.input_node, FLAGS.output_node,
                 FLAGS.dsp_mode)
         else:
-            from mace.python.tools import tf_converter_lib
-            output_graph_def = tf_converter_lib.convert_to_mace_pb(
-                FLAGS.model_file, FLAGS.input_node, FLAGS.input_shape,
-                FLAGS.output_node, FLAGS.data_type, FLAGS.runtime,
-                FLAGS.winograd)
+            print("%s does not support dsp runtime yet." % FLAGS.platform)
+            sys.exit(-1)
+    else:
+        option = cvt.ConverterOption()
+        option.data_type = data_type_map[FLAGS.data_type]
+        option.device = device_type_map[FLAGS.runtime]
+        option.winograd_enabled = bool(FLAGS.winograd)
+
+        input_node_names = FLAGS.input_node.split(',')
+        input_node_shapes = FLAGS.input_shape.split(':')
+        if len(input_node_names) != len(input_node_shapes):
+            raise Exception('input node count and shape count do not match.')
+        for i in xrange(len(input_node_names)):
+            input_node = cvt.NodeInfo()
+            input_node.name = input_node_names[i]
+            input_node.shape = parse_int_array_from_str(FLAGS.input_shape)
+            option.add_input_node(input_node)
+
+        output_node_names = FLAGS.output_node.split(',')
+        for i in xrange(len(output_node_names)):
+            output_node = cvt.NodeInfo()
+            output_node.name = output_node_names[i]
+            option.add_output_node(output_node)
+
+        print("Convert model to mace model.")
+        if FLAGS.platform == 'tensorflow':
+            converter = tensorflow_converter.TensorflowConverter(option,
+                                                                 FLAGS.model_file)  # noqa
+        elif FLAGS.platform == 'caffe':
+            converter = caffe_converter.CaffeConverter(option,
+                                                       FLAGS.model_file,
+                                                       FLAGS.weight_file)
+
+        output_graph_def = converter.run()
+        print("Transform model to one that can better run on device.")
+        # TODO(liuqi/liyin): transform gpu/cpu and merge their ops
+        mace_transformer = transformer.Transformer(option, output_graph_def)
+        output_graph_def = mace_transformer.run()
+
+        print "start optimize memory."
+        if FLAGS.runtime == 'gpu':
+            memory_optimizer.optimize_gpu_memory(output_graph_def)
+        elif FLAGS.runtime == 'cpu':
+            memory_optimizer.optimize_cpu_memory(output_graph_def)
+        print "Memory optimization done."
 
     if FLAGS.output_type == 'source':
         source_converter_lib.convert_to_source(

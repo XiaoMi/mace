@@ -10,6 +10,7 @@ enum NetMode {
 enum DeviceType {
   CPU    = 0;                    // In default, we will use CPU.
   GPU    = 2;
+  HEXAGON = 3;
 }
 
 enum DataType {

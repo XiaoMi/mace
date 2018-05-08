@@ -129,7 +129,7 @@ class MemoryOptimizer(object):
                         self.idle_mem.remove(mem_id)
 
                 if mem_id == -1:
-                    mem_id = self.total_mem_count
+                    mem_id = self.mem_id_base() + self.total_mem_count
                     self.total_mem_count += 1
                     self.mem_block[mem_id] = op_mem_block
 
@@ -147,10 +147,13 @@ class MemoryOptimizer(object):
 
         self.add_net_mem_blocks()
 
-        print('total op: %d', len(self.net_def.op))
-        print('origin mem: %d, optimized mem: %d',
+        print("total op: %d" % len(self.net_def.op))
+        print("origin mem: %d, optimized mem: %d" % (
               self.get_total_origin_mem_size(),
-              self.get_total_optimized_mem_size())
+              self.get_total_optimized_mem_size()))
+
+    def mem_id_base(self):
+        return 0
 
 
 class GPUMemoryOptimizer(MemoryOptimizer):
@@ -188,6 +191,9 @@ class GPUMemoryOptimizer(MemoryOptimizer):
             block.mem_id = mem
             block.x = self.mem_block[mem][0]
             block.y = self.mem_block[mem][1]
+
+    def mem_id_base(self):
+        return 20000
 
 
 def optimize_gpu_memory(net_def):

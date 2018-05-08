@@ -119,11 +119,11 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
   LOG(INFO) << "MACE version: " << MaceVersion();
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
-    ws_->CreateTensor(MakeString("mace_input_node_", input_name, ":0"),
+    ws_->CreateTensor(MakeString("mace_input_node_", input_name),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
   for (auto output_name : output_nodes) {
-    ws_->CreateTensor(MakeString("mace_output_node_", output_name, ":0"),
+    ws_->CreateTensor(MakeString("mace_output_node_", output_name),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
 #ifdef MACE_ENABLE_HEXAGON
@@ -182,7 +182,7 @@ MaceStatus MaceEngine::Impl::Run(
                "The Inputs' shape must be 4-dimension with NHWC format,"
                    " please use 1 to fill missing dimensions");
     Tensor *input_tensor =
-        ws_->GetTensor(MakeString("mace_input_node_", input.first, ":0"));
+        ws_->GetTensor(MakeString("mace_input_node_", input.first));
     input_tensor->Resize(input.second.shape());
     {
       Tensor::MappingGuard input_guard(input_tensor);
@@ -199,7 +199,7 @@ MaceStatus MaceEngine::Impl::Run(
                      " please use 1 to fill missing dimensions");
     }
     Tensor *output_tensor =
-        ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
+        ws_->GetTensor(MakeString("mace_output_node_", output.first));
     output_tensors.push_back(output_tensor);
   }
 #ifdef MACE_ENABLE_HEXAGON
@@ -223,7 +223,7 @@ MaceStatus MaceEngine::Impl::Run(
 #endif
   for (auto &output : *outputs) {
     Tensor *output_tensor =
-        ws_->GetTensor(MakeString("mace_output_node_", output.first + ":0"));
+        ws_->GetTensor(MakeString("mace_output_node_", output.first));
     // save output
     if (output_tensor != nullptr && output.second.data() != nullptr) {
       Tensor::MappingGuard output_guard(output_tensor);

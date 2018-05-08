@@ -42,7 +42,7 @@ void Simple(const std::vector<index_t> &input_shape,
 
   if (D == DeviceType::CPU) {
     net.Transpose2D<D, float>("Weight", "WeightTranspose");
-    OpDefBuilder("FC", "FullyConnectedTest")
+    OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("Input")
       .Input("Weight")
       .Input("Bias")
@@ -59,7 +59,7 @@ void Simple(const std::vector<index_t> &input_shape,
     BufferToImage<D, float>(&net, "Bias", "BiasImage",
                             kernels::BufferType::ARGUMENT);
 
-    OpDefBuilder("FC", "FullyConnectedTest")
+    OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputImage")
       .Input("WeightImage")
       .Input("BiasImage")
@@ -142,7 +142,7 @@ void Complex(const index_t batch,
     "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
 
-  OpDefBuilder("FC", "FullyConnectedTest")
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
     .Input("Input")
     .Input("Weight")
     .Input("Bias")
@@ -166,7 +166,7 @@ void Complex(const index_t batch,
   BufferToImage<DeviceType::GPU, float>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FC", "FullyConnectedTest")
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
     .Input("InputImage")
     .Input("WeightImage")
     .Input("BiasImage")
@@ -231,7 +231,7 @@ void TestWXFormat(const index_t batch,
     "Weight", {out_channel, height * width * channels});
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
 
-  OpDefBuilder("FC", "FullyConnectedTest")
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
     .Input("Input")
     .Input("Weight")
     .Input("Bias")
@@ -255,7 +255,7 @@ void TestWXFormat(const index_t batch,
   BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
                                            kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FC", "FullyConnectedTest")
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
     .Input("InputImage")
     .Input("WeightImage")
     .Input("BiasImage")
