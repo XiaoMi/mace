@@ -41,7 +41,7 @@ def get_target_socs(configs):
     else:
         available_socs = sh_commands.adb_get_all_socs()
         target_socs = available_socs
-        if hasattr(configs, "target_socs"):
+        if "target_socs" in configs:
             target_socs = set(configs["target_socs"])
             target_socs = target_socs & available_socs
 
