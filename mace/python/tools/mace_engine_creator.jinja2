@@ -1,0 +1,82 @@
+// Copyright 2018 Xiaomi, Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This is a generated file. DO NOT EDIT!
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "mace/public/mace.h"
+#include "mace/public/mace_runtime.h"
+#include "mace/utils/logging.h"
+
+namespace mace {
+{% for tag in model_tags %}
+namespace {{tag}} {
+
+extern const unsigned char *LoadModelData(const char *model_data_file);
+
+extern void UnloadModelData(const unsigned char *model_data);
+
+extern NetDef CreateNet(const unsigned char *model_data);
+
+extern const std::string ModelName();
+extern const std::string ModelChecksum();
+extern const std::string ModelBuildTime();
+extern const std::string ModelBuildOptions();
+
+}  // namespace {{tag}}
+{% endfor %}
+
+namespace {
+std::map<std::string, int> model_tag_map {
+{% for i in range(model_tags |length) %}
+  std::make_pair({{ model_tags[i]|tojson }}, {{ i }}),
+{% endfor %}
+};
+}  // namespace
+
+std::unique_ptr<MaceEngine> CreateMaceEngine(
+    const std::string &model_tag,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const char *model_data_file,
+    const DeviceType device_type) {
+  // load model
+  std::unique_ptr<MaceEngine> engine;
+  const unsigned char * model_data = nullptr;
+  NetDef net_def;
+  switch (model_tag_map[model_tag]) {
+{% for i in range(model_tags |length) %}
+   case {{ i }}:
+    model_data =
+        mace::{{model_tags[i]}}::LoadModelData(model_data_file);
+    net_def = mace::{{model_tags[i]}}::CreateNet(model_data);
+    engine.reset(
+        new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes));
+    if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
+      mace::{{model_tags[i]}}::UnloadModelData(model_data);
+    }
+    break;
+{% endfor %}
+   default:
+     LOG(FATAL) << "There is no model named " << model_tag;
+  }
+
+  return engine;
+}
+
+}  // namespace mace

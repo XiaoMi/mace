@@ -95,13 +95,17 @@ def gen_opencl_and_tuning_code(target_abi,
                                serialno,
                                model_output_dirs,
                                pull_or_not):
+    cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
+    cl_platform_info_file_name = "mace_cl_platform_info.txt"
     if pull_or_not:
-        sh_commands.pull_binaries(target_abi, serialno, model_output_dirs)
-
-    codegen_path = "mace/codegen"
+        sh_commands.pull_binaries(target_abi, serialno, model_output_dirs,
+                                  cl_built_kernel_file_name,
+                                  cl_platform_info_file_name)
 
     # generate opencl binary code
-    sh_commands.gen_opencl_binary_code(model_output_dirs)
+    sh_commands.gen_opencl_binary_code(model_output_dirs,
+                                       cl_built_kernel_file_name,
+                                       cl_platform_info_file_name)
 
     sh_commands.gen_tuning_param_code(model_output_dirs)
 
@@ -227,12 +231,11 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         sh_commands.bazel_build(
             mace_run_target,
             abi=target_abi,
-            model_tag=model_name,
             production_mode=False,
             hexagon_mode=hexagon_mode,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+        sh_commands.update_mace_run_lib(model_output_dir,
                                         model_name, embed_model_data)
 
         tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
@@ -254,13 +257,12 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             mace_run_target,
             strip,
             abi=target_abi,
-            model_tag=model_name,
             production_mode=True,
             hexagon_mode=hexagon_mode,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+        sh_commands.update_mace_run_lib(model_output_dir,
                                         model_name, embed_model_data)
     else:
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
@@ -268,13 +270,12 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             mace_run_target,
             strip,
             abi=target_abi,
-            model_tag=model_name,
             production_mode=True,
             hexagon_mode=hexagon_mode,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir, target_abi,
+        sh_commands.update_mace_run_lib(model_output_dir,
                                         model_name, embed_model_data)
 
 
@@ -525,6 +526,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                    target_abi, phone_data_dir, target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
+
     for model_name in configs["models"]:
         print '===================', model_name, '==================='
         model_config = configs["models"][model_name]
@@ -534,16 +536,16 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         # Create model build directory
         model_path_digest = md5sum(model_config["model_file_path"])
+        model_output_base_dir = "%s/%s/%s/%s/%s" % (
+            FLAGS.output_dir, project_name, "build",
+            model_name, model_path_digest)
 
         if target_abi == "host":
-            model_output_dir = "%s/%s/%s/%s/%s/%s" % (
-                FLAGS.output_dir, project_name, "build",
-                model_name, model_path_digest, target_abi)
+            model_output_dir = "%s/%s" % (model_output_base_dir, target_abi)
         else:
             device_name = sh_commands.adb_get_device_name_by_serialno(serialno)
-            model_output_dir = "%s/%s/%s/%s/%s/%s_%s/%s" % (
-                FLAGS.output_dir, project_name, "build",
-                model_name, model_path_digest, device_name.replace(' ', ''),
+            model_output_dir = "%s/%s_%s/%s" % (
+                model_output_base_dir, device_name.replace(' ', ''),
                 target_soc, target_abi)
         model_output_dirs.append(model_output_dir)
 
@@ -552,15 +554,13 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                 sh.rm("-rf", model_output_dir)
             os.makedirs(model_output_dir)
 
-        if FLAGS.mode == "build" or FLAGS.mode == "benchmark" or \
-                FLAGS.mode == "all":
-            sh_commands.clear_mace_run_data(
-                    target_abi, serialno, phone_data_dir)
-
         model_file_path, weight_file_path = get_model_files(
                 model_config["model_file_path"],
-                model_output_dir,
+                model_output_base_dir,
                 model_config["weight_file_path"])
+
+        sh_commands.clear_phone_data_dir(
+            target_abi, serialno, phone_data_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "run" or \
                 FLAGS.mode == "validate" or \
@@ -569,25 +569,6 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                          model_config["input_nodes"],
                                          model_config["input_shapes"],
                                          input_file_list)
-
-        if FLAGS.mode == "build" or FLAGS.mode == "benchmark" or \
-                FLAGS.mode == "all":
-            sh_commands.gen_model_code(
-                    "mace/codegen/models/%s" % model_name,
-                    model_config["platform"],
-                    model_file_path,
-                    weight_file_path,
-                    model_config["model_sha256_checksum"],
-                    ",".join(model_config["input_nodes"]),
-                    ",".join(model_config["output_nodes"]),
-                    data_type,
-                    model_config["runtime"],
-                    model_name,
-                    ":".join(model_config["input_shapes"]),
-                    model_config["dsp_mode"],
-                    embed_model_data,
-                    model_config["fast_conv"],
-                    model_config["obfuscate"])
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
             build_mace_run_prod(hexagon_mode,
@@ -609,9 +590,14 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 model_config["limit_opencl_kernel_time"],
                                 phone_data_dir,
                                 FLAGS.enable_openmp)
+            sh_commands.build_benchmark_model(target_abi,
+                                              embed_model_data,
+                                              model_output_dir,
+                                              model_name,
+                                              hexagon_mode)
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
-                FLAGS.mode == "all":
+           FLAGS.mode == "all":
             tuning_run(model_config["runtime"],
                        target_abi,
                        serialno,
@@ -647,7 +633,6 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         model_config["output_shapes"],
                                         model_name,
                                         device_type,
-                                        hexagon_mode,
                                         phone_data_dir,
                                         FLAGS.omp_num_threads,
                                         FLAGS.cpu_affinity_policy,
@@ -738,12 +723,56 @@ def main(unused_args):
         # generate source
         sh_commands.gen_mace_version()
         sh_commands.gen_encrypted_opencl_source()
-
-    target_socs = get_target_socs(configs)
+        sh_commands.gen_mace_engine_creator_source(configs['models'].keys())
 
     embed_model_data = configs["embed_model_data"]
+    target_socs = get_target_socs(configs)
+
     vlog_level = FLAGS.vlog_level
     phone_data_dir = "/data/local/tmp/mace_run/"
+
+    if FLAGS.mode == "build" or FLAGS.mode == "all":
+        print '* Model Convert'
+        sh_commands.clear_model_codegen()
+        for model_name in configs["models"]:
+            print '===================', model_name, '==================='
+            model_config = configs["models"][model_name]
+            data_type, device_type = get_data_and_device_type(
+                model_config["runtime"])
+
+            # Create model build directory
+            model_path_digest = md5sum(model_config["model_file_path"])
+
+            model_output_base_dir = "%s/%s/%s/%s/%s" % (
+                FLAGS.output_dir, project_name, "build",
+                model_name, model_path_digest)
+
+            if os.path.exists(model_output_base_dir):
+                sh.rm("-rf", model_output_base_dir)
+            os.makedirs(model_output_base_dir)
+
+            model_file_path, weight_file_path = get_model_files(
+                model_config["model_file_path"],
+                model_output_base_dir,
+                model_config["weight_file_path"])
+
+            sh_commands.gen_model_code(
+                "mace/codegen/models/%s" % model_name,
+                model_config["platform"],
+                model_file_path,
+                weight_file_path,
+                model_config["model_sha256_checksum"],
+                ",".join(model_config["input_nodes"]),
+                ",".join(model_config["output_nodes"]),
+                data_type,
+                model_config["runtime"],
+                model_name,
+                ":".join(model_config["input_shapes"]),
+                model_config["dsp_mode"],
+                embed_model_data,
+                model_config["fast_conv"],
+                model_config["obfuscate"])
+
     for target_abi in configs["target_abis"]:
         for target_soc in target_socs:
             if target_abi != 'host':

@@ -42,24 +42,6 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
 
-// #include "mace/codegen/models/${MACE_MODEL_TAG}/${MACE_MODEL_TAG}.h" instead
-namespace mace {
-namespace MACE_MODEL_TAG {
-
-extern const unsigned char *LoadModelData(const char *model_data_file);
-
-extern void UnloadModelData(const unsigned char *model_data);
-
-extern NetDef CreateNet(const unsigned char *model_data);
-
-extern const std::string ModelName();
-extern const std::string ModelChecksum();
-extern const std::string ModelBuildTime();
-extern const std::string ModelBuildOptions();
-
-}  // namespace MACE_MODEL_TAG
-}  // namespace mace
-
 namespace mace {
 namespace tools {
 namespace validation {
@@ -180,6 +162,9 @@ struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   return curr;
 }
 
+DEFINE_string(model_tag,
+              "",
+              "model tag in yaml");
 DEFINE_string(input_node,
               "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -211,22 +196,12 @@ DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
-bool RunModel(const std::vector<std::string> &input_names,
+bool RunModel(const std::string &model_tag,
+              const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
-  // load model
-  int64_t t0 = NowMicros();
-  const unsigned char *model_data =
-      mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
-  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
-  int64_t t1 = NowMicros();
-  double create_net_millis = (t1 - t0) / 1000.0;
-  LOG(INFO) << "CreateNetDef latency: " << create_net_millis << " ms";
-
   DeviceType device_type = ParseDeviceType(FLAGS_device);
-  LOG(INFO) << "Runing with device type: " << device_type;
-
   // config runtime
   mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
@@ -244,20 +219,20 @@ bool RunModel(const std::vector<std::string> &input_names,
       std::string(kernel_path == nullptr ?
                   "/data/local/tmp/mace_run/cl_program" : kernel_path);
 
-  // Init model
-  LOG(INFO) << "Run init";
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
-  mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
-  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
-    mace::MACE_MODEL_TAG::UnloadModelData(model_data);
-  }
-  int64_t t2 = NowMicros();
-  double mace_engine_ctor_millis = (t2 - t1) / 1000.0;
-  double init_millis = (t2 - t0) / 1000.0;
-  LOG(INFO) << "MaceEngine constructor latency: "
-            << mace_engine_ctor_millis << " ms";
+
+  // Create Engine
+  int64_t t0 = NowMicros();
+  std::unique_ptr<mace::MaceEngine> engine =
+      CreateMaceEngine(model_tag,
+                       input_names,
+                       output_names,
+                       FLAGS_model_data_file.c_str(),
+                       device_type);
+  int64_t t1 = NowMicros();
+  double init_millis = (t1 - t0) / 1000.0;
   LOG(INFO) << "Total init latency: " << init_millis << " ms";
 
   const size_t input_count = input_names.size();
@@ -297,7 +272,7 @@ bool RunModel(const std::vector<std::string> &input_names,
 
   LOG(INFO) << "Warm up run";
   int64_t t3 = NowMicros();
-  engine.Run(inputs, &outputs);
+  engine->Run(inputs, &outputs);
   int64_t t4 = NowMicros();
   double warmup_millis = (t4 - t3) / 1000.0;
   LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
@@ -308,7 +283,7 @@ bool RunModel(const std::vector<std::string> &input_names,
     int64_t t0 = NowMicros();
     struct mallinfo prev = mallinfo();
     for (int i = 0; i < FLAGS_round; ++i) {
-      engine.Run(inputs, &outputs);
+      engine->Run(inputs, &outputs);
       if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
         LOG(INFO) << "=== check malloc info change #" << i << " ===";
         prev = LogMallinfoChange(prev);
@@ -320,11 +295,11 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 
   // Metrics reporting tools depends on the format, keep in consistent
-  printf("================================================================\n");
-  printf("      create_net engine_ctor        init      warmup     run_avg\n");
-  printf("================================================================\n");
-  printf("time %11.3f %11.3f %11.3f %11.3f %11.3f\n", create_net_millis,
-         mace_engine_ctor_millis, init_millis, warmup_millis, model_run_millis);
+  printf("========================================\n");
+  printf("            init      warmup     run_avg\n");
+  printf("========================================\n");
+  printf("time %11.3f %11.3f %11.3f\n",
+         init_millis, warmup_millis, model_run_millis);
 
 #ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::GPU) {
@@ -356,10 +331,6 @@ int Main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
-  LOG(INFO) << "model name: " << mace::MACE_MODEL_TAG::ModelName();
-  LOG(INFO) << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum();
-  LOG(INFO) << "build time: " << mace::MACE_MODEL_TAG::ModelBuildTime();
-  LOG(INFO) << "build options: " << mace::MACE_MODEL_TAG::ModelBuildOptions();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
   LOG(INFO) << "output node: " << FLAGS_output_node;
@@ -399,7 +370,8 @@ int Main(int argc, char **argv) {
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
     ret =
-        RunModel(input_names, input_shape_vec, output_names, output_shape_vec);
+        RunModel(FLAGS_model_tag, input_names, input_shape_vec,
+                 output_names, output_shape_vec);
   }
   if (ret) {
     return 0;

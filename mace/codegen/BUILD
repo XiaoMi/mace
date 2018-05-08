@@ -33,3 +33,14 @@ cc_library(
     srcs = ["version/version.cc"],
     linkstatic = 1,
 )
+
+cc_library(
+    name = "generated_mace_engine_creator",
+    srcs = ["engine/mace_engine_creator.cc"],
+    linkstatic = 1,
+    deps = [
+        ":generated_models",
+        "//mace/public",
+        "//mace/utils",
+    ],
+)
