@@ -104,7 +104,7 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       float32x4_t vf00, vf01, vf02;
       vf00 = vld1q_f32(filter_ptr);
       vf01 = vld1q_f32(filter_ptr + 3);
-      vf02 = vld1q_f32(filter_ptr + 6);
+      vf02 = vld1q_f32(filter_ptr + 5);
 
       for (h = valid_h_start; h + 1 < valid_h_stop; h += 2) {
         // left
@@ -180,9 +180,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
           vo00 = vfmaq_laneq_f32(vo00, vi10, vf01, 0);
           vo00 = vfmaq_laneq_f32(vo00, vi11, vf01, 1);
           vo00 = vfmaq_laneq_f32(vo00, vi12, vf01, 2);
-          vo00 = vfmaq_laneq_f32(vo00, vi20, vf02, 0);
-          vo00 = vfmaq_laneq_f32(vo00, vi21, vf02, 1);
-          vo00 = vfmaq_laneq_f32(vo00, vi22, vf02, 2);
+          vo00 = vfmaq_laneq_f32(vo00, vi20, vf02, 1);
+          vo00 = vfmaq_laneq_f32(vo00, vi21, vf02, 2);
+          vo00 = vfmaq_laneq_f32(vo00, vi22, vf02, 3);
 
           // outch 0, height 1
           vo01 = vfmaq_laneq_f32(vo01, vi10, vf00, 0);
@@ -191,9 +191,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
           vo01 = vfmaq_laneq_f32(vo01, vi20, vf01, 0);
           vo01 = vfmaq_laneq_f32(vo01, vi21, vf01, 1);
           vo01 = vfmaq_laneq_f32(vo01, vi22, vf01, 2);
-          vo01 = vfmaq_laneq_f32(vo01, vi30, vf02, 0);
-          vo01 = vfmaq_laneq_f32(vo01, vi31, vf02, 1);
-          vo01 = vfmaq_laneq_f32(vo01, vi32, vf02, 2);
+          vo01 = vfmaq_laneq_f32(vo01, vi30, vf02, 1);
+          vo01 = vfmaq_laneq_f32(vo01, vi31, vf02, 2);
+          vo01 = vfmaq_laneq_f32(vo01, vi32, vf02, 3);
 #else
           // outch 0, height 0
           vo00 = vmlaq_lane_f32(vo00, vi00, vget_low_f32(vf00), 0);
@@ -202,9 +202,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
           vo00 = vmlaq_lane_f32(vo00, vi10, vget_low_f32(vf01), 0);
           vo00 = vmlaq_lane_f32(vo00, vi11, vget_low_f32(vf01), 1);
           vo00 = vmlaq_lane_f32(vo00, vi12, vget_high_f32(vf01), 0);
-          vo00 = vmlaq_lane_f32(vo00, vi20, vget_low_f32(vf02), 0);
-          vo00 = vmlaq_lane_f32(vo00, vi21, vget_low_f32(vf02), 1);
-          vo00 = vmlaq_lane_f32(vo00, vi22, vget_high_f32(vf02), 0);
+          vo00 = vmlaq_lane_f32(vo00, vi20, vget_low_f32(vf02), 1);
+          vo00 = vmlaq_lane_f32(vo00, vi21, vget_high_f32(vf02), 0);
+          vo00 = vmlaq_lane_f32(vo00, vi22, vget_high_f32(vf02), 1);
 
           // outch 0, height 1
           vo01 = vmlaq_lane_f32(vo01, vi10, vget_low_f32(vf00), 0);
@@ -213,9 +213,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
           vo01 = vmlaq_lane_f32(vo01, vi20, vget_low_f32(vf01), 0);
           vo01 = vmlaq_lane_f32(vo01, vi21, vget_low_f32(vf01), 1);
           vo01 = vmlaq_lane_f32(vo01, vi22, vget_high_f32(vf01), 0);
-          vo01 = vmlaq_lane_f32(vo01, vi30, vget_low_f32(vf02), 0);
-          vo01 = vmlaq_lane_f32(vo01, vi31, vget_low_f32(vf02), 1);
-          vo01 = vmlaq_lane_f32(vo01, vi32, vget_high_f32(vf02), 0);
+          vo01 = vmlaq_lane_f32(vo01, vi30, vget_low_f32(vf02), 1);
+          vo01 = vmlaq_lane_f32(vo01, vi31, vget_high_f32(vf02), 0);
+          vo01 = vmlaq_lane_f32(vo01, vi32, vget_high_f32(vf02), 1);
 #endif
           vst1q_f32(out_base + out_offset, vo00);
           vst1q_f32(out_base + out_offset + out_width, vo01);
@@ -344,7 +344,7 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
       float32x4_t vf00, vf01, vf02;
       vf00 = vld1q_f32(filter_ptr);
       vf01 = vld1q_f32(filter_ptr + 3);
-      vf02 = vld1q_f32(filter_ptr + 6);
+      vf02 = vld1q_f32(filter_ptr + 5);
 
       for (h = valid_h_start; h < valid_h_stop; ++h) {
         // left
@@ -409,9 +409,9 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
           vo = vfmaq_laneq_f32(vo, vi10, vf01, 0);
           vo = vfmaq_laneq_f32(vo, vi11, vf01, 1);
           vo = vfmaq_laneq_f32(vo, vi12, vf01, 2);
-          vo = vfmaq_laneq_f32(vo, vi20, vf02, 0);
-          vo = vfmaq_laneq_f32(vo, vi21, vf02, 1);
-          vo = vfmaq_laneq_f32(vo, vi22, vf02, 2);
+          vo = vfmaq_laneq_f32(vo, vi20, vf02, 1);
+          vo = vfmaq_laneq_f32(vo, vi21, vf02, 2);
+          vo = vfmaq_laneq_f32(vo, vi22, vf02, 3);
 #else
           // outch 0, height 0
           vo = vmlaq_lane_f32(vo, vi00, vget_low_f32(vf00), 0);
@@ -420,9 +420,9 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
           vo = vmlaq_lane_f32(vo, vi10, vget_low_f32(vf01), 0);
           vo = vmlaq_lane_f32(vo, vi11, vget_low_f32(vf01), 1);
           vo = vmlaq_lane_f32(vo, vi12, vget_high_f32(vf01), 0);
-          vo = vmlaq_lane_f32(vo, vi20, vget_low_f32(vf02), 0);
-          vo = vmlaq_lane_f32(vo, vi21, vget_low_f32(vf02), 1);
-          vo = vmlaq_lane_f32(vo, vi22, vget_high_f32(vf02), 0);
+          vo = vmlaq_lane_f32(vo, vi20, vget_low_f32(vf02), 1);
+          vo = vmlaq_lane_f32(vo, vi21, vget_high_f32(vf02), 0);
+          vo = vmlaq_lane_f32(vo, vi22, vget_high_f32(vf02), 1);
 #endif
           vst1q_f32(out_base + out_offset, vo);
         }  // w
