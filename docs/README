@@ -1,9 +1,7 @@
-MACE Documentations
----
+The documents are based on Sphinx, run the following commands to build the documents:
 
-How to build the documents
-```
 pip install sphinx sphinx-autobuild
 pip install recommonmark
 make html
-```
+
+After building, the generated documents are located in _build.
