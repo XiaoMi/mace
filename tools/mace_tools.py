@@ -115,16 +115,14 @@ def model_benchmark_stdout_processor(stdout,
                                      serialno,
                                      model_name,
                                      runtime):
-    metrics = [0] * 5
+    metrics = [0] * 3
     for line in stdout.split('\n'):
         line = line.strip()
         parts = line.split()
-        if len(parts) == 6 and parts[0].startswith("time"):
+        if len(parts) == 4 and parts[0].startswith("time"):
             metrics[0] = str(float(parts[1]))
             metrics[1] = str(float(parts[2]))
             metrics[2] = str(float(parts[3]))
-            metrics[3] = str(float(parts[4]))
-            metrics[4] = str(float(parts[5]))
             break
 
     device_name = ""
@@ -137,22 +135,20 @@ def model_benchmark_stdout_processor(stdout,
     report_filename = FLAGS.output_dir + "/report.csv"
     if not os.path.exists(report_filename):
         with open(report_filename, 'w') as f:
-            f.write("model_name,device_name,soc,abi,runtime,create_net,"
-                    "engine_ctor,init,warmup,run_avg\n")
+            f.write("model_name,device_name,soc,abi,runtime,"
+                    "init,warmup,run_avg\n")
 
     data_str = "{model_name},{device_name},{soc},{abi},{runtime}," \
-               "{create_net},{engine_ctor},{init},{warmup},{run_avg}\n" \
+               "{init},{warmup},{run_avg}\n" \
         .format(
             model_name=model_name,
             device_name=device_name,
             soc=target_soc,
             abi=abi,
             runtime=runtime,
-            create_net=metrics[0],
-            engine_ctor=metrics[1],
-            init=metrics[2],
-            warmup=metrics[3],
-            run_avg=metrics[4]
+            init=metrics[0],
+            warmup=metrics[1],
+            run_avg=metrics[2]
         )
     with open(report_filename, 'a') as f:
         f.write(data_str)
@@ -300,22 +296,36 @@ def merge_libs_and_tuning_results(target_soc,
                            embed_model_data)
 
 
-def get_model_files(model_file_path,
-                    model_output_dir,
-                    weight_file_path=""):
+def download_model_files(model_file_path,
+                         model_output_dir,
+                         weight_file_path=""):
     model_file = ""
     weight_file = ""
     if model_file_path.startswith("http://") or \
             model_file_path.startswith("https://"):
         model_file = model_output_dir + "/model.pb"
         urllib.urlretrieve(model_file_path, model_file)
+
+    if weight_file_path.startswith("http://") or \
+            weight_file_path.startswith("https://"):
+        weight_file = model_output_dir + "/model.caffemodel"
+        urllib.urlretrieve(weight_file_path, weight_file)
+
+
+def get_model_files_path(model_file_path,
+                         model_output_dir,
+                         weight_file_path=""):
+    model_file = ""
+    weight_file = ""
+    if model_file_path.startswith("http://") or \
+            model_file_path.startswith("https://"):
+        model_file = model_output_dir + "/model.pb"
     else:
         model_file = model_file_path
 
     if weight_file_path.startswith("http://") or \
             weight_file_path.startswith("https://"):
         weight_file = model_output_dir + "/model.caffemodel"
-        urllib.urlretrieve(weight_file_path, weight_file)
     else:
         weight_file = weight_file_path
 
@@ -547,6 +557,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             model_output_dir = "%s/%s_%s/%s" % (
                 model_output_base_dir, device_name.replace(' ', ''),
                 target_soc, target_abi)
+            sh_commands.clear_phone_data_dir(serialno, phone_data_dir)
+
         model_output_dirs.append(model_output_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
@@ -554,13 +566,10 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                 sh.rm("-rf", model_output_dir)
             os.makedirs(model_output_dir)
 
-        model_file_path, weight_file_path = get_model_files(
+        model_file_path, weight_file_path = get_model_files_path(
                 model_config["model_file_path"],
                 model_output_base_dir,
                 model_config["weight_file_path"])
-
-        sh_commands.clear_phone_data_dir(
-            target_abi, serialno, phone_data_dir)
 
         if FLAGS.mode == "build" or FLAGS.mode == "run" or \
                 FLAGS.mode == "validate" or \
@@ -723,7 +732,7 @@ def main(unused_args):
         # generate source
         sh_commands.gen_mace_version()
         sh_commands.gen_encrypted_opencl_source()
-        sh_commands.gen_mace_engine_creator_source(configs['models'].keys())
+        sh_commands.gen_mace_engine_factory_source(configs['models'].keys())
 
     embed_model_data = configs["embed_model_data"]
     target_socs = get_target_socs(configs)
@@ -751,7 +760,12 @@ def main(unused_args):
                 sh.rm("-rf", model_output_base_dir)
             os.makedirs(model_output_base_dir)
 
-            model_file_path, weight_file_path = get_model_files(
+            download_model_files(
+                model_config["model_file_path"],
+                model_output_base_dir,
+                model_config["weight_file_path"])
+
+            model_file_path, weight_file_path = get_model_files_path(
                 model_config["model_file_path"],
                 model_output_base_dir,
                 model_config["weight_file_path"])

@@ -33,7 +33,7 @@ try:
     from binary_codegen import tuning_param_codegen
     from generate_data import generate_input_data
     from validate import validate
-    from mace_engine_generator import gen_mace_engine_creator
+    from mace_engine_factory_codegen import gen_mace_engine_factory
 except Exception as e:
     print("Import error:\n%s" % e)
     exit(1)
@@ -75,12 +75,11 @@ def is_device_locked(serialno):
 ################################
 # clear data
 ################################
-def clear_phone_data_dir(abi, serialno, phone_data_dir):
-    if abi != "host":
-        sh.adb("-s",
-               serialno,
-               "shell",
-               "rm -rf %s" % phone_data_dir)
+def clear_phone_data_dir(serialno, phone_data_dir):
+    sh.adb("-s",
+           serialno,
+           "shell",
+           "rm -rf %s" % phone_data_dir)
 
 
 def clear_model_codegen(model_codegen_dir="mace/codegen/models"):
@@ -369,12 +368,12 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
                            "mace/codegen/opencl/opencl_encrypt_program.cc")
 
 
-def gen_mace_engine_creator_source(model_tags, codegen_path="mace/codegen"):
+def gen_mace_engine_factory_source(model_tags, codegen_path="mace/codegen"):
     print("* Genearte mace engine creator source")
     codegen_tools_dir = "%s/engine" % codegen_path
     sh.rm("-rf", codegen_tools_dir)
     sh.mkdir("-p", codegen_tools_dir)
-    gen_mace_engine_creator(
+    gen_mace_engine_factory(
         model_tags,
         "mace/python/tools",
         codegen_tools_dir)
@@ -384,7 +383,7 @@ def gen_mace_engine_creator_source(model_tags, codegen_path="mace/codegen"):
 def pull_binaries(abi, serialno, model_output_dirs,
                   cl_built_kernel_file_name,
                   cl_platform_info_file_name):
-    compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
+    compiled_opencl_dir = "/data/local/tmp/mace_run/interior/"
     mace_run_param_file = "mace_run.config"
 
     cl_bin_dirs = []
@@ -558,9 +557,10 @@ def update_mace_run_lib(model_output_dir,
           model_output_dir)
 
 
-def create_compiled_opencl_dir(serialno):
-    compiled_opencl_dir = "/data/local/tmp/mace_run/cl_program/"
-    sh.adb("-s", serialno, "shell", "mkdir", "-p", compiled_opencl_dir)
+def create_internal_storage_dir(serialno, phone_data_dir):
+    internal_storage_dir = "%s/interior/" % phone_data_dir
+    sh.adb("-s", serialno, "shell", "mkdir", "-p", internal_storage_dir)
+    return internal_storage_dir
 
 
 def tuning_run(abi,
@@ -601,7 +601,7 @@ def tuning_run(abi,
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/mace_run" % model_output_dir,
-                "--model_tag=%s" % model_tag,
+                "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
@@ -626,7 +626,8 @@ def tuning_run(abi,
         return stdout
     else:
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
-        create_compiled_opencl_dir(serialno)
+        internal_storage_dir = create_internal_storage_dir(
+            serialno, phone_data_dir)
 
         for input_name in input_nodes:
             formatted_name = common.formatted_file_name(input_file_name,
@@ -649,7 +650,7 @@ def tuning_run(abi,
             "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
             "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
             "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % phone_data_dir,
-            "MACE_CL_PROGRAM_PATH=%s/cl_program" % phone_data_dir,
+            "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
             "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
         ]
         if valgrind:
@@ -660,7 +661,7 @@ def tuning_run(abi,
             ])
         adb_cmd.extend([
             "%s/mace_run" % phone_data_dir,
-            "--model_tag=%s" % model_tag,
+            "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
             "--input_shape=%s" % ":".join(input_shapes),
@@ -840,16 +841,18 @@ def merge_libs(target_soc,
     if hexagon_mode:
         sh.cp("-f", hexagon_lib_file, model_bin_dir)
 
+    sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
+
     mri_stream = ""
     if abi == "host":
         mri_stream += "create %s/libmace_%s.a\n" % \
                       (model_bin_dir, project_name)
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_opencl.pic.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_opencl.pic.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
@@ -860,35 +863,35 @@ def merge_libs(target_soc,
         mri_stream += "create %s/libmace_%s.%s.a\n" % \
                       (model_bin_dir, project_name, target_soc)
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_tuning_params.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_tuning_params.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_version.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_version.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_models.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_models.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/codegen/libgenerated_mace_engine_creator.a\n")
+            "addlib "
+            "bazel-bin/mace/codegen/libgenerated_mace_engine_creator.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/core/libcore.a\n")
+            "addlib "
+            "bazel-bin/mace/core/libcore.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/kernels/libkernels.a\n")
+            "addlib "
+            "bazel-bin/mace/kernels/libkernels.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/utils/libutils.a\n")
+            "addlib "
+            "bazel-bin/mace/utils/libutils.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/utils/libutils_prod.a\n")
+            "addlib "
+            "bazel-bin/mace/utils/libutils_prod.a\n")
         mri_stream += (
-                "addlib "
-                "bazel-bin/mace/ops/libops.lo\n")
+            "addlib "
+            "bazel-bin/mace/ops/libops.lo\n")
 
     for model_output_dir in model_output_dirs:
         if not embed_model_data:
@@ -984,7 +987,7 @@ def benchmark_model(abi,
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/benchmark_model" % model_output_dir,
-                "--model_tag=%s" % model_tag,
+                "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
@@ -1000,7 +1003,8 @@ def benchmark_model(abi,
         p.wait()
     else:
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
-        create_compiled_opencl_dir(serialno)
+        internal_storage_dir = create_internal_storage_dir(
+            serialno, phone_data_dir)
 
         for input_name in input_nodes:
             formatted_name = common.formatted_file_name(input_file_name,
@@ -1020,9 +1024,10 @@ def benchmark_model(abi,
             "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
             "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
             phone_data_dir,
+            "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
             "MACE_OPENCL_PROFILING=1",
             "%s/benchmark_model" % phone_data_dir,
-            "--model_tag=%s" % model_tag,
+            "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
             "--input_shape=%s" % ":".join(input_shapes),

@@ -10,7 +10,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",
-        "//mace/codegen:generated_mace_engine_creator",
+        "//mace/codegen:generated_mace_engine_factory",
         "//mace/core:core",
     ],
 )

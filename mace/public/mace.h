@@ -28,7 +28,7 @@ namespace mace {
 
 const char *MaceVersion();
 
-enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3, AUTO = 4 };
+enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
 
 enum MaceStatus { MACE_SUCCESS = 0, MACE_INVALID_ARGS = 1 };
 
@@ -81,13 +81,6 @@ class MaceEngine {
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
-
-std::unique_ptr<MaceEngine> CreateMaceEngine(
-    const std::string &model_tag,
-    const std::vector<std::string> &input_nodes,
-    const std::vector<std::string> &output_nodes,
-    const char *model_data_file = nullptr,
-    const DeviceType device_type = DeviceType::AUTO);
 
 }  // namespace mace
 

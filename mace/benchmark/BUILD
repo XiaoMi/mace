@@ -34,7 +34,7 @@ cc_binary(
         ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",
-        "//mace/codegen:generated_mace_engine_creator",
+        "//mace/codegen:generated_mace_engine_factory",
     ],
 )
 

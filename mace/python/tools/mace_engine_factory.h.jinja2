@@ -21,7 +21,6 @@
 
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
-#include "mace/utils/logging.h"
 
 namespace mace {
 {% for tag in model_tags %}
@@ -42,30 +41,33 @@ extern const std::string ModelBuildOptions();
 {% endfor %}
 
 namespace {
-std::map<std::string, int> model_tag_map {
+std::map<std::string, int> model_name_map {
 {% for i in range(model_tags |length) %}
   std::make_pair({{ model_tags[i]|tojson }}, {{ i }}),
 {% endfor %}
 };
 }  // namespace
 
-std::unique_ptr<MaceEngine> CreateMaceEngine(
-    const std::string &model_tag,
+MaceStatus CreateMaceEngine(
+    const char *model_name,
+    const char *model_data_file,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const char *model_data_file,
-    const DeviceType device_type) {
+    const DeviceType device_type,
+    std::shared_ptr<MaceEngine> *engine) {
   // load model
-  std::unique_ptr<MaceEngine> engine;
+  if (engine == nullptr) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
   const unsigned char * model_data = nullptr;
   NetDef net_def;
-  switch (model_tag_map[model_tag]) {
+  switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
    case {{ i }}:
     model_data =
         mace::{{model_tags[i]}}::LoadModelData(model_data_file);
     net_def = mace::{{model_tags[i]}}::CreateNet(model_data);
-    engine.reset(
+    engine->reset(
         new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes));
     if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
       mace::{{model_tags[i]}}::UnloadModelData(model_data);
@@ -73,10 +75,10 @@ std::unique_ptr<MaceEngine> CreateMaceEngine(
     break;
 {% endfor %}
    default:
-     LOG(FATAL) << "There is no model named " << model_tag;
+     return MaceStatus::MACE_INVALID_ARGS;
   }
 
-  return engine;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace mace

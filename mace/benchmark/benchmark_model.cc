@@ -25,6 +25,7 @@
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 #include "mace/benchmark/statistics.h"
+#include "mace/codegen/engine/mace_engine_factory.h"
 
 namespace mace {
 namespace benchmark {
@@ -174,7 +175,7 @@ bool Run(const std::string &title,
   return true;
 }
 
-DEFINE_string(model_tag, "", "model tag");
+DEFINE_string(model_name, "", "model name in yaml");
 DEFINE_string(device, "CPU", "Device [CPU|GPU|DSP]");
 DEFINE_string(input_node, "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -200,7 +201,7 @@ int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  LOG(INFO) << "Model tag: [" << FLAGS_model_tag << "]";
+  LOG(INFO) << "Model name: [" << FLAGS_model_name << "]";
   LOG(INFO) << "Device: [" << FLAGS_device << "]";
   LOG(INFO) << "gpu_perf_hint: [" << FLAGS_gpu_perf_hint << "]";
   LOG(INFO) << "gpu_priority_hint: [" << FLAGS_gpu_priority_hint << "]";
@@ -254,22 +255,39 @@ int Main(int argc, char **argv) {
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  const char *kernel_path = getenv("MACE_CL_PROGRAM_PATH");
+  const char *kernel_path = getenv("MACE_INTERNAL_STORAGE_PATH");
   const std::string kernel_file_path =
       std::string(kernel_path == nullptr ?
-                  "/data/local/tmp/mace_run/cl_program" : kernel_path);
+                  "/data/local/tmp/mace_run/interior" : kernel_path);
 
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
 
   // Create Engine
-  std::unique_ptr<mace::MaceEngine> engine_ptr =
-      CreateMaceEngine(FLAGS_model_tag,
-                       input_names,
-                       output_names,
-                       FLAGS_model_data_file.c_str(),
-                       device_type);
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
+  // Create Engine
+  if (FLAGS_model_data_file.empty()) {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         nullptr,
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  } else {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         FLAGS_model_data_file.c_str(),
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  }
+  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+    LOG(FATAL) << "Create engine error, please check the arguments";
+  }
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
@@ -309,7 +327,7 @@ int Main(int argc, char **argv) {
   int64_t num_warmup_runs = 0;
   if (FLAGS_warmup_runs > 0) {
     bool status =
-        Run("Warm Up", engine_ptr.get(), inputs, &outputs,
+        Run("Warm Up", engine.get(), inputs, &outputs,
             FLAGS_warmup_runs, -1.0,
             &warmup_time_us, &num_warmup_runs, nullptr);
     if (!status) {
@@ -320,7 +338,7 @@ int Main(int argc, char **argv) {
   int64_t no_stat_time_us = 0;
   int64_t no_stat_runs = 0;
   bool status =
-      Run("Run without statistics", engine_ptr.get(), inputs, &outputs,
+      Run("Run without statistics", engine.get(), inputs, &outputs,
           FLAGS_max_num_runs, max_benchmark_time_seconds,
           &no_stat_time_us, &no_stat_runs, nullptr);
   if (!status) {
@@ -329,7 +347,7 @@ int Main(int argc, char **argv) {
 
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
-  status = Run("Run with statistics", engine_ptr.get(), inputs, &outputs,
+  status = Run("Run with statistics", engine.get(), inputs, &outputs,
                FLAGS_max_num_runs, max_benchmark_time_seconds,
                &stat_time_us, &stat_runs, statistician.get());
   if (!status) {

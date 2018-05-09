@@ -34,6 +34,8 @@
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
+// if convert model to code.
+#include "mace/codegen/engine/mace_engine_factory.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
 
@@ -94,9 +96,9 @@ DeviceType ParseDeviceType(const std::string &device_str) {
 }
 
 
-DEFINE_string(model_tag,
+DEFINE_string(model_name,
               "",
-              "model tag in yaml file");
+              "model name in yaml file");
 DEFINE_string(input_node,
               "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -149,22 +151,38 @@ bool RunModel(const std::vector<std::string> &input_names,
   // DO NOT USE tmp directory.
   // Please use APP's own directory and make sure the directory exists.
   // Just call once
-  const std::string kernel_file_path =
-      "/data/local/tmp/mace_run/cl";
+  const std::string internal_storage_path =
+      "/data/local/tmp/mace_run/interior";
 
   // Config internal kv storage factory.
   std::shared_ptr<KVStorageFactory> storage_factory(
-      new FileStorageFactory(kernel_file_path));
+      new FileStorageFactory(internal_storage_path));
   SetKVStorageFactory(storage_factory);
 
   // Create Engine
-  std::unique_ptr<mace::MaceEngine> engine =
-      CreateMaceEngine(FLAGS_model_tag,
-                       input_names,
-                       output_names,
-                       FLAGS_model_data_file.c_str(),
-                       device_type);
-
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
+  // Create Engine
+  if (FLAGS_model_data_file.empty()) {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         nullptr,
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  } else {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         FLAGS_model_data_file.c_str(),
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  }
+  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+    LOG(FATAL) << "Create engine error, please check the arguments";
+  }
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();

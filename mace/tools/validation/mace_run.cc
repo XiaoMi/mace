@@ -41,6 +41,7 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
+#include "mace/codegen/engine/mace_engine_factory.h"
 
 namespace mace {
 namespace tools {
@@ -162,9 +163,9 @@ struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   return curr;
 }
 
-DEFINE_string(model_tag,
+DEFINE_string(model_name,
               "",
-              "model tag in yaml");
+              "model name in yaml");
 DEFINE_string(input_node,
               "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -196,7 +197,7 @@ DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
-bool RunModel(const std::string &model_tag,
+bool RunModel(const std::string &model_name,
               const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
               const std::vector<std::string> &output_names,
@@ -214,24 +215,42 @@ bool RunModel(const std::string &model_tag,
   }
 #endif  // MACE_ENABLE_OPENCL
 
-  const char *kernel_path = getenv("MACE_CL_PROGRAM_PATH");
+  const char *kernel_path = getenv("MACE_INTERNAL_STORAGE_PATH");
   const std::string kernel_file_path =
       std::string(kernel_path == nullptr ?
-                  "/data/local/tmp/mace_run/cl_program" : kernel_path);
+                  "/data/local/tmp/mace_run/interior" : kernel_path);
 
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
 
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
   // Create Engine
   int64_t t0 = NowMicros();
-  std::unique_ptr<mace::MaceEngine> engine =
-      CreateMaceEngine(model_tag,
-                       input_names,
-                       output_names,
-                       FLAGS_model_data_file.c_str(),
-                       device_type);
+  if (FLAGS_model_data_file.empty()) {
+    create_engine_status =
+        CreateMaceEngine(model_name.c_str(),
+                         nullptr,
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  } else {
+    create_engine_status =
+        CreateMaceEngine(model_name.c_str(),
+                         FLAGS_model_data_file.c_str(),
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  }
   int64_t t1 = NowMicros();
+
+  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+    LOG(FATAL) << "Create engine error, please check the arguments";
+  }
+
   double init_millis = (t1 - t0) / 1000.0;
   LOG(INFO) << "Total init latency: " << init_millis << " ms";
 
@@ -330,6 +349,7 @@ int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  LOG(INFO) << "model name: " << FLAGS_model_name;
   LOG(INFO) << "mace version: " << MaceVersion();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
@@ -370,7 +390,7 @@ int Main(int argc, char **argv) {
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
     ret =
-        RunModel(FLAGS_model_tag, input_names, input_shape_vec,
+        RunModel(FLAGS_model_name, input_names, input_shape_vec,
                  output_names, output_shape_vec);
   }
   if (ret) {

@@ -20,17 +20,17 @@ from jinja2 import Environment, FileSystemLoader
 FLAGS = None
 
 
-def gen_mace_engine_creator(model_tags, template_dir, output_dir):
+def gen_mace_engine_factory(model_tags, template_dir, output_dir):
     # Create the jinja2 environment.
     j2_env = Environment(
         loader=FileSystemLoader(template_dir), trim_blocks=True)
     # generate mace_run BUILD file
     print model_tags
-    template_name = 'mace_engine_creator.jinja2'
+    template_name = 'mace_engine_factory.h.jinja2'
     source = j2_env.get_template(template_name).render(
         model_tags=model_tags,
     )
-    with open(output_dir + '/mace_engine_creator.cc', "wb") as f:
+    with open(output_dir + '/mace_engine_factory.h', "wb") as f:
         f.write(source)
 
 
