@@ -16,6 +16,7 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <memory>
 #include <numeric>
 #include <thread>  // NOLINT(build/c++11)
 
@@ -23,7 +24,7 @@
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
-#include "mace/benchmark/stat_summarizer.h"
+#include "mace/benchmark/statistics.h"
 
 namespace mace {
 namespace MACE_MODEL_TAG {
@@ -120,12 +121,12 @@ DeviceType ParseDeviceType(const std::string &device_str) {
 bool RunInference(MaceEngine *engine,
                   const std::map<std::string, mace::MaceTensor> &input_infos,
                   std::map<std::string, mace::MaceTensor> *output_infos,
-                  StatSummarizer *summarizer,
-                  int64_t *inference_time_us) {
+                  int64_t *inference_time_us,
+                  OpStat *statistician) {
   MACE_CHECK_NOTNULL(output_infos);
   RunMetadata run_metadata;
   RunMetadata *run_metadata_ptr = nullptr;
-  if (summarizer) {
+  if (statistician) {
     run_metadata_ptr = &run_metadata;
   }
 
@@ -139,39 +140,33 @@ bool RunInference(MaceEngine *engine,
   }
   *inference_time_us = end_time - start_time;
 
-  if (summarizer != nullptr) {
-    summarizer->ProcessMetadata(run_metadata);
+  if (statistician != nullptr) {
+    statistician->StatMetadata(run_metadata);
   }
 
   return true;
 }
 
-bool Run(MaceEngine *engine,
+bool Run(const std::string &title,
+         MaceEngine *engine,
          const std::map<std::string, mace::MaceTensor> &input_infos,
          std::map<std::string, mace::MaceTensor> *output_infos,
-         StatSummarizer *summarizer,
          int num_runs,
          double max_time_sec,
-         int64_t sleep_sec,
          int64_t *total_time_us,
-         int64_t *actual_num_runs) {
+         int64_t *actual_num_runs,
+         OpStat *statistician) {
   MACE_CHECK_NOTNULL(output_infos);
   *total_time_us = 0;
 
-  LOG(INFO) << "Running benchmark for max " << num_runs << " iterators, max "
-            << max_time_sec << " seconds "
-            << (summarizer != nullptr ? "with " : "without ")
-            << "detailed stat logging, with " << sleep_sec
-            << "s sleep between inferences";
-
-  Stat<int64_t> stat;
+  TimeInfo<int64_t> time_info;
 
   bool util_max_time = (num_runs <= 0);
   for (int i = 0; util_max_time || i < num_runs; ++i) {
     int64_t inference_time_us = 0;
     bool s = RunInference(engine, input_infos, output_infos,
-                          summarizer, &inference_time_us);
-    stat.UpdateStat(inference_time_us);
+                          &inference_time_us, statistician);
+    time_info.UpdateTime(inference_time_us);
     (*total_time_us) += inference_time_us;
     ++(*actual_num_runs);
 
@@ -183,16 +178,13 @@ bool Run(MaceEngine *engine,
       LOG(INFO) << "Failed on run " << i;
       return s;
     }
-
-    if (sleep_sec > 0) {
-      std::this_thread::sleep_for(std::chrono::seconds(sleep_sec));
-    }
   }
 
-  std::stringstream stream;
-  stat.OutputToStream(&stream);
-  LOG(INFO) << stream.str();
-
+  std::stringstream stream(time_info.ToString(title));
+  stream << std::endl;
+  for (std::string line; std::getline(stream, line);) {
+    LOG(INFO) << line;
+  }
   return true;
 }
 
@@ -206,19 +198,7 @@ DEFINE_string(output_shape, "", "output shape, separated by colon and comma");
 DEFINE_string(input_file, "", "input file name");
 DEFINE_int32(max_num_runs, 100, "number of runs max");
 DEFINE_string(max_time, "10.0", "length to run max");
-DEFINE_string(inference_delay, "-1", "delay between runs in seconds");
-DEFINE_string(inter_benchmark_delay, "-1",
-              "delay between benchmarks in seconds");
 DEFINE_string(benchmark_name, "", "benchmark name");
-DEFINE_bool(show_run_order, true, "whether to list stats by run order");
-DEFINE_int32(run_order_limit, 0, "how many items to show by run order");
-DEFINE_bool(show_time, true, "whether to list stats by time taken");
-DEFINE_int32(time_limit, 10, "how many items to show by time taken");
-DEFINE_bool(show_memory, false, "whether to list stats by memory used");
-DEFINE_int32(memory_limit, 10, "how many items to show by memory used");
-DEFINE_bool(show_type, true, "whether to list stats by op type");
-DEFINE_bool(show_summary, true, "whether to show a summary of the stats");
-DEFINE_bool(show_flops, true, "whether to estimate the model's FLOPs");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
@@ -246,30 +226,12 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "output shapes: [" << FLAGS_output_shape << "]";
   LOG(INFO) << "Warmup runs: [" << FLAGS_warmup_runs << "]";
   LOG(INFO) << "Num runs: [" << FLAGS_max_num_runs << "]";
-  LOG(INFO) << "Inter-inference delay (seconds): ["
-            << FLAGS_inference_delay << "]";
-  LOG(INFO) << "Inter-benchmark delay (seconds): ["
-            << FLAGS_inter_benchmark_delay << "]";
+  LOG(INFO) << "Max run time: [" << FLAGS_max_time << "]";
 
-  const int64_t inter_inference_sleep_seconds =
-      std::strtol(FLAGS_inference_delay.c_str(), nullptr, 10);
-  const int64_t inter_benchmark_sleep_seconds =
-      std::strtol(FLAGS_inter_benchmark_delay.c_str(), nullptr, 10);
   const double max_benchmark_time_seconds =
       std::strtod(FLAGS_max_time.c_str(), nullptr);
 
-  std::unique_ptr<StatSummarizer> stats;
-
-  StatSummarizerOptions stats_options;
-  stats_options.show_run_order = FLAGS_show_run_order;
-  stats_options.run_order_limit = FLAGS_run_order_limit;
-  stats_options.show_time = FLAGS_show_time;
-  stats_options.time_limit = FLAGS_time_limit;
-  stats_options.show_memory = FLAGS_show_memory;
-  stats_options.memory_limit = FLAGS_memory_limit;
-  stats_options.show_type = FLAGS_show_type;
-  stats_options.show_summary = FLAGS_show_summary;
-  stats.reset(new StatSummarizer(stats_options));
+  std::unique_ptr<OpStat> statistician(new OpStat());
 
   mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
 
@@ -349,50 +311,38 @@ int Main(int argc, char **argv) {
     mace::MACE_MODEL_TAG::UnloadModelData(model_data);
   }
 
-  LOG(INFO) << "Warm up";
-
   int64_t warmup_time_us = 0;
   int64_t num_warmup_runs = 0;
   if (FLAGS_warmup_runs > 0) {
     bool status =
-        Run(engine_ptr.get(), inputs, &outputs, nullptr,
+        Run("Warm Up", engine_ptr.get(), inputs, &outputs,
             FLAGS_warmup_runs, -1.0,
-            inter_inference_sleep_seconds, &warmup_time_us, &num_warmup_runs);
+            &warmup_time_us, &num_warmup_runs, nullptr);
     if (!status) {
       LOG(ERROR) << "Failed at warm up run";
     }
   }
 
-  if (inter_benchmark_sleep_seconds > 0) {
-    std::this_thread::sleep_for(
-        std::chrono::seconds(inter_benchmark_sleep_seconds));
-  }
   int64_t no_stat_time_us = 0;
   int64_t no_stat_runs = 0;
   bool status =
-      Run(engine_ptr.get(), inputs, &outputs,
-          nullptr, FLAGS_max_num_runs, max_benchmark_time_seconds,
-          inter_inference_sleep_seconds, &no_stat_time_us, &no_stat_runs);
+      Run("Run without statistics", engine_ptr.get(), inputs, &outputs,
+          FLAGS_max_num_runs, max_benchmark_time_seconds,
+          &no_stat_time_us, &no_stat_runs, nullptr);
   if (!status) {
     LOG(ERROR) << "Failed at normal no-stat run";
   }
 
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
-  status = Run(engine_ptr.get(), inputs, &outputs,
-               stats.get(), FLAGS_max_num_runs, max_benchmark_time_seconds,
-               inter_inference_sleep_seconds, &stat_time_us, &stat_runs);
+  status = Run("Run with statistics", engine_ptr.get(), inputs, &outputs,
+               FLAGS_max_num_runs, max_benchmark_time_seconds,
+               &stat_time_us, &stat_runs, statistician.get());
   if (!status) {
     LOG(ERROR) << "Failed at normal stat run";
   }
 
-  LOG(INFO) << "Average inference timings in us: "
-            << "Warmup: "
-            << (FLAGS_warmup_runs > 0 ? warmup_time_us / FLAGS_warmup_runs : 0)
-            << ", " << "no stats: " << no_stat_time_us / no_stat_runs << ", "
-            << "with stats: " << stat_time_us / stat_runs;
-
-  stats->PrintOperatorStats();
+  statistician->PrintStat();
 
   return 0;
 }

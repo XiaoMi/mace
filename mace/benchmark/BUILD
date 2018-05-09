@@ -11,14 +11,12 @@ load(
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
-    name = "stat_summarizer",
-    srcs = ["stat_summarizer.cc"],
-    hdrs = ["stat_summarizer.h"],
+    name = "statistics",
+    srcs = ["statistics.cc"],
+    hdrs = ["statistics.h"],
     linkstatic = 1,
     deps = [
-        "//mace/core",
         "//mace/kernels",
-        "//mace/public",
         "//mace/utils",
     ],
 )
@@ -31,7 +29,7 @@ cc_binary(
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
-        ":stat_summarizer",
+        ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",
     ],

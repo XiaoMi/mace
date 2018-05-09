@@ -14,6 +14,7 @@ cc_library(
     srcs = [
         "command_line_flags.cc",
         "logging.cc",
+        "string_util.cc",
     ],
     hdrs = [
         "command_line_flags.h",
