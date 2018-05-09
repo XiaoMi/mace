@@ -25,7 +25,8 @@ void PadFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     Tensor *output,
     StatsFuture *future) {
-  MACE_CHECK(this->paddings_.size() == (input->dim_size() * 2));
+  MACE_CHECK(
+      this->paddings_.size() == static_cast<size_t>((input->dim_size() * 2)));
   MACE_CHECK((this->paddings_[0] == 0) && (this->paddings_[1] == 0)
                  && (this->paddings_[6] == 0) && (this->paddings_[7] == 0))
     << "Mace only support height/width dimension now";

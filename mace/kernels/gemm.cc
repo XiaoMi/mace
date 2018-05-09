@@ -135,7 +135,9 @@ inline void GemmTile(const float *A,
                      const index_t stride_k,
                      const index_t stride_w,
                      float *C) {
+#if defined(MACE_ENABLE_NEON)
   index_t h, w, k;
+#endif
 
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
   for (h = 0; h + 7 < height; h += 8) {
@@ -443,6 +445,7 @@ inline void GemmTile(const float *A,
 #else
 
 #if defined(MACE_ENABLE_NEON)  // armv7
+  w = (width >> 2) << 2;
   for (h = 0; h + 3 < height; h += 4) {
     for (k = 0; k + 3 < K; k += 4) {
       const float *a_ptr = A + (h * stride_k + k);
@@ -523,8 +526,6 @@ inline void GemmTile(const float *A,
           c_ptr2 += 4;
           c_ptr3 += 4;
         }
-
-        w = (width >> 2) << 2;
       }
       if (w < width) {
         const float *a_ptr = A + (h * stride_k + k);

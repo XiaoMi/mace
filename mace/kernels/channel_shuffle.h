@@ -31,6 +31,7 @@ struct ChannelShuffleFunctor {
   void operator()(const Tensor *input,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     output->ResizeLike(input);
 
     Tensor::MappingGuard logits_guard(input);
@@ -56,7 +57,7 @@ struct ChannelShuffleFunctor {
         index_t idx = c / groups_;
         for (index_t hw = 0; hw < height * width; ++hw) {
           output_base[c * image_size + hw] = input_base[
-            (c % groups_ * channels_per_group + c / groups_) * image_size + hw];
+            (g * channels_per_group + idx) * image_size + hw];
         }
       }
     }

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "mace/core/future.h"
+#include "mace/core/macros.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/types.h"
@@ -95,6 +96,7 @@ bool IsVecEqual(const std::vector<T> &input0,
 
 template <typename T>
 void AppendToStream(std::stringstream *ss, const std::string &delimiter, T v) {
+  MACE_UNUSED(delimiter);
   (*ss) << v;
 }
 
@@ -114,8 +116,6 @@ std::string Concat(Args... args) {
   return ss.str();
 }
 
-std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
-                                       const uint32_t kwg_size);
 std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
                                        const uint32_t kwg_size);
 }  // namespace kernels

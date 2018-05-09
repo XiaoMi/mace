@@ -146,7 +146,7 @@ class Tuner {
     for (iter = 0; iter < num_runs; ++iter) {
       res = func(params, timer, tuning_result);
       total_time_us += timer->AccumulatedMicros();
-      if (iter >= 1 && total_time_us > 100000 || total_time_us > 200000) {
+      if ((iter >= 1 && total_time_us > 100000) || total_time_us > 200000) {
         ++iter;
         break;
       }
@@ -165,7 +165,7 @@ class Tuner {
                                   std::vector<param_type> *)> &func,
       Timer *timer,
       std::vector<param_type> *opt_params) {
-    RetType res;
+    RetType res = 0;
     double opt_time = std::numeric_limits<double>::max();
     auto params = param_generator();
     std::vector<param_type> tuning_result;

@@ -81,6 +81,7 @@ struct QuantizeFunctor<CPU, uint8_t> {
                   Tensor *out_min,
                   Tensor *out_max,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const float *input_data = input->data<float>();
     const float in_min_data = in_min->data<float>()[0];
     const float in_max_data = in_max->data<float>()[0];
@@ -109,6 +110,7 @@ struct DequantizeFunctor<CPU, uint8_t> {
                   const Tensor *in_max,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const uint8_t *input_data = input->data<uint8_t>();
     const float in_min_data = in_min->data<float>()[0];
     const float in_max_data = in_max->data<float>()[0];
@@ -137,6 +139,7 @@ struct RequantizeFunctor<CPU, uint8_t> {
                   Tensor *out_min,
                   Tensor *out_max,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const int *input_data = input->data<int>();
     const float in_min_data = in_min->data<float>()[0];
     const float in_max_data = in_max->data<float>()[0];

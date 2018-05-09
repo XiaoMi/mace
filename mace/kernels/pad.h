@@ -47,7 +47,9 @@ struct PadFunctor : public PadFunctorBase {
   void operator()(const Tensor *input,
                   Tensor *output,
                   StatsFuture *future) {
-    MACE_CHECK(this->paddings_.size() == (input->dim_size() * 2));
+    MACE_UNUSED(future);
+    MACE_CHECK(
+        this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
     auto input_shape = input->shape();
     output->Resize({input_shape[0] + this->paddings_[0] + this->paddings_[1],
                     input_shape[1] + this->paddings_[2] + this->paddings_[3],

@@ -39,6 +39,10 @@ struct BufferToImageFunctor : BufferToImageFunctorBase {
                   const BufferType type,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(input);
+    MACE_UNUSED(type);
+    MACE_UNUSED(output);
+    MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
   }
 };

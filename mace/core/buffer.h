@@ -21,6 +21,7 @@
 #include <functional>
 
 #include "mace/core/allocator.h"
+#include "mace/core/macros.h"
 #include "mace/core/types.h"
 
 namespace mace {
@@ -133,6 +134,7 @@ class Buffer : public BufferBase {
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_CHECK_NOTNULL(buf_);
+    MACE_UNUSED(pitch);
     return allocator_->Map(buf_, offset, length);
   }
 
@@ -232,6 +234,9 @@ class Image : public BufferBase {
   std::vector<size_t> image_shape() const { return shape_; }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
+    MACE_UNUSED(offset);
+    MACE_UNUSED(length);
+    MACE_UNUSED(pitch);
     MACE_NOT_IMPLEMENTED;
     return nullptr;
   }
@@ -254,9 +259,17 @@ class Image : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
+  void Resize(index_t size) {
+    MACE_UNUSED(size);
+    MACE_NOT_IMPLEMENTED;
+  }
 
-  void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
+  void Copy(void *src, index_t offset, index_t length) {
+    MACE_UNUSED(src);
+    MACE_UNUSED(offset);
+    MACE_UNUSED(length);
+    MACE_NOT_IMPLEMENTED;
+  }
 
   bool OnHost() const { return allocator_->OnHost(); }
 
@@ -327,11 +340,17 @@ class BufferSlice : public BufferBase {
   }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
+    MACE_UNUSED(offset);
+    MACE_UNUSED(length);
+    MACE_UNUSED(pitch);
     MACE_NOT_IMPLEMENTED;
     return nullptr;
   }
 
-  void UnMap(void *mapped_ptr) const { MACE_NOT_IMPLEMENTED; }
+  void UnMap(void *mapped_ptr) const {
+    MACE_UNUSED(mapped_ptr);
+    MACE_NOT_IMPLEMENTED;
+  }
 
   void Map(std::vector<size_t> *pitch) {
     MACE_CHECK_NOTNULL(buffer_);
@@ -350,7 +369,12 @@ class BufferSlice : public BufferBase {
       " to ", size, " is illegal");
   }
 
-  void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
+  void Copy(void *src, index_t offset, index_t length) {
+    MACE_UNUSED(src);
+    MACE_UNUSED(offset);
+    MACE_UNUSED(length);
+    MACE_NOT_IMPLEMENTED;
+  }
 
   index_t offset() const { return offset_; }
 

@@ -58,7 +58,7 @@ std::string MakeString(const std::vector<T> &args) {
   std::stringstream ss;
   ss << "[";
   const size_t size = args.size();
-  for (int i = 0; i < size; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     ss << args[i];
     if (i < size - 1) {
       ss << ", ";

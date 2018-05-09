@@ -17,6 +17,7 @@
 #endif
 
 #include "mace/kernels/arm/depthwise_conv2d_neon.h"
+#include "mace/core/macros.h"
 
 namespace mace {
 namespace kernels {
@@ -65,6 +66,10 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
                                const index_t valid_w_start,
                                const index_t valid_w_stop,
                                float *output) {
+#if !defined(MACE_ENABLE_NEON)
+  MACE_UNUSED(valid_w_start);
+  MACE_UNUSED(valid_w_stop);
+#endif
   const index_t multiplier = out_channels / in_channels;
   const index_t in_image_size = in_height * in_width;
   const index_t out_image_size = out_height * out_width;
@@ -305,6 +310,10 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
                                const index_t valid_w_start,
                                const index_t valid_w_stop,
                                float *output) {
+#if !defined(MACE_ENABLE_NEON)
+  MACE_UNUSED(valid_w_start);
+  MACE_UNUSED(valid_w_stop);
+#endif
   const index_t multiplier = out_channels / in_channels;
   const index_t in_image_size = in_height * in_width;
   const index_t out_image_size = out_height * out_width;

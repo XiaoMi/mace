@@ -54,24 +54,24 @@ class TimeInfo {
              sum_(0), square_sum(0)
   {}
 
-  const int64_t round() const {
+  int64_t round() const {
     return round_;
   }
 
-  const T first() const {
+  T first() const {
     return first_;
   }
 
-  const T sum() const {
+  T sum() const {
     return sum_;
   }
 
-  const double avg() const {
+  double avg() const {
     return round_ == 0 ? std::numeric_limits<double>::quiet_NaN() :
            sum_ * 1.0f / round_;
   }
 
-  const double std_deviation() const {
+  double std_deviation() const {
     if (round_ == 0 || min_ == max_) {
       return 0;
     }
@@ -111,12 +111,12 @@ class TimeInfo {
   }
 
  private:
+  int64_t round_;
   T first_;
   T curr_;
   T min_;
   T max_;
   T sum_;
-  int64_t round_;
   double square_sum;
 };
 

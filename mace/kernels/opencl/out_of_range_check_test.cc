@@ -24,9 +24,9 @@ namespace mace {
 namespace kernels {
 namespace {
 
-const bool BufferToImageOpImpl(Tensor *buffer,
-                               Tensor *image,
-                               const std::vector<size_t> &image_shape) {
+bool BufferToImageOpImpl(Tensor *buffer,
+                         Tensor *image,
+                         const std::vector<size_t> &image_shape) {
   std::unique_ptr<BufferBase> kernel_error;
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -149,7 +149,7 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   ASSERT_FALSE(BufferToImageOpImpl(buffer, image, image_shape));
 
   std::vector<size_t> overflow_image_shape = image_shape;
-  for (int i = 0; i < overflow_image_shape.size(); ++i) {
+  for (size_t i = 0; i < overflow_image_shape.size(); ++i) {
     overflow_image_shape[i] += 1;
   }
   ASSERT_TRUE(BufferToImageOpImpl(buffer, image, overflow_image_shape));

@@ -35,6 +35,7 @@ struct ReshapeFunctor {
                   const std::vector<index_t> &out_shape,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     output->ResizeWithBuffer(out_shape, input->UnderlyingBuffer());
   }
 };

@@ -30,6 +30,8 @@ void Register_WinogradTransform(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     WinogradTransformOp<DeviceType::GPU, half>);
+#else
+  MACE_UNUSED(op_registry);
 #endif  // MACE_ENABLE_OPENCL
 }
 

@@ -75,7 +75,7 @@ void SliceFunctor<DeviceType::GPU, T>::operator()(
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   cl::Event event;
   CallStats call_stats{INT64_MAX, 0};
-  for (int i = 0; i < outputs_count; ++i) {
+  for (size_t i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,

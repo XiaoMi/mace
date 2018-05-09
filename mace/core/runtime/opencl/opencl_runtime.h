@@ -70,18 +70,18 @@ class OpenCLRuntime {
   cl::Context &context();
   cl::Device &device();
   cl::CommandQueue &command_queue();
-  const GPUType gpu_type() const;
+  GPUType gpu_type() const;
   const std::string platform_info() const;
-  const uint64_t device_global_mem_cache_size() const;
-  const uint32_t device_compute_units() const;
+  uint64_t device_global_mem_cache_size() const;
+  uint32_t device_compute_units() const;
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
-  const bool IsNonUniformWorkgroupsSupported();
-  const bool IsOutOfRangeCheckEnabled() const;
-  const bool is_profiling_enabled() const;
+  bool IsNonUniformWorkgroupsSupported() const;
+  bool IsOutOfRangeCheckEnabled() const;
+  bool is_profiling_enabled() const;
 
   cl::Kernel BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
@@ -112,7 +112,6 @@ class OpenCLRuntime {
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
-  const GPUType ParseGPUType(const std::string &device_name);
   const std::string ParseDeviceVersion(const std::string &device_version);
 
  private:

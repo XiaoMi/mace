@@ -51,6 +51,9 @@ struct WinogradTransformFunctor : WinogradTransformFunctorBase {
       : WinogradTransformFunctorBase(padding_type, paddings) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+    MACE_UNUSED(input);
+    MACE_UNUSED(output);
+    MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
   }
 };
@@ -105,6 +108,9 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(input);
+    MACE_UNUSED(bias);
+    MACE_UNUSED(output);
     MACE_NOT_IMPLEMENTED;
   }
 };

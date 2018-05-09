@@ -33,6 +33,7 @@ namespace mace {
 
 namespace {
 
+#ifndef MACE_ENABLE_OPENMP
 int GetCPUCount() {
   char path[32];
   int cpu_count = 0;
@@ -50,12 +51,14 @@ int GetCPUCount() {
     cpu_count++;
   }
 }
+#endif
 
 int GetCPUMaxFreq(int cpu_id) {
   char path[64];
   snprintf(path, sizeof(path),
           "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
           cpu_id);
+
   FILE *fp = fopen(path, "rb");
   if (!fp) {
     LOG(WARNING) << "File: " << path << " not exists.";
@@ -63,45 +66,12 @@ int GetCPUMaxFreq(int cpu_id) {
   }
 
   int freq = 0;
-  fscanf(fp, "%d", &freq);
+  int items_read = fscanf(fp, "%d", &freq);
+  if (items_read != 1) {
+    LOG(WARNING) << "Read file: " << path << " failed.";
+  }
   fclose(fp);
   return freq;
-}
-
-void SortCPUIdsByMaxFreqAsc(std::vector<int> *cpu_ids, int *big_core_offset) {
-  MACE_CHECK_NOTNULL(cpu_ids);
-  int cpu_count = cpu_ids->size();
-  std::vector<int> cpu_max_freq;
-  cpu_max_freq.resize(cpu_count);
-
-  // set cpu max frequency
-  for (int i = 0; i < cpu_count; ++i) {
-    cpu_max_freq[i] = GetCPUMaxFreq(i);
-    (*cpu_ids)[i] = i;
-  }
-
-  // sort cpu ids by max frequency asc, bubble sort
-  for (int i = 0; i < cpu_count - 1; ++i) {
-    for (int j = i + 1; j < cpu_count; ++j) {
-      if (cpu_max_freq[i] > cpu_max_freq[j]) {
-        int tmp = (*cpu_ids)[i];
-        (*cpu_ids)[i] = (*cpu_ids)[j];
-        (*cpu_ids)[j] = tmp;
-
-        tmp = cpu_max_freq[i];
-        cpu_max_freq[i] = cpu_max_freq[j];
-        cpu_max_freq[j] = tmp;
-      }
-    }
-  }
-
-  *big_core_offset = 0;
-  for (int i = 1; i < cpu_count; ++i) {
-    if (cpu_max_freq[i] > cpu_max_freq[i - 1]) {
-      *big_core_offset = i;
-      break;
-    }
-  }
 }
 
 void SetThreadAffinity(cpu_set_t mask) {

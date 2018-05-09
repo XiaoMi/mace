@@ -103,8 +103,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const index_t in_batch_size = in_channels * in_image_size;
     const index_t out_batch_size = out_channels * out_image_size;
     const index_t filter_size = filter_height * filter_width;
-    const index_t in_tile_size =
-        3 * stride_w + (filter_width - 1) * dilation_w + 1;
 
 #pragma omp parallel for collapse(2)
     for (index_t b = 0; b < batch; ++b) {
@@ -267,6 +265,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
@@ -345,7 +344,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     Tensor::MappingGuard bias_guard(bias);
     Tensor::MappingGuard output_guard(output);
 
-    auto input_data = input->data<float>();
     auto filter_data = filter->data<float>();
     auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
     auto output_data = output->mutable_data<float>();
@@ -719,7 +717,10 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
                         paddings,
                         dilations,
                         activation,
-                        relux_max_limit) {}
+                        relux_max_limit) {
+    MACE_UNUSED(is_filter_transformed);
+    MACE_UNUSED(scratch);
+  }
 
   void operator()(const Tensor *input,
                   const Tensor *filter,

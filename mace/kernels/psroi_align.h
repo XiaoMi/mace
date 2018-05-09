@@ -38,6 +38,7 @@ struct PSROIAlignFunctor {
                   const Tensor *rois,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const int height = static_cast<int>(input->dim(1));
     const int width = static_cast<int>(input->dim(2));
     const int channels = static_cast<int>(input->dim(3));

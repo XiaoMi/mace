@@ -30,6 +30,7 @@ struct TransposeFunctor {
   explicit TransposeFunctor(const std::vector<int> &dims) : dims_(dims) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+    MACE_UNUSED(future);
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
     const std::vector<index_t> &input_shape = input->shape();

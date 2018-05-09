@@ -25,6 +25,7 @@ void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
                                                       const Tensor *B,
                                                       Tensor *C,
                                                       StatsFuture *future) {
+  MACE_UNUSED(future);
   std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
   CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);

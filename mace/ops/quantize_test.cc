@@ -95,8 +95,6 @@ TEST_F(QuantizeTest, TestQuantizeTrend) {
   net.RunOp();
 
   auto output = net.GetTensor("Output");
-  auto output_min = net.GetTensor("OutputMin");
-  auto output_max = net.GetTensor("OutputMax");
 
   const uint8_t *output_data = net.GetTensor("Output")->data<uint8_t>();
   for (int i = 1; i < output->size(); ++i) {

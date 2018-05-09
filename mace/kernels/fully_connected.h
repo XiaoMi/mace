@@ -59,6 +59,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     std::vector<index_t> output_shape = {input->dim(0), weight->dim(0), 1, 1};
     output->Resize(output_shape);
     const index_t N = output->dim(0);

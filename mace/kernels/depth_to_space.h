@@ -33,6 +33,7 @@ struct DepthToSpaceOpFunctor {
   explicit DepthToSpaceOpFunctor(const int block_size, bool d2s)
     : block_size_(block_size), d2s_(d2s) {}
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+    MACE_UNUSED(future);
     const int batch_size = input->dim(0);
     const int input_depth = input->dim(1);
     const int input_height = input->dim(2);

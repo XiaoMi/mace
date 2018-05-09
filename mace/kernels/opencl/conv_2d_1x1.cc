@@ -72,6 +72,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
                              StatsFuture *future,
                              uint32_t *kwg_size,
                              std::unique_ptr<BufferBase> *kernel_error) {
+  MACE_UNUSED(padding);
+  MACE_UNUSED(dilations);
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);

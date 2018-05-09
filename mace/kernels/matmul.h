@@ -42,6 +42,7 @@ struct MatMulFunctor {
                   const Tensor *B,
                   Tensor *C,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
     C->Resize(c_shape);
 
@@ -59,14 +60,6 @@ struct MatMulFunctor {
     // It is better to use large block size if it fits for fast cache.
     // Assume l1 cache size is 32k, we load three blocks at a time (A, B, C),
     // the block size should be sqrt(32k / sizeof(T) / 3).
-    const index_t block_size = 48;
-    const index_t block_tile_height = RoundUpDiv(height, block_size);
-    const index_t block_tile_width = RoundUpDiv(width, block_size);
-    const index_t block_tile_k = RoundUpDiv(K, block_size);
-    const index_t remain_height = height % block_size;
-    const index_t remain_width = width % block_size;
-    const index_t remain_k = K % block_size;
-    constexpr index_t register_tile_size = 4;
     memset(c_ptr_base, 0, batch * height * width * sizeof(T));
 
     Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base);

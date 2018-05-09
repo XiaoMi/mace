@@ -385,7 +385,7 @@ int Main(int argc, char **argv) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
   }
 
-  bool ret;
+  bool ret = false;
 #pragma omp parallel for
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
@@ -395,9 +395,8 @@ int Main(int argc, char **argv) {
   }
   if (ret) {
     return 0;
-  } else {
-    return -1;
   }
+  return -1;
 }
 
 }  // namespace validation

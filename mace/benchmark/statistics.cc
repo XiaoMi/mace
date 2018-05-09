@@ -58,9 +58,9 @@ std::string ShapeToString(const std::vector<OutputShape> &output_shape) {
 
   std::stringstream stream;
   stream << "[";
-  for (int i = 0; i < output_shape.size(); ++i) {
+  for (size_t i = 0; i < output_shape.size(); ++i) {
     const std::vector<index_t> &dims = output_shape[i].dims();
-    for (int j = 0; j < dims.size(); ++j) {
+    for (size_t j = 0; j < dims.size(); ++j) {
       stream << dims[j];
       if (j != dims.size() - 1) {
         stream << ",";
@@ -83,7 +83,7 @@ std::string VectorToString(const std::vector<T> &vec) {
 
   std::stringstream stream;
   stream << "[";
-  for (int i = 0; i < vec.size(); ++i) {
+  for (size_t i = 0; i < vec.size(); ++i) {
     stream << vec[i];
     if (i != vec.size() - 1) {
       stream << ",";

@@ -135,7 +135,6 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
-    const index_t input_batch = input->dim(0);
     const index_t input_height = input->dim(1);
     const index_t input_width = input->dim(2);
 
