@@ -8,6 +8,7 @@ mace/codegen/opencl/
 mace/codegen/opencl_bin/
 mace/codegen/tuning/
 mace/codegen/version/
+mace/codegen/engine/
 build/
 docs/_build/
 

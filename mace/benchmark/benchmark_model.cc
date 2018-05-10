@@ -25,20 +25,7 @@
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 #include "mace/benchmark/statistics.h"
-
-namespace mace {
-namespace MACE_MODEL_TAG {
-
-extern const unsigned char *LoadModelData(const char *model_data_file);
-
-extern void UnloadModelData(const unsigned char *model_data);
-
-extern NetDef CreateNet(const unsigned char *model_data);
-
-extern const std::string ModelChecksum();
-
-}  // namespace MACE_MODEL_TAG
-}  // namespace mace
+#include "mace/codegen/engine/mace_engine_factory.h"
 
 namespace mace {
 namespace benchmark {
@@ -188,6 +175,7 @@ bool Run(const std::string &title,
   return true;
 }
 
+DEFINE_string(model_name, "", "model name in yaml");
 DEFINE_string(device, "CPU", "Device [CPU|GPU|DSP]");
 DEFINE_string(input_node, "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -198,7 +186,6 @@ DEFINE_string(output_shape, "", "output shape, separated by colon and comma");
 DEFINE_string(input_file, "", "input file name");
 DEFINE_int32(max_num_runs, 100, "number of runs max");
 DEFINE_string(max_time, "10.0", "length to run max");
-DEFINE_string(benchmark_name, "", "benchmark name");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
@@ -214,7 +201,7 @@ int Main(int argc, char **argv) {
   gflags::SetUsageMessage("some usage message");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  LOG(INFO) << "Benchmark name: [" << FLAGS_benchmark_name << "]";
+  LOG(INFO) << "Model name: [" << FLAGS_model_name << "]";
   LOG(INFO) << "Device: [" << FLAGS_device << "]";
   LOG(INFO) << "gpu_perf_hint: [" << FLAGS_gpu_perf_hint << "]";
   LOG(INFO) << "gpu_priority_hint: [" << FLAGS_gpu_priority_hint << "]";
@@ -233,17 +220,6 @@ int Main(int argc, char **argv) {
 
   std::unique_ptr<OpStat> statistician(new OpStat());
 
-  mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
-
-  // config runtime
-  mace::SetOpenMPThreadPolicy(
-      FLAGS_omp_num_threads,
-      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
-  if (device_type == DeviceType::GPU) {
-    mace::SetGPUHints(
-        static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
-        static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
 
   std::vector<std::string> input_names =
       str_util::Split(FLAGS_input_node, ',');
@@ -265,9 +241,53 @@ int Main(int argc, char **argv) {
     ParseShape(output_shapes[i], &output_shape_vec[i]);
   }
 
-  const unsigned char *model_data =
-      mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
-  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
+  mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
+
+  // config runtime
+  mace::SetOpenMPThreadPolicy(
+      FLAGS_omp_num_threads,
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+#ifdef MACE_ENABLE_OPENCL
+  if (device_type == DeviceType::GPU) {
+    mace::SetGPUHints(
+        static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
+        static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
+  }
+#endif  // MACE_ENABLE_OPENCL
+
+  const char *kernel_path = getenv("MACE_INTERNAL_STORAGE_PATH");
+  const std::string kernel_file_path =
+      std::string(kernel_path == nullptr ?
+                  "/data/local/tmp/mace_run/interior" : kernel_path);
+
+  std::shared_ptr<KVStorageFactory> storage_factory(
+      new FileStorageFactory(kernel_file_path));
+  SetKVStorageFactory(storage_factory);
+
+  // Create Engine
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
+  // Create Engine
+  if (FLAGS_model_data_file.empty()) {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         nullptr,
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  } else {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         FLAGS_model_data_file.c_str(),
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  }
+  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+    LOG(FATAL) << "Create engine error, please check the arguments";
+  }
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
@@ -303,19 +323,11 @@ int Main(int argc, char **argv) {
                                                 buffer_out);
   }
 
-  // Init model
-  LOG(INFO) << "Run init";
-  std::unique_ptr<mace::MaceEngine> engine_ptr(
-      new mace::MaceEngine(&net_def, device_type, input_names, output_names));
-  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
-    mace::MACE_MODEL_TAG::UnloadModelData(model_data);
-  }
-
   int64_t warmup_time_us = 0;
   int64_t num_warmup_runs = 0;
   if (FLAGS_warmup_runs > 0) {
     bool status =
-        Run("Warm Up", engine_ptr.get(), inputs, &outputs,
+        Run("Warm Up", engine.get(), inputs, &outputs,
             FLAGS_warmup_runs, -1.0,
             &warmup_time_us, &num_warmup_runs, nullptr);
     if (!status) {
@@ -326,7 +338,7 @@ int Main(int argc, char **argv) {
   int64_t no_stat_time_us = 0;
   int64_t no_stat_runs = 0;
   bool status =
-      Run("Run without statistics", engine_ptr.get(), inputs, &outputs,
+      Run("Run without statistics", engine.get(), inputs, &outputs,
           FLAGS_max_num_runs, max_benchmark_time_seconds,
           &no_stat_time_us, &no_stat_runs, nullptr);
   if (!status) {
@@ -335,7 +347,7 @@ int Main(int argc, char **argv) {
 
   int64_t stat_time_us = 0;
   int64_t stat_runs = 0;
-  status = Run("Run with statistics", engine_ptr.get(), inputs, &outputs,
+  status = Run("Run with statistics", engine.get(), inputs, &outputs,
                FLAGS_max_num_runs, max_benchmark_time_seconds,
                &stat_time_us, &stat_runs, statistician.get());
   if (!status) {

@@ -6,6 +6,7 @@ load(
     "if_not_production_mode",
     "if_hexagon_enabled",
     "if_openmp_enabled",
+    "if_android",
 )
 
 licenses(["notice"])  # Apache 2.0
@@ -26,12 +27,14 @@ cc_binary(
     srcs = [
         "benchmark_model.cc",
     ],
+    copts = if_android(["-DMACE_ENABLE_OPENCL"]),
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
         ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",
+        "//mace/codegen:generated_mace_engine_factory",
     ],
 )
 

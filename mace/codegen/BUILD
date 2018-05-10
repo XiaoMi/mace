@@ -33,3 +33,11 @@ cc_library(
     srcs = ["version/version.cc"],
     linkstatic = 1,
 )
+
+cc_library(
+    name = "generated_mace_engine_factory",
+    hdrs = ["engine/mace_engine_factory.h"],
+    deps = [
+        "//mace/public",
+    ],
+)

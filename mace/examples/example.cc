@@ -34,26 +34,10 @@
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
+// if convert model to code.
+#include "mace/codegen/engine/mace_engine_factory.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
-
-// #include "mace/codegen/models/${MACE_MODEL_TAG}/${MACE_MODEL_TAG}.h" instead
-namespace mace {
-namespace MACE_MODEL_TAG {
-
-extern const unsigned char *LoadModelData(const char *model_data_file);
-
-extern void UnloadModelData(const unsigned char *model_data);
-
-extern NetDef CreateNet(const unsigned char *model_data);
-
-extern const std::string ModelName();
-extern const std::string ModelChecksum();
-extern const std::string ModelBuildTime();
-extern const std::string ModelBuildOptions();
-
-}  // namespace MACE_MODEL_TAG
-}  // namespace mace
 
 namespace mace {
 namespace examples {
@@ -112,6 +96,9 @@ DeviceType ParseDeviceType(const std::string &device_str) {
 }
 
 
+DEFINE_string(model_name,
+              "",
+              "model name in yaml file");
 DEFINE_string(input_node,
               "input_node0,input_node1",
               "input nodes, separated by comma");
@@ -148,36 +135,53 @@ bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
   // load model
-  const unsigned char *model_data =
-      mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
-  NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
-
   DeviceType device_type = ParseDeviceType(FLAGS_device);
-
   // config runtime
-  MaceStatus res = mace::SetOpenMPThreadPolicy(
+  mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+#ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::GPU) {
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
   }
+#endif  // MACE_ENABLE_OPENCL
 
   // DO NOT USE tmp directory.
   // Please use APP's own directory and make sure the directory exists.
-  const std::string kernel_file_path =
-                  "/data/local/tmp/mace_run/cl";
+  // Just call once
+  const std::string internal_storage_path =
+      "/data/local/tmp/mace_run/interior";
 
   // Config internal kv storage factory.
   std::shared_ptr<KVStorageFactory> storage_factory(
-      new FileStorageFactory(kernel_file_path));
+      new FileStorageFactory(internal_storage_path));
   SetKVStorageFactory(storage_factory);
-  // Init model
-  mace::MaceEngine engine(&net_def, device_type, input_names,
-                          output_names);
-  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
-    mace::MACE_MODEL_TAG::UnloadModelData(model_data);
+
+  // Create Engine
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
+  // Create Engine
+  if (FLAGS_model_data_file.empty()) {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         nullptr,
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  } else {
+    create_engine_status =
+        CreateMaceEngine(FLAGS_model_name.c_str(),
+                         FLAGS_model_data_file.c_str(),
+                         input_names,
+                         output_names,
+                         device_type,
+                         &engine);
+  }
+  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+    LOG(FATAL) << "Create engine error, please check the arguments";
   }
 
   const size_t input_count = input_names.size();
@@ -216,12 +220,12 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 
   LOG(INFO) << "Warm up run";
-  engine.Run(inputs, &outputs);
+  engine->Run(inputs, &outputs);
 
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
     for (int i = 0; i < FLAGS_round; ++i) {
-      engine.Run(inputs, &outputs);
+      engine->Run(inputs, &outputs);
     }
   }
 
@@ -247,10 +251,6 @@ int Main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
-  LOG(INFO) << "model name: " << mace::MACE_MODEL_TAG::ModelName();
-  LOG(INFO) << "model checksum: " << mace::MACE_MODEL_TAG::ModelChecksum();
-  LOG(INFO) << "build time: " << mace::MACE_MODEL_TAG::ModelBuildTime();
-  LOG(INFO) << "build options: " << mace::MACE_MODEL_TAG::ModelBuildOptions();
   LOG(INFO) << "input node: " << FLAGS_input_node;
   LOG(INFO) << "input shape: " << FLAGS_input_shape;
   LOG(INFO) << "output node: " << FLAGS_output_node;
