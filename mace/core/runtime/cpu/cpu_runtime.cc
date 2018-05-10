@@ -126,7 +126,6 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
   int cpu_count = GetCPUCount();
 #endif
   std::vector<int> cpu_max_freq(cpu_count);
-  std::vector<int> cpu_ids(cpu_count);
 
   // set cpu max frequency
   for (int i = 0; i < cpu_count; ++i) {
@@ -136,25 +135,21 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                    << "'s max frequency info, maybe it is offline.";
       return MACE_INVALID_ARGS;
     }
-    cpu_ids[i] = i;
   }
 
-  // sort cpu ids by max frequency asc
-  std::sort(cpu_ids.begin(), cpu_ids.end(),
-            [&cpu_max_freq](int a, int b) {
-              return cpu_max_freq[a] < cpu_max_freq[b];
-            });
+  int big_core_freq =
+      *(std::max_element(cpu_max_freq.begin(), cpu_max_freq.end()));
+  int little_core_freq =
+      *(std::min_element(cpu_max_freq.begin(), cpu_max_freq.end()));
 
   big_core_ids->reserve(cpu_count);
   little_core_ids->reserve(cpu_count);
-  int little_core_freq = cpu_max_freq.front();
-  int big_core_freq = cpu_max_freq.back();
   for (int i = 0; i < cpu_count; ++i) {
     if (cpu_max_freq[i] == little_core_freq) {
-      little_core_ids->push_back(cpu_ids[i]);
+      little_core_ids->push_back(i);
     }
     if (cpu_max_freq[i] == big_core_freq) {
-      big_core_ids->push_back(cpu_ids[i]);
+      big_core_ids->push_back(i);
     }
   }
 
