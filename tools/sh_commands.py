@@ -856,9 +856,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_mace_engine_creator.pic.a\n")
     else:
         mri_stream += "create %s/libmace_%s.%s.a\n" % \
                       (model_bin_dir, project_name, target_soc)
@@ -874,9 +871,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_models.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_mace_engine_creator.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/core/libcore.a\n")
