@@ -11,8 +11,8 @@ The main documentation is organized into the following sections:
 
    getting_started/introduction
    getting_started/create_a_model_deployment
-   getting_started/how_to_build
    getting_started/docker
+   getting_started/how_to_build
    getting_started/op_lists
 
 .. toctree::

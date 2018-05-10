@@ -1,4 +1,4 @@
-Frequently Asked Questions
+Frequently asked questions
 ==========================
 
 Why is the generated static library file size so huge?

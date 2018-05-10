@@ -10,9 +10,6 @@ project = u'MiAI Compute Engine'
 author = u'%s Developers' % project
 copyright = u'2018, %s' % author
 
-version = u'0.6'
-release = u'0.6.0 alpha'
-
 source_parsers = {
     '.md': recommonmark.parser.CommonMarkParser,
 }

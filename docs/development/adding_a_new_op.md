@@ -3,7 +3,7 @@ Adding a new Op
 
 You can create a custom op if it is not supported yet.
 
-To add a custom op, you need to finish the following steps.
+To add a custom op, you need to finish the following steps:
 
 Define the Op class
 --------------------

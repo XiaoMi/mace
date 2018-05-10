@@ -1,0 +1,46 @@
+# 配置文件名会被用作生成库的名称：libmace-${filename}.a
+target_abis: [armeabi-v7a, arm64-v8a]
+# 具体机型的soc编号，可以使用`adb shell getprop | grep ro.board.platform | cut -d [ -f3 | cut -d ] -f1`获取
+target_socs: [msm8998]
+embed_model_data: 1
+models: # 一个配置文件可以包含多个模型的配置信息，最终生成的库中包含多个模型
+  first_net: # 模型的标签，在调度模型的时候，会用这个变量
+    platform: tensorflow
+    model_file_path: path/to/model64.pb # also support http:// and https://
+    model_sha256_checksum: 7f7462333406e7dea87222737590ebb7d94490194d2f21a7d72bafa87e64e9f9
+    input_nodes: input_node
+    output_nodes: output_node
+    input_shapes: 1,64,64,3
+    output_shapes: 1,64,64,2
+    runtime: gpu
+    limit_opencl_kernel_time: 0
+    dsp_mode: 0
+    obfuscate: 1
+    fast_conv: 0
+    input_files:
+      - path/to/input_files # support http://
+  second_net:
+    platform: caffe
+    model_file_path: path/to/model.prototxt
+    weight_file_path: path/to/weight.caffemodel
+    model_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    weight_sha256_checksum: 05d92625809dc9edd6484882335c48c043397aed450a168d75eb8b538e86881a
+    input_nodes:
+      - input_node0
+      - input_node1
+    output_nodes:
+      - output_node0
+      - output_node1
+    input_shapes:
+      - 1,256,256,3
+      - 1,128,128,3
+    output_shapes:
+      - 1,256,256,2
+      - 1,1,1,2
+    runtime: cpu
+    limit_opencl_kernel_time: 1
+    dsp_mode: 0
+    obfuscate: 1
+    fast_conv: 0
+    input_files:
+      - path/to/input_files # support http://
