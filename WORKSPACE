@@ -5,26 +5,55 @@ workspace(name = "mace")
 # This statement defines the @com_google_protobuf repo.
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "0a54cae83b77f4b54b7db4eaebadd81fbe91655e84a1ef3f6d29116d75f3a45f",
-    strip_prefix = "protobuf-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa",
-    urls = ["http://v9.git.n.xiaomi.com/deep-computing/protobuf/repository/archive.zip?ref=c7457ef65a7a8584b1e3bd396c401ccf8e275ffa"],
-)
-
-# cc_proto_library rules implicitly depend on @com_google_protobuf_cc//:cc_toolchain,
-# which is the C++ proto runtime (base classes and common utilities).
-http_archive(
-    name = "com_google_protobuf_cc",
-    sha256 = "0a54cae83b77f4b54b7db4eaebadd81fbe91655e84a1ef3f6d29116d75f3a45f",
-    strip_prefix = "protobuf-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa-c7457ef65a7a8584b1e3bd396c401ccf8e275ffa",
-    urls = ["http://v9.git.n.xiaomi.com/deep-computing/protobuf/repository/archive.zip?ref=c7457ef65a7a8584b1e3bd396c401ccf8e275ffa"],
+    sha256 = "40d39d97a7b514b3e34daef732f822eca0081960b269863f5b573db5548cb237",
+    strip_prefix = "protobuf-3.4.0rc3",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/protobuf/protobuf-3.4.0rc3.zip",
+        "https://github.com/google/protobuf/archive/v3.4.0rc3.zip"
+    ],
 )
 
 new_http_archive(
     name = "gtest",
     build_file = "mace/third_party/googletest/googletest.BUILD",
-    sha256 = "a0b43a0a43cda0cc401a46d75519d961ef27f6674d4126366e47d9c946c4bbcd",
-    strip_prefix = "googletest-release-1.8.0-ec44c6c1675c25b9827aacd08c02433cccde7780",
-    url = "http://v9.git.n.xiaomi.com/deep-computing/googletest/repository/archive.zip?ref=release-1.8.0",
+    sha256 = "f3ed3b58511efd272eb074a3a6d6fb79d7c2e6a0e374323d1e6bcbcc1ef141bf",
+    strip_prefix = "googletest-release-1.8.0",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/googletest/googletest-release-1.8.0.zip",
+        "https://github.com/google/googletest/archive/release-1.8.0.zip"
+    ],
+)
+
+new_http_archive(
+    name = "opencl_headers",
+    build_file = "mace/third_party/opencl-headers/opencl-headers.BUILD",
+    sha256 = "5dc7087680853b5c825360fc04ca26534f4b9f22ac114c4d3a306bfbec3cd0f2",
+    strip_prefix = "OpenCL-Headers-master",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/OpenCL-Headers-master.zip",
+        "https://github.com/KhronosGroup/OpenCL-Headers/archive/master.zip"
+    ],
+)
+
+new_http_archive(
+    name = "opencl_clhpp",
+    build_file = "mace/third_party/opencl-clhpp/opencl-clhpp.BUILD",
+    sha256 = "d4eb63372ad31f7efcae626852f75f7929ff28d1cabb5f50ef11035963a69b46",
+    strip_prefix = "OpenCL-CLHPP-2.0.10",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-2.0.10.zip",
+        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/v2.0.10.zip"
+    ],
+)
+
+new_http_archive(
+    name = "half",
+    build_file = "mace/third_party/half/half.BUILD",
+    sha256 = "cdd70d3bf3fe091b688e7ab3f48471c881a197d2c186c95cca8bf156961fb41c",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/half/half-1.12.0.zip",
+        "https://jaist.dl.sourceforge.net/project/half/half/1.12.0/half-1.12.0.zip"
+    ],
 )
 
 new_http_archive(
@@ -33,6 +62,7 @@ new_http_archive(
     sha256 = "105f8d68616f8248e24bf0e9372ef04d3cc10104f1980f54d57b2ce73a5ad56a",
     strip_prefix = "six-1.10.0",
     urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/six/six-1.10.0.tar.gz",
         "http://mirror.bazel.build/pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
         "https://pypi.python.org/packages/source/s/six/six-1.10.0.tar.gz",
     ],
@@ -41,28 +71,6 @@ new_http_archive(
 bind(
     name = "six",
     actual = "@six_archive//:six",
-)
-
-new_http_archive(
-    name = "opencl_headers",
-    build_file = "mace/third_party/opencl-headers/opencl-headers.BUILD",
-    sha256 = "439dbdb4e7a02a218dd90d82170c9f7671487cd0e626a20e136690a91f173ad2",
-    strip_prefix = "OpenCL-Headers-master-f039db6764d52388658ef15c30b2237bbda49803",
-    urls = ["http://v9.git.n.xiaomi.com/deep-computing/OpenCL-Headers/repository/archive.zip?ref=master"],
-)
-
-new_git_repository(
-    name = "opencl_clhpp",
-    build_file = "mace/third_party/opencl-clhpp/opencl-clhpp.BUILD",
-    commit = "4c6f7d56271727e37fb19a9b47649dd175df2b12",
-    remote = "http://v9.git.n.xiaomi.com/deep-computing/OpenCL-CLHPP-Mirror.git",
-)
-
-new_git_repository(
-    name = "half",
-    build_file = "mace/third_party/half/half.BUILD",
-    commit = "87d7f25f7ba2c7d3b051f6c857031de0ecac5afd",
-    remote = "http://v9.git.n.xiaomi.com/deep-computing/half.git",
 )
 
 git_repository(
