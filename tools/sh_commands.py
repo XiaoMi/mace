@@ -815,6 +815,10 @@ def validate_model(abi,
 def build_production_code(abi):
     bazel_build("//mace/codegen:generated_opencl", abi=abi)
     bazel_build("//mace/codegen:generated_tuning_params", abi=abi)
+    if abi == 'host':
+        bazel_build(
+            "//mace/codegen:generated_models",
+            abi=abi)
 
 
 def merge_libs(target_soc,
