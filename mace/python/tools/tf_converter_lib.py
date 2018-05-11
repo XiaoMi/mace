@@ -38,6 +38,8 @@ math_type_mode = {
     'MAX': 5,
     'NEG': 6,
     'ABS': 7,
+    'SQR_DIFF': 8,
+    'POW': 9,
 }
 
 buffer_type_map = {
@@ -528,6 +530,103 @@ class TFConverter(object):
         self.add_output_shape(final_op.outputs, op_def)
         self.net_def.op.extend([op_def])
 
+    def convert_deconv2d(self, op):
+        op_def = mace_pb2.OperatorDef()
+        arg = op_def.arg.add()
+        arg.name = 'T'
+        arg.i = self.dt
+        op_def.name = op.name
+        op_def.type = 'Deconv2D'
+
+        out_shape_value = None
+        if len(op.inputs) == 2:
+            out_shape_value = op.get_attr('output_shape')
+            if self.device == 'cpu':
+                self.transpose_filter_tensor[get_input_tensor(
+                    op, 1).name] = (3, 2, 0, 1)
+            else:
+                self.transpose_filter_tensor[get_input_tensor(
+                    op, 1).name] = (0, 1, 3, 2)
+            if self.device == 'gpu':
+                op_def.input.extend([op.inputs[0].name])
+                buffer_type = "CONV2D_FILTER"
+                output_name = self.add_buffer_to_image(
+                    get_input_tensor(op, 1).name, buffer_type)
+                op_def.input.extend([output_name])
+            else:
+                op_def.input.extend(
+                    [get_input_tensor(op, i).name
+                     for i in range(len(op.inputs))])
+        elif len(op.inputs) == 3:
+            out_shape_value = \
+                get_input_tensor(op, 0).eval().astype(np.int32).flat
+            self.unused_tensor.add(op.inputs[0].name)
+            if self.device == 'cpu':
+                self.transpose_filter_tensor[get_input_tensor(
+                    op, 1).name] = (2, 3, 0, 1)
+            else:
+                self.transpose_filter_tensor[get_input_tensor(
+                    op, 1).name] = (0, 1, 2, 3)
+            if self.device == 'gpu':
+                op_def.input.extend([op.inputs[2].name])
+                buffer_type = "CONV2D_FILTER"
+                output_name = self.add_buffer_to_image(
+                    get_input_tensor(op, 1).name, buffer_type)
+                op_def.input.extend([output_name])
+            else:
+                op_def.input.extend([op.inputs[2].name])
+                op_def.input.extend([op.inputs[1].name])
+        else:
+            raise Exception('Too many inputs. Op: %s, type: %s' % (op.name,
+                                                                   op.type))
+        if out_shape_value is not None:
+            out_shape_arg = op_def.arg.add()
+            out_shape_arg.name = 'output_shape'
+            out_shape_arg.ints.extend(out_shape_value)
+        padding_arg = op_def.arg.add()
+        padding_arg.name = 'padding'
+        padding_arg.i = padding_mode[op.get_attr('padding')]
+        strides_arg = op_def.arg.add()
+        strides_arg.name = 'strides'
+        strides_arg.ints.extend(op.get_attr('strides')[1:3])
+        data_format_arg = op_def.arg.add()
+        data_format_arg.name = 'data_format'
+        if self.device == 'cpu':
+            data_format_arg.s = 'NCHW'
+        else:
+            data_format_arg.s = 'NHWC'
+        final_op = op
+        self.resolved_ops[op.name] = 1
+
+        if len(self.tf_graph.get(op.name, [])) == 1 and \
+                self.tf_graph[op.name][0].type == 'BiasAdd':
+            bias_add_op = self.tf_graph[op.name][0]
+            if self.device == 'gpu':
+                output_name = self.add_buffer_to_image(
+                    get_input_tensor(bias_add_op, 1).name, "ARGUMENT")
+                op_def.input.extend([output_name])
+            else:
+                op_def.input.extend([get_input_tensor(bias_add_op, 1).name])
+            final_op = bias_add_op
+            self.resolved_ops[bias_add_op.name] = 1
+
+        if len(self.tf_graph.get(final_op.name, [])) == 1 and \
+                self.tf_graph[final_op.name][0].type in activation_name_map:
+            activation_op = self.tf_graph[final_op.name][0]
+            fused_act_arg = op_def.arg.add()
+            fused_act_arg.name = 'activation'
+            fused_act_arg.s = activation_name_map[activation_op.type]
+            if activation_op.type == 'Relu6':
+                max_limit_arg = op_def.arg.add()
+                max_limit_arg.name = 'max_limit'
+                max_limit_arg.f = 6
+            final_op = activation_op
+            self.resolved_ops[activation_op.name] = 1
+
+        op_def.output.extend([output.name for output in final_op.outputs])
+        self.add_output_shape(final_op.outputs, op_def)
+        self.net_def.op.extend([op_def])
+
     def check_conv_to_fc(self, op):
         if self.device != 'cpu' or op.type != "Conv2D":
             return False
@@ -857,6 +956,7 @@ class TFConverter(object):
         if len(op.inputs) == 2:
             input_tensor0 = get_input_tensor(op, 0)
             input_tensor1 = get_input_tensor(op, 1)
+
             x_value = None
             if np.asarray(input_tensor1.shape).size == 0:
                 x_value = input_tensor1.eval()
@@ -867,7 +967,22 @@ class TFConverter(object):
                 op_def.input.extend([op.inputs[1].name])
                 self.unused_tensor.add(input_tensor0.name)
             else:
-                op_def.input.extend([input.name for input in op.inputs])
+                if np.asarray(input_tensor0.shape).size == 1 \
+                        and input_tensor0.op.type == 'Const':
+                    if self.device == 'gpu':
+                        output_name = self.add_buffer_to_image(
+                            input_tensor0.name, "ARGUMENT")
+                        op_def.input.extend([output_name])
+                else:
+                    op_def.input.extend([input_tensor0.name])
+                if np.asarray(input_tensor1.shape).size == 1 \
+                        and input_tensor1.op.type == 'Const':
+                    if self.device == 'gpu':
+                        output_name = self.add_buffer_to_image(
+                            input_tensor1.name, "ARGUMENT")
+                        op_def.input.extend([output_name])
+                else:
+                    op_def.input.extend([input_tensor1.name])
             if x_value is not None:
                 x_arg = op_def.arg.add()
                 x_arg.name = 'x'
@@ -1150,6 +1265,8 @@ class TFConverter(object):
                     self.convert_winograd_conv_gpu(op)
                 else:
                     self.convert_conv2d(op)
+            elif op.type == 'Conv2DBackpropInput':
+                self.convert_deconv2d(op)
             elif op.type == 'FusedBatchNorm':
                 self.convert_fused_batchnorm(op)
             elif op.type == 'Mul' and op.name.find('batchnorm/mul') != -1:
@@ -1159,7 +1276,10 @@ class TFConverter(object):
             elif op.type == 'Relu6':
                 self.convert_relu6(op)
             elif op.type == 'Add':
-                self.convert_add(op)
+                if len(op.inputs) > 2:
+                    self.convert_add(op)
+                else:
+                    self.convert_eltwise(op, 'ADD')
             elif op.type == 'ConcatV2':
                 self.convert_concat(op)
             elif op.type == 'ResizeBilinear':
@@ -1176,6 +1296,12 @@ class TFConverter(object):
                 self.convert_depth_to_space(op, False)
             elif op.type in ['Neg', 'neg', 'Negative', 'negative']:
                 self.convert_eltwise(op, 'NEG')
+            elif op.type in ['RealDiv', 'Div']:
+                self.convert_eltwise(op, 'DIV')
+            elif op.type in ['SquaredDifference']:
+                self.convert_eltwise(op, 'SQR_DIFF')
+            elif op.type in ['Pow']:
+                self.convert_eltwise(op, 'POW')
             elif op.type == 'Mul':
                 self.convert_eltwise(op, 'MUL')
             elif op.type == 'Sub':

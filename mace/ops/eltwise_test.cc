@@ -554,6 +554,8 @@ TEST_F(EltwiseOpTest, RandomTensorVecFloat) {
   RandomTensorEltwise<float>(kernels::EltwiseType::SUB,
                             {5, 32, 32, 16}, {5, 1, 1, 16});
   RandomTensorEltwise<float>(kernels::EltwiseType::SUB,
+                             {5, 32, 32, 16}, {1, 1, 1, 16});
+  RandomTensorEltwise<float>(kernels::EltwiseType::SUB,
                              {5, 1, 1, 16}, {5, 32, 32, 16});
   RandomTensorEltwise<float>(kernels::EltwiseType::PROD,
                              {1, 31, 37, 17}, {1, 1, 1, 17});
@@ -575,11 +577,15 @@ TEST_F(EltwiseOpTest, RandomTensorVecHalf) {
   RandomTensorEltwise<half>(kernels::EltwiseType::SUB,
                            {3, 32, 32, 16}, {3, 1, 1, 16});
   RandomTensorEltwise<half>(kernels::EltwiseType::SUB,
+                            {3, 32, 32, 16}, {1, 1, 1, 16});
+  RandomTensorEltwise<half>(kernels::EltwiseType::SUB,
                             {3, 1, 1, 16}, {3, 32, 32, 16});
   RandomTensorEltwise<half>(kernels::EltwiseType::PROD,
                            {1, 1, 1, 17}, {1, 31, 37, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::DIV,
                             {5, 31, 37, 17}, {5, 1, 1, 17});
+  RandomTensorEltwise<half>(kernels::EltwiseType::DIV,
+                            {5, 31, 37, 17}, {1, 1, 1, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::DIV,
                            {5, 1, 1, 17}, {5, 31, 37, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::MIN,

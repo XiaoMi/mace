@@ -14,6 +14,7 @@
 
 #include "mace/kernels/conv_pool_2d_util.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace mace {
@@ -147,6 +148,8 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   output_shape[3] = output_channels;
 }
 
+
+
 void CalcOutputSize(const index_t *input_shape,   // NHWC
                     const index_t *filter_shape,  // HWOI
                     const int *padding_size,
@@ -161,14 +164,7 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
-  /*
-  * Convlution arithmetic:
-  * o = floor((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
-  * Pooling arithmetic:
-  * o = ceil((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
-  * For details, see https://arxiv.org/pdf/1603.07285.pdf or
-  * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
-  */
+
   output_shape[0] = input_shape[0];
   if (round_type == FLOOR) {
     output_shape[1] = static_cast<index_t>(
@@ -454,5 +450,6 @@ void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
     }
   }
 }
+
 }  // namespace kernels
 }  // namespace mace

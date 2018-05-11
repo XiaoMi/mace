@@ -33,6 +33,8 @@ __kernel void eltwise(KERNEL_ERROR_PARAMS
 #elif INPUT_TYPE == 2
   const int batch_idx = hb / height;
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, batch_idx));
+#elif INPUT_TYPE == 3
+  DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
 #else
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
 #endif
@@ -70,10 +72,17 @@ __kernel void eltwise(KERNEL_ERROR_PARAMS
 #elif ELTWISE_TYPE == 8
   DATA_TYPE4 diff = in0 - in1;
   out = diff * diff;
+#elif ELTWISE_TYPE == 9
+  #ifdef SWAPPED
+    out = pow(in0, in1);
+  #else
+    out = pow(in1, in0);
+  #endif
 #endif
 
 #if INPUT_TYPE == 1
-  #if ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 || ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8
+  #if ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||          \
+      ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9
     const int remain_channel = channel - 4 * chan_idx;
     if (remain_channel < 4) {
       switch (remain_channel) {
