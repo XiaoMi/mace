@@ -1,6 +1,7 @@
 stages:
   - cpplint
   - pycodestyle
+  - docs
   - platform_compitable_tests
   - ops_test
   - api_test
@@ -17,6 +18,23 @@ pycodestyle:
   stage: pycodestyle
   script:
     - pycodestyle $(find -name "*.py")
+
+docs:
+  stage: docs
+  script:
+    - cd docs
+    - make html
+    - CI_LATEST_OUTPUT_PATH=/mace-build-output/$CI_PROJECT_NAME/latest
+    - CI_JOB_OUTPUT_PATH=/mace-build-output/$CI_PROJECT_NAME/$CI_BUILD_ID
+    - mkdir -p $CI_JOB_OUTPUT_PATH
+    - cp -r _build/html $CI_JOB_OUTPUT_PATH/docs
+    - rm -rf $CI_LATEST_OUTPUT_PATH
+    - mkdir -p $CI_LATEST_OUTPUT_PATH
+    - cp -r _build/html $CI_LATEST_OUTPUT_PATH/docs
+
+  artifacts:
+    paths:
+      - docs/_build
 
 ops_test:
   stage: ops_test
