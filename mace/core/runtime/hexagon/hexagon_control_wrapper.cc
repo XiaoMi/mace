@@ -275,7 +275,7 @@ void HexagonControlWrapper::GetPerfInfo() {
   float total_duration = 0.0;
 
   VLOG(1) << "items: " << n_items;
-  for (int i = 0; i < n_items; ++i) {
+  for (unsigned int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
     node_id_counters[node_id] =
