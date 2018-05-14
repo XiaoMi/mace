@@ -24,6 +24,7 @@ void Register_Deconv2D(OperatorRegistry *op_registry) {
                                      .Build(),
                     Deconv2dOp<DeviceType::CPU, float>);
 
+#ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("Deconv2D")
                                      .Device(DeviceType::GPU)
                                      .TypeConstraint<float>("T")
@@ -35,6 +36,7 @@ void Register_Deconv2D(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     Deconv2dOp<DeviceType::GPU, half>);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace ops

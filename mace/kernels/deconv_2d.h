@@ -23,11 +23,14 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
 namespace kernels {
@@ -126,7 +129,6 @@ struct Deconv2dFunctorBase {
 
     const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
     const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
-    const index_t in_channels = isNCHW ? input_shape[1] : input_shape[3];
 
     const index_t extended_input_height =
         (in_height - 1) * strides[0] + 1 + padding_size[0];
@@ -168,11 +170,9 @@ struct Deconv2dFunctorBase {
 
     const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
     const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
-    const index_t in_channels = isNCHW ? input_shape[1] : input_shape[3];
 
     const index_t out_height = isNCHW ? output_shape[2] : output_shape[1];
     const index_t out_width = isNCHW ? output_shape[3] : output_shape[2];
-    const index_t out_channels = isNCHW ? output_shape[1] : output_shape[3];
 
     const index_t extended_input_height = (in_height - 1) * strides[0] + 1;
     const index_t extended_input_width = (in_width - 1) * strides[1] + 1;
@@ -216,9 +216,9 @@ struct Deconv2dFunctorBase {
   const int *strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
   std::vector<int> paddings_;
+  std::vector<index_t> output_shape_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  std::vector<index_t> output_shape_;
 };
 
 template <DeviceType D, typename T>
@@ -228,9 +228,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit,
-                  const bool is_filter_transformed,
-                  ScratchBuffer *scratch)
+                  const float relux_max_limit)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
@@ -243,6 +241,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
@@ -315,6 +314,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
   }
 };
 
+#ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
   Deconv2dFunctor(const int *strides,
@@ -322,9 +322,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit,
-                  const bool is_filter_transformed,
-                  ScratchBuffer *scratch)
+                  const float relux_max_limit)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
@@ -343,6 +341,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
   std::unique_ptr<BufferBase> kernel_error_;
   std::vector<index_t> input_shape_;
 };
+#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace
