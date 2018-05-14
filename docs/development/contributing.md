@@ -34,7 +34,8 @@ clang-format -style="{BasedOnStyle: google,            \
 C++ logging guideline
 ---------------------
 
-The rule of VLOG level:
+VLOG is used for verbose logging, which is configured by environment variable
+`MACE_CPP_MIN_VLOG_LEVEL`. The guideline of VLOG level is as follows:
 
 ```
 0. Ad hoc debug logging, should only be added in test or temporary ad hoc
