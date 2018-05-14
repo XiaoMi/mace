@@ -1,4 +1,3 @@
-
 /*
  * You probably want to
  *
@@ -184,7 +183,7 @@ DEF_OP(Sink)
 DEF_OP_WREF(QuantizedPRelu_8_d32)
 DEF_OP_WREF(AutoQuantize)
 DEF_OP_WREF(QuantizedDepthwiseConv2d_8x8to32)
-DEF_OP(DepthwiseConv2d_f)
+DEF_OP_WREF(DepthwiseConv2d_f)
 DEF_OP(DepthwiseSupernode_8x8p8to8)
 DEF_OP(DepthwiseSupernode_8x8p8to8_d32)
 
@@ -234,6 +233,19 @@ DEF_OP(Table_8)
 
 DEF_OP(FillPadding_8_d32)
 DEF_OP(QuantizedResizeBilinear_8_d32)
+
+DEF_OP(QuantizeINPUT_f_to_8)
+DEF_OP_WREF(DeconvBias_8x8to32)
+
+DEF_OP(SpaceToBatchND_8)
+DEF_OP(BatchToSpaceND_8)
+
+
+DEF_OP(SpaceToDepth_f)
+DEF_OP(DepthToSpace_f)
+DEF_OP(SpaceToDepth_8)
+DEF_OP(DepthToSpace_8)
+
 #ifdef __SELF_DEF_OP_WREF
 #undef __SELF_DEF_OP_WREF
 #undef DEF_OP_WREF
