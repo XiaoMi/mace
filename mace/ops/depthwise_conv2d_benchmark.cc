@@ -43,18 +43,15 @@ void DepthwiseConv2d(int iters,
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, input_channels, height, width});
-    net.AddRandomInput<D, float>(
-      "Filter", {multiplier, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, height, width, input_channels});
-    net.AddRandomInput<D, float>(
-      "Filter", {kernel_h, kernel_w, input_channels, multiplier});
-    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
+  net.AddRandomInput<D, float>(
+      "Filter", {multiplier, input_channels, kernel_h, kernel_w});
+  net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")

@@ -250,7 +250,7 @@ void MaceRunFunc(const int in_out_size) {
 
   const std::vector<std::vector<int64_t>> input_shapes = {{1, 32, 32, 16}};
   const std::vector<std::vector<int64_t>> output_shapes = {{1, 32, 32, 16}};
-  const std::vector<int64_t> filter_shape = {3, 3, 16, 16};
+  const std::vector<int64_t> filter_shape = {16, 16, 3, 3};
 
   NetDef net_def;
 

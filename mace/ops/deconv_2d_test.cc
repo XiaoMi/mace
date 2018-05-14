@@ -24,6 +24,7 @@ namespace test {
 
 class Deconv2dOpTest : public OpsTestBase {};
 
+namespace {
 template<DeviceType D>
 void RunTestSimple(const std::vector<index_t> &input_shape,
                    const std::vector<float> &input_data,
@@ -39,21 +40,25 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
+  net.TransformDataFormat<D, float>("Filter",
+                                    HWOI,
+                                    "FilterOIHW",
+                                    OIHW);
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::CONV2D_FILTER);
+                            kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, float>(&net, "FilterOIHW", "FilterImage",
+                            kernels::BufferType::CONV2D_FILTER);
     OpDefBuilder("Deconv2D", "Deconv2dTest")
-      .Input("InputImage")
-      .Input("FilterImage")
-      .Output("OutputImage")
-      .AddIntsArg("strides", {stride, stride})
-      .AddIntArg("padding", padding)
-      .AddIntsArg("padding_values", padding_size)
-      .AddIntsArg("output_shape", output_shape)
-      .Finalize(net.NewOperatorDef());
+        .Input("InputImage")
+        .Input("FilterImage")
+        .Output("OutputImage")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("padding_values", padding_size)
+        .AddIntsArg("output_shape", output_shape)
+        .Finalize(net.NewOperatorDef());
 
     net.RunOp(D);
 
@@ -65,19 +70,15 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Deconv2D", "Deconv2dTest")
-      .Input("InputNCHW")
-      .Input("FilterOIHW")
-      .Output("OutputNCHW")
-      .AddIntsArg("strides", {stride, stride})
-      .AddIntArg("padding", padding)
-      .AddIntsArg("padding_values", padding_size)
-      .AddIntsArg("output_shape", output_shape)
-      .Finalize(net.NewOperatorDef());
+        .Input("InputNCHW")
+        .Input("FilterOIHW")
+        .Output("OutputNCHW")
+        .AddIntsArg("strides", {stride, stride})
+        .AddIntArg("padding", padding)
+        .AddIntsArg("padding_values", padding_size)
+        .AddIntsArg("output_shape", output_shape)
+        .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
@@ -392,6 +393,7 @@ void TestNHWCSimple2x2VALID() {
                     1.f, 1.f, 2.f, 1.f, 1.f,
                     1.f, 1.f, 2.f, 1.f, 1.f});
 }
+}  // namespace
 
 TEST_F(Deconv2dOpTest, CPUSimple3X3PaddingSame_S1) {
   TestNHWCSimple3x3SAME_S1<DeviceType::CPU>();
@@ -451,34 +453,30 @@ TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingValid_S2) {
 
 namespace {
 template<DeviceType D, typename T>
-void TestComplexDeconvNxNS12(const std::vector<int> &shape,
+void TestComplexDeconvNxNS12(const int batch,
+                             const std::vector<int> &shape,
                              const int stride) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type, int padding) {
     // generate random input
     static unsigned int seed = time(NULL);
-    int batch = 3 + (rand_r(&seed) % 10);
     int height = shape[0];
     int width = shape[1];
-    int input_channels = shape[2] + (rand_r(&seed) % 10);
-    int output_channels = shape[3] + (rand_r(&seed) % 10);
+    int input_channels = shape[2];
+    int output_channels = shape[3];
 
     OpsTestNet net;
 
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, T>("Bias", {output_channels});
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     int out_h = 0;
     int out_w = 0;
 
@@ -506,7 +504,7 @@ void TestComplexDeconvNxNS12(const std::vector<int> &shape,
     // Construct graph
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("InputNCHW")
-        .Input("FilterOIHW")
+        .Input("Filter")
         .Input("Bias")
         .Output("OutputNCHW")
         .AddIntsArg("strides", {stride_h, stride_w})
@@ -562,32 +560,33 @@ void TestComplexDeconvNxNS12(const std::vector<int> &shape,
     func(kernel_size, kernel_size, stride, stride, SAME, -1);
     func(kernel_size, kernel_size, stride, stride, VALID, 1);
     func(kernel_size, kernel_size, stride, stride, VALID, 2);
-    func(kernel_size, kernel_size, stride, stride, VALID, 3);
-    func(kernel_size, kernel_size, stride, stride, VALID, 4);
   }
 }
 }  // namespace
 
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS12) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 2);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({33, 17, 16, 32}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({33, 17, 16, 32}, 2);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 1);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS34) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 3);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({32, 16, 16, 32}, 4);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 3);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 4);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS12) {
-TestComplexDeconvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 1);
-TestComplexDeconvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 2);
+TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 1);
+TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS34) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 3);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>({17, 113, 5, 7}, 4);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 3);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 4);
+}
+
+TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNMultiBatch) {
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(3, {17, 13, 5, 7}, 1);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(5, {17, 13, 5, 7}, 2);
 }
 
 }  // namespace test

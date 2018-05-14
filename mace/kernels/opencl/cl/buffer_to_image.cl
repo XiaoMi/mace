@@ -2,12 +2,12 @@
 
 __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
-                                     __global const DATA_TYPE *input, /* h, w, oc, ic */
+                                     __global const DATA_TYPE *input, /* OIHW */
                                      __private const int input_offset,
+                                     __private const int out_channel,
                                      __private const int filter_h,
                                      __private const int filter_w,
-                                     __private const int out_channel,
-                                     __private const int in_channel,
+                                     __private const int inner_size,
                                      __write_only image2d_t output) {
   int w = get_global_id(0);
   int h = get_global_id(1);
@@ -24,10 +24,9 @@ __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
   const int hw_idx = h % hw_size;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = input_offset
-                     + ((h_idx * filter_w + w_idx) * out_channel
-                         + out_channel_idx) * in_channel
-                     + in_channel_idx;
+  const int offset = input_offset +
+      mad24(out_channel_idx, inner_size,
+          mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx));
 
   DATA_TYPE4 values = 0;
   if (out_channel_idx < out_channel) {
@@ -35,16 +34,16 @@ __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
     if (size < 4) {
       switch (size) {
         case 3:
-          values.z = *(input + offset + 2 * in_channel);
+          values.z = *(input + offset + 2 * inner_size);
         case 2:
-          values.y = *(input + offset + 1 * in_channel);
+          values.y = *(input + offset + 1 * inner_size);
         case 1:
           values.x = *(input + offset);
       }
     } else {
-      values.w = *(input + offset + 3 * in_channel);
-      values.z = *(input + offset + 2 * in_channel);
-      values.y = *(input + offset + 1 * in_channel);
+      values.w = *(input + offset + 3 * inner_size);
+      values.z = *(input + offset + 2 * inner_size);
+      values.y = *(input + offset + 1 * inner_size);
       values.x = *(input + offset);
     }
   }
@@ -55,11 +54,11 @@ __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
 
 __kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
-                                     __global DATA_TYPE *output, /* h, w, oc, ic */
+                                     __global DATA_TYPE *output, /* OIHW */
+                                     __private const int out_channel,
                                      __private const int filter_h,
                                      __private const int filter_w,
-                                     __private const int out_channel,
-                                     __private const int in_channel,
+                                     __private const int inner_size,
                                      __read_only image2d_t input) {
   int w = get_global_id(0);
   int h = get_global_id(1);
@@ -76,9 +75,9 @@ __kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
   const int hw_idx = h % hw_size;
   const int h_idx = hw_idx / filter_w;
   const int w_idx = hw_idx % filter_w;
-  const int offset = ((h_idx * filter_w + w_idx) * out_channel
-                         + out_channel_idx) * in_channel
-                     + in_channel_idx;
+  const int offset =
+      mad24(out_channel_idx, inner_size,
+            mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx));
 
   if (out_channel_idx < out_channel) {
     int2 coord = (int2)(w, h);
@@ -87,28 +86,30 @@ __kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
     if (size < 4) {
       switch (size) {
         case 3:
-          output[offset + 2 * in_channel] = values.z;
+          output[offset + 2 * inner_size] = values.z;
         case 2:
-          output[offset + 1 * in_channel] = values.y;
+          output[offset + 1 * inner_size] = values.y;
         case 1:
           output[offset] = values.x;
       }
     } else {
-      output[offset + 3 * in_channel] = values.w;
-      output[offset + 2 * in_channel] = values.z;
-      output[offset + 1 * in_channel] = values.y;
+      output[offset + 3 * inner_size] = values.w;
+      output[offset + 2 * inner_size] = values.z;
+      output[offset + 1 * inner_size] = values.y;
       output[offset] = values.x;
     }
   }
 }
 
+// TODO(liuqi): Support multiplier > 1
 __kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
                                         GLOBAL_WORK_GROUP_SIZE_DIM2
-                                        __global const DATA_TYPE *input, /* h, w, ic, m */
+                                        __global const DATA_TYPE *input, /* MIHW */
                                         __private const int input_offset,
-                                        __private const int filter_w,
-                                        __private const int in_channel,
                                         __private const int multiplier,
+                                        __private const int in_channel,
+                                        __private const int filter_h,
+                                        __private const int filter_w,
                                         __write_only image2d_t output) { /* ic%4 * kh * kw * m, ic/4 */
   const int w = get_global_id(0);
   const int h = get_global_id(1);
@@ -125,35 +126,28 @@ __kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
     const int h_idx = w / filter_w;
     const int w_idx = w % filter_w;
 
-    const int offset = input_offset + mad24(mad24(h_idx, filter_w, w_idx),
-                             in_channel, in_channel_idx);
+    const int offset = input_offset
+        + mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx);
 
+    const int hw_size = mul24(filter_h, filter_w);
     const int size = in_channel - in_channel_idx;
     if (in_channel_idx < in_channel) {
       if (size < 4) {
         switch(size) {
           case 3:
-            values.z = *(input + offset + 2);
+            values.z = *(input + offset + 2 * hw_size);
           case 2:
-            values.y = *(input + offset + 1);
+            values.y = *(input + offset + 1 * hw_size);
           case 1:
             values.x = *(input + offset);
         }
       } else {
-        values = vload4(0, input + offset);
+        values.x = *(input + offset);
+        values.y = *(input + offset + 1 * hw_size);
+        values.z = *(input + offset + 2 * hw_size);
+        values.w = *(input + offset + 3 * hw_size);
       }
     }
-  } else {
-    const int in_channel_idx = h << 2;
-    const int m = w % multiplier;
-    const int hw_idx = w / multiplier;
-    const int h_idx = hw_idx / filter_w;
-    const int w_idx = hw_idx % filter_w;
-
-    const int offset = input_offset + mad24(mad24(mad24(h_idx, filter_w, w_idx),
-                in_channel, in_channel_idx),
-            multiplier, m);
-    // TODO support multiplier > 1
   }
 
   int2 coord = (int2)(w, h);
@@ -244,7 +238,7 @@ __kernel void in_out_image_to_buffer(KERNEL_ERROR_PARAMS
 
 __kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
                                   GLOBAL_WORK_GROUP_SIZE_DIM2
-                                  __global const DATA_TYPE *input, /* nhwc */
+                                  __global const DATA_TYPE *input,
                                   __private const int input_offset,
                                   __private const int count,
                                   __write_only image2d_t output) {
@@ -280,7 +274,7 @@ __kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
 
 __kernel void arg_image_to_buffer(KERNEL_ERROR_PARAMS
                                   GLOBAL_WORK_GROUP_SIZE_DIM2
-                                  __global DATA_TYPE *output, /* nhwc */
+                                  __global DATA_TYPE *output,
                                   __private const int count,
                                   __read_only image2d_t input) {
   int w = get_global_id(0);
@@ -365,11 +359,11 @@ __kernel void in_out_height_image_to_buffer(KERNEL_ERROR_PARAMS
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef NON_UNIFORM_WORK_GROUP
+  #ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-#endif
+  #endif
 
   const int height_blks = (height + 3) / 4;
   const int batch_idx = h / height_blks;
@@ -393,7 +387,6 @@ __kernel void in_out_height_image_to_buffer(KERNEL_ERROR_PARAMS
   output[offset] = values.w;
 }
 
-
 __kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global const DATA_TYPE *input, /* nhwc */
@@ -405,18 +398,19 @@ __kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
   int w = get_global_id(0);
   int h = get_global_id(1);
 
-#ifndef NON_UNIFORM_WORK_GROUP
+  #ifndef NON_UNIFORM_WORK_GROUP
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-#endif
+  #endif
 
   const int width_blks = (width + 3) / 4;
   const int batch_idx = h / height;
   const int height_idx = h % height;
   const int width_idx = (w % width_blks) << 2;
   const int channel_idx = w / width_blks;
-  const int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
+  const int offset = input_offset
+      + ((batch_idx * height + height_idx) * width + width_idx) * channels
       + channel_idx;
 
   int size = width - width_idx;
@@ -434,6 +428,192 @@ __kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
   }
   int2 coord = (int2)(w, h);
   WRITE_IMAGET(output, coord, values);
+}
+
+__kernel void weight_height_buffer_to_image(KERNEL_ERROR_PARAMS
+                                            GLOBAL_WORK_GROUP_SIZE_DIM2
+                                            __global const DATA_TYPE *input, // OIHW
+                                            __private const int input_offset,
+                                            __private const int out_channels,
+                                            __private const int in_channels,
+                                            __private const int height,
+                                            __private const int width,
+                                            __write_only image2d_t output) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int inner_size = global_size_dim0;
+#else
+  const int inner_size = get_global_size(0);
+#endif
+
+  const int out_chan_idx = h << 2;
+  const int in_chan_idx = w % in_channels;
+  const int hw_idx = w / in_channels;
+  const int height_idx = hw_idx / width;
+  const int width_idx = hw_idx % width;
+  int offset = input_offset +
+      mad24(out_chan_idx, inner_size,
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+
+  int size = out_channels - out_chan_idx;
+  size = size >= 4 ? 0 : size;
+  DATA_TYPE4 values = 0;
+  switch (size) {
+    case 0:
+      values.w = *(input + offset + inner_size * 3);
+    case 3:
+      values.z = *(input + offset + inner_size * 2);
+    case 2:
+      values.y = *(input + offset + inner_size);
+    case 1:
+      values.x = *(input + offset);
+  }
+  int2 coord = (int2)(w, h);
+  WRITE_IMAGET(output, coord, values);
+}
+
+__kernel void weight_height_image_to_buffer(KERNEL_ERROR_PARAMS
+                                            GLOBAL_WORK_GROUP_SIZE_DIM2
+                                            __global DATA_TYPE *output, //OIHW
+                                            __private const int out_channels,
+                                            __private const int in_channels,
+                                            __private const int height,
+                                            __private const int width,
+                                            __read_only image2d_t input) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int inner_size = global_size_dim0;
+#else
+  const int inner_size = get_global_size(0);
+#endif
+
+  const int out_chan_idx = h << 2;
+  const int in_chan_idx = w % in_channels;
+  const int hw_idx = w / in_channels;
+  const int height_idx = hw_idx / width;
+  const int width_idx = hw_idx % width;
+  int offset =
+      mad24(out_chan_idx, inner_size,
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+
+  int2 coord = (int2)(w, h);
+  DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
+  output[offset] = values.x;
+  if (out_chan_idx + 1 >= out_channels) return;
+  offset += inner_size;
+  output[offset] = values.y;
+  if (out_chan_idx + 2 >= out_channels) return;
+  offset += inner_size;
+  output[offset] = values.z;
+  if (out_chan_idx + 3 >= out_channels) return;
+  offset += inner_size;
+  output[offset] = values.w;
+}
+
+
+__kernel void weight_width_buffer_to_image(KERNEL_ERROR_PARAMS
+                                           GLOBAL_WORK_GROUP_SIZE_DIM2
+                                           __global const DATA_TYPE *input, // OIHW
+                                           __private const int input_offset,
+                                           __private const int in_channels,
+                                           __private const int height,
+                                           __private const int width,
+                                           __write_only image2d_t output) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int out_channels = global_size_dim1;
+#else
+  const int out_channels = get_global_size(1);
+#endif
+  const int in_chan_blks = (in_channels + 3) >> 2;
+  const int hw_size = height * width;
+  const int inner_size = in_channels * hw_size;
+
+  const int out_chan_idx = h;
+  const int in_chan_idx = (w % in_chan_blks) << 2;
+  const int hw_idx = w / in_chan_blks;
+  const int height_idx = hw_idx / width;
+  const int width_idx = hw_idx % width;
+  int offset = input_offset +
+      mad24(out_chan_idx, inner_size,
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+
+
+  int size = in_channels - in_chan_idx;
+  size = size >= 4 ? 0 : size;
+  DATA_TYPE4 values = 0;
+  switch (size) {
+    case 0:
+      values.w = *(input + offset + hw_size * 3);
+    case 3:
+      values.z = *(input + offset + hw_size * 2);
+    case 2:
+      values.y = *(input + offset + hw_size);
+    case 1:
+      values.x = *(input + offset);
+  }
+  int2 coord = (int2)(w, h);
+  WRITE_IMAGET(output, coord, values);
+}
+
+__kernel void weight_width_image_to_buffer(KERNEL_ERROR_PARAMS
+                                           GLOBAL_WORK_GROUP_SIZE_DIM2
+                                           __global DATA_TYPE *output, // OIHW
+                                           __private const int in_channels,
+                                           __private const int height,
+                                           __private const int width,
+                                           __read_only image2d_t input) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int out_channels = global_size_dim1;
+#else
+  const int out_channels = get_global_size(1);
+#endif
+  const int in_chan_blks = (in_channels + 3) >> 2;
+  const int hw_size = height * width;
+  const int inner_size = in_channels * hw_size;
+
+  const int out_chan_idx = h;
+  const int in_chan_idx = (w % in_chan_blks) << 2;
+  const int hw_idx = w / in_chan_blks;
+  const int height_idx = hw_idx / width;
+  const int width_idx = hw_idx % width;
+  int offset =
+      mad24(out_chan_idx, inner_size,
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+
+  int2 coord = (int2)(w, h);
+  DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
+  output[offset] = values.x;
+  if (in_chan_idx + 1 >= in_channels) return;
+  offset += hw_size;
+  output[offset] = values.y;
+  if (in_chan_idx + 2 >= in_channels) return;
+  offset += hw_size;
+  output[offset] = values.z;
+  if (in_chan_idx + 3 >= in_channels) return;
+  offset += hw_size;
+  output[offset] = values.w;
 }
 
 // only support 3x3 now

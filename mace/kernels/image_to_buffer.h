@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_BUFFER_TO_IMAGE_H_
-#define MACE_KERNELS_BUFFER_TO_IMAGE_H_
+#ifndef MACE_KERNELS_IMAGE_TO_BUFFER_H_
+#define MACE_KERNELS_IMAGE_TO_BUFFER_H_
 
 #include <memory>
 
@@ -24,30 +24,26 @@
 namespace mace {
 namespace kernels {
 
-struct BufferToImageFunctorBase {
-  BufferToImageFunctorBase()
+struct ImageToBufferFunctorBase {
+  ImageToBufferFunctorBase()
     : kernel_error_(nullptr) {}
   std::unique_ptr<BufferBase> kernel_error_;
 };
 
 template <DeviceType D, typename T>
-struct BufferToImageFunctor : BufferToImageFunctorBase {
-  BufferToImageFunctor() {}
+struct ImageToBufferFunctor : ImageToBufferFunctorBase {
+  ImageToBufferFunctor() {}
   void operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,
                   StatsFuture *future) {
-    MACE_UNUSED(input);
-    MACE_UNUSED(type);
-    MACE_UNUSED(output);
-    MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
   }
 };
 
 template <typename T>
-struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
-  BufferToImageFunctor() {}
+struct ImageToBufferFunctor<DeviceType::GPU, T> : ImageToBufferFunctorBase {
+  ImageToBufferFunctor() {}
   void operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,
@@ -57,4 +53,4 @@ struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_BUFFER_TO_IMAGE_H_
+#endif  // MACE_KERNELS_IMAGE_TO_BUFFER_H_

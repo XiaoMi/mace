@@ -43,15 +43,12 @@ static void Deconv2d(int iters,
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-    net.AddRandomInput<D, float>("Filter",
-                                 {output_channels, channels, kernel_h,
-                                  kernel_w});
   } else {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
-    net.AddRandomInput<D, float>("Filter",
-                                 {kernel_h, kernel_w, output_channels,
-                                  channels});
   }
+  net.AddRandomInput<D, float>("Filter",
+                               {output_channels, channels, kernel_h,
+                                kernel_w});
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
@@ -122,7 +119,7 @@ static void Deconv2d(int iters,
   BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, GPU); \
   BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU);
 
-BM_DECONV_2D(1, 512, 15, 15, 1, 1, 1, 15, 15, VALID, 1024);
+BM_DECONV_2D(1, 128, 15, 15, 1, 1, 1, 15, 15, VALID, 256);
 BM_DECONV_2D(1, 32, 60, 60, 1, 1, 1, 60, 60, VALID, 128);
 
 BM_DECONV_2D(1, 128, 60, 60, 3, 3, 1, 62, 62, VALID, 128);

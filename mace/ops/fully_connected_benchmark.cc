@@ -33,12 +33,16 @@ void FCBenchmark(
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, height, width, channel});
   net.AddRandomInput<D, float>("Weight",
-                               {out_channel, height * width * channel});
+                               {out_channel, channel, height, width});
   net.AddRandomInput<D, float>("Bias", {out_channel});
 
   if (D == DeviceType::CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
-      .Input("Input")
+      .Input("InputNCHW")
       .Input("Weight")
       .Input("Bias")
       .Output("Output")

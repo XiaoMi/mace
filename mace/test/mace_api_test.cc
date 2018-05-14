@@ -318,30 +318,30 @@ void MaceRun(const int in_out_size,
 }  // namespace
 
 TEST_F(MaceAPITest, GPUSingleInputOutput) {
-  MaceRun<float>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {3, 3, 16, 16});
-  MaceRun<half>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {3, 3, 16, 16});
+  MaceRun<float>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {16, 16, 3, 3});
+  MaceRun<half>(1, {{1, 32, 32, 16}}, {{1, 32, 32, 16}}, {16, 16, 3, 3});
 }
 
 TEST_F(MaceAPITest, GPUMultipleInputOutput) {
   MaceRun<float>(2,
                  {{1, 16, 32, 16}},
                  {{1, 16, 32, 16}},
-                 {3, 3, 16, 16});
+                 {16, 16, 3, 3});
   MaceRun<half>(2,
                 {{1, 16, 32, 16}},
                 {{1, 16, 32, 16}},
-                {3, 3, 16, 16});
+                {16, 16, 3, 3});
 }
 
 TEST_F(MaceAPITest, GPUVariableInputShape) {
   MaceRun<float>(1,
                  {{1, 16, 32, 16}, {1, 32, 64, 16}},
                  {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                 {3, 3, 16, 16});
+                 {16, 16, 3, 3});
   MaceRun<half>(2,
                 {{1, 16, 32, 16}, {1, 32, 64, 16}},
                 {{1, 16, 32, 16}, {1, 32, 64, 16}},
-                {3, 3, 16, 16});
+                {16, 16, 3, 3});
 }
 }  // namespace test
 }  // namespace mace

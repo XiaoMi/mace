@@ -54,7 +54,7 @@ void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
   std::vector<index_t> output_shape(4);
-  std::vector<index_t> filter_shape = {3, 3, 1, input_tensor->dim(3)};
+  std::vector<index_t> filter_shape = {1, input_tensor->dim(3), 3, 3};
   std::vector<int> paddings(2);
   if (paddings_.empty()) {
     kernels::CalcNHWCPaddingAndOutputSize(

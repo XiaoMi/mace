@@ -117,15 +117,14 @@ struct Deconv2dFunctorBase {
       const int *strides,
       index_t *output_shape,
       const int *padding_size,
-      const bool isNCHW = false,
-      const bool isOIHW = false) {
+      const bool isNCHW = false) {
     MACE_CHECK_NOTNULL(output_shape);
     MACE_CHECK_NOTNULL(padding_size);
     MACE_CHECK_NOTNULL(input_shape);
     MACE_CHECK_NOTNULL(filter_shape);
     MACE_CHECK_NOTNULL(strides);
 
-    const index_t output_channel = isOIHW ? filter_shape[0] : filter_shape[2];
+    const index_t output_channel = filter_shape[0];
 
     const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
     const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
@@ -135,8 +134,8 @@ struct Deconv2dFunctorBase {
     const index_t extended_input_width =
         (in_width - 1) * strides[1] + 1 + padding_size[1];
 
-    const index_t filter_h = isOIHW ? filter_shape[2] : filter_shape[0];
-    const index_t filter_w = isOIHW ? filter_shape[3] : filter_shape[1];
+    const index_t filter_h = filter_shape[2];
+    const index_t filter_w = filter_shape[3];
 
     index_t out_height = extended_input_height - filter_h + 1;
     index_t out_width = extended_input_width - filter_w + 1;
@@ -160,8 +159,7 @@ struct Deconv2dFunctorBase {
       Padding padding,
       const index_t *output_shape,
       int *padding_size,
-      const bool isNCHW = false,
-      const bool isOIHW = false) {
+      const bool isNCHW = false) {
     MACE_CHECK_NOTNULL(output_shape);
     MACE_CHECK_NOTNULL(padding_size);
     MACE_CHECK_NOTNULL(input_shape);
@@ -177,8 +175,8 @@ struct Deconv2dFunctorBase {
     const index_t extended_input_height = (in_height - 1) * strides[0] + 1;
     const index_t extended_input_width = (in_width - 1) * strides[1] + 1;
 
-    const index_t filter_h = isOIHW ? filter_shape[2] : filter_shape[0];
-    const index_t filter_w = isOIHW ? filter_shape[3] : filter_shape[1];
+    const index_t filter_h = filter_shape[2];
+    const index_t filter_w = filter_shape[3];
 
     index_t expected_input_height = 0, expected_input_width = 0;
 
@@ -259,7 +257,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
           filter->shape().data(),
           strides_, padding_type_,
           output_shape.data(),
-          paddings_.data(), true, true);
+          paddings_.data(), true);
       output->Resize(output_shape);
     } else {
       output_shape_.clear();
@@ -268,7 +266,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                            filter->shape().data(),
                            strides_,
                            output_shape_.data(),
-                           paddings_.data(), true, true);
+                           paddings_.data(), true);
       output->Resize(output_shape_);
     }
     index_t batch = output->dim(0);

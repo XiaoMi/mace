@@ -17,8 +17,11 @@ import functools
 import argparse
 import sys
 import six
+import copy
 import tensorflow as tf
 from tensorflow import gfile
+from tensorflow.core.framework import graph_pb2
+from tensorflow.core.framework import tensor_shape_pb2
 
 # ./bazel-bin/mace/python/tools/tf_ops_stats --input model.pb
 
@@ -39,6 +42,26 @@ def to_int_list(long_list):
     return int_list
 
 
+def add_shape_info(input_graph_def, input_nodes, input_shapes):
+    inputs_replaced_graph = graph_pb2.GraphDef()
+    for node in input_graph_def.node:
+        if node.name in input_nodes:
+            idx = input_nodes.index(node.name)
+            input_shape = input_shapes[idx]
+            print input_shape
+            placeholder_node = copy.deepcopy(node)
+            placeholder_node.attr.clear()
+            placeholder_node.attr['shape'].shape.dim.extend([
+                tensor_shape_pb2.TensorShapeProto.Dim(size=i)
+                for i in input_shape
+            ])
+            placeholder_node.attr['dtype'].CopyFrom(node.attr['dtype'])
+            inputs_replaced_graph.node.extend([placeholder_node])
+        else:
+            inputs_replaced_graph.node.extend([copy.deepcopy(node)])
+    return inputs_replaced_graph
+
+
 def main(unused_args):
     if not FLAGS.input or not gfile.Exists(FLAGS.input):
         print('Input graph file ' + FLAGS.input + ' does not exist!')
@@ -48,6 +71,16 @@ def main(unused_args):
     with gfile.Open(FLAGS.input, 'rb') as f:
         data = f.read()
         input_graph_def.ParseFromString(data)
+
+    input_nodes = [x for x in FLAGS.input_tensors.split(',')]
+    input_shapes = []
+    if FLAGS.input_shapes != "":
+        input_shape_strs = [x for x in FLAGS.input_shapes.split(':')]
+        for shape_str in input_shape_strs:
+            input_shapes.extend([[int(x) for x in shape_str.split(',')]])
+
+    input_graph_def = add_shape_info(
+        input_graph_def, input_nodes, input_shapes)
 
     with tf.Session() as session:
         with session.graph.as_default() as graph:
@@ -79,15 +112,12 @@ def main(unused_args):
                 strides = to_int_list(op.get_attr('strides'))
                 data_format = op.get_attr('data_format')
                 ksize = 'Unknown'
-                for input in op.inputs:
-                    input_name = input.name
-                    if input_name.endswith('weights/read:0'):
-                        ksize = input.shape.as_list()
-                        break
-                    if input_name.endswith(
-                            'weights:0') and input_name in tensor_shapes:
-                        ksize = tensor_shapes[input_name]
-                        break
+                input = op.inputs[1]
+                input_name = input.name
+                if input_name.endswith('read:0'):
+                    ksize = input.shape.as_list()
+                elif input_name in tensor_shapes:
+                    ksize = tensor_shapes[input_name]
                 print(
                     '%s(padding=%s, strides=%s, ksize=%s, format=%s) %s => %s'
                     % (op.type, padding, strides, ksize, data_format,
@@ -189,6 +219,16 @@ def parse_args():
         type=str,
         default='',
         help='TensorFlow \'GraphDef\' file to load.')
+    parser.add_argument(
+        '--input_tensors',
+        type=str,
+        default='',
+        help='input tensor names split by comma.')
+    parser.add_argument(
+        '--input_shapes',
+        type=str,
+        default='',
+        help='input tensor shapes split by colon and comma.')
     return parser.parse_known_args()
 
 

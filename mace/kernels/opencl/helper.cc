@@ -35,22 +35,22 @@ void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
 }
 
 // [Ic, H * W * (Oc + 3) / 4]
-void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* HWOI */
+void CalConv2dFilterImageShape(const std::vector<index_t> &shape, /* OIHW */
                                std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = shape[3];
-  (*image_shape)[1] = shape[0] * shape[1] * RoundUpDiv4(shape[2]);
+  (*image_shape)[0] = shape[1];
+  (*image_shape)[1] = shape[2] * shape[3] * RoundUpDiv4(shape[0]);
 }
 
 // [H * W * M, (Ic + 3) / 4]
 void CalDepthwiseConv2dFilterImageShape(
-    const std::vector<index_t> &shape, /* HWIM */
+    const std::vector<index_t> &shape, /* MIHW */
     std::vector<size_t> *image_shape) {
   MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = shape[0] * shape[1] * shape[3];
-  (*image_shape)[1] = RoundUpDiv4(shape[2]);
+  (*image_shape)[0] = shape[0] * shape[2] * shape[3];
+  (*image_shape)[1] = RoundUpDiv4(shape[1]);
 }
 
 // [(size + 3) / 4, 1]
@@ -91,21 +91,21 @@ void CalInOutWidthImageShape(const std::vector<index_t> &shape, /* NHWC */
   (*image_shape)[1] = shape[0] * shape[1];
 }
 
-// [W, (H + 3) / 4]
-void CalWeightHeightImageShape(const std::vector<index_t> &shape, /* HW */
+// [Ic * H * W, (Oc + 3) / 4]
+void CalWeightHeightImageShape(const std::vector<index_t> &shape, /* OIHW */
                                std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 2);
+  MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = shape[1];
+  (*image_shape)[0] = shape[1] * shape[2] * shape[3];
   (*image_shape)[1] = RoundUpDiv4(shape[0]);
 }
 
-// [(W + 3) / 4, H]
-void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* HW */
+// [(Ic + 3) / 4 * H * W, Oc]
+void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* OIHW */
                               std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 2);
+  MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = RoundUpDiv4(shape[1]);
+  (*image_shape)[0] = RoundUpDiv4(shape[1]) * shape[2] * shape[3];
   (*image_shape)[1] = shape[0];
 }
 }  // namespace
