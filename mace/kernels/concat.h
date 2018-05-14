@@ -43,8 +43,9 @@ struct ConcatFunctor : ConcatFunctorBase {
   void operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const Tensor *input0 = input_list.front();
-    const int inputs_count = input_list.size();
+    const size_t inputs_count = input_list.size();
 
     std::vector<index_t> output_shape(input0->shape());
     index_t inner_size = 1;
@@ -53,7 +54,7 @@ struct ConcatFunctor : ConcatFunctorBase {
     }
     std::vector<index_t> outer_sizes(inputs_count, 0);
     outer_sizes[0] = input0->size() / inner_size;
-    for (int i = 1; i < inputs_count; ++i) {
+    for (size_t i = 1; i < inputs_count; ++i) {
       const Tensor *input = input_list[i];
       MACE_CHECK(input->dim_size() == input0->dim_size(),
                  "Ranks of all input tensors must be same.");

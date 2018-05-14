@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "mace/public/mace_runtime.h"
+#include "mace/core/macros.h"
 #include "mace/core/file_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
 #include "mace/public/mace.h"
@@ -176,6 +177,8 @@ void OpenCLPrintfCallback(const char *buffer,
                           size_t length,
                           size_t final,
                           void *user_data) {
+  MACE_UNUSED(final);
+  MACE_UNUSED(user_data);
   fwrite(buffer, 1, length, stdout);
 }
 
@@ -217,6 +220,22 @@ void GetAdrenoContextProperties(std::vector<cl_context_properties> *properties,
   }
   // The properties list should be terminated with 0
   properties->push_back(0);
+}
+
+GPUType ParseGPUType(const std::string &device_name) {
+  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
+  constexpr const char *kMaliGPUStr = "Mali";
+  constexpr const char *kPowerVRGPUStr = "PowerVR";
+
+  if (device_name == kQualcommAdrenoGPUStr) {
+    return GPUType::QUALCOMM_ADRENO;
+  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
+    return GPUType::MALI;
+  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
+    return GPUType::PowerVR;
+  } else {
+    return GPUType::UNKNOWN;
+  }
 }
 }  // namespace
 
@@ -389,11 +408,11 @@ cl::Device &OpenCLRuntime::device() { return *device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
-const uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
+uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
   return device_gloabl_mem_cache_size_;
 }
 
-const uint32_t OpenCLRuntime::device_compute_units() const {
+uint32_t OpenCLRuntime::device_compute_units() const {
   return device_compute_units_;
 }
 
@@ -597,12 +616,12 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   return size;
 }
 
-const bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() {
+bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() const {
   return (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
       opencl_version_ == "2.0");
 }
 
-const GPUType OpenCLRuntime::gpu_type() const {
+GPUType OpenCLRuntime::gpu_type() const {
   return gpu_type_;
 }
 
@@ -610,36 +629,20 @@ const std::string OpenCLRuntime::platform_info() const {
   return platform_info_;
 }
 
-const GPUType OpenCLRuntime::ParseGPUType(
-    const std::string &device_name) {
-  constexpr const char *kQualcommAdrenoGPUStr = "QUALCOMM Adreno(TM)";
-  constexpr const char *kMaliGPUStr = "Mali";
-  constexpr const char *kPowerVRGPUStr = "PowerVR";
-
-  if (device_name == kQualcommAdrenoGPUStr) {
-    return GPUType::QUALCOMM_ADRENO;
-  } else if (device_name.find(kMaliGPUStr) != std::string::npos) {
-    return GPUType::MALI;
-  } else if (device_name.find(kPowerVRGPUStr) != std::string::npos) {
-    return GPUType::PowerVR;
-  } else {
-    return GPUType::UNKNOWN;
-  }
-}
 const std::string OpenCLRuntime::ParseDeviceVersion(
     const std::string &device_version) {
   // OpenCL Device version string format:
-  // OpenCL<space><major_version.minor_version><space>\
+  // OpenCL<space><major_version.minor_version><space>
   // <vendor-specific information>
   auto words = Split(device_version, ' ');
   return words[1];
 }
 
-const bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
+bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
   return out_of_range_check_;
 }
 
-const bool OpenCLRuntime::is_profiling_enabled() const {
+bool OpenCLRuntime::is_profiling_enabled() const {
   return is_profiling_enabled_;
 }
 

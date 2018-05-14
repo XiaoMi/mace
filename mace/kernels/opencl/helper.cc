@@ -206,17 +206,6 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
   }
 }
 
-std::vector<uint32_t> Default2DLocalWS(const uint32_t *gws,
-                                       const uint32_t kwg_size) {
-  std::vector<uint32_t> lws(3, 0);
-  uint64_t cache_size =
-      OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t base = cache_size / kBaseGPUMemCacheSize;
-  lws[0] = std::min<uint32_t>(base, kwg_size);
-  lws[1] = kwg_size / lws[1];
-  return lws;
-}
-
 std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
                                        const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);

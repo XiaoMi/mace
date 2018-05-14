@@ -21,6 +21,7 @@
 #include <vector>
 #include <cstring>
 
+#include "mace/core/macros.h"
 #include "mace/core/registry.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
@@ -83,6 +84,8 @@ class CPUAllocator : public Allocator {
 
   void *NewImage(const std::vector<size_t> &shape,
                  const DataType dt) const override {
+    MACE_UNUSED(shape);
+    MACE_UNUSED(dt);
     LOG(FATAL) << "Allocate CPU image";
     return nullptr;
   }
@@ -96,14 +99,20 @@ class CPUAllocator : public Allocator {
     free(data);
   };
   void *Map(void *buffer, size_t offset, size_t nbytes) const override {
+    MACE_UNUSED(nbytes);
     return reinterpret_cast<char*>(buffer) + offset;
   }
   void *MapImage(void *buffer,
                  const std::vector<size_t> &image_shape,
                  std::vector<size_t> *mapped_image_pitch) const override {
+    MACE_UNUSED(image_shape);
+    MACE_UNUSED(mapped_image_pitch);
     return buffer;
   }
-  void Unmap(void *buffer, void *mapper_ptr) const override {}
+  void Unmap(void *buffer, void *mapper_ptr) const override {
+    MACE_UNUSED(buffer);
+    MACE_UNUSED(mapper_ptr);
+  }
   bool OnHost() const override { return true; }
 };
 

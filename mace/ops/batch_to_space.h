@@ -38,7 +38,7 @@ class BatchToSpaceNDOp : public Operator<D, T> {
     Tensor *space_tensor = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4, 0);
-    CalculateOutputShape(batch_tensor, space_tensor, output_shape.data());
+    CalculateOutputShape(batch_tensor, output_shape.data());
     functor_(space_tensor, output_shape, const_cast<Tensor *>(batch_tensor),
              future);
     return true;
@@ -46,7 +46,6 @@ class BatchToSpaceNDOp : public Operator<D, T> {
 
  private:
   inline void CalculateOutputShape(const Tensor *input_tensor,
-                                   Tensor *output,
                                    index_t *output_shape) {
     auto crops = OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0});
     auto block_shape =

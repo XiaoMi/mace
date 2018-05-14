@@ -92,7 +92,7 @@ inline std::vector<int> nms(const float *bboxes_ptr,
   for (int i = 0; i < num_bboxes; ++i) {
     if (suppressed[i] == 1) continue;
     keep.push_back(i);
-    if (keep.size() >= post_nms_top_n) break;
+    if (keep.size() >= static_cast<size_t>(post_nms_top_n)) break;
     int coord_idx = i << 2;
     const float x1 = bboxes_ptr[coord_idx];
     const float y1 = bboxes_ptr[coord_idx + 1];
@@ -141,10 +141,11 @@ struct ProposalFunctor {
                   const Tensor *img_info_tensor,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     MACE_CHECK(rpn_cls_prob->dim(1) == rpn_bbox_pred->dim(1) &&
         rpn_cls_prob->dim(2) == rpn_bbox_pred->dim(2));
     MACE_CHECK((rpn_cls_prob->dim(3) / 2 == rpn_bbox_pred->dim(3) / 4) &&
-        (rpn_cls_prob->dim(3) / 2 == anchors_.size()));
+        (static_cast<size_t>(rpn_cls_prob->dim(3) / 2) == anchors_.size()));
     const float *img_info = img_info_tensor->data<float>();
     const int im_height = static_cast<int>(img_info[0] - 1);
     const int im_width = static_cast<int>(img_info[1] - 1);

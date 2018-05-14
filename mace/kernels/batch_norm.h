@@ -64,6 +64,7 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
                   const float epsilon,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     // Batch normalization in the paper https://arxiv.org/abs/1502.03167 .
     // The calculation formula for inference is
     // Y = \frac{ \scale } { \sqrt{var+\variance_epsilon} } * X +

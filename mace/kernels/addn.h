@@ -39,6 +39,7 @@ struct AddNFunctor {
   void operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     output_tensor->ResizeLike(input_tensors[0]);
     index_t size = output_tensor->size();
     Tensor::MappingGuard output_map(output_tensor);

@@ -45,7 +45,6 @@ class ChannelShuffleOp : public Operator<D, T> {
     MACE_CHECK(channels % group_ == 0,
                "input channels must be an integral multiple of group. ",
                input->dim(3));
-    int channels_per_group = channels / group_;
     functor_(input, output, future);
 
     return true;

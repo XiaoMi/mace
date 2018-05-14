@@ -54,7 +54,7 @@ TEST_F(TunerTest, SimpleRun) {
 }
 
 TEST_F(TunerTest, SimpleTune) {
-  int expect = 3;
+  unsigned int expect = 3;
   auto TunerFunc = [&](const std::vector<unsigned int> &params, Timer *timer,
                        std::vector<uint32_t> *tuning_result) -> int {
     int res = 0;

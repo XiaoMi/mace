@@ -136,7 +136,6 @@ static void ConcatN(cl::Kernel *kernel,
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
-  const index_t channel = output->dim(3);
 
   auto runtime = OpenCLRuntime::Global();
 

@@ -14,6 +14,7 @@
 
 #include <utility>
 
+#include "mace/core/macros.h"
 #include "mace/core/net.h"
 #include "mace/utils/memory_logging.h"
 #include "mace/utils/timer.h"
@@ -25,7 +26,10 @@ NetBase::NetBase(const std::shared_ptr<const OperatorRegistry> op_registry,
                  const std::shared_ptr<const NetDef> net_def,
                  Workspace *ws,
                  DeviceType type)
-    : name_(net_def->name()), op_registry_(op_registry) {}
+    : name_(net_def->name()), op_registry_(op_registry) {
+  MACE_UNUSED(ws);
+  MACE_UNUSED(type);
+}
 
 SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
                      const std::shared_ptr<const NetDef> net_def,

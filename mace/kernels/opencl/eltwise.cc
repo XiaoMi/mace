@@ -25,6 +25,7 @@ void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
                                                        const Tensor *input1,
                                                        Tensor *output,
                                                        StatsFuture *future) {
+  MACE_UNUSED(future);
   bool swapped = false;
   if (input1 != nullptr) {
     MACE_CHECK(input0->dim_size() == input1->dim_size()

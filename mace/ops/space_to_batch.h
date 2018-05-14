@@ -39,7 +39,7 @@ class SpaceToBatchNDOp : public Operator<D, T> {
     Tensor *batch_tensor = this->Output(OUTPUT);
 
     std::vector<index_t> output_shape(4, 0);
-    CalculateOutputShape(space_tensor, batch_tensor, output_shape.data());
+    CalculateOutputShape(space_tensor, output_shape.data());
     functor_(const_cast<Tensor *>(space_tensor), output_shape, batch_tensor,
              future);
     return true;
@@ -47,7 +47,6 @@ class SpaceToBatchNDOp : public Operator<D, T> {
 
  private:
   inline void CalculateOutputShape(const Tensor *input_tensor,
-                                   Tensor *output,
                                    index_t *output_shape) {
     auto paddings =
         OperatorBase::GetRepeatedArgument<int>("paddings", {0, 0, 0, 0});

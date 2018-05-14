@@ -173,6 +173,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
   void operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     std::vector<index_t> output_shape(4);
     std::vector<index_t> filter_shape = {
       input_tensor->dim(1), input_tensor->dim(1), kernels_[0], kernels_[1]};

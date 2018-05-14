@@ -136,6 +136,7 @@ class ActivationFunctor<DeviceType::CPU, float> {
                   const Tensor *alpha,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const float *input_ptr = input->data<float>();
     float *output_ptr = output->mutable_data<float>();
     if (activation_ == PRELU) {

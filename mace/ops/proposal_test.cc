@@ -45,7 +45,7 @@ TEST_F(ProposalOpTest, CPUSimple) {
       .Finalize(net.NewOperatorDef());
 
   std::vector<float> scores(height * width * 18);
-  for (int i = 0 ; i < scores.size(); ++i) {
+  for (size_t i = 0 ; i < scores.size(); ++i) {
     scores[i] = i;
   }
 

@@ -277,7 +277,7 @@ def bazel_build(target,
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
     if abi == "host":
-        p = sh.bazel(
+        bazel_args = (
             "build",
             "-c",
             "opt",
@@ -287,12 +287,17 @@ def bazel_build(target,
             target,
             "--copt=-std=c++11",
             "--copt=-D_GLIBCXX_USE_C99_MATH_TR1",
-            "--copt=-Werror=return-type",
+            "--copt=-Werror",
+            "--copt=-Wextra",
+            "--copt=-Wno-missing-field-initializers",
             "--copt=-O3",
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",
             "production=%s" % str(production_mode).lower(),
+        )
+        p = sh.bazel(
+            *bazel_args,
             _out=process_output,
             _bg=True,
             _err_to_out=True)
@@ -311,7 +316,9 @@ def bazel_build(target,
             "--cpu=%s" % abi,
             "--copt=-std=c++11",
             "--copt=-D_GLIBCXX_USE_C99_MATH_TR1",
-            "--copt=-Werror=return-type",
+            "--copt=-Werror",
+            "--copt=-Wextra",
+            "--copt=-Wno-missing-field-initializers",
             "--copt=-DMACE_OBFUSCATE_LITERALS",
             "--copt=-O3",
             "--define",

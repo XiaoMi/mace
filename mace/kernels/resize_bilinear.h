@@ -137,6 +137,7 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
     : ResizeBilinearFunctorBase(size, align_corners) {}
 
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+    MACE_UNUSED(future);
     const index_t batch = input->dim(0);
     const index_t channels = input->dim(1);
     const index_t in_height = input->dim(2);

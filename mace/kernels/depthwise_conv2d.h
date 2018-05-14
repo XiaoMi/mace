@@ -133,6 +133,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);

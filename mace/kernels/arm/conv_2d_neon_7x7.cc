@@ -198,23 +198,25 @@ void Conv2dNeonK7x7S1(const float *input,
     for (index_t m = 0; m < out_channels; m += 4) {
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
+#if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
           output + b * out_batch_size + (m + 1) * out_image_size;
         float *out_ptr2_base =
             output + b * out_batch_size + (m + 2) * out_image_size;
         float *out_ptr3_base =
             output + b * out_batch_size + (m + 3) * out_image_size;
+#endif
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr_base =
               input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr0 = filter + m * in_channels * 49 + c * 49;
+#if defined(MACE_ENABLE_NEON)
           const float *filter_ptr1 =
               filter + (m + 1) * in_channels * 49 + c * 49;
           const float *filter_ptr2 =
               filter + (m + 2) * in_channels * 49 + c * 49;
           const float *filter_ptr3 =
               filter + (m + 3) * in_channels * 49 + c * 49;
-#if defined(MACE_ENABLE_NEON)
           for (index_t h = 0; h < out_height; ++h) {
             for (index_t w = 0; w + 3 < out_width; w += 4) {
                // input offset
@@ -352,23 +354,25 @@ void Conv2dNeonK7x7S2(const float *input,
     for (index_t m = 0; m < out_channels; m += 4) {
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
+#if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
             output + b * out_batch_size + (m + 1) * out_image_size;
         float *out_ptr2_base =
             output + b * out_batch_size + (m + 2) * out_image_size;
         float *out_ptr3_base =
             output + b * out_batch_size + (m + 3) * out_image_size;
+#endif
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr_base =
               input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr0 = filter + m * in_channels * 49 + c * 49;
+#if defined(MACE_ENABLE_NEON)
           const float *filter_ptr1 =
               filter + (m + 1) * in_channels * 49 + c * 49;
           const float *filter_ptr2 =
               filter + (m + 2) * in_channels * 49 + c * 49;
           const float *filter_ptr3 =
               filter + (m + 3) * in_channels * 49 + c * 49;
-#if defined(MACE_ENABLE_NEON)
           for (index_t h = 0; h < out_height; ++h) {
             for (index_t w = 0; w + 3 < out_width; w += 4) {
               // input offset
@@ -516,23 +520,25 @@ void Conv2dNeonK7x7S3(const float *input,
     for (index_t m = 0; m < out_channels; m += 4) {
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
+#if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
             output + b * out_batch_size + (m + 1) * out_image_size;
         float *out_ptr2_base =
             output + b * out_batch_size + (m + 2) * out_image_size;
         float *out_ptr3_base =
             output + b * out_batch_size + (m + 3) * out_image_size;
+#endif
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr_base =
               input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr0 = filter + m * in_channels * 49 + c * 49;
+#if defined(MACE_ENABLE_NEON)
           const float *filter_ptr1 =
               filter + (m + 1) * in_channels * 49 + c * 49;
           const float *filter_ptr2 =
               filter + (m + 2) * in_channels * 49 + c * 49;
           const float *filter_ptr3 =
               filter + (m + 3) * in_channels * 49 + c * 49;
-#if defined(MACE_ENABLE_NEON)
           for (index_t h = 0; h < out_height; ++h) {
             for (index_t w = 0; w + 3 < out_width; w += 4) {
               // input offset

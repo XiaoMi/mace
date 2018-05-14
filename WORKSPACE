@@ -5,11 +5,11 @@ workspace(name = "mace")
 # This statement defines the @com_google_protobuf repo.
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "40d39d97a7b514b3e34daef732f822eca0081960b269863f5b573db5548cb237",
-    strip_prefix = "protobuf-3.4.0rc3",
+    sha256 = "542703acadc3f690d998f4641e1b988f15ba57ebca05fdfb1cd9095bec007948",
+    strip_prefix = "protobuf-3.4.0",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/protobuf/protobuf-3.4.0rc3.zip",
-        "https://github.com/google/protobuf/archive/v3.4.0rc3.zip"
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/protobuf/protobuf-3.4.0.zip",
+        "https://github.com/google/protobuf/archive/v3.4.0.zip"
     ],
 )
 
@@ -38,21 +38,22 @@ new_http_archive(
 new_http_archive(
     name = "opencl_clhpp",
     build_file = "mace/third_party/opencl-clhpp/opencl-clhpp.BUILD",
-    sha256 = "d4eb63372ad31f7efcae626852f75f7929ff28d1cabb5f50ef11035963a69b46",
-    strip_prefix = "OpenCL-CLHPP-2.0.10",
+    sha256 = "dab6f1834ec6e3843438cc0f97d63817902aadd04566418c1fcc7fb78987d4e7",
+    strip_prefix = "OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-2.0.10.zip",
-        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/v2.0.10.zip"
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12.zip",
+        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/4c6f7d56271727e37fb19a9b47649dd175df2b12.zip"
     ],
 )
 
 new_http_archive(
     name = "half",
     build_file = "mace/third_party/half/half.BUILD",
-    sha256 = "cdd70d3bf3fe091b688e7ab3f48471c881a197d2c186c95cca8bf156961fb41c",
+    sha256 = "0f514a1e877932b21dc5edc26a148ddc700b6af2facfed4c030ca72f74d0219e",
+    strip_prefix = "half-code-356-trunk",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/half/half-1.12.0.zip",
-        "https://jaist.dl.sourceforge.net/project/half/half/1.12.0/half-1.12.0.zip"
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/half/half-code-356-trunk.zip",
+        "https://sourceforge.net/code-snapshots/svn/h/ha/half/code/half-code-356-trunk.zip"
     ],
 )
 

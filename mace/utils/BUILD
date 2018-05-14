@@ -12,44 +12,24 @@ load("//mace:mace.bzl", "if_android")
 cc_library(
     name = "utils",
     srcs = [
-        "command_line_flags.cc",
         "logging.cc",
         "string_util.cc",
     ],
     hdrs = [
-        "command_line_flags.h",
         "env_time.h",
         "logging.h",
         "memory_logging.h",
+        "rwlock.h",
         "string_util.h",
         "timer.h",
         "tuner.h",
         "utils.h",
-        "rwlock.h",
     ],
     linkopts = if_android([
         "-llog",
     ]),
     deps = [
         "//mace/public",
-    ],
-)
-
-cc_test(
-    name = "utils_test",
-    testonly = 1,
-    srcs = [
-        "utils_test.cc",
-    ],
-    linkopts = if_android([
-        "-pie",
-        "-lm",
-    ]),
-    linkstatic = 1,
-    deps = [
-        ":utils",
-        "@gtest//:gtest",
-        "@gtest//:gtest_main",
     ],
 )
 

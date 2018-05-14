@@ -44,6 +44,7 @@ struct SliceFunctor : SliceFunctorBase {
   void operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future) {
+    MACE_UNUSED(future);
     const index_t input_channels = input->dim(axis_);
     const size_t outputs_count = output_list.size();
     const index_t output_channels = input_channels / outputs_count;

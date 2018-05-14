@@ -53,6 +53,10 @@ struct SpaceToBatchFunctor : SpaceToBatchFunctorBase {
                   const std::vector<index_t> &output_shape,
                   Tensor *batch_tensor,
                   StatsFuture *future) {
+    MACE_UNUSED(space_tensor);
+    MACE_UNUSED(output_shape);
+    MACE_UNUSED(batch_tensor);
+    MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
   }
 };

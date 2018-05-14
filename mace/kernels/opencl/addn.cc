@@ -36,7 +36,7 @@ void AddNFunctor<DeviceType::GPU, T>::operator()(
 
   auto runtime = OpenCLRuntime::Global();
 
-  for (int i = 1; i < size; ++i) {
+  for (size_t i = 1; i < size; ++i) {
     MACE_CHECK_NOTNULL(input_tensors[i]);
     MACE_CHECK(batch == input_tensors[i]->dim(0));
     MACE_CHECK(height == input_tensors[i]->dim(1));

@@ -42,22 +42,25 @@ void Conv2dNeonK3x3S1(const float *input,
     for (index_t m = 0; m < out_channels; m += 2) {
       if (m + 1 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
+#if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
           output + b * out_batch_size + (m + 1) * out_image_size;
+#endif
         for (index_t c = 0; c < in_channels; ++c) {
           float *out_ptr0 = out_ptr0_base;
-          float *out_ptr1 = out_ptr1_base;
-
           const float *in_ptr0 = input + b * in_batch_size + c * in_image_size;
+          const float *filter_ptr0 = filter + m * in_channels * 9 + c * 9;
+
+#if defined(MACE_ENABLE_NEON)
+          float *out_ptr1 = out_ptr1_base;
           const float *in_ptr1 =
             input + b * in_batch_size + c * in_image_size + 1 * in_width;
           const float *in_ptr2 =
             input + b * in_batch_size + c * in_image_size + 2 * in_width;
           const float *in_ptr3 =
             input + b * in_batch_size + c * in_image_size + 3 * in_width;
-          const float *filter_ptr0 = filter + m * in_channels * 9 + c * 9;
           const float *filter_ptr1 = filter + (m + 1) * in_channels * 9 + c * 9;
-
+#endif
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
           // load filter (2 outch x 3 height x 3 width): vf_outch_height
           float32x4_t vf00, vf01, vf02;
@@ -321,12 +324,14 @@ void Conv2dNeonK3x3S1(const float *input,
 
             const float
               *in_ptr0 = input + b * in_batch_size + c * in_image_size;
+#if defined(MACE_ENABLE_NEON)
             const float *in_ptr1 =
               input + b * in_batch_size + c * in_image_size + 1 * in_width;
             const float *in_ptr2 =
               input + b * in_batch_size + c * in_image_size + 2 * in_width;
             const float *in_ptr3 =
               input + b * in_batch_size + c * in_image_size + 3 * in_width;
+#endif
             const float *filter_ptr0 = filter + mm * in_channels * 9 + c * 9;
 
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
