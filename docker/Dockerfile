@@ -116,7 +116,11 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     pyyaml \
     sh==1.12.14 \
     pycodestyle==2.4.0 \
-    filelock
+    filelock \
+    sphinx \
+    sphinx-autobuild \
+    sphinx_rtd_theme \
+    recommonmark
 
 # Download tensorflow tools
 RUN wget https://cnbj1.fds.api.xiaomi.com/mace/tools/transform_graph && \
