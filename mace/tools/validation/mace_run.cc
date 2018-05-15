@@ -386,7 +386,6 @@ int Main(int argc, char **argv) {
   }
 
   bool ret = false;
-#pragma omp parallel for
   for (int i = 0; i < FLAGS_restart_round; ++i) {
     VLOG(0) << "restart round " << i;
     ret =
