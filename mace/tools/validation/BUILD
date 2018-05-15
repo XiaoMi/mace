@@ -4,7 +4,7 @@ load("//mace:mace.bzl", "if_openmp_enabled", "if_android")
 cc_binary(
     name = "mace_run",
     srcs = ["mace_run.cc"],
-    copts = if_openmp_enabled(["-fopenmp"]) + if_android([
+    copts = if_android([
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = if_openmp_enabled(["-fopenmp"]),
