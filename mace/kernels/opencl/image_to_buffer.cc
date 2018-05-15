@@ -26,7 +26,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     Tensor *buffer,
     StatsFuture *future) {
   std::vector<size_t> image_shape;
-  CalImage2DShape(image->shape(), type, &image_shape);
+  CalImage2DShape(image->shape(), type, &image_shape, wino_blk_size_);
   MACE_RETURN_IF_ERROR(buffer->Resize(image->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
@@ -45,10 +45,14 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     case IN_OUT_HEIGHT:
       kernel_name = "in_out_height_image_to_buffer";
       break;
-    case WINOGRAD_FILTER:
-      gws[1] /= 16;
-      kernel_name = "winograd_filter_image_to_buffer";
+    case WINOGRAD_FILTER: {
+      std::stringstream ss_tmp;
+      gws[1] /= (wino_blk_size_ + 2) * (wino_blk_size_ + 2);
+      ss_tmp << "winograd_filter_image_to_buffer_"
+             << wino_blk_size_ << "x" << wino_blk_size_;
+      kernel_name = ss_tmp.str();
       break;
+    }
     case WEIGHT_HEIGHT:
       kernel_name = "weight_height_image_to_buffer";
       break;

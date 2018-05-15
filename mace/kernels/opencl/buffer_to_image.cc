@@ -26,9 +26,10 @@ MaceStatus BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     Tensor *image,
     StatsFuture *future) {
   std::vector<size_t> image_shape;
-  CalImage2DShape(buffer->shape(), type, &image_shape);
+  CalImage2DShape(buffer->shape(), type, &image_shape, wino_blk_size_);
   if (type == WINOGRAD_FILTER) {
-    std::vector<index_t> new_shape = CalWinogradShape(buffer->shape(), type);
+    std::vector<index_t> new_shape =
+        CalWinogradShape(buffer->shape(), type, wino_blk_size_);
     MACE_RETURN_IF_ERROR(image->ResizeImage(new_shape, image_shape));
   } else {
     MACE_RETURN_IF_ERROR(image->ResizeImage(buffer->shape(), image_shape));
@@ -62,10 +63,14 @@ MaceStatus BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     case WEIGHT_WIDTH:
       kernel_name = "weight_width_buffer_to_image";
       break;
-    case WINOGRAD_FILTER:
-      gws[1] /= 16;
-      kernel_name = "winograd_filter_buffer_to_image";
+    case WINOGRAD_FILTER: {
+      std::stringstream ss_tmp;
+      gws[1] /= (wino_blk_size_ + 2) * (wino_blk_size_ + 2);
+      ss_tmp << "winograd_filter_buffer_to_image_"
+             << wino_blk_size_ << "x" << wino_blk_size_;
+      kernel_name = ss_tmp.str();
       break;
+    }
   }
 
   auto runtime = OpenCLRuntime::Global();

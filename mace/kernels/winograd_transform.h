@@ -32,23 +32,27 @@ namespace kernels {
 
 struct WinogradTransformFunctorBase {
   WinogradTransformFunctorBase(const Padding &padding_type,
-                               const std::vector<int> &paddings)
+                               const std::vector<int> &paddings,
+                               const int block_size)
       : strides_({1, 1}),
         dilations_({1, 1}),
         padding_type_(padding_type),
-        paddings_(paddings) {}
+        paddings_(paddings),
+        wino_blk_size_(block_size) {}
 
   const std::vector<int> strides_;    // [stride_h, stride_w]
   const std::vector<int> dilations_;  // [dilation_h, dilation_w]
   Padding padding_type_;
   std::vector<int> paddings_;
+  const int wino_blk_size_;
 };
 
 template<DeviceType D, typename T>
 struct WinogradTransformFunctor : WinogradTransformFunctorBase {
   WinogradTransformFunctor(const Padding &padding_type,
-                           const std::vector<int> &paddings)
-      : WinogradTransformFunctorBase(padding_type, paddings) {}
+                           const std::vector<int> &paddings,
+                           const int block_size)
+      : WinogradTransformFunctorBase(padding_type, paddings, block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -66,8 +70,9 @@ template<typename T>
 struct WinogradTransformFunctor<DeviceType::GPU, T>
     : WinogradTransformFunctorBase {
   WinogradTransformFunctor(const Padding &padding_type,
-                           const std::vector<int> &paddings)
-      : WinogradTransformFunctorBase(padding_type, paddings) {}
+                           const std::vector<int> &paddings,
+                           const int block_size)
+      : WinogradTransformFunctorBase(padding_type, paddings, block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -85,16 +90,19 @@ struct WinogradInverseTransformFunctorBase {
                                       const int height,
                                       const int width,
                                       const ActivationType activation,
-                                      const float relux_max_limit)
+                                      const float relux_max_limit,
+                                      const int block_size)
       : batch_(batch),
         height_(height),
         width_(width),
         activation_(activation),
-        relux_max_limit_(relux_max_limit) {}
+        relux_max_limit_(relux_max_limit),
+        wino_blk_size_(block_size) {}
 
   const int batch_;
   const int height_;
   const int width_;
+  const int wino_blk_size_;
   const ActivationType activation_;
   const float relux_max_limit_;
 };
@@ -105,9 +113,10 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
                                   const int height,
                                   const int width,
                                   const ActivationType activation,
-                                  const float relux_max_limit)
+                                  const float relux_max_limit,
+                                  const int block_size)
       : WinogradInverseTransformFunctorBase(
-      batch, height, width, activation, relux_max_limit) {}
+            batch, height, width, activation, relux_max_limit, block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *bias,
@@ -130,9 +139,10 @@ struct WinogradInverseTransformFunctor<DeviceType::GPU, T>
                                   const int height,
                                   const int width,
                                   const ActivationType activation,
-                                  const float relux_max_limit)
+                                  const float relux_max_limit,
+                                  const int block_size)
       : WinogradInverseTransformFunctorBase(
-            batch, height, width, activation, relux_max_limit) {}
+            batch, height, width, activation, relux_max_limit, block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *bias,

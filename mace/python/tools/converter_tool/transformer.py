@@ -31,6 +31,7 @@ from mace.python.tools.converter_tool.base_converter import TransformerRule
 from mace.python.tools.convert_util import mace_check
 
 OPENCL_IMAGE_MAX_SIZE = 16384
+DEFAULT_GPU_WINO_BLK_SIZE = 4
 
 
 class OpenCLBufferType(enum.Enum):
@@ -111,6 +112,7 @@ class Transformer(base_converter.ConverterInterface):
 
         self._option = option
         self._model = model
+        self._gpu_wino_blk = DEFAULT_GPU_WINO_BLK_SIZE
 
         self._ops = {}
         self._consts = {}
@@ -482,21 +484,36 @@ class Transformer(base_converter.ConverterInterface):
         if filter_height != 3 or filter_width != 3 or strides[0] > 1 \
                 or strides[1] > 1 or dilations[0] > 1 or dilations[1] > 1:
             return False
-        width = batch * ((out_height + 1) / 2) * ((out_width + 1) / 2)
-        return (16 * in_channels < OPENCL_IMAGE_MAX_SIZE) and \
-               (16 * out_channels < OPENCL_IMAGE_MAX_SIZE) and \
-               (width < OPENCL_IMAGE_MAX_SIZE)
+        self._gpu_wino_blk = DEFAULT_GPU_WINO_BLK_SIZE
+        block_size = self._gpu_wino_blk
+        blk_sqr = (block_size + 2) * (block_size + 2)
+        width =\
+            batch * ((out_height + block_size - 1) / block_size) *\
+            ((out_width + block_size - 1) / block_size)
+        if blk_sqr * in_channels > OPENCL_IMAGE_MAX_SIZE \
+                or blk_sqr * out_channels > OPENCL_IMAGE_MAX_SIZE \
+                or width > OPENCL_IMAGE_MAX_SIZE:
+            self._gpu_wino_blk = 2
+            block_size = self._gpu_wino_blk
+            blk_sqr = (block_size + 2) * (block_size + 2)
+            width = \
+                batch * ((out_height + block_size - 1) / block_size) * \
+                ((out_width + block_size - 1) / block_size)
+        return (blk_sqr * in_channels <= OPENCL_IMAGE_MAX_SIZE) and \
+               (blk_sqr * out_channels <= OPENCL_IMAGE_MAX_SIZE) and \
+               (width <= OPENCL_IMAGE_MAX_SIZE)
 
     def transform_gpu_winograd(self):
         """Only gpu needs winograd transform."""
         net = self._model
         filter_format = self.filter_format()
-
         if self._option.device == DeviceType.GPU.value:
             for op in net.op:
                 if op.type == MaceOp.Conv2D.name \
                         and self.check_if_gpu_use_winograd_conv(op):
                     print("Transform gpu winograd %s(%s)" % (op.name, op.type))
+                    block_size = self._gpu_wino_blk
+                    blk_sqr = (block_size + 2) * (block_size + 2)
                     output_shape = op.output_shape[0].dims
                     filter = self._consts[op.input[1]]
                     filter_shape = filter.dims
@@ -515,10 +532,15 @@ class Transformer(base_converter.ConverterInterface):
                     wt_op.input.extend([op.input[0]])
                     wt_op.output.extend([wt_op.name])
                     wt_output_shape = wt_op.output_shape.add()
-                    wt_output_width = batch * (
-                        (out_height + 1) / 2) * ((out_width + 1) / 2)
+                    wt_output_width =\
+                        batch * ((out_height + block_size - 1) / block_size) *\
+                        ((out_width + block_size - 1) / block_size)
                     wt_output_shape.dims.extend(
-                        [16, in_channels, wt_output_width])
+                        [blk_sqr, in_channels, wt_output_width])
+
+                    blk_size_arg = wt_op.arg.add()
+                    blk_size_arg.name = MaceKeyword.mace_wino_block_size
+                    blk_size_arg.i = block_size
 
                     if ConverterUtil.get_arg(op,
                                              MaceKeyword.mace_padding_str) \
@@ -543,7 +565,7 @@ class Transformer(base_converter.ConverterInterface):
                     matmul_op.output.extend([matmul_op.name])
                     matmul_output_shape = matmul_op.output_shape.add()
                     matmul_output_shape.dims.extend(
-                        [16, out_channels, wt_output_width])
+                        [blk_sqr, out_channels, wt_output_width])
 
                     arg = matmul_op.arg.add()
                     arg.name = MaceKeyword.mace_winograd_filter_transformed
@@ -570,6 +592,9 @@ class Transformer(base_converter.ConverterInterface):
                     width_arg = iwt_op.arg.add()
                     width_arg.name = 'width'
                     width_arg.i = out_width
+                    blk_size_arg = iwt_op.arg.add()
+                    blk_size_arg.name = MaceKeyword.mace_wino_block_size
+                    blk_size_arg.i = block_size
                     ConverterUtil.add_data_format_arg(iwt_op, data_format)
 
                     filter_data = np.array(filter.float_data).reshape(
@@ -872,6 +897,13 @@ class Transformer(base_converter.ConverterInterface):
         arg.name = MaceKeyword.mace_mode
         arg.i = 0
 
+        if input_type == OpenCLBufferType.WINOGRAD_FILTER:
+            blk_sqr = op.output_shape[0].dims[0]
+            wino_blk = int(np.sqrt(blk_sqr)) - 2
+            wino_arg = op_def.arg.add()
+            wino_arg.name = MaceKeyword.mace_wino_block_size
+            wino_arg.i = wino_blk
+
         op.input[input_idx] = output_name
 
     def transform_buffer_image(self):
@@ -1002,8 +1034,8 @@ class Transformer(base_converter.ConverterInterface):
     def transform_global_conv_to_fc(self):
         """Transform global conv to fc should be placed after transposing
         input/output and filter"""
-        if self._option.device == DeviceType.GPU.value:
-            return False
+        # if self._option.device == DeviceType.GPU.value:
+        # return False
 
         net = self._model
         for op in net.op:

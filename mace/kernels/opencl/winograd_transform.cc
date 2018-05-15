@@ -27,10 +27,24 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    std::string obfuscated_kernel_name =
-        MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
+    std::string obfuscated_kernel_name;
     std::set<std::string> built_options;
-    built_options.emplace("-Dwinograd_transform_2x2=" + obfuscated_kernel_name);
+    if (wino_blk_size_ == 6) {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_transform_6x6");
+      built_options.emplace("-Dwinograd_transform_6x6="
+                                + obfuscated_kernel_name);
+    } else if (wino_blk_size_ == 4) {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_transform_4x4");
+      built_options.emplace("-Dwinograd_transform_4x4="
+                                + obfuscated_kernel_name);
+    } else {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_transform_2x2");
+      built_options.emplace("-Dwinograd_transform_2x2="
+                                + obfuscated_kernel_name);
+    }
     built_options.emplace("-DDATA_TYPE=" +
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
@@ -66,15 +80,28 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
                    paddings_.data(), dilations_.data(), strides_.data(),
                    RoundType::FLOOR, output_shape.data());
   }
-  const index_t round_h = (output_shape[1] + 1) / 2;
-  const index_t round_w = (output_shape[2] + 1) / 2;
+  const index_t round_h =
+      (output_shape[1] + wino_blk_size_ - 1) / wino_blk_size_;
+  const index_t round_w =
+      (output_shape[2] + wino_blk_size_ - 1) / wino_blk_size_;
   const index_t out_width = input_tensor->dim(0) * round_h * round_w;
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(out_width),
-      static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)))};
 
+  const float round_hw_r = 1.f / static_cast<float>(round_h * round_w);
+  const float round_w_r = 1.f / static_cast<float>(round_w);
+  const index_t blk_sqr = (wino_blk_size_ + 2) * (wino_blk_size_ + 2);
+
+  uint32_t gws[2];
+  if (wino_blk_size_ == 6) {
+    gws[0] = static_cast<uint32_t>(out_width) * (wino_blk_size_ + 2);
+    gws[1] =
+        static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3))) *
+            (wino_blk_size_ + 2);
+  } else {
+    gws[0] = static_cast<uint32_t>(out_width);
+    gws[1] = static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)));
+  }
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
-    output_shape = {16, input_tensor->dim(3), out_width};
+    output_shape = {blk_sqr, input_tensor->dim(3), out_width};
     std::vector<size_t> image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, &image_shape);
     MACE_RETURN_IF_ERROR(output_tensor->ResizeImage(output_shape, image_shape));
@@ -94,24 +121,66 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
+    kernel_.setArg(idx++, round_hw_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
+    kernel_.setArg(idx++, round_w_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
 
     input_shape_ = input_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
-  std::string tuning_key = Concat("winograd_transform_kernel",
-                                  output_tensor->dim(0), output_tensor->dim(1),
-                                  output_tensor->dim(2));
-  TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
+  if (wino_blk_size_ == 6) {
+    const std::vector<uint32_t> lws =
+        {static_cast<uint32_t>(wino_blk_size_ + 2),
+         static_cast<uint32_t>(wino_blk_size_ + 2), 0};
+    cl::Event event;
+    cl_int error;
+    if (runtime->IsNonUniformWorkgroupsSupported()) {
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange, cl::NDRange(gws[0], gws[1]),
+          cl::NDRange(lws[0], lws[1]), nullptr, &event);
+    } else {
+      std::vector<uint32_t> roundup_gws(2, 0);
+      roundup_gws[0] = RoundUp(gws[0], lws[0]);
+      roundup_gws[1] = RoundUp(gws[1], lws[1]);
+      error = runtime->command_queue().enqueueNDRangeKernel(
+          kernel_, cl::NullRange,
+          cl::NDRange(roundup_gws[0], roundup_gws[1]),
+          cl::NDRange(lws[0], lws[1]), nullptr, &event);
+    }
 
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    kernel_error_->Map(nullptr);
-    char *kerror_code = kernel_error_->mutable_data<char>();
-    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
-    kernel_error_->UnMap();
+
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel_error_->Map(nullptr);
+      char *kerror_code = kernel_error_->mutable_data<char>();
+      MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+      kernel_error_->UnMap();
+    }
+    MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+
+    if (future != nullptr) {
+      future->wait_fn = [runtime, event](CallStats *stats) {
+        event.wait();
+        if (stats != nullptr) {
+          runtime->GetCallStats(event, stats);
+        }
+      };
+    }
+  } else {
+    const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
+    std::string tuning_key = Concat("winograd_transform_kernel",
+                                    output_tensor->dim(0),
+                                    output_tensor->dim(1),
+                                    output_tensor->dim(2));
+    TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
+
+    if (runtime->IsOutOfRangeCheckEnabled()) {
+      kernel_error_->Map(nullptr);
+      char *kerror_code = kernel_error_->mutable_data<char>();
+      MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
+      kernel_error_->UnMap();
+    }
   }
 
   return MACE_SUCCESS;
@@ -126,11 +195,25 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
   auto runtime = OpenCLRuntime::Global();
 
   if (kernel_.get() == nullptr) {
-    std::string obfuscated_kernel_name =
-        MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
+    std::string obfuscated_kernel_name;
     std::set<std::string> built_options;
-    built_options.emplace("-Dwinograd_inverse_transform_2x2=" +
-                          obfuscated_kernel_name);
+    if (wino_blk_size_ == 6) {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_6x6");
+      built_options.emplace("-Dwinograd_inverse_transform_6x6="
+                                + obfuscated_kernel_name);
+    } else if (wino_blk_size_ == 4) {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_4x4");
+      built_options.emplace("-Dwinograd_inverse_transform_4x4="
+                                + obfuscated_kernel_name);
+    } else {
+      obfuscated_kernel_name =
+          MACE_OBFUSCATE_SYMBOL("winograd_inverse_transform_2x2");
+      built_options.emplace("-Dwinograd_inverse_transform_2x2="
+                                + obfuscated_kernel_name);
+    }
+
     built_options.emplace("-DDATA_TYPE=" +
                           DtToUpstreamCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
@@ -187,8 +270,12 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
     MACE_RETURN_IF_ERROR(output_tensor->ResizeImage(output_shape, image_shape));
 
-    const uint32_t round_h = (height_ + 1) / 2;
-    const uint32_t round_w = (width_ + 1) / 2;
+    const index_t round_h = (height_ + wino_blk_size_ - 1) / wino_blk_size_;
+    const index_t round_w = (width_ + wino_blk_size_ - 1) / wino_blk_size_;
+
+    const float round_hw_r = 1.f / static_cast<float>(round_h * round_w);
+    const float round_w_r = 1.f / static_cast<float>(round_w);
+
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
@@ -210,12 +297,13 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
+    kernel_.setArg(idx++, round_hw_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
+    kernel_.setArg(idx++, round_w_r);
     kernel_.setArg(idx++, relux_max_limit_);
 
     input_shape_ = input_tensor->shape();
   }
-
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
   std::string tuning_key =
       Concat("winograd_inverse_transform_kernel", output_tensor->dim(0),
@@ -229,7 +317,6 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
-
   return MACE_SUCCESS;
 }
 

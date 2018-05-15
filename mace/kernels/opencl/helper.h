@@ -46,10 +46,12 @@ enum BufferType {
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
-                     std::vector<size_t> *image_shape);
+                     std::vector<size_t> *image_shape,
+                     const int wino_blk_size = 2);
 
 std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
-                                      const BufferType type);
+                                      const BufferType type,
+                                      const int wino_blk_size = 2);
 
 std::string DtToCLCMDDt(const DataType dt);
 

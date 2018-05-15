@@ -339,6 +339,11 @@ class OpsTestNet {
     return &op_defs_[op_defs_.size() - 1];
   }
 
+  OperatorDef *AddNewOperatorDef() {
+    op_defs_.emplace_back(OperatorDef());
+    return &op_defs_[op_defs_.size() - 1];
+  }
+
   Workspace *ws() { return &ws_; }
 
   bool Setup(DeviceType device) {
@@ -630,15 +635,17 @@ template <DeviceType D, typename T>
 void BufferToImage(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
-                   const kernels::BufferType type) {
+                   const kernels::BufferType type,
+                   const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("BufferToImage", "BufferToImageTest")
-      .Input(input_name)
-      .Output(output_name)
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net->NewOperatorDef());
+    .Input(input_name)
+    .Output(output_name)
+    .AddIntArg("buffer_type", type)
+    .AddIntArg("wino_block_size", wino_block_size)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);
@@ -650,15 +657,17 @@ template <DeviceType D, typename T>
 void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
-                   const kernels::BufferType type) {
+                   const kernels::BufferType type,
+                   const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
-      .Input(input_name)
-      .Output(output_name)
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Finalize(net->NewOperatorDef());
+    .Input(input_name)
+    .Output(output_name)
+    .AddIntArg("buffer_type", type)
+    .AddIntArg("wino_block_size", wino_block_size)
+    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+    .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);
