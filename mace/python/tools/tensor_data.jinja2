@@ -17,6 +17,7 @@
 #include <vector>
 #include <string>
 
+#include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
@@ -42,6 +43,7 @@ alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
 
 const unsigned char *LoadModelData(const char *model_data_file) {
 {% if embed_model_data %}
+  MACE_UNUSED(model_data_file);
   return model_data;
 {% else %}
   int fd = open(model_data_file, O_RDONLY);
@@ -67,6 +69,8 @@ void UnloadModelData(const unsigned char *model_data) {
   int ret = munmap(const_cast<unsigned char *>(model_data),
                    {{ model_data_size }});
   MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
+{% else %}
+  MACE_UNUSED(model_data);
 {% endif %}
 }
 

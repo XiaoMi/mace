@@ -34,10 +34,7 @@ class Deconv2dOp : public ConvPool2dOpBase<D, T> {
                  this->paddings_,
                  OperatorBase::GetRepeatedArgument<index_t>("output_shape"),
                  kernels::ActivationType::NOOP,
-                 0.0f,
-                 static_cast<bool>(OperatorBase::GetSingleArgument<int>(
-                     "is_filter_transformed", false)),
-                 ws->GetScratchBuffer(D)) {}
+                 0.0f) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
