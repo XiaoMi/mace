@@ -37,7 +37,7 @@ void FCBenchmark(
   net.AddRandomInput<D, float>("Bias", {out_channel});
 
   if (D == DeviceType::CPU) {
-    OpDefBuilder("FC", "FullyConnectedTest")
+    OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("Input")
       .Input("Weight")
       .Input("Bias")
@@ -52,7 +52,7 @@ void FCBenchmark(
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
 
-    OpDefBuilder("FC", "FullyConnectedTest")
+    OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("InputImage")
         .Input("WeightImage")
         .Input("BiasImage")

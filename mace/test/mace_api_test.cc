@@ -162,7 +162,7 @@ void CheckOutputs(const NetDef &net_def,
     memcpy(input_data.data(), input.second.data().get(),
            data_size * sizeof(float));
     std::string input_name = MakeString("mace_input_node_",
-                                        input.first, ":0");
+                                        input.first);
     net.AddInputFromArray<D, float>(input_name, input.second.shape(),
                                     input_data);
   }
@@ -191,7 +191,7 @@ void CheckOutputs(const NetDef &net_def,
     float *data = tmp_tensor->mutable_data<float>();
     memcpy(data, output.second.data().get(), data_size * sizeof(float));
     std::string output_name = MakeString("mace_output_node_",
-                                         output.first, ":0");
+                                         output.first);
     ops::test::ExpectTensorNear<float>(*tmp_tensor,
                                        *net.GetOutput(output_name.data()),
                                        1e-5);
@@ -275,7 +275,7 @@ void MaceRun(const int in_out_size,
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     std::string input_name = MakeString("mace_input_node_",
-                                        input_names[i], ":0");
+                                        input_names[i]);
     BufferToImage<half>(input_name, input_names[i],
                         mace::kernels::IN_OUT_CHANNEL,
                         {mem_map[input_names[i]]},
@@ -291,7 +291,7 @@ void MaceRun(const int in_out_size,
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
     std::string output_name = MakeString("mace_output_node_",
-                                         output_names[i], ":0");
+                                         output_names[i]);
     ImageToBuffer<float>(output_names[i], output_name,
                          mace::kernels::IN_OUT_CHANNEL, &net_def);
   }

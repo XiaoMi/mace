@@ -84,11 +84,20 @@ def obfuscate_name(net_def):
                 op.output[i] = in_out_map[op.output[i]]
 
 
+def normalize_op_name(op_name):
+    idx = op_name.rfind(':')
+    if idx == -1:
+        return op_name
+    else:
+        return op_name[:idx]
+
+
 def rename_tensor(net_def):
     tensor_map = {}
     for t in net_def.tensors:
         if t.name not in tensor_map:
-            tensor_map[t.name] = "_" + t.name[:-2].replace("/", "_")
+            tensor_map[t.name] = "_" + normalize_op_name(t.name).replace("/",
+                                                                         "_")
             t.name = tensor_map[t.name]
     for op in net_def.op:
         for i in range(len(op.input)):
@@ -118,6 +127,8 @@ class TensorInfo:
         elif t.data_type == mace_pb2.DT_UINT8:
             self.data = bytearray(
                 np.array(t.int32_data).astype(np.uint8).tolist())
+        else:
+            raise Exception('Tensor data type %s not supported' % t.data_type)
 
 
 def stringfy(value):
