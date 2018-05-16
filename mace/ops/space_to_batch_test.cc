@@ -31,20 +31,40 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
   OpsTestNet net;
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  BufferToImage<D, float>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
-  OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+  if (D == GPU) {
+    BufferToImage<D, float>(&net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+    OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputImage")
       .Output("OutputImage")
       .AddIntsArg("paddings", padding_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
+  } else if (D == CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntsArg("paddings", padding_data)
+      .AddIntsArg("block_shape", block_shape_data)
+      .Finalize(net.NewOperatorDef());
+  }
 
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+  if (D == GPU) {
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+  } else if (D == CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+  }
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
@@ -59,20 +79,40 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  BufferToImage<D, float>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
-  OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
+  if (D == GPU) {
+    BufferToImage<D, float>(&net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+    OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputImage")
       .Output("OutputImage")
       .AddIntsArg("crops", crops_data)
       .AddIntsArg("block_shape", block_shape_data)
       .Finalize(net.NewOperatorDef());
+  } else if (D == CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
+                                                    NCHW);
+    OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntsArg("crops", crops_data)
+      .AddIntsArg("block_shape", block_shape_data)
+      .Finalize(net.NewOperatorDef());
+  }
 
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+  if (D == GPU) {
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+  } else if (D == CPU) {
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                    NCHW,
+                                                    "Output",
+                                                    NHWC);
+  }
   // Check
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
@@ -108,9 +148,13 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
 
   RunSpaceToBatch<DeviceType::GPU>(space_shape, space_data, block_data,
                                       padding_data, batch_tensor.get());
+  RunSpaceToBatch<DeviceType::CPU>(space_shape, space_data, block_data,
+                                   padding_data, batch_tensor.get());
 
   RunBatchToSpace<DeviceType::GPU>(batch_shape, batch_data, block_data,
                                       padding_data, space_tensor.get());
+  RunBatchToSpace<DeviceType::CPU>(batch_shape, batch_data, block_data,
+                                   padding_data, space_tensor.get());
 }
 }  // namespace
 
@@ -156,7 +200,7 @@ TEST(SpaceToBatchTest, MultiBatchData) {
   TestBidirectionalTransform<float>(
       {2, 2, 4, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
       {2, 2}, {0, 0, 0, 0}, {8, 1, 2, 1},
-      {1, 3, 2, 4, 5, 7, 6, 8, 9, 11, 10, 12, 13, 15, 14, 16});
+      {1, 3, 9, 11, 2, 4, 10, 12, 5, 7, 13, 15, 6, 8, 14, 16});
 }
 
 TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
@@ -165,8 +209,8 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
       {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
       {2, 2}, {0, 0, 0, 0}, {8, 1, 2, 2},
-      {1,  2,  5,  6,  3,  4,  7,  8,  9,  10, 13, 14, 11, 12, 15, 16,
-       17, 18, 21, 22, 19, 20, 23, 24, 25, 26, 29, 30, 27, 28, 31, 32});
+      {1, 2, 5, 6, 17, 18, 21, 22, 3, 4, 7, 8, 19, 20, 23, 24,
+       9, 10, 13, 14, 25, 26, 29, 30, 11, 12, 15, 16, 27, 28, 31, 32});
 }
 
 }  // namespace test
