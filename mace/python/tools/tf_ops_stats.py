@@ -45,8 +45,11 @@ def to_int_list(long_list):
 def add_shape_info(input_graph_def, input_nodes, input_shapes):
     inputs_replaced_graph = graph_pb2.GraphDef()
     for node in input_graph_def.node:
-        if node.name in input_nodes:
-            idx = input_nodes.index(node.name)
+        if node.name in input_nodes or node.name + ':0' in input_nodes:
+            if node.name in input_nodes:
+                idx = input_nodes.index(node.name)
+            else:
+                idx = input_nodes.index(node.name + ':0')
             input_shape = input_shapes[idx]
             print input_shape
             placeholder_node = copy.deepcopy(node)
