@@ -33,20 +33,16 @@ void SimpleValidTest() {
     "Input", {1, 3, 3, 2},
     {1, 2, 2, 4, 3, 6, 4, 8, 5, 10, 6, 12, 7, 14, 8, 16, 9, 18});
   net.AddInputFromArray<D, float>(
-    "Filter", {2, 2, 2, 1}, {1.0f, 2.0f, 2.0f, 4.0f, 3.0f, 6.0f, 4.0f, 8.0f});
+    "Filter", {1, 2, 2, 2}, {1.0f, 2.0f, 3.0f, 4.0f, 2.0f, 4.0f, 6.0f, 8.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {.1f, .2f});
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWIO,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {1, 1})
@@ -127,10 +123,10 @@ void ComplexValidTest(index_t batch, index_t channel, index_t height,
   net.AddInputFromArray<D, float>("Input", {batch, height, width, channel},
                                   input_data);
   std::vector<float> filter_data(kernel * kernel * channel * multiplier);
-  GenerateRandomRealTypeData({kernel, kernel, channel, multiplier},
+  GenerateRandomRealTypeData({multiplier, channel, kernel, kernel},
                              &filter_data);
   net.AddInputFromArray<D, float>("Filter",
-                                  {kernel, kernel, channel, multiplier},
+                                  {multiplier, channel, kernel, kernel},
                                   filter_data);
   std::vector<float> bias_data(channel * multiplier);
   GenerateRandomRealTypeData({channel * multiplier}, &bias_data);
@@ -142,13 +138,9 @@ void ComplexValidTest(index_t batch, index_t channel, index_t height,
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWIO,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride, stride})
@@ -214,7 +206,7 @@ void ComplexValidTest(index_t batch, index_t channel, index_t height,
                 index_t in_offset =
                     ((b * height + ih) * width + iw) * channel + c;
                 index_t filter_offset =
-                    (((kh * kernel) + kw) * channel + c) * multiplier + o;
+                    ((o * channel + c) * kernel + kh) * kernel + kw;
                 sum += input_data[in_offset] * filter_data[filter_offset];
               }
             }
@@ -275,22 +267,18 @@ void TestNxNS12(const index_t height, const index_t width) {
                                                   {batch, height, width,
                                                    input_channels});
     net.AddRandomInput<DeviceType::GPU, float>(
-      "Filter", {kernel_h, kernel_w, input_channels, multiplier});
+      "Filter", {multiplier, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<DeviceType::GPU, float>("Bias",
-                                                  {multiplier
-                                                     * input_channels});
+                                               {multiplier
+                                                    * input_channels});
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWIO,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})
@@ -335,7 +323,6 @@ void TestNxNS12(const index_t height, const index_t width) {
                                          "OutputImage",
                                          "DeviceOutput",
                                          kernels::BufferType::IN_OUT_CHANNEL);
-
 
     // Check
     if (DataTypeToEnum<T>::value == DT_FLOAT) {

@@ -21,12 +21,12 @@ namespace mace {
 namespace kernels {
 
 void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
-                              const index_t *filter_shape,  // OIHW
-                              const int *dilations,
-                              const int *strides,
-                              Padding padding,
-                              index_t *output_shape,
-                              int *padding_size) {
+                                  const index_t *filter_shape,  // OIHW
+                                  const int *dilations,
+                                  const int *strides,
+                                  Padding padding,
+                                  index_t *output_shape,
+                                  int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
@@ -85,7 +85,7 @@ void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
 }
 
 void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
-                                  const index_t *filter_shape,  // HWOI
+                                  const index_t *filter_shape,  // OIHW
                                   const int *dilations,
                                   const int *strides,
                                   Padding padding,
@@ -108,9 +108,9 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
   padding_size[1] = 0;
 
   index_t output_height = 0, output_width = 0;
-  index_t kernel_height = filter_shape[0];
-  index_t kernel_width = filter_shape[1];
-  index_t output_channels = filter_shape[2];
+  index_t output_channels = filter_shape[0];
+  index_t kernel_height = filter_shape[2];
+  index_t kernel_width = filter_shape[3];
 
   index_t k_extent_height = (kernel_height - 1) * dilations[0] + 1;
   index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
@@ -151,7 +151,7 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
 
 
 void CalcOutputSize(const index_t *input_shape,   // NHWC
-                    const index_t *filter_shape,  // HWOI
+                    const index_t *filter_shape,  // OIHW
                     const int *padding_size,
                     const int *dilations,
                     const int *strides,
@@ -168,28 +168,28 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
   output_shape[0] = input_shape[0];
   if (round_type == FLOOR) {
     output_shape[1] = static_cast<index_t>(
-        std::floor(1.0 * (input_shape[1] + padding_size[0] - filter_shape[0] -
-                          (filter_shape[0] - 1) * (dilations[0] - 1)) /
+        std::floor(1.0 * (input_shape[1] + padding_size[0] - filter_shape[2] -
+                          (filter_shape[2] - 1) * (dilations[0] - 1)) /
                    strides[0]) +
         1);
     output_shape[2] = static_cast<index_t>(
-        std::floor(1.0 * (input_shape[2] + padding_size[1] - filter_shape[1] -
-                          (filter_shape[1] - 1) * (dilations[1] - 1)) /
+        std::floor(1.0 * (input_shape[2] + padding_size[1] - filter_shape[3] -
+                          (filter_shape[3] - 1) * (dilations[1] - 1)) /
                    strides[1]) +
         1);
   } else {
     output_shape[1] = static_cast<index_t>(
-        std::ceil(1.0 * (input_shape[1] + padding_size[0] - filter_shape[0] -
-                         (filter_shape[0] - 1) * (dilations[0] - 1)) /
+        std::ceil(1.0 * (input_shape[1] + padding_size[0] - filter_shape[2] -
+                         (filter_shape[2] - 1) * (dilations[0] - 1)) /
                   strides[0]) +
         1);
     output_shape[2] = static_cast<index_t>(
-        std::ceil(1.0 * (input_shape[2] + padding_size[1] - filter_shape[1] -
-                         (filter_shape[1] - 1) * (dilations[1] - 1)) /
+        std::ceil(1.0 * (input_shape[2] + padding_size[1] - filter_shape[3] -
+                         (filter_shape[3] - 1) * (dilations[1] - 1)) /
                   strides[1]) +
         1);
   }
-  output_shape[3] = filter_shape[2];
+  output_shape[3] = filter_shape[0];
 }
 
 void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW

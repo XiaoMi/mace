@@ -52,7 +52,7 @@ void Deconv2dOpencl(cl::Kernel *kernel,
 
   const int align_h = stride - 1 - padding_h;
   const int align_w = stride - 1 - padding_w;
-  const int kernel_size = filter->dim(0) * filter->dim(1);
+  const int kernel_size = filter->dim(2) * filter->dim(3);
 
   auto runtime = OpenCLRuntime::Global();
 
@@ -127,8 +127,8 @@ void Deconv2dOpencl(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int32_t>(align_w));
     kernel->setArg(idx++, static_cast<int32_t>(padding_h));
     kernel->setArg(idx++, static_cast<int32_t>(padding_w));
-    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(0)));
-    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(1)));
+    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(2)));
+    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(3)));
     kernel->setArg(idx++, static_cast<int32_t>(kernel_size));
     kernel->setArg(idx++, static_cast<int32_t>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<int32_t>(channel_blocks));

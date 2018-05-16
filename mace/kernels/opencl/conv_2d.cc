@@ -83,8 +83,8 @@ void Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   static const Conv2dOpenclFunction selector[5] = {
       Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3, nullptr, nullptr};
 
-  index_t kernel_h = filter->dim(0);
-  index_t kernel_w = filter->dim(1);
+  index_t kernel_h = filter->dim(2);
+  index_t kernel_w = filter->dim(3);
   if (strides_[0] != strides_[1] ||
       (dilations_[0] > 1 && (strides_[0] > 1 || kernel_h == 1))) {
     LOG(WARNING) << "OpenCL conv2d kernel with "

@@ -40,13 +40,19 @@ SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
-    VLOG(3) << "Creating operator " << operator_def.name() << "("
-            << operator_def.type() << ")";
-    OperatorDef temp_def(operator_def);
-    std::unique_ptr<OperatorBase> op(
-        op_registry->CreateOperator(temp_def, ws, type, mode));
-    if (op) {
-      operators_.emplace_back(std::move(op));
+    // TODO(liuqi): refactor based on PB
+    const int op_device =
+        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+            operator_def, "device", -1);
+    if (op_device == type) {
+      VLOG(3) << "Creating operator " << operator_def.name() << "("
+              << operator_def.type() << ")";
+      OperatorDef temp_def(operator_def);
+      std::unique_ptr<OperatorBase> op(
+          op_registry->CreateOperator(temp_def, ws, type, mode));
+      if (op) {
+        operators_.emplace_back(std::move(op));
+      }
     }
   }
 }

@@ -59,11 +59,8 @@ void WinogradConvolution(const index_t batch,
   // Construct graph
   OpsTestNet net;
   // Add input data
-  std::vector<float> filter_data;
-  std::vector<index_t> filter_shape = {3, 3, out_channels, in_channels};
-  GenerateRandomRealTypeData<float>(filter_shape, &filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
-  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
+  net.AddRandomInput<D, float>("Filter", {out_channels, in_channels, 3, 3});
   net.AddRandomInput<D, T>("Bias", {out_channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -79,12 +76,13 @@ void WinogradConvolution(const index_t batch,
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   net.RunOp(D);
 
   // Transfer output
-  ImageToBuffer<D, T>(&net, "OutputImage", "ConvOutput",
+  ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
@@ -92,11 +90,7 @@ void WinogradConvolution(const index_t batch,
 
   // Winograd convolution
   // transform filter
-  std::vector<float> wino_filter_data;
-  TransposeFilter(filter_data, filter_shape, &wino_filter_data);
-  net.AddInputFromArray<D, float>(
-      "WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
-  BufferToImage<D, T>(&net, "WinoFilterData", "WinoFilter",
+  BufferToImage<D, T>(&net, "Filter", "WinoFilter",
                       kernels::BufferType::WINOGRAD_FILTER);
 
   // transform input
@@ -128,6 +122,7 @@ void WinogradConvolution(const index_t batch,
       .AddIntArg("height", output_shape[1])
       .AddIntArg("width", output_shape[2])
       .Output("WinoOutputImage")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
@@ -180,12 +175,9 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Construct graph
   OpsTestNet net;
   // Add input data
-  std::vector<float> filter_data;
-  std::vector<index_t> filter_shape = {3, 3, out_channels, in_channels};
-  GenerateRandomRealTypeData<float>(filter_shape, &filter_data);
   net.AddRandomInput<D, float>("Input", {batch, height, width, in_channels});
-  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
-  net.AddRandomInput<D, T>("Bias", {out_channels});
+  net.AddRandomInput<D, float>("Filter", {out_channels, in_channels, 3, 3});
+  net.AddRandomInput<D, float>("Bias", {out_channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -200,12 +192,13 @@ void WinogradConvolutionWithPad(const index_t batch,
       .AddIntsArg("strides", {1, 1})
       .AddIntsArg("padding_values", {padding, padding})
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   net.RunOp(D);
 
   // Transfer output
-  ImageToBuffer<D, T>(&net, "OutputImage", "ConvOutput",
+  ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
                       kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
@@ -213,11 +206,7 @@ void WinogradConvolutionWithPad(const index_t batch,
 
   // Winograd convolution
   // transform filter
-  std::vector<float> wino_filter_data;
-  TransposeFilter(filter_data, filter_shape, &wino_filter_data);
-  net.AddInputFromArray<D, float>(
-      "WinoFilterData", {out_channels, in_channels, 3, 3}, wino_filter_data);
-  BufferToImage<D, T>(&net, "WinoFilterData", "WinoFilter",
+  BufferToImage<D, T>(&net, "Filter", "WinoFilter",
                       kernels::BufferType::WINOGRAD_FILTER);
 
   // transform input
@@ -248,6 +237,7 @@ void WinogradConvolutionWithPad(const index_t batch,
       .AddIntArg("batch", batch)
       .AddIntArg("height", output_shape[1])
       .AddIntArg("width", output_shape[2])
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Output("WinoOutputImage")
       .Finalize(net.NewOperatorDef());
 
@@ -266,6 +256,27 @@ void WinogradConvolutionWithPad(const index_t batch,
   }
 }
 }  // namespace
+
+TEST_F(WinogradConvlutionTest, AlignedConvolutionWithPad) {
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
+                                                     1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16,
+                                                    2);
+}
+
+TEST_F(WinogradConvlutionTest, UnAlignedConvolutionWithPad) {
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
+                                                     1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31,
+                                                    2);
+}
+
+TEST_F(WinogradConvlutionTest, BatchConvolutionWithPad) {
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
+                                                     1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31,
+                                                    2);
+}
 
 }  // namespace test
 }  // namespace ops

@@ -55,6 +55,7 @@ void BufferToImage(const std::string &input_name,
                    const std::string &output_name,
                    const int buffer_type,
                    const std::vector<int> &mem_ids,
+                   const DeviceType device_type,
                    NetDef *net_def,
                    const int mode = NetMode::NORMAL) {
   OperatorDef operator_def;
@@ -64,6 +65,7 @@ void BufferToImage(const std::string &input_name,
       .Output(output_name)
       .AddIntArg("buffer_type", buffer_type)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("device", static_cast<int>(device_type))
       .AddIntArg("mode", mode)
       .Finalize(&operator_def);
 
@@ -76,6 +78,7 @@ template <typename T>
 void ImageToBuffer(const std::string &input_name,
                    const std::string &output_name,
                    const int buffer_type,
+                   const DeviceType device_type,
                    NetDef *net_def) {
   OperatorDef operator_def;
 
@@ -84,6 +87,7 @@ void ImageToBuffer(const std::string &input_name,
       .Output(output_name)
       .AddIntArg("buffer_type", buffer_type)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("device", static_cast<int>(device_type))
       .Finalize(&operator_def);
 
   net_def->add_op()->CopyFrom(operator_def);
@@ -94,6 +98,7 @@ void Conv3x3(const std::string &input_name,
              const std::string &filter_name,
              const std::string &output_name,
              const std::vector<int> &mem_ids,
+             const DeviceType device_type,
              NetDef *net_def) {
   OperatorDef operator_def;
   ops::test::OpDefBuilder("Conv2D", "Conv2dOp")
@@ -104,6 +109,7 @@ void Conv3x3(const std::string &input_name,
       .AddIntArg("padding", Padding::SAME)
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("device", static_cast<int>(device_type))
       .Finalize(&operator_def);
 
   operator_def.set_mem_id(mem_ids);
@@ -113,6 +119,7 @@ void Conv3x3(const std::string &input_name,
 template <typename T>
 void Relu(const std::string &input_name,
           const std::string &output_name,
+          const DeviceType device_type,
           NetDef *net_def) {
   OperatorDef operator_def;
   ops::test::OpDefBuilder("Activation", "ReluTest")
@@ -120,6 +127,7 @@ void Relu(const std::string &input_name,
       .Output(output_name)
       .AddStringArg("activation", "RELU")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .AddIntArg("device", static_cast<int>(device_type))
       .Finalize(&operator_def);
 
   net_def->add_op()->CopyFrom(operator_def);
@@ -195,7 +203,8 @@ std::map<std::string, int> AddMemoryOptimization(
     const std::vector<std::vector<int64_t>> &output_shapes,
     NetDef *net_def) {
   std::map<std::string, int> res;
-  int mem_id = 0;
+  // TODO(liuqi) refactor based on PB
+  int mem_id = 20000;
   size_t input_shape_size = input_shapes.size();
   uint32_t in_mem_block_x = 0;
   uint32_t in_mem_block_y = 0;
@@ -250,7 +259,7 @@ void MaceRunFunc(const int in_out_size) {
 
   const std::vector<std::vector<int64_t>> input_shapes = {{1, 32, 32, 16}};
   const std::vector<std::vector<int64_t>> output_shapes = {{1, 32, 32, 16}};
-  const std::vector<int64_t> filter_shape = {3, 3, 16, 16};
+  const std::vector<int64_t> filter_shape = {16, 16, 3, 3};
 
   NetDef net_def;
 
@@ -269,21 +278,25 @@ void MaceRunFunc(const int in_out_size) {
     BufferToImage<half>(input_name, input_names[i],
                         mace::kernels::IN_OUT_CHANNEL,
                         {mem_map[input_names[i]]},
+                        device,
                         &net_def);
   }
   BufferToImage<half>(filter_tensor_name, filter_tensor_img_name,
-                      mace::kernels::CONV2D_FILTER, {},
+                      mace::kernels::CONV2D_FILTER, {}, device,
                       &net_def, NetMode::INIT);
   for (size_t i = 0; i < output_names.size(); ++i) {
     Conv3x3<half>(input_names[i], filter_tensor_img_name,
                   output_names[i], {mem_map[output_names[i]]},
+                  device,
                   &net_def);
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
     std::string output_name = MakeString("mace_output_node_",
                                          output_names[i]);
     ImageToBuffer<float>(output_names[i], output_name,
-                         mace::kernels::IN_OUT_CHANNEL, &net_def);
+                         mace::kernels::IN_OUT_CHANNEL,
+                         device,
+                         &net_def);
   }
 
   const std::string file_path ="/data/local/tmp/mace";

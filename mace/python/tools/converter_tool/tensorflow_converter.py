@@ -1,3 +1,18 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import math
 import numpy as np
 import tensorflow as tf
@@ -197,11 +212,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
         for tf_output in tf_op.outputs:
             output_shape = op.output_shape.add()
             output_shape.dims.extend(tf_output.shape.as_list())
-            op.output_type.append(self._option.data_type)
-
-        data_type_arg = op.arg.add()
-        data_type_arg.name = 'T'
-        data_type_arg.i = self._option.data_type
 
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
@@ -289,7 +299,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.input.extend([scale_name, offset_name])
         del op.output[1:]
         del op.output_shape[1:]
-        del op.output_type[1:]
 
     def convert_pooling(self, tf_op):
         op = self.convert_general_op(tf_op)

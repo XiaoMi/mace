@@ -136,7 +136,11 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   // As DSP may have different data output type for each op,
   // we stick to the same concept.
   for (auto &op : net_def.op()) {
-    if (!op.mem_id().empty()) {
+    // TODO(liuqi): refactor based on PB
+    const int op_device =
+        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+            op, "device", -1);
+    if (op_device == device_type && !op.mem_id().empty()) {
       const DataType op_dtype = static_cast<DataType>(
           ArgumentHelper::GetSingleArgument<OperatorDef, int>(
               op, "T", static_cast<int>(DT_FLOAT)));
@@ -150,20 +154,29 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
     if (device_type == DeviceType::GPU) {
-      std::unique_ptr<BufferBase> image_buf(
-          new Image({mem_block.x(), mem_block.y()}, dtype));
-      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                        std::move(image_buf));
+      // TODO(liuqi): refactor based on PB
+      if (mem_block.mem_id() >= 20000) {
+        std::unique_ptr<BufferBase> image_buf(
+            new Image({mem_block.x(), mem_block.y()}, dtype));
+        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                          std::move(image_buf));
+      }
     } else {
-      std::unique_ptr<BufferBase> tensor_buf(
-          new Buffer(GetDeviceAllocator(device_type), mem_block.x()));
-      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                        std::move(tensor_buf));
+      if (mem_block.mem_id() < 20000) {
+        std::unique_ptr<BufferBase> tensor_buf(
+            new Buffer(GetDeviceAllocator(device_type), mem_block.x()));
+        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                          std::move(tensor_buf));
+      }
     }
   }
   VLOG(3) << "Preallocate buffer to tensors";
   for (auto &op : net_def.op()) {
-    if (!op.mem_id().empty()) {
+    // TODO(liuqi): refactor based on PB
+    const int op_device =
+        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+            op, "device", -1);
+    if (op_device == device_type && !op.mem_id().empty()) {
       auto mem_ids = op.mem_id();
       int count = mem_ids.size();
       for (int i = 0; i < count; ++i) {

@@ -155,8 +155,8 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<uint32_t>(input_channel_blocks));
     kernel->setArg(idx++, static_cast<uint32_t>(height));
     kernel->setArg(idx++, static_cast<uint32_t>(width));
-    kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(0)));
-    kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(1)));
+    kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(2)));
+    kernel->setArg(idx++, static_cast<uint32_t>(filter->dim(3)));
     kernel->setArg(idx++, static_cast<uint32_t>(stride));
     kernel->setArg(idx++, padding[0] / 2);
     kernel->setArg(idx++, padding[1] / 2);
@@ -169,9 +169,9 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
   std::string tuning_key =
       Concat("conv2d_general_opencl_kernel", output->dim(0),
              output->dim(1), output->dim(2), output->dim(3),
-             filter->dim(0), filter->dim(1));
+             filter->dim(2), filter->dim(3));
   std::vector<uint32_t> lws =
-    LocalWS(gws, filter->dim(0) * filter->dim(1), *kwg_size);
+    LocalWS(gws, filter->dim(2) * filter->dim(3), *kwg_size);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

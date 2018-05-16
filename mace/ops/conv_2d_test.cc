@@ -33,7 +33,7 @@ void TestNHWCSimple3x3VALID() {
     "Input", {1, 3, 3, 2},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 1, 2},
+    "Filter", {1, 2, 3, 3},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
@@ -43,13 +43,9 @@ void TestNHWCSimple3x3VALID() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {1, 1})
@@ -104,9 +100,8 @@ void TestNHWCSimple3x3SAME() {
     "Input", {1, 3, 3, 2},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 1, 2},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    "Filter", {1, 2, 3, 3},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
 
@@ -115,13 +110,9 @@ void TestNHWCSimple3x3SAME() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {1, 1})
@@ -191,9 +182,8 @@ void TestNHWCSimple3x3WithoutBias() {
     "Input", {1, 3, 3, 2},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 1, 2},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    "Filter", {1, 2, 3, 3},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
   if (D == DeviceType::CPU) {
@@ -201,13 +191,9 @@ void TestNHWCSimple3x3WithoutBias() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {1, 1})
       .AddIntArg("padding", Padding::VALID)
@@ -272,10 +258,11 @@ void TestNHWCCombined3x3() {
                             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, T>(
-    "Filter", {3, 3, 2, 2},
-    {1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f,
-     1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f,
-     1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f, 1.0f, 1.0f, 0.5f, 0.5f});
+    "Filter", {2, 2, 3, 3},
+    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
+     0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f});
   net.AddInputFromArray<D, T>("Bias", {2}, {0.1f, 0.2f});
 
   if (D == DeviceType::CPU) {
@@ -283,13 +270,9 @@ void TestNHWCCombined3x3() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {2, 2})
@@ -356,9 +339,8 @@ void TestFusedNHWCSimple3x3VALID() {
       {-1, -1, -1, -1, -1, -1, -1, -1, -1,
        -1, -1, -1, -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, float>(
-      "Filter", {3, 3, 1, 2},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      "Filter", {1, 2, 3, 3},
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
   net.AddInputFromArray<D, float>("Bias", {1}, {-0.1f});
 
@@ -367,13 +349,9 @@ void TestFusedNHWCSimple3x3VALID() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
-        .Input("FilterOIHW")
+        .Input("Filter")
         .Input("Bias")
         .Output("OutputNCHW")
         .AddIntsArg("strides", {1, 1})
@@ -431,9 +409,8 @@ void TestFusedNHWCSimple3x3WithoutBias() {
        -1, -1, -1, -1, -1, -1,
        -1, -1, -1, -1, -1, -1});
   net.AddInputFromArray<D, float>(
-      "Filter", {3, 3, 1, 2},
-      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-       1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+      "Filter", {1, 2, 3, 3},
+      {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
 
   if (D == DeviceType::CPU) {
@@ -441,13 +418,9 @@ void TestFusedNHWCSimple3x3WithoutBias() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
         .Input("InputNCHW")
-        .Input("FilterOIHW")
+        .Input("Filter")
         .Output("OutputNCHW")
         .AddIntsArg("strides", {1, 1})
         .AddIntArg("padding", Padding::VALID)
@@ -523,7 +496,7 @@ void TestConv1x1() {
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
   net.AddInputFromArray<D, float>(
-    "Filter", {1, 1, 2, 5},
+    "Filter", {2, 5, 1, 1},
     {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f});
   net.AddInputFromArray<D, float>("Bias", {2}, {0.1f, 0.2f});
 
@@ -532,13 +505,9 @@ void TestConv1x1() {
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     OpDefBuilder("Conv2D", "Conv2DTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {1, 1})
@@ -615,21 +584,17 @@ void TestComplexConvNxNS12(const std::vector<index_t> &shape,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-      "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+      "Filter", {output_channels, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, T>("Bias", {output_channels});
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
 
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})
@@ -733,7 +698,7 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
     net.AddInputFromArray<D, float>(
       "Input", {batch, height, width, input_channels}, float_input_data);
     net.AddInputFromArray<D, float>(
-      "Filter", {kernel_h, kernel_w, output_channels, input_channels},
+      "Filter", {output_channels, input_channels, kernel_h, kernel_w},
       float_filter_data);
     net.AddInputFromArray<D, float>("Bias", {output_channels}, float_bias_data);
 
@@ -741,14 +706,10 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
 
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})
@@ -876,22 +837,18 @@ void TestDilationConvNxN(const std::vector<index_t> &shape,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-      "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+      "Filter", {output_channels, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
 
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})
@@ -984,22 +941,17 @@ void TestGeneralHalfAtrousConv(const std::vector<index_t> &image_shape,
     net.AddRandomInput<D, float>("Input",
                                  {batch, height, width, input_channels});
     net.AddRandomInput<D, float>(
-        "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, float>("Bias", {output_channels});
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
-
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
         .Input("InputNCHW")
-        .Input("FilterOIHW")
+        .Input("Filter")
         .Input("Bias")
         .Output("OutputNCHW")
         .AddIntsArg("strides", {stride_h, stride_w})
@@ -1080,21 +1032,17 @@ void TestArbitraryPadConvNxN(const std::vector<index_t> &shape,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-      "Filter", {kernel_h, kernel_w, output_channels, input_channels});
+      "Filter", {output_channels, input_channels, kernel_h, kernel_w});
     net.AddRandomInput<D, T>("Bias", {output_channels});
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input",
                                                     NHWC,
                                                     "InputNCHW",
                                                     NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Filter",
-                                                    HWOI,
-                                                    "FilterOIHW",
-                                                    OIHW);
     // Construct graph
     OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputNCHW")
-      .Input("FilterOIHW")
+      .Input("Filter")
       .Input("Bias")
       .Output("OutputNCHW")
       .AddIntsArg("strides", {stride_h, stride_w})

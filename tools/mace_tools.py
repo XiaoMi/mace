@@ -62,27 +62,23 @@ def get_target_socs(configs):
         return target_socs
 
 
-def get_data_and_device_type(runtime):
-    data_type = ""
+def parse_device_type(runtime):
     device_type = ""
 
     if runtime == "dsp":
-        data_type = "DT_UINT8"
         device_type = "HEXAGON"
     elif runtime == "gpu":
-        data_type = "DT_HALF"
         device_type = "GPU"
     elif runtime == "cpu":
-        data_type = "DT_FLOAT"
         device_type = "CPU"
 
-    return data_type, device_type
+    return device_type
 
 
 def get_hexagon_mode(configs):
     runtime_list = []
     for model_name in configs["models"]:
-        model_runtime = configs["models"][model_name]["runtime"]
+        model_runtime = configs["models"][model_name].get("runtime", "")
         runtime_list.append(model_runtime.lower())
 
     global_runtime = ""
@@ -114,7 +110,7 @@ def model_benchmark_stdout_processor(stdout,
                                      abi,
                                      serialno,
                                      model_name,
-                                     runtime):
+                                     device_type):
     metrics = [0] * 3
     for line in stdout.split('\n'):
         line = line.strip()
@@ -138,14 +134,14 @@ def model_benchmark_stdout_processor(stdout,
             f.write("model_name,device_name,soc,abi,runtime,"
                     "init,warmup,run_avg\n")
 
-    data_str = "{model_name},{device_name},{soc},{abi},{runtime}," \
+    data_str = "{model_name},{device_name},{soc},{abi},{device_type}," \
                "{init},{warmup},{run_avg}\n" \
         .format(
             model_name=model_name,
             device_name=device_name,
             soc=target_soc,
             abi=abi,
-            runtime=runtime,
+            device_type=device_type,
             init=metrics[0],
             warmup=metrics[1],
             run_avg=metrics[2]
@@ -154,8 +150,7 @@ def model_benchmark_stdout_processor(stdout,
         f.write(data_str)
 
 
-def tuning_run(runtime,
-               target_abi,
+def tuning_run(target_abi,
                serialno,
                vlog_level,
                embed_model_data,
@@ -205,7 +200,7 @@ def tuning_run(runtime,
 
     if running_round > 0 and FLAGS.collect_report:
         model_benchmark_stdout_processor(
-            stdout, target_abi, serialno, model_name, runtime)
+            stdout, target_abi, serialno, model_name, device_type)
 
 
 def build_mace_run_prod(hexagon_mode, runtime, target_abi,
@@ -222,7 +217,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         strip = "never"
         debug = True
 
-    if runtime == "gpu":
+    if not runtime or runtime == "gpu":
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
         sh_commands.bazel_build(
             mace_run_target,
@@ -234,18 +229,13 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         sh_commands.update_mace_run_lib(model_output_dir,
                                         model_name, embed_model_data)
 
-        tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
+        device_type = parse_device_type("gpu")
+        tuning_run(target_abi, serialno, vlog_level, embed_model_data,
                    model_output_dir, input_nodes, output_nodes, input_shapes,
                    output_shapes, model_name, device_type, running_round=0,
                    restart_round=1, out_of_range_check=False,
                    phone_data_dir=phone_data_dir, tuning=tuning,
                    limit_opencl_kernel_time=limit_opencl_kernel_time)
-
-        tuning_run(runtime, target_abi, serialno, vlog_level, embed_model_data,
-                   model_output_dir, input_nodes, output_nodes, input_shapes,
-                   output_shapes, model_name, device_type, running_round=0,
-                   restart_round=1, out_of_range_check=True,
-                   phone_data_dir=phone_data_dir, tuning=False)
 
         gen_opencl_and_tuning_code(target_abi, serialno, [model_output_dir],
                                    True)
@@ -391,8 +381,7 @@ def parse_model_configs():
                 print("'platform' must be 'tensorflow' or 'caffe'")
                 exit(1)
 
-            for key in ["model_file_path", "model_sha256_checksum",
-                        "runtime"]:
+            for key in ["model_file_path", "model_sha256_checksum"]:
                 value = model_config.get(key, "")
                 if value == "":
                     print("CONFIG ERROR:")
@@ -529,6 +518,11 @@ def parse_args():
         type=str,
         default="",
         help="Valgrind command args.")
+    parser.add_argument(
+        "--validation_runtime",
+        type=str,
+        default="cpu",
+        help="validation runtime.")
     return parser.parse_known_args()
 
 
@@ -541,9 +535,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         print '===================', model_name, '==================='
         model_config = configs["models"][model_name]
         input_file_list = model_config["validation_inputs_data"]
-        data_type, device_type = get_data_and_device_type(
-                model_config["runtime"])
-
+        model_runtime = model_config.get("runtime", "")
+        model_device_type = parse_device_type(model_runtime)
+        run_device_type = model_device_type
+        if not run_device_type:
+            run_device_type = parse_device_type(FLAGS.validation_runtime)
         # Create model build directory
         model_path_digest = md5sum(model_config["model_file_path"])
         model_output_base_dir = "%s/%s/%s/%s/%s" % (
@@ -581,7 +577,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
             build_mace_run_prod(hexagon_mode,
-                                model_config["runtime"],
+                                model_runtime,
                                 target_abi,
                                 serialno,
                                 vlog_level,
@@ -592,7 +588,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 model_config["input_shapes"],
                                 model_config["output_shapes"],
                                 model_name,
-                                device_type,
+                                model_device_type,
                                 FLAGS.round,
                                 FLAGS.restart_round,
                                 FLAGS.tuning,
@@ -607,8 +603,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
            FLAGS.mode == "all":
-            tuning_run(model_config["runtime"],
-                       target_abi,
+            tuning_run(target_abi,
                        serialno,
                        vlog_level,
                        embed_model_data,
@@ -618,7 +613,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        model_config["input_shapes"],
                        model_config["output_shapes"],
                        model_name,
-                       device_type,
+                       run_device_type,
                        FLAGS.round,
                        FLAGS.restart_round,
                        FLAGS.out_of_range_check,
@@ -641,7 +636,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         model_config["input_shapes"],
                                         model_config["output_shapes"],
                                         model_name,
-                                        device_type,
+                                        run_device_type,
                                         phone_data_dir,
                                         FLAGS.omp_num_threads,
                                         FLAGS.cpu_affinity_policy,
@@ -654,7 +649,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                        model_file_path,
                                        weight_file_path,
                                        model_config["platform"],
-                                       model_config["runtime"],
+                                       run_device_type,
                                        model_config["input_nodes"],
                                        model_config["output_nodes"],
                                        model_config["input_shapes"],
@@ -746,8 +741,7 @@ def main(unused_args):
         for model_name in configs["models"]:
             print '===================', model_name, '==================='
             model_config = configs["models"][model_name]
-            data_type, device_type = get_data_and_device_type(
-                model_config["runtime"])
+            runtime = model_config.get("runtime", "")
 
             # Create model build directory
             model_path_digest = md5sum(model_config["model_file_path"])
@@ -778,8 +772,7 @@ def main(unused_args):
                 model_config["model_sha256_checksum"],
                 ",".join(model_config["input_nodes"]),
                 ",".join(model_config["output_nodes"]),
-                data_type,
-                model_config["runtime"],
+                runtime,
                 model_name,
                 ":".join(model_config["input_shapes"]),
                 model_config["dsp_mode"],

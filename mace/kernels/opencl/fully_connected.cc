@@ -32,8 +32,6 @@ void FCWXKernel(cl::Kernel *kernel,
                 const float relux_max_limit,
                 StatsFuture *future,
                 std::unique_ptr<BufferBase> *kernel_error) {
-  MACE_CHECK(input->dim(3) % 4 == 0)
-    << "FC width kernel only support input with 4x channel.";
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
   auto runtime = OpenCLRuntime::Global();
@@ -294,15 +292,9 @@ void FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
                   &output_image_shape);
   output->ResizeImage(output_shape, output_image_shape);
 
-  if (weight_type_ == BufferType::WEIGHT_HEIGHT) {
-    FCWTXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                   activation_, &gws_, &lws_, relux_max_limit_, future,
-                   &kernel_error_);
-  } else {
-    FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                  activation_, &gws_, &lws_, relux_max_limit_, future,
-                  &kernel_error_);
-  }
+  FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
+                activation_, &gws_, &lws_, relux_max_limit_, future,
+                &kernel_error_);
 }
 
 template struct FullyConnectedFunctor<DeviceType::GPU, float>;

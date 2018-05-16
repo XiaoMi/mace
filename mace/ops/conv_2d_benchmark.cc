@@ -43,19 +43,15 @@ void Conv2d(int iters,
   // Add input data
   if (D == DeviceType::CPU) {
     net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
-    net.AddRandomInput<D, float>("Filter",
-                                 {output_channels, channels, kernel_h,
-                                  kernel_w});
-    net.AddRandomInput<D, float>("Bias", {output_channels});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
-    net.AddRandomInput<D, float>("Filter",
-                                 {kernel_h, kernel_w, output_channels,
-                                  channels});
-    net.AddRandomInput<D, float>("Bias", {output_channels});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
+  net.AddRandomInput<D, float>("Filter",
+                               {output_channels, channels, kernel_h,
+                                kernel_w});
+  net.AddRandomInput<D, float>("Bias", {output_channels});
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("Conv2D", "Conv2dTest")

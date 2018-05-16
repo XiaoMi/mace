@@ -28,33 +28,42 @@ class FullyConnectedOp : public Operator<D, T> {
  public:
   FullyConnectedOp(const OperatorDef &operator_def, Workspace *ws)
     : Operator<D, T>(operator_def, ws),
-      functor_(OperatorBase::GetSingleArgument<int>(
-                   "weight_type",
-                   // TODO(liuqi): 8 is stand for kernels::WEIGHT_WIDTH
-                   8 /*static_cast<int>(kernels::WEIGHT_WIDTH)*/),
-               kernels::StringToActivationType(
+      functor_(kernels::StringToActivationType(
                  OperatorBase::GetSingleArgument<std::string>("activation",
                                                               "NOOP")),
                OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
   bool Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
-    const Tensor *weight = this->Input(WEIGHT);
+    const Tensor *weight = this->Input(WEIGHT);  // OIHW
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
 
-    const index_t input_size = input->dim(1) * input->dim(2) * input->dim(3);
-    MACE_CHECK(input_size == weight->dim(1) && weight->dim(0) == bias->dim(0),
-               "The size of Input: ",
-               input_size,
-               " Weight: ",
-               weight->dim(1),
-               ",",
-               weight->dim(
-                 0),
-               " and Bias ",
-               bias->dim(0),
-               " don't match.");
+    if (D == DeviceType::CPU) {
+      MACE_CHECK(input->dim(1) == weight->dim(1)
+                     && input->dim(2) == weight->dim(2)
+                     && input->dim(3) == weight->dim(3)
+                     && weight->dim(0) == bias->dim(0),
+                 "The shape of Input: ",
+                 MakeString(input->shape()),
+                 "The shape of Weight: ",
+                 MakeString(weight->shape()),
+                 " and Bias ",
+                 bias->dim(0),
+                 " don't match.");
+    } else {
+      MACE_CHECK(input->dim(1) == weight->dim(2)
+                     && input->dim(2) == weight->dim(3)
+                     && input->dim(3) == weight->dim(1)
+                     && weight->dim(0) == bias->dim(0),
+                 "The shape of Input: ",
+                 MakeString(input->shape()),
+                 "The shape of Weight: ",
+                 MakeString(weight->shape()),
+                 " and Bias ",
+                 bias->dim(0),
+                 " don't match.");
+    }
 
     functor_(input, weight, bias, output, future);
     return true;

@@ -44,7 +44,7 @@ def load_data(file):
         return np.empty([0])
 
 
-def compare_output(platform, mace_runtime, output_name, mace_out_value,
+def compare_output(platform, device_type, output_name, mace_out_value,
                    out_value):
     if mace_out_value.size != 0:
         out_value = out_value.reshape(-1)
@@ -53,9 +53,9 @@ def compare_output(platform, mace_runtime, output_name, mace_out_value,
         similarity = (1 - spatial.distance.cosine(out_value, mace_out_value))
         print output_name, 'MACE VS', platform.upper(
         ), 'similarity: ', similarity
-        if (mace_runtime == "cpu" and similarity > 0.999) or \
-            (mace_runtime == "gpu" and similarity > 0.995) or \
-                (mace_runtime == "dsp" and similarity > 0.930):
+        if (device_type == "CPU" and similarity > 0.999) or \
+            (device_type == "GPU" and similarity > 0.995) or \
+                (device_type == "HEXAGON" and similarity > 0.930):
             print '===================Similarity Test Passed=================='
         else:
             print '===================Similarity Test Failed=================='
@@ -65,7 +65,7 @@ def compare_output(platform, mace_runtime, output_name, mace_out_value,
         sys.exit(-1)
 
 
-def validate_tf_model(platform, mace_runtime, model_file, input_file,
+def validate_tf_model(platform, device_type, model_file, input_file,
                       mace_out_file, input_names, input_shapes, output_names):
     import tensorflow as tf
     if not os.path.isfile(model_file):
@@ -100,11 +100,11 @@ def validate_tf_model(platform, mace_runtime, model_file, input_file,
                     output_file_name = common.formatted_file_name(
                         mace_out_file, output_names[i])
                     mace_out_value = load_data(output_file_name)
-                    compare_output(platform, mace_runtime, output_names[i],
+                    compare_output(platform, device_type, output_names[i],
                                    mace_out_value, output_values[i])
 
 
-def validate_caffe_model(platform, mace_runtime, model_file, input_file,
+def validate_caffe_model(platform, device_type, model_file, input_file,
                          mace_out_file, weight_file, input_names, input_shapes,
                          output_names, output_shapes):
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
@@ -144,12 +144,12 @@ def validate_caffe_model(platform, mace_runtime, model_file, input_file,
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
-        compare_output(platform, mace_runtime, output_names[i], mace_out_value,
+        compare_output(platform, device_type, output_names[i], mace_out_value,
                        value)
 
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
-             mace_runtime, input_shape, output_shape, input_node, output_node):
+             device_type, input_shape, output_shape, input_node, output_node):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
@@ -158,14 +158,14 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     assert len(input_names) == len(input_shapes)
 
     if platform == 'tensorflow':
-        validate_tf_model(platform, mace_runtime, model_file, input_file,
+        validate_tf_model(platform, device_type, model_file, input_file,
                           mace_out_file, input_names, input_shapes,
                           output_names)
     elif platform == 'caffe':
         output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
                          for shape in output_shape_strs]
-        validate_caffe_model(platform, mace_runtime, model_file, input_file,
+        validate_caffe_model(platform, device_type, model_file, input_file,
                              mace_out_file, weight_file, input_names,
                              input_shapes, output_names, output_shapes)
 
@@ -194,7 +194,7 @@ def parse_args():
         default="",
         help="mace output file to load.")
     parser.add_argument(
-        "--mace_runtime", type=str, default="gpu", help="mace runtime device.")
+        "--device_type", type=str, default="", help="mace runtime device.")
     parser.add_argument(
         "--input_shape", type=str, default="1,64,64,3", help="input shape.")
     parser.add_argument(
@@ -214,7 +214,7 @@ if __name__ == '__main__':
              FLAGS.weight_file,
              FLAGS.input_file,
              FLAGS.mace_out_file,
-             FLAGS.mace_runtime,
+             FLAGS.device_type,
              FLAGS.input_shape,
              FLAGS.output_shape,
              FLAGS.input_node,

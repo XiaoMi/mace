@@ -35,7 +35,7 @@ class BufferToImageOp : public Operator<D, T> {
             "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(const_cast<Tensor *>(input_tensor), type, output, future);
+    functor_(input_tensor, type, output, future);
     return true;
   }
 

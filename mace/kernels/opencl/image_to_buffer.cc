@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/buffer_to_image.h"
+#include "mace/kernels/image_to_buffer.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
@@ -20,52 +20,45 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *buffer,
+void ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
+    const Tensor *image,
     const BufferType type,
-    Tensor *image,
+    Tensor *buffer,
     StatsFuture *future) {
 
   std::vector<size_t> image_shape;
-  CalImage2DShape(buffer->shape(), type, &image_shape);
-  if (type == WINOGRAD_FILTER) {
-    std::vector<index_t> new_shape = CalWinogradShape(buffer->shape(), type);
-    image->ResizeImage(new_shape, image_shape);
-  } else {
-    image->ResizeImage(buffer->shape(), image_shape);
-  }
+  CalImage2DShape(image->shape(), type, &image_shape);
+  buffer->Resize(image->shape());
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
   std::string kernel_name;
   switch (type) {
     case CONV2D_FILTER:
-      kernel_name = "filter_buffer_to_image";
-      break;
-    case DW_CONV2D_FILTER:
-      kernel_name = "dw_filter_buffer_to_image";
+      kernel_name = "filter_image_to_buffer";
       break;
     case IN_OUT_CHANNEL:
-      kernel_name = "in_out_buffer_to_image";
+      kernel_name = "in_out_image_to_buffer";
       break;
     case ARGUMENT:
-      kernel_name = "arg_buffer_to_image";
+      kernel_name = "arg_image_to_buffer";
       break;
     case IN_OUT_HEIGHT:
-      kernel_name = "in_out_height_buffer_to_image";
-      break;
-    case IN_OUT_WIDTH:
-      kernel_name = "in_out_width_buffer_to_image";
-      break;
-    case WEIGHT_HEIGHT:
-      kernel_name = "weight_height_buffer_to_image";
-      break;
-    case WEIGHT_WIDTH:
-      kernel_name = "weight_width_buffer_to_image";
+      kernel_name = "in_out_height_image_to_buffer";
       break;
     case WINOGRAD_FILTER:
       gws[1] /= 16;
-      kernel_name = "winograd_filter_buffer_to_image";
+      kernel_name = "winograd_filter_image_to_buffer";
+      break;
+    case WEIGHT_HEIGHT:
+      kernel_name = "weight_height_image_to_buffer";
+      break;
+    case WEIGHT_WIDTH:
+      kernel_name = "weight_width_image_to_buffer";
+      break;
+    case DW_CONV2D_FILTER:
+    case IN_OUT_WIDTH:
+      LOG(FATAL) << "IN_OUT_WIDTH only support buffer to image now";
       break;
   }
 
@@ -113,11 +106,6 @@ void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     b2f_kernel.setArg(idx++, gws[1]);
   }
   b2f_kernel.setArg(idx++, *(buffer->opencl_buffer()));
-  MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0,
-             "buffer offset not aligned");
-  b2f_kernel.setArg(idx++,
-                    static_cast<uint32_t>(buffer->buffer_offset() /
-                                          GetEnumTypeSize(buffer->dtype())));
   if (type == CONV2D_FILTER) {
     const index_t inner_size =
         buffer->dim(1) * buffer->dim(2) * buffer->dim(3);
@@ -125,13 +113,13 @@ void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(inner_size));
-  } else if (type == DW_CONV2D_FILTER || type == WEIGHT_HEIGHT) {
+  } else if (type == ARGUMENT) {
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
+  } else if (type == WEIGHT_HEIGHT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-  } else if (type == ARGUMENT) {
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
   } else {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
@@ -176,8 +164,8 @@ void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
   }
 }
 
-template struct BufferToImageFunctor<DeviceType::GPU, float>;
-template struct BufferToImageFunctor<DeviceType::GPU, half>;
+template struct ImageToBufferFunctor<DeviceType::GPU, float>;
+template struct ImageToBufferFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

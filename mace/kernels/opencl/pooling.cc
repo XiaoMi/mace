@@ -89,8 +89,8 @@ void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   std::vector<uint32_t> gws;
   if (!IsVecEqual(input_shape_, input->shape())) {
     std::vector<index_t> output_shape(4);
-    std::vector<index_t> filter_shape = {kernels_[0], kernels_[1],
-                                         input->dim(3), input->dim(3)};
+    std::vector<index_t> filter_shape = {input->dim(3), input->dim(3),
+                                         kernels_[0], kernels_[1]};
 
     std::vector<int> paddings(2);
     if (paddings_.empty()) {

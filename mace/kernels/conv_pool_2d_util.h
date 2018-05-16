@@ -49,7 +49,7 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,
                                   int *padding_size);
 
 void CalcOutputSize(const index_t *input_shape,   // NHWC
-                    const index_t *filter_shape,  // HWOI
+                    const index_t *filter_shape,  // OIHW
                     const int *padding_size,
                     const int *dilations,
                     const int *strides,

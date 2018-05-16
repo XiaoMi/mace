@@ -32,14 +32,11 @@ namespace mace {
 namespace kernels {
 
 struct FullyConnectedBase {
-  FullyConnectedBase(const int /*BufferType*/ weight_type,
-                     const ActivationType activation,
+  FullyConnectedBase(const ActivationType activation,
                      const float relux_max_limit)
-      : weight_type_(weight_type),
-        activation_(activation),
+      : activation_(activation),
         relux_max_limit_(relux_max_limit) {}
 
-  const int weight_type_;
   const ActivationType activation_;
   const float relux_max_limit_;
 };
@@ -49,10 +46,9 @@ struct FullyConnectedFunctor;
 
 template <>
 struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
-  FullyConnectedFunctor(const int /*BufferType*/ weight_type,
-                        const ActivationType activation,
+  FullyConnectedFunctor(const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
+      : FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,
@@ -63,7 +59,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
     std::vector<index_t> output_shape = {input->dim(0), weight->dim(0), 1, 1};
     output->Resize(output_shape);
     const index_t N = output->dim(0);
-    const index_t input_size = weight->dim(1);
+    const index_t input_size = weight->dim(1) * weight->dim(2) * weight->dim(3);
     const index_t output_size = weight->dim(0);
 
     Tensor::MappingGuard guard_input(input);
@@ -90,10 +86,9 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::GPU, T> : FullyConnectedBase {
-  FullyConnectedFunctor(const int /*BufferType*/ weight_type,
-                        const ActivationType activation,
+  FullyConnectedFunctor(const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(weight_type, activation, relux_max_limit) {}
+      : FullyConnectedBase(activation, relux_max_limit) {}
 
   void operator()(const Tensor *input,
                   const Tensor *weight,

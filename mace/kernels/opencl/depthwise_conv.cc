@@ -73,7 +73,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
   const index_t channels = output->dim(3);
 
   const index_t input_channels = input->dim(3);
-  const index_t multiplier = filter->dim(3);
+  const index_t multiplier = filter->dim(0);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
@@ -138,11 +138,11 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     const index_t input_height = input->dim(1);
     const index_t input_width = input->dim(2);
 
-    const index_t filter_height = filter->dim(0);
-    const index_t filter_width = filter->dim(1);
+    const index_t filter_height = filter->dim(2);
+    const index_t filter_width = filter->dim(3);
     MACE_CHECK(multiplier == 1, "Multiplier > 1 not supported");
     MACE_CHECK(multiplier * input_channels == channels);
-    MACE_CHECK(filter->dim(2) == input_channels, filter->dim(2), "!=",
+    MACE_CHECK(filter->dim(1) == input_channels, filter->dim(1), "!=",
                input_channels);
 
     uint32_t idx = 0;
@@ -195,7 +195,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
 template <typename T>
 void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
-    const Tensor *filter,
+    const Tensor *filter, /* MIHW */
     const Tensor *bias,
     Tensor *output,
     StatsFuture *future) {
@@ -216,10 +216,10 @@ void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
 
   // Create a fake conv_2d filter to calculate the paddings and output size
   std::vector<index_t> fake_filter_shape(4);
-  fake_filter_shape[0] = filter->shape()[0];
-  fake_filter_shape[1] = filter->shape()[1];
-  fake_filter_shape[2] = filter->shape()[2] * filter->shape()[3];
-  fake_filter_shape[3] = 1;
+  fake_filter_shape[0] = filter->dim(0) * filter->dim(1);
+  fake_filter_shape[1] = filter->dim(1);
+  fake_filter_shape[2] = filter->dim(2);
+  fake_filter_shape[3] = filter->dim(3);
 
   std::vector<index_t> output_shape(4);
   std::vector<int> paddings(2);

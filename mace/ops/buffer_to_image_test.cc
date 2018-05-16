@@ -61,7 +61,7 @@ TEST(BufferToImageTest, ArgHalfSmall) {
   TestBidirectionTransform<DeviceType::GPU, half>(kernels::ARGUMENT, {11});
 }
 
-TEST(BufferToImageTest, ArgMedia) {
+TEST(BufferToImageTest, ArgMedium) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::ARGUMENT, {11});
 }
 
@@ -84,7 +84,7 @@ TEST(BufferToImageTest, InputSmallMultipleBatchAndChannel) {
                                                       {3, 2, 3, 3});
 }
 
-TEST(BufferToImageTest, InputMedia) {
+TEST(BufferToImageTest, InputMedium) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
                                                       {3, 13, 17, 128});
 }
@@ -96,32 +96,62 @@ TEST(BufferToImageTest, InputLarge) {
 
 TEST(BufferToImageTest, Filter1x1Small) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {1, 1, 3, 5});
+                                                   {5, 3, 1, 1});
 }
 
-TEST(BufferToImageTest, Filter1x1Media) {
+TEST(BufferToImageTest, Filter1x1Medium) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {1, 1, 13, 17});
+                                                   {13, 17, 1, 1});
 }
 
 TEST(BufferToImageTest, Filter1x1Large) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {1, 1, 128, 512});
+                                                   {512, 128, 1, 1});
 }
 
 TEST(BufferToImageTest, Filter3x3Small) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {3, 3, 3, 5});
+                                                   {3, 5, 3, 3});
 }
 
-TEST(BufferToImageTest, Filter3x3Meida) {
+TEST(BufferToImageTest, Filter3x3Medium) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {3, 3, 13, 17});
+                                                   {17, 13, 3, 3});
 }
 
 TEST(BufferToImageTest, Filter3x3Large) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::CONV2D_FILTER,
-                                                      {3, 3, 128, 256});
+                                                   {256, 128, 3, 3});
+}
+
+TEST(BufferToImageTest, WeightWidthSmall) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_WIDTH,
+                                                   {1, 3, 3, 3});
+}
+
+TEST(BufferToImageTest, WeightWidthMedium) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_WIDTH,
+                                                   {11, 13, 13, 17});
+}
+
+TEST(BufferToImageTest, WeightWidthLarge) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_WIDTH,
+                                                   {64, 128, 11, 13});
+}
+
+TEST(BufferToImageTest, WeightHeightSmall) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_HEIGHT,
+                                                   {2, 1, 1, 1});
+}
+
+TEST(BufferToImageTest, WeightHeightMedium) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_HEIGHT,
+                                                   {11, 13, 13, 17});
+}
+
+TEST(BufferToImageTest, WeightHeightLarge) {
+  TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_HEIGHT,
+                                                   {64, 32, 11, 13});
 }
 
 namespace {
@@ -159,7 +189,7 @@ void TestDiffTypeBidirectionTransform(const int type,
 
 TEST(BufferToImageTest, ArgFloatToHalfSmall) {
   TestDiffTypeBidirectionTransform<DeviceType::GPU, half>(kernels::ARGUMENT,
-                                                             {11});
+                                                          {11});
 }
 
 namespace {

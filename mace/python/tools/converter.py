@@ -16,6 +16,7 @@ import argparse
 import sys
 import hashlib
 import os.path
+import copy
 
 from mace.proto import mace_pb2
 from mace.python.tools import tf_dsp_converter_lib
@@ -25,6 +26,7 @@ from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import tensorflow_converter
 from mace.python.tools.converter_tool import caffe_converter
 from mace.python.tools.converter_tool import transformer
+from mace.python.tools.convert_util import mace_check
 
 
 # ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb \
@@ -34,11 +36,14 @@ from mace.python.tools.converter_tool import transformer
 
 FLAGS = None
 
-data_type_map = {'DT_HALF': mace_pb2.DT_HALF,
-                 'DT_FLOAT': mace_pb2.DT_FLOAT}
 device_type_map = {'cpu': mace_pb2.CPU,
                    'gpu': mace_pb2.GPU,
                    'dsp': mace_pb2.HEXAGON}
+device_data_type_map = {
+    mace_pb2.CPU: mace_pb2.DT_FLOAT,
+    mace_pb2.GPU: mace_pb2.DT_HALF,
+    mace_pb2.HEXAGON: mace_pb2.DT_UINT8
+}
 
 
 def file_checksum(fname):
@@ -81,7 +86,7 @@ def main(unused_args):
     if FLAGS.platform not in ['tensorflow', 'caffe']:
         print ("platform %s is not supported." % FLAGS.platform)
         sys.exit(-1)
-    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp']:
+    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', '']:
         print ("runtime %s is not supported." % FLAGS.runtime)
         sys.exit(-1)
 
@@ -95,8 +100,6 @@ def main(unused_args):
             sys.exit(-1)
     else:
         option = cvt.ConverterOption()
-        option.data_type = data_type_map[FLAGS.data_type]
-        option.device = device_type_map[FLAGS.runtime]
         option.winograd_enabled = bool(FLAGS.winograd)
 
         input_node_names = FLAGS.input_node.split(',')
@@ -117,8 +120,8 @@ def main(unused_args):
 
         print("Convert model to mace model.")
         if FLAGS.platform == 'tensorflow':
-            converter = tensorflow_converter.TensorflowConverter(option,
-                                                                 FLAGS.model_file)  # noqa
+            converter = tensorflow_converter.TensorflowConverter(
+                option, FLAGS.model_file)
         elif FLAGS.platform == 'caffe':
             converter = caffe_converter.CaffeConverter(option,
                                                        FLAGS.model_file,
@@ -126,16 +129,49 @@ def main(unused_args):
 
         output_graph_def = converter.run()
         print("Transform model to one that can better run on device.")
-        # TODO(liuqi/liyin): transform gpu/cpu and merge their ops
-        mace_transformer = transformer.Transformer(option, output_graph_def)
-        output_graph_def = mace_transformer.run()
+        if not FLAGS.runtime:
+            cpu_graph_def = copy.deepcopy(output_graph_def)
+            option.device = mace_pb2.CPU
+            option.data_type = device_data_type_map[mace_pb2.CPU]
+            option.disable_transpose_filters()
+            mace_cpu_transformer = transformer.Transformer(
+                option, cpu_graph_def)
+            cpu_graph_def = mace_cpu_transformer.run()
+            print "start optimize cpu memory."
+            memory_optimizer.optimize_cpu_memory(cpu_graph_def)
+            print "CPU memory optimization done."
 
-        print "start optimize memory."
-        if FLAGS.runtime == 'gpu':
-            memory_optimizer.optimize_gpu_memory(output_graph_def)
-        elif FLAGS.runtime == 'cpu':
-            memory_optimizer.optimize_cpu_memory(output_graph_def)
-        print "Memory optimization done."
+            option.device = mace_pb2.GPU
+            option.data_type = device_data_type_map[mace_pb2.GPU]
+            option.enable_transpose_filters()
+            mace_gpu_transformer = transformer.Transformer(
+                option, output_graph_def)
+            output_gpu_graph_def = mace_gpu_transformer.run()
+            print "start optimize gpu memory."
+            memory_optimizer.optimize_gpu_memory(output_gpu_graph_def)
+            print "GPU memory optimization done."
+
+            print "Merge cpu and gpu ops together"
+            output_graph_def.op.extend(cpu_graph_def.op)
+            output_graph_def.mem_arena.mem_block.extend(
+                cpu_graph_def.mem_arena.mem_block)
+            print "Merge done"
+        else:
+            option.device = device_type_map[FLAGS.runtime]
+            option.data_type = device_data_type_map[option.device]
+            mace_transformer = transformer.Transformer(
+                option, output_graph_def)
+            output_graph_def = mace_transformer.run()
+
+            print "start optimize memory."
+            if FLAGS.runtime == 'gpu':
+                memory_optimizer.optimize_gpu_memory(output_graph_def)
+            elif FLAGS.runtime == 'cpu':
+                memory_optimizer.optimize_cpu_memory(output_graph_def)
+            else:
+                mace_check(False, "runtime only support [gpu|cpu|dsp]")
+
+            print "Memory optimization done."
 
     if FLAGS.output_type == 'source':
         source_converter_lib.convert_to_source(
@@ -188,7 +224,7 @@ def parse_args():
         default="",
         help="File to save the output graph to.")
     parser.add_argument(
-        "--runtime", type=str, default="cpu", help="Runtime: cpu/gpu/dsp")
+        "--runtime", type=str, default="", help="Runtime: cpu/gpu/dsp")
     parser.add_argument(
         "--input_node",
         type=str,
@@ -196,11 +232,6 @@ def parse_args():
         help="e.g., input_node")
     parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
-    parser.add_argument(
-        "--data_type",
-        type=str,
-        default='DT_FLOAT',
-        help="e.g., DT_HALF/DT_FLOAT")
     parser.add_argument(
         "--output_type", type=str, default="pb", help="output type: source/pb")
     parser.add_argument(

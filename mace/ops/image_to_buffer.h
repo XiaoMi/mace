@@ -16,7 +16,7 @@
 #define MACE_OPS_IMAGE_TO_BUFFER_H_
 
 #include "mace/core/operator.h"
-#include "mace/kernels/buffer_to_image.h"
+#include "mace/kernels/image_to_buffer.h"
 
 namespace mace {
 namespace ops {
@@ -25,21 +25,21 @@ template <DeviceType D, typename T>
 class ImageToBufferOp : public Operator<D, T> {
  public:
   ImageToBufferOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws), functor_(true) {}
+      : Operator<D, T>(op_def, ws) {}
 
   bool Run(StatsFuture *future) override {
-    const Tensor *input_tensor = this->Input(INPUT);
+    const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
     kernels::BufferType type =
         static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
             "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
-    functor_(output, type, const_cast<Tensor *>(input_tensor), future);
+    functor_(input, type, output, future);
     return true;
   }
 
  private:
-  kernels::BufferToImageFunctor<D, T> functor_;
+  kernels::ImageToBufferFunctor<D, T> functor_;
 
  protected:
   OP_INPUT_TAGS(INPUT);

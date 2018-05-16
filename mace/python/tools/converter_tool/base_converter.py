@@ -1,3 +1,18 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from enum import Enum
 
 from mace.proto import mace_pb2
@@ -117,6 +132,27 @@ class MaceKeyword(object):
     mace_axis_str = 'axis'
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
+    mace_device = 'device'
+
+
+class TransformerRule(Enum):
+    REMOVE_IDENTITY_OP = 0
+    TRANSFORM_GLOBAL_POOLING = 1
+    FOLD_SOFTMAX = 2
+    FOLD_BATCHNORM = 3,
+    FOLD_CONV_AND_BN = 4,
+    FOLD_DEPTHWISE_CONV_AND_BN = 5,
+    TRANSFORM_GPU_WINOGRAD = 6,
+    TRANSFORM_ADD_TO_BIASADD = 7,
+    FOLD_BIASADD = 8,
+    FOLD_ACTIVATION = 9,
+    TRANSPOSE_FILTERS = 10,
+    RESHAPE_FC_WEIGHT = 11,
+    TRANSPOSE_DATA_FORMAT = 12,
+    TRANSFORM_GLOBAL_CONV_TO_FC = 13,
+    TRANSFORM_BUFFER_IMAGE = 14,
+    ADD_DEVICE_AND_DATA_TYPE = 15,
+    SORT_BY_EXECUTION = 16
 
 
 class ConverterInterface(object):
@@ -162,6 +198,25 @@ class ConverterOption(object):
         self._data_type = mace_pb2.DT_FLOAT
         self._device = mace_pb2.CPU
         self._winograd_enabled = False
+        self._transformer_option = [
+            TransformerRule.REMOVE_IDENTITY_OP,
+            TransformerRule.TRANSFORM_GLOBAL_POOLING,
+            TransformerRule.FOLD_SOFTMAX,
+            TransformerRule.FOLD_BATCHNORM,
+            TransformerRule.FOLD_CONV_AND_BN,
+            TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
+            TransformerRule.TRANSFORM_GPU_WINOGRAD,
+            TransformerRule.TRANSFORM_ADD_TO_BIASADD,
+            TransformerRule.FOLD_BIASADD,
+            TransformerRule.FOLD_ACTIVATION,
+            TransformerRule.TRANSPOSE_FILTERS,
+            TransformerRule.RESHAPE_FC_WEIGHT,
+            TransformerRule.TRANSPOSE_DATA_FORMAT,
+            TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
+            TransformerRule.TRANSFORM_BUFFER_IMAGE,
+            TransformerRule.ADD_DEVICE_AND_DATA_TYPE,
+            TransformerRule.SORT_BY_EXECUTION,
+        ]
 
     @property
     def input_nodes(self):
@@ -182,6 +237,10 @@ class ConverterOption(object):
     @property
     def winograd_enabled(self):
         return self._winograd_enabled
+
+    @property
+    def transformer_option(self):
+        return self._transformer_option
 
     @input_nodes.setter
     def input_nodes(self, input_nodes):
@@ -210,6 +269,14 @@ class ConverterOption(object):
     @winograd_enabled.setter
     def winograd_enabled(self, winograd_enabled):
         self._winograd_enabled = winograd_enabled
+
+    def disable_transpose_filters(self):
+        if TransformerRule.TRANSPOSE_FILTERS in self._transformer_option:
+            self._transformer_option.remove(TransformerRule.TRANSPOSE_FILTERS)
+
+    def enable_transpose_filters(self):
+        if TransformerRule.TRANSPOSE_FILTERS not in self._transformer_option:
+            self._transformer_option.append(TransformerRule.TRANSPOSE_FILTERS)
 
 
 class ConverterUtil(object):
