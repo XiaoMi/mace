@@ -18,6 +18,11 @@ namespace mace {
 namespace ops {
 
 void Register_SpaceToBatchND(OperatorRegistry *op_registry) {
+  REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToBatchND")
+                                     .Device(DeviceType::CPU)
+                                     .TypeConstraint<float>("T")
+                                     .Build(),
+                    SpaceToBatchNDOp<DeviceType::CPU, float>);
 #ifdef MACE_ENABLE_OPENCL
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToBatchND")
                                      .Device(DeviceType::GPU)
@@ -30,8 +35,6 @@ void Register_SpaceToBatchND(OperatorRegistry *op_registry) {
                                      .TypeConstraint<half>("T")
                                      .Build(),
                     SpaceToBatchNDOp<DeviceType::GPU, half>);
-#else
-  MACE_UNUSED(op_registry);
 #endif  // MACE_ENABLE_OPENCL
 }
 

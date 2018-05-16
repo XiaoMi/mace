@@ -27,9 +27,19 @@ namespace kernels {
 template <typename T>
 void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     Tensor *space_tensor,
-    const std::vector<index_t> &output_shape,
     Tensor *batch_tensor,
     StatsFuture *future) {
+  std::vector<index_t> output_shape(4, 0);
+  if (b2s_) {
+    CalculateBatchToSpaceOutputShape(batch_tensor,
+                                     DataFormat::NHWC,
+                                     output_shape.data());
+  } else {
+    CalculateSpaceToBatchOutputShape(space_tensor,
+                                     DataFormat::NHWC,
+                                     output_shape.data());
+  }
+
   const char *kernel_name = nullptr;
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
@@ -97,6 +107,7 @@ void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, block_shape_[1]);
     kernel_.setArg(idx++, paddings_[0]);
     kernel_.setArg(idx++, paddings_[2]);
+    kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(0)));
     kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(1)));

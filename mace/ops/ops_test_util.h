@@ -35,8 +35,6 @@ namespace mace {
 namespace ops {
 namespace test {
 
-enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4 };
-
 class OpDefBuilder {
  public:
   OpDefBuilder(const char *type, const std::string &name) {

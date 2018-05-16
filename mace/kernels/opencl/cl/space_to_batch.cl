@@ -8,6 +8,7 @@ __kernel void space_to_batch(KERNEL_ERROR_PARAMS
                              __private const int block_width,
                              __private const int padding_height,
                              __private const int padding_width,
+                             __private const int batch_size,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
@@ -27,8 +28,8 @@ __kernel void space_to_batch(KERNEL_ERROR_PARAMS
   const int batch_h_idx = batch_hb_idx % batch_height;
 
   const int block_size = mul24(block_height, block_width);
-  const int space_b_idx = batch_b_idx / block_size;
-  const int remaining_batch_idx = batch_b_idx % block_size;
+  const int space_b_idx = batch_b_idx % batch_size;
+  const int remaining_batch_idx = batch_b_idx / batch_size;
   const int space_h_idx = (remaining_batch_idx / block_width) +
       mul24(batch_h_idx, block_height) - padding_height;
   const int space_w_idx = (remaining_batch_idx % block_width) +
@@ -57,6 +58,7 @@ __kernel void batch_to_space(KERNEL_ERROR_PARAMS
                              __private const int block_width,
                              __private const int padding_height,
                              __private const int padding_width,
+                             __private const int batch_size,
                              __private const int space_height,
                              __private const int space_width,
                              __private const int batch_height,
@@ -76,8 +78,8 @@ __kernel void batch_to_space(KERNEL_ERROR_PARAMS
   const int batch_h_idx = batch_hb_idx % batch_height;
 
   const int block_size = mul24(block_height, block_width);
-  const int space_b_idx = batch_b_idx / block_size;
-  const int remaining_batch_idx = batch_b_idx % block_size;
+  const int space_b_idx = batch_b_idx % batch_size;
+  const int remaining_batch_idx = batch_b_idx / batch_size;
   const int space_h_idx = (remaining_batch_idx / block_width) +
       mul24(batch_h_idx, block_height) - padding_height;
   const int space_w_idx = (remaining_batch_idx % block_width) +
