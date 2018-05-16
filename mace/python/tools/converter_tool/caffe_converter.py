@@ -482,6 +482,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             axis_arg.i = param.axis
         elif param.HasField('concat_dim'):
             axis_arg.i = param.concat_dim
+        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
         mace_check(axis_arg.i == 1, "only support concat at channel dimension")
 
     def convert_slice(self, caffe_op):
@@ -490,7 +491,8 @@ class CaffeConverter(base_converter.ConverterInterface):
 
         if caffe_op.layer.HasField('slice_param'):
             param = caffe_op.layer.slice_param
-            mace_check(not param.HasField('axis') or param.axis == 1,
+            mace_check(not param.HasField('axis') or param.axis == 1
+                       or param.axis == -3,
                        "Mace do not support slice with axis %d" % param.axis)
             mace_check(len(param.slice_point) == 0,
                        "Mace do not support slice with slice_point")
@@ -503,7 +505,8 @@ class CaffeConverter(base_converter.ConverterInterface):
         param = caffe_op.layer.inner_product_param
         op.type = MaceOp.FullyConnected.name
 
-        mace_check(param.axis == 1 and not param.transpose,
+        mace_check((param.axis == 1 or param.axis == -3)
+                   and not param.transpose,
                    "Do not support non-default axis and transpose")
         mace_check(caffe_op.blobs[0].ndim in [2, 4],
                    "Unexpected fc weigth ndim.")
