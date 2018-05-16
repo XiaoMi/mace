@@ -144,6 +144,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         'ReLU': ActivationType.RELU,
         'PReLU': ActivationType.PRELU,
         'TanH': ActivationType.TANH,
+        'Sigmoid': ActivationType.SIGMOID,
     }
 
     def __init__(self, option, src_model_file, src_weight_file):
@@ -337,10 +338,15 @@ class CaffeConverter(base_converter.ConverterInterface):
         param = caffe_op.layer.convolution_param
         is_depthwise = False
         if param.HasField(caffe_group_str):
-            mace_check(param.group == caffe_op.blob[0].shape[1] and
-                       caffe_op.blob[0].shape[0] == 1,
+            filter_data = caffe_op.blobs[0]
+            mace_check(param.group == filter_data.shape[0] and
+                       filter_data.shape[1] == 1,
                        "Mace do not support group convolution yet")
             is_depthwise = True
+            caffe_op.blobs[0] = filter_data.reshape(1,
+                                                    filter_data.shape[0],
+                                                    filter_data.shape[2],
+                                                    filter_data.shape[3])
 
         if is_depthwise:
             op.type = MaceOp.DepthwiseConv2d.name
