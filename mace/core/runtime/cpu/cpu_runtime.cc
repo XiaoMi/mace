@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <string.h>
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -44,7 +45,7 @@ int GetCPUCount() {
     result = access(path, F_OK);
     if (result != 0) {
       if (errno != ENOENT) {
-        LOG(ERROR) << "Access " << path << " failed, errno: " << errno;
+        LOG(ERROR) << "Access " << path << " failed: " << strerror(errno);
       }
       return cpu_count;
     }
@@ -81,7 +82,7 @@ void SetThreadAffinity(cpu_set_t mask) {
   pid_t pid = syscall(SYS_gettid);
 #endif
   int err = sched_setaffinity(pid, sizeof(mask), &mask);
-  MACE_CHECK(err == 0, "set affinity error: ", errno);
+  MACE_CHECK(err == 0, "set affinity error: ", strerror(errno));
 }
 
 }  // namespace
@@ -101,7 +102,7 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
   for (int i = 0; i < cpu_count; ++i) {
     cpu_max_freq[i] = GetCPUMaxFreq(i);
     if (cpu_max_freq[i] == 0) {
-      LOG(WARNING) << "Cannot get cpu" << i
+      LOG(WARNING) << "Cannot get CPU" << i
                    << "'s max frequency info, maybe it is offline.";
       return MACE_INVALID_ARGS;
     }
@@ -128,13 +129,12 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
 
 void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                      const std::vector<int> &cpu_ids) {
+#ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
-
-#ifdef MACE_ENABLE_OPENMP
   omp_set_num_threads(omp_num_threads);
 #else
-  LOG(WARNING) << "OpenMP not enabled. Set OpenMP threads number failed.";
+  LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
 
   // compute mask
@@ -147,11 +147,13 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 #ifdef MACE_ENABLE_OPENMP
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
+    VLOG(1) << "Set affinity for OpenMP thread " << omp_get_thread_num()
+            << "/" << omp_get_num_threads();
     SetThreadAffinity(mask);
   }
 #else
   SetThreadAffinity(mask);
-  LOG(INFO) << "SetThreadAffinity: " << mask.__bits[0];
+  VLOG(1) << "Set affinity without OpenMP: " << mask.__bits[0];
 #endif
 }
 
@@ -163,7 +165,7 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
       omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
     }
 #else
-    LOG(WARNING) << "OpenMP not enabled. Set OpenMP threads number failed.";
+    LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
     return MACE_SUCCESS;
   }
@@ -192,7 +194,7 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
 
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy) {
-  VLOG(1) << "Set CPU openmp num_threads_hint: " << num_threads_hint
+  VLOG(1) << "Set OpenMP threads number hint: " << num_threads_hint
           << ", affinity policy: " << policy;
   return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint, policy);
 }
