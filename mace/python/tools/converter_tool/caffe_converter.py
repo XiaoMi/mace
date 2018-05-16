@@ -374,7 +374,9 @@ class CaffeConverter(base_converter.ConverterInterface):
         if len(caffe_op.blobs) == 2:
             bias_tensor_name = op.name + '_bias'
             bias_data = caffe_op.blobs[1]
-            self.add_tensor(bias_tensor_name, bias_data.shape,
+            # caffe of old version has 4-dimension bias, so reshape it
+            # to single dimension
+            self.add_tensor(bias_tensor_name, bias_data.reshape(-1).shape,
                             mace_pb2.DT_FLOAT,
                             bias_data)
             op.input.extend([bias_tensor_name])
@@ -407,7 +409,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         if caffe_op.type == 'PReLU':
             alpha_tensor_name = caffe_op.name + '_alpha'
             alpha_data = caffe_op.blobs[0]
-            self.add_tensor(alpha_tensor_name, alpha_data.shape,
+            self.add_tensor(alpha_tensor_name, alpha_data.reshape(-1).shape,
                             mace_pb2.DT_FLOAT, alpha_data)
             op.input.extend([alpha_tensor_name])
 
@@ -437,10 +439,10 @@ class CaffeConverter(base_converter.ConverterInterface):
         offset_value = ((-mean_value * scale_value) + beta_value).reshape(-1)
 
         input_names = [op.name + '_scale', op.name + '_offset']
-        self.add_tensor(input_names[0], scale_value.shape, mace_pb2.DT_FLOAT,
-                        scale_value)
-        self.add_tensor(input_names[1], offset_value.shape, mace_pb2.DT_FLOAT,
-                        offset_value)
+        self.add_tensor(input_names[0], scale_value.reshape(-1).shape,
+                        mace_pb2.DT_FLOAT, scale_value)
+        self.add_tensor(input_names[1], offset_value.reshape(-1).shape,
+                        mace_pb2.DT_FLOAT, offset_value)
         op.input.extend([name for name in input_names])
         op.output[:] = scale_op.layer.top[:]
 
@@ -508,7 +510,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         if len(caffe_op.blobs) == 2:
             bias_tensor_name = op.name + '_bias'
             bias_data = caffe_op.blobs[1]
-            self.add_tensor(bias_tensor_name, bias_data.shape,
+            self.add_tensor(bias_tensor_name, bias_data.reshape(-1).shape,
                             mace_pb2.DT_FLOAT,
                             bias_data)
             op.input.extend([bias_tensor_name])
