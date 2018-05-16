@@ -111,6 +111,7 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
     MACE_UNUSED(input);
     MACE_UNUSED(bias);
     MACE_UNUSED(output);
+    MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
   }
 };

@@ -34,10 +34,10 @@ struct DepthToSpaceOpFunctor {
     : block_size_(block_size), d2s_(d2s) {}
   void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
     MACE_UNUSED(future);
-    const int batch_size = input->dim(0);
-    const int input_depth = input->dim(1);
-    const int input_height = input->dim(2);
-    const int input_width = input->dim(3);
+    const index_t batch_size = input->dim(0);
+    const index_t input_depth = input->dim(1);
+    const index_t input_height = input->dim(2);
+    const index_t input_width = input->dim(3);
 
     index_t output_depth, output_width, output_height;
 
@@ -62,11 +62,11 @@ struct DepthToSpaceOpFunctor {
 
     if (d2s_) {
 #pragma omp parallel for
-      for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < output_depth; ++d) {
-          for (int h = 0; h < output_height; ++h) {
-            const int in_h = h / block_size_;
-            const int offset_h = (h % block_size_);
+      for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t d = 0; d < output_depth; ++d) {
+          for (index_t h = 0; h < output_height; ++h) {
+            const index_t in_h = h / block_size_;
+            const index_t offset_h = (h % block_size_);
             for (int w = 0; w < output_width; ++w) {
               const index_t in_w = w / block_size_;
               const index_t offset_w = w % block_size_;
@@ -86,18 +86,18 @@ struct DepthToSpaceOpFunctor {
       }
     } else {
 #pragma omp parallel for
-      for (int b = 0; b < batch_size; ++b) {
-        for (int d = 0; d < input_depth; ++d) {
-          for (int h = 0; h < input_height; ++h) {
-            const int out_h = h / block_size_;
-            const int offset_h = (h % block_size_);
-            for (int w = 0; w < input_width; ++w) {
-              const int out_w = w / block_size_;
-              const int offset_w = (w % block_size_);
-              const int offset_d =
+      for (index_t b = 0; b < batch_size; ++b) {
+        for (index_t d = 0; d < input_depth; ++d) {
+          for (index_t h = 0; h < input_height; ++h) {
+            const index_t out_h = h / block_size_;
+            const index_t offset_h = (h % block_size_);
+            for (index_t w = 0; w < input_width; ++w) {
+              const index_t out_w = w / block_size_;
+              const index_t offset_w = (w % block_size_);
+              const index_t offset_d =
                 (offset_h * block_size_ + offset_w) * input_depth;
 
-              const int out_d = d + offset_d;
+              const index_t out_d = d + offset_d;
               const index_t o_index =
                 ((b * output_depth + out_d) * output_height + out_h)
                   * output_width + out_w;

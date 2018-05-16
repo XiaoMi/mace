@@ -15,6 +15,7 @@
 #include "mace/utils/logging.h"
 
 #include <stdlib.h>
+#include <string.h>
 #if defined(ANDROID) || defined(__ANDROID__)
 #include <android/log.h>
 #include <iostream>

@@ -38,7 +38,7 @@ class ActivationOp : public Operator<D, T> {
     const Tensor *input_tensor = this->Input(0);
     const Tensor *alpha_tensor =
         this->InputSize() >= 2 ? this->Input(1) : nullptr;
-    Tensor *output_tensor = this->outputs_[0];
+    Tensor *output_tensor = this->Output(0);
     output_tensor->ResizeLike(input_tensor);
 
     functor_(input_tensor, alpha_tensor, output_tensor, future);
