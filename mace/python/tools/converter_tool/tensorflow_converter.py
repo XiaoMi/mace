@@ -101,6 +101,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             'AvgPool': self.convert_pooling,
             'MaxPool': self.convert_pooling,
             'Squeeze': self.convert_identity,
+            'Identity': self.convert_identity,
             'Reshape': self.convert_reshape,
             'Shape': self.convert_nop,
             'Softmax': self.convert_softmax,
@@ -153,12 +154,14 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     def add_shape_info(self, tf_graph_def):
         for node in tf_graph_def.node:
-            if node.name in self._option.input_nodes:
-                del node.attr['shape'].shape.dim[:]
-                node.attr['shape'].shape.dim.extend([
-                    tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in
-                    self._option.input_nodes[node.name].shape
-                ])
+            for input_node in self._option.input_nodes.values():
+                if node.name == input_node.name \
+                        or node.name + ':0' == input_node.name:
+                    del node.attr['shape'].shape.dim[:]
+                    node.attr['shape'].shape.dim.extend([
+                        tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in
+                        input_node.shape
+                    ])
 
     @staticmethod
     def get_scope(tensor_name):

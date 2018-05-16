@@ -65,6 +65,13 @@ def compare_output(platform, device_type, output_name, mace_out_value,
         sys.exit(-1)
 
 
+def normalize_tf_tensor_name(name):
+    if name.find(':') == -1:
+        return name + ':0'
+    else:
+        return name
+
+
 def validate_tf_model(platform, device_type, model_file, input_file,
                       mace_out_file, input_names, input_shapes, output_names):
     import tensorflow as tf
@@ -88,13 +95,14 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                         common.formatted_file_name(input_file, input_names[i]))
                     input_value = input_value.reshape(input_shapes[i])
                     input_node = graph.get_tensor_by_name(
-                        input_names[i] + ':0')
+                        normalize_tf_tensor_name(input_names[i]))
                     input_dict[input_node] = input_value
 
                 output_nodes = []
                 for name in output_names:
                     output_nodes.extend(
-                        [graph.get_tensor_by_name(name + ':0')])
+                        [graph.get_tensor_by_name(
+                            normalize_tf_tensor_name(name))])
                 output_values = session.run(output_nodes, feed_dict=input_dict)
                 for i in range(len(output_names)):
                     output_file_name = common.formatted_file_name(
