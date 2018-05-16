@@ -167,7 +167,6 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
             tensor_info=tensor_info,
             tensor=t,
             tag=model_tag,
-            runtime=runtime,
             offset=offset,
         )
         model_data.extend(tensor_info.data)

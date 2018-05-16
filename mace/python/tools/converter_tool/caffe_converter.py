@@ -1,3 +1,18 @@
+# Copyright 2018 Xiaomi, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import math
 import numpy as np
 import google.protobuf.text_format
@@ -324,10 +339,6 @@ class CaffeConverter(base_converter.ConverterInterface):
         op.type = caffe_op.type
         op.input.extend(caffe_op.layer.bottom)
         op.output.extend(caffe_op.layer.top)
-
-        data_type_arg = op.arg.add()
-        data_type_arg.name = 'T'
-        data_type_arg.i = self._option.data_type
 
         ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
