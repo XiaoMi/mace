@@ -114,8 +114,8 @@ static void Deconv2d(int iters,
     BM_DECONV_2D_##N##_##C##_##H##_##W##_##KH##_##KW##_##STRIDE##_##OH##_##OW##\
     _##P##_##OC##_##TYPE##_##DEVICE)
 
+// TODO(liutuo): add cpu benchmark when optimized.
 #define BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)                 \
-  BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU);    \
   BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, GPU); \
   BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU);
 

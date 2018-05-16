@@ -404,6 +404,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis = tf_op.inputs[-1].eval().astype(np.int32)
+        axis = 4 + axis if axis < 0 else axis
         axis_arg.i = axis
 
         mace_check(axis == 3, "only support concat at channel dimension")
