@@ -17,6 +17,7 @@ class ShapeInference(object):
     def __init__(self, net, input_nodes):
         self._op_shape_inference = {
             MaceOp.Conv2D.name: self.infer_shape_conv_pool_shape,
+            MaceOp.DepthwiseConv2d.name: self.infer_shape_conv_pool_shape,
             MaceOp.Eltwise.name: self.infer_shape_general,
             MaceOp.FoldedBatchNorm.name: self.infer_shape_general,
             MaceOp.AddN.name: self.infer_shape_general,
@@ -104,7 +105,10 @@ class ShapeInference(object):
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
                 and ConverterUtil.filter_format(self._net) == FilterFormat.OIHW:  # noqa
             # filter format: OIHW
-            output_shape[1] = filter_shape[0]
+            if op.type == MaceOp.DepthwiseConv2d.name:
+                output_shape[1] = filter_shape[0] * filter_shape[1]
+            else:
+                output_shape[1] = filter_shape[0]
             output_shape[2] = int(
                 round_func((input_shape[2] + paddings[0] - filter_shape[2] -
                             (filter_shape[2] - 1) *

@@ -692,7 +692,7 @@ class Transformer(base_converter.ConverterInterface):
                             filter_data = filter_data.transpose(2, 3, 0, 1)
                             filter.float_data[:] = filter_data.flat
                             filter.dims[:] = filter_data.shape
-                        elif op.type == MaceOp.Depthwiseconv2d.name:
+                        elif op.type == MaceOp.DepthwiseConv2d.name:
                             filter_data = filter_data.transpose(2, 3, 1, 0)
                             filter.float_data[:] = filter_data.flat
                             filter.dims[:] = filter_data.shape
