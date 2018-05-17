@@ -34,7 +34,8 @@ def stdout_processor(stdout, device_properties, abi):
 def unittest_stdout_processor(stdout, device_properties, abi):
     stdout_lines = stdout.split("\n")
     for line in stdout_lines:
-        if "Aborted" in line or "FAILED" in line:
+        if "Aborted" in line or "FAILED" in line or \
+                "Segmentation fault" in line:
             raise Exception("Command failed")
 
 
@@ -42,7 +43,7 @@ def ops_benchmark_stdout_processor(stdout, device_properties, abi):
     stdout_lines = stdout.split("\n")
     metrics = {}
     for line in stdout_lines:
-        if "Aborted" in line:
+        if "Aborted" in line or "Segmentation fault" in line:
             raise Exception("Command failed")
         line = line.strip()
         parts = line.split()
