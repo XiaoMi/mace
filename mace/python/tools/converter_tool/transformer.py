@@ -53,9 +53,11 @@ class Transformer(base_converter.ConverterInterface):
     def __init__(self, option, model):
         # DO NOT reorder the following transformers
         self._registered_transformers_order = [
+            TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
-            TransformerRule.FOLD_SOFTMAX,
+            TransformerRule.FOLD_RESHAPE,
+            TransformerRule.TRANSFORM_MATMUL_TO_FC,
             TransformerRule.FOLD_BATCHNORM,
             TransformerRule.FOLD_CONV_AND_BN,
             TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
@@ -72,10 +74,14 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.SORT_BY_EXECUTION,
         ]
         self._registered_transformers = {
+            TransformerRule.REMOVE_USELESS_RESHAPE_OP:
+                self.remove_useless_reshape_op,
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
-            TransformerRule.FOLD_SOFTMAX: self.fold_softmax,
+            TransformerRule.FOLD_RESHAPE: self.fold_reshape,
+            TransformerRule.TRANSFORM_MATMUL_TO_FC:
+                self.transform_matmul_to_fc,
             TransformerRule.FOLD_BATCHNORM: self.fold_batchnorm,
             TransformerRule.FOLD_CONV_AND_BN:
                 self.fold_conv_and_bn,  # data_format related
@@ -161,18 +167,26 @@ class Transformer(base_converter.ConverterInterface):
             for output_tensor in op.output:
                 self._producer[output_tensor] = op
         for input_node in self._option.input_nodes.values():
-            op = mace_pb2.OperatorDef()
-            op.name = self.normalize_op_name(input_node.name)
-            op.type = 'Input'
-            op.output.extend(input_node.name)
-            output_shape = op.output_shape.add()
-            output_shape.dims.extend(input_node.shape)
-            if self._option.device == mace_pb2.CPU:
-                self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
-                ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
-            else:
-                ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
-            self._producer[op.output[0]] = op
+            input_node_existed = False
+            for op in self._model.op:
+                if input_node.name in op.output:
+                    input_node_existed = True
+                    break
+            if not input_node_existed:
+                op = mace_pb2.OperatorDef()
+                op.name = self.normalize_op_name(input_node.name)
+                op.type = 'Input'
+                op.output.extend([input_node.name])
+                output_shape = op.output_shape.add()
+                output_shape.dims.extend(input_node.shape)
+                if ConverterUtil.data_format(
+                        self._consumers[input_node.name][0]) \
+                        == DataFormat.NCHW:
+                    self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
+                    ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
+                else:
+                    ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                self._producer[op.output[0]] = op
 
     @staticmethod
     def replace(obj_list, source, target):
@@ -191,6 +205,12 @@ class Transformer(base_converter.ConverterInterface):
     def normalize_op_name(name):
         return name.replace(':', '_')
 
+    def get_tensor_shape(self, tensor):
+        producer = self._producer[tensor]
+        for i in xrange(len(producer.output)):
+            if producer.output[i] == tensor:
+                return list(producer.output_shape[i].dims)
+
     def consumer_count(self, tensor_name):
         return len(self._consumers.get(tensor_name, []))
 
@@ -203,23 +223,68 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
-    def replace_output_node(self, op):
-        """if it is an output node, change output node to the op before it"""
-        if self.is_op_output_node(op):
-            real_output_node = self._producer[op.input[0]]
-            self.replace(real_output_node.output, op.input[0], op.output[0])
-            print("change %s to %s" % (real_output_node.name, op.name))
+    def safe_remove_node(self, op, replace_op):
+        """remove op.
+        1. change the inputs of its consumers to the outputs of replace_op
+        2. if the op is output node, change output node to replace op"""
+
+        if replace_op is None:
+            # When no replace op specified, we change the inputs of
+            # its consumers to the input of the op. This handles the case
+            # that the op is identity op and its input is a tensor.
+            mace_check(len(op.output) == 1 and len(op.input) == 1,
+                       "cannot remove op that w/o replace op specified"
+                       " and input/output length > 1" + str(op))
+
+            for consumer_op in self._consumers.get(op.output[0], []):
+                self.replace(consumer_op.input, op.output[0], op.input[0])
+
+            mace_check(op.output[0] not in self._option.output_nodes,
+                       "cannot remove op that is output node")
+        else:
+            mace_check(len(op.output) == len(replace_op.output),
+                       "cannot remove op since len(op.output) "
+                       "!= len(replace_op.output)")
+
+            for i in xrange(len(op.output)):
+                for consumer_op in self._consumers.get(op.output[i], []):
+                    self.replace(consumer_op.input,
+                                 op.output[i],
+                                 replace_op.output[i])
+
+            # if the op is output node, change replace_op output name to the op
+            # output name
+            for i in xrange(len(op.output)):
+                if op.output[i] in self._option.output_nodes:
+                    for consumer in self._consumers.get(
+                            replace_op.output[i], []):
+                        self.replace(consumer.input,
+                                     replace_op.output[i],
+                                     op.output[i])
+                    replace_op.output[i] = op.output[i]
+
+        self._model.op.remove(op)
+
+    def remove_useless_reshape_op(self):
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.Reshape.name:
+                shape = list(ConverterUtil.get_arg(
+                    op, MaceKeyword.mace_shape_str).ints)
+                if shape == self.get_tensor_shape(op.input[0]):
+                    print("Remove useless reshape: %s(%s)"
+                          % (op.name, op.type))
+                    op.type = 'Identity'
+
+        return False
 
     def remove_identity_op(self):
         net = self._model
         for op in net.op:
             if op.type == 'Identity':
                 print("Remove identity: %s(%s)" % (op.name, op.type))
-                for consumer_op in self._consumers.get(op.output[0], []):
-                    Transformer.replace(consumer_op.input, op.output[0],
-                                        op.input[0])
-                self.replace_output_node(op)
-                net.op.remove(op)
+                self.safe_remove_node(op,
+                                      self._producer.get(op.input[0], None))
                 return True
 
         return False
@@ -264,10 +329,10 @@ class Transformer(base_converter.ConverterInterface):
                         and len(self._consts[consumer_op.input[1]].dims) == 1:
                     print("Fold batchnorm: %s(%s)" % (op.name, op.type))
                     consumer_op.type = MaceOp.FoldedBatchNorm.name
-                    inputs = [op.input[0], op.input[1], consumer_op.input[1]]
-                    consumer_op.input[:] = inputs[:]
+                    consumer_op.input[:] = [op.input[0], op.input[1],
+                                            consumer_op.input[1]]
 
-                    net.op.remove(op)
+                    self.safe_remove_node(op, None)
                     return True
 
         return False
@@ -514,7 +579,7 @@ class Transformer(base_converter.ConverterInterface):
                     filter.float_data[:] = weight_tensor_value.flat[:]
                     filter.dims[:] = weight_tensor_value.shape[:]
 
-                    net.op.remove(op)
+                    self.safe_remove_node(op, iwt_op)
 
         return False
 
@@ -544,10 +609,8 @@ class Transformer(base_converter.ConverterInterface):
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.BiasAdd.name:
                     print("Fold biasadd: %s(%s)" % (op.name, op.type))
-                    op.name = consumer_op.name
                     op.input.append(consumer_op.input[1])
-                    op.output[0] = consumer_op.output[0]
-                    net.op.remove(consumer_op)
+                    self.safe_remove_node(consumer_op, op)
                     return True
 
         return False
@@ -575,7 +638,7 @@ class Transformer(base_converter.ConverterInterface):
                                 or arg.name == MaceKeyword.mace_activation_max_limit_str:  # noqa
                             op.arg.extend([arg])
 
-                    net.op.remove(consumer_op)
+                    self.safe_remove_node(consumer_op, op)
                     return True
 
         return False
@@ -651,10 +714,13 @@ class Transformer(base_converter.ConverterInterface):
                 op.output.extend([input_node.name])
                 output_shape = op.output_shape.add()
                 output_shape.dims.extend(input_node.shape)
+                self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
 
                 dims_arg = op.arg.add()
                 dims_arg.name = MaceKeyword.mace_dims_str
                 dims_arg.ints.extend([0, 3, 1, 2])
+
+                ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
             for output_node in self._option.output_nodes.values():
                 output_name = MaceKeyword.mace_output_node_name \
@@ -672,6 +738,8 @@ class Transformer(base_converter.ConverterInterface):
                 dims_arg = op.arg.add()
                 dims_arg.name = MaceKeyword.mace_dims_str
                 dims_arg.ints.extend([0, 2, 3, 1])
+
+                ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
         return False
 
@@ -695,12 +763,19 @@ class Transformer(base_converter.ConverterInterface):
                         filter_data = filter_data.transpose(3, 2, 0, 1)
                         filter.float_data[:] = filter_data.flat
                         filter.dims[:] = filter_data.shape
+                if op.type == MaceOp.FullyConnected.name:
+                    weight = self._consts[op.input[1]]
+                    weight_data = np.array(weight.float_data).reshape(
+                        weight.dims)
+                    weight_data = weight_data.transpose(1, 0)
+                    weight.float_data[:] = weight_data.flat
+                    weight.dims[:] = weight_data.shape
             self.set_filter_format(FilterFormat.OIHW)
 
         return False
 
     def reshape_fc_weight(self):
-        print("Reshape fully connecrted weight shape")
+        print("Reshape fully connected weight shape")
         net = self._model
         for op in net.op:
             if op.type == MaceOp.FullyConnected.name:
@@ -789,6 +864,8 @@ class Transformer(base_converter.ConverterInterface):
             arg.name = MaceKeyword.mace_buffer_type
             arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
 
+            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+
         for output_node in self._option.output_nodes.values():
             output_name = MaceKeyword.mace_output_node_name \
                           + '_' + output_node.name
@@ -804,14 +881,16 @@ class Transformer(base_converter.ConverterInterface):
             arg.name = MaceKeyword.mace_buffer_type
             arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
 
+            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+
         return False
 
-    def fold_softmax(self):
+    def fold_reshape(self):
         changed = False
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Softmax.name:
-                print("Fold softmax: %s(%s)" % (op.name, op.type))
+            if op.type == MaceOp.Softmax.name or op.type == MaceOp.MatMul.name:
+                print("Fold reshape: %s(%s)" % (op.name, op.type))
                 if self.consumer_count(op.output[0]) == 1:
                     consumer = self._consumers[op.output[0]][0]
                     if consumer.type == MaceOp.Reshape.name:
@@ -819,15 +898,14 @@ class Transformer(base_converter.ConverterInterface):
                                                       MaceKeyword.mace_shape_str).ints  # noqa
                         del op.output_shape[0].dims[:]
                         op.output_shape[0].dims.extend(shape)
-                        self.replace_output_node(consumer)
-                        net.op.remove(consumer)
+                        self.safe_remove_node(consumer, op)
                         changed = True
 
                     producer = self._producer[op.input[0]]
                     if producer.type == MaceOp.Reshape.name:
-                        op.input[0] = producer.input[0]
-                        self.replace_output_node(producer)
-                        net.op.remove(producer)
+                        self.safe_remove_node(producer,
+                                              self._producer[
+                                                  producer.input[0]])
                         changed = True
 
                 if len(op.output_shape[0].dims) < 4:
@@ -837,6 +915,20 @@ class Transformer(base_converter.ConverterInterface):
 
                 if changed:
                     return True
+
+        return False
+
+    def transform_matmul_to_fc(self):
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.MatMul.name:
+                input_shape = self.get_tensor_shape(op.input[0])
+                _, h, w, _ = self.sort_feature_map_shape(input_shape,
+                                                         ConverterUtil.data_format(self._producer[op.input[0]]))  # noqa
+                if h == 1 and w == 1 and op.input[1] in self._consts:
+                    weight = self._consts[op.input[1]]
+                    if len(weight.dims) == 2:
+                        op.type = MaceOp.FullyConnected.name
 
         return False
 
@@ -918,4 +1010,8 @@ class Transformer(base_converter.ConverterInterface):
 
         del net.op[:]
         net.op.extend(sorted_nodes)
+
+        print("Final ops:")
+        for op in net.op:
+            print("%s (%s)" % (op.name, op.type))
         return False
