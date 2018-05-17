@@ -139,7 +139,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
     // TODO(liuqi): refactor based on PB
     const int op_device =
         ArgumentHelper::GetSingleArgument<OperatorDef, int>(
-            op, "device", -1);
+            op, "device", static_cast<int>(device_type));
     if (op_device == device_type && !op.mem_id().empty()) {
       const DataType op_dtype = static_cast<DataType>(
           ArgumentHelper::GetSingleArgument<OperatorDef, int>(
@@ -175,7 +175,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
     // TODO(liuqi): refactor based on PB
     const int op_device =
         ArgumentHelper::GetSingleArgument<OperatorDef, int>(
-            op, "device", -1);
+            op, "device", static_cast<int>(device_type));
     if (op_device == device_type && !op.mem_id().empty()) {
       auto mem_ids = op.mem_id();
       int count = mem_ids.size();
