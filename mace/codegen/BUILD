@@ -10,7 +10,7 @@ cc_library(
     srcs = glob(["models/*/*.cc"]),
     hdrs = glob(["models/*/*.h"]),
     linkstatic = 1,
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/core",
         "//mace/ops",
@@ -20,28 +20,28 @@ cc_library(
 cc_library(
     name = "generated_opencl",
     srcs = glob(["opencl/*.cc"]),
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     linkstatic = 1,
 )
 
 cc_library(
     name = "generated_tuning_params",
     srcs = ["tuning/tuning_params.cc"],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     linkstatic = 1,
 )
 
 cc_library(
     name = "generated_version",
     srcs = ["version/version.cc"],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     linkstatic = 1,
 )
 
 cc_library(
     name = "generated_mace_engine_factory",
     hdrs = ["engine/mace_engine_factory.h"],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
     ],

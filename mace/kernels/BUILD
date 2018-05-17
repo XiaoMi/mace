@@ -38,7 +38,7 @@ cc_library(
             "opencl/*.h",
             "buffer_to_image.h",
         ])),
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
@@ -62,7 +62,7 @@ cc_test(
             "opencl/*_test.cc",
         ],
     ),
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +

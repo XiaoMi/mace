@@ -13,7 +13,7 @@ cc_test(
     name = "mace_api_test",
     testonly = 1,
     srcs = ["mace_api_test.cc"],
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
@@ -34,7 +34,7 @@ cc_test(
     name = "mace_api_mt_test",
     testonly = 1,
     srcs = ["mace_api_mt_test.cc"],
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +

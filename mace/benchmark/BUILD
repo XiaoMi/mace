@@ -16,7 +16,7 @@ cc_library(
     srcs = ["statistics.cc"],
     hdrs = ["statistics.h"],
     linkstatic = 1,
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/kernels",
         "//mace/utils",
@@ -28,8 +28,12 @@ cc_binary(
     srcs = [
         "benchmark_model.cc",
     ],
-    copts = if_android(["-DMACE_ENABLE_OPENCL"]),
-    linkopts = ["-Werror"] + if_openmp_enabled(["-fopenmp"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_android(["-DMACE_ENABLE_OPENCL"]),
+    linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
         ":statistics",
@@ -41,7 +45,6 @@ cc_binary(
 
 cc_library(
     name = "libmace_merged",
-    copts = ["-Werror"],
     srcs = [
         "libmace_merged.a",
     ],
@@ -53,7 +56,7 @@ cc_binary(
     srcs = ["model_throughput_test.cc"],
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":libmace_merged",
         "//external:gflags_nothreads",

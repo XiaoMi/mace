@@ -13,7 +13,7 @@ cc_library(
         "mace.h",
         "mace_runtime.h",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/proto:mace_cc",
     ],

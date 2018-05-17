@@ -15,7 +15,7 @@ cc_library(
     hdrs = [
         "ops_test_util.h",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/core",
         "@gtest//:gtest",
@@ -41,7 +41,7 @@ cc_library(
         ["*.h"],
         exclude = ["ops_test_util.h"],
     ),
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
@@ -60,7 +60,7 @@ cc_test(
     srcs = glob(
         ["*_test.cc"],
     ),
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
@@ -80,7 +80,7 @@ cc_test(
     name = "ops_benchmark",
     testonly = 1,
     srcs = glob(["*_benchmark.cc"]),
-    copts = ["-Werror"] +
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"] +
       if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +

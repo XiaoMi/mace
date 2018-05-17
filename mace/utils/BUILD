@@ -28,7 +28,7 @@ cc_library(
     linkopts = if_android([
         "-llog",
     ]),
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
         "//mace/proto:mace_cc",
@@ -40,7 +40,7 @@ cc_library(
     srcs = [
         "tuner_development.cc",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":utils",
     ],
@@ -51,7 +51,7 @@ cc_library(
     srcs = [
         "tuner_production.cc",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":utils",
         "//mace/codegen:generated_tuning_params",
@@ -64,7 +64,7 @@ cc_test(
     srcs = [
         "tuner_test.cc",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     linkopts = if_android([
         "-pie",
         "-lm",  # Required by unordered_map

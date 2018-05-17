@@ -44,6 +44,8 @@ cc_library(
     )) + if_hexagon_enabled(glob(["runtime/hexagon/*.h"])),
     copts = [
         "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
     ] + if_openmp_enabled([
         "-fopenmp",
         "-DMACE_ENABLE_OPENMP",
@@ -77,7 +79,7 @@ cc_library(
     hdrs = glob([
         "runtime/opencl/*.h",
     ]),
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "@opencl_clhpp//:opencl_clhpp",
         "@opencl_headers//:opencl20_headers",
@@ -94,7 +96,7 @@ cc_library(
     hdrs = [
         "testing/test_benchmark.h",
     ],
-    copts = ["-Werror"],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":core",
         "//external:gflags_nothreads",
