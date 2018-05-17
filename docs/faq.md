@@ -1,6 +1,17 @@
 Frequently asked questions
 ==========================
 
+Does the tensor data consume extra memory when compiled into C++ code?
+----------------------------------------------------------------------
+When compiled into C++ code, the data will be mmaped by the system loader.
+For CPU runtime, the tensor data are used without memory copy.
+For GPU and DSP runtime, the tensor data is used once during model
+initialization. The operating system is free to swap the pages out, however,
+it still consumes virtual memory space. So generally speaking, it takes
+no extra physical memory. If you are short of virtual memory space (this
+should be very rare), you can choose load the tensor data from a file, which
+can be unmapped after initialization.
+
 Why is the generated static library file size so huge?
 -------------------------------------------------------
 The static library is simply an archive of a set of object files which are

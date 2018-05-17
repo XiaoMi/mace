@@ -48,6 +48,36 @@ How to build
 | docker(for caffe)   | >= 17.09.0-ce   | `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__   |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 
+Docker Images
+----------------
+
+* Login in `Xiaomi Docker Registry <http://docs.api.xiaomi.net/docker-registry/>`__
+
+.. code:: sh
+
+    docker login cr.d.xiaomi.net
+
+* Build with Dockerfile
+
+.. code:: sh
+
+    docker build -t cr.d.xiaomi.net/mace/mace-dev
+
+
+* Pull image from docker registry
+
+.. code:: sh
+
+    docker pull cr.d.xiaomi.net/mace/mace-dev
+
+* Create container
+
+.. code:: sh
+
+    # Set 'host' network to use ADB
+    docker run -it --rm -v /local/path:/container/path --net=host cr.d.xiaomi.net/mace/mace-dev /bin/bash
+
+
 使用简介
 --------
 
