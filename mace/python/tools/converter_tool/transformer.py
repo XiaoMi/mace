@@ -64,9 +64,9 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BIASADD,
             TransformerRule.FOLD_ACTIVATION,
             TransformerRule.TRANSPOSE_FILTERS,
-            TransformerRule.RESHAPE_FC_WEIGHT,
             TransformerRule.TRANSPOSE_DATA_FORMAT,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
+            TransformerRule.RESHAPE_FC_WEIGHT,
             TransformerRule.TRANSFORM_BUFFER_IMAGE,
             TransformerRule.ADD_DEVICE_AND_DATA_TYPE,
             TransformerRule.SORT_BY_EXECUTION,
@@ -88,10 +88,10 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
-            TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC:
                 self.transform_global_conv_to_fc,
+            TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
             TransformerRule.TRANSFORM_BUFFER_IMAGE:
                 self.transform_buffer_image,
             TransformerRule.ADD_DEVICE_AND_DATA_TYPE:
