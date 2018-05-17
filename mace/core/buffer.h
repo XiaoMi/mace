@@ -25,6 +25,11 @@ class BufferBase {
 
   virtual void *raw_mutable_data() = 0;
 
+  virtual MaceStatus Allocate(index_t size) = 0;
+
+  virtual MaceStatus Allocate(const std::vector<size_t> &shape,
+                              DataType data_type) = 0;
+
   virtual void *Map(index_t offset,
                     index_t length,
                     std::vector<size_t> *pitch) const = 0;
@@ -35,7 +40,7 @@ class BufferBase {
 
   virtual void UnMap() = 0;
 
-  virtual void Resize(index_t size) = 0;
+  virtual MaceStatus Resize(index_t size) = 0;
 
   virtual void Copy(void *src, index_t offset, index_t length) = 0;
 
@@ -70,14 +75,6 @@ class Buffer : public BufferBase {
         mapped_buf_(nullptr),
         is_data_owner_(true) {}
 
-  Buffer(Allocator *allocator, index_t size)
-      : BufferBase(size),
-        allocator_(allocator),
-        mapped_buf_(nullptr),
-        is_data_owner_(true) {
-    buf_ = allocator->New(size);
-  }
-
   Buffer(Allocator *allocator, void *data, index_t size)
       : BufferBase(size),
         allocator_(allocator),
@@ -93,6 +90,7 @@ class Buffer : public BufferBase {
       allocator_->Delete(buf_);
     }
   }
+
 
   void *buffer() {
     MACE_CHECK_NOTNULL(buf_);
@@ -119,6 +117,28 @@ class Buffer : public BufferBase {
     }
   }
 
+  MaceStatus Allocate(index_t size) {
+    if (size <= 0) {
+      return MaceStatus::MACE_SUCCESS;
+    }
+    MACE_CHECK(is_data_owner_,
+               "data is not owned by this buffer, cannot reallocate");
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (buf_ != nullptr) {
+      allocator_->Delete(buf_);
+    }
+    size_ = size;
+    return allocator_->New(size, &buf_);
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    MACE_NOT_IMPLEMENTED;
+    return MACE_SUCCESS;
+  }
+
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_CHECK_NOTNULL(buf_);
     return allocator_->Map(buf_, offset, length);
@@ -140,7 +160,7 @@ class Buffer : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) {
+  MaceStatus Resize(index_t size) {
     MACE_CHECK(is_data_owner_,
                "data is not owned by this buffer, cannot resize");
     if (size != size_) {
@@ -148,8 +168,9 @@ class Buffer : public BufferBase {
         allocator_->Delete(buf_);
       }
       size_ = size;
-      buf_ = allocator_->New(size);
+      return allocator_->New(size, &buf_);
     }
+    return MaceStatus::MACE_SUCCESS;
   }
 
   void Copy(void *src, index_t offset, index_t length) {
@@ -183,18 +204,6 @@ class Image : public BufferBase {
         buf_(nullptr),
         mapped_buf_(nullptr) {}
 
-  Image(std::vector<size_t> shape, DataType data_type)
-      : BufferBase(
-            std::accumulate(
-                shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
-            GetEnumTypeSize(data_type)),
-        allocator_(GetDeviceAllocator(OPENCL)),
-        mapped_buf_(nullptr) {
-    shape_ = shape;
-    data_type_ = data_type;
-    buf_ = allocator_->NewImage(shape, data_type);
-  }
-
   virtual ~Image() {
     if (mapped_buf_ != nullptr) {
       UnMap();
@@ -202,6 +211,28 @@ class Image : public BufferBase {
     if (buf_ != nullptr) {
       allocator_->DeleteImage(buf_);
     }
+  }
+
+  MaceStatus Allocate(index_t size) {
+    LOG(FATAL) << "Image should not call this allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    index_t size = std::accumulate(
+        shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
+        GetEnumTypeSize(data_type);
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (buf_ != nullptr) {
+      allocator_->DeleteImage(buf_);
+    }
+    size_ = size;
+    shape_ = shape;
+    data_type_ = data_type;
+    return allocator_->NewImage(shape, data_type, &buf_);
   }
 
   void *buffer() {
@@ -244,7 +275,10 @@ class Image : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
+  MaceStatus Resize(index_t size) {
+    MACE_NOT_IMPLEMENTED;
+    return MaceStatus::MACE_SUCCESS;
+  }
 
   void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
 
@@ -287,6 +321,17 @@ class BufferSlice : public BufferBase {
     }
   }
 
+  MaceStatus Allocate(index_t size) {
+    LOG(FATAL) << "BufferSlice should not call allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    LOG(FATAL) << "BufferSlice should not call allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
   void *buffer() {
     MACE_CHECK_NOTNULL(buffer_);
     return buffer_->buffer();
@@ -326,7 +371,10 @@ class BufferSlice : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) { MACE_NOT_IMPLEMENTED; }
+  MaceStatus Resize(index_t size) {
+    MACE_NOT_IMPLEMENTED;
+    return MaceStatus::MACE_SUCCESS;
+  }
 
   void Copy(void *src, index_t offset, index_t length) { MACE_NOT_IMPLEMENTED; }
 

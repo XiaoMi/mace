@@ -387,7 +387,7 @@ void TestNEONNxNS12(const index_t height,
 }
 
 TEST_F(DepthwiseConv2dOpTest, NEONTest) {
-  TestNEONNxNS12(4, 4, 32, 1);
+  TestNEONNxNS12(5, 5, 32, 1);
   TestNEONNxNS12(64, 64, 32, 1);
   TestNEONNxNS12(112, 112, 32, 1);
   TestNEONNxNS12(128, 128, 15, 1);

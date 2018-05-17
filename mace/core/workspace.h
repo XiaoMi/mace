@@ -37,10 +37,10 @@ class Workspace {
 
   std::vector<std::string> Tensors() const;
 
-  void LoadModelTensor(const NetDef &net_def, DeviceType type);
+  MaceStatus LoadModelTensor(const NetDef &net_def, DeviceType type);
 
  private:
-  void CreateImageOutputTensor(const NetDef &net_def);
+  MaceStatus CreateImageOutputTensor(const NetDef &net_def);
 
   TensorMap tensor_map_;
 
