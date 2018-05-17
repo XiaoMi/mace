@@ -23,6 +23,7 @@
 #include "mace/public/mace_runtime.h"
 
 namespace mace {
+
 {% for tag in model_tags %}
 namespace {{tag}} {
 
@@ -30,7 +31,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const unsigned char *model_data);
+extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
 
 extern const std::string ModelName();
 extern const std::string ModelChecksum();
@@ -54,7 +55,8 @@ MaceStatus CreateMaceEngine(
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const DeviceType device_type,
-    std::shared_ptr<MaceEngine> *engine) {
+    std::shared_ptr<MaceEngine> *engine,
+    const std::vector<unsigned char> model_pb = {}) {
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
@@ -66,9 +68,11 @@ MaceStatus CreateMaceEngine(
    case {{ i }}:
     model_data =
         mace::{{model_tags[i]}}::LoadModelData(model_data_file);
-    net_def = mace::{{model_tags[i]}}::CreateNet(model_data);
+    net_def = mace::{{model_tags[i]}}::CreateNet(model_pb);
+
     engine->reset(
-        new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes));
+        new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes,
+                             model_data));
     if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
       mace::{{model_tags[i]}}::UnloadModelData(model_data);
     }

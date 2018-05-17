@@ -12,6 +12,9 @@ cc_library(
     hdrs = [
         "mace.h",
         "mace_runtime.h",
-        "mace_types.h",
+    ],
+    copts = ["-Werror"],
+    deps = [
+        "//mace/proto:mace_cc",
     ],
 )

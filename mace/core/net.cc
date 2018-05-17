@@ -110,7 +110,8 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
       }
 
       OperatorStats op_stats = {op->debug_def().name(), op->debug_def().type(),
-                                op->debug_def().output_shape(),
+                                {op->debug_def().output_shape().begin(),
+                                op->debug_def().output_shape().end()},
                                 {strides, padding_type, paddings, dilations,
                                  kernels}, call_stats};
       run_metadata->op_stats.emplace_back(op_stats);

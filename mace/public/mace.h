@@ -24,11 +24,39 @@
 #include <string>
 #include <vector>
 
+#include "mace/proto/mace.pb.h"
+
 namespace mace {
+
+struct CallStats {
+  int64_t start_micros;
+  int64_t end_micros;
+};
+
+struct ConvPoolArgs {
+  std::vector<int> strides;
+  int padding_type;
+  std::vector<int> paddings;
+  std::vector<int> dilations;
+  std::vector<int64_t> kernels;
+};
+
+struct OperatorStats {
+  std::string operator_name;
+  std::string type;
+  std::vector<OutputShape> output_shape;
+  ConvPoolArgs args;
+  CallStats stats;
+};
+
+class RunMetadata {
+ public:
+  std::vector<OperatorStats> op_stats;
+};
 
 const char *MaceVersion();
 
-enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
+// enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
 
 enum MaceStatus { MACE_SUCCESS = 0, MACE_INVALID_ARGS = 1 };
 
@@ -56,15 +84,13 @@ class MaceTensor {
   std::unique_ptr<Impl> impl_;
 };
 
-class NetDef;
-class RunMetadata;
-
 class MaceEngine {
  public:
   explicit MaceEngine(const NetDef *net_def,
                       DeviceType device_type,
                       const std::vector<std::string> &input_nodes,
-                      const std::vector<std::string> &output_nodes);
+                      const std::vector<std::string> &output_nodes,
+                      const unsigned char *model_data);
   ~MaceEngine();
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,

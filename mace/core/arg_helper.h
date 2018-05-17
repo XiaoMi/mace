@@ -19,8 +19,8 @@
 #include <vector>
 #include <map>
 
+#include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_types.h"
 
 namespace mace {
 

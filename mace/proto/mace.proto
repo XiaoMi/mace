@@ -2,14 +2,16 @@ syntax = "proto2";
 
 package mace;
 
+option optimize_for = LITE_RUNTIME;
+
 enum NetMode {
   INIT   = 0;
   NORMAL = 1;
 }
 
 enum DeviceType {
-  CPU    = 0;                    // In default, we will use CPU.
-  GPU    = 2;
+  CPU     = 0;                    // In default, we will use CPU.
+  GPU     = 2;
   HEXAGON = 3;
 }
 
@@ -32,7 +34,7 @@ enum DataType {
   DT_UINT32 = 22;
 }
 
-message TensorProto {
+message ConstTensor {
   // The dimensions in the tensor.
   repeated int64 dims = 1;
   optional DataType data_type = 2 [default = DT_FLOAT];
@@ -52,6 +54,8 @@ message TensorProto {
   repeated int64 int64_data = 10 [packed = true];
   // Optionally, a name for the tensor.
   optional string name = 7;
+  optional int64 offset = 11;
+  optional int64 data_size = 12;
 
   optional uint32 node_id = 100;
 }
@@ -126,7 +130,7 @@ message NetDef {
   repeated OperatorDef op = 2;
   optional string version = 3;
   repeated Argument arg = 4;
-  repeated TensorProto tensors = 5;
+  repeated ConstTensor tensors = 5;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;

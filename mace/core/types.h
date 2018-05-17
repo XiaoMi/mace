@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <string>
 
-#include "mace/public/mace_types.h"
+#include "mace/proto/mace.pb.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "include/half.hpp"
 #endif

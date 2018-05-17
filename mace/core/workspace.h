@@ -47,7 +47,9 @@ class Workspace {
 
   std::vector<std::string> Tensors() const;
 
-  void LoadModelTensor(const NetDef &net_def, DeviceType type);
+  void LoadModelTensor(const NetDef &net_def,
+                       DeviceType type,
+                       const unsigned char *model_data);
 
   ScratchBuffer *GetScratchBuffer(DeviceType device_type);
 

@@ -16,6 +16,7 @@ cc_library(
     srcs = ["statistics.cc"],
     hdrs = ["statistics.h"],
     linkstatic = 1,
+    copts = ["-Werror"],
     deps = [
         "//mace/kernels",
         "//mace/utils",
@@ -28,7 +29,7 @@ cc_binary(
         "benchmark_model.cc",
     ],
     copts = if_android(["-DMACE_ENABLE_OPENCL"]),
-    linkopts = if_openmp_enabled(["-fopenmp"]),
+    linkopts = ["-Werror"] + if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
         ":statistics",
@@ -40,6 +41,7 @@ cc_binary(
 
 cc_library(
     name = "libmace_merged",
+    copts = ["-Werror"],
     srcs = [
         "libmace_merged.a",
     ],
@@ -51,6 +53,7 @@ cc_binary(
     srcs = ["model_throughput_test.cc"],
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
+    copts = ["-Werror"],
     deps = [
         ":libmace_merged",
         "//external:gflags_nothreads",

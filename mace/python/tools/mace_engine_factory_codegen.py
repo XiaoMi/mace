@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument(
         "--template_dir", type=str, default="", help="template path")
     parser.add_argument(
-        "--output_dir", type=str, default="", help="template path")
+        "--output_dir", type=str, default="", help="output path")
     return parser.parse_known_args()
 
 

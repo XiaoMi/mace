@@ -137,7 +137,7 @@ def stringfy(value):
 
 def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
                       obfuscate, model_tag, output, runtime, embed_model_data,
-                      winograd_conv):
+                      winograd_conv, model_load_type):
     if obfuscate:
         obfuscate_name(net_def)
     else:
@@ -163,17 +163,26 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
             padding = 4 - offset % 4
             model_data.extend(bytearray([0] * padding))
             offset += padding
-        source = j2_env.get_template(template_name).render(
-            tensor_info=tensor_info,
-            tensor=t,
-            tag=model_tag,
-            offset=offset,
-        )
+
+        if t.data_type == mace_pb2.DT_FLOAT:
+            t.data_size = len(t.float_data)
+        elif t.data_type == mace_pb2.DT_INT32:
+            t.data_size = len(t.int32_data)
+        elif t.data_type == mace_pb2.DT_UINT8:
+            t.data_size = len(t.int32_data)
+        t.offset = offset
+
+        if model_load_type == 'source':
+            source = j2_env.get_template(template_name).render(
+                tensor_info=tensor_info,
+                tensor=t,
+                tag=model_tag,
+            )
+            with open(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
+                f.write(source)
+        counter += 1
         model_data.extend(tensor_info.data)
         offset += len(tensor_info.data)
-        with open(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
-            f.write(source)
-        counter += 1
 
     # generate tensor data
     template_name = 'tensor_data.jinja2'
@@ -188,21 +197,22 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
         with open(output_dir + model_tag + '.data', "wb") as f:
             f.write(bytearray(model_data))
 
-    # generate op source files
-    template_name = 'operator.jinja2'
-    counter = 0
-    op_size = len(net_def.op)
-    for start in range(0, op_size, 10):
-        source = j2_env.get_template(template_name).render(
-            start=start,
-            end=min(start + 10, op_size),
-            net=net_def,
-            tag=model_tag,
-            runtime=runtime,
-        )
-        with open(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
-            f.write(source)
-        counter += 1
+    if model_load_type == 'source':
+        # generate op source files
+        template_name = 'operator.jinja2'
+        counter = 0
+        op_size = len(net_def.op)
+        for start in range(0, op_size, 10):
+            source = j2_env.get_template(template_name).render(
+                start=start,
+                end=min(start + 10, op_size),
+                net=net_def,
+                tag=model_tag,
+                runtime=runtime,
+            )
+            with open(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
+                f.write(source)
+            counter += 1
 
     # generate model source files
     build_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -223,7 +233,8 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
         embed_model_data=embed_model_data,
         winograd_conv=winograd_conv,
         checksum=checksum,
-        build_time=build_time)
+        build_time=build_time,
+        model_type=model_load_type)
     with open(output, "wb") as f:
         f.write(source)
 
@@ -232,3 +243,15 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
     source = j2_env.get_template(template_name).render(tag=model_tag, )
     with open(output_dir + model_tag + '.h', "wb") as f:
         f.write(source)
+
+    for t in net_def.tensors:
+        if t.data_type == mace_pb2.DT_FLOAT:
+            del t.float_data[:]
+            if runtime == 'gpu':
+                t.data_type = mace_pb2.DT_HALF
+            else:
+                t.data_type = mace_pb2.DT_FLOAT
+        elif t.data_type == mace_pb2.DT_INT32:
+            del t.int32_data[:]
+        elif t.data_type == mace_pb2.DT_UINT8:
+            del t.int32_data[:]

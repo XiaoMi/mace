@@ -25,8 +25,8 @@
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
+#include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_types.h"
 
 namespace mace {
 
@@ -108,20 +108,20 @@ class Operator : public OperatorBase {
       inputs_.push_back(tensor);
     }
 
-    for (size_t i = 0; i < operator_def.output().size(); ++i) {
-      const std::string output_str = operator_def.output()[i];
+    for (size_t i = 0; i < (size_t)operator_def.output_size(); ++i) {
+      const std::string output_str = operator_def.output(i);
       if (ws->HasTensor(output_str)) {
         outputs_.push_back(ws->GetTensor(output_str));
       } else {
         MACE_CHECK(
-          operator_def.output_type().size() == 0
-          || operator_def.output().size() == operator_def.output_type().size(),
+          operator_def.output_type_size() == 0
+          || operator_def.output_size() == operator_def.output_type_size(),
           "operator output size != operator output type size",
-          operator_def.output().size(),
-          operator_def.output_type().size());
+          operator_def.output_size(),
+          operator_def.output_type_size());
         DataType output_type;
-        if (i < operator_def.output_type().size()) {
-          output_type = operator_def.output_type()[i];
+        if (i < (size_t)operator_def.output_type_size()) {
+          output_type = operator_def.output_type(i);
         } else {
           output_type = DataTypeToEnum<T>::v();
         }

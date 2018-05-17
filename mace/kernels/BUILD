@@ -38,7 +38,8 @@ cc_library(
             "opencl/*.h",
             "buffer_to_image.h",
         ])),
-    copts = if_openmp_enabled(["-fopenmp"]) +
+    copts = ["-Werror"] +
+      if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
       if_android_armv7(["-mfloat-abi=softfp"]) +
@@ -61,7 +62,8 @@ cc_test(
             "opencl/*_test.cc",
         ],
     ),
-    copts = if_openmp_enabled(["-fopenmp"]) +
+    copts = ["-Werror"] +
+      if_openmp_enabled(["-fopenmp"]) +
       if_neon_enabled(["-DMACE_ENABLE_NEON"]) +
       if_android_armv7(["-mfpu=neon"]) +
       if_android_armv7(["-mfloat-abi=softfp"]) +

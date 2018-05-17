@@ -15,12 +15,22 @@
 #ifndef MACE_UTILS_UTILS_H_
 #define MACE_UTILS_UTILS_H_
 
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace mace {
+
+// Disable the copy and assignment operator for a class.
+#ifndef DISABLE_COPY_AND_ASSIGN
+#define DISABLE_COPY_AND_ASSIGN(classname) \
+ private:                                  \
+  classname(const classname &) = delete;   \
+  classname &operator=(const classname &) = delete
+#endif
+
 template <typename Integer>
 Integer RoundUp(Integer i, Integer factor) {
   return (i + factor - 1) / factor * factor;
@@ -119,6 +129,27 @@ inline std::vector<std::string> Split(const std::string &str, char delims) {
     }
   }
   return result;
+}
+
+inline bool ReadBinaryFile(std::vector<unsigned char> *data,
+                    const std::string &filename) {
+  std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+  if (!ifs.is_open()) {
+    return false;
+  }
+  ifs.seekg(0, ifs.end);
+  size_t length = ifs.tellg();
+  ifs.seekg(0, ifs.beg);
+
+  data->reserve(length);
+  data->insert(data->begin(), std::istreambuf_iterator<char>(ifs),
+               std::istreambuf_iterator<char>());
+  if (ifs.fail()) {
+    return false;
+  }
+  ifs.close();
+
+  return true;
 }
 
 }  // namespace mace

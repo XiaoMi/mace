@@ -85,7 +85,8 @@ class MaceEngine::Impl {
   explicit Impl(const NetDef *net_def,
                 DeviceType device_type,
                 const std::vector<std::string> &input_nodes,
-                const std::vector<std::string> &output_nodes);
+                const std::vector<std::string> &output_nodes,
+                const unsigned char *model_data);
   ~Impl();
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
@@ -107,7 +108,8 @@ class MaceEngine::Impl {
 MaceEngine::Impl::Impl(const NetDef *net_def,
                        DeviceType device_type,
                        const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes)
+                       const std::vector<std::string> &output_nodes,
+                       const unsigned char *model_data)
     : op_registry_(new OperatorRegistry()),
       device_type_(device_type),
       ws_(new Workspace()),
@@ -136,14 +138,14 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
     int dsp_mode =
         ArgumentHelper::GetSingleArgument<NetDef, int>(*net_def, "dsp_mode", 0);
     hexagon_controller_->SetGraphMode(dsp_mode);
-    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def),
+    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
                "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintGraph();
     }
   } else {
 #endif
-    ws_->LoadModelTensor(*net_def, device_type);
+    ws_->LoadModelTensor(*net_def, device_type, model_data);
 
     // Init model
     auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type,
@@ -247,9 +249,11 @@ MaceStatus MaceEngine::Impl::Run(
 MaceEngine::MaceEngine(const NetDef *net_def,
                        DeviceType device_type,
                        const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes) {
+                       const std::vector<std::string> &output_nodes,
+                       const unsigned char *model_data) {
   impl_ = std::unique_ptr<MaceEngine::Impl>(
-      new MaceEngine::Impl(net_def, device_type, input_nodes, output_nodes));
+      new MaceEngine::Impl(net_def, device_type, input_nodes, output_nodes,
+                           model_data));
 }
 
 MaceEngine::~MaceEngine() = default;

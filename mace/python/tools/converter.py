@@ -173,15 +173,14 @@ def main(unused_args):
 
             print "Memory optimization done."
 
-    if FLAGS.output_type == 'source':
-        source_converter_lib.convert_to_source(
-            output_graph_def, model_checksum, weight_checksum, FLAGS.template,
-            FLAGS.obfuscate, FLAGS.model_tag, FLAGS.output, FLAGS.runtime,
-            FLAGS.embed_model_data, FLAGS.winograd)
-    else:
-        with open(FLAGS.output, "wb") as f:
+    source_converter_lib.convert_to_source(
+        output_graph_def, model_checksum, weight_checksum, FLAGS.template,
+        FLAGS.obfuscate, FLAGS.model_tag, FLAGS.codegen_output, FLAGS.runtime,
+        FLAGS.embed_model_data, FLAGS.winograd, FLAGS.model_load_type)
+    if FLAGS.model_load_type == 'pb':
+        with open(FLAGS.pb_output, "wb") as f:
             f.write(output_graph_def.SerializeToString())
-        with open(FLAGS.output + '_txt', "wb") as f:
+        with open(FLAGS.pb_output + '_txt', "wb") as f:
             # output_graph_def.ClearField('tensors')
             f.write(str(output_graph_def))
     print("Model conversion is completed.")
@@ -219,10 +218,15 @@ def parse_args():
         default="",
         help="Weight file sha256 checksum")
     parser.add_argument(
-        "--output",
+        "--codegen_output",
         type=str,
         default="",
         help="File to save the output graph to.")
+    parser.add_argument(
+        "--pb_output",
+        type=str,
+        default="",
+        help="File to save the mace model to.")
     parser.add_argument(
         "--runtime", type=str, default="", help="Runtime: cpu/gpu/dsp")
     parser.add_argument(
@@ -266,6 +270,12 @@ def parse_args():
         type=str2bool,
         default=True,
         help="embed model data.")
+    parser.add_argument(
+        "--model_load_type",
+        type=str,
+        default="source",
+        help="[source|pb] Load models in generated `source` code" +
+                "or `pb` file.")
     return parser.parse_known_args()
 
 

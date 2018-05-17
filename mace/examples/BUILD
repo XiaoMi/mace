@@ -6,6 +6,7 @@ cc_binary(
     srcs = ["example.cc"],
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
+    copts = ["-Werror"],
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",

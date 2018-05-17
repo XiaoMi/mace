@@ -28,8 +28,10 @@ cc_library(
     linkopts = if_android([
         "-llog",
     ]),
+    copts = ["-Werror"],
     deps = [
         "//mace/public",
+        "//mace/proto:mace_cc",
     ],
 )
 
@@ -38,6 +40,7 @@ cc_library(
     srcs = [
         "tuner_development.cc",
     ],
+    copts = ["-Werror"],
     deps = [
         ":utils",
     ],
@@ -48,6 +51,7 @@ cc_library(
     srcs = [
         "tuner_production.cc",
     ],
+    copts = ["-Werror"],
     deps = [
         ":utils",
         "//mace/codegen:generated_tuning_params",
@@ -60,6 +64,7 @@ cc_test(
     srcs = [
         "tuner_test.cc",
     ],
+    copts = ["-Werror"],
     linkopts = if_android([
         "-pie",
         "-lm",  # Required by unordered_map

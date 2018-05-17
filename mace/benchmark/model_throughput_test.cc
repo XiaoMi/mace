@@ -46,7 +46,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const unsigned char *model_data);
+extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
 
 extern const std::string ModelChecksum();
 
@@ -60,7 +60,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const unsigned char *model_data);
+extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
 
 extern const std::string ModelChecksum();
 
@@ -74,7 +74,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const unsigned char *model_data);
+extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
 
 extern const std::string ModelChecksum();
 
@@ -255,10 +255,10 @@ int Main(int argc, char **argv) {
   const unsigned char *cpu_model_data =
       mace::MACE_CPU_MODEL_TAG::LoadModelData(
       FLAGS_cpu_model_data_file.c_str());
-  NetDef cpu_net_def = mace::MACE_CPU_MODEL_TAG::CreateNet(cpu_model_data);
+  NetDef cpu_net_def = mace::MACE_CPU_MODEL_TAG::CreateNet();
 
   mace::MaceEngine cpu_engine(&cpu_net_def, DeviceType::CPU, input_names,
-                              output_names);
+                              output_names, cpu_model_data);
 
   LOG(INFO) << "CPU Warm up run";
   t0 = NowMicros();
@@ -273,10 +273,10 @@ int Main(int argc, char **argv) {
   const unsigned char *gpu_model_data =
       mace::MACE_GPU_MODEL_TAG::LoadModelData(
       FLAGS_gpu_model_data_file.c_str());
-  NetDef gpu_net_def = mace::MACE_GPU_MODEL_TAG::CreateNet(gpu_model_data);
+  NetDef gpu_net_def = mace::MACE_GPU_MODEL_TAG::CreateNet();
 
   mace::MaceEngine gpu_engine(&gpu_net_def, DeviceType::GPU, input_names,
-                              output_names);
+                              output_names, gpu_model_data);
   mace::MACE_GPU_MODEL_TAG::UnloadModelData(gpu_model_data);
 
   LOG(INFO) << "GPU Warm up run";
@@ -292,10 +292,10 @@ int Main(int argc, char **argv) {
   const unsigned char *dsp_model_data =
       mace::MACE_DSP_MODEL_TAG::LoadModelData(
       FLAGS_dsp_model_data_file.c_str());
-  NetDef dsp_net_def = mace::MACE_DSP_MODEL_TAG::CreateNet(dsp_model_data);
+  NetDef dsp_net_def = mace::MACE_DSP_MODEL_TAG::CreateNet();
 
   mace::MaceEngine dsp_engine(&dsp_net_def, DeviceType::HEXAGON, input_names,
-                              output_names);
+                              output_names, dsp_model_data);
   mace::MACE_DSP_MODEL_TAG::UnloadModelData(dsp_model_data);
 
   LOG(INFO) << "DSP Warm up run";

@@ -159,6 +159,7 @@ def tuning_run(target_abi,
                output_nodes,
                input_shapes,
                output_shapes,
+               mace_model_dir,
                model_name,
                device_type,
                running_round,
@@ -181,6 +182,7 @@ def tuning_run(target_abi,
         output_nodes,
         input_shapes,
         output_shapes,
+        mace_model_dir,
         model_name,
         device_type,
         running_round,
@@ -206,9 +208,9 @@ def tuning_run(target_abi,
 def build_mace_run_prod(hexagon_mode, runtime, target_abi,
                         serialno, vlog_level, embed_model_data,
                         model_output_dir, input_nodes, output_nodes,
-                        input_shapes, output_shapes, model_name, device_type,
-                        running_round, restart_round, tuning,
-                        limit_opencl_kernel_time, phone_data_dir,
+                        input_shapes, output_shapes, mace_model_dir,
+                        model_name, device_type, running_round, restart_round,
+                        tuning, limit_opencl_kernel_time, phone_data_dir,
                         enable_openmp):
     mace_run_target = "//mace/tools/validation:mace_run"
     strip = "always"
@@ -232,8 +234,8 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
         device_type = parse_device_type("gpu")
         tuning_run(target_abi, serialno, vlog_level, embed_model_data,
                    model_output_dir, input_nodes, output_nodes, input_shapes,
-                   output_shapes, model_name, device_type, running_round=0,
-                   restart_round=1, out_of_range_check=False,
+                   output_shapes, mace_model_dir, model_name, device_type,
+                   running_round=0, restart_round=1, out_of_range_check=False,
                    phone_data_dir=phone_data_dir, tuning=tuning,
                    limit_opencl_kernel_time=limit_opencl_kernel_time)
 
@@ -271,6 +273,7 @@ def merge_libs_and_tuning_results(target_soc,
                                   project_name,
                                   output_dir,
                                   model_output_dirs,
+                                  mace_model_dirs_kv,
                                   hexagon_mode,
                                   embed_model_data):
     gen_opencl_and_tuning_code(
@@ -282,6 +285,7 @@ def merge_libs_and_tuning_results(target_soc,
                            project_name,
                            output_dir,
                            model_output_dirs,
+                           mace_model_dirs_kv,
                            hexagon_mode,
                            embed_model_data)
 
@@ -523,13 +527,21 @@ def parse_args():
         type=str,
         default="cpu",
         help="validation runtime.")
+    parser.add_argument(
+        "--model_load_type",
+        type=str,
+        default="source",
+        help="[source|pb] Load models in generated `source` code" +
+                "or `pb` file.")
     return parser.parse_known_args()
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_abi, phone_data_dir, target_soc="", serialno=""):
+                   target_abi, phone_data_dir, model_load_type,
+                   target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
+    mace_model_dirs_kv = {}
 
     for model_name in configs["models"]:
         print '===================', model_name, '==================='
@@ -545,6 +557,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         model_output_base_dir = "%s/%s/%s/%s/%s" % (
             FLAGS.output_dir, project_name, "build",
             model_name, model_path_digest)
+        if model_load_type == "pb":
+            mace_model_dir = model_output_base_dir
+            mace_model_dirs_kv[model_name] = mace_model_dir
+        else:
+            mace_model_dir = ""
 
         if target_abi == "host":
             model_output_dir = "%s/%s" % (model_output_base_dir, target_abi)
@@ -587,6 +604,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 model_config["output_nodes"],
                                 model_config["input_shapes"],
                                 model_config["output_shapes"],
+                                mace_model_dir,
                                 model_name,
                                 model_device_type,
                                 FLAGS.round,
@@ -612,6 +630,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        model_config["output_nodes"],
                        model_config["input_shapes"],
                        model_config["output_shapes"],
+                       mace_model_dir,
                        model_name,
                        run_device_type,
                        FLAGS.round,
@@ -631,6 +650,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         vlog_level,
                                         embed_model_data,
                                         model_output_dir,
+                                        mace_model_dir,
                                         model_config["input_nodes"],
                                         model_config["output_nodes"],
                                         model_config["input_shapes"],
@@ -667,6 +687,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             project_name,
             FLAGS.output_dir,
             model_output_dirs,
+            mace_model_dirs_kv,
             hexagon_mode,
             embed_model_data)
 
@@ -778,7 +799,9 @@ def main(unused_args):
                 model_config["dsp_mode"],
                 embed_model_data,
                 model_config["fast_conv"],
-                model_config["obfuscate"])
+                model_config["obfuscate"],
+                model_output_base_dir,
+                FLAGS.model_load_type)
 
     for target_abi in configs["target_abis"]:
         for target_soc in target_socs:
@@ -796,12 +819,14 @@ def main(unused_args):
                               props["ro.product.model"]))
                         process_models(project_name, configs, embed_model_data,
                                        vlog_level, target_abi, phone_data_dir,
-                                       target_soc, serialno)
+                                       FLAGS.model_load_type, target_soc,
+                                       serialno)
             else:
                 print("====================================================")
                 print("Run on host")
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_abi, phone_data_dir)
+                               vlog_level, target_abi, phone_data_dir,
+                               FLAGS.model_load_type)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         sh_commands.packaging_lib(FLAGS.output_dir, project_name)
