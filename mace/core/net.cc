@@ -43,7 +43,7 @@ SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
     // TODO(liuqi): refactor based on PB
     const int op_device =
         ArgumentHelper::GetSingleArgument<OperatorDef, int>(
-            operator_def, "device", -1);
+            operator_def, "device", static_cast<int>(device_type_));
     if (op_device == type) {
       VLOG(3) << "Creating operator " << operator_def.name() << "("
               << operator_def.type() << ")";
