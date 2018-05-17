@@ -48,7 +48,7 @@ std::vector<std::string> Workspace::Tensors() const {
   return names;
 }
 
-void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
+MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t model_data_size = 0;
   unsigned char *model_data_ptr = nullptr;
@@ -74,7 +74,11 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
         new Buffer(GetDeviceAllocator(type), model_data_ptr, model_data_size)));
   } else {
     tensor_buffer_ = std::move(std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(type), model_data_size)));
+        new Buffer(GetDeviceAllocator(type))));
+    MaceStatus status = tensor_buffer_->Allocate(model_data_size);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      return status;
+    }
     tensor_buffer_->Map(nullptr);
     tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
     tensor_buffer_->UnMap();
@@ -104,13 +108,15 @@ void Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
   }
 
   if (type == DeviceType::OPENCL) {
-    CreateImageOutputTensor(net_def);
+    MaceStatus status = CreateImageOutputTensor(net_def);
+    if (status != MaceStatus::MACE_SUCCESS) return status;
   }
+  return MaceStatus::MACE_SUCCESS;
 }
 
-void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
+MaceStatus Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
-    return;
+    return MaceStatus::MACE_SUCCESS;
   }
 
   DataType dtype = DataType::DT_INVALID;
@@ -133,7 +139,12 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
     std::unique_ptr<BufferBase> image_buf(
-        new Image({mem_block.x(), mem_block.y()}, dtype));
+        new Image());
+    MaceStatus status = image_buf->Allocate(
+        {mem_block.x(), mem_block.y()}, dtype);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      return status;
+    }
     preallocated_allocator_.SetBuffer(mem_block.mem_id(), std::move(image_buf));
   }
   VLOG(3) << "Preallocate image to tensors";
@@ -157,6 +168,7 @@ void Workspace::CreateImageOutputTensor(const NetDef &net_def) {
       }
     }
   }
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace mace

@@ -29,9 +29,10 @@ class Allocator {
  public:
   Allocator() {}
   virtual ~Allocator() noexcept {}
-  virtual void *New(size_t nbytes) const = 0;
-  virtual void *NewImage(const std::vector<size_t> &image_shape,
-                         const DataType dt) const = 0;
+  virtual MaceStatus New(size_t nbytes, void **result) const = 0;
+  virtual MaceStatus NewImage(const std::vector<size_t> &image_shape,
+                              const DataType dt,
+                              void **result) const = 0;
   virtual void Delete(void *data) const = 0;
   virtual void DeleteImage(void *data) const = 0;
   virtual void *Map(void *buffer, size_t offset, size_t nbytes) const = 0;
@@ -40,22 +41,12 @@ class Allocator {
                          std::vector<size_t> *mapped_image_pitch) const = 0;
   virtual void Unmap(void *buffer, void *mapper_ptr) const = 0;
   virtual bool OnHost() const = 0;
-
-  template <typename T>
-  T *New(size_t num_elements) {
-    if (num_elements > (std::numeric_limits<size_t>::max() / sizeof(T))) {
-      return nullptr;
-    }
-    void *p = New(sizeof(T) * num_elements);
-    T *typed_p = reinterpret_cast<T *>(p);
-    return typed_p;
-  }
 };
 
 class CPUAllocator : public Allocator {
  public:
   ~CPUAllocator() override {}
-  void *New(size_t nbytes) const override {
+  MaceStatus New(size_t nbytes, void **result) const override {
     VLOG(3) << "Allocate CPU buffer: " << nbytes;
     void *data = nullptr;
 #ifdef __ANDROID__
@@ -66,16 +57,19 @@ class CPUAllocator : public Allocator {
     MACE_CHECK_NOTNULL(data);
     // TODO(heliangliang) This should be avoided sometimes
     memset(data, 0, nbytes);
-    return data;
+    *result = data;
+    return MaceStatus::MACE_SUCCESS;
   }
 
-  void *NewImage(const std::vector<size_t> &shape,
-                 const DataType dt) const override {
+  MaceStatus NewImage(const std::vector<size_t> &shape,
+                      const DataType dt,
+                      void **status) const override {
     LOG(FATAL) << "Allocate CPU image";
-    return nullptr;
+    return MaceStatus::MACE_SUCCESS;
   }
 
   void Delete(void *data) const override {
+    MACE_CHECK_NOTNULL(data);
     VLOG(3) << "Free CPU buffer";
     free(data);
   }
