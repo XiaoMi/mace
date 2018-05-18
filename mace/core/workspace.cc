@@ -177,7 +177,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         std::unique_ptr<BufferBase> tensor_buf(
             new Buffer(GetDeviceAllocator(device_type)));
         MaceStatus status = tensor_buf->Allocate(
-            mem_block.x() * GetEnumTypeSize(dtype));
+            mem_block.x() * GetEnumTypeSize(dtype) + EXTRA_BUFFER_PAD_SIZE);
         if (status != MaceStatus::MACE_SUCCESS) {
           return status;
         }
