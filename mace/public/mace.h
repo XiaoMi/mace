@@ -56,7 +56,11 @@ class RunMetadata {
 
 const char *MaceVersion();
 
-enum MaceStatus { MACE_SUCCESS = 0, MACE_INVALID_ARGS = 1 };
+enum MaceStatus {
+  MACE_SUCCESS = 0,
+  MACE_INVALID_ARGS = 1,
+  MACE_OUT_OF_RESOURCES = 2
+};
 
 // MACE input/output tensor
 class MaceTensor {
@@ -84,12 +88,13 @@ class MaceTensor {
 
 class MaceEngine {
  public:
-  explicit MaceEngine(const NetDef *net_def,
-                      DeviceType device_type,
-                      const std::vector<std::string> &input_nodes,
-                      const std::vector<std::string> &output_nodes,
-                      const unsigned char *model_data);
+  explicit MaceEngine(DeviceType device_type);
   ~MaceEngine();
+
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs);

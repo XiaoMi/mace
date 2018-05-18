@@ -60,9 +60,9 @@ std::vector<std::string> Workspace::Tensors() const {
   return names;
 }
 
-void Workspace::LoadModelTensor(const NetDef &net_def,
-                                DeviceType type,
-                                const unsigned char *model_data) {
+MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
+                                      DeviceType type,
+                                      const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t model_data_size = 0;
   for (auto &const_tensor : net_def.tensors()) {
@@ -82,7 +82,11 @@ void Workspace::LoadModelTensor(const NetDef &net_def,
                      model_data_size));
     } else {
       tensor_buffer_ = std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(type), model_data_size));
+          new Buffer(GetDeviceAllocator(type)));
+      MaceStatus status = tensor_buffer_->Allocate(model_data_size);
+      if (status != MaceStatus::MACE_SUCCESS) {
+        return status;
+      }
       tensor_buffer_->Map(nullptr);
       tensor_buffer_->Copy(const_cast<unsigned char*>(model_data),
                            0, model_data_size);
@@ -112,14 +116,16 @@ void Workspace::LoadModelTensor(const NetDef &net_def,
   }
 
   if (type == DeviceType::CPU || type == DeviceType::GPU) {
-    CreateOutputTensorBuffer(net_def, type);
+    MaceStatus status = CreateOutputTensorBuffer(net_def, type);
+    if (status != MaceStatus::MACE_SUCCESS) return status;
   }
+  return MaceStatus::MACE_SUCCESS;
 }
 
-void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
-                                         DeviceType device_type) {
+MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
+                                               DeviceType device_type) {
   if (!net_def.has_mem_arena() || net_def.mem_arena().mem_block_size() == 0) {
-    return;
+    return MaceStatus::MACE_SUCCESS;
   }
 
   DataType dtype = DataType::DT_INVALID;
@@ -149,14 +155,24 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
       // TODO(liuqi): refactor based on PB
       if (mem_block.mem_id() >= 20000) {
         std::unique_ptr<BufferBase> image_buf(
-            new Image({mem_block.x(), mem_block.y()}, dtype));
+            new Image());
+        MaceStatus status = image_buf->Allocate(
+            {mem_block.x(), mem_block.y()}, dtype);
+        if (status != MaceStatus::MACE_SUCCESS) {
+          return status;
+        }
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(image_buf));
       }
     } else {
       if (mem_block.mem_id() < 20000) {
         std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(GetDeviceAllocator(device_type), mem_block.x()));
+            new Buffer(GetDeviceAllocator(device_type)));
+        MaceStatus status = tensor_buf->Allocate(
+            mem_block.x() * GetEnumTypeSize(dtype) + EXTRA_BUFFER_PAD_SIZE);
+        if (status != MaceStatus::MACE_SUCCESS) {
+          return status;
+        }
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(tensor_buf));
       }
@@ -193,6 +209,7 @@ void Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
       }
     }
   }
+  return MaceStatus::MACE_SUCCESS;
 }
 
 ScratchBuffer *Workspace::GetScratchBuffer(DeviceType device_type) {

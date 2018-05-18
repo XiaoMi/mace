@@ -208,7 +208,7 @@ class Tensor {
 
   inline void Clear() {
     MACE_CHECK_NOTNULL(buffer_);
-    buffer_->Clear();
+    buffer_->Clear(raw_size());
   }
 
   inline void Reshape(const std::vector<index_t> &shape) {
@@ -216,16 +216,21 @@ class Tensor {
     MACE_CHECK(raw_size() <= buffer_->size());
   }
 
-  inline void Resize(const std::vector<index_t> &shape) {
+  inline MaceStatus Resize(const std::vector<index_t> &shape) {
     shape_ = shape;
     image_shape_.clear();
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
-      if (raw_size() + EXTRA_BUFFER_PAD_SIZE > buffer_->size())
-        buffer_->Resize(raw_size() + EXTRA_BUFFER_PAD_SIZE);
+      if (raw_size() + EXTRA_BUFFER_PAD_SIZE > buffer_->size()) {
+        LOG(WARNING) << "Resize buffer from size " << buffer_->size() << " to "
+                     << raw_size() + EXTRA_BUFFER_PAD_SIZE;
+        return buffer_->Resize(raw_size() + EXTRA_BUFFER_PAD_SIZE);
+      }
+      return MaceStatus::MACE_SUCCESS;
     } else {
       MACE_CHECK(is_buffer_owner_);
-      buffer_ = new Buffer(allocator_, raw_size() + EXTRA_BUFFER_PAD_SIZE);
+      buffer_ = new Buffer(allocator_);
+      return buffer_->Allocate(raw_size() + EXTRA_BUFFER_PAD_SIZE);
     }
   }
 
@@ -241,13 +246,14 @@ class Tensor {
     is_buffer_owner_ = false;
   }
 
-  inline void ResizeImage(const std::vector<index_t> &shape,
-                          const std::vector<size_t> &image_shape) {
+  inline MaceStatus ResizeImage(const std::vector<index_t> &shape,
+                                const std::vector<size_t> &image_shape) {
     shape_ = shape;
     image_shape_ = image_shape;
     if (buffer_ == nullptr) {
       MACE_CHECK(is_buffer_owner_);
-      buffer_ = new Image(image_shape, dtype_);
+      buffer_ = new Image();
+      return buffer_->Allocate(image_shape, dtype_);
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
       Image *image = dynamic_cast<Image *>(buffer_);
@@ -257,24 +263,27 @@ class Tensor {
                  "): current physical image shape: ", image->image_shape()[0],
                  ", ", image->image_shape()[1], " < logical image shape: ",
                  image_shape[0], ", ", image_shape[1]);
+      return MaceStatus::MACE_SUCCESS;
     }
   }
 
-  inline void ResizeLike(const Tensor &other) { ResizeLike(&other); }
+  inline MaceStatus ResizeLike(const Tensor &other) {
+    return ResizeLike(&other);
+  }
 
-  inline void ResizeLike(const Tensor *other) {
+  inline MaceStatus ResizeLike(const Tensor *other) {
     if (other->has_opencl_image()) {
       if (is_buffer_owner_ && buffer_ != nullptr && !has_opencl_image()) {
         delete buffer_;
         buffer_ = nullptr;
       }
-      ResizeImage(other->shape(), other->image_shape_);
+      return ResizeImage(other->shape(), other->image_shape_);
     } else {
       if (is_buffer_owner_ && buffer_ != nullptr && has_opencl_image()) {
         delete buffer_;
         buffer_ = nullptr;
       }
-      Resize(other->shape());
+      return Resize(other->shape());
     }
   }
 

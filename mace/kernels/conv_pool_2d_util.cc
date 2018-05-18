@@ -377,6 +377,7 @@ void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
   std::vector<index_t> output_shape(
     {batch, channels, height + pad_height, width + pad_width});
   output_tensor->Resize(output_shape);
+  output_tensor->Clear();
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
 

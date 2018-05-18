@@ -52,15 +52,9 @@ void DepthwiseConv2dPixel(const float *in_base,
 // Ho = 2, Wo = 4, Co = 1
 void DepthwiseConv2dNeonK3x3S1(const float *input,
                                const float *filter,
-                               const index_t batch,
-                               const index_t in_height,
-                               const index_t in_width,
-                               const index_t in_channels,
-                               const index_t out_height,
-                               const index_t out_width,
-                               const index_t out_channels,
-                               const int pad_top,
-                               const int pad_left,
+                               const index_t* in_shape,
+                               const index_t* out_shape,
+                               const int* pad_hw,
                                const index_t valid_h_start,
                                const index_t valid_h_stop,
                                const index_t valid_w_start,
@@ -70,25 +64,30 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
   MACE_UNUSED(valid_w_start);
   MACE_UNUSED(valid_w_stop);
 #endif
-  const index_t multiplier = out_channels / in_channels;
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
+  const index_t multiplier = out_shape[1] / in_shape[1];
+  const index_t in_image_size = in_shape[2] * in_shape[3];
+  const index_t out_image_size = out_shape[2] * out_shape[3];
+  const index_t in_batch_size = in_shape[1] * in_image_size;
+  const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; ++m) {
+  for (index_t b = 0; b < in_shape[0]; ++b) {
+    for (index_t m = 0; m < out_shape[1]; ++m) {
       index_t c = m / multiplier;
       index_t multi_index = m % multiplier;
       const float *in_base = input + b * in_batch_size + c * in_image_size;
-      const float *filter_ptr = filter + multi_index * in_channels * 9 + c * 9;
+      const float *filter_ptr = filter + multi_index * in_shape[1] * 9 + c * 9;
       float *out_base = output + b * out_batch_size + m * out_image_size;
       index_t h, w;
+      const index_t pad_top = pad_hw[0];
+      const index_t pad_left = pad_hw[1];
+      const index_t out_width = out_shape[3];
+      const index_t in_height = in_shape[2];
+      const index_t in_width = in_shape[3];
 
       // top
       for (h = 0; h < valid_h_start; ++h) {
-        for (w = 0; w < out_width; ++w) {
+        for (w = 0; w < out_shape[3]; ++w) {
           DepthwiseConv2dPixel(in_base,
                                filter_ptr,
                                h,
@@ -256,7 +255,7 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       }  // h
 #else
       for (index_t ih = valid_h_start; ih < valid_h_stop; ++ih) {
-        for (index_t iw = 0; iw < out_width; ++iw) {
+        for (index_t iw = 0; iw < out_shape[3]; ++iw) {
           DepthwiseConv2dPixel(in_base,
                                filter_ptr,
                                ih,
@@ -274,8 +273,8 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
 #endif
 
       // bottom
-      for (; h < out_height; ++h) {
-        for (w = 0; w < out_width; ++w) {
+      for (; h < out_shape[2]; ++h) {
+        for (w = 0; w < out_shape[3]; ++w) {
           DepthwiseConv2dPixel(in_base,
                                filter_ptr,
                                h,
@@ -296,15 +295,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
 
 void DepthwiseConv2dNeonK3x3S2(const float *input,
                                const float *filter,
-                               const index_t batch,
-                               const index_t in_height,
-                               const index_t in_width,
-                               const index_t in_channels,
-                               const index_t out_height,
-                               const index_t out_width,
-                               const index_t out_channels,
-                               const int pad_top,
-                               const int pad_left,
+                               const index_t* in_shape,
+                               const index_t* out_shape,
+                               const int* pad_hw,
                                const index_t valid_h_start,
                                const index_t valid_h_stop,
                                const index_t valid_w_start,
@@ -314,22 +307,26 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
   MACE_UNUSED(valid_w_start);
   MACE_UNUSED(valid_w_stop);
 #endif
-  const index_t multiplier = out_channels / in_channels;
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
+  const index_t multiplier = out_shape[1] / in_shape[1];
+  const index_t in_image_size = in_shape[2] * in_shape[3];
+  const index_t out_image_size = out_shape[2] * out_shape[3];
+  const index_t in_batch_size = in_shape[1] * in_image_size;
+  const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; ++m) {
+  for (index_t b = 0; b < in_shape[0]; ++b) {
+    for (index_t m = 0; m < out_shape[1]; ++m) {
       index_t c = m / multiplier;
       index_t multi_index = m % multiplier;
       const float *in_base = input + b * in_batch_size + c * in_image_size;
-      const float *filter_ptr = filter + multi_index * in_channels * 9 + c * 9;
+      const float *filter_ptr = filter + multi_index * in_shape[1] * 9 + c * 9;
       float *out_base = output + b * out_batch_size + m * out_image_size;
       index_t h, w;
-
+      const index_t pad_top = pad_hw[0];
+      const index_t pad_left = pad_hw[1];
+      const index_t out_width = out_shape[3];
+      const index_t in_height = in_shape[2];
+      const index_t in_width = in_shape[3];
       // top
       for (h = 0; h < valid_h_start; ++h) {
         for (w = 0; w < out_width; ++w) {
@@ -472,8 +469,8 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
 #endif
 
       // bottom
-      for (; h < out_height; ++h) {
-        for (w = 0; w < out_width; ++w) {
+      for (; h < out_shape[2]; ++h) {
+        for (w = 0; w < out_shape[3]; ++w) {
           DepthwiseConv2dPixel(in_base,
                                filter_ptr,
                                h,

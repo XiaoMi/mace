@@ -180,22 +180,22 @@ inline void Conv2dCPUK7x7Calc(const float *in_ptr_base,
 // Ho = 1, Wo = 4, Co = 4
 void Conv2dNeonK7x7S1(const float *input,
                       const float *filter,
-                      const index_t batch,
-                      const index_t in_height,
-                      const index_t in_width,
-                      const index_t in_channels,
-                      const index_t out_height,
-                      const index_t out_width,
-                      const index_t out_channels,
+                      const index_t *in_shape,
+                      const index_t *out_shape,
                       float *output) {
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
+  const index_t in_image_size = in_shape[2] * in_shape[3];
+  const index_t out_image_size = out_shape[2] * out_shape[3];
+  const index_t in_batch_size = in_shape[1] * in_image_size;
+  const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; m += 4) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
+    for (index_t m = 0; m < out_shape[1]; m += 4) {
+      const index_t out_channels = out_shape[1];
+      const index_t out_height = out_shape[2];
+      const index_t out_width = out_shape[3];
+      const index_t in_channels = in_shape[1];
+      const index_t in_width = in_shape[3];
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
 #if defined(MACE_ENABLE_NEON)
@@ -336,22 +336,22 @@ void Conv2dNeonK7x7S1(const float *input,
 // Ho = 1, Wo = 4, Co = 4
 void Conv2dNeonK7x7S2(const float *input,
                       const float *filter,
-                      const index_t batch,
-                      const index_t in_height,
-                      const index_t in_width,
-                      const index_t in_channels,
-                      const index_t out_height,
-                      const index_t out_width,
-                      const index_t out_channels,
+                      const index_t *in_shape,
+                      const index_t *out_shape,
                       float *output) {
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
+  const index_t in_image_size = in_shape[2] * in_shape[3];
+  const index_t out_image_size = out_shape[2] * out_shape[3];
+  const index_t in_batch_size = in_shape[1] * in_image_size;
+  const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; m += 4) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
+    for (index_t m = 0; m < out_shape[1]; m += 4) {
+      const index_t out_channels = out_shape[1];
+      const index_t out_height = out_shape[2];
+      const index_t out_width = out_shape[3];
+      const index_t in_channels = in_shape[1];
+      const index_t in_width = in_shape[3];
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
 #if defined(MACE_ENABLE_NEON)
@@ -502,22 +502,22 @@ void Conv2dNeonK7x7S2(const float *input,
 // Ho = 1, Wo = 4, Co = 4
 void Conv2dNeonK7x7S3(const float *input,
                       const float *filter,
-                      const index_t batch,
-                      const index_t in_height,
-                      const index_t in_width,
-                      const index_t in_channels,
-                      const index_t out_height,
-                      const index_t out_width,
-                      const index_t out_channels,
+                      const index_t *in_shape,
+                      const index_t *out_shape,
                       float *output) {
-  const index_t in_image_size = in_height * in_width;
-  const index_t out_image_size = out_height * out_width;
-  const index_t in_batch_size = in_channels * in_image_size;
-  const index_t out_batch_size = out_channels * out_image_size;
+  const index_t in_image_size = in_shape[2] * in_shape[3];
+  const index_t out_image_size = out_shape[2] * out_shape[3];
+  const index_t in_batch_size = in_shape[1] * in_image_size;
+  const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t m = 0; m < out_channels; m += 4) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
+    for (index_t m = 0; m < out_shape[1]; m += 4) {
+      const index_t out_channels = out_shape[1];
+      const index_t out_height = out_shape[2];
+      const index_t out_width = out_shape[3];
+      const index_t in_channels = in_shape[1];
+      const index_t in_width = in_shape[3];
       if (m + 3 < out_channels) {
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
 #if defined(MACE_ENABLE_NEON)

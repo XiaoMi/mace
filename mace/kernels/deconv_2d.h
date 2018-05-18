@@ -41,48 +41,40 @@ template<typename T>
 void Deconv2dNCHW(const T *input,
                   const T *filter,
                   const T *bias,
-                  const index_t batch,
-                  const index_t in_height,
-                  const index_t in_width,
-                  const index_t in_channels,
-                  const index_t out_height,
-                  const index_t out_width,
-                  const index_t out_channels,
-                  const index_t filter_height,
-                  const index_t filter_width,
-                  const index_t stride_h,
-                  const index_t stride_w,
-                  const int padding_top,
-                  const int padding_left,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const index_t *kernel_hw,
+                  const int *strides,
+                  const int *padding,
                   float *output) {
 #pragma omp parallel for collapse(4)
-  for (index_t b = 0; b < batch; ++b) {
-    for (index_t oc = 0; oc < out_channels; ++oc) {
-      for (index_t oh = 0; oh < out_height; ++oh) {
-        for (index_t ow = 0; ow < out_width; ++ow) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
+    for (index_t oc = 0; oc < out_shape[1]; ++oc) {
+      for (index_t oh = 0; oh < out_shape[2]; ++oh) {
+        for (index_t ow = 0; ow < out_shape[3]; ++ow) {
           index_t filter_start_y, filter_start_x;
-          index_t start_x = std::max<int>(0, ow + stride_w -1 - padding_left);
-          index_t start_y = std::max<int>(0, oh + stride_h -1 - padding_top);
-          start_x /= stride_w;
-          start_y /= stride_h;
-          filter_start_x = padding_left + stride_w * start_x - ow;
-          filter_start_y = padding_top + stride_h * start_y - oh;
-          filter_start_x = filter_width - 1 - filter_start_x;
-          filter_start_y = filter_height - 1 - filter_start_y;
+          index_t start_x = std::max<int>(0, ow + strides[1] -1 - padding[1]);
+          index_t start_y = std::max<int>(0, oh + strides[0] -1 - padding[0]);
+          start_x /= strides[1];
+          start_y /= strides[0];
+          filter_start_x = padding[1] + strides[1] * start_x - ow;
+          filter_start_y = padding[0] + strides[0] * start_y - oh;
+          filter_start_x = kernel_hw[1] - 1 - filter_start_x;
+          filter_start_y = kernel_hw[0] - 1 - filter_start_y;
           T out_value = 0;
           index_t out_pos =
-              ((b * out_channels + oc) * out_height + oh) * out_width + ow;
-          for (index_t ic = 0; ic < in_channels; ++ic) {
+              ((b * out_shape[1] + oc) * out_shape[2] + oh) * out_shape[3] + ow;
+          for (index_t ic = 0; ic < in_shape[1]; ++ic) {
             for (index_t f_y = filter_start_y, ih = start_y;
-                 f_y >= 0 && ih < in_height; f_y -= stride_h, ++ih) {
+                 f_y >= 0 && ih < in_shape[2]; f_y -= strides[0], ++ih) {
               for (index_t f_x = filter_start_x, iw = start_x;
-                  f_x >= 0 && iw < in_width; f_x -= stride_w, ++iw) {
+                  f_x >= 0 && iw < in_shape[3]; f_x -= strides[1], ++iw) {
                   index_t weight_pos =
-                      ((oc * in_channels + ic) * filter_height + f_y)
-                          * filter_width + f_x;
+                      ((oc * in_shape[1] + ic) * kernel_hw[0] + f_y)
+                          * kernel_hw[1] + f_x;
                   index_t in_pos =
-                      ((b * in_channels + ic) * in_height + ih)
-                          * in_width + iw;
+                      ((b * in_shape[1] + ic) * in_shape[2] + ih)
+                          * in_shape[3] + iw;
                   out_value += input[in_pos] * filter[weight_pos];
               }
             }
@@ -269,26 +261,17 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                            paddings_.data(), true);
       output->Resize(output_shape_);
     }
-    index_t batch = output->dim(0);
-    index_t channels = output->dim(1);
-    index_t height = output->dim(2);
-    index_t width = output->dim(3);
-
-    index_t input_batch = input->dim(0);
-    index_t input_channels = input->dim(1);
-    index_t input_height = input->dim(2);
-    index_t input_width = input->dim(3);
-
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);
-    MACE_CHECK(filter->dim(0) == channels, filter->dim(0), " != ", channels);
-    MACE_CHECK(filter->dim(1) == input_channels, filter->dim(1), " != ",
-               input_channels);
+    const index_t *in_shape = input->shape().data();
+    const index_t *out_shape = output->shape().data();
+    const index_t kernel_hw[2] = {kernel_h, kernel_w};
 
-    index_t stride_h = strides_[0];
-    index_t stride_w = strides_[1];
-
-    MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
+    MACE_CHECK(filter->dim(0) == out_shape[1], filter->dim(0), " != ",
+               output_shape[1]);
+    MACE_CHECK(filter->dim(1) == in_shape[1], filter->dim(1), " != ",
+               in_shape[1]);
+    MACE_CHECK(in_shape[0] == out_shape[0], "Input/Output batch size mismatch");
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);
@@ -297,17 +280,23 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     auto filter_data = filter->data<T>();
     auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
     auto output_data = output->mutable_data<T>();
-    int padding_top = (paddings_[0] + 1) >> 1;
-    int padding_left = (paddings_[1] + 1) >> 1;
-
-    deconv::Deconv2dNCHW(input_data, filter_data, bias_data,
-                         batch, input_height, input_width, input_channels,
-                         height, width, channels,
-                         kernel_h, kernel_w,
-                         stride_h, stride_w, padding_top, padding_left,
+    int padding[2];
+    padding[0] = (paddings_[0] + 1) >> 1;
+    padding[1] = (paddings_[1] + 1) >> 1;
+    deconv::Deconv2dNCHW(input_data,
+                         filter_data,
+                         bias_data,
+                         in_shape,
+                         out_shape,
+                         kernel_hw,
+                         strides_,
+                         padding,
                          output_data);
 
-    DoActivation(output_data, output_data, output->size(), activation_,
+    DoActivation(output_data,
+                 output_data,
+                 output->size(),
+                 activation_,
                  relux_max_limit_);
   }
 };

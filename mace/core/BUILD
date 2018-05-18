@@ -15,6 +15,7 @@ load(
     "if_production_mode",
     "if_not_production_mode",
     "if_openmp_enabled",
+    "if_neon_enabled",
 )
 
 cc_library(
@@ -51,7 +52,11 @@ cc_library(
         "-DMACE_ENABLE_OPENMP",
     ]) + if_android([
         "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled(["-DMACE_ENABLE_HEXAGON"]),
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]),
     linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",

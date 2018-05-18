@@ -27,15 +27,16 @@ class OpenCLAllocator : public Allocator {
 
   ~OpenCLAllocator() override;
 
-  void *New(size_t nbytes) const override;
+  MaceStatus New(size_t nbytes, void **result) const override;
 
   /*
    * Use Image2D with RGBA (128-bit) format to represent the image.
    *
    * @ shape : [depth, ..., height, width ].
    */
-  void *NewImage(const std::vector<size_t> &image_shape,
-                 const DataType dt) const override;
+  MaceStatus NewImage(const std::vector<size_t> &image_shape,
+                      const DataType dt,
+                      void **result) const override;
 
   void Delete(void *buffer) const override;
 

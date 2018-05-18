@@ -84,49 +84,45 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
   void Conv2dGeneral(const float *input,
                      const float *filter,
-                     const index_t batch,
-                     const index_t in_height,
-                     const index_t in_width,
-                     const index_t in_channels,
-                     const index_t out_height,
-                     const index_t out_width,
-                     const index_t out_channels,
-                     const int filter_height,
-                     const int filter_width,
-                     const int stride_h,
-                     const int stride_w,
-                     const int dilation_h,
-                     const int dilation_w,
+                     const index_t *in_shape,
+                     const index_t *out_shape,
+                     const index_t *filter_shape,
+                     const int *stride_hw,
+                     const int *dilation_hw,
                      float *output) {
-    const index_t in_image_size = in_height * in_width;
-    const index_t out_image_size = out_height * out_width;
-    const index_t in_batch_size = in_channels * in_image_size;
-    const index_t out_batch_size = out_channels * out_image_size;
-    const index_t filter_size = filter_height * filter_width;
+    const index_t in_image_size = in_shape[2] * in_shape[3];
+    const index_t out_image_size = out_shape[2] * out_shape[3];
+    const index_t in_batch_size = filter_shape[1] * in_image_size;
+    const index_t out_batch_size = filter_shape[0] * out_image_size;
+    const index_t filter_size = filter_shape[2] * filter_shape[3];
 
 #pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t m = 0; m < out_channels; m += 4) {
+    for (index_t b = 0; b < in_shape[0]; b++) {
+      for (index_t m = 0; m < filter_shape[0]; m += 4) {
+        const index_t in_width = in_shape[3];
+        const index_t out_height = out_shape[2];
+        const index_t out_width = out_shape[3];
+        const index_t out_channels = filter_shape[0];
+        const index_t in_channels = filter_shape[1];
+
+        const int stride_h = stride_hw[0];
+        const int stride_w = stride_hw[1];
+        const int dilation_h = dilation_hw[0];
+        const int dilation_w = dilation_hw[1];
         if (m + 3 < out_channels) {
           float *out_ptr0_base =
               output + b * out_batch_size + m * out_image_size;
-          float *out_ptr1_base =
-              output + b * out_batch_size + (m + 1) * out_image_size;
-          float *out_ptr2_base =
-              output + b * out_batch_size + (m + 2) * out_image_size;
-          float *out_ptr3_base =
-              output + b * out_batch_size + (m + 3) * out_image_size;
+          float *out_ptr1_base = out_ptr0_base + out_image_size;
+          float *out_ptr2_base = out_ptr1_base + out_image_size;
+          float *out_ptr3_base = out_ptr2_base + out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
             const float *in_ptr_base =
                 input + b * in_batch_size + c * in_image_size;
             const float *filter_ptr0 =
                 filter + m * in_channels * filter_size + c * filter_size;
-            const float *filter_ptr1 =
-                filter + (m + 1) * in_channels * filter_size + c * filter_size;
-            const float *filter_ptr2 =
-                filter + (m + 2) * in_channels * filter_size + c * filter_size;
-            const float *filter_ptr3 =
-                filter + (m + 3) * in_channels * filter_size + c * filter_size;
+            const float *filter_ptr1 = filter_ptr0 + in_channels * filter_size;
+            const float *filter_ptr2 = filter_ptr1 + in_channels * filter_size;
+            const float *filter_ptr3 = filter_ptr2 + in_channels * filter_size;
             for (index_t h = 0; h < out_height; ++h) {
               for (index_t w = 0; w + 3 < out_width; w += 4) {
                  // input offset
@@ -144,8 +140,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                    vo3[ow] = out_ptr3_base[out_offset + ow];
                 }
                 // calc by row
-                for (index_t kh = 0; kh < filter_height; ++kh) {
-                  for (index_t kw = 0; kw < filter_width; ++kw) {
+                for (index_t kh = 0; kh < filter_shape[2]; ++kh) {
+                  for (index_t kw = 0; kw < filter_shape[3]; ++kw) {
                     // outch 0
                     vo0[0] += in_ptr_base[in_offset
                         + kw * dilation_w] * filter_ptr0[kw];
@@ -185,10 +181,10 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                   }  // kw
 
                   in_offset += dilation_h * in_width;
-                  filter_ptr0 += filter_width;
-                  filter_ptr1 += filter_width;
-                  filter_ptr2 += filter_width;
-                  filter_ptr3 += filter_width;
+                  filter_ptr0 += filter_shape[3];
+                  filter_ptr1 += filter_shape[3];
+                  filter_ptr2 += filter_shape[3];
+                  filter_ptr3 += filter_shape[3];
                 }  // kh
 
                 for (index_t ow = 0; ow < 4; ++ow) {
@@ -230,8 +226,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                   }
 
                   // calc by row
-                  for (index_t kh = 0; kh < filter_height; ++kh) {
-                    for (index_t kw = 0; kw < filter_width; ++kw) {
+                  for (index_t kh = 0; kh < filter_shape[2]; ++kh) {
+                    for (index_t kw = 0; kw < filter_shape[3]; ++kw) {
                       // outch 0
                       vo0[0] += in_ptr_base[in_offset
                           + kw * dilation_w] * filter_ptr0[kw];
@@ -244,7 +240,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                     }  // kw
 
                     in_offset += dilation_h * in_width;
-                    filter_ptr0 += filter_width;
+                    filter_ptr0 += filter_shape[3];
                   }  // kh
 
                   for (index_t ow = 0; ow < 4; ++ow) {
@@ -301,7 +297,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          output_shape.data());
     }
     output->Resize(output_shape);
-    output->Clear();
 
     index_t batch = output->dim(0);
     index_t channels = output->dim(1);
@@ -419,7 +414,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       if (extra_input_width != padded_input_width) {
         pad_right += (extra_input_width - padded_input_width);
       }
-    } else {
+    } else if (!use_neon_1x1_s1) {
       extra_output_height = height;
       extra_input_height =
           std::max(padded_input_height, (extra_output_height - 1) * stride_h
@@ -478,6 +473,10 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       transformed_output(scratch_->Scratch(transformed_output_size), DT_FLOAT);
     Tensor padded_input(scratch_->Scratch(padded_input_size), DT_FLOAT);
     Tensor padded_output(scratch_->Scratch(padded_output_size), DT_FLOAT);
+    const index_t extra_input_shape[4] =
+        {batch, input_channels, extra_input_height, extra_input_width};
+    const index_t extra_output_shape[4] =
+        {batch, channels, extra_output_height, extra_output_width};
 
     // decide which convolution function to call
     if (use_winograd) {
@@ -512,6 +511,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
       float *transformed_input_data = transformed_input.mutable_data<float>();
       float *transformed_output_data = transformed_output.mutable_data<float>();
+
       conv_func = [=](const float *pad_input, float *pad_output) {
         WinoGradConv3x3s1(pad_input,
                           transformed_filter_ptr,
@@ -529,26 +529,16 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK3x3S1(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else if (use_neon_3x3_s2) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK3x3S2(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else if (use_neon_1x1_s1) {
@@ -566,71 +556,43 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK5x5S1(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else if (use_neon_7x7_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK7x7S1(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else if (use_neon_7x7_s2) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK7x7S2(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else if (use_neon_7x7_s3) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK7x7S3(pad_input,
                          filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         extra_output_height,
-                         extra_output_width,
-                         channels,
+                         extra_input_shape,
+                         extra_output_shape,
                          pad_output);
       };
     } else {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dGeneral(pad_input,
                       filter_data,
-                      batch,
-                      extra_input_height,
-                      extra_input_width,
-                      input_channels,
-                      extra_output_height,
-                      extra_output_width,
-                      channels,
-                      filter_h,
-                      filter_w,
-                      stride_h,
-                      stride_w,
-                      dilation_h,
-                      dilation_w,
+                      extra_input_shape,
+                      extra_output_shape,
+                      filter_shape.data(),
+                      strides_,
+                      dilations_,
                       pad_output);
       };
     }
@@ -639,7 +601,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const Tensor *pad_input_ptr = input;
     if (extra_input_height != input_height
       || extra_input_width != input_width) {
-      padded_input.Clear();
       ConstructNCHWInputWithSpecificPadding(input,
                                             pad_top,
                                             pad_bottom,
@@ -649,13 +610,17 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       pad_input_ptr = &padded_input;
     }
 
+    // TODO(libin): don't need clear after bias is integrated in each conv
     Tensor *pad_output_ptr = output;
     if (extra_output_height != height || extra_output_width != width) {
       padded_output.Reshape({batch, channels, extra_output_height,
                             extra_output_width});
       padded_output.Clear();
       pad_output_ptr = &padded_output;
+    } else if (!use_neon_1x1_s1) {
+      output->Clear();
     }
+
     const float *pad_input_data = pad_input_ptr->data<float>();
     float *pad_output_data = pad_output_ptr->mutable_data<float>();
 

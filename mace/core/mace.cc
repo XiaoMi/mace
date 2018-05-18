@@ -90,12 +90,14 @@ std::shared_ptr<float> MaceTensor::data() { return impl_->data; }
 // Mace Engine
 class MaceEngine::Impl {
  public:
-  explicit Impl(const NetDef *net_def,
-                DeviceType device_type,
-                const std::vector<std::string> &input_nodes,
-                const std::vector<std::string> &output_nodes,
-                const unsigned char *model_data);
+  explicit Impl(DeviceType device_type);
+
   ~Impl();
+
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs,
@@ -113,11 +115,7 @@ class MaceEngine::Impl {
   DISABLE_COPY_AND_ASSIGN(Impl);
 };
 
-MaceEngine::Impl::Impl(const NetDef *net_def,
-                       DeviceType device_type,
-                       const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes,
-                       const unsigned char *model_data)
+MaceEngine::Impl::Impl(DeviceType device_type)
     : op_registry_(new OperatorRegistry()),
       device_type_(device_type),
       ws_(new Workspace()),
@@ -125,7 +123,13 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
 #ifdef MACE_ENABLE_HEXAGON
       , hexagon_controller_(nullptr)
 #endif
-{
+{}
+
+MaceStatus MaceEngine::Impl::Init(
+    const NetDef *net_def,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const unsigned char *model_data) {
   LOG(INFO) << "MACE version: " << MaceVersion();
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
@@ -137,7 +141,7 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
 #ifdef MACE_ENABLE_HEXAGON
-  if (device_type == HEXAGON) {
+  if (device_type_ == HEXAGON) {
     hexagon_controller_.reset(new HexagonControlWrapper());
     MACE_CHECK(hexagon_controller_->Config(), "hexagon config error");
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
@@ -153,18 +157,23 @@ MaceEngine::Impl::Impl(const NetDef *net_def,
     }
   } else {
 #endif
-    ws_->LoadModelTensor(*net_def, device_type, model_data);
+    MaceStatus status =
+      ws_->LoadModelTensor(*net_def, device_type_, model_data);
+    if (status != MaceStatus::MACE_SUCCESS) {
+      return status;
+    }
 
-    // Init model
-    auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type,
+  // Init model
+    auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type_,
                          NetMode::INIT);
     if (!net->Run()) {
       LOG(FATAL) << "Net init run failed";
     }
-    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type);
+    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type_);
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceEngine::Impl::~Impl() {
@@ -254,17 +263,17 @@ MaceStatus MaceEngine::Impl::Run(
   return MACE_SUCCESS;
 }
 
-MaceEngine::MaceEngine(const NetDef *net_def,
-                       DeviceType device_type,
-                       const std::vector<std::string> &input_nodes,
-                       const std::vector<std::string> &output_nodes,
-                       const unsigned char *model_data) {
-  impl_ = std::unique_ptr<MaceEngine::Impl>(
-      new MaceEngine::Impl(net_def, device_type, input_nodes, output_nodes,
-                           model_data));
-}
+MaceEngine::MaceEngine(DeviceType device_type):
+    impl_(new MaceEngine::Impl(device_type)) {}
 
 MaceEngine::~MaceEngine() = default;
+
+MaceStatus MaceEngine::Init(const NetDef *net_def,
+                            const std::vector<std::string> &input_nodes,
+                            const std::vector<std::string> &output_nodes,
+                            const unsigned char *model_data) {
+  return impl_->Init(net_def, input_nodes, output_nodes, model_data);
+}
 
 MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
                            std::map<std::string, MaceTensor> *outputs,
@@ -325,17 +334,18 @@ MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
                              const_tensor.data_size() *
                              GetEnumTypeSize(const_tensor.data_type())));
   }
+
+  MaceStatus status;
   const unsigned char *model_data = nullptr;
   model_data = LoadModelData(model_data_file, model_data_size);
 
-  engine->reset(
-      new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes,
-                           model_data));
+  engine->reset(new mace::MaceEngine(device_type));
+  status = (*engine)->Init(&net_def, input_nodes, output_nodes, model_data);
 
   if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
     UnloadModelData(model_data, model_data_size);
   }
-  return MACE_SUCCESS;
+  return status;
 }
 
 }  // namespace mace

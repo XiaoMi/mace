@@ -49,7 +49,8 @@ void BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
+          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
+      kernel_error_->Allocate(1);
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -90,7 +91,8 @@ void BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   } else {
     std::vector<uint32_t> roundup_gws(lws.size());
     for (size_t i = 0; i < lws.size(); ++i) {
-      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+      if (lws[i] != 0)
+        roundup_gws[i] = RoundUp(gws[i], lws[i]);
     }
 
     error = runtime->command_queue().enqueueNDRangeKernel(

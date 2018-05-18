@@ -620,6 +620,8 @@ struct Expector<EXP_TYPE, RES_TYPE, false> {
   static void Near(const Tensor &x, const Tensor &y,
                    const double rel_err,
                    const double abs_err) {
+    MACE_UNUSED(rel_err);
+    MACE_UNUSED(abs_err);
     Equal(x, y);
   }
 };
