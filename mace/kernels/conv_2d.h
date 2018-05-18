@@ -99,7 +99,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 #pragma omp parallel for collapse(2)
     for (index_t b = 0; b < in_shape[0]; b++) {
       for (index_t m = 0; m < filter_shape[0]; m += 4) {
-        const index_t in_height = in_shape[2];
         const index_t in_width = in_shape[3];
         const index_t out_height = out_shape[2];
         const index_t out_width = out_shape[3];
@@ -321,8 +320,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
     index_t dilation_h = dilations_[0];
     index_t dilation_w = dilations_[1];
-
-    const index_t filter_hw[2] = {filter_h, filter_w};
 
     MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
 

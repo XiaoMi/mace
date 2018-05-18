@@ -44,18 +44,30 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
 OpenCLAllocator::OpenCLAllocator() {}
 
 OpenCLAllocator::~OpenCLAllocator() {}
-void *OpenCLAllocator::New(size_t nbytes) const {
+MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
+  if (nbytes == 0) {
+    return MaceStatus::MACE_SUCCESS;
+  }
   VLOG(3) << "Allocate OpenCL buffer: " << nbytes;
   cl_int error;
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                       nbytes, nullptr, &error);
-  MACE_CHECK_CL_SUCCESS(error);
-  return static_cast<void *>(buffer);
+  if (error != CL_SUCCESS) {
+    LOG(WARNING) << "Allocate OpenCL Buffer with "
+                 << nbytes << " bytes failed because of"
+                 << OpenCLErrorToString(error);
+    *result = nullptr;
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  } else {
+    *result = buffer;
+    return MaceStatus::MACE_SUCCESS;
+  }
 }
 
-void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
-                                const DataType dt) const {
+MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
+                                     const DataType dt,
+                                     void **result) const {
   MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
   VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", "
           << image_shape[1];
@@ -67,11 +79,17 @@ void *OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
       new cl::Image2D(OpenCLRuntime::Global()->context(),
                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, img_format,
                       image_shape[0], image_shape[1], 0, nullptr, &error);
-  MACE_CHECK_CL_SUCCESS(error) << " with image shape: ["
-                               << image_shape[0] << ", " << image_shape[1]
-                               << "]";
-
-  return cl_image;
+  if (error != CL_SUCCESS) {
+    LOG(WARNING) << "Allocate OpenCL image with shape: ["
+                 << image_shape[0] << ", " << image_shape[1]
+                 << "] failed because of"
+                 << OpenCLErrorToString(error);
+    *result = nullptr;
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  } else {
+    *result = cl_image;
+    return MaceStatus::MACE_SUCCESS;
+  }
 }
 
 void OpenCLAllocator::Delete(void *buffer) const {

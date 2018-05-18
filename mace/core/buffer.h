@@ -38,6 +38,11 @@ class BufferBase {
 
   virtual void *raw_mutable_data() = 0;
 
+  virtual MaceStatus Allocate(index_t nbytes) = 0;
+
+  virtual MaceStatus Allocate(const std::vector<size_t> &shape,
+                              DataType data_type) = 0;
+
   virtual void *Map(index_t offset,
                     index_t length,
                     std::vector<size_t> *pitch) const = 0;
@@ -48,7 +53,7 @@ class BufferBase {
 
   virtual void UnMap() = 0;
 
-  virtual void Resize(index_t size) = 0;
+  virtual MaceStatus Resize(index_t nbytes) = 0;
 
   virtual void Copy(void *src, index_t offset, index_t length) = 0;
 
@@ -82,14 +87,6 @@ class Buffer : public BufferBase {
         buf_(nullptr),
         mapped_buf_(nullptr),
         is_data_owner_(true) {}
-
-  Buffer(Allocator *allocator, index_t size)
-      : BufferBase(size),
-        allocator_(allocator),
-        mapped_buf_(nullptr),
-        is_data_owner_(true) {
-    buf_ = allocator->New(size);
-  }
 
   Buffer(Allocator *allocator, void *data, index_t size)
       : BufferBase(size),
@@ -132,6 +129,31 @@ class Buffer : public BufferBase {
     }
   }
 
+  MaceStatus Allocate(index_t nbytes) {
+    if (nbytes <= 0) {
+      return MaceStatus::MACE_SUCCESS;
+    }
+    MACE_CHECK(is_data_owner_,
+               "data is not owned by this buffer, cannot reallocate");
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (buf_ != nullptr) {
+      allocator_->Delete(buf_);
+    }
+    size_ = nbytes;
+    return allocator_->New(nbytes, &buf_);
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    if (shape.empty()) return MaceStatus::MACE_SUCCESS;
+    index_t nbytes = std::accumulate(shape.begin(), shape.end(),
+                                     1, std::multiplies<size_t>())
+        * GetEnumTypeSize(data_type);
+    return this->Allocate(nbytes);
+  }
+
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_CHECK_NOTNULL(buf_);
     MACE_UNUSED(pitch);
@@ -154,16 +176,17 @@ class Buffer : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) {
+  MaceStatus Resize(index_t nbytes) {
     MACE_CHECK(is_data_owner_,
                "data is not owned by this buffer, cannot resize");
-    if (size != size_) {
+    if (nbytes != size_) {
       if (buf_ != nullptr) {
         allocator_->Delete(buf_);
       }
-      size_ = size;
-      buf_ = allocator_->New(size);
+      size_ = nbytes;
+      return allocator_->New(nbytes, &buf_);
     }
+    return MaceStatus::MACE_SUCCESS;
   }
 
   void Copy(void *src, index_t offset, index_t length) {
@@ -195,18 +218,6 @@ class Image : public BufferBase {
         buf_(nullptr),
         mapped_buf_(nullptr) {}
 
-  Image(std::vector<size_t> shape, DataType data_type)
-      : BufferBase(
-            std::accumulate(
-                shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
-            GetEnumTypeSize(data_type)),
-        allocator_(GetDeviceAllocator(GPU)),
-        mapped_buf_(nullptr) {
-    shape_ = shape;
-    data_type_ = data_type;
-    buf_ = allocator_->NewImage(shape, data_type);
-  }
-
   virtual ~Image() {
     if (mapped_buf_ != nullptr) {
       UnMap();
@@ -232,6 +243,29 @@ class Image : public BufferBase {
   }
 
   std::vector<size_t> image_shape() const { return shape_; }
+
+  MaceStatus Allocate(index_t nbytes) {
+    MACE_UNUSED(nbytes);
+    LOG(FATAL) << "Image should not call this allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    index_t size = std::accumulate(
+        shape.begin(), shape.end(), 1, std::multiplies<index_t>()) *
+        GetEnumTypeSize(data_type);
+    if (mapped_buf_ != nullptr) {
+      UnMap();
+    }
+    if (buf_ != nullptr) {
+      allocator_->DeleteImage(buf_);
+    }
+    size_ = size;
+    shape_ = shape;
+    data_type_ = data_type;
+    return allocator_->NewImage(shape, data_type, &buf_);
+  }
 
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_UNUSED(offset);
@@ -259,9 +293,10 @@ class Image : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) {
+  MaceStatus Resize(index_t size) {
     MACE_UNUSED(size);
     MACE_NOT_IMPLEMENTED;
+    return MaceStatus::MACE_SUCCESS;
   }
 
   void Copy(void *src, index_t offset, index_t length) {
@@ -339,6 +374,20 @@ class BufferSlice : public BufferBase {
     }
   }
 
+  MaceStatus Allocate(index_t size) {
+    MACE_UNUSED(size);
+    LOG(FATAL) << "BufferSlice should not call allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
+  MaceStatus Allocate(const std::vector<size_t> &shape,
+                      DataType data_type) {
+    MACE_UNUSED(shape);
+    MACE_UNUSED(data_type);
+    LOG(FATAL) << "BufferSlice should not call allocate function";
+    return MaceStatus::MACE_SUCCESS;
+  }
+
   void *Map(index_t offset, index_t length, std::vector<size_t> *pitch) const {
     MACE_UNUSED(offset);
     MACE_UNUSED(length);
@@ -364,9 +413,10 @@ class BufferSlice : public BufferBase {
     mapped_buf_ = nullptr;
   }
 
-  void Resize(index_t size) {
+  MaceStatus Resize(index_t size) {
     MACE_CHECK(size == size_, "resize buffer slice from ", size_,
       " to ", size, " is illegal");
+    return MaceStatus::MACE_SUCCESS;
   }
 
   void Copy(void *src, index_t offset, index_t length) {
@@ -396,20 +446,17 @@ class ScratchBuffer: public Buffer {
     : Buffer(allocator),
       offset_(0) {}
 
-  ScratchBuffer(Allocator *allocator, index_t size)
-    : Buffer(allocator, size),
-      offset_(0) {}
-
   ScratchBuffer(Allocator *allocator, void *data, index_t size)
     : Buffer(allocator, data, size),
       offset_(0) {}
 
   virtual ~ScratchBuffer() {}
 
-  void GrowSize(index_t size) {
+  MaceStatus GrowSize(index_t size) {
     if (size > size_) {
-      Resize(size);
+      return Resize(size);
     }
+    return MaceStatus::MACE_SUCCESS;
   }
 
   BufferSlice Scratch(index_t size) {

@@ -33,17 +33,23 @@ How to build
 +=====================+=================+===================================================================================================+
 | bazel               | >= 0.5.4        | -                                                                                                 |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
-| android-ndk         | r12c            | -                                                                                                 |
+| android-ndk         | r15c,r16b       | -                                                                                                 |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 | adb                 | >= 1.0.32       | apt install -y android-tools-adb                                                                  |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
-| tensorflow          | 1.4.0           | pip install tensorflow==1.4.0                                                                     |
+| tensorflow          | 1.7.0           | pip install tensorflow==1.7.0                                                                     |
++---------------------+-----------------+---------------------------------------------------------------------------------------------------+
+| numpy               | >= 1.14.0       | pip install numpy                                                                                 |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 | scipy               | >= 1.0.0        | pip install scipy                                                                                 |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 | jinja2              | >= 2.10         | pip install jinja2                                                                                |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 | PyYaml              | >= 3.12         | pip install pyyaml                                                                                |
++---------------------+-----------------+---------------------------------------------------------------------------------------------------+
+| sh                  | >= 1.12.14      | pip install sh                                                                                    |
++---------------------+-----------------+---------------------------------------------------------------------------------------------------+
+| filelock            | >= 3.0.0        | pip install filelock                                                                              |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
 | docker(for caffe)   | >= 17.09.0-ce   | `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__   |
 +---------------------+-----------------+---------------------------------------------------------------------------------------------------+
@@ -229,29 +235,47 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 
     // 引入头文件
     #include "mace/public/mace.h"
-    #include "mace/public/{MODEL_TAG}.h"
+    #include "mace/public/mace_engine_factory.h"
 
-    // 0. 设置内部存储
+    // 0. 设置内部存储（设置一次即可）
     const std::string file_path ="/path/to/store/internel/files";
     std::shared_ptr<KVStorageFactory> storage_factory(
         new FileStorageFactory(file_path));
     ConfigKVStorageFactory(storage_factory);
 
-    //1. 从文件或代码中Load模型数据，也可通过自定义的方式来Load (例如可自己实现压缩加密等)
-    // 如果使用的是数据嵌入的方式，将参数设为nullptr。
-    unsigned char *model_data = mace::MACE_MODEL_TAG::LoadModelData(FLAGS_model_data_file.c_str());
+    //1. 声明设备类型(必须与build时指定的runtime一致）
+    DeviceType device_type = DeviceType::GPU;
 
-    //2. 创建net对象
-    NetDef net_def = mace::MACE_MODEL_TAG::CreateNet(model_data);
-
-    //3. 声明设备类型(必须与build时指定的runtime一致）
-    DeviceType device_type = DeviceType::OPENCL;
-
-    //4. 定义输入输出名称数组
+    //2. 定义输入输出名称数组
     std::vector<std::string> input_names = {...};
     std::vector<std::string> output_names = {...};
 
-    //5. 创建输入输出对象
+    //3. 创建MaceEngine对象
+    std::shared_ptr<mace::MaceEngine> engine;
+    MaceStatus create_engine_status;
+    // Create Engine
+    if (model_data_file.empty()) {
+      create_engine_status =
+          CreateMaceEngine(model_name.c_str(),
+                           nullptr,
+                           input_names,
+                           output_names,
+                           device_type,
+                           &engine);
+    } else {
+      create_engine_status =
+          CreateMaceEngine(model_name.c_str(),
+                           model_data_file.c_str(),
+                           input_names,
+                           output_names,
+                           device_type,
+                           &engine);
+    }
+    if (create_engine_status != MaceStatus::MACE_SUCCESS) {
+      // do something
+    }
+
+    //4. 创建输入输出对象
     std::map<std::string, mace::MaceTensor> inputs;
     std::map<std::string, mace::MaceTensor> outputs;
     for (size_t i = 0; i < input_count; ++i) {
@@ -276,14 +300,6 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
       outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
     }
 
-    //6. 创建MaceEngine对象
-    mace::MaceEngine engine(&net_def, device_type, input_names, output_names);
-
-    //7. 如果设备类型是OPENCL或HEXAGON，可以在此释放model_data
-    if (device_type == DeviceType::OPENCL || device_type == DeviceType::HEXAGON) {
-      mace::MACE_MODEL_TAG::UnloadModelData(model_data);
-    }
-
-    //8. 执行模型，得到结果
+    //5. 执行模型，得到结果
     engine.Run(inputs, &outputs);
 

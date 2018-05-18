@@ -100,7 +100,8 @@ extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
+          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
+      (*kernel_error)->Allocate(1);
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();

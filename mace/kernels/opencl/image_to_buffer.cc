@@ -86,7 +86,8 @@ void ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     built_options.emplace("-DOUT_OF_RANGE_CHECK");
     if (!kernel_error_) {
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
+          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
+      kernel_error_->Allocate(1);
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
