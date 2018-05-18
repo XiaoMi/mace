@@ -136,23 +136,25 @@ class MaceKeyword(object):
 
 
 class TransformerRule(Enum):
-    REMOVE_IDENTITY_OP = 0
-    TRANSFORM_GLOBAL_POOLING = 1
-    FOLD_SOFTMAX = 2
-    FOLD_BATCHNORM = 3,
-    FOLD_CONV_AND_BN = 4,
-    FOLD_DEPTHWISE_CONV_AND_BN = 5,
-    TRANSFORM_GPU_WINOGRAD = 6,
-    TRANSFORM_ADD_TO_BIASADD = 7,
-    FOLD_BIASADD = 8,
-    FOLD_ACTIVATION = 9,
-    TRANSPOSE_FILTERS = 10,
-    RESHAPE_FC_WEIGHT = 11,
-    TRANSPOSE_DATA_FORMAT = 12,
-    TRANSFORM_GLOBAL_CONV_TO_FC = 13,
-    TRANSFORM_BUFFER_IMAGE = 14,
-    ADD_DEVICE_AND_DATA_TYPE = 15,
-    SORT_BY_EXECUTION = 16
+    REMOVE_USELESS_RESHAPE_OP = 0
+    REMOVE_IDENTITY_OP = 1
+    TRANSFORM_GLOBAL_POOLING = 2
+    FOLD_RESHAPE = 3
+    TRANSFORM_MATMUL_TO_FC = 4
+    FOLD_BATCHNORM = 5
+    FOLD_CONV_AND_BN = 6
+    FOLD_DEPTHWISE_CONV_AND_BN = 7
+    TRANSFORM_GPU_WINOGRAD = 8
+    TRANSFORM_ADD_TO_BIASADD = 9
+    FOLD_BIASADD = 10
+    FOLD_ACTIVATION = 11
+    TRANSPOSE_FILTERS = 12
+    RESHAPE_FC_WEIGHT = 13
+    TRANSPOSE_DATA_FORMAT = 14
+    TRANSFORM_GLOBAL_CONV_TO_FC = 15
+    TRANSFORM_BUFFER_IMAGE = 16
+    ADD_DEVICE_AND_DATA_TYPE = 17
+    SORT_BY_EXECUTION = 18
 
 
 class ConverterInterface(object):
@@ -199,9 +201,11 @@ class ConverterOption(object):
         self._device = mace_pb2.CPU
         self._winograd_enabled = False
         self._transformer_option = [
+            TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
-            TransformerRule.FOLD_SOFTMAX,
+            TransformerRule.FOLD_RESHAPE,
+            TransformerRule.TRANSFORM_MATMUL_TO_FC,
             TransformerRule.FOLD_BATCHNORM,
             TransformerRule.FOLD_CONV_AND_BN,
             TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,

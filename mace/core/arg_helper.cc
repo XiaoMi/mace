@@ -23,7 +23,8 @@ namespace mace {
 ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
   for (auto &arg : def.arg()) {
     if (arg_map_.find(arg.name()) != arg_map_.end()) {
-      LOG(WARNING) << "Duplicated argument name found in operator def.";
+      LOG(WARNING) << "Duplicated argument name found in operator def: "
+                   << def.name() << " " << arg.name();
     }
 
     arg_map_[arg.name()] = arg;

@@ -101,9 +101,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
             'AvgPool': self.convert_pooling,
             'MaxPool': self.convert_pooling,
             'Squeeze': self.convert_identity,
+            'MatMul': self.convert_matmul,
             'Identity': self.convert_identity,
             'Reshape': self.convert_reshape,
             'Shape': self.convert_nop,
+            'Transpose': self.convert_transpose,
             'Softmax': self.convert_softmax,
             'ResizeBilinear': self.convert_resize_bilinear,
             'Placeholder': self.convert_nop,
@@ -144,7 +146,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             for i in xrange(len(op.input)):
                 if op.input[i][-2:] == ':0':
                     op_name = op.input[i][:-2]
-                    if op_name in self._option.input_nodes:
+                    if op_name in self._option.input_nodes \
+                            or op_name in self._option.output_nodes:
                         op.input[i] = op_name
             for i in xrange(len(op.output)):
                 if op.output[i][-2:] == ':0':
@@ -411,6 +414,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self._skip_tensor.update(tf_op.inputs[-1].name)
 
+    def convert_matmul(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.MatMul.name
+
     def convert_reshape(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Reshape.name
@@ -429,6 +436,20 @@ class TensorflowConverter(base_converter.ConverterInterface):
             shape_value = list(tf_op.inputs[1].op.inputs[0].shape.as_list())
 
         shape_arg.ints.extend(shape_value)
+
+    def convert_transpose(self, tf_op):
+        perm = tf_op.inputs[1].eval().astype(np.int32)
+        ordered_perm = np.sort(perm)
+
+        mace_check(np.array_equal(perm, ordered_perm),
+                   "Transpose not supported yet, only internal transpose"
+                   " in composed ops might be supported")
+
+        op = self.convert_general_op(tf_op)
+        op.type = 'Identity'
+        del op.input[1:]
+
+        self._skip_tensor.add(tf_op.inputs[1].name)
 
     def convert_mean(self, tf_op):
         op = self.convert_general_op(tf_op)

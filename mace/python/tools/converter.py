@@ -128,7 +128,7 @@ def main(unused_args):
                                                        FLAGS.weight_file)
 
         output_graph_def = converter.run()
-        print("Transform model to one that can better run on device.")
+        print("Transform model to one that can better run on device")
         if not FLAGS.runtime:
             cpu_graph_def = copy.deepcopy(output_graph_def)
             option.device = mace_pb2.CPU
