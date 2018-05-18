@@ -222,6 +222,8 @@ class Tensor {
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
       if (raw_size() + EXTRA_BUFFER_PAD_SIZE > buffer_->size()) {
+        LOG(WARNING) << "Resize buffer from size " << buffer_->size() << " to "
+                     << raw_size() + EXTRA_BUFFER_PAD_SIZE;
         return buffer_->Resize(raw_size() + EXTRA_BUFFER_PAD_SIZE);
       }
       return MaceStatus::MACE_SUCCESS;
