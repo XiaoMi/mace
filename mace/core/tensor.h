@@ -208,7 +208,7 @@ class Tensor {
 
   inline void Clear() {
     MACE_CHECK_NOTNULL(buffer_);
-    buffer_->Clear();
+    buffer_->Clear(raw_size());
   }
 
   inline void Reshape(const std::vector<index_t> &shape) {
