@@ -56,7 +56,8 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU), 1)));
+          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
+      kernel_error_->Allocate(1);
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();

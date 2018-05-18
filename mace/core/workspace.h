@@ -47,12 +47,13 @@ class Workspace {
 
   std::vector<std::string> Tensors() const;
 
-  void LoadModelTensor(const NetDef &net_def, DeviceType type);
+  MaceStatus LoadModelTensor(const NetDef &net_def, DeviceType type);
 
   ScratchBuffer *GetScratchBuffer(DeviceType device_type);
 
  private:
-  void CreateOutputTensorBuffer(const NetDef &net_def, DeviceType device_type);
+  MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,
+                                      DeviceType device_type);
 
   TensorMap tensor_map_;
 

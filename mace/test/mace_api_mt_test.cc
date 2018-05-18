@@ -304,7 +304,9 @@ void MaceRunFunc(const int in_out_size) {
       new FileStorageFactory(file_path));
   mace::SetKVStorageFactory(storage_factory);
 
-  MaceEngine engine(&net_def, device, input_names, output_names);
+  MaceEngine engine(device);
+  MaceStatus status = engine.Init(&net_def, input_names, output_names);
+  ASSERT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
