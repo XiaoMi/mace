@@ -90,7 +90,8 @@ void BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   } else {
     std::vector<uint32_t> roundup_gws(lws.size());
     for (size_t i = 0; i < lws.size(); ++i) {
-      roundup_gws[i] = RoundUp(gws[i], lws[i]);
+      if (lws[i] != 0)
+        roundup_gws[i] = RoundUp(gws[i], lws[i]);
     }
 
     error = runtime->command_queue().enqueueNDRangeKernel(

@@ -78,28 +78,27 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
 
   void DepthwiseConv2dGeneral(const float *input,
                               const float *filter,
-                              const index_t batch,
-                              const index_t in_height,
-                              const index_t in_width,
-                              const index_t in_channels,
-                              const index_t out_height,
-                              const index_t out_width,
-                              const index_t out_channels,
-                              const int filter_height,
-                              const int filter_width,
-                              const int stride_h,
-                              const int stride_w,
-                              const int dilation_h,
-                              const int dilation_w,
-                              const int pad_top,
-                              const int pad_left,
+                              const index_t *in_shape,
+                              const index_t *out_shape,
+                              const index_t *filter_shape,
+                              const int *stride_hw,
+                              const int *dilation_hw,
+                              const int *pad_hw,
                               float *output) {
-    const index_t multiplier = out_channels / in_channels;
+    const index_t multiplier = filter_shape[0] / filter_shape[1];
 #pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t m = 0; m < out_channels; ++m) {
-        for (index_t h = 0; h < out_height; ++h) {
-          for (index_t w = 0; w < out_width; ++w) {
+    for (index_t b = 0; b < in_shape[0]; ++b) {
+      for (index_t m = 0; m < filter_shape[0]; ++m) {
+        for (index_t h = 0; h < out_shape[2]; ++h) {
+          for (index_t w = 0; w < out_shape[3]; ++w) {
+            const index_t out_channels = filter_shape[0];
+            const index_t in_channels = filter_shape[1];
+            const index_t filter_height = filter_shape[2];
+            const index_t filter_width = filter_shape[3];
+            const index_t in_height = in_shape[2];
+            const index_t in_width = in_shape[3];
+            const index_t out_height = out_shape[2];
+            const index_t out_width = out_shape[3];
             index_t out_offset =
               ((b * out_channels + m) * out_height + h) * out_width + w;
             index_t c = m / multiplier;
@@ -107,8 +106,8 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
             float sum = 0;
             for (index_t kh = 0; kh < filter_height; ++kh) {
               for (index_t kw = 0; kw < filter_width; ++kw) {
-                index_t ih = h * stride_h + kh * dilation_h - pad_top;
-                index_t iw = w * stride_w + kw * dilation_w - pad_left;
+                index_t ih = h * stride_hw[0] + kh * dilation_hw[0] - pad_hw[0];
+                index_t iw = w * stride_hw[1] + kw * dilation_hw[1] - pad_hw[1];
                 if (ih >= 0 && ih < in_height && iw >= 0 && iw < in_width) {
                   index_t in_offset =
                     ((b * in_channels + c) * in_height + ih) * in_width + iw;
@@ -214,20 +213,18 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
     auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
     auto output_data = output->mutable_data<float>();
 
+    const int pad_hw[2] = {pad_top, pad_left};
+    const index_t input_shape[4] =
+        {batch, input_channels, input_height, input_width};
+
     if (filter_h == 3 && filter_w == 3 && stride_h == 1 && stride_w == 1
       && dilation_h == 1 && dilation_w == 1) {
       conv_func = [=](const float *input, float *output) {
         DepthwiseConv2dNeonK3x3S1(input,
                                   filter_data,
-                                  batch,
-                                  input_height,
-                                  input_width,
-                                  input_channels,
-                                  height,
-                                  width,
-                                  channels,
-                                  pad_top,
-                                  pad_left,
+                                  input_shape,
+                                  output_shape.data(),
+                                  pad_hw,
                                   valid_h_start,
                                   valid_h_stop,
                                   valid_w_start,
@@ -239,15 +236,9 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
       conv_func = [=](const float *input, float *output) {
         DepthwiseConv2dNeonK3x3S2(input,
                                   filter_data,
-                                  batch,
-                                  input_height,
-                                  input_width,
-                                  input_channels,
-                                  height,
-                                  width,
-                                  channels,
-                                  pad_top,
-                                  pad_left,
+                                  input_shape,
+                                  output_shape.data(),
+                                  pad_hw,
                                   valid_h_start,
                                   valid_h_stop,
                                   valid_w_start,
@@ -258,21 +249,12 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
       conv_func = [=](const float *input, float *output) {
         DepthwiseConv2dGeneral(input,
                                filter_data,
-                               batch,
-                               input_height,
-                               input_width,
-                               input_channels,
-                               height,
-                               width,
-                               channels,
-                               filter_h,
-                               filter_w,
-                               stride_h,
-                               stride_w,
-                               dilation_h,
-                               dilation_w,
-                               pad_top,
-                               pad_left,
+                               input_shape,
+                               output_shape.data(),
+                               filter_shape.data(),
+                               strides_,
+                               dilations_,
+                               pad_hw,
                                output);
       };
     }

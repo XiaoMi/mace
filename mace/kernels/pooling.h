@@ -75,39 +75,38 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
   }
 
   void MaxPooling(const float *input,
-                  const index_t batch,
-                  const index_t in_height,
-                  const index_t in_width,
-                  const index_t channels,
-                  const index_t out_height,
-                  const index_t out_width,
-                  const int filter_height,
-                  const int filter_width,
-                  const int stride_h,
-                  const int stride_w,
-                  const int dilation_h,
-                  const int dilation_w,
-                  const int pad_top,
-                  const int pad_left,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const int *filter_hw,
+                  const int *stride_hw,
+                  const int *dilation_hw,
+                  const int *pad_hw,
                   float *output) {
-    const index_t in_image_size = in_height * in_width;
-    const index_t out_image_size = out_height * out_width;
-    const index_t in_batch_size = channels * in_image_size;
-    const index_t out_batch_size = channels * out_image_size;
+    const index_t in_image_size = in_shape[2] * in_shape[3];
+    const index_t out_image_size = out_shape[2] * out_shape[3];
+    const index_t in_batch_size = in_shape[1] * in_image_size;
+    const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t c = 0; c < channels; ++c) {
+    for (index_t b = 0; b < out_shape[0]; ++b) {
+      for (index_t c = 0; c < out_shape[1]; ++c) {
         const index_t out_base = b * out_batch_size + c * out_image_size;
         const index_t in_base = b * in_batch_size + c * in_image_size;
+        const index_t out_height = out_shape[2];
+        const index_t out_width = out_shape[3];
+        const index_t in_height = in_shape[2];
+        const index_t in_width = in_shape[3];
+
         for (index_t h = 0; h < out_height; ++h) {
           for (index_t w = 0; w < out_width; ++w) {
             const index_t out_offset = out_base + h * out_width + w;
             float res = std::numeric_limits<float>::lowest();
-            for (int fh = 0; fh < filter_height; ++fh) {
-              for (int fw = 0; fw < filter_width; ++fw) {
-                int inh = h * stride_h + dilation_h * fh - pad_top;
-                int inw = w * stride_w + dilation_w * fw - pad_left;
+            for (int fh = 0; fh < filter_hw[0]; ++fh) {
+              for (int fw = 0; fw < filter_hw[1]; ++fw) {
+                index_t inh =
+                    h * stride_hw[0] + dilation_hw[0] * fh - pad_hw[0];
+                index_t inw =
+                    w * stride_hw[1] + dilation_hw[1] * fw - pad_hw[1];
                 if (inh >= 0 && inh < in_height && inw >= 0 && inw < in_width) {
                   index_t input_offset = in_base + inh * in_width + inw;
                   res = std::max(res, input[input_offset]);
@@ -122,40 +121,38 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
   }
 
   void AvgPooling(const float *input,
-                  const index_t batch,
-                  const index_t in_height,
-                  const index_t in_width,
-                  const index_t channels,
-                  const index_t out_height,
-                  const index_t out_width,
-                  const int filter_height,
-                  const int filter_width,
-                  const int stride_h,
-                  const int stride_w,
-                  const int dilation_h,
-                  const int dilation_w,
-                  const int pad_top,
-                  const int pad_left,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const int *filter_hw,
+                  const int *stride_hw,
+                  const int *dilation_hw,
+                  const int *pad_hw,
                   float *output) {
-    const index_t in_image_size = in_height * in_width;
-    const index_t out_image_size = out_height * out_width;
-    const index_t in_batch_size = channels * in_image_size;
-    const index_t out_batch_size = channels * out_image_size;
+    const index_t in_image_size = in_shape[2] * in_shape[3];
+    const index_t out_image_size = out_shape[2] * out_shape[3];
+    const index_t in_batch_size = in_shape[1] * in_image_size;
+    const index_t out_batch_size = out_shape[1] * out_image_size;
 
 #pragma omp parallel for collapse(2)
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t c = 0; c < channels; ++c) {
+    for (index_t b = 0; b < out_shape[0]; ++b) {
+      for (index_t c = 0; c < out_shape[1]; ++c) {
         const index_t out_base = b * out_batch_size + c * out_image_size;
         const index_t in_base = b * in_batch_size + c * in_image_size;
+        const index_t in_height = in_shape[2];
+        const index_t in_width = in_shape[3];
+        const index_t out_height = out_shape[2];
+        const index_t out_width = out_shape[3];
         for (index_t h = 0; h < out_height; ++h) {
           for (index_t w = 0; w < out_width; ++w) {
             const index_t out_offset = out_base + h * out_width + w;
             float res = 0;
             int block_size = 0;
-            for (int fh = 0; fh < filter_height; ++fh) {
-              for (int fw = 0; fw < filter_width; ++fw) {
-                int inh = h * stride_h + dilation_h * fh - pad_top;
-                int inw = w * stride_w + dilation_w * fw - pad_left;
+            for (int fh = 0; fh < filter_hw[0]; ++fh) {
+              for (int fw = 0; fw < filter_hw[1]; ++fw) {
+                index_t inh =
+                    h * stride_hw[0] + dilation_hw[0] * fh - pad_hw[0];
+                index_t inw =
+                    w * stride_hw[1] + dilation_hw[1] * fw - pad_hw[1];
                 if (inh >= 0 && inh < in_height && inw >= 0 && inw < in_width) {
                   index_t input_offset = in_base + inh * in_width + inw;
                   res += input[input_offset];
@@ -200,59 +197,25 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
     const float *input = input_tensor->data<float>();
     float *output = output_tensor->mutable_data<float>();
     const index_t *input_shape = input_tensor->shape().data();
-    index_t batch = output_shape[0];
-    index_t channels = output_shape[1];
-    index_t height = output_shape[2];
-    index_t width = output_shape[3];
-
-    index_t input_height = input_shape[2];
-    index_t input_width = input_shape[3];
-
-    int filter_h = kernels_[0];
-    int filter_w = kernels_[1];
-
-    int stride_h = strides_[0];
-    int stride_w = strides_[1];
-
-    int dilation_h = dilations_[0];
-    int dilation_w = dilations_[1];
-
-    int pad_top = paddings[0] / 2;
-    int pad_left = paddings[1] / 2;
+    int pad_hw[2] = {paddings[0] / 2, paddings[1] / 2};
 
     if (pooling_type_ == PoolingType::MAX) {
       MaxPooling(input,
-                 batch,
-                 input_height,
-                 input_width,
-                 channels,
-                 height,
-                 width,
-                 filter_h,
-                 filter_w,
-                 stride_h,
-                 stride_w,
-                 dilation_h,
-                 dilation_w,
-                 pad_top,
-                 pad_left,
+                 input_shape,
+                 output_shape.data(),
+                 kernels_,
+                 strides_,
+                 dilations_,
+                 pad_hw,
                  output);
     } else if (pooling_type_ == PoolingType::AVG) {
       AvgPooling(input,
-                 batch,
-                 input_height,
-                 input_width,
-                 channels,
-                 height,
-                 width,
-                 filter_h,
-                 filter_w,
-                 stride_h,
-                 stride_w,
-                 dilation_h,
-                 dilation_w,
-                 pad_top,
-                 pad_left,
+                 input_shape,
+                 output_shape.data(),
+                 kernels_,
+                 strides_,
+                 dilations_,
+                 pad_hw,
                  output);
     } else {
       MACE_NOT_IMPLEMENTED;
