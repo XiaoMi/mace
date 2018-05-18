@@ -865,6 +865,7 @@ def merge_libs(target_soc,
     model_data_dir = "%s/data" % project_output_dir
     hexagon_lib_file = "mace/third_party/nnlib/libhexagon_controller.so"
     model_bin_dir = "%s/%s/" % (project_output_dir, abi)
+    mace_proto_dir = "%s/proto" % project_output_dir
 
     if not os.path.exists(model_bin_dir):
         sh.mkdir("-p", model_bin_dir)
@@ -873,10 +874,27 @@ def merge_libs(target_soc,
     sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
     if not os.path.exists(model_data_dir):
         sh.mkdir("-p", model_data_dir)
+    if not os.path.exists(mace_proto_dir):
+        sh.mkdir("-p", mace_proto_dir)
     if hexagon_mode:
         sh.cp("-f", hexagon_lib_file, model_bin_dir)
 
-    sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
+    if model_load_type == "source":
+        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
+
+    for model_output_dir in model_output_dirs:
+        if not embed_model_data:
+            sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
+                  model_data_dir)
+        if model_load_type == "source":
+            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir),
+                  model_header_dir)
+
+    for model_name in mace_model_dirs_kv:
+        sh.cp("-f", "%s/%s.pb" % (mace_model_dirs_kv[model_name], model_name),
+              model_data_dir)
+
+    sh.cp("-f", "mace/proto/mace.proto", mace_proto_dir)
 
     mri_stream = ""
     if abi == "host":
@@ -936,18 +954,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/ops/libops.lo\n")
-
-    for model_output_dir in model_output_dirs:
-        if not embed_model_data:
-            sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
-                  model_data_dir)
-        if model_load_type == "source":
-            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir),
-                  model_header_dir)
-
-    for model_name in mace_model_dirs_kv:
-        sh.cp("-f", "%s/%s.pb" % (mace_model_dirs_kv[model_name], model_name),
-              model_data_dir)
 
     mri_stream += "save\n"
     mri_stream += "end\n"
