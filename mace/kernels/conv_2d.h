@@ -298,7 +298,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          output_shape.data());
     }
     output->Resize(output_shape);
-    output->Clear();
 
     index_t batch = output->dim(0);
     index_t channels = output->dim(1);
@@ -418,7 +417,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       if (extra_input_width != padded_input_width) {
         pad_right += (extra_input_width - padded_input_width);
       }
-    } else {
+    } else if (!use_neon_1x1_s1) {
       extra_output_height = height;
       extra_input_height =
           std::max(padded_input_height, (extra_output_height - 1) * stride_h
@@ -605,7 +604,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const Tensor *pad_input_ptr = input;
     if (extra_input_height != input_height
       || extra_input_width != input_width) {
-      padded_input.Clear();
       ConstructNCHWInputWithSpecificPadding(input,
                                             pad_top,
                                             pad_bottom,
@@ -615,13 +613,17 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       pad_input_ptr = &padded_input;
     }
 
+    // TODO(libin): don't need clear after bias is integrated in each conv
     Tensor *pad_output_ptr = output;
     if (extra_output_height != height || extra_output_width != width) {
       padded_output.Reshape({batch, channels, extra_output_height,
                             extra_output_width});
       padded_output.Clear();
       pad_output_ptr = &padded_output;
+    } else if (!use_neon_1x1_s1) {
+      output->Clear();
     }
+
     const float *pad_input_data = pad_input_ptr->data<float>();
     float *pad_output_data = pad_output_ptr->mutable_data<float>();
 

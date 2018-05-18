@@ -56,6 +56,8 @@ class BufferBase {
 
   virtual void Clear() = 0;
 
+  virtual void Clear(index_t size) = 0;
+
   virtual index_t offset() const { return 0; }
 
   template <typename T>
@@ -175,7 +177,11 @@ class Buffer : public BufferBase {
   bool OnHost() const { return allocator_->OnHost(); }
 
   void Clear() {
-    memset(reinterpret_cast<char*>(raw_mutable_data()), 0, size_);
+    Clear(size_);
+  }
+
+  void Clear(index_t size) {
+    memset(reinterpret_cast<char*>(raw_mutable_data()), 0, size);
   }
 
  protected:
@@ -274,6 +280,11 @@ class Image : public BufferBase {
   bool OnHost() const { return allocator_->OnHost(); }
 
   void Clear() {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  void Clear(index_t size) {
+    MACE_UNUSED(size);
     MACE_NOT_IMPLEMENTED;
   }
 
@@ -381,7 +392,11 @@ class BufferSlice : public BufferBase {
   bool OnHost() const { return buffer_->OnHost(); }
 
   void Clear() {
-    memset(raw_mutable_data(), 0, size_);
+    Clear(size_);
+  }
+
+  void Clear(index_t size) {
+    memset(raw_mutable_data(), 0, size);
   }
 
  private:
