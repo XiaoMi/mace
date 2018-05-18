@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader
 FLAGS = None
 
 
-def gen_mace_engine_factory(model_tags, template_dir, output_dir):
+def gen_mace_engine_factory(model_tags, template_dir, model_type, output_dir):
     # Create the jinja2 environment.
     j2_env = Environment(
         loader=FileSystemLoader(template_dir), trim_blocks=True)
@@ -29,6 +29,7 @@ def gen_mace_engine_factory(model_tags, template_dir, output_dir):
     template_name = 'mace_engine_factory.h.jinja2'
     source = j2_env.get_template(template_name).render(
         model_tags=model_tags,
+        model_type=model_type,
     )
     with open(output_dir + '/mace_engine_factory.h', "wb") as f:
         f.write(source)
@@ -46,10 +47,15 @@ def parse_args():
         "--template_dir", type=str, default="", help="template path")
     parser.add_argument(
         "--output_dir", type=str, default="", help="output path")
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="",
+        help="[source|pb] model load type")
     return parser.parse_known_args()
 
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
     gen_mace_engine_creator(FLAGS.model_tag, FLAGS.template_dir,
-                            FLAGS.output_dir)
+                            FLAGS.model_type, FLAGS.output_dir)

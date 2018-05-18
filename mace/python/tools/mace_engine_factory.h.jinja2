@@ -19,11 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 
 namespace mace {
 
+{% if model_type == 'source' %}
 {% for tag in model_tags %}
 namespace {{tag}} {
 
@@ -50,13 +52,12 @@ std::map<std::string, int> model_name_map {
 }  // namespace
 
 MaceStatus CreateMaceEngine(
-    const char *model_name,
+    const std::string &model_name,
     const char *model_data_file,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const DeviceType device_type,
-    std::shared_ptr<MaceEngine> *engine,
-    const std::vector<unsigned char> model_pb = {}) {
+    std::shared_ptr<MaceEngine> *engine) {
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
@@ -68,7 +69,7 @@ MaceStatus CreateMaceEngine(
    case {{ i }}:
     model_data =
         mace::{{model_tags[i]}}::LoadModelData(model_data_file);
-    net_def = mace::{{model_tags[i]}}::CreateNet(model_pb);
+    net_def = mace::{{model_tags[i]}}::CreateNet();
 
     engine->reset(
         new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes,
@@ -84,5 +85,22 @@ MaceStatus CreateMaceEngine(
 
   return MaceStatus::MACE_SUCCESS;
 }
+{% else %}
+MaceStatus CreateMaceEngine(
+    const std::string &model_name,
+    const char *model_data_file,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const DeviceType device_type,
+    std::shared_ptr<MaceEngine> *engine) {
+  MACE_UNUSED(model_name);
+  MACE_UNUSED(model_data_file);
+  MACE_UNUSED(input_nodes);
+  MACE_UNUSED(output_nodes);
+  MACE_UNUSED(device_type);
+  MACE_UNUSED(engine);
+  return MaceStatus::MACE_INVALID_ARGS;
+}
+{% endif %}
 
 }  // namespace mace

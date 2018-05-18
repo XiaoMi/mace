@@ -184,20 +184,21 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
         model_data.extend(tensor_info.data)
         offset += len(tensor_info.data)
 
-    # generate tensor data
-    template_name = 'tensor_data.jinja2'
-    source = j2_env.get_template(template_name).render(
-        tag=model_tag,
-        embed_model_data=embed_model_data,
-        model_data_size=offset,
-        model_data=model_data)
-    with open(output_dir + 'tensor_data' + '.cc', "wb") as f:
-        f.write(source)
     if not embed_model_data:
         with open(output_dir + model_tag + '.data', "wb") as f:
             f.write(bytearray(model_data))
 
     if model_load_type == 'source':
+        # generate tensor data
+        template_name = 'tensor_data.jinja2'
+        source = j2_env.get_template(template_name).render(
+            tag=model_tag,
+            embed_model_data=embed_model_data,
+            model_data_size=offset,
+            model_data=model_data)
+        with open(output_dir + 'tensor_data' + '.cc', "wb") as f:
+            f.write(source)
+
         # generate op source files
         template_name = 'operator.jinja2'
         counter = 0
@@ -214,35 +215,35 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
                 f.write(source)
             counter += 1
 
-    # generate model source files
-    build_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    template_name = 'model.jinja2'
-    tensors = [
-        TensorInfo(i, net_def.tensors[i], runtime)
-        for i in range(len(net_def.tensors))
-    ]
-    checksum = model_checksum
-    if weight_checksum is not None:
-        checksum = "{},{}".format(model_checksum, weight_checksum)
-    source = j2_env.get_template(template_name).render(
-        tensors=tensors,
-        net=net_def,
-        tag=model_tag,
-        runtime=runtime,
-        obfuscate=obfuscate,
-        embed_model_data=embed_model_data,
-        winograd_conv=winograd_conv,
-        checksum=checksum,
-        build_time=build_time,
-        model_type=model_load_type)
-    with open(output, "wb") as f:
-        f.write(source)
+        # generate model source files
+        build_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        template_name = 'model.jinja2'
+        tensors = [
+            TensorInfo(i, net_def.tensors[i], runtime)
+            for i in range(len(net_def.tensors))
+        ]
+        checksum = model_checksum
+        if weight_checksum is not None:
+            checksum = "{},{}".format(model_checksum, weight_checksum)
+        source = j2_env.get_template(template_name).render(
+            tensors=tensors,
+            net=net_def,
+            tag=model_tag,
+            runtime=runtime,
+            obfuscate=obfuscate,
+            embed_model_data=embed_model_data,
+            winograd_conv=winograd_conv,
+            checksum=checksum,
+            build_time=build_time,
+            model_type=model_load_type)
+        with open(output, "wb") as f:
+            f.write(source)
 
-    # generate model header file
-    template_name = 'model_header.jinja2'
-    source = j2_env.get_template(template_name).render(tag=model_tag, )
-    with open(output_dir + model_tag + '.h', "wb") as f:
-        f.write(source)
+        # generate model header file
+        template_name = 'model_header.jinja2'
+        source = j2_env.get_template(template_name).render(tag=model_tag, )
+        with open(output_dir + model_tag + '.h', "wb") as f:
+            f.write(source)
 
     for t in net_def.tensors:
         if t.data_type == mace_pb2.DT_FLOAT:

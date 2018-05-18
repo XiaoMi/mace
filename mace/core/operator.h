@@ -108,7 +108,7 @@ class Operator : public OperatorBase {
       inputs_.push_back(tensor);
     }
 
-    for (size_t i = 0; i < (size_t)operator_def.output_size(); ++i) {
+    for (int i = 0; i < operator_def.output_size(); ++i) {
       const std::string output_str = operator_def.output(i);
       if (ws->HasTensor(output_str)) {
         outputs_.push_back(ws->GetTensor(output_str));
@@ -120,7 +120,7 @@ class Operator : public OperatorBase {
           operator_def.output_size(),
           operator_def.output_type_size());
         DataType output_type;
-        if (i < (size_t)operator_def.output_type_size()) {
+        if (i < operator_def.output_type_size()) {
           output_type = operator_def.output_type(i);
         } else {
           output_type = DataTypeToEnum<T>::v();

@@ -56,8 +56,6 @@ class RunMetadata {
 
 const char *MaceVersion();
 
-// enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
-
 enum MaceStatus { MACE_SUCCESS = 0, MACE_INVALID_ARGS = 1 };
 
 // MACE input/output tensor
@@ -107,6 +105,13 @@ class MaceEngine {
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
+
+MaceStatus CreateMaceEngineFromPB(const char *model_data_file,
+                                  const std::vector<std::string> &input_nodes,
+                                  const std::vector<std::string> &output_nodes,
+                                  const DeviceType device_type,
+                                  std::shared_ptr<MaceEngine> *engine,
+                                  const std::vector<unsigned char> model_pb);
 
 }  // namespace mace
 

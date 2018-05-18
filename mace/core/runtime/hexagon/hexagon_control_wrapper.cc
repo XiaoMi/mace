@@ -134,12 +134,12 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
     for (const OperatorDef &op : net_def.op()) {
       int op_id = op_map.GetOpId(op.type());
       inputs.resize(op.node_input().size());
-      for (size_t i = 0; i < (size_t)op.node_input().size(); ++i) {
+      for (int i = 0; i < op.node_input().size(); ++i) {
         inputs[i].src_id = node_id(op.node_input()[i].node_id());
         inputs[i].output_idx = op.node_input()[i].output_port();
       }
       outputs.resize(op.out_max_byte_size().size());
-      for (size_t i = 0; i < (size_t)op.out_max_byte_size().size(); ++i) {
+      for (int i = 0; i < op.out_max_byte_size().size(); ++i) {
         outputs[i].max_size = op.out_max_byte_size()[i];
       }
       cached_inputs.push_back(inputs);

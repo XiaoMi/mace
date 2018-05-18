@@ -205,8 +205,8 @@ def tuning_run(target_abi,
             stdout, target_abi, serialno, model_name, device_type)
 
 
-def build_mace_run_prod(hexagon_mode, runtime, target_abi,
-                        serialno, vlog_level, embed_model_data,
+def build_mace_run_prod(hexagon_mode, runtime, target_abi, serialno,
+                        vlog_level, embed_model_data, model_load_type,
                         model_output_dir, input_nodes, output_nodes,
                         input_shapes, output_shapes, mace_model_dir,
                         model_name, device_type, running_round, restart_round,
@@ -228,7 +228,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             hexagon_mode=hexagon_mode,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
 
         device_type = parse_device_type("gpu")
@@ -250,7 +250,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
     else:
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
@@ -263,7 +263,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
 
 
@@ -274,11 +274,12 @@ def merge_libs_and_tuning_results(target_soc,
                                   output_dir,
                                   model_output_dirs,
                                   mace_model_dirs_kv,
+                                  model_load_type,
                                   hexagon_mode,
                                   embed_model_data):
     gen_opencl_and_tuning_code(
             target_abi, serialno, model_output_dirs, False)
-    sh_commands.build_production_code(target_abi)
+    sh_commands.build_production_code(model_load_type, target_abi)
 
     sh_commands.merge_libs(target_soc,
                            target_abi,
@@ -286,6 +287,7 @@ def merge_libs_and_tuning_results(target_soc,
                            output_dir,
                            model_output_dirs,
                            mace_model_dirs_kv,
+                           model_load_type,
                            hexagon_mode,
                            embed_model_data)
 
@@ -370,6 +372,9 @@ def parse_model_configs():
             print("CONFIG ERROR:")
             print("embed_model_data must be integer in range [0, 1]")
             exit(1)
+        elif FLAGS.model_load_type == "pb":
+            configs["embed_model_data"] = 0
+            print("emebed_model_data is set 0")
 
         model_names = configs.get("models", "")
         if not model_names:
@@ -599,6 +604,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 serialno,
                                 vlog_level,
                                 embed_model_data,
+                                model_load_type,
                                 model_output_dir,
                                 model_config["input_nodes"],
                                 model_config["output_nodes"],
@@ -688,6 +694,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             FLAGS.output_dir,
             model_output_dirs,
             mace_model_dirs_kv,
+            model_load_type,
             hexagon_mode,
             embed_model_data)
 
@@ -748,7 +755,8 @@ def main(unused_args):
         # generate source
         sh_commands.gen_mace_version()
         sh_commands.gen_encrypted_opencl_source()
-        sh_commands.gen_mace_engine_factory_source(configs['models'].keys())
+        sh_commands.gen_mace_engine_factory_source(configs['models'].keys(),
+                                                   FLAGS.model_load_type)
 
     embed_model_data = configs["embed_model_data"]
     target_socs = get_target_socs(configs)

@@ -280,16 +280,15 @@ int Main(int argc, char **argv) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
     create_engine_status =
-        CreateMaceEngine(FLAGS_model_name.c_str(),
-                         model_data_file_ptr,
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine,
-                         model_pb_data);
+        CreateMaceEngineFromPB(model_data_file_ptr,
+                               input_names,
+                               output_names,
+                               device_type,
+                               &engine,
+                               model_pb_data);
   } else {
     create_engine_status =
-        CreateMaceEngine(FLAGS_model_name.c_str(),
+        CreateMaceEngine(FLAGS_model_name,
                          model_data_file_ptr,
                          input_names,
                          output_names,

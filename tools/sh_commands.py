@@ -370,6 +370,7 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
 
 
 def gen_mace_engine_factory_source(model_tags,
+                                   model_load_type,
                                    codegen_path="mace/codegen"):
     print("* Genearte mace engine creator source")
     codegen_tools_dir = "%s/engine" % codegen_path
@@ -378,6 +379,7 @@ def gen_mace_engine_factory_source(model_tags,
     gen_mace_engine_factory(
         model_tags,
         "mace/python/tools",
+        model_load_type,
         codegen_tools_dir)
     print("Genearte mace engine creator source done!\n")
 
@@ -547,6 +549,7 @@ def gen_random_input(model_output_dir,
 
 
 def update_mace_run_lib(model_output_dir,
+                        model_load_type,
                         model_tag,
                         embed_model_data):
     mace_run_filepath = model_output_dir + "/mace_run"
@@ -558,8 +561,9 @@ def update_mace_run_lib(model_output_dir,
         sh.cp("-f", "mace/codegen/models/%s/%s.data" % (model_tag, model_tag),
               model_output_dir)
 
-    sh.cp("-f", "mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
-          model_output_dir)
+    if model_load_type == "source":
+        sh.cp("-f", "mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
+              model_output_dir)
 
 
 def create_internal_storage_dir(serialno, phone_data_dir):
@@ -833,13 +837,17 @@ def validate_model(abi,
     print("Validation done!\n")
 
 
-def build_production_code(abi):
+def build_production_code(model_load_type, abi):
     bazel_build("//mace/codegen:generated_opencl", abi=abi)
     bazel_build("//mace/codegen:generated_tuning_params", abi=abi)
     if abi == 'host':
-        bazel_build(
-            "//mace/codegen:generated_models",
-            abi=abi)
+        if model_load_type == "source":
+            bazel_build(
+                "//mace/codegen:generated_models",
+                abi=abi)
+        else:
+            bazel_build("//mace/core:core", abi=abi)
+            bazel_build("//mace/ops:ops", abi=abi)
 
 
 def merge_libs(target_soc,
@@ -848,6 +856,7 @@ def merge_libs(target_soc,
                libmace_output_dir,
                model_output_dirs,
                mace_model_dirs_kv,
+               model_load_type,
                hexagon_mode,
                embed_model_data):
     print("* Merge mace lib")
@@ -879,12 +888,24 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
+        if model_load_type == "source":
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
+        else:
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/core/libcore.pic.a\n")
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/ops/libops.pic.lo\n")
     else:
         mri_stream += "create %s/libmace_%s.%s.a\n" % \
                       (model_bin_dir, project_name, target_soc)
+        if model_load_type == "source":
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/codegen/libgenerated_models.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
@@ -894,9 +915,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_version.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_models.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/core/libcore.a\n")
@@ -911,13 +929,20 @@ def merge_libs(target_soc,
             "bazel-bin/mace/utils/libutils_prod.a\n")
         mri_stream += (
             "addlib "
+            "bazel-bin/mace/proto/libmace_cc.a\n")
+        mri_stream += (
+            "addlib "
+            "bazel-bin/external/com_google_protobuf/libprotobuf_lite.a\n")
+        mri_stream += (
+            "addlib "
             "bazel-bin/mace/ops/libops.lo\n")
 
     for model_output_dir in model_output_dirs:
         if not embed_model_data:
             sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
                   model_data_dir)
-        sh.cp("-f", glob.glob("%s/*.h" % model_output_dir), model_header_dir)
+        if model_load_type == "source":
+            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir), model_header_dir)
 
     for model_name in mace_model_dirs_kv:
         sh.cp("-f", "%s/%s.pb" % (mace_model_dirs_kv[model_name], model_name),

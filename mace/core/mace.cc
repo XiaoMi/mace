@@ -12,11 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <errno.h>
+#include <fcntl.h>
 #include <memory>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #include "mace/core/net.h"
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
+
+
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -267,6 +274,60 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
 MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
                            std::map<std::string, MaceTensor> *outputs) {
   return impl_->Run(inputs, outputs, nullptr);
+}
+
+namespace {
+const unsigned char *LoadModelData(const char *model_data_file) {
+  int fd = open(model_data_file, O_RDONLY);
+  MACE_CHECK(fd >= 0, "Failed to open model data file ",
+             model_data_file, ", error code: ", errno);
+
+  const unsigned char *model_data =
+    static_cast<const unsigned char *>(mmap(nullptr, 2453764,
+                                       PROT_READ, MAP_PRIVATE, fd, 0));
+  MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
+             model_data_file, ", error code: ", errno);
+
+  int ret = close(fd);
+  MACE_CHECK(ret == 0, "Failed to close model data file ",
+             model_data_file, ", error code: ", errno);
+
+  return model_data;
+}
+
+void UnloadModelData(const unsigned char *model_data) {
+  int ret = munmap(const_cast<unsigned char *>(model_data),
+                   2453764);
+  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
+}
+}  // namespace
+
+MaceStatus CreateMaceEngineFromPB(const char *model_data_file,
+                                  const std::vector<std::string> &input_nodes,
+                                  const std::vector<std::string> &output_nodes,
+                                  const DeviceType device_type,
+                                  std::shared_ptr<MaceEngine> *engine,
+                                  const std::vector<unsigned char> model_pb) {
+  LOG(INFO) << "Create MaceEngine from model pb";
+  // load model
+  if (engine == nullptr) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+
+  const unsigned char * model_data = nullptr;
+  model_data = LoadModelData(model_data_file);
+
+  NetDef net_def;
+  net_def.ParseFromArray(&model_pb[0], model_pb.size());
+
+  engine->reset(
+      new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes,
+                           model_data));
+
+  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
+    UnloadModelData(model_data);
+  }
+  return MACE_SUCCESS;
 }
 
 }  // namespace mace
