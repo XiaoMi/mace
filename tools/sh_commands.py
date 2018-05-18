@@ -942,7 +942,8 @@ def merge_libs(target_soc,
             sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
                   model_data_dir)
         if model_load_type == "source":
-            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir), model_header_dir)
+            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir),
+                  model_header_dir)
 
     for model_name in mace_model_dirs_kv:
         sh.cp("-f", "%s/%s.pb" % (mace_model_dirs_kv[model_name], model_name),

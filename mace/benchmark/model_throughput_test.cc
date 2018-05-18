@@ -42,11 +42,11 @@ namespace mace {
 #ifdef MACE_CPU_MODEL_TAG
 namespace MACE_CPU_MODEL_TAG {
 
-extern const unsigned char *LoadModelData(const char *model_data_file);
+extern const unsigned char *LoadModelData(const std::string &model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
+extern NetDef CreateNet();
 
 extern const std::string ModelChecksum();
 
@@ -60,7 +60,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
+extern NetDef CreateNet();
 
 extern const std::string ModelChecksum();
 
@@ -74,7 +74,7 @@ extern const unsigned char *LoadModelData(const char *model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
+extern NetDef CreateNet();
 
 extern const std::string ModelChecksum();
 

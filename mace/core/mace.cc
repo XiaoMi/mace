@@ -14,10 +14,11 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <memory>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include <memory>
 
 #include "mace/core/net.h"
 #include "mace/core/types.h"
@@ -276,15 +277,14 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
   return impl_->Run(inputs, outputs, nullptr);
 }
 
-namespace {
-const unsigned char *LoadModelData(const char *model_data_file) {
-  int fd = open(model_data_file, O_RDONLY);
+const unsigned char *LoadModelData(const std::string &model_data_file,
+                                   const size_t &data_size) {
+  int fd = open(model_data_file.c_str(), O_RDONLY);
   MACE_CHECK(fd >= 0, "Failed to open model data file ",
              model_data_file, ", error code: ", errno);
 
-  const unsigned char *model_data =
-    static_cast<const unsigned char *>(mmap(nullptr, 2453764,
-                                       PROT_READ, MAP_PRIVATE, fd, 0));
+  const unsigned char *model_data = static_cast<const unsigned char *>(
+      mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, fd, 0));
   MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
              model_data_file, ", error code: ", errno);
 
@@ -295,37 +295,45 @@ const unsigned char *LoadModelData(const char *model_data_file) {
   return model_data;
 }
 
-void UnloadModelData(const unsigned char *model_data) {
+void UnloadModelData(const unsigned char *model_data,
+                     const size_t &data_size) {
   int ret = munmap(const_cast<unsigned char *>(model_data),
-                   2453764);
+                   data_size);
   MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
 }
-}  // namespace
 
-MaceStatus CreateMaceEngineFromPB(const char *model_data_file,
+MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
                                   const std::vector<std::string> &input_nodes,
                                   const std::vector<std::string> &output_nodes,
                                   const DeviceType device_type,
                                   std::shared_ptr<MaceEngine> *engine,
-                                  const std::vector<unsigned char> model_pb) {
+                                  const std::vector<unsigned char> &model_pb) {
   LOG(INFO) << "Create MaceEngine from model pb";
   // load model
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
   }
 
-  const unsigned char * model_data = nullptr;
-  model_data = LoadModelData(model_data_file);
-
   NetDef net_def;
   net_def.ParseFromArray(&model_pb[0], model_pb.size());
+
+  index_t model_data_size = 0;
+  for (auto &const_tensor : net_def.tensors()) {
+    model_data_size = std::max(
+        model_data_size,
+        static_cast<index_t>(const_tensor.offset() +
+                             const_tensor.data_size() *
+                             GetEnumTypeSize(const_tensor.data_type())));
+  }
+  const unsigned char *model_data = nullptr;
+  model_data = LoadModelData(model_data_file, model_data_size);
 
   engine->reset(
       new mace::MaceEngine(&net_def, device_type, input_nodes, output_nodes,
                            model_data));
 
   if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
-    UnloadModelData(model_data);
+    UnloadModelData(model_data, model_data_size);
   }
   return MACE_SUCCESS;
 }

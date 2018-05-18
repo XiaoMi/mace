@@ -29,11 +29,11 @@ namespace mace {
 {% for tag in model_tags %}
 namespace {{tag}} {
 
-extern const unsigned char *LoadModelData(const char *model_data_file);
+extern const unsigned char *LoadModelData(const std::string &model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet(const std::vector<unsigned char> &model_pb = {});
+extern NetDef CreateNet();
 
 extern const std::string ModelName();
 extern const std::string ModelChecksum();
@@ -51,9 +51,9 @@ std::map<std::string, int> model_name_map {
 };
 }  // namespace
 
-MaceStatus CreateMaceEngine(
+MaceStatus CreateMaceEngineFromCode(
     const std::string &model_name,
-    const char *model_data_file,
+    const std::string &model_data_file,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const DeviceType device_type,
@@ -86,9 +86,9 @@ MaceStatus CreateMaceEngine(
   return MaceStatus::MACE_SUCCESS;
 }
 {% else %}
-MaceStatus CreateMaceEngine(
+MaceStatus CreateMaceEngineFromCode(
     const std::string &model_name,
-    const char *model_data_file,
+    const std::string &model_data_file,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const DeviceType device_type,

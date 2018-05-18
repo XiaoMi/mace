@@ -106,12 +106,18 @@ class MaceEngine {
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
 
-MaceStatus CreateMaceEngineFromPB(const char *model_data_file,
+const unsigned char *LoadModelData(const std::string &model_data_file,
+                                   const size_t &data_size);
+
+void UnloadModelData(const unsigned char *model_data,
+                     const size_t &data_size);
+
+MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
                                   const std::vector<std::string> &input_nodes,
                                   const std::vector<std::string> &output_nodes,
                                   const DeviceType device_type,
                                   std::shared_ptr<MaceEngine> *engine,
-                                  const std::vector<unsigned char> model_pb);
+                                  const std::vector<unsigned char> &model_pb);
 
 }  // namespace mace
 

@@ -288,12 +288,12 @@ int Main(int argc, char **argv) {
                                model_pb_data);
   } else {
     create_engine_status =
-        CreateMaceEngine(FLAGS_model_name,
-                         model_data_file_ptr,
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromCode(FLAGS_model_name,
+                                 model_data_file_ptr,
+                                 input_names,
+                                 output_names,
+                                 device_type,
+                                 &engine);
   }
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
     LOG(FATAL) << "Create engine error, please check the arguments";

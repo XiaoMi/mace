@@ -169,15 +169,13 @@ bool RunModel(const std::vector<std::string> &input_names,
   MaceStatus create_engine_status;
   // Create Engine
   int64_t t0 = NowMicros();
-  const char *model_data_file_ptr =
-    FLAGS_model_data_file.empty() ? nullptr : FLAGS_model_data_file.c_str();
   if (FLAGS_model_file != "") {
     std::vector<unsigned char> model_pb_data;
     if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
     create_engine_status =
-        CreateMaceEngineFromPB(model_data_file_ptr,
+        CreateMaceEngineFromPB(FLAGS_model_data_file,
                                input_names,
                                output_names,
                                device_type,
@@ -185,12 +183,12 @@ bool RunModel(const std::vector<std::string> &input_names,
                                model_pb_data);
   } else {
     create_engine_status =
-        CreateMaceEngine(model_name,
-                         model_data_file_ptr,
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromCode(model_name,
+                                 FLAGS_model_data_file,
+                                 input_names,
+                                 output_names,
+                                 device_type,
+                                 &engine);
   }
 
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {

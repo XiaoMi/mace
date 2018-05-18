@@ -127,13 +127,11 @@ void CreateMemoryArena(mace::MemoryArena *mem_arena) {
 
 namespace {{tag}} {
 
-NetDef CreateNet(const std::vector<unsigned char> &model_pb = {}) {
+NetDef CreateNet() {
   MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
 
   NetDef net_def;
 
-  {% if model_type == 'source' %}
-  MACE_UNUSED(model_pb);
   net_def.set_name("{{ net.name}}");
   net_def.set_version("{{ net.version }}");
 
@@ -148,11 +146,6 @@ NetDef CreateNet(const std::vector<unsigned char> &model_pb = {}) {
   {% endif %}
   {% if net.output_info | length > 0 %}
   CreateOutputInfo(net_def);
-  {% endif %}
-
-  {% else %}
-
-  net_def.ParseFromArray(&model_pb[0], model_pb.size());
   {% endif %}
 
   return net_def;
