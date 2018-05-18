@@ -59,8 +59,8 @@ def ops_benchmark_stdout_processor(stdout, device_properties, abi):
         "ro.product.model": model,
         "abi": abi
     }
-    sh_commands.falcon_push_metrics(
-        metrics, tags=tags, endpoint="mace_ops_benchmark")
+    # sh_commands.falcon_push_metrics(server,
+    #    metrics, tags=tags, endpoint="mace_ops_benchmark")
 
 
 def parse_args():

@@ -31,7 +31,7 @@ class FalconCli(object):
 
     @classmethod
     def connect(cls,
-                server="transfer.falcon.miliao.srv",
+                server,
                 port=8433,
                 debug=True,
                 buf_size=1000):
