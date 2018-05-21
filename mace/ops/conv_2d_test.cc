@@ -779,11 +779,17 @@ TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv15x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {15, 1, 256, 2},
                                                 {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({64, 64}, {15, 1, 64, 2},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({256, 256}, {15, 1, 32, 2},
+                                             {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x15S12) {
   TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {1, 15, 256, 2},
                                                 {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({256, 256}, {1, 15, 32, 2},
+                                             {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x75S12) {
