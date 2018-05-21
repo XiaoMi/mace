@@ -103,7 +103,7 @@ void FCBenchmark(
 BM_FC(1, 16, 16, 32, 32);
 BM_FC(1, 8, 8, 32, 1000);
 BM_FC(1, 2, 2, 512, 2);
-BM_FC(1, 7, 7, 512, 4096);
+BM_FC(1, 7, 7, 512, 2048);
 
 }  // namespace test
 }  // namespace ops
