@@ -12,3 +12,6 @@ v0.7.0 (2018-05-18)
 2. Improve cpu performace
 3. Merge cpu/gpu engine to one
 
+v0.6.3 (2018-05-21)
+------
+1. support `float` data_type when running in gpu
