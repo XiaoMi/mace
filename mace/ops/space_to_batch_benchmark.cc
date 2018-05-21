@@ -27,17 +27,29 @@ void BMSpaceToBatch(
   mace::testing::StopTiming();
 
   OpsTestNet net;
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+  } else if (D == DeviceType::GPU) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+  }
 
-  BufferToImage<D, float>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
-  OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .AddIntsArg("paddings", {shape, shape, shape, shape})
-      .AddIntsArg("block_shape", {shape, shape})
-      .Finalize(net.NewOperatorDef());
-
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+        .Input("Input")
+        .Output("Output")
+        .AddIntsArg("paddings", {shape, shape, shape, shape})
+        .AddIntsArg("block_shape", {shape, shape})
+        .Finalize(net.NewOperatorDef());
+  } else if (D == DeviceType::GPU) {
+    BufferToImage<D, float>(&net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+    OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+        .Input("InputImage")
+        .Output("OutputImage")
+        .AddIntsArg("paddings", {shape, shape, shape, shape})
+        .AddIntsArg("block_shape", {shape, shape})
+        .Finalize(net.NewOperatorDef());
+  }
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);
@@ -65,11 +77,14 @@ void BMSpaceToBatch(
       BM_SPACE_TO_BATCH_##N##_##H##_##W##_##C##_##SHAPE##_##TYPE##_##DEVICE)
 
 #define BM_SPACE_TO_BATCH(N, H, W, C, SHAPE) \
-  BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU);
+  BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
+  BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU);
 
 BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);
 BM_SPACE_TO_BATCH(1, 256, 256, 32, 2);
+BM_SPACE_TO_BATCH(1, 256, 256, 16, 2);
 BM_SPACE_TO_BATCH(1, 256, 256, 32, 4);
+BM_SPACE_TO_BATCH(1, 256, 256, 32, 8);
 
 }  // namespace test
 }  // namespace ops
