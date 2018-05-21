@@ -55,8 +55,11 @@ def main(unused_args):
         FLAGS.data_type, FLAGS.runtime, FLAGS.winograd)
 
   if FLAGS.output_type == 'source':
+    gpu_data_type = ""
+    if FLAGS.runtime == 'gpu':
+      gpu_data_type = FLAGS.data_type
     source_converter_lib.convert_to_source(output_graph_def, model_checksum, FLAGS.template, FLAGS.obfuscate,
-      FLAGS.model_tag, FLAGS.output, FLAGS.runtime, FLAGS.embed_model_data)
+      FLAGS.model_tag, FLAGS.output, FLAGS.runtime, FLAGS.embed_model_data, gpu_data_type)
   else:
     with open(FLAGS.output, "wb") as f:
       f.write(output_graph_def.SerializeToString())
