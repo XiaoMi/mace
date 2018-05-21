@@ -65,6 +65,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSFORM_ADD_TO_BIASADD,
             TransformerRule.FOLD_BIASADD,
             TransformerRule.FOLD_ACTIVATION,
+            TransformerRule.FLATTEN_ATROUS_CONV,
+            TransformerRule.FOLD_ACTIVATION,
             TransformerRule.TRANSPOSE_FILTERS,
             TransformerRule.TRANSPOSE_DATA_FORMAT,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
@@ -92,6 +94,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSFORM_ADD_TO_BIASADD:
                 self.transform_add_to_biasadd,
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
+            TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
@@ -613,6 +616,65 @@ class Transformer(base_converter.ConverterInterface):
                     self.safe_remove_node(consumer_op, op)
                     return True
 
+        return False
+
+    def flatten_atrous_conv(self):
+        if self._option.device != mace_pb2.GPU:
+            return
+
+        net = self._model
+        for op in net.op:
+            if (op.type == MaceOp.SpaceToBatchND.name
+                    and len(self._consumers.get(op.output[0], [])) == 1):
+                conv_op = self._consumers.get(op.output[0])[0]
+                if (conv_op.type == MaceOp.Conv2D.name
+                        or conv_op.type == MaceOp.DepthwiseConv2d.name) \
+                        and len(self._consumers.get(conv_op.output[0], [])) == 1:  # noqa
+                    b2s_op = self._consumers.get(conv_op.output[0])[0]
+                    if b2s_op.type == MaceOp.BatchToSpaceND.name:
+                        print "Flatten atrous convolution"
+                        # Add args.
+                        padding_arg_values = ConverterUtil.get_arg(
+                            op,
+                            MaceKeyword.mace_paddings_str).ints
+                        blocks_arg_values = ConverterUtil.get_arg(
+                            b2s_op,
+                            MaceKeyword.mace_space_batch_block_shape_str).ints
+                        dilation_arg = ConverterUtil.get_arg(
+                            conv_op,
+                            MaceKeyword.mace_dilations_str)
+                        if dilation_arg is None:
+                            dilation_arg = conv_op.arg.add()
+                        dilation_arg.name = MaceKeyword.mace_dilations_str
+                        dilation_arg.ints[:] = blocks_arg_values
+
+                        padding_arg = ConverterUtil.get_arg(
+                            conv_op,
+                            MaceKeyword.mace_padding_str)
+                        if padding_arg is None:
+                            padding_arg = conv_op.arg.add()
+                        padding_arg.name = MaceKeyword.mace_padding_str
+                        if len(padding_arg_values) > 0 \
+                                and padding_arg_values[0] > 0:
+                            padding_arg.i = PaddingMode.SAME.value
+                        else:
+                            padding_arg.i = PaddingMode.VALID.value
+
+                        strides_arg = ConverterUtil.get_arg(
+                            conv_op,
+                            MaceKeyword.mace_strides_str)
+                        if strides_arg is None:
+                            strides_arg = conv_op.arg.add()
+                        strides_arg.name = MaceKeyword.mace_strides_str
+                        strides_arg.ints[:] = [1, 1]
+
+                        # update output shape
+                        conv_op.output_shape[0].dims[:] = \
+                            b2s_op.output_shape[0].dims[:]
+
+                        self.safe_remove_node(op, None)
+                        self.safe_remove_node(b2s_op, conv_op)
+                        return True
         return False
 
     def fold_activation(self):

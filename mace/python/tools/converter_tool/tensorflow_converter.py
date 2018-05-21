@@ -16,6 +16,7 @@
 import math
 import numpy as np
 import tensorflow as tf
+from enum import Enum
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
@@ -41,6 +42,50 @@ tf_epsilon_str = 'epsilon'
 tf_align_corners = 'align_corners'
 tf_block_size = 'block_size'
 
+TFSupportedOps = [
+    'Conv2D',
+    'DepthwiseConv2dNative',
+    'Conv2DBackpropInput',
+    'BiasAdd',
+    'Add',
+    'Sub',
+    'Mul',
+    'Div',
+    'Min',
+    'Max',
+    'Neg',
+    'Abs',
+    'RealDiv',
+    'SquaredDifference',
+    'Pow',
+    'Relu',
+    'Relu6',
+    'Tanh',
+    'Sigmoid',
+    'FusedBatchNorm',
+    'AvgPool',
+    'MaxPool',
+    'Squeeze',
+    'MatMul',
+    'Identity',
+    'Reshape',
+    'Shape',
+    'Transpose',
+    'Softmax',
+    'ResizeBilinear',
+    'Placeholder',
+    'SpaceToBatchND',
+    'BatchToSpaceND',
+    'DepthToSpace',
+    'SpaceToDepth',
+    'Pad',
+    'ConcatV2',
+    'Mean',
+    'Const',
+]
+
+TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
+
 
 class TensorflowConverter(base_converter.ConverterInterface):
     """A class for convert tensorflow frozen model to mace model.
@@ -53,71 +98,70 @@ class TensorflowConverter(base_converter.ConverterInterface):
         'FULL': PaddingMode.FULL
     }
     pooling_type_mode = {
-        'AvgPool': PoolingType.AVG,
-        'MaxPool': PoolingType.MAX
+        TFOpType.AvgPool.name: PoolingType.AVG,
+        TFOpType.MaxPool.name: PoolingType.MAX
     }
     eltwise_type = {
-        'Add': EltwiseType.SUM,
-        'Sub': EltwiseType.SUB,
-        'Mul': EltwiseType.PROD,
-        'Div': EltwiseType.DIV,
-        'Min': EltwiseType.MIN,
-        'Max': EltwiseType.MAX,
-        'Neg': EltwiseType.NEG,
-        'Abs': EltwiseType.ABS,
-        'RealDiv': EltwiseType.DIV,
-        'SquaredDifference': EltwiseType.SQR_DIFF,
-        'Pow': EltwiseType.POW
+        TFOpType.Add.name: EltwiseType.SUM,
+        TFOpType.Sub.name: EltwiseType.SUB,
+        TFOpType.Mul.name: EltwiseType.PROD,
+        TFOpType.Div.name: EltwiseType.DIV,
+        TFOpType.Min.name: EltwiseType.MIN,
+        TFOpType.Max.name: EltwiseType.MAX,
+        TFOpType.Neg.name: EltwiseType.NEG,
+        TFOpType.Abs.name: EltwiseType.ABS,
+        TFOpType.RealDiv.name: EltwiseType.DIV,
+        TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
+        TFOpType.Pow.name: EltwiseType.POW
     }
     activation_type = {
-        'Relu': ActivationType.RELU,
-        'Relu6': ActivationType.RELUX,
-        'Tanh': ActivationType.TANH,
-        'Sigmoid': ActivationType.SIGMOID
+        TFOpType.Relu.name: ActivationType.RELU,
+        TFOpType.Relu6.name: ActivationType.RELUX,
+        TFOpType.Tanh.name: ActivationType.TANH,
+        TFOpType.Sigmoid.name: ActivationType.SIGMOID
     }
 
     def __init__(self, option, src_model_file):
         self._op_converters = {
-            'Conv2D': self.convert_conv2d,
-            'DepthwiseConv2dNative': self.convert_conv2d,
-            'Conv2DBackpropInput': self.convert_conv2d,
-            'BiasAdd': self.convert_biasadd,
-            'Add': self.convert_add,
-            'Sub': self.convert_elementwise,
-            'Mul': self.convert_elementwise,
-            'Div': self.convert_elementwise,
-            'Min': self.convert_elementwise,
-            'Max': self.convert_elementwise,
-            'Neg': self.convert_elementwise,
-            'Abs': self.convert_elementwise,
-            'RealDiv': self.convert_elementwise,
-            'SquaredDifference': self.convert_elementwise,
-            'Pow': self.convert_elementwise,
-            'Relu': self.convert_activation,
-            'Relu6': self.convert_activation,
-            'Tanh': self.convert_activation,
-            'Sigmoid': self.convert_activation,
-            'FusedBatchNorm': self.convert_fused_batchnorm,
-            'AvgPool': self.convert_pooling,
-            'MaxPool': self.convert_pooling,
-            'Squeeze': self.convert_identity,
-            'MatMul': self.convert_matmul,
-            'Identity': self.convert_identity,
-            'Reshape': self.convert_reshape,
-            'Shape': self.convert_nop,
-            'Transpose': self.convert_transpose,
-            'Softmax': self.convert_softmax,
-            'ResizeBilinear': self.convert_resize_bilinear,
-            'Placeholder': self.convert_nop,
-            'SpaceToBatchND': self.convert_space_batch,
-            'BatchToSpaceND': self.convert_space_batch,
-            'DepthToSpace': self.convert_space_depth,
-            'SpaceToDepth': self.convert_space_depth,
-            'Pad': self.convert_pad,
-            'ConcatV2': self.convert_concat,
-            'Mean': self.convert_mean,
-            # Const converter_tool should be placed at the end
-            'Const': self.convert_tensor,
+            TFOpType.Conv2D.name: self.convert_conv2d,
+            TFOpType.DepthwiseConv2dNative.name: self.convert_conv2d,
+            TFOpType.Conv2DBackpropInput.name: self.convert_conv2d,
+            TFOpType.BiasAdd.name: self.convert_biasadd,
+            TFOpType.Add.name: self.convert_add,
+            TFOpType.Sub.name: self.convert_elementwise,
+            TFOpType.Mul.name: self.convert_elementwise,
+            TFOpType.Div.name: self.convert_elementwise,
+            TFOpType.Min.name: self.convert_elementwise,
+            TFOpType.Max.name: self.convert_elementwise,
+            TFOpType.Neg.name: self.convert_elementwise,
+            TFOpType.Abs.name: self.convert_elementwise,
+            TFOpType.RealDiv.name: self.convert_elementwise,
+            TFOpType.SquaredDifference.name: self.convert_elementwise,
+            TFOpType.Pow.name: self.convert_elementwise,
+            TFOpType.Relu.name: self.convert_activation,
+            TFOpType.Relu6.name: self.convert_activation,
+            TFOpType.Tanh.name: self.convert_activation,
+            TFOpType.Sigmoid.name: self.convert_activation,
+            TFOpType.FusedBatchNorm.name: self.convert_fused_batchnorm,
+            TFOpType.AvgPool.name: self.convert_pooling,
+            TFOpType.MaxPool.name: self.convert_pooling,
+            TFOpType.Squeeze.name: self.convert_identity,
+            TFOpType.MatMul.name: self.convert_matmul,
+            TFOpType.Identity.name: self.convert_identity,
+            TFOpType.Reshape.name: self.convert_reshape,
+            TFOpType.Shape.name: self.convert_nop,
+            TFOpType.Transpose.name: self.convert_transpose,
+            TFOpType.Softmax.name: self.convert_softmax,
+            TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
+            TFOpType.Placeholder.name: self.convert_nop,
+            TFOpType.SpaceToBatchND.name: self.convert_space_batch,
+            TFOpType.BatchToSpaceND.name: self.convert_space_batch,
+            TFOpType.DepthToSpace.name: self.convert_space_depth,
+            TFOpType.SpaceToDepth.name: self.convert_space_depth,
+            TFOpType.Pad.name: self.convert_pad,
+            TFOpType.ConcatV2.name: self.convert_concat,
+            TFOpType.Mean.name: self.convert_mean,
+            TFOpType.Const.name: self.convert_nop,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -180,24 +224,29 @@ class TensorflowConverter(base_converter.ConverterInterface):
                        "Mace does not support tensorflow op type %s yet"
                        % tf_op.type)
             self._op_converters[tf_op.type](tf_op)
+        self.convert_tensors()
 
-    def convert_tensor(self, tf_op):
-        output_name = tf_op.outputs[0].name
-        if output_name not in self._skip_tensor:
-            tensor = self._mace_net_def.tensors.add()
-            tensor.name = tf_op.outputs[0].name
-            tf_tensor = tf_op.outputs[0].eval()
-            tensor.dims.extend(list(tf_tensor.shape))
+    def convert_tensors(self):
+        for tf_op in self._tf_graph.get_operations():
+            if tf_op.type != TFOpType.Const.name:
+                continue
+            output_name = tf_op.outputs[0].name
+            if output_name not in self._skip_tensor:
+                tensor = self._mace_net_def.tensors.add()
+                tensor.name = tf_op.outputs[0].name
+                tf_tensor = tf_op.outputs[0].eval()
+                tensor.dims.extend(list(tf_tensor.shape))
 
-            tf_dt = tf_op.get_attr('dtype')
-            if tf_dt == tf.float32:
-                tensor.data_type = mace_pb2.DT_FLOAT
-                tensor.float_data.extend(tf_tensor.astype(np.float32).flat)
-            elif tf_dt == tf.int32:
-                tensor.data_type = mace_pb2.DT_INT32
-                tensor.int32_data.extend(tf_tensor.astype(np.int32).flat)
-            else:
-                mace_check(False, "Not supported tensor type: %s" % tf_dt.name)
+                tf_dt = tf_op.get_attr('dtype')
+                if tf_dt == tf.float32:
+                    tensor.data_type = mace_pb2.DT_FLOAT
+                    tensor.float_data.extend(tf_tensor.astype(np.float32).flat)
+                elif tf_dt == tf.int32:
+                    tensor.data_type = mace_pb2.DT_INT32
+                    tensor.int32_data.extend(tf_tensor.astype(np.int32).flat)
+                else:
+                    mace_check(False,
+                               "Not supported tensor type: %s" % tf_dt.name)
 
     def add_tensor(self, name, shape, data_type, value):
         tensor = self._mace_net_def.tensors.add()
@@ -229,9 +278,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     def convert_conv2d(self, tf_op):
         op = self.convert_general_op(tf_op)
-        if tf_op.type == 'DepthwiseConv2dNative':
+        if tf_op.type == TFOpType.DepthwiseConv2dNative.name:
             op.type = MaceOp.DepthwiseConv2d.name
-        elif tf_op.type == 'Conv2DBackpropInput':
+        elif tf_op.type == TFOpType.Conv2DBackpropInput.name:
             op.type = MaceOp.Deconv2D.name
         else:
             op.type = MaceOp.Conv2D.name
@@ -274,7 +323,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         type_arg.name = MaceKeyword.mace_activation_type_str
         type_arg.s = self.activation_type[tf_op.type].name
 
-        if tf_op.type == 'Relu6':
+        if tf_op.type == TFOpType.Relu6.name:
             limit_arg = op.arg.add()
             limit_arg.name = MaceKeyword.mace_activation_max_limit_str
             limit_arg.f = 6.0
@@ -335,7 +384,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         size_arg.name = MaceKeyword.mace_resize_size_str
         size_value = tf_op.inputs[1].eval().astype(np.int32)
         size_arg.ints.extend(size_value)
-        self._skip_tensor.update(tf_op.inputs[1].name)
+        self._skip_tensor.add(tf_op.inputs[1].name)
         align_corners_arg = op.arg.add()
         align_corners_arg.name = MaceKeyword.mace_align_corners_str
         align_corners_arg.i = tf_op.get_attr(tf_align_corners)
@@ -357,7 +406,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         size_arg.ints.extend(size_value)
 
         crops_or_paddings_arg = op.arg.add()
-        if op.type == 'BatchToSpaceND':
+        if op.type == TFOpType.BatchToSpaceND.name:
             op.type = MaceOp.BatchToSpaceND.name
             crops_or_paddings_arg.name = \
                 MaceKeyword.mace_batch_to_space_crops_str
@@ -367,12 +416,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         crops_or_paddings_value = tf_op.inputs[2].eval().astype(np.int32).flat
         crops_or_paddings_arg.ints.extend(crops_or_paddings_value)
 
-        self._skip_tensor.update(tf_op.inputs[1].name)
-        self._skip_tensor.update(tf_op.inputs[2].name)
+        self._skip_tensor.add(tf_op.inputs[1].name)
+        self._skip_tensor.add(tf_op.inputs[2].name)
 
     def convert_space_depth(self, tf_op):
         op = self.convert_general_op(tf_op)
-        if op.type == 'SpaceToDepth':
+        if op.type == TFOpType.SpaceToDepth.name:
             op.type = MaceOp.SpaceToDepth.name
         else:
             op.type = MaceOp.DepthToSpace.name
@@ -390,14 +439,14 @@ class TensorflowConverter(base_converter.ConverterInterface):
         paddings_arg.name = MaceKeyword.mace_paddings_str
         paddings_value = tf_op.inputs[1].eval().astype(np.int32).flat
         paddings_arg.ints.extend(paddings_value)
-        self._skip_tensor.update(tf_op.inputs[1].name)
+        self._skip_tensor.add(tf_op.inputs[1].name)
 
         if len(tf_op.inputs) == 3:
             constant_value_arg = op.arg.add()
             constant_value_arg.name = MaceKeyword.mace_constant_value_str
             constant_value = tf_op.inputs[2].eval().astype(np.int32).flat[0]
             constant_value_arg.i = constant_value
-            self._skip_tensor.update(tf_op.inputs[2].name)
+            self._skip_tensor.add(tf_op.inputs[2].name)
 
     def convert_concat(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -412,7 +461,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         mace_check(axis == 3, "only support concat at channel dimension")
 
-        self._skip_tensor.update(tf_op.inputs[-1].name)
+        self._skip_tensor.add(tf_op.inputs[-1].name)
 
     def convert_matmul(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -426,13 +475,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
         shape_arg = op.arg.add()
         shape_arg.name = MaceKeyword.mace_shape_str
         shape_value = []
-        if tf_op.inputs[1].op.type == 'Const':
+        if tf_op.inputs[1].op.type == TFOpType.Const.name:
             shape_value = list(tf_op.inputs[1].eval().astype(np.int32))
             for i in xrange(len(shape_value)):
                 if shape_value[i] == -1:
                     shape_value[i] = 1
-            self._skip_tensor.update(tf_op.inputs[-1].name)
-        elif tf_op.inputs[1].op.type == 'Shape':
+            self._skip_tensor.add(tf_op.inputs[-1].name)
+        elif tf_op.inputs[1].op.type == TFOpType.Shape.name:
             shape_value = list(tf_op.inputs[1].op.inputs[0].shape.as_list())
 
         shape_arg.ints.extend(shape_value)
