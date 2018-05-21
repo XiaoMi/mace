@@ -18,6 +18,12 @@ from enum import Enum
 from mace.proto import mace_pb2
 
 
+class DeviceType(Enum):
+    CPU = 0
+    GPU = 2
+    HEXAGON = 3
+
+
 class DataFormat(Enum):
     NHWC = 0
     NCHW = 1
@@ -198,7 +204,7 @@ class ConverterOption(object):
         self._input_nodes = {}
         self._output_nodes = {}
         self._data_type = mace_pb2.DT_FLOAT
-        self._device = mace_pb2.CPU
+        self._device = DeviceType.CPU.value
         self._winograd_enabled = False
         self._transformer_option = [
             TransformerRule.REMOVE_USELESS_RESHAPE_OP,

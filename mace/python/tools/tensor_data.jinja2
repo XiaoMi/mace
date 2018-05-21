@@ -23,6 +23,12 @@
 #include "mace/utils/logging.h"
 
 namespace mace {
+
+extern const unsigned char *LoadModelData(const std::string &model_data_file,
+                                          const size_t &data_size);
+extern void UnloadModelData(const unsigned char *model_data,
+                            const size_t &data_size);
+
 namespace {{tag}} {
 
 {% if embed_model_data %}

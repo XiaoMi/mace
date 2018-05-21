@@ -9,12 +9,6 @@ enum NetMode {
   NORMAL = 1;
 }
 
-enum DeviceType {
-  CPU     = 0;                    // In default, we will use CPU.
-  GPU     = 2;
-  HEXAGON = 3;
-}
-
 enum DataType {
   DT_INVALID = 0;
 

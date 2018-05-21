@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
@@ -135,6 +136,7 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
           << ", CPU core IDs: " << MakeString(cpu_ids);
   omp_set_num_threads(omp_num_threads);
 #else
+  MACE_UNUSED(omp_num_threads);
   LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
 

@@ -18,6 +18,7 @@
 #include <string>
 
 #include "mace/core/macros.h"
+#include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
@@ -40,33 +41,37 @@ extern void CreateOperator{{i}}(mace::OperatorDef *op);
 namespace {
 
 {% if net.arg|length != 0 %}
-void CreateNetArg(mace::NetDef &net_def) {
+void CreateNetArg(NetDef *net_def) {
+  net_def->mutable_arg()->Reserve({{ net.arg|length }});
   mace::Argument *arg = nullptr;
-  {% for arg in net.arg %}
+  {% for i in range(net.arg|length) %}
 
-  arg = net_def.add_arg();
-  arg->set_name({{ arg.name|tojson }});
+  arg = net_def->add_arg();
+  arg->set_name({{ net.arg[i].name|tojson }});
 
-  {%- if arg.HasField('f') %}
-  arg->set_f({{ arg.f }});
+  {%- if net.arg[i].HasField('f') %}
+  arg->set_f({{ net.arg[i].f }});
   {% endif %}
 
-  {%- if arg.HasField('i') %}
-  arg->set_i({{ arg.i }});
+  {%- if net.arg[i].HasField('i') %}
+  arg->set_i({{ net.arg[i].i }});
   {% endif %}
 
-  {%- if arg.HasField('s') %}
-  arg->set_s({{ arg.s|tojson }});
+  {%- if net.arg[i].HasField('s') %}
+  arg->set_s({{ net.arg[i].s|tojson }});
   {% endif %}
 
-  {% for float_value in arg.floats %}
-  arg->add_floats({ {{ float_value }} });
+  arg->mutable_floats()->Reserve({{ net.arg[i].floats|length }});
+  {% for float_value in net.arg[i].floats %}
+  arg->add_floats({{ float_value }});
   {% endfor %}
-  {% for int_value in arg.ints %}
-  arg->add_ints({ {{ int_value }} });
+  arg->mutable_ints()->Reserve({{ net.arg[i].ints|length }});
+  {% for int_value in net.arg[i].ints %}
+  arg->add_ints({{ int_value }});
   {% endfor %}
-  {% for str_value in arg.strings %}
-  arg->add_strings({ {{ str_value }} });
+  arg->mutable_strings()->Reserve({{ net.arg[i].strings|length }});
+  {% for str_value in net.arg[i].strings %}
+  arg->add_strings({{ str_value }});
   {% endfor %}
 
   {% endfor %}
@@ -74,7 +79,7 @@ void CreateNetArg(mace::NetDef &net_def) {
 {% endif %}
 
 {% if net.output_info | length > 0 %}
-void CreateOutputInfo(mace::NetDef &net_def) {
+void CreateOutputInfo(NetDef *net_def) {
   std::vector<std::vector<int>> dims { {{net.output_info | map(attribute='dims') | join(', ') | replace('[', '{') | replace(']', '}') }} };
 
   std::vector<int> data_types_int { {{ net.output_info | map(attribute='data_type') | join(', ') }} };
@@ -82,27 +87,31 @@ void CreateOutputInfo(mace::NetDef &net_def) {
   for (int k = 0; k < {{ net.output_info | length }}; ++k) {
     data_types[k] = static_cast<mace::DataType>(data_types_int[k]);
   }
+  net_def->mutable_output_info()->Reserve({{ net.output_info | length }});
   for (int i = 0; i < {{ net.output_info | length }}; ++i) {
-    net_def.add_output_info();
-    net_def.mutable_output_info(i)->set_data_type(data_types[i]);
-    for (int j = 0; j < (int)dims[i].size(); ++j) {
-      net_def.mutable_output_info(i)->add_dims(dims[i][j]);
+    auto output_info = net_def->add_output_info();
+    output_info->set_data_type(data_types[i]);
+    output_info->mutable_dims()->Reserve(dims[i].size());
+    for (size_t j = 0; j < dims[i].size(); ++j) {
+      output_info->add_dims(dims[i][j]);
     }
   }
 }
 {% endif %}
 
-void CreateOperators(mace::NetDef *net_def) {
+void CreateOperators(NetDef *net_def) {
   MACE_LATENCY_LOGGER(1, "Create operators");
 
+  net_def->mutable_op()->Reserve({{ net.op|length }});
   {% for i in range(net.op|length) %}
   mace::{{tag}}::CreateOperator{{i}}(net_def->add_op());
   {% endfor %}
 }
 
-void CreateTensors(mace::NetDef *net_def) {
+void CreateTensors(NetDef *net_def) {
   MACE_LATENCY_LOGGER(1, "Create tensors");
 
+  net_def->mutable_tensors()->Reserve({{ tensors|length }});
   {% for tensor in tensors %}
   mace::{{tag}}::CreateTensor{{tensor.id}}(net_def->add_tensors());
   {% endfor %}
@@ -110,6 +119,7 @@ void CreateTensors(mace::NetDef *net_def) {
 
 {% if net.mem_arena.mem_block|length != 0 %}
 void CreateMemoryArena(mace::MemoryArena *mem_arena) {
+  mem_arena->mutable_mem_block()->Reserve({{ net.mem_arena.mem_block|length }});
   {% for i in range(net.mem_arena.mem_block|length) %}
 
   mace::MemoryBlock* mem_block{{i}} = mem_arena->add_mem_block();
@@ -127,25 +137,24 @@ void CreateMemoryArena(mace::MemoryArena *mem_arena) {
 
 namespace {{tag}} {
 
-NetDef CreateNet() {
+const std::shared_ptr<NetDef> CreateNet() {
   MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
 
-  NetDef net_def;
+  std::shared_ptr<NetDef> net_def(new NetDef());
+  net_def->set_name("{{ net.name}}");
+  net_def->set_version("{{ net.version }}");
 
-  net_def.set_name("{{ net.name}}");
-  net_def.set_version("{{ net.version }}");
-
-  CreateOperators(&net_def);
-  CreateTensors(&net_def);
+  CreateOperators(net_def.get());
+  CreateTensors(net_def.get());
 
   {% if net.arg|length != 0 %}
-  CreateNetArg(net_def);
+  CreateNetArg(net_def.get());
   {% endif %}
   {% if net.mem_arena.mem_block|length != 0 %}
-  CreateMemoryArena(net_def.mutable_mem_arena());
+  CreateMemoryArena(net_def->mutable_mem_arena());
   {% endif %}
   {% if net.output_info | length > 0 %}
-  CreateOutputInfo(net_def);
+  CreateOutputInfo(net_def.get());
   {% endif %}
 
   return net_def;

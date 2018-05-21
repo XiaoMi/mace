@@ -14,7 +14,4 @@ cc_library(
         "mace_runtime.h",
     ],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-    deps = [
-        "//mace/proto:mace_cc",
-    ],
 )

@@ -33,7 +33,7 @@ extern const unsigned char *LoadModelData(const std::string &model_data_file);
 
 extern void UnloadModelData(const unsigned char *model_data);
 
-extern NetDef CreateNet();
+extern const std::shared_ptr<NetDef> CreateNet();
 
 extern const std::string ModelName();
 extern const std::string ModelChecksum();
@@ -63,7 +63,7 @@ MaceStatus CreateMaceEngineFromCode(
     return MaceStatus::MACE_INVALID_ARGS;
   }
   const unsigned char * model_data = nullptr;
-  NetDef net_def;
+  std::shared_ptr<NetDef> net_def;
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
@@ -72,7 +72,7 @@ MaceStatus CreateMaceEngineFromCode(
         mace::{{model_tags[i]}}::LoadModelData(model_data_file);
     net_def = mace::{{model_tags[i]}}::CreateNet();
     engine->reset(new mace::MaceEngine(device_type));
-    status = (*engine)->Init(&net_def, input_nodes, output_nodes, model_data);
+    status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data);
     if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
       mace::{{model_tags[i]}}::UnloadModelData(model_data);
     }

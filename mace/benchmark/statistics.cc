@@ -17,7 +17,6 @@
 #include <set>
 
 #include "mace/kernels/conv_pool_2d_util.h"
-#include "mace/proto/mace.pb.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/string_util.h"
 

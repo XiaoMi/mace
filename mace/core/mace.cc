@@ -323,11 +323,11 @@ MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
     return MaceStatus::MACE_INVALID_ARGS;
   }
 
-  NetDef net_def;
-  net_def.ParseFromArray(&model_pb[0], model_pb.size());
+  std::shared_ptr<NetDef> net_def(new NetDef());
+  net_def->ParseFromArray(&model_pb[0], model_pb.size());
 
   index_t model_data_size = 0;
-  for (auto &const_tensor : net_def.tensors()) {
+  for (auto &const_tensor : net_def->tensors()) {
     model_data_size = std::max(
         model_data_size,
         static_cast<index_t>(const_tensor.offset() +
@@ -340,7 +340,8 @@ MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
   model_data = LoadModelData(model_data_file, model_data_size);
 
   engine->reset(new mace::MaceEngine(device_type));
-  status = (*engine)->Init(&net_def, input_nodes, output_nodes, model_data);
+  status = (*engine)->Init(
+      net_def.get(), input_nodes, output_nodes, model_data);
 
   if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
     UnloadModelData(model_data, model_data_size);

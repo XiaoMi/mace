@@ -36,13 +36,13 @@ from mace.python.tools.convert_util import mace_check
 
 FLAGS = None
 
-device_type_map = {'cpu': mace_pb2.CPU,
-                   'gpu': mace_pb2.GPU,
-                   'dsp': mace_pb2.HEXAGON}
+device_type_map = {'cpu': cvt.DeviceType.CPU.value,
+                   'gpu': cvt.DeviceType.GPU.value,
+                   'dsp': cvt.DeviceType.HEXAGON.value}
 device_data_type_map = {
-    mace_pb2.CPU: mace_pb2.DT_FLOAT,
-    mace_pb2.GPU: mace_pb2.DT_HALF,
-    mace_pb2.HEXAGON: mace_pb2.DT_UINT8
+    cvt.DeviceType.CPU.value: mace_pb2.DT_FLOAT,
+    cvt.DeviceType.GPU.value: mace_pb2.DT_HALF,
+    cvt.DeviceType.HEXAGON.value: mace_pb2.DT_UINT8
 }
 
 
@@ -131,8 +131,8 @@ def main(unused_args):
         print("Transform model to one that can better run on device")
         if not FLAGS.runtime:
             cpu_graph_def = copy.deepcopy(output_graph_def)
-            option.device = mace_pb2.CPU
-            option.data_type = device_data_type_map[mace_pb2.CPU]
+            option.device = cvt.DeviceType.CPU.value
+            option.data_type = device_data_type_map[cvt.DeviceType.CPU.value]
             option.disable_transpose_filters()
             mace_cpu_transformer = transformer.Transformer(
                 option, cpu_graph_def)
@@ -141,8 +141,8 @@ def main(unused_args):
             memory_optimizer.optimize_cpu_memory(cpu_graph_def)
             print "CPU memory optimization done."
 
-            option.device = mace_pb2.GPU
-            option.data_type = device_data_type_map[mace_pb2.GPU]
+            option.device = cvt.DeviceType.GPU.value
+            option.data_type = device_data_type_map[cvt.DeviceType.GPU.value]
             option.enable_transpose_filters()
             mace_gpu_transformer = transformer.Transformer(
                 option, output_graph_def)
@@ -180,9 +180,9 @@ def main(unused_args):
     if FLAGS.model_load_type == 'pb':
         with open(FLAGS.pb_output, "wb") as f:
             f.write(output_graph_def.SerializeToString())
-        with open(FLAGS.pb_output + '_txt', "wb") as f:
-            # output_graph_def.ClearField('tensors')
-            f.write(str(output_graph_def))
+        # with open(FLAGS.pb_output + '_txt', "wb") as f:
+        #     # output_graph_def.ClearField('tensors')
+        #     f.write(str(output_graph_def))
     print("Model conversion is completed.")
 
 

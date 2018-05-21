@@ -24,9 +24,12 @@
 #include <string>
 #include <vector>
 
-#include "mace/proto/mace.pb.h"
-
 namespace mace {
+
+class OutputShape;
+class NetDef;
+
+enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
 
 struct CallStats {
   int64_t start_micros;
@@ -110,12 +113,6 @@ class MaceEngine {
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
-
-const unsigned char *LoadModelData(const std::string &model_data_file,
-                                   const size_t &data_size);
-
-void UnloadModelData(const unsigned char *model_data,
-                     const size_t &data_size);
 
 MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
                                   const std::vector<std::string> &input_nodes,

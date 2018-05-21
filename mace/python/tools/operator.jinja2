@@ -17,6 +17,7 @@
 #include <vector>
 #include <string>
 
+#include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
@@ -36,15 +37,19 @@ void UpdateOp(mace::OperatorDef *op,
   op->set_type(type);
   op->set_node_id(node_id);
 
+  op->mutable_input()->Reserve(inputs.size());
   for (auto input : inputs) {
     op->add_input(input);
   }
+  op->mutable_output()->Reserve(outputs.size());
   for (auto output : outputs) {
     op->add_output(output);
   }
+  op->mutable_output_type()->Reserve(output_types.size());
   for (auto output_type : output_types) {
     op->add_output_type(output_type);
   }
+  op->mutable_mem_id()->Reserve(mem_ids.size());
   for (auto mem_id : mem_ids) {
     op->add_mem_id(mem_id);
   }
@@ -62,6 +67,7 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   MACE_LATENCY_LOGGER(2, "Create operator {{ net.op[i].name }}");
 
   mace::Argument *arg = nullptr;
+  op->mutable_arg()->Reserve({{ net.op[i].arg|length }});
   {% for arg in net.op[i].arg %}
 
   arg = op->add_arg();
@@ -77,23 +83,28 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   arg->set_s({{ arg.s|tojson }});
   {%- endif %}
 
+  arg->mutable_floats()->Reserve({{ arg.floats|length }});
   {% for float_value in arg.floats %}
   arg->add_floats({{ float_value }});
   {% endfor %}
+  arg->mutable_ints()->Reserve({{ arg.ints|length }});
   {% for int_value in arg.ints %}
   arg->add_ints({{ int_value }});
   {% endfor %}
+  arg->mutable_strings()->Reserve({{ arg.strings|length }});
   {% for str_value in arg.strings %}
   arg->add_strings({{ str_value }});
   {% endfor %}
 
   {% endfor %}
 
-  {% for shape in net.op[i].output_shape %}
-	{% if shape.dims | length > 0 %}
+  op->mutable_output_shape()->Reserve({{ net.op[i].output_shape|length }});
   mace::OutputShape * output_shape = nullptr;
+  {% for shape in net.op[i].output_shape %}
+	{% if shape.dims|length > 0 %}
   output_shape = op->add_output_shape();
 
+  output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
   {% for dim in shape.dims %}
   output_shape->add_dims({{ dim }});
   {% endfor %}
@@ -120,7 +131,8 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
     std::vector<int> input_output_ports({ {{ net.op[i].node_input | map(attribute='output_port') | join(', ')}} });
 
     mace::NodeInput *node_input = nullptr;
-    for (size_t i = 0; i < {{ net.op[i].node_input | length }}; ++i) {
+    op->mutable_node_input()->Reserve({{ net.op[i].node_input|length }});
+    for (size_t i = 0; i < {{ net.op[i].node_input|length }}; ++i) {
       node_input = op->add_node_input();
       node_input->set_node_id(input_node_ids[i]);
       node_input->set_output_port(input_output_ports[i]);
@@ -129,7 +141,8 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
 
     {% if net.op[i].out_max_byte_size | length > 0 %}
     std::vector<int> out_max_byte_sizes {{ net.op[i].out_max_byte_size | replace('[', '{') | replace(']', '}') }};
-    for (size_t i = 0; i < {{ net.op[i].out_max_byte_size | length }}; ++i) {
+    op->mutable_out_max_byte_size()->Reserve({{ net.op[i].out_max_byte_size|length }});
+    for (size_t i = 0; i < {{ net.op[i].out_max_byte_size|length }}; ++i) {
       op->add_out_max_byte_size(out_max_byte_sizes[i]);
     }
     {% endif %}
