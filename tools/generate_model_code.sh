@@ -3,6 +3,10 @@
 CURRENT_DIR=`dirname $0`
 source ${CURRENT_DIR}/env.sh
 
+if [ $# -eq 1 ]; then
+  DATA_TYPE=$1
+fi
+
 bazel build //mace/python/tools:converter || exit 1
 rm -rf ${MODEL_CODEGEN_DIR}
 mkdir -p ${MODEL_CODEGEN_DIR}

@@ -78,11 +78,11 @@ def rename_tensor(net_def):
         op.output[i] = tensor_map[op.output[i]]
 
 class TensorInfo:
-  def __init__(self, id, t, runtime):
+  def __init__(self, id, t, runtime, gpu_data_type):
     self.id = id
     self.data_type = mace_pb2.DataType.Name(t.data_type)
     if t.data_type == mace_pb2.DT_FLOAT:
-      if runtime == 'gpu':
+      if runtime == 'gpu' and gpu_data_type == 'half':
         self.data_type = mace_pb2.DT_HALF
         self.data = bytearray(np.array(t.float_data).astype(np.float16).tobytes())
       else:
@@ -96,7 +96,7 @@ class TensorInfo:
 def stringfy(value):
   return ', '.join('"{0}"'.format(w) for w in value)
 
-def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_tag, output, runtime, embed_model_data):
+def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_tag, output, runtime, embed_model_data, gpu_data_type):
   if obfuscate:
     obfuscate_name(net_def)
   else:
@@ -115,7 +115,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
   offset = 0
   counter = 0
   for t in net_def.tensors:
-    tensor_info = TensorInfo(counter, t, runtime)
+    tensor_info = TensorInfo(counter, t, runtime, gpu_data_type)
     # align
     if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
       padding = 4 - offset % 4
@@ -167,7 +167,7 @@ def convert_to_source(net_def, mode_pb_checksum, template_dir, obfuscate, model_
 
   # generate model source files
   template_name = 'model.jinja2'
-  tensors = [TensorInfo(i, net_def.tensors[i], runtime) for i in range(len(net_def.tensors))]
+  tensors = [TensorInfo(i, net_def.tensors[i], runtime, gpu_data_type) for i in range(len(net_def.tensors))]
   source = j2_env.get_template(template_name).render(
     tensors = tensors,
     net = net_def,

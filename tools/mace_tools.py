@@ -132,8 +132,13 @@ def generate_random_input(target_soc, model_output_dir,
         else:
           shutil.copy(input_file_list[i], dst_input_file)
 
-def generate_model_code():
-  command = "bash tools/generate_model_code.sh"
+def generate_model_code(gpu_data_type):
+  data_type = ""
+  if gpu_data_type == "half":
+    data_type = "DT_HALF"
+  elif gpu_data_type == "float":
+    data_type = "DT_FLOAT"
+  command = "bash tools/generate_model_code.sh {}".format(data_type)
   run_command(command)
 
 
@@ -319,6 +324,11 @@ def parse_args():
       type=str,
       default="all",
       help="SoCs to build, comma seperated list (getprop ro.board.platform)")
+  parser.add_argument(
+      "--gpu_data_type",
+      type=str,
+      default="",
+      help="[half|float]")
   return parser.parse_known_args()
 
 def set_environment(configs):
@@ -412,7 +422,7 @@ def main(unused_args):
             model_config['input_nodes'], input_file_list)
 
         if FLAGS.mode == "build" or FLAGS.mode == "all":
-          generate_model_code()
+          generate_model_code(FLAGS.gpu_data_type)
           build_mace_run_prod(model_name, global_runtime, target_abi,
                               target_soc, model_output_dir, FLAGS.tuning)
 
