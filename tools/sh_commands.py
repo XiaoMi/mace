@@ -1242,9 +1242,8 @@ def falcon_tags(tags_dict):
     return tags
 
 
-def falcon_push_metrics(metrics, endpoint="mace_dev", tags={}):
-    cli = falcon_cli.FalconCli.connect(
-        server="transfer.falcon.miliao.srv", port=8433, debug=False)
+def falcon_push_metrics(server, metrics, endpoint="mace_dev", tags={}):
+    cli = falcon_cli.FalconCli.connect(server=server, port=8433, debug=False)
     ts = int(time.time())
     falcon_metrics = [{
         "endpoint": endpoint,

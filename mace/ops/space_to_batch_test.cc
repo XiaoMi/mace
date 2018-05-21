@@ -213,6 +213,96 @@ TEST(SpaceToBatchTest, MultiBatchAndChannelData) {
        9, 10, 13, 14, 25, 26, 29, 30, 11, 12, 15, 16, 27, 28, 31, 32});
 }
 
+void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
+                     const std::vector<int> &block_shape_data,
+                     const std::vector<int> &padding_data) {
+  OpsTestNet net;
+  net.AddRandomInput<GPU, float>("Input", input_shape);
+
+  // run gpu
+  BufferToImage<GPU, float>(&net, "Input", "InputImage",
+                          kernels::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+    .Input("InputImage")
+    .Output("OutputImage")
+    .AddIntsArg("paddings", padding_data)
+    .AddIntsArg("block_shape", block_shape_data)
+    .Finalize(net.NewOperatorDef());
+  net.RunOp(GPU);
+  ImageToBuffer<GPU, float>(&net, "OutputImage", "OutputGPU",
+                          kernels::BufferType::IN_OUT_CHANNEL);
+
+  // run cpu
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
+  OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
+    .Input("InputNCHW")
+    .Output("OutputNCHW")
+    .AddIntsArg("paddings", padding_data)
+    .AddIntsArg("block_shape", block_shape_data)
+    .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "OutputCPU",
+                                                  NHWC);
+
+  // Check
+  ExpectTensorNear<float>(*net.GetOutput("OutputCPU"),
+                          *net.GetOutput("OutputGPU"));
+}
+
+void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
+                                const std::vector<int> &block_shape_data,
+                                const std::vector<int> &crops_data) {
+  OpsTestNet net;
+  net.AddRandomInput<GPU, float>("Input", input_shape);
+
+  // run gpu
+  BufferToImage<GPU, float>(&net, "Input", "InputImage",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
+    .Input("InputImage")
+    .Output("OutputImage")
+    .AddIntsArg("crops", crops_data)
+    .AddIntsArg("block_shape", block_shape_data)
+    .Finalize(net.NewOperatorDef());
+  net.RunOp(GPU);
+  ImageToBuffer<GPU, float>(&net, "OutputImage", "OutputGPU",
+                            kernels::BufferType::IN_OUT_CHANNEL);
+
+  // run cpu
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  NHWC,
+                                                  "InputNCHW",
+                                                  NCHW);
+  OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
+    .Input("InputNCHW")
+    .Output("OutputNCHW")
+    .AddIntsArg("crops", crops_data)
+    .AddIntsArg("block_shape", block_shape_data)
+    .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
+                                                  NCHW,
+                                                  "OutputCPU",
+                                                  NHWC);
+
+  // Check
+  ExpectTensorNear<float>(*net.GetOutput("OutputCPU"),
+                          *net.GetOutput("OutputGPU"));
+}
+
+
+TEST(SpaceToBatchTest, LargeData) {
+  TestSpaceToBatchLargeInput({1, 256, 256, 32}, {8, 8}, {0, 0, 0, 0});
+  TestSpaceToBatchLargeInput({1, 256, 256, 32}, {8, 8}, {4, 4, 4, 4});
+  TestoBatchToSpaceLargeInput({64, 32, 32, 32}, {8, 8}, {0, 0, 0, 0});
+  TestoBatchToSpaceLargeInput({64, 32, 32, 32}, {8, 8}, {4, 4, 4, 4});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
