@@ -37,16 +37,51 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   // Run on cpu
   net.RunOp();
 
-  net.FillNHWCInputToNCHWInput<DeviceType::CPU, float>("InputNCHW", "Input");
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  DataFormat::NHWC,
+                                                  "InputNCHW",
+                                                  DataFormat::NCHW);
 
   ExpectTensorNear<float>(*net.GetOutput("InputNCHW"),
                           *net.GetOutput("Output"));
 }
+
+void TransposeNHWCTest(const std::vector<index_t> &input_shape) {
+  // Construct graph
+  OpsTestNet net;
+  // Add input data
+  net.AddRandomInput<CPU, float>("Input", input_shape);
+
+  OpDefBuilder("Transpose", "TransposeNHWCTest")
+    .Input("Input")
+    .Output("Output")
+    .AddIntsArg("dims", {0, 2, 3, 1})
+    .Finalize(net.NewOperatorDef());
+
+  // Run on cpu
+  net.RunOp();
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                  DataFormat::NCHW,
+                                                  "InputNHWC",
+                                                  DataFormat::NHWC);
+
+  ExpectTensorNear<float>(*net.GetOutput("InputNHWC"),
+                          *net.GetOutput("Output"));
+}
 }  // namespace
 
-TEST_F(TransposeOpTest, NCHW) {
+TEST_F(TransposeOpTest, NHWC_to_NCHW) {
   TransposeNCHWTest({3, 64, 64, 128});
   TransposeNCHWTest({1, 64, 48, 128});
+  TransposeNCHWTest({1, 512, 512, 3});
+  TransposeNCHWTest({2, 512, 512, 3});
+}
+
+TEST_F(TransposeOpTest, NCHW_to_NHWC) {
+  TransposeNHWCTest({1, 2, 512, 512});
+  TransposeNHWCTest({1, 3, 512, 512});
+  TransposeNHWCTest({2, 2, 512, 512});
 }
 
 TEST_F(TransposeOpTest, Rank2) {

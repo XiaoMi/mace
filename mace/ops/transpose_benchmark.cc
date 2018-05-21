@@ -83,6 +83,9 @@ void TransposeBenchmark(int iters,
 #define BM_TRANSPOSE4D(N, C, H, W, D0, D1, D2, D3)                   \
   BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, float, CPU);
 
+
+BM_TRANSPOSE4D(1, 512, 512, 3, 0, 3, 1, 2);
+BM_TRANSPOSE4D(1, 2, 512, 512, 0, 2, 3, 1);
 BM_TRANSPOSE4D(1, 64, 64, 512, 0, 3, 1, 2);
 BM_TRANSPOSE4D(1, 512, 64, 64, 0, 2, 3, 1);
 BM_TRANSPOSE2D(128, 128);
