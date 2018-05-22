@@ -31,7 +31,7 @@ class HexagonControlWrapper {
   bool Config();
   bool Init();
   bool Finalize();
-  bool SetupGraph(const NetDef &net_def);
+  bool SetupGraph(const NetDef &net_def, const unsigned char *model_data);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
   bool ExecuteGraphNew(const std::vector<Tensor> &input_tensors,
                        std::vector<Tensor> *output_tensors);

@@ -53,7 +53,9 @@ class OpDefBuilder {
   }
 
   OpDefBuilder &OutputType(const std::vector<DataType> &output_type) {
-    op_def_.set_output_type(output_type);
+    for (auto out_t : output_type) {
+      op_def_.add_output_type(out_t);
+    }
     return *this;
   }
 

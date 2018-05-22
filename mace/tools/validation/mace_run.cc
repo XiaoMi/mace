@@ -28,7 +28,6 @@
 #include <stdint.h>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
 #include <numeric>
 
@@ -37,6 +36,7 @@
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
@@ -186,7 +186,10 @@ DEFINE_string(output_file,
               "output file name | output file prefix for multiple outputs");
 DEFINE_string(model_data_file,
               "",
-              "model data file name, used when EMBED_MODEL_DATA set to 0");
+              "model data file name, used when EMBED_MODEL_DATA set to 0 or 2");
+DEFINE_string(model_file,
+              "",
+              "model file name, used when load mace model in pb");
 DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
@@ -228,22 +231,26 @@ bool RunModel(const std::string &model_name,
   MaceStatus create_engine_status;
   // Create Engine
   int64_t t0 = NowMicros();
-  if (FLAGS_model_data_file.empty()) {
+  if (FLAGS_model_file != "") {
+    std::vector<unsigned char> model_pb_data;
+    if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+    }
     create_engine_status =
-        CreateMaceEngine(model_name.c_str(),
-                         nullptr,
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromProto(model_pb_data,
+                                  FLAGS_model_data_file,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &engine);
   } else {
     create_engine_status =
-        CreateMaceEngine(model_name.c_str(),
-                         FLAGS_model_data_file.c_str(),
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromCode(model_name,
+                                 FLAGS_model_data_file,
+                                 input_names,
+                                 output_names,
+                                 device_type,
+                                 &engine);
   }
   int64_t t1 = NowMicros();
 
@@ -358,6 +365,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "input_file: " << FLAGS_input_file;
   LOG(INFO) << "output_file: " << FLAGS_output_file;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
+  LOG(INFO) << "model_file: " << FLAGS_model_file;
   LOG(INFO) << "device: " << FLAGS_device;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;

@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <memory>
 
 #include "mace/core/net.h"
@@ -88,7 +94,8 @@ class MaceEngine::Impl {
 
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
-                  const std::vector<std::string> &output_nodes);
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs,
@@ -106,7 +113,6 @@ class MaceEngine::Impl {
   DISABLE_COPY_AND_ASSIGN(Impl);
 };
 
-
 MaceEngine::Impl::Impl(DeviceType device_type)
     : op_registry_(new OperatorRegistry()),
       device_type_(device_type),
@@ -120,7 +126,8 @@ MaceEngine::Impl::Impl(DeviceType device_type)
 MaceStatus MaceEngine::Impl::Init(
     const NetDef *net_def,
     const std::vector<std::string> &input_nodes,
-    const std::vector<std::string> &output_nodes) {
+    const std::vector<std::string> &output_nodes,
+    const unsigned char *model_data) {
   LOG(INFO) << "MACE version: " << MaceVersion();
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
@@ -141,14 +148,15 @@ MaceStatus MaceEngine::Impl::Init(
     int dsp_mode =
         ArgumentHelper::GetSingleArgument<NetDef, int>(*net_def, "dsp_mode", 0);
     hexagon_controller_->SetGraphMode(dsp_mode);
-    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def),
+    MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
                "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {
       hexagon_controller_->PrintGraph();
     }
   } else {
 #endif
-    MaceStatus status = ws_->LoadModelTensor(*net_def, device_type_);
+    MaceStatus status =
+      ws_->LoadModelTensor(*net_def, device_type_, model_data);
     if (status != MaceStatus::MACE_SUCCESS) {
       return status;
     }
@@ -260,8 +268,9 @@ MaceEngine::~MaceEngine() = default;
 
 MaceStatus MaceEngine::Init(const NetDef *net_def,
                             const std::vector<std::string> &input_nodes,
-                            const std::vector<std::string> &output_nodes) {
-  return impl_->Init(net_def, input_nodes, output_nodes);
+                            const std::vector<std::string> &output_nodes,
+                            const unsigned char *model_data) {
+  return impl_->Init(net_def, input_nodes, output_nodes, model_data);
 }
 
 MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
@@ -273,6 +282,70 @@ MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
 MaceStatus MaceEngine::Run(const std::map<std::string, MaceTensor> &inputs,
                            std::map<std::string, MaceTensor> *outputs) {
   return impl_->Run(inputs, outputs, nullptr);
+}
+
+const unsigned char *LoadModelData(const std::string &model_data_file,
+                                   const size_t &data_size) {
+  int fd = open(model_data_file.c_str(), O_RDONLY);
+  MACE_CHECK(fd >= 0, "Failed to open model data file ",
+             model_data_file, ", error code: ", errno);
+
+  const unsigned char *model_data = static_cast<const unsigned char *>(
+      mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, fd, 0));
+  MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
+             model_data_file, ", error code: ", errno);
+
+  int ret = close(fd);
+  MACE_CHECK(ret == 0, "Failed to close model data file ",
+             model_data_file, ", error code: ", errno);
+
+  return model_data;
+}
+
+void UnloadModelData(const unsigned char *model_data,
+                     const size_t &data_size) {
+  int ret = munmap(const_cast<unsigned char *>(model_data),
+                   data_size);
+  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
+}
+
+MaceStatus CreateMaceEngineFromProto(
+    const std::vector<unsigned char> &model_pb,
+    const std::string &model_data_file,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const DeviceType device_type,
+    std::shared_ptr<MaceEngine> *engine) {
+  LOG(INFO) << "Create MaceEngine from model pb";
+  // load model
+  if (engine == nullptr) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+
+  std::shared_ptr<NetDef> net_def(new NetDef());
+  net_def->ParseFromArray(&model_pb[0], model_pb.size());
+
+  index_t model_data_size = 0;
+  for (auto &const_tensor : net_def->tensors()) {
+    model_data_size = std::max(
+        model_data_size,
+        static_cast<index_t>(const_tensor.offset() +
+                             const_tensor.data_size() *
+                             GetEnumTypeSize(const_tensor.data_type())));
+  }
+
+  MaceStatus status;
+  const unsigned char *model_data = nullptr;
+  model_data = LoadModelData(model_data_file, model_data_size);
+
+  engine->reset(new mace::MaceEngine(device_type));
+  status = (*engine)->Init(
+      net_def.get(), input_nodes, output_nodes, model_data);
+
+  if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
+    UnloadModelData(model_data, model_data_size);
+  }
+  return status;
 }
 
 }  // namespace mace

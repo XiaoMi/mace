@@ -26,9 +26,38 @@
 
 namespace mace {
 
-const char *MaceVersion();
+class OutputShape;
+class NetDef;
 
 enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
+
+struct CallStats {
+  int64_t start_micros;
+  int64_t end_micros;
+};
+
+struct ConvPoolArgs {
+  std::vector<int> strides;
+  int padding_type;
+  std::vector<int> paddings;
+  std::vector<int> dilations;
+  std::vector<int64_t> kernels;
+};
+
+struct OperatorStats {
+  std::string operator_name;
+  std::string type;
+  std::vector<OutputShape> output_shape;
+  ConvPoolArgs args;
+  CallStats stats;
+};
+
+class RunMetadata {
+ public:
+  std::vector<OperatorStats> op_stats;
+};
+
+const char *MaceVersion();
 
 enum MaceStatus {
   MACE_SUCCESS = 0,
@@ -60,9 +89,6 @@ class MaceTensor {
   std::unique_ptr<Impl> impl_;
 };
 
-class NetDef;
-class RunMetadata;
-
 class MaceEngine {
  public:
   explicit MaceEngine(DeviceType device_type);
@@ -70,7 +96,8 @@ class MaceEngine {
 
   MaceStatus Init(const NetDef *net_def,
                   const std::vector<std::string> &input_nodes,
-                  const std::vector<std::string> &output_nodes);
+                  const std::vector<std::string> &output_nodes,
+                  const unsigned char *model_data);
 
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs);
@@ -86,6 +113,14 @@ class MaceEngine {
   MaceEngine(const MaceEngine &) = delete;
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
+
+MaceStatus CreateMaceEngineFromProto(
+    const std::vector<unsigned char> &model_pb,
+    const std::string &model_data_file,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const DeviceType device_type,
+    std::shared_ptr<MaceEngine> *engine);
 
 }  // namespace mace
 

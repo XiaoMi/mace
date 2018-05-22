@@ -79,7 +79,10 @@ void BufferToImage(const std::string &input_name,
       .AddIntArg("mode", mode)
       .Finalize(&operator_def);
 
-  operator_def.set_mem_id(mem_ids);
+  operator_def.mutable_mem_id()->Reserve(mem_ids.size());
+  for (auto mem_id : mem_ids) {
+    operator_def.add_mem_id(mem_id);
+  }
 
   net_def->add_op()->CopyFrom(operator_def);
 }
@@ -122,7 +125,10 @@ void Conv3x3(const std::string &input_name,
       .AddIntArg("device", static_cast<int>(device_type))
       .Finalize(&operator_def);
 
-  operator_def.set_mem_id(mem_ids);
+  operator_def.mutable_mem_id()->Reserve(mem_ids.size());
+  for (auto mem_id : mem_ids) {
+    operator_def.add_mem_id(mem_id);
+  }
   net_def->add_op()->CopyFrom(operator_def);
 }
 
@@ -146,20 +152,25 @@ void Relu(const std::string &input_name,
 template <typename T>
 void AddTensor(const std::string &name,
                const std::vector<int64_t> &shape,
-               T *data,
+               const int offset,
+               const int data_size,
                NetDef *net_def) {
-  ConstTensor tensor(name,
-                     reinterpret_cast<unsigned char *>(data),
-                     shape,
-                     DataTypeToEnum<T>::value);
-
-  net_def->mutable_tensors().push_back(tensor);
+  ConstTensor *tensor_ptr = net_def->add_tensors();
+  tensor_ptr->set_name(name);
+  tensor_ptr->mutable_dims()->Reserve(shape.size());
+  for (auto dim : shape) {
+    tensor_ptr->add_dims(dim);
+  }
+  tensor_ptr->set_offset(offset);
+  tensor_ptr->set_data_size(data_size);
+  tensor_ptr->set_data_type(DataTypeToEnum<T>::value);
 }
 
 template <DeviceType D, typename T>
 void CheckOutputs(const NetDef &net_def,
                   const std::map<std::string, mace::MaceTensor> &inputs,
-                  const std::map<std::string, mace::MaceTensor> &outputs) {
+                  const std::map<std::string, mace::MaceTensor> &outputs,
+                  const std::vector<T> &tensor_data) {
   ops::test::OpsTestNet net;
   for (auto input : inputs) {
     auto input_shape = input.second.shape();
@@ -176,13 +187,14 @@ void CheckOutputs(const NetDef &net_def,
   }
   auto tensors = net_def.tensors();
   for (auto tensor : tensors) {
-    auto shape = tensor.dims();
+    std::vector<index_t> shape = {tensor.dims().begin(), tensor.dims().end()};
     const int64_t data_size = std::accumulate(shape.begin(),
                                               shape.end(), 1,
                                               std::multiplies<int64_t>());
     std::vector<T> data(data_size);
-    memcpy(data.data(), reinterpret_cast<const T *>(tensor.data()),
-           data_size * sizeof(T));
+    memcpy(data.data(),
+           reinterpret_cast<const T *>(tensor_data.data()) + tensor.offset(),
+           tensor.data_size() * sizeof(T));
     net.AddInputFromArray<D, T>(tensor.name(), shape, data);
   }
   net.RunNet(net_def, D);
@@ -227,9 +239,14 @@ std::map<std::string, int> AddMemoryOptimization(
                                             input_shapes[i][1]);
   }
   size_t input_size = input_names.size();
+  size_t output_size = output_names.size();
+  MemoryArena *mem_arena_ptr = net_def->mutable_mem_arena();
+  mem_arena_ptr->mutable_mem_block()->Reserve(input_size + output_size);
   for (size_t i = 0; i < input_size; ++i) {
-    net_def->mutable_mem_arena().mutable_mem_block().push_back(
-        MemoryBlock(mem_id, in_mem_block_x, in_mem_block_y));
+    MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
+    mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_x(in_mem_block_x);
+    mem_blk_ptr->set_y(in_mem_block_y);
     res[input_names[i]] = mem_id;
     mem_id++;
   }
@@ -244,10 +261,11 @@ std::map<std::string, int> AddMemoryOptimization(
                                          output_shapes[i][0] *
                                              output_shapes[i][1]);
   }
-  size_t output_size = output_names.size();
   for (size_t i = 0; i < output_size; ++i) {
-    net_def->mutable_mem_arena().mutable_mem_block().push_back(
-        MemoryBlock(mem_id, out_mem_block_x, out_mem_block_y));
+    MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
+    mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_x(out_mem_block_x);
+    mem_blk_ptr->set_y(out_mem_block_y);
     res[output_names[i]] = mem_id;
     mem_id++;
   }
@@ -271,16 +289,16 @@ void MaceRun(const int in_out_size,
 
   const DeviceType device = DeviceType::GPU;
 
-  NetDef net_def;
+  std::shared_ptr<NetDef> net_def(new NetDef());
 
   // Add memory optimization
   auto mem_map = AddMemoryOptimization(input_names, output_names,
                                        input_shapes, output_shapes,
-                                       &net_def);
+                                       net_def.get());
 
   std::vector<T> data;
   ops::test::GenerateRandomRealTypeData<T>(filter_shape, &data);
-  AddTensor<T>(filter_tensor_name, filter_shape, data.data(), &net_def);
+  AddTensor<T>(filter_tensor_name, filter_shape, 0, data.size(), net_def.get());
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     std::string input_name = MakeString("mace_input_node_",
@@ -289,15 +307,15 @@ void MaceRun(const int in_out_size,
                         mace::kernels::IN_OUT_CHANNEL,
                         {mem_map[input_names[i]]},
                         device,
-                        &net_def);
+                        net_def.get());
   }
   BufferToImage<half>(filter_tensor_name, filter_tensor_img_name,
                       mace::kernels::CONV2D_FILTER, {}, device,
-                      &net_def, NetMode::INIT);
+                      net_def.get(), NetMode::INIT);
   for (size_t i = 0; i < output_names.size(); ++i) {
     Conv3x3<half>(input_names[i], filter_tensor_img_name,
                   output_names[i], {mem_map[output_names[i]]},
-                  device, &net_def);
+                  device, net_def.get());
   }
   for (size_t i = 0; i < output_names.size(); ++i) {
     std::string output_name = MakeString("mace_output_node_",
@@ -305,11 +323,12 @@ void MaceRun(const int in_out_size,
     ImageToBuffer<float>(output_names[i], output_name,
                          mace::kernels::IN_OUT_CHANNEL,
                          device,
-                         &net_def);
+                         net_def.get());
   }
 
   MaceEngine engine(device);
-  MaceStatus status = engine.Init(&net_def, input_names, output_names);
+  MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
+      reinterpret_cast<unsigned char *>(data.data()));
   ASSERT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;
@@ -326,7 +345,7 @@ void MaceRun(const int in_out_size,
     }
   }
 
-  CheckOutputs<DeviceType::GPU, T>(net_def, inputs, outputs);
+  CheckOutputs<DeviceType::GPU, T>(*net_def, inputs, outputs, data);
 }
 
 }  // namespace

@@ -18,14 +18,15 @@ import numpy as np
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
-from mace.python.tools.converter_tool.base_converter import EltwiseType
 from mace.python.tools.converter_tool.base_converter import ActivationType
-from mace.python.tools.converter_tool.base_converter import PaddingMode
-from mace.python.tools.converter_tool.base_converter import DataFormat
-from mace.python.tools.converter_tool.base_converter import FilterFormat
-from mace.python.tools.converter_tool.base_converter import MaceOp
-from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
+from mace.python.tools.converter_tool.base_converter import DataFormat
+from mace.python.tools.converter_tool.base_converter import DeviceType
+from mace.python.tools.converter_tool.base_converter import EltwiseType
+from mace.python.tools.converter_tool.base_converter import FilterFormat
+from mace.python.tools.converter_tool.base_converter import MaceKeyword
+from mace.python.tools.converter_tool.base_converter import MaceOp
+from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import TransformerRule
 from mace.python.tools.convert_util import mace_check
 
@@ -117,7 +118,7 @@ class Transformer(base_converter.ConverterInterface):
         self._producer = {}
         self._target_data_format = DataFormat.NHWC
 
-        if self._option.device == mace_pb2.CPU:
+        if self._option.device == DeviceType.CPU.value:
             self._target_data_format = DataFormat.NCHW
 
     def run(self):
@@ -491,7 +492,7 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         filter_format = self.filter_format()
 
-        if self._option.device == mace_pb2.GPU:
+        if self._option.device == DeviceType.GPU.value:
             for op in net.op:
                 if op.type == MaceOp.Conv2D.name \
                         and self.check_if_gpu_use_winograd_conv(op):
@@ -619,7 +620,7 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def flatten_atrous_conv(self):
-        if self._option.device != mace_pb2.GPU:
+        if self._option.device != DeviceType.GPU.value:
             return
 
         net = self._model
@@ -871,7 +872,7 @@ class Transformer(base_converter.ConverterInterface):
         op.input[input_idx] = output_name
 
     def transform_buffer_image(self):
-        if self._option.device != mace_pb2.GPU:
+        if self._option.device != DeviceType.GPU.value:
             return False
 
         print("Transform buffer to image")
@@ -997,7 +998,7 @@ class Transformer(base_converter.ConverterInterface):
     def transform_global_conv_to_fc(self):
         """Transform global conv to fc should be placed after transposing
         input/output and filter"""
-        if self._option.device == mace_pb2.GPU:
+        if self._option.device == DeviceType.GPU.value:
             return False
 
         net = self._model

@@ -17,7 +17,6 @@
 #include <set>
 
 #include "mace/kernels/conv_pool_2d_util.h"
-#include "mace/public/mace_types.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/string_util.h"
 
@@ -59,10 +58,10 @@ std::string ShapeToString(const std::vector<OutputShape> &output_shape) {
   std::stringstream stream;
   stream << "[";
   for (size_t i = 0; i < output_shape.size(); ++i) {
-    const std::vector<index_t> &dims = output_shape[i].dims();
-    for (size_t j = 0; j < dims.size(); ++j) {
-      stream << dims[j];
-      if (j != dims.size() - 1) {
+    size_t dims_size = output_shape[i].dims_size();
+    for (size_t j = 0; j < dims_size; ++j) {
+      stream << output_shape[i].dims(j);
+      if (j != dims_size - 1) {
         stream << ",";
       }
     }

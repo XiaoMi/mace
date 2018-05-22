@@ -43,7 +43,11 @@ cc_library(
             "runtime/opencl/*.h",
         ],
     )) + if_hexagon_enabled(glob(["runtime/hexagon/*.h"])),
-    copts = if_openmp_enabled([
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
         "-fopenmp",
         "-DMACE_ENABLE_OPENMP",
     ]) + if_android([
@@ -58,8 +62,9 @@ cc_library(
         "-lm",
     ]),
     deps = [
-        "//mace/utils",
         "//mace/codegen:generated_version",
+        "//mace/proto:mace_cc",
+        "//mace/utils",
     ] + if_android([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
@@ -79,6 +84,7 @@ cc_library(
     hdrs = glob([
         "runtime/opencl/*.h",
     ]),
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "@opencl_clhpp//:opencl_clhpp",
         "@opencl_headers//:opencl20_headers",
@@ -95,6 +101,7 @@ cc_library(
     hdrs = [
         "testing/test_benchmark.h",
     ],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         ":core",
         "//external:gflags_nothreads",

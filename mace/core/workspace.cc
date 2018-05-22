@@ -60,24 +60,17 @@ std::vector<std::string> Workspace::Tensors() const {
   return names;
 }
 
-MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
+MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
+                                      DeviceType type,
+                                      const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t model_data_size = 0;
-  unsigned char *model_data_ptr = nullptr;
-  for (auto &const_tensor : net_def.tensors()) {
-    if (model_data_ptr == nullptr ||
-        reinterpret_cast<int64_t>(const_tensor.data()) <
-            reinterpret_cast<int64_t>(model_data_ptr)) {
-      model_data_ptr = const_cast<unsigned char *>(const_tensor.data());
-    }
-  }
   for (auto &const_tensor : net_def.tensors()) {
     model_data_size = std::max(
         model_data_size,
-        static_cast<index_t>((reinterpret_cast<int64_t>(const_tensor.data()) -
-                              reinterpret_cast<int64_t>(model_data_ptr)) +
+        static_cast<index_t>(const_tensor.offset() +
                              const_tensor.data_size() *
-                                 GetEnumTypeSize(const_tensor.data_type())));
+                             GetEnumTypeSize(const_tensor.data_type())));
   }
   VLOG(3) << "Model data size: " << model_data_size;
 
@@ -85,7 +78,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
     if (type == DeviceType::CPU) {
       tensor_buffer_ = std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(type),
-                     model_data_ptr,
+                     const_cast<unsigned char*>(model_data),
                      model_data_size));
     } else {
       tensor_buffer_ = std::unique_ptr<Buffer>(
@@ -95,7 +88,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
         return status;
       }
       tensor_buffer_->Map(nullptr);
-      tensor_buffer_->Copy(model_data_ptr, 0, model_data_size);
+      tensor_buffer_->Copy(const_cast<unsigned char*>(model_data),
+                           0, model_data_size);
       tensor_buffer_->UnMap();
     }
   }
@@ -111,10 +105,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def, DeviceType type) {
       dims.push_back(d);
     }
 
-    index_t offset = reinterpret_cast<int64_t>(const_tensor.data())
-        - reinterpret_cast<int64_t>(model_data_ptr);
     std::unique_ptr<Tensor> tensor(
-        new Tensor(BufferSlice(tensor_buffer_.get(), offset,
+        new Tensor(BufferSlice(tensor_buffer_.get(), const_tensor.offset(),
                                const_tensor.data_size() *
                                    GetEnumTypeSize(const_tensor.data_type())),
                    const_tensor.data_type()));

@@ -120,6 +120,9 @@ DEFINE_string(output_file,
 DEFINE_string(model_data_file,
               "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
+DEFINE_string(model_file,
+              "",
+              "model file name, used when load mace model in pb");
 DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
@@ -163,23 +166,31 @@ bool RunModel(const std::vector<std::string> &input_names,
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
   // Create Engine
-  if (FLAGS_model_data_file.empty()) {
+  MaceStatus create_engine_status;
+  // Create Engine
+  int64_t t0 = NowMicros();
+  if (FLAGS_model_file != "") {
+    std::vector<unsigned char> model_pb_data;
+    if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
+      LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
+    }
     create_engine_status =
-        CreateMaceEngine(FLAGS_model_name.c_str(),
-                         nullptr,
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromProto(model_pb_data,
+                                  FLAGS_model_data_file,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &engine);
   } else {
     create_engine_status =
-        CreateMaceEngine(FLAGS_model_name.c_str(),
-                         FLAGS_model_data_file.c_str(),
-                         input_names,
-                         output_names,
-                         device_type,
-                         &engine);
+        CreateMaceEngineFromCode(model_name,
+                                 FLAGS_model_data_file,
+                                 input_names,
+                                 output_names,
+                                 device_type,
+                                 &engine);
   }
+
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
     LOG(FATAL) << "Create engine error, please check the arguments";
   }
@@ -258,6 +269,7 @@ int Main(int argc, char **argv) {
   LOG(INFO) << "input_file: " << FLAGS_input_file;
   LOG(INFO) << "output_file: " << FLAGS_output_file;
   LOG(INFO) << "model_data_file: " << FLAGS_model_data_file;
+  LOG(INFO) << "model_file: " << FLAGS_model_file;
   LOG(INFO) << "device: " << FLAGS_device;
   LOG(INFO) << "round: " << FLAGS_round;
   LOG(INFO) << "restart_round: " << FLAGS_restart_round;

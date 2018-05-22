@@ -22,17 +22,13 @@
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
 
-{% if not embed_model_data %}
-
-#include <errno.h>
-#include <fcntl.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
-{% endif %}
-
 namespace mace {
+
+extern const unsigned char *LoadModelData(const std::string &model_data_file,
+                                          const size_t &data_size);
+extern void UnloadModelData(const unsigned char *model_data,
+                            const size_t &data_size);
+
 namespace {{tag}} {
 
 {% if embed_model_data %}
@@ -41,34 +37,18 @@ alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
 };
 {% endif %}
 
-const unsigned char *LoadModelData(const char *model_data_file) {
+const unsigned char *LoadModelData(const std::string &model_data_file) {
 {% if embed_model_data %}
   MACE_UNUSED(model_data_file);
   return model_data;
 {% else %}
-  int fd = open(model_data_file, O_RDONLY);
-  MACE_CHECK(fd >= 0, "Failed to open model data file ",
-             model_data_file, ", error code: ", errno);
-
-  const unsigned char *model_data =
-    static_cast<const unsigned char *>(mmap(nullptr, {{ model_data_size }},
-                                       PROT_READ, MAP_PRIVATE, fd, 0));
-  MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
-             model_data_file, ", error code: ", errno);
-
-  int ret = close(fd);
-  MACE_CHECK(ret == 0, "Failed to close model data file ",
-             model_data_file, ", error code: ", errno);
-
-  return model_data;
+  return mace::LoadModelData(model_data_file, {{ model_data_size }});
 {% endif %}
 }
 
 void UnloadModelData(const unsigned char *model_data) {
 {% if not embed_model_data %}
-  int ret = munmap(const_cast<unsigned char *>(model_data),
-                   {{ model_data_size }});
-  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
+  mace::UnloadModelData(model_data, {{ model_data_size }});
 {% else %}
   MACE_UNUSED(model_data);
 {% endif %}

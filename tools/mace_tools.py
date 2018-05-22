@@ -159,6 +159,7 @@ def tuning_run(target_abi,
                output_nodes,
                input_shapes,
                output_shapes,
+               mace_model_dir,
                model_name,
                device_type,
                running_round,
@@ -181,6 +182,7 @@ def tuning_run(target_abi,
         output_nodes,
         input_shapes,
         output_shapes,
+        mace_model_dir,
         model_name,
         device_type,
         running_round,
@@ -203,12 +205,12 @@ def tuning_run(target_abi,
             stdout, target_abi, serialno, model_name, device_type)
 
 
-def build_mace_run_prod(hexagon_mode, runtime, target_abi,
-                        serialno, vlog_level, embed_model_data,
+def build_mace_run_prod(hexagon_mode, runtime, target_abi, serialno,
+                        vlog_level, embed_model_data, model_load_type,
                         model_output_dir, input_nodes, output_nodes,
-                        input_shapes, output_shapes, model_name, device_type,
-                        running_round, restart_round, tuning,
-                        limit_opencl_kernel_time, phone_data_dir,
+                        input_shapes, output_shapes, mace_model_dir,
+                        model_name, device_type, running_round, restart_round,
+                        tuning, limit_opencl_kernel_time, phone_data_dir,
                         enable_openmp):
     mace_run_target = "//mace/tools/validation:mace_run"
     strip = "always"
@@ -226,14 +228,14 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             hexagon_mode=hexagon_mode,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
 
         device_type = parse_device_type("gpu")
         tuning_run(target_abi, serialno, vlog_level, embed_model_data,
                    model_output_dir, input_nodes, output_nodes, input_shapes,
-                   output_shapes, model_name, device_type, running_round=0,
-                   restart_round=1, out_of_range_check=False,
+                   output_shapes, mace_model_dir, model_name, device_type,
+                   running_round=0, restart_round=1, out_of_range_check=False,
                    phone_data_dir=phone_data_dir, tuning=tuning,
                    limit_opencl_kernel_time=limit_opencl_kernel_time)
 
@@ -248,7 +250,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
     else:
         gen_opencl_and_tuning_code(target_abi, serialno, [], False)
@@ -261,7 +263,7 @@ def build_mace_run_prod(hexagon_mode, runtime, target_abi,
             debug=debug,
             enable_openmp=enable_openmp
         )
-        sh_commands.update_mace_run_lib(model_output_dir,
+        sh_commands.update_mace_run_lib(model_output_dir, model_load_type,
                                         model_name, embed_model_data)
 
 
@@ -271,17 +273,21 @@ def merge_libs_and_tuning_results(target_soc,
                                   project_name,
                                   output_dir,
                                   model_output_dirs,
+                                  mace_model_dirs_kv,
+                                  model_load_type,
                                   hexagon_mode,
                                   embed_model_data):
     gen_opencl_and_tuning_code(
             target_abi, serialno, model_output_dirs, False)
-    sh_commands.build_production_code(target_abi)
+    sh_commands.build_production_code(model_load_type, target_abi)
 
     sh_commands.merge_libs(target_soc,
                            target_abi,
                            project_name,
                            output_dir,
                            model_output_dirs,
+                           mace_model_dirs_kv,
+                           model_load_type,
                            hexagon_mode,
                            embed_model_data)
 
@@ -366,6 +372,9 @@ def parse_model_configs():
             print("CONFIG ERROR:")
             print("embed_model_data must be integer in range [0, 1]")
             exit(1)
+        elif FLAGS.model_load_type == "pb":
+            configs["embed_model_data"] = 0
+            print("emebed_model_data is set 0")
 
         model_names = configs.get("models", "")
         if not model_names:
@@ -524,6 +533,12 @@ def parse_args():
         default="cpu",
         help="validation runtime.")
     parser.add_argument(
+        "--model_load_type",
+        type=str,
+        default="source",
+        help="[source|pb] Load models in generated `source` code" +
+                "or `pb` file.")
+    parser.add_argument(
         "--gpu_data_type",
         type=str,
         default="half",
@@ -532,9 +547,11 @@ def parse_args():
 
 
 def process_models(project_name, configs, embed_model_data, vlog_level,
-                   target_abi, phone_data_dir, target_soc="", serialno=""):
+                   target_abi, phone_data_dir, model_load_type,
+                   target_soc="", serialno=""):
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
+    mace_model_dirs_kv = {}
 
     for model_name in configs["models"]:
         print '===================', model_name, '==================='
@@ -550,6 +567,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
         model_output_base_dir = "%s/%s/%s/%s/%s" % (
             FLAGS.output_dir, project_name, "build",
             model_name, model_path_digest)
+        if model_load_type == "pb":
+            mace_model_dir = model_output_base_dir
+            mace_model_dirs_kv[model_name] = mace_model_dir
+        else:
+            mace_model_dir = ""
 
         if target_abi == "host":
             model_output_dir = "%s/%s" % (model_output_base_dir, target_abi)
@@ -587,11 +609,13 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                 serialno,
                                 vlog_level,
                                 embed_model_data,
+                                model_load_type,
                                 model_output_dir,
                                 model_config["input_nodes"],
                                 model_config["output_nodes"],
                                 model_config["input_shapes"],
                                 model_config["output_shapes"],
+                                mace_model_dir,
                                 model_name,
                                 model_device_type,
                                 FLAGS.round,
@@ -617,6 +641,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        model_config["output_nodes"],
                        model_config["input_shapes"],
                        model_config["output_shapes"],
+                       mace_model_dir,
                        model_name,
                        run_device_type,
                        FLAGS.round,
@@ -636,6 +661,7 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                                         vlog_level,
                                         embed_model_data,
                                         model_output_dir,
+                                        mace_model_dir,
                                         model_config["input_nodes"],
                                         model_config["output_nodes"],
                                         model_config["input_shapes"],
@@ -672,6 +698,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
             project_name,
             FLAGS.output_dir,
             model_output_dirs,
+            mace_model_dirs_kv,
+            model_load_type,
             hexagon_mode,
             embed_model_data)
 
@@ -732,7 +760,8 @@ def main(unused_args):
         # generate source
         sh_commands.gen_mace_version()
         sh_commands.gen_encrypted_opencl_source()
-        sh_commands.gen_mace_engine_factory_source(configs['models'].keys())
+        sh_commands.gen_mace_engine_factory_source(configs['models'].keys(),
+                                                   FLAGS.model_load_type)
 
     embed_model_data = configs["embed_model_data"]
     target_socs = get_target_socs(configs)
@@ -784,6 +813,8 @@ def main(unused_args):
                 embed_model_data,
                 model_config["fast_conv"],
                 model_config["obfuscate"],
+                model_output_base_dir,
+                FLAGS.model_load_type,
                 FLAGS.gpu_data_type)
 
     for target_abi in configs["target_abis"]:
@@ -802,12 +833,14 @@ def main(unused_args):
                               props["ro.product.model"]))
                         process_models(project_name, configs, embed_model_data,
                                        vlog_level, target_abi, phone_data_dir,
-                                       target_soc, serialno)
+                                       FLAGS.model_load_type, target_soc,
+                                       serialno)
             else:
                 print("====================================================")
                 print("Run on host")
                 process_models(project_name, configs, embed_model_data,
-                               vlog_level, target_abi, phone_data_dir)
+                               vlog_level, target_abi, phone_data_dir,
+                               FLAGS.model_load_type)
 
     if FLAGS.mode == "build" or FLAGS.mode == "all":
         sh_commands.packaging_lib(FLAGS.output_dir, project_name)

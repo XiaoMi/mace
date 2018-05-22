@@ -287,9 +287,6 @@ def bazel_build(target,
             target,
             "--copt=-std=c++11",
             "--copt=-D_GLIBCXX_USE_C99_MATH_TR1",
-            "--copt=-Werror",
-            "--copt=-Wextra",
-            "--copt=-Wno-missing-field-initializers",
             "--copt=-O3",
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
@@ -316,9 +313,6 @@ def bazel_build(target,
             "--cpu=%s" % abi,
             "--copt=-std=c++11",
             "--copt=-D_GLIBCXX_USE_C99_MATH_TR1",
-            "--copt=-Werror",
-            "--copt=-Wextra",
-            "--copt=-Wno-missing-field-initializers",
             "--copt=-DMACE_OBFUSCATE_LITERALS",
             "--copt=-O3",
             "--define",
@@ -375,7 +369,9 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
                            "mace/codegen/opencl/opencl_encrypt_program.cc")
 
 
-def gen_mace_engine_factory_source(model_tags, codegen_path="mace/codegen"):
+def gen_mace_engine_factory_source(model_tags,
+                                   model_load_type,
+                                   codegen_path="mace/codegen"):
     print("* Genearte mace engine creator source")
     codegen_tools_dir = "%s/engine" % codegen_path
     sh.rm("-rf", codegen_tools_dir)
@@ -383,6 +379,7 @@ def gen_mace_engine_factory_source(model_tags, codegen_path="mace/codegen"):
     gen_mace_engine_factory(
         model_tags,
         "mace/python/tools",
+        model_load_type,
         codegen_tools_dir)
     print("Genearte mace engine creator source done!\n")
 
@@ -472,12 +469,16 @@ def gen_model_code(model_codegen_dir,
                    embed_model_data,
                    fast_conv,
                    obfuscate,
+                   model_output_dir,
+                   model_load_type,
                    gpu_data_type):
     print("* Genearte model code")
     bazel_build_common("//mace/python/tools:converter")
+
     if os.path.exists(model_codegen_dir):
         sh.rm("-rf", model_codegen_dir)
     sh.mkdir("-p", model_codegen_dir)
+
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
     p = sh.python("bazel-bin/mace/python/tools/converter",
@@ -486,11 +487,9 @@ def gen_model_code(model_codegen_dir,
                   "--model_file=%s" % model_file_path,
                   "--weight_file=%s" % weight_file_path,
                   "--model_checksum=%s" % model_sha256_checksum,
-                  "--output=%s" % model_codegen_dir + "/model.cc",
                   "--input_node=%s" % input_nodes,
                   "--output_node=%s" % output_nodes,
                   "--runtime=%s" % runtime,
-                  "--output_type=source",
                   "--template=%s" % "mace/python/tools",
                   "--model_tag=%s" % model_tag,
                   "--input_shape=%s" % input_shapes,
@@ -498,6 +497,9 @@ def gen_model_code(model_codegen_dir,
                   "--embed_model_data=%s" % embed_model_data,
                   "--winograd=%s" % fast_conv,
                   "--obfuscate=%s" % obfuscate,
+                  "--codegen_output=%s/model.cc" % model_codegen_dir,
+                  "--pb_output=%s/%s.pb" % (model_output_dir, model_tag),
+                  "--model_load_type=%s" % model_load_type,
                   "--gpu_data_type=%s" % gpu_data_type,
                   _out=process_output,
                   _bg=True,
@@ -549,6 +551,7 @@ def gen_random_input(model_output_dir,
 
 
 def update_mace_run_lib(model_output_dir,
+                        model_load_type,
                         model_tag,
                         embed_model_data):
     mace_run_filepath = model_output_dir + "/mace_run"
@@ -560,8 +563,9 @@ def update_mace_run_lib(model_output_dir,
         sh.cp("-f", "mace/codegen/models/%s/%s.data" % (model_tag, model_tag),
               model_output_dir)
 
-    sh.cp("-f", "mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
-          model_output_dir)
+    if model_load_type == "source":
+        sh.cp("-f", "mace/codegen/models/%s/%s.h" % (model_tag, model_tag),
+              model_output_dir)
 
 
 def create_internal_storage_dir(serialno, phone_data_dir):
@@ -579,6 +583,7 @@ def tuning_run(abi,
                output_nodes,
                input_shapes,
                output_shapes,
+               mace_model_dir,
                model_tag,
                device_type,
                running_round,
@@ -603,6 +608,10 @@ def tuning_run(abi,
            str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
            gpu_perf_hint, gpu_priority_hint))
     if abi == "host":
+        if mace_model_dir:
+            mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
+        else:
+            mace_model_path = ""
         p = subprocess.Popen(
             [
                 "env",
@@ -623,6 +632,7 @@ def tuning_run(abi,
                 "--cpu_affinity_policy=%s" % cpu_affinity_policy,
                 "--gpu_perf_hint=%s" % gpu_perf_hint,
                 "--gpu_priority_hint=%s" % gpu_priority_hint,
+                "--model_file=%s" % mace_model_path,
             ],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE)
@@ -648,6 +658,14 @@ def tuning_run(abi,
                      phone_data_dir, serialno)
         adb_push("mace/third_party/nnlib/libhexagon_controller.so",
                  phone_data_dir, serialno)
+
+        if mace_model_dir:
+            mace_model_path = "%s/%s.pb" % (phone_data_dir, model_tag)
+            adb_push("%s/%s.pb" % (mace_model_dir, model_tag),
+                     mace_model_path,
+                     serialno)
+        else:
+            mace_model_path = ""
 
         stdout_buff = []
         process_output = make_output_processor(stdout_buff)
@@ -683,6 +701,7 @@ def tuning_run(abi,
             "--cpu_affinity_policy=%s" % cpu_affinity_policy,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
+            "--model_file=%s" % mace_model_path,
         ])
         adb_cmd = ' '.join(adb_cmd)
         p = sh.adb(
@@ -820,13 +839,17 @@ def validate_model(abi,
     print("Validation done!\n")
 
 
-def build_production_code(abi):
+def build_production_code(model_load_type, abi):
     bazel_build("//mace/codegen:generated_opencl", abi=abi)
     bazel_build("//mace/codegen:generated_tuning_params", abi=abi)
     if abi == 'host':
-        bazel_build(
-            "//mace/codegen:generated_models",
-            abi=abi)
+        if model_load_type == "source":
+            bazel_build(
+                "//mace/codegen:generated_models",
+                abi=abi)
+        else:
+            bazel_build("//mace/core:core", abi=abi)
+            bazel_build("//mace/ops:ops", abi=abi)
 
 
 def merge_libs(target_soc,
@@ -834,6 +857,8 @@ def merge_libs(target_soc,
                project_name,
                libmace_output_dir,
                model_output_dirs,
+               mace_model_dirs_kv,
+               model_load_type,
                hexagon_mode,
                embed_model_data):
     print("* Merge mace lib")
@@ -853,7 +878,20 @@ def merge_libs(target_soc,
     if hexagon_mode:
         sh.cp("-f", hexagon_lib_file, model_bin_dir)
 
-    sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
+    if model_load_type == "source":
+        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
+
+    for model_output_dir in model_output_dirs:
+        if not embed_model_data:
+            sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
+                  model_data_dir)
+        if model_load_type == "source":
+            sh.cp("-f", glob.glob("%s/*.h" % model_output_dir),
+                  model_header_dir)
+
+    for model_name in mace_model_dirs_kv:
+        sh.cp("-f", "%s/%s.pb" % (mace_model_dirs_kv[model_name], model_name),
+              model_data_dir)
 
     mri_stream = ""
     if abi == "host":
@@ -865,12 +903,24 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
+        if model_load_type == "source":
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
+        else:
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/core/libcore.pic.a\n")
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/ops/libops.pic.lo\n")
     else:
         mri_stream += "create %s/libmace_%s.%s.a\n" % \
                       (model_bin_dir, project_name, target_soc)
+        if model_load_type == "source":
+            mri_stream += (
+                "addlib "
+                "bazel-bin/mace/codegen/libgenerated_models.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
@@ -880,9 +930,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_version.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_models.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/core/libcore.a\n")
@@ -897,13 +944,13 @@ def merge_libs(target_soc,
             "bazel-bin/mace/utils/libutils_prod.a\n")
         mri_stream += (
             "addlib "
+            "bazel-bin/mace/proto/libmace_cc.a\n")
+        mri_stream += (
+            "addlib "
+            "bazel-bin/external/com_google_protobuf/libprotobuf_lite.a\n")
+        mri_stream += (
+            "addlib "
             "bazel-bin/mace/ops/libops.lo\n")
-
-    for model_output_dir in model_output_dirs:
-        if not embed_model_data:
-            sh.cp("-f", glob.glob("%s/*.data" % model_output_dir),
-                  model_data_dir)
-        sh.cp("-f", glob.glob("%s/*.h" % model_output_dir), model_header_dir)
 
     mri_stream += "save\n"
     mri_stream += "end\n"
@@ -971,6 +1018,7 @@ def benchmark_model(abi,
                     vlog_level,
                     embed_model_data,
                     model_output_dir,
+                    mace_model_dir,
                     input_nodes,
                     output_nodes,
                     input_shapes,
@@ -988,6 +1036,10 @@ def benchmark_model(abi,
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
     if abi == "host":
+        if mace_model_dir:
+            mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
+        else:
+            mace_model_path = ""
         p = subprocess.Popen(
             [
                 "env",
@@ -1005,6 +1057,7 @@ def benchmark_model(abi,
                 "--cpu_affinity_policy=%s" % cpu_affinity_policy,
                 "--gpu_perf_hint=%s" % gpu_perf_hint,
                 "--gpu_priority_hint=%s" % gpu_priority_hint,
+                "--model_file=%s" % mace_model_path,
             ])
         p.wait()
     else:
@@ -1022,6 +1075,14 @@ def benchmark_model(abi,
         if not embed_model_data:
             adb_push("%s/%s.data" % (model_output_dir, model_tag),
                      phone_data_dir, serialno)
+        if mace_model_dir:
+            mace_model_path = "%s/%s.pb" % (phone_data_dir, model_tag)
+            adb_push("%s/%s.pb" % (mace_model_dir, model_tag),
+                     mace_model_path,
+                     serialno)
+        else:
+            mace_model_path = ""
+
         p = sh.adb(
             "-s",
             serialno,
@@ -1045,6 +1106,7 @@ def benchmark_model(abi,
             "--cpu_affinity_policy=%s" % cpu_affinity_policy,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
+            "--model_file=%s" % mace_model_path,
             _out=process_output,
             _bg=True,
             _err_to_out=True)
