@@ -165,6 +165,10 @@ BM_CONV_2D(1, 32, 256, 256, 3, 3, 1, 4, VALID, 32);
 BM_CONV_2D(1, 128, 56, 56, 1, 1, 1, 1, SAME, 128);
 BM_CONV_2D(1, 1024, 7, 7, 1, 1, 1, 1, SAME, 1024);
 
+
+BM_CONV_2D(64, 32, 34, 34, 3, 3, 1, 1, VALID, 32);
+BM_CONV_2D(1, 32, 34, 34, 3, 3, 1, 1, VALID, 32);
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
