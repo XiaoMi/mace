@@ -21,10 +21,10 @@ The CPU tensor buffer is organized in the following order:
     * - 1-D Argument, length = W
       - W
 
-OpenCL runtime memory layout
+GPU runtime memory layout
 -----------------------------
-OpenCL runtime uses 2D image with CL_RGBA channel order as the tensor storage.
-This requires OpenCL 1.2 and above.
+GPU runtime implementation base on OpenCL, which uses 2D image with CL_RGBA
+channel order as the tensor storage. This requires OpenCL 1.2 and above.
 
 The way of mapping the Tensor data to OpenCL 2D image (RGBA) is critical for
 kernel performance.
@@ -53,7 +53,7 @@ The Input/Output Tensor is stored in NHWC format:
       - Default Input/Output format
     * - Height-Major Input/Output
       - NHWC
-      - [W * C, N * (H+3)/4
+      - [W * C, N * (H+3)/4]
       - Winograd Convolution format
     * - Width-Major Input/Output
       - NHWC
@@ -94,11 +94,11 @@ Filter Tensor
       - Image size [width, height]
       - Explanation
     * - Convolution Filter
-      - HWOI
-      - [RoundUp<4>(I), H * W * (O+3)/4]
-      - Convolution filter format，There is no difference compared to [H*w*I, (O+3)/4]
+      - OIHW
+      - [I, (O+3)/4 * W * H]
+      - Convolution filter format，There is no difference compared to [H*W*I, (O+3)/4]
     * - Depthwise Convlution Filter
-      - HWIM
+      - MIHW
       - [H * W * M, (I+3)/4]
       - Depthwise-Convolution filter format
 
@@ -114,10 +114,10 @@ coordination relation between **Image** and **Buffer**.
       - Pixel coordinate relationship
       - Explanation
     * - Convolution Filter
-      - P[m, n] = {E[h, w, o, i] | (h=T/W, w=T%W, o=[n/HW*4+k], i=m)}
+      - P[m, n] = {E[o, i, h, w] | (o=[n/HW*4+k], i=m, h=T/W, w=T%W)}
       - HW= H * W, T=n%HW, k=[0, 4)
     * - Depthwise Convlution Filter
-      - P[m, n] = {E[h, w, i, 0] | (h=m/W, w=m%W, i=[n*4+k])}
+      - P[m, n] = {E[0, i, h, w] | (i=[n*4+k], h=m/W, w=m%W)}
       - only support multiplier == 1, k=[0, 4)
 
 1-D Argument Tensor
