@@ -65,6 +65,18 @@ extern void Conv2dNeonK7x7S3(const float *input,
                              const index_t *out_shape,
                              float *output);
 
+extern void Conv2dNeonK1x15S1(const float *input,
+                              const float *filter,
+                              const index_t *in_shape,
+                              const index_t *out_shape,
+                              float *output);
+
+extern void Conv2dNeonK15x1S1(const float *input,
+                              const float *filter,
+                              const index_t *in_shape,
+                              const index_t *out_shape,
+                              float *output);
+
 }  // namespace kernels
 }  // namespace mace
 
