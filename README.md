@@ -28,10 +28,13 @@ targets:
     archetectures with limited performance.
 
 ## Getting Started
+* [Introduction](docs/getting_started/introduction.rst)
+* [How to build](docs/getting_started/how_to_build.rst)
+* [Create a model deployment file](docs/getting_started/create_a_model_deployment.rst)
 
 ## Performance
-[MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) contains
-several common neural networks models and built daily against several mobile
+[MiAI Compute Engine Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) contains
+several common neural networks models and built daily against a list of mobile
 phones. The benchmark result can be found in the CI result page.
 
 ## Communication
@@ -43,13 +46,13 @@ phones. The benchmark result can be found in the CI result page.
 Any kind of contributions are welcome. For bug reports, feature requests,
 please just open an issue without any hesitance. For code contributions, it's
 strongly suggested to open an issue for discussion first. For more details,
-please refer to [this guide](docs).
+please refer to [the contribution guide](docs/development/contributing.md).
 
 ## License
 [Apache License 2.0](LICENSE).
 
 ## Acknowledgement
-*MiAI Compute Engine* depends on several open source projects located in
+MiAI Compute Engine depends on several open source projects located in
 [third_party](mace/third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
 * [nnlib](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the DSP runtime
