@@ -27,8 +27,8 @@ namespace mace {
 {% if model_type == 'source' %}
 namespace {{tag}} {
 
-{% for tensor in tensors %}
-extern void CreateTensor{{ tensor.id }}(mace::ConstTensor *tensor);
+{% for i in range(net.tensors|length) %}
+extern void CreateTensor{{ i }}(mace::ConstTensor *tensor);
 {% endfor %}
 
 
@@ -111,9 +111,9 @@ void CreateOperators(NetDef *net_def) {
 void CreateTensors(NetDef *net_def) {
   MACE_LATENCY_LOGGER(1, "Create tensors");
 
-  net_def->mutable_tensors()->Reserve({{ tensors|length }});
-  {% for tensor in tensors %}
-  mace::{{tag}}::CreateTensor{{tensor.id}}(net_def->add_tensors());
+  net_def->mutable_tensors()->Reserve({{ net.tensors|length }});
+  {% for i in range(net.tensors|length) %}
+  mace::{{tag}}::CreateTensor{{ i }}(net_def->add_tensors());
   {% endfor %}
 }
 

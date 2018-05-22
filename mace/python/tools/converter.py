@@ -22,6 +22,7 @@ from mace.proto import mace_pb2
 from mace.python.tools import tf_dsp_converter_lib
 from mace.python.tools import memory_optimizer
 from mace.python.tools import source_converter_lib
+from mace.python.tools import tensor_util
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import tensorflow_converter
 from mace.python.tools.converter_tool import caffe_converter
@@ -173,11 +174,27 @@ def main(unused_args):
 
             print "Memory optimization done."
 
+    if FLAGS.obfuscate:
+        tensor_util.obfuscate_name(output_graph_def)
+    else:
+        tensor_util.rename_tensor(output_graph_def)
+
+    tensor_infos, model_data = tensor_util.get_tensor_info_and_model_data(
+            output_graph_def, FLAGS.runtime)
+
     source_converter_lib.convert_to_source(
-        output_graph_def, model_checksum, weight_checksum, FLAGS.template,
-        FLAGS.obfuscate, FLAGS.model_tag, FLAGS.codegen_output, FLAGS.runtime,
-        FLAGS.embed_model_data, FLAGS.winograd, FLAGS.model_load_type)
+            output_graph_def, model_checksum, weight_checksum, FLAGS.template,
+            FLAGS.obfuscate, FLAGS.model_tag, FLAGS.codegen_output,
+            FLAGS.runtime, FLAGS.embed_model_data, FLAGS.winograd,
+            FLAGS.model_load_type, tensor_infos, model_data)
+
+    if not FLAGS.embed_model_data:
+        output_dir = os.path.dirname(FLAGS.codegen_output) + '/'
+        with open(output_dir + FLAGS.model_tag + '.data', "wb") as f:
+            f.write(bytearray(model_data))
+
     if FLAGS.model_load_type == 'pb':
+        tensor_util.del_tensor_data(output_graph_def, FLAGS.runtime)
         with open(FLAGS.pb_output, "wb") as f:
             f.write(output_graph_def.SerializeToString())
         # with open(FLAGS.pb_output + '_txt', "wb") as f:

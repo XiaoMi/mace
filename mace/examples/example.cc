@@ -175,12 +175,12 @@ bool RunModel(const std::vector<std::string> &input_names,
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
     create_engine_status =
-        CreateMaceEngineFromPB(FLAGS_model_data_file,
-                               input_names,
-                               output_names,
-                               device_type,
-                               &engine,
-                               model_pb_data);
+        CreateMaceEngineFromProto(model_pb_data,
+                                  FLAGS_model_data_file,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &engine);
   } else {
     create_engine_status =
         CreateMaceEngineFromCode(model_name,

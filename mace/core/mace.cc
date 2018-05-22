@@ -311,12 +311,13 @@ void UnloadModelData(const unsigned char *model_data,
   MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
 }
 
-MaceStatus CreateMaceEngineFromPB(const std::string &model_data_file,
-                                  const std::vector<std::string> &input_nodes,
-                                  const std::vector<std::string> &output_nodes,
-                                  const DeviceType device_type,
-                                  std::shared_ptr<MaceEngine> *engine,
-                                  const std::vector<unsigned char> &model_pb) {
+MaceStatus CreateMaceEngineFromProto(
+    const std::vector<unsigned char> &model_pb,
+    const std::string &model_data_file,
+    const std::vector<std::string> &input_nodes,
+    const std::vector<std::string> &output_nodes,
+    const DeviceType device_type,
+    std::shared_ptr<MaceEngine> *engine) {
   LOG(INFO) << "Create MaceEngine from model pb";
   // load model
   if (engine == nullptr) {
