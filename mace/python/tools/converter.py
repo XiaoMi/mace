@@ -39,11 +39,6 @@ FLAGS = None
 device_type_map = {'cpu': mace_pb2.CPU,
                    'gpu': mace_pb2.GPU,
                    'dsp': mace_pb2.HEXAGON}
-device_data_type_map = {
-    mace_pb2.CPU: mace_pb2.DT_FLOAT,
-    mace_pb2.GPU: mace_pb2.DT_HALF,
-    mace_pb2.HEXAGON: mace_pb2.DT_UINT8
-}
 
 
 def file_checksum(fname):
@@ -128,6 +123,17 @@ def main(unused_args):
                                                        FLAGS.weight_file)
 
         output_graph_def = converter.run()
+
+        if FLAGS.gpu_data_type == 'half':
+            gpu_data_type = mace_pb2.DT_HALF
+        else:
+            gpu_data_type = mace_pb2.DT_FLOAT
+        device_data_type_map = {
+            mace_pb2.CPU: mace_pb2.DT_FLOAT,
+            mace_pb2.GPU: gpu_data_type,
+            mace_pb2.HEXAGON: mace_pb2.DT_UINT8
+        }
+
         print("Transform model to one that can better run on device")
         if not FLAGS.runtime:
             cpu_graph_def = copy.deepcopy(output_graph_def)
@@ -177,7 +183,8 @@ def main(unused_args):
         source_converter_lib.convert_to_source(
             output_graph_def, model_checksum, weight_checksum, FLAGS.template,
             FLAGS.obfuscate, FLAGS.model_tag, FLAGS.output, FLAGS.runtime,
-            FLAGS.embed_model_data, FLAGS.winograd)
+            FLAGS.embed_model_data, FLAGS.winograd,
+            FLAGS.gpu_data_type)
     else:
         with open(FLAGS.output, "wb") as f:
             f.write(output_graph_def.SerializeToString())
@@ -266,6 +273,8 @@ def parse_args():
         type=str2bool,
         default=True,
         help="embed model data.")
+    parser.add_argument(
+        "--gpu_data_type", type=str, default="half", help="half/float")
     return parser.parse_known_args()
 
 
