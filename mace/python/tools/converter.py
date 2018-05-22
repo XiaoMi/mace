@@ -40,11 +40,6 @@ FLAGS = None
 device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'gpu': cvt.DeviceType.GPU.value,
                    'dsp': cvt.DeviceType.HEXAGON.value}
-device_data_type_map = {
-    cvt.DeviceType.CPU.value: mace_pb2.DT_FLOAT,
-    cvt.DeviceType.GPU.value: mace_pb2.DT_HALF,
-    cvt.DeviceType.HEXAGON.value: mace_pb2.DT_UINT8
-}
 
 
 def file_checksum(fname):
@@ -129,6 +124,17 @@ def main(unused_args):
                                                        FLAGS.weight_file)
 
         output_graph_def = converter.run()
+
+        if FLAGS.gpu_data_type == 'half':
+            gpu_data_type = mace_pb2.DT_HALF
+        else:
+            gpu_data_type = mace_pb2.DT_FLOAT
+        device_data_type_map = {
+            cvt.DeviceType.CPU.value: mace_pb2.DT_FLOAT,
+            cvt.DeviceType.GPU.value: gpu_data_type,
+            cvt.DeviceType.HEXAGON.value: mace_pb2.DT_UINT8
+        }
+
         print("Transform model to one that can better run on device")
         if not FLAGS.runtime:
             cpu_graph_def = copy.deepcopy(output_graph_def)
@@ -180,7 +186,7 @@ def main(unused_args):
         tensor_util.rename_tensor(output_graph_def)
 
     tensor_infos, model_data = tensor_util.get_tensor_info_and_model_data(
-            output_graph_def, FLAGS.runtime)
+            output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
 
     source_converter_lib.convert_to_source(
             output_graph_def, model_checksum, weight_checksum, FLAGS.template,
@@ -194,7 +200,10 @@ def main(unused_args):
             f.write(bytearray(model_data))
 
     if FLAGS.model_load_type == 'pb':
-        tensor_util.del_tensor_data(output_graph_def, FLAGS.runtime)
+        tensor_util.del_tensor_data(
+                output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
+        tensor_util.update_tensor_data_type(
+                output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
         with open(FLAGS.pb_output, "wb") as f:
             f.write(output_graph_def.SerializeToString())
         # with open(FLAGS.pb_output + '_txt', "wb") as f:
@@ -254,8 +263,6 @@ def parse_args():
     parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
     parser.add_argument(
-        "--output_type", type=str, default="pb", help="output type: source/pb")
-    parser.add_argument(
         "--template", type=str, default="", help="template path")
     parser.add_argument(
         "--obfuscate",
@@ -293,6 +300,8 @@ def parse_args():
         default="source",
         help="[source|pb] Load models in generated `source` code" +
                 "or `pb` file.")
+    parser.add_argument(
+        "--gpu_data_type", type=str, default="half", help="half/float")
     return parser.parse_known_args()
 
 

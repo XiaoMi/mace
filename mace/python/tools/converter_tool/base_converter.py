@@ -153,14 +153,15 @@ class TransformerRule(Enum):
     TRANSFORM_GPU_WINOGRAD = 8
     TRANSFORM_ADD_TO_BIASADD = 9
     FOLD_BIASADD = 10
-    FOLD_ACTIVATION = 11
-    TRANSPOSE_FILTERS = 12
-    RESHAPE_FC_WEIGHT = 13
-    TRANSPOSE_DATA_FORMAT = 14
-    TRANSFORM_GLOBAL_CONV_TO_FC = 15
-    TRANSFORM_BUFFER_IMAGE = 16
-    ADD_DEVICE_AND_DATA_TYPE = 17
-    SORT_BY_EXECUTION = 18
+    FLATTEN_ATROUS_CONV = 11
+    FOLD_ACTIVATION = 12
+    TRANSPOSE_FILTERS = 13
+    RESHAPE_FC_WEIGHT = 14
+    TRANSPOSE_DATA_FORMAT = 15
+    TRANSFORM_GLOBAL_CONV_TO_FC = 16
+    TRANSFORM_BUFFER_IMAGE = 17
+    ADD_DEVICE_AND_DATA_TYPE = 18
+    SORT_BY_EXECUTION = 19
 
 
 class ConverterInterface(object):
@@ -218,6 +219,7 @@ class ConverterOption(object):
             TransformerRule.TRANSFORM_GPU_WINOGRAD,
             TransformerRule.TRANSFORM_ADD_TO_BIASADD,
             TransformerRule.FOLD_BIASADD,
+            TransformerRule.FLATTEN_ATROUS_CONV,
             TransformerRule.FOLD_ACTIVATION,
             TransformerRule.TRANSPOSE_FILTERS,
             TransformerRule.TRANSPOSE_DATA_FORMAT,

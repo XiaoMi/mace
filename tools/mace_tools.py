@@ -538,6 +538,11 @@ def parse_args():
         default="source",
         help="[source|pb] Load models in generated `source` code" +
                 "or `pb` file.")
+    parser.add_argument(
+        "--gpu_data_type",
+        type=str,
+        default="half",
+        help="[half | float].")
     return parser.parse_known_args()
 
 
@@ -809,7 +814,8 @@ def main(unused_args):
                 model_config["fast_conv"],
                 model_config["obfuscate"],
                 model_output_base_dir,
-                FLAGS.model_load_type)
+                FLAGS.model_load_type,
+                FLAGS.gpu_data_type)
 
     for target_abi in configs["target_abis"]:
         for target_soc in target_socs:

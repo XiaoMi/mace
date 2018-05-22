@@ -27,7 +27,6 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
                       obfuscate, model_tag, output, runtime, embed_model_data,
                       winograd_conv, model_load_type, tensor_infos,
                       model_data):
-
     # Capture our current directory
     print template_dir
 

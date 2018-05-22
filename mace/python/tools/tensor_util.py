@@ -105,11 +105,11 @@ def rename_tensor(net_def):
 
 
 class TensorInfo:
-    def __init__(self, id, t, runtime):
+    def __init__(self, id, t, runtime, gpu_data_type):
         self.id = id
         self.data_type = mace_pb2.DataType.Name(t.data_type)
         if t.data_type == mace_pb2.DT_FLOAT:
-            if runtime == 'gpu':
+            if runtime == 'gpu' and gpu_data_type == 'half':
                 self.data_type = mace_pb2.DT_HALF
                 self.data = bytearray(
                     np.array(t.float_data).astype(np.float16).tobytes())
@@ -127,13 +127,13 @@ class TensorInfo:
             raise Exception('Tensor data type %s not supported' % t.data_type)
 
 
-def get_tensor_info_and_model_data(net_def, runtime):
+def get_tensor_info_and_model_data(net_def, runtime, gpu_data_type):
     model_data = []
     offset = 0
     counter = 0
     tensor_infos = []
     for t in net_def.tensors:
-        tensor_info = TensorInfo(counter, t, runtime)
+        tensor_info = TensorInfo(counter, t, runtime, gpu_data_type)
         tensor_infos.append(tensor_info)
         # align
         if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
@@ -156,15 +156,17 @@ def get_tensor_info_and_model_data(net_def, runtime):
     return tensor_infos, model_data
 
 
-def del_tensor_data(net_def, runtime):
+def del_tensor_data(net_def, runtime, gpu_data_type):
     for t in net_def.tensors:
         if t.data_type == mace_pb2.DT_FLOAT:
             del t.float_data[:]
-            if runtime == 'gpu':
-                t.data_type = mace_pb2.DT_HALF
-            else:
-                t.data_type = mace_pb2.DT_FLOAT
         elif t.data_type == mace_pb2.DT_INT32:
             del t.int32_data[:]
         elif t.data_type == mace_pb2.DT_UINT8:
             del t.int32_data[:]
+
+def update_tensor_data_type(net_def, runtime, gpu_data_type):
+    for t in net_def.tensors:
+        if t.data_type == mace_pb2.DT_FLOAT and runtime == 'gpu' \
+                and gpu_data_type == 'half':
+            t.data_type = mace_pb2.DT_HALF

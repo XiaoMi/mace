@@ -12,12 +12,17 @@
 mobile heterogeneous computing platforms. The design is focused on the following
 targets:
 * Performance
-  * The runtime is highly optimized with NEON, OpenCL and HVX. Except for the
-    inference speed, the initialization speed is also intensively optimized.
+  * The runtime is highly optimized with NEON, OpenCL and Hexagon, and
+    [Winograd algorithm](https://arxiv.org/abs/1509.09308) is introduced to
+    speed up the convolution operations. Except for the inference speed, the
+    initialization speed is also intensively optimized.
 * Power consumption
-  * Chip dependent power options are included as advanced API.
+  * Chip dependent power options like big.LITTLE scheduling, Adreno GPU hints are
+    included as advanced API.
 * Memory usage and library footprint
   * Graph level memory allocation optimization and buffer reuse is supported.
+    The core library tries to keep minium external dependencies to keep the
+    library footprint small.
 * Model protection
   * Model protection is one the highest priority feature from the beginning of 
     the design. Various techniques are introduced like coverting models to C++
@@ -28,31 +33,34 @@ targets:
     archetectures with limited performance.
 
 ## Getting Started
+* [Introduction](docs/getting_started/introduction.rst)
+* [How to build](docs/getting_started/how_to_build.rst)
+* [Create a model deployment file](docs/getting_started/create_a_model_deployment.rst)
 
 ## Performance
-[MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) contains
-several common neural networks models and built daily against several mobile
+[MiAI Compute Engine Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) contains
+several common neural networks models and built daily against a list of mobile
 phones. The benchmark result can be found in the CI result page.
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
-* Gitter or Slack:
-* QQ群:
+* Gitter:
+* QQ群: 756046893
 
 ## Contributing
 Any kind of contributions are welcome. For bug reports, feature requests,
 please just open an issue without any hesitance. For code contributions, it's
 strongly suggested to open an issue for discussion first. For more details,
-please refer to [this guide](docs).
+please refer to [the contribution guide](docs/development/contributing.md).
 
 ## License
 [Apache License 2.0](LICENSE).
 
 ## Acknowledgement
-*MiAI Compute Engine* depends on several open source projects located in
+MiAI Compute Engine depends on several open source projects located in
 [third_party](mace/third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
-* [nnlib](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the DSP runtime
+* [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
   depends on this library.
 * [TensorFlow](https://github.com/tensorflow/tensorflow),
   [Caffe](https://github.com/BVLC/caffe),

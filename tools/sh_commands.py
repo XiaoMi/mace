@@ -470,7 +470,8 @@ def gen_model_code(model_codegen_dir,
                    fast_conv,
                    obfuscate,
                    model_output_dir,
-                   model_load_type):
+                   model_load_type,
+                   gpu_data_type):
     print("* Genearte model code")
     bazel_build_common("//mace/python/tools:converter")
 
@@ -499,6 +500,7 @@ def gen_model_code(model_codegen_dir,
                   "--codegen_output=%s/model.cc" % model_codegen_dir,
                   "--pb_output=%s/%s.pb" % (model_output_dir, model_tag),
                   "--model_load_type=%s" % model_load_type,
+                  "--gpu_data_type=%s" % gpu_data_type,
                   _out=process_output,
                   _bg=True,
                   _err_to_out=True)
