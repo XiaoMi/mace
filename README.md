@@ -12,12 +12,17 @@
 mobile heterogeneous computing platforms. The design is focused on the following
 targets:
 * Performance
-  * The runtime is highly optimized with NEON, OpenCL and Hexagon. Except for the
-    inference speed, the initialization speed is also intensively optimized.
+  * The runtime is highly optimized with NEON, OpenCL and Hexagon, and
+    [Winograd algorithm](https://arxiv.org/abs/1509.09308) is introduced to
+    speed up the convolution operations. Except for the inference speed, the
+    initialization speed is also intensively optimized.
 * Power consumption
-  * Chip dependent power options are included as advanced API.
+  * Chip dependent power options like big.LITTLE scheduling, Adreno GPU hints are
+    included as advanced API.
 * Memory usage and library footprint
   * Graph level memory allocation optimization and buffer reuse is supported.
+    The core library tries to keep minium external dependencies to keep the
+    library footprint small.
 * Model protection
   * Model protection is one the highest priority feature from the beginning of 
     the design. Various techniques are introduced like coverting models to C++
