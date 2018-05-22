@@ -471,7 +471,8 @@ def gen_model_code(model_codegen_dir,
                    dsp_mode,
                    embed_model_data,
                    fast_conv,
-                   obfuscate):
+                   obfuscate,
+                   gpu_data_type):
     print("* Genearte model code")
     bazel_build_common("//mace/python/tools:converter")
     if os.path.exists(model_codegen_dir):
@@ -497,6 +498,7 @@ def gen_model_code(model_codegen_dir,
                   "--embed_model_data=%s" % embed_model_data,
                   "--winograd=%s" % fast_conv,
                   "--obfuscate=%s" % obfuscate,
+                  "--gpu_data_type=%s" % gpu_data_type,
                   _out=process_output,
                   _bg=True,
                   _err_to_out=True)

@@ -109,11 +109,11 @@ def rename_tensor(net_def):
 
 
 class TensorInfo:
-    def __init__(self, id, t, runtime):
+    def __init__(self, id, t, runtime, gpu_data_type):
         self.id = id
         self.data_type = mace_pb2.DataType.Name(t.data_type)
         if t.data_type == mace_pb2.DT_FLOAT:
-            if runtime == 'gpu':
+            if runtime == 'gpu' and gpu_data_type == 'half':
                 self.data_type = mace_pb2.DT_HALF
                 self.data = bytearray(
                     np.array(t.float_data).astype(np.float16).tobytes())
@@ -137,7 +137,7 @@ def stringfy(value):
 
 def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
                       obfuscate, model_tag, output, runtime, embed_model_data,
-                      winograd_conv):
+                      winograd_conv, gpu_data_type):
     if obfuscate:
         obfuscate_name(net_def)
     else:
@@ -157,7 +157,7 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
     offset = 0
     counter = 0
     for t in net_def.tensors:
-        tensor_info = TensorInfo(counter, t, runtime)
+        tensor_info = TensorInfo(counter, t, runtime, gpu_data_type)
         # align
         if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
             padding = 4 - offset % 4
@@ -208,7 +208,7 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
     build_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     template_name = 'model.jinja2'
     tensors = [
-        TensorInfo(i, net_def.tensors[i], runtime)
+        TensorInfo(i, net_def.tensors[i], runtime, gpu_data_type)
         for i in range(len(net_def.tensors))
     ]
     checksum = model_checksum

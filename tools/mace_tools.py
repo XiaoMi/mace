@@ -523,6 +523,11 @@ def parse_args():
         type=str,
         default="cpu",
         help="validation runtime.")
+    parser.add_argument(
+        "--gpu_data_type",
+        type=str,
+        default="half",
+        help="[half | float].")
     return parser.parse_known_args()
 
 
@@ -778,7 +783,8 @@ def main(unused_args):
                 model_config["dsp_mode"],
                 embed_model_data,
                 model_config["fast_conv"],
-                model_config["obfuscate"])
+                model_config["obfuscate"],
+                FLAGS.gpu_data_type)
 
     for target_abi in configs["target_abis"]:
         for target_soc in target_socs:
