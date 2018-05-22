@@ -12,7 +12,7 @@
 mobile heterogeneous computing platforms. The design is focused on the following
 targets:
 * Performance
-  * The runtime is highly optimized with NEON, OpenCL and HVX. Except for the
+  * The runtime is highly optimized with NEON, OpenCL and Hexagon. Except for the
     inference speed, the initialization speed is also intensively optimized.
 * Power consumption
   * Chip dependent power options are included as advanced API.
@@ -55,7 +55,7 @@ please refer to [the contribution guide](docs/development/contributing.md).
 MiAI Compute Engine depends on several open source projects located in
 [third_party](mace/third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
-* [nnlib](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the DSP runtime
+* [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
   depends on this library.
 * [TensorFlow](https://github.com/tensorflow/tensorflow),
   [Caffe](https://github.com/BVLC/caffe),
