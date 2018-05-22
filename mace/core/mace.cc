@@ -24,8 +24,6 @@
 #include "mace/core/types.h"
 #include "mace/public/mace.h"
 
-
-
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL

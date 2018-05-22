@@ -24,7 +24,6 @@
 #include "mace/utils/logging.h"
 
 namespace mace {
-{% if model_type == 'source' %}
 namespace {{tag}} {
 
 {% for i in range(net.tensors|length) %}
@@ -133,7 +132,6 @@ void CreateMemoryArena(mace::MemoryArena *mem_arena) {
 
 
 }  // namespace
-{% endif %}
 
 namespace {{tag}} {
 

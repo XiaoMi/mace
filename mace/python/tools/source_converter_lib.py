@@ -89,8 +89,7 @@ def convert_to_source(net_def, model_checksum, weight_checksum, template_dir,
             embed_model_data=embed_model_data,
             winograd_conv=winograd_conv,
             checksum=checksum,
-            build_time=build_time,
-            model_type=model_load_type)
+            build_time=build_time)
         with open(output, "wb") as f:
             f.write(source)
 
