@@ -73,7 +73,8 @@ static void TransposeNCHWToNHWCC2(const float *input,
     for (w = 0; w + 3 < width; w += 4) {
       float32x4_t vi0 = vld1q_f32(input + in_offset);
       float32x4_t vi1 = vld1q_f32(input + in_offset + image_size);
-      vst2q_f32(output + out_offset, {vi0, vi1});
+      float32x4x2_t vi = {vi0, vi1};
+      vst2q_f32(output + out_offset, vi);
 
       in_offset += 4;
       out_offset += 8;
