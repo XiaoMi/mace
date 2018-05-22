@@ -36,8 +36,8 @@ phones. The benchmark result can be found in the CI result page.
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
-* Gitter or Slack:
-* QQ群:
+* Gitter:
+* QQ群: 756046893
 
 ## Contributing
 Any kind of contributions are welcome. For bug reports, feature requests,
