@@ -76,30 +76,6 @@ namespace kernels {
   vo0 = vmlaq_lane_f32(vo0, vi3, vget_high_f32(vf00), 1);        \
   vo0 = vmlaq_lane_f32(vo0, vi4, vf01, 1);
 
-inline void Conv2dCPUK5x5Calc(const float *in_ptr_base,
-                              const float *filter_ptr0,
-                              const index_t in_width,
-                              const index_t in_channels,
-                              const index_t out_height,
-                              const index_t out_width,
-                              const index_t out_image_size,
-                              float *out_ptr0_base,
-                              const index_t io,
-                              const int stride) {
-  for (index_t ih = 0; ih < out_height; ++ih) {
-    for (index_t iw = 0; iw < out_width; ++iw) {
-      for (int i = 0; i < 5; ++i) {
-        for (int j = 0; j < 5; ++j) {
-          out_ptr0_base[io * out_image_size + ih * out_width + iw] +=
-              in_ptr_base[(ih * stride + i) * in_width + (iw * stride + j)] *
-                  filter_ptr0[io * in_channels * 25 + i * 5 + j];
-        }
-      }
-    }
-  }
-}
-
-
 // Ho = 1, Wo = 4, Co = 4
 void Conv2dNeonK5x5S1(const float *input,
                       const float *filter,
@@ -183,11 +159,11 @@ void Conv2dNeonK5x5S1(const float *input,
             }  // w
           }  // h
 #else
-          for (index_t io = 0; io < 4; ++io) {
-            Conv2dCPUK5x5Calc(in_ptr_base, filter_ptr0, in_width, in_channels,
-                              out_height, out_width, out_image_size,
-                              out_ptr0_base, io, 1);
-          }  // for
+          for (index_t oc = 0; oc < 4; ++oc) {
+            Conv2dCPUKHxKWCalc(in_ptr_base, filter_ptr0 + oc * in_channels * 25,
+                               in_width, 5, 5, out_height, out_width,
+                               out_ptr0_base + oc * out_image_size, 1);
+          }
 #endif
         }  // c
       } else {
@@ -229,9 +205,9 @@ void Conv2dNeonK5x5S1(const float *input,
               }  // w
             }  // h
 #else
-            Conv2dCPUK5x5Calc(in_ptr_base, filter_ptr0, in_width, in_channels,
-                              out_height, out_width, out_image_size,
-                              out_ptr0_base, 0, 1);
+            Conv2dCPUKHxKWCalc(in_ptr_base, filter_ptr0,
+                               in_width, 5, 5, out_height, out_width,
+                               out_ptr0_base, 1);
 #endif
           }  // c
         }  // mm

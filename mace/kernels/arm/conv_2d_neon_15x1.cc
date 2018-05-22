@@ -76,7 +76,7 @@ void Conv2dNeonK15x1S1(const float *input,
               input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr = filter + m * in_channels * 15 + c * 15;
 #if defined(MACE_ENABLE_NEON) && !defined(__aarch64__)
-          /* load filter (1 outch x 1 height x 4 width) */
+          /* load filter (1 outch x 4 height x 1 width) */
           float32x4_t vf0, vf1, vf2, vf3;
           vf0 = vld1q_f32(filter_ptr);
           vf1 = vld1q_f32(filter_ptr + 4);
@@ -87,7 +87,7 @@ void Conv2dNeonK15x1S1(const float *input,
             for (index_t wt = 0; wt < tile_width && w + wt < out_width; ++wt) {
               // load output
               index_t out_offset = h * out_width + w + wt;
-              // output (1 outch x 1 height x 4 width): vo_outch_height
+              // output (1 outch x 4 height x 1 width): vo_outch_height
               float32x4_t vo = {out_ptr_base[out_offset],
                                 out_ptr_base[out_offset + out_width],
                                 out_ptr_base[out_offset + 2 * out_width],

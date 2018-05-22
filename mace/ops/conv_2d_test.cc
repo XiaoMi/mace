@@ -776,6 +776,36 @@ TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv3x3S12) {
                                                 {1, 1});
 }
 
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv5x5S12) {
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {5, 5, 3, 64},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {5, 5, 3, 63},
+                                             {1, 1});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x7S1) {
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {1, 7, 192, 192},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {1, 7, 192, 191},
+                                             {1, 1});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x1S1) {
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 192, 192},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 160, 192},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({17, 17}, {7, 1, 160, 191},
+                                             {1, 1});
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x7S12) {
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {7, 7, 3, 64},
+                                             {1, 1});
+  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {7, 7, 3, 63},
+                                             {1, 1});
+}
+
 TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv15x1S12) {
   TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {15, 1, 256, 2},
                                                 {1, 1});
@@ -790,11 +820,6 @@ TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv1x15S12) {
                                                 {1, 1});
   TestHalfComplexConvNxNS12<DeviceType::GPU>({256, 256}, {1, 15, 32, 2},
                                              {1, 1});
-}
-
-TEST_F(Conv2dOpTest, OPENCLHalfAlignedConv7x75S12) {
-  TestHalfComplexConvNxNS12<DeviceType::GPU>({32, 32}, {7, 7, 3, 64},
-                                                {1, 1});
 }
 
 TEST_F(Conv2dOpTest, OPENCLHalfUnalignedConv1x1S12) {

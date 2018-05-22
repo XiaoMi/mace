@@ -300,19 +300,11 @@ void Conv2dNeonK3x3S1(const float *input,
             out_ptr1 += out_width;
           }  // h
 #else
-          for (index_t io = 0; io < 2; ++io) {
-            for (index_t ih = 0; ih < out_height; ++ih) {
-              for (index_t iw = 0; iw < out_width; ++iw) {
-                for (int i = 0; i < 3; ++i) {
-                  for (int j = 0; j < 3; ++j) {
-                    out_ptr0[io * out_image_size + ih * out_width + iw] +=
-                      in_ptr0[(ih + i) * in_width + (iw + j)]
-                        * filter_ptr0[io * in_channels * 9 + i * 3 + j];
-                  }
-                }
-              }
-            }
-          }  // for
+          for (index_t oc = 0; oc < 2; ++oc) {
+            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0 + oc * in_channels * 9,
+                               in_width, 3, 3, out_height, out_width,
+                               out_ptr0_base + oc * out_image_size, 1);
+          }
 #endif
         }  // c
       } else {
@@ -501,17 +493,9 @@ void Conv2dNeonK3x3S1(const float *input,
               out_ptr0 += out_width;
             }  // h
 #else
-            for (index_t ih = 0; ih < out_height; ++ih) {
-              for (index_t iw = 0; iw < out_width; ++iw) {
-                for (int i = 0; i < 3; ++i) {
-                  for (int j = 0; j < 3; ++j) {
-                    out_ptr0[ih * out_width + iw] +=
-                      in_ptr0[(ih + i) * in_width + (iw + j)]
-                        * filter_ptr0[i * 3 + j];
-                  }
-                }
-              }
-            }
+            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0,
+                               in_width, 3, 3, out_height, out_width,
+                               out_ptr0_base, 1);
 #endif
           }  // c
         }  // mm
@@ -666,17 +650,9 @@ void Conv2dNeonK3x3S2(const float *input,
           }  // w
         }  // h
 #else
-        for (index_t ih = 0; ih < out_height; ++ih) {
-          for (index_t iw = 0; iw < out_width; ++iw) {
-            for (int i = 0; i < 3; ++i) {
-              for (int j = 0; j < 3; ++j) {
-                out_base[ih * out_width + iw] +=
-                  in_base[(ih * 2 + i) * in_width + (iw * 2 + j)]
-                    * filter_ptr[i * 3 + j];
-              }
-            }
-          }
-        }
+        Conv2dCPUKHxKWCalc(in_base, filter_ptr,
+                           in_width, 3, 3, out_height, out_width,
+                           out_base, 2);
 #endif
       }  // c
     }  // m

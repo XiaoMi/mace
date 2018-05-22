@@ -357,6 +357,10 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
     bool use_neon_5x5_s1 = filter_h == 5 && filter_w == 5
         && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+    bool use_neon_1x7_s1 = filter_h == 1 && filter_w == 7
+        && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
+    bool use_neon_7x1_s1 = filter_h == 7 && filter_w == 1
+        && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
     bool use_neon_7x7_s1 = filter_h == 7 && filter_w == 7
         && stride_h == 1 && stride_w == 1 && dilation_h == 1 && dilation_w == 1;
     bool use_neon_7x7_s2 = filter_h == 7 && filter_w == 7
@@ -414,7 +418,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       } else if (use_neon_3x3_s1) {
         tile_h = 2;
         tile_w = 4;
-      } else if (use_neon_15x1_s1) {
+      } else if (use_neon_7x1_s1 || use_neon_15x1_s1) {
         tile_h = 4;
         tile_w = 1;
       } else {
@@ -561,6 +565,22 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     } else if (use_neon_5x5_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK5x5S1(pad_input,
+                         filter_data,
+                         extra_input_shape,
+                         extra_output_shape,
+                         pad_output);
+      };
+    } else if (use_neon_1x7_s1) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK1x7S1(pad_input,
+                         filter_data,
+                         extra_input_shape,
+                         extra_output_shape,
+                         pad_output);
+      };
+    } else if (use_neon_7x1_s1) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK7x1S1(pad_input,
                          filter_data,
                          extra_input_shape,
                          extra_output_shape,
