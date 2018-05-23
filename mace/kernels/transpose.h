@@ -40,6 +40,7 @@ static void TransposeNHWCToNCHWC3(const float *input,
     index_t in_offset = h * width * 3;
     index_t out_offset = h * width;
 
+#if defined(MACE_ENABLE_NEON)
     index_t w;
     for (w = 0; w + 3 < width; w += 4) {
       float32x4x3_t vi = vld3q_f32(input + in_offset);
@@ -56,6 +57,13 @@ static void TransposeNHWCToNCHWC3(const float *input,
           input[h * width * 3 + w * 3 + c];
       }
     }
+#else
+    for (index_t w = 0; w < width; ++w) {
+      for (index_t c = 0; c < 3; ++c) {
+        output[out_offset + c * image_size + w] = input[in_offset + w * 3 + c];
+      }
+    }
+#endif
   }
 }
 
@@ -69,13 +77,13 @@ static void TransposeNCHWToNHWCC2(const float *input,
     index_t in_offset = h * width;
     index_t out_offset = h * width * 2;
 
+#if defined(MACE_ENABLE_NEON)
     index_t w;
     for (w = 0; w + 3 < width; w += 4) {
       float32x4_t vi0 = vld1q_f32(input + in_offset);
       float32x4_t vi1 = vld1q_f32(input + in_offset + image_size);
       float32x4x2_t vi = {vi0, vi1};
       vst2q_f32(output + out_offset, vi);
-
       in_offset += 4;
       out_offset += 8;
     }
@@ -85,6 +93,13 @@ static void TransposeNCHWToNHWCC2(const float *input,
           input[h * width + image_size * c + w];
       }
     }
+#else
+    for (index_t w = 0; w < width; ++w) {
+      for (index_t c = 0; c < 2; ++c) {
+        output[out_offset + w * 2 + c] = input[in_offset + c * image_size + w];
+      }
+    }
+#endif
   }
 }
 
