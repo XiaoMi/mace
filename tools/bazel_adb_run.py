@@ -63,6 +63,17 @@ def ops_benchmark_stdout_processor(stdout, device_properties, abi):
     #    metrics, tags=tags, endpoint="mace_ops_benchmark")
 
 
+# TODO: after merge mace/python/tools and tools are merged,
+# define str2bool as common util
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def parse_args():
     """Parses command line arguments."""
     parser = argparse.ArgumentParser()
@@ -81,7 +92,7 @@ def parse_args():
         "--target", type=str, default="//...", help="Bazel target to build")
     parser.add_argument(
         "--run_target",
-        type=bool,
+        type=str2bool,
         default=False,
         help="Whether to run the target")
     parser.add_argument(
@@ -105,6 +116,11 @@ def parse_args():
         type=str,
         default="stdout_processor",
         help="Stdout processing function, default: stdout_processor")
+    parser.add_argument(
+        "--enable_neon",
+        type=str2bool,
+        default=True,
+        help="Whether to use neon optimization")
     return parser.parse_known_args()
 
 
@@ -137,7 +153,8 @@ def main(unused_args):
         debug = True
     for target_abi in target_abis:
         sh_commands.bazel_build(target, strip=strip, abi=target_abi,
-                                disable_no_tuning_warning=True, debug=debug)
+                                disable_no_tuning_warning=True, debug=debug,
+                                enable_neon=FLAGS.enable_neon)
         if FLAGS.run_target:
             for serialno in target_devices:
                 if target_abi not in set(
