@@ -974,20 +974,18 @@ def packaging_lib(libmace_output_dir, project_name):
 
     print("Start packaging '%s' libs into %s" % (project_name,
                                                  tar_package_path))
-    # ls ${project_dir} -1 | grep -v build | grep -v .tar.gz | xargs -I {} \
-    #       tar cvzf ${project_dir}/${tar_package_name} ${project_name}/{}
-    sh.xargs(
-            sh.grep(
-                sh.grep(
-                    sh.ls(project_dir, "-1"),
-                    "-v", "build"),
-                "-v", ".tar.gz"),
-            "-I",
-            "{}",
-            "tar",
+    stdout_buff = []
+    process_output = make_output_processor(stdout_buff)
+    p = sh.tar(
             "cvzf",
             "%s" % tar_package_path,
-            "%s/{}" % project_dir)
+            glob.glob("%s/*" % project_dir),
+            "--exclude",
+            "%s/build" % project_dir,
+            _out=process_output,
+            _bg=True,
+            _err_to_out=True)
+    p.wait()
     print("Packaging Done!\n")
 
 
