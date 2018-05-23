@@ -388,8 +388,7 @@ inline void GemmTile(const float *A,
         "v22",
         "v23",
         "v24",
-        "v25",
-        "v26"
+        "v25"
         );
 
         w = (width >> 2) << 2;
