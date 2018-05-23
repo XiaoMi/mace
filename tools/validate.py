@@ -181,7 +181,6 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
 def parse_args():
     """Parses command line arguments."""
     parser = argparse.ArgumentParser()
-    parser.register("type", "bool", lambda v: v.lower() == "true")
     parser.add_argument(
         "--platform", type=str, default="", help="Tensorflow or Caffe.")
     parser.add_argument(

@@ -272,7 +272,8 @@ def bazel_build(target,
                 hexagon_mode=False,
                 disable_no_tuning_warning=False,
                 debug=False,
-                enable_openmp=True):
+                enable_openmp=True,
+                enable_neon=True):
     print("* Build %s with ABI %s" % (target, abi))
     stdout_buff = []
     process_output = make_output_processor(stdout_buff)
@@ -316,7 +317,7 @@ def bazel_build(target,
             "--copt=-DMACE_OBFUSCATE_LITERALS",
             "--copt=-O3",
             "--define",
-            "neon=true",
+            "neon=%s" % str(enable_neon).lower(),
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",
