@@ -40,26 +40,11 @@ class Registry {
     registry_[key] = creator;
   }
 
-  inline bool Has(const SrcType &key) const {
-    return registry_.count(key) != 0;
-  }
-
   std::unique_ptr<ObjectType> Create(const SrcType &key, Args... args) const {
     if (registry_.count(key) == 0) {
       LOG(FATAL) << "Key not registered: " << key;
     }
     return registry_.at(key)(args...);
-  }
-
-  /**
-   * Returns the keys currently registered as a vector.
-   */
-  std::vector<SrcType> Keys() const {
-    std::vector<SrcType> keys;
-    for (const auto &it : registry_) {
-      keys.push_back(it.first);
-    }
-    return keys;
   }
 
  private:
@@ -97,27 +82,12 @@ class Registerer {
   typedef Registerer<SrcType, ObjectType, ##__VA_ARGS__>                    \
       Registerer##RegistryName;
 
-/*
-#define MACE_DEFINE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__> *RegistryName() {           \
-    static Registry<SrcType, ObjectType, ##__VA_ARGS__> *registry =        \
-        new Registry<SrcType, ObjectType, ##__VA_ARGS__>();                \
-    return registry;                                                       \
-  }
-*/
-
 #define MACE_DECLARE_REGISTRY(RegistryName, ObjectType, ...)         \
   MACE_DECLARE_TYPED_REGISTRY(RegistryName, std::string, ObjectType, \
                               ##__VA_ARGS__)
 
-/*
-#define MACE_DEFINE_REGISTRY(RegistryName, ObjectType, ...)         \
-  MACE_DEFINE_TYPED_REGISTRY(RegistryName, std::string, ObjectType, \
-                             ##__VA_ARGS__)
-*/
-
-#define MACE_REGISTER_TYPED_CLASS(RegistryName, registry, key, ...)   \
-  Registerer##RegistryName MACE_ANONYMOUS_VARIABLE(l_##RegistryName)( \
+#define MACE_REGISTER_TYPED_CLASS(RegistryName, registry, key, ...) \
+  Registerer##RegistryName MACE_ANONYMOUS_VARIABLE(RegistryName)( \
       key, registry, Registerer##RegistryName::DefaultCreator<__VA_ARGS__>);
 
 #define MACE_REGISTER_CLASS(RegistryName, registry, key, ...) \
