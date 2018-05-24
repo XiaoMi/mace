@@ -6,7 +6,8 @@
 [FAQ](docs/faq.md) |
 [Release Notes](RELEASE.md) |
 [MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) |
-[Demo](mace/android)
+[Demo](mace/android) |
+[中文](README_zh.md)
 
 **MiAI Compute Engine** is a deep learning inference framework optimized for
 mobile heterogeneous computing platforms. The design is focused on the following
