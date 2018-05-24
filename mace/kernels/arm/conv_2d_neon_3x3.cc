@@ -16,6 +16,7 @@
 #include <arm_neon.h>
 #endif
 
+#include "mace/core/macros.h"
 #include "mace/kernels/arm/conv_2d_neon.h"
 
 namespace mace {
@@ -47,7 +48,6 @@ void Conv2dNeonK3x3S1(const float *input,
           output + b * out_batch_size + (m + 1) * out_image_size;
 #endif
         for (index_t c = 0; c < in_channels; ++c) {
-          float *out_ptr0 = out_ptr0_base;
           const float *in_ptr0 = input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr0 = filter + m * in_channels * 9 + c * 9;
 
@@ -62,6 +62,8 @@ void Conv2dNeonK3x3S1(const float *input,
           const float *filter_ptr1 = filter + (m + 1) * in_channels * 9 + c * 9;
 #endif
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+          float *out_ptr0 = out_ptr0_base;
+
           // load filter (2 outch x 3 height x 3 width): vf_outch_height
           float32x4_t vf00, vf01, vf02;
           float32x4_t vf10, vf11, vf12;
@@ -179,6 +181,8 @@ void Conv2dNeonK3x3S1(const float *input,
             out_ptr1 += out_width;
           }  // h
 #elif defined(MACE_ENABLE_NEON)  // arm v7
+          float *out_ptr0 = out_ptr0_base;
+
           // load filter (2 outch x 3 height x 3 width): vf_outch_height
           float32x2_t vf001, vf023, vf045, vf067, vf089;
           float32x2_t vf101, vf123, vf145, vf167, vf189;
@@ -312,8 +316,6 @@ void Conv2dNeonK3x3S1(const float *input,
           float
             *out_ptr0_base = output + b * out_batch_size + mm * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
-            float *out_ptr0 = out_ptr0_base;
-
             const float
               *in_ptr0 = input + b * in_batch_size + c * in_image_size;
 #if defined(MACE_ENABLE_NEON)
@@ -327,6 +329,8 @@ void Conv2dNeonK3x3S1(const float *input,
             const float *filter_ptr0 = filter + mm * in_channels * 9 + c * 9;
 
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+            float *out_ptr0 = out_ptr0_base;
+
             // load filter (1 outch x 3 height x 3 width): vf_outch_height
             float32x4_t vf00, vf01, vf02;
             vf00 = vld1q_f32(filter_ptr0);
@@ -409,6 +413,8 @@ void Conv2dNeonK3x3S1(const float *input,
               out_ptr0 += out_width;
             }  // h
 #elif defined(MACE_ENABLE_NEON)  // arm v7
+            float *out_ptr0 = out_ptr0_base;
+
             // load filter (1 outch x 3 height x 3 width): vf_outch_height
             float32x2_t vf01, vf23, vf45, vf67, vf78;
             vf01 = vld1_f32(filter_ptr0);
