@@ -16,10 +16,10 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 #if defined(ANDROID) || defined(__ANDROID__)
 #include <android/log.h>
 #include <iostream>
-#include <sstream>
 #endif
 
 namespace mace {
@@ -28,8 +28,13 @@ namespace logging {
 LogMessage::LogMessage(const char *fname, int line, int severity)
     : fname_(fname), line_(line), severity_(severity) {}
 
-#if defined(ANDROID) || defined(__ANDROID__)
+void LogMessage::DealWithFatal() {
+  // When there is a fatal log, now we simply abort.
+  abort();
+}
+
 void LogMessage::GenerateLogMessage() {
+#if defined(ANDROID) || defined(__ANDROID__)
   int android_log_level;
   switch (severity_) {
     case INFO:
@@ -61,74 +66,47 @@ void LogMessage::GenerateLogMessage() {
 
   // Also log to stderr (for standalone Android apps).
   std::cerr << "IWEF"[severity_] << " " << ss.str() << std::endl;
-
-  // Android logging at level FATAL does not terminate execution, so abort()
-  // is still required to stop the program.
-  if (severity_ == FATAL) {
-    abort();
-  }
-}
-
 #else
-
-void LogMessage::GenerateLogMessage() {
   fprintf(stderr, "%c %s:%d] %s\n", "IWEF"[severity_], fname_, line_,
           str().c_str());
-}
 #endif
 
+  // When there is a fatal log, terminate execution
+  if (severity_ == FATAL) {
+    DealWithFatal();
+  }
+}
 namespace {
 
-// Parse log level (int64_t) from environment variable (char*)
-int64_t LogLevelStrToInt(const char *mace_env_var_val) {
+int LogLevelStrToInt(const char *mace_env_var_val) {
   if (mace_env_var_val == nullptr) {
     return 0;
   }
-
-  // Ideally we would use env_var / safe_strto64, but it is
-  // hard to use here without pulling in a lot of dependencies,
-  // so we use std:istringstream instead
-  std::string min_log_level(mace_env_var_val);
-  std::istringstream ss(min_log_level);
-  int64_t level;
-  if (!(ss >> level)) {
-    // Invalid vlog level setting, set level to default (0)
-    level = 0;
-  }
-
-  return level;
+  // Simply use atoi here. Return 0 if convert unsuccessfully.
+  return atoi(mace_env_var_val);
 }
 
-int64_t MinLogLevelFromEnv() {
-  const char *mace_env_var_val = getenv("MACE_CPP_MIN_LOG_LEVEL");
-  return LogLevelStrToInt(mace_env_var_val);
+int MinLogLevelFromEnv() {
+  // Read the min log level from env once during the first call to logging.
+  static int log_level = LogLevelStrToInt(getenv("MACE_CPP_MIN_LOG_LEVEL"));
+  return log_level;
 }
 
-int64_t MinVLogLevelFromEnv() {
-  const char *mace_env_var_val = getenv("MACE_CPP_MIN_VLOG_LEVEL");
-  return LogLevelStrToInt(mace_env_var_val);
+int MinVLogLevelFromEnv() {
+  // Read the min vlog level from env once during the first call to logging.
+  static int vlog_level = LogLevelStrToInt(getenv("MACE_CPP_MIN_VLOG_LEVEL"));
+  return vlog_level;
 }
 
 }  // namespace
 
 LogMessage::~LogMessage() {
-  // Read the min log level once during the first call to logging.
-  static int64_t min_log_level = MinLogLevelFromEnv();
+  int min_log_level = MinLogLevelFromEnv();
   if (severity_ >= min_log_level) GenerateLogMessage();
 }
 
-int64_t LogMessage::MinVLogLevel() {
-  static int64_t min_vlog_level = MinVLogLevelFromEnv();
-  return min_vlog_level;
-}
-
-LogMessageFatal::LogMessageFatal(const char *file, int line)
-    : LogMessage(file, line, FATAL) {}
-LogMessageFatal::~LogMessageFatal() {
-  // abort() ensures we don't return (we promised we would not via
-  // ATTRIBUTE_NORETURN).
-  GenerateLogMessage();
-  abort();
+int LogMessage::MinVLogLevel() {
+  return MinVLogLevelFromEnv();
 }
 
 }  // namespace logging
