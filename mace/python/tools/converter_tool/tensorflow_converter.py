@@ -294,7 +294,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         if op.type != MaceOp.Deconv2D.name:
             dilation_arg = op.arg.add()
             dilation_arg.name = MaceKeyword.mace_dilations_str
-            dilation_arg.ints.extend(tf_op.get_attr(tf_dilations_str)[1:3])
+            try:
+                dilation_val = tf_op.get_attr(tf_dilations_str)[1:3]
+            except ValueError:
+                dilation_val = [1, 1]
+
+            dilation_arg.ints.extend(dilation_val)
 
     def convert_elementwise(self, tf_op):
         op = self.convert_general_op(tf_op)
