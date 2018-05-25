@@ -466,7 +466,7 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
                  const float value)
       : EltwiseFunctorBase(type, coeff, value) {}
 
-  void operator()(const Tensor *input0,
+  MaceStatus operator()(const Tensor *input0,
                   const Tensor *input1,
                   Tensor *output,
                   StatsFuture *future) {
@@ -494,7 +494,7 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
         }
       }
     }
-    output->ResizeLike(input0);
+    MACE_FAILURE_RETURN(output->ResizeLike(input0));
 
     Tensor::MappingGuard input0_guard(input0);
     Tensor::MappingGuard output_guard(output);
@@ -530,6 +530,8 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -541,7 +543,7 @@ struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
                  const float value)
       : EltwiseFunctorBase(type, coeff, value) {}
 
-  void operator()(const Tensor *input0,
+  MaceStatus operator()(const Tensor *input0,
                   const Tensor *input1,
                   Tensor *output,
                   StatsFuture *future);

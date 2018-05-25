@@ -38,13 +38,13 @@ namespace kernels {
 
 template<DeviceType D, typename T>
 struct MatMulFunctor {
-  void operator()(const Tensor *A,
+  MaceStatus operator()(const Tensor *A,
                   const Tensor *B,
                   Tensor *C,
                   StatsFuture *future) {
     MACE_UNUSED(future);
     std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
-    C->Resize(c_shape);
+    MACE_FAILURE_RETURN(C->Resize(c_shape));
 
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);
@@ -63,13 +63,15 @@ struct MatMulFunctor {
     memset(c_ptr_base, 0, batch * height * width * sizeof(T));
 
     Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base);
+
+    return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct MatMulFunctor<DeviceType::GPU, T> {
-  void operator()(const Tensor *A,
+  MaceStatus operator()(const Tensor *A,
                   const Tensor *B,
                   Tensor *C,
                   StatsFuture *future);

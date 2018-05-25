@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
+MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
                                                        const Tensor *input1,
                                                        Tensor *output,
                                                        StatsFuture *future) {
@@ -60,7 +60,7 @@ void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
   CalImage2DShape(output_shape,
                   BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  output->ResizeImage(output_shape, output_image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -151,6 +151,8 @@ void EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct EltwiseFunctor<DeviceType::GPU, float>;

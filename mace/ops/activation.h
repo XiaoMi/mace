@@ -34,15 +34,14 @@ class ActivationOp : public Operator<D, T> {
                  static_cast<T>(OperatorBase::GetSingleArgument<float>(
                      "max_limit", 0.0f))) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(0);
     const Tensor *alpha_tensor =
         this->InputSize() >= 2 ? this->Input(1) : nullptr;
     Tensor *output_tensor = this->Output(0);
-    output_tensor->ResizeLike(input_tensor);
+    MACE_FAILURE_RETURN(output_tensor->ResizeLike(input_tensor));
 
-    functor_(input_tensor, alpha_tensor, output_tensor, future);
-    return true;
+    return functor_(input_tensor, alpha_tensor, output_tensor, future);
   }
 
  private:

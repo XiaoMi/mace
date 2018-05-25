@@ -38,7 +38,9 @@ struct SoftmaxFunctor;
 
 template<>
 struct SoftmaxFunctor<DeviceType::CPU, float> {
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const index_t batch = input->dim(0);
     const index_t class_count = input->dim(1);
@@ -82,13 +84,17 @@ struct SoftmaxFunctor<DeviceType::CPU, float> {
         }
       }  // k
     }  // b
+
+    return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct SoftmaxFunctor<DeviceType::GPU, T> {
-  void operator()(const Tensor *logits, Tensor *output, StatsFuture *future);
+  MaceStatus operator()(const Tensor *logits,
+                        Tensor *output,
+                        StatsFuture *future);
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;

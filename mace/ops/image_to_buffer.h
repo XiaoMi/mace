@@ -27,15 +27,14 @@ class ImageToBufferOp : public Operator<D, T> {
   ImageToBufferOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
     kernels::BufferType type =
         static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
             "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
-    functor_(input, type, output, future);
-    return true;
+    return functor_(input, type, output, future);
   }
 
  private:

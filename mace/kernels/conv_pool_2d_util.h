@@ -71,17 +71,17 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
                     Padding padding,
                     int *padding_size);
 
-void ConstructNCHWInputWithSpecificPadding(const Tensor *input,
+MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input,
                                const int pad_top, const int pad_bottom,
                                const int pad_left, const int pad_right,
                                Tensor *output_tensor);
 
-void ConstructNCHWInputWithPadding(const Tensor *input,
+MaceStatus ConstructNCHWInputWithPadding(const Tensor *input,
                                    const int *paddings,
                                    Tensor *output_tensor,
                                    bool padding_same_value = false);
 
-void ConstructNHWCInputWithPadding(const Tensor *input,
+MaceStatus ConstructNHWCInputWithPadding(const Tensor *input,
                                    const int *paddings,
                                    Tensor *output_tensor,
                                    bool padding_same_value = false);

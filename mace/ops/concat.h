@@ -30,7 +30,7 @@ class ConcatOp : public Operator<D, T> {
       : Operator<D, T>(op_def, ws),
         functor_(OperatorBase::GetSingleArgument<int>("axis", 3)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     MACE_CHECK(this->InputSize() >= 2)
         << "There must be at least two inputs to concat";
     const std::vector<const Tensor *> input_list = this->Inputs();
@@ -44,8 +44,7 @@ class ConcatOp : public Operator<D, T> {
 
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input_list, output, future);
-    return true;
+    return functor_(input_list, output, future);
   }
 
  private:

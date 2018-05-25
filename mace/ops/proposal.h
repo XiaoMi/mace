@@ -35,15 +35,14 @@ class ProposalOp : public Operator<D, T> {
                  OperatorBase::GetRepeatedArgument<int>("scales"),
                  OperatorBase::GetRepeatedArgument<float>("ratios")) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *rpn_cls_prob = this->Input(RPN_CLS_PROB);
     const Tensor *rpn_bbox_pred = this->Input(RPN_BBOX_PRED);
     const Tensor *img_info = this->Input(IMG_INFO);
 
     Tensor *output = this->Output(ROIS);
 
-    functor_(rpn_cls_prob, rpn_bbox_pred, img_info, output, future);
-    return true;
+    return functor_(rpn_cls_prob, rpn_bbox_pred, img_info, output, future);
   }
 
  private:

@@ -22,7 +22,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                        const Tensor *bias,
                                                        Tensor *output,
                                                        StatsFuture *future) {
@@ -115,6 +115,8 @@ void BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct BiasAddFunctor<DeviceType::GPU, float>;

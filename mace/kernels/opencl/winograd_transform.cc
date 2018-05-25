@@ -22,7 +22,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future) {
 
   auto runtime = OpenCLRuntime::Global();
@@ -78,7 +78,7 @@ void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     output_shape = {16, input_tensor->dim(3), out_width, 1};
     std::vector<size_t> image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, &image_shape);
-    output_tensor->ResizeImage(output_shape, image_shape);
+    MACE_FAILURE_RETURN(output_tensor->ResizeImage(output_shape, image_shape));
 
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -115,10 +115,12 @@ void WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template <typename T>
-void WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input_tensor,
     const Tensor *bias,
     Tensor *output_tensor,
@@ -186,7 +188,7 @@ void WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
                                          input_tensor->dim(1)};
     std::vector<size_t> image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-    output_tensor->ResizeImage(output_shape, image_shape);
+    MACE_FAILURE_RETURN(output_tensor->ResizeImage(output_shape, image_shape));
 
     const uint32_t round_h = (height_ + 1) / 2;
     const uint32_t round_w = (width_ + 1) / 2;
@@ -230,6 +232,8 @@ void WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct WinogradTransformFunctor<DeviceType::GPU, float>;

@@ -107,7 +107,9 @@ template<DeviceType D, typename T>
 struct TransposeFunctor {
   explicit TransposeFunctor(const std::vector<int> &dims) : dims_(dims) {}
 
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
@@ -137,7 +139,7 @@ struct TransposeFunctor {
                                 input->dim(2));
         }
       } else if (dims_ == transpose_order_from_NCHW_to_NHWC
-        && input->dim(1) == 2) {
+          && input->dim(1) == 2) {
         for (index_t b = 0; b < input->dim(0); ++b) {
           TransposeNCHWToNHWCC2(input_data + b * batch_size,
                                 output_data + b * batch_size,
@@ -146,11 +148,11 @@ struct TransposeFunctor {
         }
       } else {
         std::vector<index_t>
-          in_stride{input_shape[1] * input_shape[2] * input_shape[3],
-                    input_shape[2] * input_shape[3], input_shape[3], 1};
+            in_stride{input_shape[1] * input_shape[2] * input_shape[3],
+                      input_shape[2] * input_shape[3], input_shape[3], 1};
         std::vector<index_t>
-          out_stride{output_shape[1] * output_shape[2] * output_shape[3],
-                     output_shape[2] * output_shape[3], output_shape[3], 1};
+            out_stride{output_shape[1] * output_shape[2] * output_shape[3],
+                       output_shape[2] * output_shape[3], output_shape[3], 1};
 
         std::vector<index_t> idim(4, 0);
         std::vector<index_t> odim(4, 0);
@@ -164,9 +166,9 @@ struct TransposeFunctor {
                 idim[dims_[3]] = odim[3];
 
                 output_data[odim[0] * out_stride[0] + odim[1] * out_stride[1]
-                  + odim[2] * out_stride[2] + odim[3]] =
-                  input_data[idim[0] * in_stride[0] + idim[1] * in_stride[1]
-                    + idim[2] * in_stride[2] + idim[3]];
+                    + odim[2] * out_stride[2] + odim[3]] =
+                    input_data[idim[0] * in_stride[0] + idim[1] * in_stride[1]
+                        + idim[2] * in_stride[2] + idim[3]];
               }
             }
           }
@@ -175,6 +177,8 @@ struct TransposeFunctor {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
+
+    return MACE_SUCCESS;
   }
 
   std::vector<int> dims_;

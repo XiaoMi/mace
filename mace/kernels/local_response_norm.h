@@ -35,7 +35,7 @@ struct LocalResponseNormFunctor;
 
 template<>
 struct LocalResponseNormFunctor<DeviceType::CPU, float> {
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   int depth_radius,
                   float bias,
                   float alpha,
@@ -74,6 +74,8 @@ struct LocalResponseNormFunctor<DeviceType::CPU, float> {
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 

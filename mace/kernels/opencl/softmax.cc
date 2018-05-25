@@ -44,7 +44,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 }  // namespace
 
 template <typename T>
-void SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
+MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
                                                        Tensor *output,
                                                        StatsFuture *future) {
   const index_t batch = logits->dim(0);
@@ -115,6 +115,8 @@ void SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct SoftmaxFunctor<DeviceType::GPU, float>;

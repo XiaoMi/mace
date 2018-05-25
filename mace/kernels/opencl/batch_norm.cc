@@ -23,7 +23,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                          const Tensor *scale,
                                                          const Tensor *offset,
                                                          const Tensor *mean,
@@ -132,6 +132,8 @@ void BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct BatchNormFunctor<DeviceType::GPU, float>;

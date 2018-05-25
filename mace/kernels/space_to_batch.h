@@ -140,7 +140,7 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
                       bool b2s)
     : SpaceToBatchFunctorBase(paddings, block_shape, b2s) {}
 
-  void operator()(Tensor *space_tensor,
+  MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,
                   StatsFuture *future) {
     MACE_UNUSED(future);
@@ -150,12 +150,12 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
       CalculateBatchToSpaceOutputShape(batch_tensor,
                                        DataFormat::NCHW,
                                        output_shape.data());
-      space_tensor->Resize(output_shape);
+      MACE_FAILURE_RETURN(space_tensor->Resize(output_shape));
     } else {
       CalculateSpaceToBatchOutputShape(space_tensor,
                                        DataFormat::NCHW,
                                        output_shape.data());
-      batch_tensor->Resize(output_shape);
+      MACE_FAILURE_RETURN(batch_tensor->Resize(output_shape));
     }
 
     Tensor::MappingGuard input_guard(space_tensor);
@@ -312,6 +312,7 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
         }  // block_h
       }  // c
     }
+    return MACE_SUCCESS;
   }
 };
 
@@ -323,7 +324,7 @@ struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
                       bool b2s)
       : SpaceToBatchFunctorBase(paddings, block_shape, b2s) {}
 
-  void operator()(Tensor *space_tensor,
+  MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,
                   StatsFuture *future);
 

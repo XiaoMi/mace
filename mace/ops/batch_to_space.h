@@ -33,12 +33,11 @@ class BatchToSpaceNDOp : public Operator<D, T> {
                  OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
                  true) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *batch_tensor = this->Input(INPUT);
     Tensor *space_tensor = this->Output(OUTPUT);
-    functor_(space_tensor, const_cast<Tensor *>(batch_tensor),
+    return functor_(space_tensor, const_cast<Tensor *>(batch_tensor),
              future);
-    return true;
   }
 
  private:

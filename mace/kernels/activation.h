@@ -132,10 +132,10 @@ class ActivationFunctor<DeviceType::CPU, float> {
   ActivationFunctor(ActivationType type, float relux_max_limit)
       : activation_(type), relux_max_limit_(relux_max_limit) {}
 
-  void operator()(const Tensor *input,
-                  const Tensor *alpha,
-                  Tensor *output,
-                  StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,
+                        const Tensor *alpha,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const float *input_ptr = input->data<float>();
     float *output_ptr = output->mutable_data<float>();
@@ -144,16 +144,13 @@ class ActivationFunctor<DeviceType::CPU, float> {
       const float *alpha_ptr = alpha->data<float>();
       const index_t outer_size = output->dim(0);
       const index_t inner_size = output->dim(2) * output->dim(3);
-      PReLUActivation(input_ptr,
-                      outer_size,
-                      input->dim(1),
-                      inner_size,
-                      alpha_ptr,
-                      output_ptr);
+      PReLUActivation(input_ptr, outer_size, input->dim(1), inner_size,
+                      alpha_ptr, output_ptr);
     } else {
       DoActivation(input_ptr, output_ptr, output->size(), activation_,
                    relux_max_limit_);
     }
+    return MACE_SUCCESS;
   }
 
  private:
@@ -168,10 +165,10 @@ class ActivationFunctor<DeviceType::GPU, T> {
   ActivationFunctor(ActivationType type, T relux_max_limit)
       : activation_(type), relux_max_limit_(static_cast<T>(relux_max_limit)) {}
 
-  void operator()(const Tensor *input,
-                  const Tensor *alpha,
-                  Tensor *output,
-                  StatsFuture *future);
+  MaceStatus operator()(const Tensor *input,
+                        const Tensor *alpha,
+                        Tensor *output,
+                        StatsFuture *future);
 
  private:
   ActivationType activation_;

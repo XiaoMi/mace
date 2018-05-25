@@ -42,14 +42,12 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                      "is_filter_transformed", false)),
                  ws->GetScratchBuffer(D)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
-    functor_(input, filter, bias, output, future);
-
-    return true;
+    return functor_(input, filter, bias, output, future);
   }
 
  private:

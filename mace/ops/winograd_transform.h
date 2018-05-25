@@ -32,12 +32,11 @@ class WinogradTransformOp : public Operator<D, T> {
                      "padding", static_cast<int>(VALID))),
                  OperatorBase::GetRepeatedArgument<int>("padding_values")) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
     Tensor *output_tensor = this->Output(OUTPUT);
 
-    functor_(input_tensor, output_tensor, future);
-    return true;
+    return functor_(input_tensor, output_tensor, future);
   }
 
  private:

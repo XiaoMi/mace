@@ -27,7 +27,7 @@ class MatMulOp : public Operator<D, T> {
   MatMulOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *A = this->Input(0);
     const Tensor *B = this->Input(1);
     Tensor *C = this->Output(0);
@@ -38,8 +38,7 @@ class MatMulOp : public Operator<D, T> {
         << "the number of A's column " << A->dim(2)
         << " must be equal to B's row " << B->dim(1);
 
-    functor_(A, B, C, future);
-    return true;
+    return functor_(A, B, C, future);
   }
 
  private:

@@ -40,7 +40,7 @@ class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
                                                                   "NOOP")),
                  OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
     const Tensor *bias = nullptr;
@@ -48,8 +48,7 @@ class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
       bias = this->Input(BIAS);
     }
     Tensor *output = this->Output(OUTPUT);
-    functor_(input, filter, bias, output, future);
-    return true;
+    return functor_(input, filter, bias, output, future);
   }
 
  private:

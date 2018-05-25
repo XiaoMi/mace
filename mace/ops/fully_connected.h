@@ -33,7 +33,7 @@ class FullyConnectedOp : public Operator<D, T> {
                                                               "NOOP")),
                OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *weight = this->Input(WEIGHT);  // OIHW
     const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
@@ -65,8 +65,7 @@ class FullyConnectedOp : public Operator<D, T> {
                  " don't match.");
     }
 
-    functor_(input, weight, bias, output, future);
-    return true;
+    return functor_(input, weight, bias, output, future);
   }
 
  private:

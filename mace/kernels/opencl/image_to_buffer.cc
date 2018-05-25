@@ -20,7 +20,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *image,
     const BufferType type,
     Tensor *buffer,
@@ -28,7 +28,7 @@ void ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
 
   std::vector<size_t> image_shape;
   CalImage2DShape(image->shape(), type, &image_shape);
-  buffer->Resize(image->shape());
+  MACE_FAILURE_RETURN(buffer->Resize(image->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -163,6 +163,8 @@ void ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct ImageToBufferFunctor<DeviceType::GPU, float>;

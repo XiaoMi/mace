@@ -127,7 +127,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
     }
   }
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,
@@ -161,7 +161,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
                          RoundType::FLOOR,
                          output_shape.data());
     }
-    output->Resize(output_shape);
+    MACE_FAILURE_RETURN(output->Resize(output_shape));
     output->Clear();
 
     index_t batch = output->dim(0);
@@ -275,6 +275,8 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
 
     DoActivation(output_data, output_data, output->size(), activation_,
                  relux_max_limit_);
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -295,7 +297,7 @@ struct DepthwiseConv2dFunctor<DeviceType::GPU, T>
                                  activation,
                                  relux_max_limit) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,

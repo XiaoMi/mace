@@ -27,14 +27,13 @@ class SoftmaxOp : public Operator<D, T> {
   SoftmaxOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *logits = this->Input(LOGITS);
 
     Tensor *output = this->Output(OUTPUT);
     output->ResizeLike(logits);
 
-    functor_(logits, output, future);
-    return true;
+    return functor_(logits, output, future);
   }
 
  private:

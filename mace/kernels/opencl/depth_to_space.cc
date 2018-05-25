@@ -23,7 +23,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input, Tensor *output, StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t input_height = input->dim(1);
@@ -70,7 +70,7 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
 
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  output->ResizeImage(output_shape, image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
 
   auto runtime = OpenCLRuntime::Global();
 
@@ -144,6 +144,8 @@ void DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct DepthToSpaceOpFunctor<DeviceType::GPU, float>;

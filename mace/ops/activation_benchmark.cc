@@ -24,8 +24,7 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void ReluBenchmark(
-    int iters, int batch, int channels, int height, int width) {
+void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -41,10 +40,10 @@ void ReluBenchmark(
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("Activation", "ReluBM")
-      .Input("Input")
-      .Output("Output")
-      .AddStringArg("activation", "RELU")
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Output("Output")
+        .AddStringArg("activation", "RELU")
+        .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
@@ -81,8 +80,8 @@ void ReluBenchmark(
   }                                                                          \
   BENCHMARK(BM_RELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_RELU(N, C, H, W)                 \
-  BM_RELU_MACRO(N, C, H, W, float, CPU);    \
+#define BM_RELU(N, C, H, W)              \
+  BM_RELU_MACRO(N, C, H, W, float, CPU); \
   BM_RELU_MACRO(N, C, H, W, float, GPU); \
   BM_RELU_MACRO(N, C, H, W, half, GPU);
 
@@ -94,8 +93,7 @@ BM_RELU(1, 64, 256, 256);
 
 namespace {
 template <DeviceType D, typename T>
-void ReluxBenchmark(
-    int iters, int batch, int channels, int height, int width) {
+void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -149,8 +147,8 @@ void ReluxBenchmark(
   }                                                                           \
   BENCHMARK(BM_RELUX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_RELUX(N, C, H, W)                 \
-  BM_RELUX_MACRO(N, C, H, W, float, CPU);    \
+#define BM_RELUX(N, C, H, W)              \
+  BM_RELUX_MACRO(N, C, H, W, float, CPU); \
   BM_RELUX_MACRO(N, C, H, W, float, GPU); \
   BM_RELUX_MACRO(N, C, H, W, half, GPU);
 
@@ -162,8 +160,7 @@ BM_RELUX(1, 64, 256, 256);
 
 namespace {
 template <DeviceType D, typename T>
-void PreluBenchmark(
-    int iters, int batch, int channels, int height, int width) {
+void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -180,11 +177,11 @@ void PreluBenchmark(
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("Activation", "PreluBM")
-      .Input("Input")
-      .Input("Alpha")
-      .Output("Output")
-      .AddStringArg("activation", "PRELU")
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Input("Alpha")
+        .Output("Output")
+        .AddStringArg("activation", "PRELU")
+        .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
@@ -224,8 +221,8 @@ void PreluBenchmark(
   }                                                                           \
   BENCHMARK(BM_PRELU_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_PRELU(N, C, H, W)                 \
-  BM_PRELU_MACRO(N, C, H, W, float, CPU);    \
+#define BM_PRELU(N, C, H, W)              \
+  BM_PRELU_MACRO(N, C, H, W, float, CPU); \
   BM_PRELU_MACRO(N, C, H, W, float, GPU); \
   BM_PRELU_MACRO(N, C, H, W, half, GPU);
 
@@ -237,8 +234,7 @@ BM_PRELU(1, 64, 256, 256);
 
 namespace {
 template <DeviceType D, typename T>
-void TanhBenchmark(
-    int iters, int batch, int channels, int height, int width) {
+void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -290,8 +286,8 @@ void TanhBenchmark(
   }                                                                          \
   BENCHMARK(BM_TANH_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_TANH(N, C, H, W)                 \
-  BM_TANH_MACRO(N, C, H, W, float, CPU);    \
+#define BM_TANH(N, C, H, W)              \
+  BM_TANH_MACRO(N, C, H, W, float, CPU); \
   BM_TANH_MACRO(N, C, H, W, float, GPU); \
   BM_TANH_MACRO(N, C, H, W, half, GPU);
 
@@ -357,8 +353,8 @@ void SigmoidBenchmark(
   }                                                                  \
   BENCHMARK(BM_SIGMOID_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_SIGMOID(N, C, H, W)                 \
-  BM_SIGMOID_MACRO(N, C, H, W, float, CPU);    \
+#define BM_SIGMOID(N, C, H, W)              \
+  BM_SIGMOID_MACRO(N, C, H, W, float, CPU); \
   BM_SIGMOID_MACRO(N, C, H, W, float, GPU); \
   BM_SIGMOID_MACRO(N, C, H, W, half, GPU);
 

@@ -31,8 +31,10 @@ namespace kernels {
 template<DeviceType D, typename T>
 struct DepthToSpaceOpFunctor {
   explicit DepthToSpaceOpFunctor(const int block_size, bool d2s)
-    : block_size_(block_size), d2s_(d2s) {}
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+      : block_size_(block_size), d2s_(d2s) {}
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const index_t batch_size = input->dim(0);
     const index_t input_depth = input->dim(1);
@@ -53,7 +55,7 @@ struct DepthToSpaceOpFunctor {
     std::vector<index_t> output_shape = {batch_size, output_depth,
                                          output_height, output_width};
 
-    output->Resize(output_shape);
+    MACE_FAILURE_RETURN(output->Resize(output_shape));
 
     Tensor::MappingGuard logits_guard(input);
     Tensor::MappingGuard output_guard(output);
@@ -71,14 +73,15 @@ struct DepthToSpaceOpFunctor {
               const index_t in_w = w / block_size_;
               const index_t offset_w = w % block_size_;
               const index_t offset_d =
-                (offset_h * block_size_ + offset_w) * output_depth;
+                  (offset_h * block_size_ + offset_w) * output_depth;
 
               const index_t in_d = d + offset_d;
               const index_t o_index =
-                ((b * output_depth + d) * output_height + h) * output_width + w;
+                  ((b * output_depth + d) * output_height + h) * output_width
+                      + w;
               const index_t i_index =
-                ((b * input_depth + in_d) * input_height + in_h) * input_width
-                  + in_w;
+                  ((b * input_depth + in_d) * input_height + in_h) * input_width
+                      + in_w;
               output_ptr[o_index] = input_ptr[i_index];
             }
           }
@@ -95,21 +98,23 @@ struct DepthToSpaceOpFunctor {
               const index_t out_w = w / block_size_;
               const index_t offset_w = (w % block_size_);
               const index_t offset_d =
-                (offset_h * block_size_ + offset_w) * input_depth;
+                  (offset_h * block_size_ + offset_w) * input_depth;
 
               const index_t out_d = d + offset_d;
               const index_t o_index =
-                ((b * output_depth + out_d) * output_height + out_h)
-                  * output_width + out_w;
+                  ((b * output_depth + out_d) * output_height + out_h)
+                      * output_width + out_w;
               const index_t i_index =
-                ((b * input_depth + d) * input_height + h) * input_width
-                  + w;
+                  ((b * input_depth + d) * input_height + h) * input_width
+                      + w;
               output_ptr[o_index] = input_ptr[i_index];
             }
           }
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 
   const int block_size_;
@@ -120,8 +125,10 @@ struct DepthToSpaceOpFunctor {
 template<typename T>
 struct DepthToSpaceOpFunctor<DeviceType::GPU, T> {
   DepthToSpaceOpFunctor(const int block_size, bool d2s)
-    : block_size_(block_size), d2s_(d2s) {}
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
+      : block_size_(block_size), d2s_(d2s) {}
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future);
 
   const int block_size_;
   bool d2s_;

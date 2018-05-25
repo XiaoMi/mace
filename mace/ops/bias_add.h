@@ -27,7 +27,7 @@ class BiasAddOp : public Operator<D, T> {
   BiasAddOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws), functor_() {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *bias = this->Input(BIAS);
 
@@ -37,10 +37,9 @@ class BiasAddOp : public Operator<D, T> {
                bias->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(input);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
 
-    functor_(input, bias, output, future);
-    return true;
+    return functor_(input, bias, output, future);
   }
 
  private:

@@ -20,7 +20,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *buffer,
     const BufferType type,
     Tensor *image,
@@ -30,9 +30,9 @@ void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
   CalImage2DShape(buffer->shape(), type, &image_shape);
   if (type == WINOGRAD_FILTER) {
     std::vector<index_t> new_shape = CalWinogradShape(buffer->shape(), type);
-    image->ResizeImage(new_shape, image_shape);
+    MACE_FAILURE_RETURN(image->ResizeImage(new_shape, image_shape));
   } else {
-    image->ResizeImage(buffer->shape(), image_shape);
+    MACE_FAILURE_RETURN(image->ResizeImage(buffer->shape(), image_shape));
   }
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
@@ -175,6 +175,8 @@ void BufferToImageFunctor<DeviceType::GPU, T>::operator()(
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct BufferToImageFunctor<DeviceType::GPU, float>;

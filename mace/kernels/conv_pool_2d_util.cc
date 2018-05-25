@@ -286,7 +286,7 @@ void CalPaddingSize(const index_t *input_shape,   // NCHW
 }
 
 
-void ConstructNCHWInputWithPadding(const Tensor *input_tensor,
+MaceStatus ConstructNCHWInputWithPadding(const Tensor *input_tensor,
                                    const int *paddings,
                                    Tensor *output_tensor,
                                    bool padding_same_value) {
@@ -306,7 +306,7 @@ void ConstructNCHWInputWithPadding(const Tensor *input_tensor,
   const int padded_top = paddings[0] / 2;
   const int padded_left = paddings[1] / 2;
 
-  output_tensor->Resize(output_shape);
+  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
 
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
@@ -356,9 +356,11 @@ void ConstructNCHWInputWithPadding(const Tensor *input_tensor,
       }
     }
   }
+
+  return MACE_SUCCESS;
 }
 
-void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
+MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
                                            const int pad_top,
                                            const int pad_bottom,
                                            const int pad_left,
@@ -376,7 +378,7 @@ void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
   const int pad_width = pad_left + pad_right;
   std::vector<index_t> output_shape(
     {batch, channels, height + pad_height, width + pad_width});
-  output_tensor->Resize(output_shape);
+  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
   output_tensor->Clear();
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
@@ -400,10 +402,12 @@ void ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
       // Skip the padded bottom in this channel and top in the next channel
     }
   }
+
+  return MACE_SUCCESS;
 }
 
 
-void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
+MaceStatus ConstructNHWCInputWithPadding(const Tensor *input_tensor,
                                    const int *paddings,
                                    Tensor *output_tensor,
                                    bool padding_same_value) {
@@ -424,7 +428,7 @@ void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
   const int padded_top = paddings[0] / 2;
   const int padded_left = paddings[1] / 2;
 
-  output_tensor->Resize(output_shape);
+  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
 
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
@@ -450,6 +454,8 @@ void ConstructNHWCInputWithPadding(const Tensor *input_tensor,
       }
     }
   }
+
+  return MACE_SUCCESS;
 }
 
 }  // namespace kernels

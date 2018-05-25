@@ -29,7 +29,7 @@ class AddNOp : public Operator<D, T> {
   AddNOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     Tensor *output_tensor = this->Output(0);
     int n = this->inputs_.size();
     std::vector<const Tensor *> inputs(n, nullptr);
@@ -42,9 +42,7 @@ class AddNOp : public Operator<D, T> {
           << ", size: " << inputs[0]->size() << ". Input " << i << ": "
           << MakeString(inputs[i]->shape()) << ", size: " << inputs[i]->size();
     }
-
-    functor_(inputs, output_tensor, future);
-    return true;
+    return functor_(inputs, output_tensor, future);
   }
 
  private:

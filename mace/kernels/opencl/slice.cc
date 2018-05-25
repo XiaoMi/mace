@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template<typename T>
-void SliceFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const std::vector<Tensor *> &output_list,
     StatsFuture *future) {
@@ -36,7 +36,7 @@ void SliceFunctor<DeviceType::GPU, T>::operator()(
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
   for (size_t i= 0; i < outputs_count; ++i) {
-    output_list[i]->ResizeImage(output_shape, image_shape);
+    MACE_FAILURE_RETURN(output_list[i]->ResizeImage(output_shape, image_shape));
   }
 
   auto runtime = OpenCLRuntime::Global();
@@ -131,6 +131,8 @@ void SliceFunctor<DeviceType::GPU, T>::operator()(
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template

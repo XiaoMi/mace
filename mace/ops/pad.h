@@ -32,11 +32,10 @@ class PadOp : public Operator<D, T> {
                  OperatorBase::GetSingleArgument<float>("constant_value", 0.0))
   {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(0);
     Tensor *output_tensor = this->Output(0);
-    functor_(input_tensor, output_tensor, future);
-    return true;
+    return functor_(input_tensor, output_tensor, future);
   }
 
  private:

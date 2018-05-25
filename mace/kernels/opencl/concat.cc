@@ -235,7 +235,7 @@ static void ConcatN(cl::Kernel *kernel,
 }
 
 template <typename T>
-void ConcatFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus ConcatFunctor<DeviceType::GPU, T>::operator()(
     const std::vector<const Tensor *> &input_list,
     Tensor *output,
     StatsFuture *future) {
@@ -266,7 +266,7 @@ void ConcatFunctor<DeviceType::GPU, T>::operator()(
       "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  output->ResizeImage(output_shape, image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
 
   switch (inputs_count) {
     case 2:
@@ -281,6 +281,8 @@ void ConcatFunctor<DeviceType::GPU, T>::operator()(
         MACE_NOT_IMPLEMENTED;
       }
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct ConcatFunctor<DeviceType::GPU, float>;

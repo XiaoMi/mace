@@ -38,12 +38,11 @@ class WinogradInverseTransformOp : public Operator<D, T> {
                                                                   "NOOP")),
                  OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
     const Tensor *bias = this->InputSize() == 2 ? this->Input(BIAS) : nullptr;
     Tensor *output_tensor = this->Output(OUTPUT);
-    functor_(input_tensor, bias, output_tensor, future);
-    return true;
+    return functor_(input_tensor, bias, output_tensor, future);
   }
 
  private:

@@ -32,12 +32,11 @@ class EltwiseOp : public Operator<D, T> {
                  OperatorBase::GetRepeatedArgument<float>("coeff"),
                  OperatorBase::GetSingleArgument<float>("x", 1.0)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor* input0 = this->Input(0);
     const Tensor* input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(OUTPUT);
-    functor_(input0, input1, output, future);
-    return true;
+    return functor_(input0, input1, output, future);
   }
 
  private:

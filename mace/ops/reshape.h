@@ -30,7 +30,7 @@ class ReshapeOp : public Operator<D, T> {
       : Operator<D, T>(op_def, ws),
         shape_(OperatorBase::GetRepeatedArgument<int64_t>("shape")) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const index_t num_dims = shape_.size();
     int unknown_idx = -1;
@@ -61,8 +61,7 @@ class ReshapeOp : public Operator<D, T> {
 
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input, out_shape, output, future);
-    return true;
+    return functor_(input, out_shape, output, future);
   }
 
  private:

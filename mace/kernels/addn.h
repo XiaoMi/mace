@@ -36,11 +36,11 @@ constexpr int kCostPerGroup = 1024;
 
 template <DeviceType D, typename T>
 struct AddNFunctor {
-  void operator()(const std::vector<const Tensor *> &input_tensors,
+  MaceStatus operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor,
                   StatsFuture *future) {
     MACE_UNUSED(future);
-    output_tensor->ResizeLike(input_tensors[0]);
+    MACE_FAILURE_RETURN(output_tensor->ResizeLike(input_tensors[0]));
     index_t size = output_tensor->size();
     Tensor::MappingGuard output_map(output_tensor);
     float *output_data = output_tensor->mutable_data<float>();
@@ -89,13 +89,14 @@ struct AddNFunctor {
         }
       }
     }
+    return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct AddNFunctor<DeviceType::GPU, T> {
-  void operator()(const std::vector<const Tensor *> &input_tensors,
+  MaceStatus operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor,
                   StatsFuture *future);
 

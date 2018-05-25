@@ -33,7 +33,7 @@ struct BufferToImageFunctorBase {
 template <DeviceType D, typename T>
 struct BufferToImageFunctor : BufferToImageFunctorBase {
   BufferToImageFunctor() {}
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,
                   StatsFuture *future) {
@@ -42,13 +42,14 @@ struct BufferToImageFunctor : BufferToImageFunctorBase {
     MACE_UNUSED(output);
     MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
+    return MACE_SUCCESS;
   }
 };
 
 template <typename T>
 struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
   BufferToImageFunctor() {}
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,
                   StatsFuture *future);

@@ -167,7 +167,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
     }
   }
 
-  void operator()(const Tensor *input_tensor,
+  MaceStatus operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future) {
     MACE_UNUSED(future);
@@ -190,7 +190,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
                          RoundType::CEIL,
                          output_shape.data());
     }
-    output_tensor->Resize(output_shape);
+    MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
 
     Tensor::MappingGuard input_guard(input_tensor);
     Tensor::MappingGuard output_guard(output_tensor);
@@ -220,6 +220,8 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
     } else {
       MACE_NOT_IMPLEMENTED;
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -235,7 +237,7 @@ struct PoolingFunctor<DeviceType::GPU, T> : PoolingFunctorBase {
       : PoolingFunctorBase(
             pooling_type, kernels, strides, padding_type, paddings, dilations) {
   }
-  void operator()(const Tensor *input_tensor,
+  MaceStatus operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
                   StatsFuture *future);
 

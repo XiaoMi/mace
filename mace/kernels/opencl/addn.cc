@@ -22,7 +22,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void AddNFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
     const std::vector<const Tensor *> &input_tensors,
     Tensor *output_tensor,
     StatsFuture *future) {
@@ -87,7 +87,8 @@ void AddNFunctor<DeviceType::GPU, T>::operator()(
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    output_tensor->ResizeImage(output_shape, output_image_shape);
+    MACE_FAILURE_RETURN(output_tensor->ResizeImage(output_shape,
+                                                   output_image_shape));
 
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -118,6 +119,8 @@ void AddNFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct AddNFunctor<DeviceType::GPU, float>;

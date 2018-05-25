@@ -136,7 +136,7 @@ struct ProposalFunctor {
       feat_stride_(feat_stride),
       anchors_(GenerateAnchors(scales, ratios, base_size)) {}
 
-  void operator()(const Tensor *rpn_cls_prob,
+  MaceStatus operator()(const Tensor *rpn_cls_prob,
                   const Tensor *rpn_bbox_pred,
                   const Tensor *img_info_tensor,
                   Tensor *output,
@@ -180,7 +180,7 @@ struct ProposalFunctor {
     for (int h_idx = 0; h_idx < feat_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feat_width; ++w_idx) {
         for (int a_idx = 0; a_idx < anchors_size; ++a_idx) {
-          const int sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
+          const index_t sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
               + a_idx;
           const float width = proposals[sanc_idx][2] -
               proposals[sanc_idx][0] + 1;
@@ -216,7 +216,7 @@ struct ProposalFunctor {
     for (int h_idx = 0; h_idx < feat_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feat_width; ++w_idx) {
         for (int a_idx = 0; a_idx < anchors_size; ++a_idx) {
-          const int sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
+          const index_t sanc_idx = (h_idx * feat_width + w_idx) * anchors_size
               + a_idx;
           const float width = proposals[sanc_idx][2]
               - proposals[sanc_idx][0] + 1;
@@ -267,7 +267,7 @@ struct ProposalFunctor {
     // Our RPN implementation only supports a single input image, so all
     // batch inds are 0
     size = static_cast<int>(nms_result.size());
-    output->Resize({size, 1, 1, 5});
+    MACE_FAILURE_RETURN(output->Resize({size, 1, 1, 5}));
     auto output_ptr = output->mutable_data<float>();
 #pragma omp parallel for
     for (int i = 0; i < size; ++i) {
@@ -279,6 +279,8 @@ struct ProposalFunctor {
       output_ptr[out_idx + 3] = nms_proposals[nms_idx + 2];
       output_ptr[out_idx + 4] = nms_proposals[nms_idx + 3];
     }
+
+    return MACE_SUCCESS;
   }
 
   const int min_size_;

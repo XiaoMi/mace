@@ -27,7 +27,7 @@ class BufferToImageOp : public Operator<D, T> {
   BufferToImageOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);
 
     kernels::BufferType type =
@@ -35,8 +35,7 @@ class BufferToImageOp : public Operator<D, T> {
             "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input_tensor, type, output, future);
-    return true;
+    return functor_(input_tensor, type, output, future);
   }
 
  private:
