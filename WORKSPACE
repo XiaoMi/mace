@@ -74,11 +74,15 @@ bind(
     actual = "@six_archive//:six",
 )
 
-git_repository(
+http_archive(
+    # v2.2.0 + fix of include path
     name = "com_github_gflags_gflags",
-    #tag    = "v2.2.0",
-    commit = "30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",  # v2.2.0 + fix of include path
-    remote = "https://github.com/gflags/gflags.git",
+    sha256 = "16903f6bb63c00689eee3bf7fb4b8f242934f6c839ce3afc5690f71b712187f9",
+    strip_prefix = "gflags-30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/gflags/gflags-30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.zip",
+        "https://github.com/gflags/gflags/archive/30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.zip"
+    ],
 )
 
 bind(
