@@ -100,16 +100,6 @@ class OpDefBuilder {
     return *this;
   }
 
-  OpDefBuilder AddStringsArg(const std::string &name,
-                             const std::vector<const char *> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_strings(value);
-    }
-    return *this;
-  }
-
   void Finalize(OperatorDef *op_def) const {
     MACE_CHECK(op_def != nullptr, "input should not be null.");
     *op_def = op_def_;

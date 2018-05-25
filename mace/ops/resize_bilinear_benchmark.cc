@@ -44,7 +44,7 @@ void ResizeBilinearBenchmark(int iters,
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddInputFromArray<D, index_t>("OutSize", {2},
+  net.AddInputFromArray<D, int>("OutSize", {2},
                                     {output_height, output_width});
 
   if (D == DeviceType::CPU) {
