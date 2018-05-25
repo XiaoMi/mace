@@ -713,18 +713,21 @@ class Transformer(base_converter.ConverterInterface):
             # transpose args
             if op.type == MaceOp.Pad.name:
                 for arg in op.arg:
-                    if arg.name == MaceKeyword.mace_paddings_str and len(
-                            arg.ints) == 4:
+                    if arg.name == MaceKeyword.mace_paddings_str:
+                        mace_check(len(arg.ints) == 8,
+                                   "pad dim rank should be 8.")
                         if ConverterUtil.data_format(op) == DataFormat.NHWC \
                                 and self._target_data_format == DataFormat.NCHW:  # noqa
                             print("Transpose pad args: %s(%s)"
                                   % (op.name, op.type))
-                            self.transpose_shape(arg.ints, [0, 3, 1, 2])
+                            self.transpose_shape(arg.ints,
+                                                 [0, 1, 6, 7, 2, 3, 4, 5])
                         elif ConverterUtil.data_format(op) == DataFormat.NCHW \
                                 and self._target_data_format == DataFormat.NHWC:  # noqa
                             print("Transpose pad args: %s(%s)"
                                   % (op.name, op.type))
-                            self.transpose_shape(arg.ints, [0, 2, 3, 1])
+                            self.transpose_shape(arg.ints,
+                                                 [0, 1, 4, 5, 6, 7, 2, 3])
             elif op.type == MaceOp.Concat.name or op.type == MaceOp.Slice.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
