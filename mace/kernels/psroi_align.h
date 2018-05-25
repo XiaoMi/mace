@@ -34,7 +34,7 @@ struct PSROIAlignFunctor {
       output_dim_(output_dim),
       group_size_(group_size) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *rois,
                   Tensor *output,
                   StatsFuture *future) {
@@ -47,10 +47,11 @@ struct PSROIAlignFunctor {
     const T *input_ptr = input->data<T>();
     const T *rois_ptr = rois->data<T>();
     // Number of ROIs
-    const int num_rois = rois->dim(0);
-    const int batch_size = input->dim(0);
+    const index_t num_rois = rois->dim(0);
+    const index_t batch_size = input->dim(0);
 
-    output->Resize({num_rois, pooled_height, pooled_width, output_dim_});
+    MACE_FAILURE_RETURN(output->Resize({num_rois, pooled_height, pooled_width,
+                                        output_dim_}));
     T *output_ptr = output->mutable_data<T>();
 
     for (int n = 0; n < num_rois; ++n) {
@@ -176,6 +177,8 @@ struct PSROIAlignFunctor {
       rois_ptr += 5;
       output_ptr += pooled_height * pooled_width * output_dim_;
     }
+
+    return MACE_SUCCESS;
   }
 
   const T spatial_scale_;

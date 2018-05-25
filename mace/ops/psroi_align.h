@@ -30,14 +30,13 @@ class PSROIAlignOp : public Operator<D, T> {
                  OperatorBase::GetSingleArgument<int>("output_dim", 0),
                  OperatorBase::GetSingleArgument<int>("group_size", 0)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *rois = this->Input(ROIS);
 
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input, rois, output, future);
-    return true;
+    return functor_(input, rois, output, future);
   }
 
  private:

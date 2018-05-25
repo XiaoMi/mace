@@ -25,7 +25,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     Tensor *space_tensor,
     Tensor *batch_tensor,
     StatsFuture *future) {
@@ -45,10 +45,12 @@ void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
   if (b2s_) {
-    space_tensor->ResizeImage(output_shape, output_image_shape);
+    MACE_FAILURE_RETURN(space_tensor->ResizeImage(output_shape,
+                                                  output_image_shape));
     kernel_name = "batch_to_space";
   } else {
-    batch_tensor->ResizeImage(output_shape, output_image_shape);
+    MACE_FAILURE_RETURN(batch_tensor->ResizeImage(output_shape,
+                                                  output_image_shape));
     kernel_name = "space_to_batch";
   }
   const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
@@ -129,6 +131,8 @@ void SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct SpaceToBatchFunctor<DeviceType::GPU, float>;

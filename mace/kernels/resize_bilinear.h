@@ -46,10 +46,10 @@ inline float CalculateResizeScale(index_t in_size,
 }
 
 inline void ComputeInterpolationWeights(
-  const index_t out_size,
-  const index_t in_size,
-  const float scale,
-  CachedInterpolation *interpolation) {
+    const index_t out_size,
+    const index_t in_size,
+    const float scale,
+    CachedInterpolation *interpolation) {
   interpolation[out_size].lower = 0;
   interpolation[out_size].upper = 0;
   for (index_t i = out_size - 1; i >= 0; --i) {
@@ -72,29 +72,30 @@ inline float ComputeLerp(const float top_left,
 }
 
 inline void ResizeImage(const float *images,
-                 const index_t batch_size,
-                 const index_t in_height,
-                 const index_t in_width,
-                 const index_t out_height,
-                 const index_t out_width,
-                 const index_t channels,
-                 const std::vector<CachedInterpolation> &xs_vec,
-                 const std::vector<CachedInterpolation> &ys,
-                 float *output) {
+                        const index_t batch_size,
+                        const index_t in_height,
+                        const index_t in_width,
+                        const index_t out_height,
+                        const index_t out_width,
+                        const index_t channels,
+                        const std::vector<CachedInterpolation> &xs_vec,
+                        const std::vector<CachedInterpolation> &ys,
+                        float *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const float
-        *channel_input_ptr = images + (b * channels + c) * in_height * in_width;
+          *channel_input_ptr =
+          images + (b * channels + c) * in_height * in_width;
       float *channel_output_ptr =
-        output + (b * channels + c) * out_height * out_width;
+          output + (b * channels + c) * out_height * out_width;
       for (index_t y = 0; y < out_height; ++y) {
         const float *y_lower_input_ptr =
-          channel_input_ptr + ys[y].lower * in_width;
+            channel_input_ptr + ys[y].lower * in_width;
         const float *y_upper_input_ptr =
-          channel_input_ptr + ys[y].upper * in_width;
+            channel_input_ptr + ys[y].upper * in_width;
         const float ys_lerp = ys[y].lerp;
 
         for (index_t x = 0; x < out_width; ++x) {
@@ -104,8 +105,8 @@ inline void ResizeImage(const float *images,
           const float bottom_left = y_upper_input_ptr[xs[x].lower];
           const float bottom_right = y_upper_input_ptr[xs[x].upper];
           channel_output_ptr[y * out_width + x] =
-            ComputeLerp(top_left, top_right, bottom_left,
-                        bottom_right, xs_lerp, ys_lerp);
+              ComputeLerp(top_left, top_right, bottom_left,
+                          bottom_right, xs_lerp, ys_lerp);
         }
       }
     }
@@ -115,7 +116,7 @@ inline void ResizeImage(const float *images,
 struct ResizeBilinearFunctorBase {
   ResizeBilinearFunctorBase(const std::vector<index_t> &size,
                             bool align_corners)
-    : align_corners_(align_corners) {
+      : align_corners_(align_corners) {
     MACE_CHECK(size.size() == 2);
     out_height_ = size[0];
     out_width_ = size[1];
@@ -132,11 +133,13 @@ struct ResizeBilinearFunctor;
 
 template<>
 struct ResizeBilinearFunctor<DeviceType::CPU, float>
-  : ResizeBilinearFunctorBase {
+    : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
-    : ResizeBilinearFunctorBase(size, align_corners) {}
+      : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const index_t batch = input->dim(0);
     const index_t channels = input->dim(1);
@@ -147,7 +150,7 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
     index_t out_width = out_width_;
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
-    output->Resize(out_shape);
+    MACE_FAILURE_RETURN(output->Resize(out_shape));
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard output_mapper(output);
@@ -158,13 +161,13 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
       std::copy(input_data,
                 input_data + batch * channels * in_height * in_width,
                 output_data);
-      return;
+      return MACE_SUCCESS;
     }
 
     float height_scale =
-      CalculateResizeScale(in_height, out_height, align_corners_);
+        CalculateResizeScale(in_height, out_height, align_corners_);
     float width_scale =
-      CalculateResizeScale(in_width, out_width, align_corners_);
+        CalculateResizeScale(in_width, out_width, align_corners_);
 
     std::vector<CachedInterpolation> ys(out_height + 1);
     std::vector<CachedInterpolation> xs(out_width + 1);
@@ -175,17 +178,21 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
 
     ResizeImage(input_data, batch, in_height, in_width, out_height, out_width,
                 channels, xs, ys, output_data);
+
+    return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct ResizeBilinearFunctor<DeviceType::GPU, T>
-  : ResizeBilinearFunctorBase {
+    : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(const std::vector<index_t> &size, bool align_corners)
-    : ResizeBilinearFunctorBase(size, align_corners) {}
+      : ResizeBilinearFunctorBase(size, align_corners) {}
 
-  void operator()(const Tensor *input, Tensor *output, StatsFuture *future);
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future);
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;

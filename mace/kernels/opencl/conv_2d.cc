@@ -67,7 +67,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
                          std::unique_ptr<BufferBase> *kernel_error);
 
 template <typename T>
-void Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                       const Tensor *filter,
                                                       const Tensor *bias,
                                                       Tensor *output,
@@ -111,7 +111,7 @@ void Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  output->ResizeImage(output_shape, output_image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
   if (kernel_h == kernel_w && kernel_h <= 5 &&
       selector[kernel_h - 1] != nullptr) {
@@ -126,6 +126,8 @@ void Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                  DataTypeToEnum<T>::value, &input_shape_, output, future,
                  &kwg_size_, &kernel_error_);
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct Conv2dFunctor<DeviceType::GPU, float>;

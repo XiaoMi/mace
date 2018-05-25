@@ -41,7 +41,7 @@ template<DeviceType D, typename T>
 struct SliceFunctor : SliceFunctorBase {
   explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future) {
     MACE_UNUSED(future);
@@ -61,7 +61,7 @@ struct SliceFunctor : SliceFunctorBase {
                                                1,
                                                std::multiplies<index_t>());
     for (size_t i= 0; i < outputs_count; ++i) {
-      output_list[i]->Resize(output_shape);
+      MACE_FAILURE_RETURN(output_list[i]->Resize(output_shape));
       output_ptrs[i] = output_list[i]->mutable_data<T>();
     }
     const T *input_ptr = input->data<T>();
@@ -82,6 +82,8 @@ struct SliceFunctor : SliceFunctorBase {
         input_idx += output_channels * inner_size;
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -90,7 +92,7 @@ template<typename T>
 struct SliceFunctor<DeviceType::GPU, T> : SliceFunctorBase {
   explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
                   StatsFuture *future);
   cl::Kernel kernel_;

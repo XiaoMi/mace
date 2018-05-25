@@ -44,7 +44,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 }  // namespace
 
 template <typename T>
-void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                        Tensor *output,
                                                        StatsFuture *future) {
   MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1)
@@ -108,7 +108,7 @@ void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    output->ResizeImage(output_shape, output_image_shape);
+    MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
     index_t batch = output->dim(0);
     index_t out_height = output->dim(1);
@@ -169,6 +169,8 @@ void PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct PoolingFunctor<DeviceType::GPU, float>;

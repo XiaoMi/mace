@@ -74,7 +74,7 @@ template<>
 struct QuantizeFunctor<CPU, uint8_t> {
   QuantizeFunctor() {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *in_min,
                   const Tensor *in_max,
                   Tensor *output,
@@ -95,6 +95,8 @@ struct QuantizeFunctor<CPU, uint8_t> {
       output_data[i] = Saturate<uint8_t>(roundf(
         (input_data[i] - in_min_data) * recip_stepsize));
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -105,7 +107,7 @@ template<>
 struct DequantizeFunctor<CPU, uint8_t> {
   DequantizeFunctor() {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *in_min,
                   const Tensor *in_max,
                   Tensor *output,
@@ -120,6 +122,8 @@ struct DequantizeFunctor<CPU, uint8_t> {
     for (int i = 0; i < input->size(); ++i) {
       output_data[i] = in_min_data + stepsize * input_data[i];
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -130,7 +134,7 @@ template<>
 struct RequantizeFunctor<CPU, uint8_t> {
   RequantizeFunctor() {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *in_min,
                   const Tensor *in_max,
                   const Tensor *rerange_min,
@@ -189,6 +193,8 @@ struct RequantizeFunctor<CPU, uint8_t> {
         Saturate<uint8_t>(roundf(
           quantized_out_zero + input_data[i] * step_ratio));
     }
+
+    return MACE_SUCCESS;
   }
 };
 

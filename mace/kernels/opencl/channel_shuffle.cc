@@ -23,11 +23,11 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     Tensor *output,
     StatsFuture *future) {
-  output->ResizeLike(input);
+  MACE_FAILURE_RETURN(output->ResizeLike(input));
 
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
@@ -103,6 +103,8 @@ void ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template

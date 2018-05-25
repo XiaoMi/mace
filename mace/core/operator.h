@@ -73,7 +73,7 @@ class OperatorBase {
   inline const std::vector<Tensor *> &Outputs() { return outputs_; }
 
   // Run Op asynchronously (depends on device), return a future if not nullptr.
-  virtual bool Run(StatsFuture *future) = 0;
+  virtual MaceStatus Run(StatsFuture *future) = 0;
 
   inline const OperatorDef &debug_def() const {
     MACE_CHECK(has_debug_def(), "operator_def was null!");
@@ -130,7 +130,7 @@ class Operator : public OperatorBase {
       }
     }
   }
-  bool Run(StatsFuture *future) override = 0;
+  MaceStatus Run(StatsFuture *future) override = 0;
   ~Operator() noexcept override {}
 };
 

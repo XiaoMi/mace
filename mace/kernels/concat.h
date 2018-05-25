@@ -40,7 +40,7 @@ template <DeviceType D, typename T>
 struct ConcatFunctor : ConcatFunctorBase {
   explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
 
-  void operator()(const std::vector<const Tensor *> &input_list,
+  MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
                   StatsFuture *future) {
     MACE_UNUSED(future);
@@ -68,7 +68,7 @@ struct ConcatFunctor : ConcatFunctorBase {
       outer_sizes[i] = input->size() / inner_size;
       output_shape[axis_] += input->dim(axis_);
     }
-    output->Resize(output_shape);
+    MACE_FAILURE_RETURN(output->Resize(output_shape));
 
     T *output_ptr = output->mutable_data<T>();
 
@@ -89,6 +89,8 @@ struct ConcatFunctor : ConcatFunctorBase {
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -97,7 +99,7 @@ template <typename T>
 struct ConcatFunctor<DeviceType::GPU, T> : ConcatFunctorBase {
   explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
 
-  void operator()(const std::vector<const Tensor *> &input_list,
+  MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
                   StatsFuture *future);
   cl::Kernel kernel_;

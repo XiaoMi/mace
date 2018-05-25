@@ -31,12 +31,14 @@ template <DeviceType D, typename T>
 struct ReshapeFunctor {
   ReshapeFunctor() {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const std::vector<index_t> &out_shape,
                   Tensor *output,
                   StatsFuture *future) {
     MACE_UNUSED(future);
     output->ResizeWithBuffer(out_shape, input->UnderlyingBuffer());
+
+    return MACE_SUCCESS;
   }
 };
 

@@ -36,7 +36,7 @@ class NetBase {
           DeviceType type);
   virtual ~NetBase() noexcept {}
 
-  virtual bool Run(RunMetadata *run_metadata = nullptr) = 0;
+  virtual MaceStatus Run(RunMetadata *run_metadata = nullptr) = 0;
 
   const std::string &Name() const { return name_; }
 
@@ -55,7 +55,7 @@ class SerialNet : public NetBase {
             DeviceType type,
             const NetMode mode = NetMode::NORMAL);
 
-  bool Run(RunMetadata *run_metadata = nullptr) override;
+  MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
 
  protected:
   std::vector<std::unique_ptr<OperatorBase> > operators_;

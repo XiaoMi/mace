@@ -65,6 +65,15 @@ enum MaceStatus {
   MACE_OUT_OF_RESOURCES = 2
 };
 
+#define MACE_FAILURE_RETURN(stmt)                                          \
+  {                                                                        \
+    MaceStatus status = (stmt);                                            \
+    if (status != MACE_SUCCESS) {                                          \
+      VLOG(0) << "Mace runtime failure: " << __FILE__ << ":" << __LINE__;  \
+      return status;                                                       \
+    }                                                                      \
+  }
+
 // MACE input/output tensor
 class MaceTensor {
  public:

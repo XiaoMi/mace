@@ -30,15 +30,14 @@ class ResizeBilinearOp : public Operator<D, T> {
             OperatorBase::GetRepeatedArgument<index_t>("size", {-1, -1}),
             OperatorBase::GetSingleArgument<bool>("align_corners", false)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional.",
                input->dim_size());
 
-    functor_(input, output, future);
-    return true;
+    return functor_(input, output, future);
   }
 
  private:

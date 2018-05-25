@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template<typename T>
-void PadFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     Tensor *output,
     StatsFuture *future) {
@@ -39,7 +39,7 @@ void PadFunctor<DeviceType::GPU, T>::operator()(
 
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  output->ResizeImage(output_shape, image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -114,6 +114,8 @@ void PadFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template

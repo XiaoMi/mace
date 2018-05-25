@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
+MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
                                                       const Tensor *B,
                                                       Tensor *C,
                                                       StatsFuture *future) {
@@ -29,7 +29,7 @@ void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
   CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
-  C->ResizeImage(c_shape, c_image_shape);
+  MACE_FAILURE_RETURN(C->ResizeImage(c_shape, c_image_shape));
 
   const index_t batch = C->dim(0);
   const index_t height = C->dim(1);
@@ -98,6 +98,8 @@ void MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct MatMulFunctor<DeviceType::GPU, float>;

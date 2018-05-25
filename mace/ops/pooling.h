@@ -40,12 +40,11 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
                  this->paddings_,
                  this->dilations_.data()) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
-    functor_(input, output, future);
-    return true;
+    return functor_(input, output, future);
   };
 
  protected:

@@ -282,7 +282,7 @@ void FCWTXKernel(cl::Kernel *kernel,
 }  // namespace
 
 template <typename T>
-void FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const Tensor *weight,
     const Tensor *bias,
@@ -292,11 +292,13 @@ void FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  output->ResizeImage(output_shape, output_image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
   FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
                 activation_, &gws_, &lws_, relux_max_limit_, future,
                 &kernel_error_);
+
+  return MACE_SUCCESS;
 }
 
 template struct FullyConnectedFunctor<DeviceType::GPU, float>;

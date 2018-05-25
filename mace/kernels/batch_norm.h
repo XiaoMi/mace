@@ -56,7 +56,7 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
                    const float relux_max_limit)
     : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,
                   const Tensor *mean,
@@ -124,6 +124,8 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
     }
     DoActivation(output_ptr, output_ptr, output->size(), activation_,
                  relux_max_limit_);
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -134,7 +136,7 @@ struct BatchNormFunctor<DeviceType::GPU, T> : BatchNormFunctorBase {
                    const ActivationType activation,
                    const float relux_max_limit)
     : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,
                   const Tensor *mean,

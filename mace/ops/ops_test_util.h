@@ -354,7 +354,7 @@ class OpsTestNet {
     return net_ != nullptr;
   }
 
-  bool Run() {
+  MaceStatus Run() {
     MACE_CHECK_NOTNULL(net_);
     return net_->Run();
   }
@@ -362,7 +362,7 @@ class OpsTestNet {
   // DEPRECATED(liyin):
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
-  bool RunOp(DeviceType device) {
+  MaceStatus RunOp(DeviceType device) {
     Setup(device);
     return Run();
   }
@@ -370,16 +370,14 @@ class OpsTestNet {
   // DEPRECATED(liyin):
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
-  bool RunOp() {
+  MaceStatus RunOp() {
     return RunOp(DeviceType::CPU);
   }
 
-  bool RunNet(const NetDef &net_def, const DeviceType device) {
+  MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
     device_ = device;
     net_ = CreateNet(op_registry_, net_def, &ws_, device, NetMode::INIT);
-    if (!net_->Run()) {
-      return false;
-    }
+    MACE_FAILURE_RETURN(net_->Run());
     net_ = CreateNet(op_registry_, net_def, &ws_, device);
     return net_->Run();
   }

@@ -194,7 +194,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
 }
 
 template <typename T>
-void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const Tensor *filter, /* MIHW */
     const Tensor *bias,
@@ -209,10 +209,9 @@ void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
                  << " stride " << strides_[0] << "x" << strides_[1]
                  << " is not implemented yet, using slow version";
     // TODO(heliangliang) The CPU/NEON kernel should map the buffer
-    DepthwiseConv2dFunctor<DeviceType::CPU, float>(
+    return DepthwiseConv2dFunctor<DeviceType::CPU, float>(
         strides_, padding_type_, paddings_, dilations_, activation_,
         relux_max_limit_)(input, filter, bias, output, future);
-    return;
   }
 
   // Create a fake conv_2d filter to calculate the paddings and output size
@@ -238,12 +237,14 @@ void DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  output->ResizeImage(output_shape, output_image_shape);
+  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
   DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),
                   dilations_, activation_, relux_max_limit_,
                   DataTypeToEnum<T>::value, &input_shape_, output, future,
                   &kwg_size_, &kernel_error_);
+
+  return MACE_SUCCESS;
 }
 
 template struct DepthwiseConv2dFunctor<DeviceType::GPU, float>;

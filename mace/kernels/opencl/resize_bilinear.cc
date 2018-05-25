@@ -51,7 +51,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 }  // namespace
 
 template <typename T>
-void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input, Tensor *output, StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
@@ -100,7 +100,7 @@ void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    output->ResizeImage(output_shape, output_image_shape);
+    MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
 
     float height_scale =
         CalculateResizeScale(in_height, out_height, align_corners_);
@@ -140,6 +140,8 @@ void ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     kernel_error_->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template struct ResizeBilinearFunctor<DeviceType::GPU, float>;

@@ -38,23 +38,27 @@ struct PadFunctorBase {
   float constant_value_;
 };
 
-template <DeviceType D, typename T>
+template<DeviceType D, typename T>
 struct PadFunctor : public PadFunctorBase {
   PadFunctor(const std::vector<int> &paddings,
              const float constant_value)
       : PadFunctorBase(paddings, constant_value) {}
 
-  void operator()(const Tensor *input,
-                  Tensor *output,
-                  StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     MACE_CHECK(
         this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
     auto input_shape = input->shape();
-    output->Resize({input_shape[0] + this->paddings_[0] + this->paddings_[1],
-                    input_shape[1] + this->paddings_[2] + this->paddings_[3],
-                    input_shape[2] + this->paddings_[4] + this->paddings_[5],
-                    input_shape[3] + this->paddings_[6] + this->paddings_[7]});
+    MACE_FAILURE_RETURN(output->Resize({input_shape[0] + this->paddings_[0]
+                                            + this->paddings_[1],
+                                        input_shape[1] + this->paddings_[2]
+                                            + this->paddings_[3],
+                                        input_shape[2] + this->paddings_[4]
+                                            + this->paddings_[5],
+                                        input_shape[3] + this->paddings_[6]
+                                            + this->paddings_[7]}));
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
@@ -81,6 +85,8 @@ struct PadFunctor : public PadFunctorBase {
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -91,7 +97,7 @@ struct PadFunctor<DeviceType::GPU, T> : PadFunctorBase {
              const float constant_value)
       : PadFunctorBase(paddings, constant_value) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   Tensor *output,
                   StatsFuture *future);
 

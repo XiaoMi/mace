@@ -33,17 +33,16 @@ class LocalResponseNormOp : public Operator<D, T> {
     beta_ = OperatorBase::GetSingleArgument<float>("beta", 0.5f);
   }
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
 
     MACE_CHECK(input->dim_size() == 4, "input must be 4-dimensional. ",
                input->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(input);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
 
-    functor_(input, depth_radius_, bias_, alpha_, beta_, output, future);
-    return true;
+    return functor_(input, depth_radius_, bias_, alpha_, beta_, output, future);
   }
 
  private:

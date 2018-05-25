@@ -226,7 +226,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                             activation,
                             relux_max_limit) {}
 
-  void operator()(const Tensor *input,   // NCHW
+  MaceStatus operator()(const Tensor *input,   // NCHW
                   const Tensor *filter,  // OIHW
                   const Tensor *bias,
                   Tensor *output,
@@ -250,7 +250,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
           strides_, padding_type_,
           output_shape.data(),
           paddings_.data(), true);
-      output->Resize(output_shape);
+      MACE_FAILURE_RETURN(output->Resize(output_shape));
     } else {
       output_shape_.clear();
       output_shape_ = std::vector<index_t>(4, 0);
@@ -259,7 +259,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                            strides_,
                            output_shape_.data(),
                            paddings_.data(), true);
-      output->Resize(output_shape_);
+      MACE_FAILURE_RETURN(output->Resize(output_shape_));
     }
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);
@@ -298,6 +298,8 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                  output->size(),
                  activation_,
                  relux_max_limit_);
+
+    return MACE_SUCCESS;
   }
 };
 
@@ -317,7 +319,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                             activation,
                             relux_max_limit) {}
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,

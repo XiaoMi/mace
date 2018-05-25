@@ -57,7 +57,7 @@ SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
   }
 }
 
-bool SerialNet::Run(RunMetadata *run_metadata) {
+MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
@@ -68,11 +68,10 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
 
-    bool ret;
     CallStats call_stats;
     if (future_wait) {
       StatsFuture future;
-      ret = op->Run(&future);
+      MACE_FAILURE_RETURN(op->Run(&future));
       if (run_metadata != nullptr) {
         future.wait_fn(&call_stats);
       } else {
@@ -80,10 +79,10 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
       }
     } else if (run_metadata != nullptr) {
       call_stats.start_micros = NowMicros();
-      ret = op->Run(nullptr);
+      MACE_FAILURE_RETURN(op->Run(nullptr));
       call_stats.end_micros = NowMicros();
     } else {
-      ret = op->Run(nullptr);
+      MACE_FAILURE_RETURN(op->Run(nullptr));
     }
 
     if (run_metadata != nullptr) {
@@ -117,16 +116,11 @@ bool SerialNet::Run(RunMetadata *run_metadata) {
       run_metadata->op_stats.emplace_back(op_stats);
     }
 
-    if (!ret) {
-      LOG(ERROR) << "Operator failed: " << op->debug_def().name();
-      return false;
-    }
-
     VLOG(3) << "Operator " << op->debug_def().name()
             << " has shape: " << MakeString(op->Output(0)->shape());
   }
 
-  return true;
+  return MACE_SUCCESS;
 }
 
 std::unique_ptr<NetBase> CreateNet(

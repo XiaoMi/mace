@@ -32,7 +32,7 @@ class BatchNormOp : public Operator<D, T> {
                                                       static_cast<float>(1e-4));
   }
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *scale = this->Input(SCALE);
     const Tensor *offset = this->Input(OFFSET);
@@ -51,10 +51,8 @@ class BatchNormOp : public Operator<D, T> {
                var->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(input);
-
-    functor_(input, scale, offset, mean, var, epsilon_, output, future);
-    return true;
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    return functor_(input, scale, offset, mean, var, epsilon_, output, future);
   }
 
  private:

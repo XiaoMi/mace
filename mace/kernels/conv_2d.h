@@ -256,7 +256,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     }  // b
   }
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,
@@ -296,7 +296,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          RoundType::FLOOR,
                          output_shape.data());
     }
-    output->Resize(output_shape);
+    MACE_FAILURE_RETURN(output->Resize(output_shape));
 
     index_t batch = output->dim(0);
     index_t channels = output->dim(1);
@@ -497,7 +497,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
         if (is_filter_transformed_) {
           transformed_filter_ptr = filter_data;
         } else {
-          transformed_filter_.Resize(transformed_filter_shape);
+          MACE_FAILURE_RETURN(transformed_filter_.Resize(
+              transformed_filter_shape));
           switch (winograd_out_tile_size) {
             case 2:
               TransformFilter4x4(filter_data,
@@ -643,12 +644,12 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const Tensor *pad_input_ptr = input;
     if (extra_input_height != input_height
       || extra_input_width != input_width) {
-      ConstructNCHWInputWithSpecificPadding(input,
+      MACE_FAILURE_RETURN(ConstructNCHWInputWithSpecificPadding(input,
                                             pad_top,
                                             pad_bottom,
                                             pad_left,
                                             pad_right,
-                                            &padded_input);
+                                            &padded_input));
       pad_input_ptr = &padded_input;
     }
 
@@ -701,6 +702,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
     DoActivation(output_data, output_data, output->size(), activation_,
                  relux_max_limit_);
+
+    return MACE_SUCCESS;
   }
 
   Tensor transformed_filter_;
@@ -729,7 +732,7 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
     MACE_UNUSED(scratch);
   }
 
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
                   Tensor *output,

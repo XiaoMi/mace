@@ -34,7 +34,7 @@ struct BiasAddFunctor;
 
 template<>
 struct BiasAddFunctor<DeviceType::CPU, float> {
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future) {
@@ -61,13 +61,15 @@ struct BiasAddFunctor<DeviceType::CPU, float> {
         }
       }
     }
+
+    return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct BiasAddFunctor<DeviceType::GPU, T> {
-  void operator()(const Tensor *input,
+  MaceStatus operator()(const Tensor *input,
                   const Tensor *bias,
                   Tensor *output,
                   StatsFuture *future);

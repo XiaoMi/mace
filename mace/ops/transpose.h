@@ -31,7 +31,7 @@ class TransposeOp : public Operator<D, T> {
       dims_(OperatorBase::GetRepeatedArgument<int>("dims")),
       functor_(dims_) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     const std::vector<index_t> &input_shape = input->shape();
@@ -42,9 +42,8 @@ class TransposeOp : public Operator<D, T> {
     for (size_t i = 0; i < dims_.size(); ++i) {
       output_shape.push_back(input_shape[dims_[i]]);
     }
-    output->Resize(output_shape);
-    functor_(input, output, future);
-    return true;
+    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    return functor_(input, output, future);
   }
 
  protected:

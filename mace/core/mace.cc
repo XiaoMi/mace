@@ -155,18 +155,13 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-    MaceStatus status =
-      ws_->LoadModelTensor(*net_def, device_type_, model_data);
-    if (status != MaceStatus::MACE_SUCCESS) {
-      return status;
-    }
+    MACE_FAILURE_RETURN(ws_->LoadModelTensor(
+        *net_def, device_type_, model_data));
 
   // Init model
     auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type_,
                          NetMode::INIT);
-    if (!net->Run()) {
-      LOG(FATAL) << "Net init run failed";
-    }
+    MACE_FAILURE_RETURN(net->Run());
     net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type_);
 #ifdef MACE_ENABLE_HEXAGON
   }
@@ -226,9 +221,7 @@ MaceStatus MaceEngine::Impl::Run(
     hexagon_controller_->ExecuteGraph(*input_tensors[0], output_tensors[0]);
   } else {
 #endif
-    if (!net_->Run(run_metadata)) {
-      LOG(FATAL) << "Net run failed";
-    }
+    MACE_FAILURE_RETURN(net_->Run(run_metadata));
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif

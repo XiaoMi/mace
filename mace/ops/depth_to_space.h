@@ -32,7 +32,7 @@ class DepthToSpaceOp : public Operator<D, T> {
         block_size_(OperatorBase::GetSingleArgument<int>("block_size", 1)),
         functor_(this->block_size_, true) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
@@ -50,8 +50,7 @@ class DepthToSpaceOp : public Operator<D, T> {
                input_depth);
     MACE_CHECK((input_depth % 4) == 0,
                "input channel should be dividable by 4");
-    functor_(input, output, future);
-    return true;
+    return functor_(input, output, future);
   }
 
  protected:

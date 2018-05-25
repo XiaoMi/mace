@@ -28,7 +28,7 @@ class QuantizeOp : public Operator<D, T> {
     : Operator<D, T>(operator_def, ws) {
   }
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *in_min = this->Input(IN_MIN);
     const Tensor *in_max = this->Input(IN_MAX);
@@ -39,12 +39,11 @@ class QuantizeOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     Tensor *out_min = this->Output(OUT_MIN);
     Tensor *out_max = this->Output(OUT_MAX);
-    output->ResizeLike(input);
-    out_min->ResizeLike(in_min);
-    out_max->ResizeLike(in_max);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_FAILURE_RETURN(out_min->ResizeLike(in_min));
+    MACE_FAILURE_RETURN(out_max->ResizeLike(in_max));
 
-    functor_(input, in_min, in_max, output, out_min, out_max, future);
-    return true;
+    return functor_(input, in_min, in_max, output, out_min, out_max, future);
   }
 
  private:
@@ -62,7 +61,7 @@ class DequantizeOp : public Operator<D, T> {
     : Operator<D, T>(operator_def, ws) {
   }
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *in_min = this->Input(IN_MIN);
     const Tensor *in_max = this->Input(IN_MAX);
@@ -71,10 +70,9 @@ class DequantizeOp : public Operator<D, T> {
     MACE_CHECK(in_max->size() == 1, "max val tensor has more than 1 value");
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(input);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
 
-    functor_(input, in_min, in_max, output, future);
-    return true;
+    return functor_(input, in_min, in_max, output, future);
   }
 
  private:
@@ -92,7 +90,7 @@ class RequantizeOp : public Operator<D, T> {
     : Operator<D, T>(operator_def, ws) {
   }
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *in_min = this->Input(IN_MIN);
     const Tensor *in_max = this->Input(IN_MAX);
@@ -114,11 +112,11 @@ class RequantizeOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     Tensor *out_min = this->Output(OUT_MIN);
     Tensor *out_max = this->Output(OUT_MAX);
-    output->ResizeLike(input);
-    out_min->ResizeLike(in_min);
-    out_max->ResizeLike(out_max);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_FAILURE_RETURN(out_min->ResizeLike(in_min));
+    MACE_FAILURE_RETURN(out_max->ResizeLike(out_max));
 
-    functor_(input,
+    return functor_(input,
              in_min,
              in_max,
              rerange_min,
@@ -127,7 +125,6 @@ class RequantizeOp : public Operator<D, T> {
              out_min,
              out_max,
              future);
-    return true;
   }
 
  private:

@@ -31,7 +31,7 @@ class ChannelShuffleOp : public Operator<D, T> {
         group_(OperatorBase::GetSingleArgument<int>("group", 1)),
         functor_(this->group_) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     int channels;
@@ -45,9 +45,7 @@ class ChannelShuffleOp : public Operator<D, T> {
     MACE_CHECK(channels % group_ == 0,
                "input channels must be an integral multiple of group. ",
                input->dim(3));
-    functor_(input, output, future);
-
-    return true;
+    return functor_(input, output, future);
   }
 
  protected:

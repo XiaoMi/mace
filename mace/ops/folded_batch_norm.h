@@ -34,7 +34,7 @@ class FoldedBatchNormOp : public Operator<D, T> {
                                                                   "NOOP")),
                  OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
 
-  bool Run(StatsFuture *future) override {
+  MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *scale = this->Input(SCALE);
     const Tensor *offset = this->Input(OFFSET);
@@ -47,10 +47,9 @@ class FoldedBatchNormOp : public Operator<D, T> {
                offset->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(input);
+    MACE_FAILURE_RETURN(output->ResizeLike(input));
 
-    functor_(input, scale, offset, nullptr, nullptr, 0, output, future);
-    return true;
+    return functor_(input, scale, offset, nullptr, nullptr, 0, output, future);
   }
 
  private:
