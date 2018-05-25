@@ -37,60 +37,49 @@
 
 namespace mace {
 
-#define SINGLE_ARG(...) __VA_ARGS__
-#define CASE(TYPE, STMTS)             \
+#define MACE_SINGLE_ARG(...) __VA_ARGS__
+#define MACE_CASE(TYPE, STATEMENTS)             \
   case DataTypeToEnum<TYPE>::value: { \
     typedef TYPE T;                   \
-    STMTS;                            \
+    STATEMENTS;                            \
     break;                            \
   }
 
 #ifdef MACE_ENABLE_OPENCL
-#define CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, INVALID, DEFAULT) \
-  switch (TYPE_ENUM) {                                         \
-    CASE(half, SINGLE_ARG(STMTS))                              \
-    CASE(float, SINGLE_ARG(STMTS))                             \
-    CASE(double, SINGLE_ARG(STMTS))                            \
-    CASE(int32_t, SINGLE_ARG(STMTS))                           \
-    CASE(uint8_t, SINGLE_ARG(STMTS))                           \
-    CASE(uint16_t, SINGLE_ARG(STMTS))                          \
-    CASE(int16_t, SINGLE_ARG(STMTS))                           \
-    CASE(int8_t, SINGLE_ARG(STMTS))                            \
-    CASE(std::string, SINGLE_ARG(STMTS))                       \
-    CASE(int64_t, SINGLE_ARG(STMTS))                           \
-    CASE(bool, SINGLE_ARG(STMTS))                              \
-    case DT_INVALID:                                           \
-      INVALID;                                                 \
-      break;                                                   \
-    default:                                                   \
-      DEFAULT;                                                 \
-      break;                                                   \
+#define MACE_TYPE_ENUM_SWITCH(                                     \
+    TYPE_ENUM, STATEMENTS, INVALID_STATEMENTS, DEFAULT_STATEMENTS) \
+  switch (TYPE_ENUM) {                                             \
+    MACE_CASE(half, MACE_SINGLE_ARG(STATEMENTS))                   \
+    MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
+    MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    case DT_INVALID:                                               \
+      INVALID_STATEMENTS;                                          \
+      break;                                                       \
+    default:                                                       \
+      DEFAULT_STATEMENTS;                                          \
+      break;                                                       \
   }
 #else
-#define CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, INVALID, DEFAULT) \
-  switch (TYPE_ENUM) {                                         \
-    CASE(float, SINGLE_ARG(STMTS))                             \
-    CASE(double, SINGLE_ARG(STMTS))                            \
-    CASE(int32_t, SINGLE_ARG(STMTS))                           \
-    CASE(uint8_t, SINGLE_ARG(STMTS))                           \
-    CASE(uint16_t, SINGLE_ARG(STMTS))                          \
-    CASE(int16_t, SINGLE_ARG(STMTS))                           \
-    CASE(int8_t, SINGLE_ARG(STMTS))                            \
-    CASE(std::string, SINGLE_ARG(STMTS))                       \
-    CASE(int64_t, SINGLE_ARG(STMTS))                           \
-    CASE(bool, SINGLE_ARG(STMTS))                              \
-    case DT_INVALID:                                           \
-      INVALID;                                                 \
-      break;                                                   \
-    default:                                                   \
-      DEFAULT;                                                 \
-      break;                                                   \
+#define MACE_TYPE_ENUM_SWITCH(                                     \
+    TYPE_ENUM, STATEMENTS, INVALID_STATEMENTS, DEFAULT_STATEMENTS) \
+  switch (TYPE_ENUM) {                                             \
+    MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
+    MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    case DT_INVALID:                                               \
+      INVALID_STATEMENTS;                                          \
+      break;                                                       \
+    default:                                                       \
+      DEFAULT_STATEMENTS;                                          \
+      break;                                                       \
   }
 #endif
 
-#define CASES(TYPE_ENUM, STMTS)                                      \
-  CASES_WITH_DEFAULT(TYPE_ENUM, STMTS, LOG(FATAL) << "Type not set"; \
-                     , LOG(FATAL) << "Unexpected type: " << TYPE_ENUM;)
+// `TYPE_ENUM` will be converted to template `T` in `STATEMENTS`
+#define MACE_RUN_WITH_TYPE_ENUM(TYPE_ENUM, STATEMENTS)                       \
+  MACE_TYPE_ENUM_SWITCH(TYPE_ENUM, STATEMENTS, LOG(FATAL) << "Invalid type"; \
+         , LOG(FATAL) << "Unknown type: " << TYPE_ENUM;)
 
 namespace numerical_chars {
 inline std::ostream &operator<<(std::ostream &os, char c) {
@@ -307,7 +296,7 @@ class Tensor {
 
   inline size_t SizeOfType() const {
     size_t type_size = 0;
-    CASES(dtype_, type_size = sizeof(T));
+    MACE_RUN_WITH_TYPE_ENUM(dtype_, type_size = sizeof(T));
     return type_size;
   }
 
@@ -328,7 +317,7 @@ class Tensor {
       if (i != 0 && i % shape_.back() == 0) {
         os << "\n";
       }
-      CASES(dtype_, (os << (this->data<T>()[i]) << ", "));
+      MACE_RUN_WITH_TYPE_ENUM(dtype_, (os << (this->data<T>()[i]) << ", "));
     }
     LOG(INFO) << os.str();
   }

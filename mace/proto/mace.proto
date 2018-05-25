@@ -11,45 +11,20 @@ enum NetMode {
 
 enum DataType {
   DT_INVALID = 0;
-
-  // Data types that all computation devices are expected to be
-  // capable to support.
   DT_FLOAT = 1;
-  DT_DOUBLE = 2;
-  DT_INT32 = 3;
-  DT_UINT8 = 4;
-  DT_INT16 = 5;
-  DT_INT8 = 6;
-  DT_STRING = 7;
-  DT_INT64 = 8;
-  DT_UINT16 = 9;
-  DT_BOOL = 10;
-  DT_HALF = 19;
-  DT_UINT32 = 22;
+  DT_UINT8 = 2;
+  DT_HALF = 3;
+  DT_INT32 = 4;
 }
 
 message ConstTensor {
-  // The dimensions in the tensor.
   repeated int64 dims = 1;
   optional DataType data_type = 2 [default = DT_FLOAT];
-  // For float
   repeated float float_data = 3 [packed = true];
-  // For int32, uint8, int8, uint16, int16, bool, and float16
-  // Note about float16: in storage we will basically convert float16 byte-wise
-  // to unsigned short and then store them in the int32_data field.
   repeated int32 int32_data = 4 [packed = true];
-  // For bytes
-  optional bytes byte_data = 5;
-  // For strings
-  repeated bytes string_data = 6;
-  // For double
-  repeated double double_data = 9 [packed = true];
-  // For int64
-  repeated int64 int64_data = 10 [packed = true];
-  // Optionally, a name for the tensor.
-  optional string name = 7;
-  optional int64 offset = 11;
-  optional int64 data_size = 12;
+  optional string name = 5;
+  optional int64 offset = 6;
+  optional int64 data_size = 7;
 
   optional uint32 node_id = 100;
 }
@@ -61,7 +36,6 @@ message Argument {
   optional bytes s = 4;
   repeated float floats = 5;
   repeated int64 ints = 6;
-  repeated bytes strings = 7;
 }
 
 // for hexagon mace-nnlib

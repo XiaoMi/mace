@@ -68,10 +68,6 @@ void CreateNetArg(NetDef *net_def) {
   {% for int_value in net.arg[i].ints %}
   arg->add_ints({{ int_value }});
   {% endfor %}
-  arg->mutable_strings()->Reserve({{ net.arg[i].strings|length }});
-  {% for str_value in net.arg[i].strings %}
-  arg->add_strings({{ str_value }});
-  {% endfor %}
 
   {% endfor %}
 }

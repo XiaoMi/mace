@@ -38,50 +38,28 @@ size_t GetEnumTypeSize(const DataType dt);
 std::string DataTypeToString(const DataType dt);
 
 template <class T>
-struct IsValidDataType;
+struct DataTypeToEnum;
 
-template <class T>
-struct DataTypeToEnum {
-  static_assert(IsValidDataType<T>::value, "Specified Data Type not supported");
-};
-
-// EnumToDataType<VALUE>::Type is the type for DataType constant VALUE, e.g.
-// EnumToDataType<DT_FLOAT>::Type is float.
 template <DataType VALUE>
-struct EnumToDataType {};  // Specializations below
+struct EnumToDataType;
 
-// Template specialization for both DataTypeToEnum and EnumToDataType.
-#define MATCH_TYPE_AND_ENUM(TYPE, ENUM)     \
-  template <>                               \
-  struct DataTypeToEnum<TYPE> {             \
-    static DataType v() { return ENUM; }    \
-    static constexpr DataType value = ENUM; \
-  };                                        \
-  template <>                               \
-  struct IsValidDataType<TYPE> {            \
-    static constexpr bool value = true;     \
-  };                                        \
-  template <>                               \
-  struct EnumToDataType<ENUM> {             \
-    typedef TYPE Type;                      \
-  }
+#define MACE_MAPPING_DATA_TYPE_AND_ENUM(DATA_TYPE, ENUM_VALUE)  \
+  template <>                                                   \
+  struct DataTypeToEnum<DATA_TYPE> {                            \
+    static DataType v() { return ENUM_VALUE; }                  \
+    static constexpr DataType value = ENUM_VALUE;               \
+  };                                                            \
+  template <>                                                   \
+  struct EnumToDataType<ENUM_VALUE> {                           \
+    typedef DATA_TYPE Type;                                     \
+  };
 
 #ifdef MACE_ENABLE_OPENCL
-MATCH_TYPE_AND_ENUM(half, DT_HALF);
+MACE_MAPPING_DATA_TYPE_AND_ENUM(half, DT_HALF);
 #endif
-MATCH_TYPE_AND_ENUM(float, DT_FLOAT);
-MATCH_TYPE_AND_ENUM(double, DT_DOUBLE);
-MATCH_TYPE_AND_ENUM(int32_t, DT_INT32);
-MATCH_TYPE_AND_ENUM(uint16_t, DT_UINT16);
-MATCH_TYPE_AND_ENUM(uint8_t, DT_UINT8);
-MATCH_TYPE_AND_ENUM(int16_t, DT_INT16);
-MATCH_TYPE_AND_ENUM(int8_t, DT_INT8);
-MATCH_TYPE_AND_ENUM(std::string, DT_STRING);
-MATCH_TYPE_AND_ENUM(int64_t, DT_INT64);
-MATCH_TYPE_AND_ENUM(uint32_t, DT_UINT32);
-MATCH_TYPE_AND_ENUM(bool, DT_BOOL);
-
-static const int32_t kint32_tmax = ((int32_t)0x7FFFFFFF);
+MACE_MAPPING_DATA_TYPE_AND_ENUM(float, DT_FLOAT);
+MACE_MAPPING_DATA_TYPE_AND_ENUM(uint8_t, DT_UINT8);
+MACE_MAPPING_DATA_TYPE_AND_ENUM(int32_t, DT_INT32);
 }  // namespace mace
 
 #endif  // MACE_CORE_TYPES_H_

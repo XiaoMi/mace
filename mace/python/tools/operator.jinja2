@@ -91,10 +91,6 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   {% for int_value in arg.ints %}
   arg->add_ints({{ int_value }});
   {% endfor %}
-  arg->mutable_strings()->Reserve({{ arg.strings|length }});
-  {% for str_value in arg.strings %}
-  arg->add_strings({{ str_value }});
-  {% endfor %}
 
   {% endfor %}
 

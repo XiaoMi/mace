@@ -26,13 +26,9 @@ static cl_channel_type DataTypeToCLChannelType(const DataType t) {
       return CL_HALF_FLOAT;
     case DT_FLOAT:
       return CL_FLOAT;
-    case DT_INT8:
-    case DT_INT16:
     case DT_INT32:
       return CL_SIGNED_INT32;
     case DT_UINT8:
-    case DT_UINT16:
-    case DT_UINT32:
       return CL_UNSIGNED_INT32;
     default:
       LOG(FATAL) << "Image doesn't support the data type: " << t;
