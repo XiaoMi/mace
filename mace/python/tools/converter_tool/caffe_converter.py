@@ -18,7 +18,6 @@ import numpy as np
 import google.protobuf.text_format
 
 from mace.proto import mace_pb2
-from mace.third_party.caffe import caffe_pb2
 from mace.python.tools.converter_tool import base_converter
 from mace.python.tools.converter_tool import shape_inference
 from mace.python.tools.converter_tool.base_converter import PoolingType
@@ -30,6 +29,8 @@ from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
 from mace.python.tools.convert_util import mace_check
+
+from third_party.caffe import caffe_pb2
 
 caffe_group_str = 'group'
 caffe_kernel_h_str = 'kernel_h'

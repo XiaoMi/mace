@@ -140,7 +140,7 @@ class Tuner {
       int num_runs,
       double *time_us,
       std::vector<param_type> *tuning_result) {
-    RetType res;
+    RetType res = 0;
     int iter = 0;
     int64_t total_time_us = 0;
     for (iter = 0; iter < num_runs; ++iter) {

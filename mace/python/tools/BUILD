@@ -15,7 +15,7 @@ py_library(
     deps = [
         ":memory_optimizer",
         "//mace/proto:mace_py",
-        "//mace/third_party/caffe:caffe_py",
+        "//third_party/caffe:caffe_py",
     ],
 )
 

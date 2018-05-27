@@ -33,8 +33,8 @@
  *
  */
 
-#ifndef MACE_THIRD_PARTY_NNLIB_HEXAGON_NN_H_
-#define MACE_THIRD_PARTY_NNLIB_HEXAGON_NN_H_
+#ifndef THIRD_PARTY_NNLIB_HEXAGON_NN_H_
+#define THIRD_PARTY_NNLIB_HEXAGON_NN_H_
 #ifndef __QAIC_HEADER
 #define __QAIC_HEADER(ff) ff
 #endif  // __QAIC_HEADER
@@ -221,4 +221,4 @@ __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute_new)(
 #ifdef __cplusplus
 }
 #endif
-#endif  // MACE_THIRD_PARTY_NNLIB_HEXAGON_NN_H_
+#endif  // THIRD_PARTY_NNLIB_HEXAGON_NN_H_
