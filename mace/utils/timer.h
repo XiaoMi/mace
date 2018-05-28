@@ -58,7 +58,7 @@ class WallClockTimer : public Timer {
   double stop_micros_;
   double accumulated_micros_;
 
-  DISABLE_COPY_AND_ASSIGN(WallClockTimer);
+  MACE_DISABLE_COPY_AND_ASSIGN(WallClockTimer);
 };
 
 }  // namespace mace

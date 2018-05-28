@@ -26,9 +26,9 @@ class PSROIAlignOp : public Operator<D, T> {
  public:
   PSROIAlignOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetSingleArgument<T>("spatial_scale", 0),
-                 OperatorBase::GetSingleArgument<int>("output_dim", 0),
-                 OperatorBase::GetSingleArgument<int>("group_size", 0)) {}
+        functor_(OperatorBase::GetOptionalArg<T>("spatial_scale", 0),
+                 OperatorBase::GetOptionalArg<int>("output_dim", 0),
+                 OperatorBase::GetOptionalArg<int>("group_size", 0)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

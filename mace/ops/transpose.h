@@ -28,7 +28,7 @@ class TransposeOp : public Operator<D, T> {
  public:
   TransposeOp(const OperatorDef &operator_def, Workspace *ws)
     : Operator<D, T>(operator_def, ws),
-      dims_(OperatorBase::GetRepeatedArgument<int>("dims")),
+      dims_(OperatorBase::GetRepeatedArgs<int>("dims")),
       functor_(dims_) {}
 
   MaceStatus Run(StatsFuture *future) override {

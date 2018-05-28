@@ -29,7 +29,7 @@ class DepthToSpaceOp : public Operator<D, T> {
  public:
   DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        block_size_(OperatorBase::GetSingleArgument<int>("block_size", 1)),
+        block_size_(OperatorBase::GetOptionalArg<int>("block_size", 1)),
         functor_(this->block_size_, true) {}
 
   MaceStatus Run(StatsFuture *future) override {

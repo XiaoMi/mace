@@ -28,14 +28,14 @@ class SliceOp : public Operator<D, T> {
  public:
   SliceOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("axis", 3)) {}
+        functor_(OperatorBase::GetOptionalArg<int>("axis", 3)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_CHECK(this->OutputSize() >= 2)
       << "There must be at least two outputs for slicing";
     const Tensor *input = this->Input(INPUT);
     const std::vector<Tensor *> output_list = this->Outputs();
-    const int32_t slice_axis = OperatorBase::GetSingleArgument<int>("axis", 3);
+    const int32_t slice_axis = OperatorBase::GetOptionalArg<int>("axis", 3);
     MACE_CHECK((input->dim(slice_axis) % this->OutputSize()) == 0)
       << "Outputs do not split input equally.";
 

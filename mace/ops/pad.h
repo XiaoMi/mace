@@ -28,8 +28,8 @@ class PadOp : public Operator<D, T> {
  public:
   PadOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetRepeatedArgument<int>("paddings"),
-                 OperatorBase::GetSingleArgument<float>("constant_value", 0.0))
+        functor_(OperatorBase::GetRepeatedArgs<int>("paddings"),
+                 OperatorBase::GetOptionalArg<float>("constant_value", 0.0))
   {}
 
   MaceStatus Run(StatsFuture *future) override {

@@ -36,9 +36,9 @@ class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
                  this->paddings_,
                  this->dilations_.data(),
                  kernels::StringToActivationType(
-                     OperatorBase::GetSingleArgument<std::string>("activation",
-                                                                  "NOOP")),
-                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
+                     OperatorBase::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

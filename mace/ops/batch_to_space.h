@@ -29,8 +29,8 @@ class BatchToSpaceNDOp : public Operator<D, T> {
  public:
   BatchToSpaceNDOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetRepeatedArgument<int>("crops", {0, 0, 0, 0}),
-                 OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
+        functor_(OperatorBase::GetRepeatedArgs<int>("crops", {0, 0, 0, 0}),
+                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
                  true) {}
 
   MaceStatus Run(StatsFuture *future) override {

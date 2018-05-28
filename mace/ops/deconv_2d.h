@@ -32,7 +32,7 @@ class Deconv2dOp : public ConvPool2dOpBase<D, T> {
         functor_(this->strides_.data(),
                  this->padding_type_,
                  this->paddings_,
-                 OperatorBase::GetRepeatedArgument<index_t>("output_shape"),
+                 OperatorBase::GetRepeatedArgs<index_t>("output_shape"),
                  kernels::ActivationType::NOOP,
                  0.0f) {}
 

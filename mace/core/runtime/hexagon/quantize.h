@@ -47,7 +47,7 @@ class Quantizer {
                            float *stepsize,
                            float *recip_stepsize);
 
-  DISABLE_COPY_AND_ASSIGN(Quantizer);
+  MACE_DISABLE_COPY_AND_ASSIGN(Quantizer);
 };
 
 }  // namespace mace

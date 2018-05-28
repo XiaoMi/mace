@@ -42,7 +42,7 @@ SerialNet::SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
     const auto &operator_def = net_def->op(idx);
     // TODO(liuqi): refactor based on PB
     const int op_device =
-        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             operator_def, "device", static_cast<int>(device_type_));
     if (op_device == type) {
       VLOG(3) << "Creating operator " << operator_def.name() << "("
@@ -97,12 +97,12 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
           type.compare("FusedConv2D") == 0 ||
           type.compare("DepthwiseConv2d") == 0 ||
           type.compare("Pooling") == 0) {
-        strides = op->GetRepeatedArgument<int>("strides");
-        padding_type = op->GetSingleArgument<int>("padding", -1);
-        paddings = op->GetRepeatedArgument<int>("padding_values");
-        dilations = op->GetRepeatedArgument<int>("dilations");
+        strides = op->GetRepeatedArgs<int>("strides");
+        padding_type = op->GetOptionalArg<int>("padding", -1);
+        paddings = op->GetRepeatedArgs<int>("padding_values");
+        dilations = op->GetRepeatedArgs<int>("dilations");
         if (type.compare("Pooling") == 0) {
-          kernels = op->GetRepeatedArgument<index_t>("kernels");
+          kernels = op->GetRepeatedArgs<index_t>("kernels");
         } else {
           kernels = op->Input(1)->shape();
         }

@@ -32,7 +32,7 @@ class ImageToBufferOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
 
     kernels::BufferType type =
-        static_cast<kernels::BufferType>(OperatorBase::GetSingleArgument<int>(
+        static_cast<kernels::BufferType>(OperatorBase::GetOptionalArg<int>(
             "buffer_type", static_cast<int>(kernels::CONV2D_FILTER)));
     return functor_(input, type, output, future);
   }

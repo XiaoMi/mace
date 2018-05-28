@@ -30,8 +30,8 @@ class SpaceToBatchNDOp : public Operator<D, T> {
   SpaceToBatchNDOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         functor_(
-            OperatorBase::GetRepeatedArgument<int>("paddings", {0, 0, 0, 0}),
-            OperatorBase::GetRepeatedArgument<int>("block_shape", {1, 1}),
+            OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
+            OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
             false) {}
 
   MaceStatus Run(StatsFuture *future) override {

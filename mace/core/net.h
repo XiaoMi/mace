@@ -44,7 +44,7 @@ class NetBase {
   std::string name_;
   const std::shared_ptr<const OperatorRegistry> op_registry_;
 
-  DISABLE_COPY_AND_ASSIGN(NetBase);
+  MACE_DISABLE_COPY_AND_ASSIGN(NetBase);
 };
 
 class SerialNet : public NetBase {
@@ -61,7 +61,7 @@ class SerialNet : public NetBase {
   std::vector<std::unique_ptr<OperatorBase> > operators_;
   DeviceType device_type_;
 
-  DISABLE_COPY_AND_ASSIGN(SerialNet);
+  MACE_DISABLE_COPY_AND_ASSIGN(SerialNet);
 };
 
 std::unique_ptr<NetBase> CreateNet(

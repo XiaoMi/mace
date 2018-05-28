@@ -29,9 +29,9 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
  public:
   PoolingOp(const OperatorDef &op_def, Workspace *ws)
       : ConvPool2dOpBase<D, T>(op_def, ws),
-        kernels_(OperatorBase::GetRepeatedArgument<int>("kernels")),
+        kernels_(OperatorBase::GetRepeatedArgs<int>("kernels")),
         pooling_type_(
-            static_cast<PoolingType>(OperatorBase::GetSingleArgument<int>(
+            static_cast<PoolingType>(OperatorBase::GetOptionalArg<int>(
                 "pooling_type", static_cast<int>(AVG)))),
         functor_(pooling_type_,
                  kernels_.data(),

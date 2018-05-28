@@ -24,11 +24,11 @@
 namespace mace {
 
 // Disable the copy and assignment operator for a class.
-#ifndef DISABLE_COPY_AND_ASSIGN
-#define DISABLE_COPY_AND_ASSIGN(classname) \
- private:                                  \
-  classname(const classname &) = delete;   \
-  classname &operator=(const classname &) = delete
+#ifndef MACE_DISABLE_COPY_AND_ASSIGN
+#define MACE_DISABLE_COPY_AND_ASSIGN(CLASSNAME) \
+ private:                                       \
+  CLASSNAME(const CLASSNAME &) = delete;        \
+  CLASSNAME &operator=(const CLASSNAME &) = delete
 #endif
 
 template <typename Integer>
@@ -132,7 +132,7 @@ inline std::vector<std::string> Split(const std::string &str, char delims) {
 }
 
 inline bool ReadBinaryFile(std::vector<unsigned char> *data,
-                    const std::string &filename) {
+                           const std::string &filename) {
   std::ifstream ifs(filename, std::ios::in | std::ios::binary);
   if (!ifs.is_open()) {
     return false;

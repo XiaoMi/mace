@@ -51,7 +51,7 @@ class Registry {
   std::map<SrcType, Creator> registry_;
   std::mutex register_mutex_;
 
-  DISABLE_COPY_AND_ASSIGN(Registry);
+  MACE_DISABLE_COPY_AND_ASSIGN(Registry);
 };
 
 template <class SrcType, class ObjectType, class... Args>

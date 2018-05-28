@@ -4,8 +4,11 @@ package mace;
 
 option optimize_for = LITE_RUNTIME;
 
+// For better compatibility,
+// the mace.proto is refered from tensorflow and caffe2.
+
 enum NetMode {
-  INIT   = 0;
+  INIT = 0;
   NORMAL = 1;
 }
 
@@ -64,7 +67,7 @@ message OperatorDef {
   optional uint32 op_id = 101;
   optional uint32 padding = 102;
   repeated NodeInput node_input = 103;
-  repeated int32 out_max_byte_size = 104; // only support 32-bit len
+  repeated int32 out_max_byte_size = 104;  // only support 32-bit len
 }
 
 // for memory optimization
@@ -82,14 +85,14 @@ message InputInfo {
   optional string name = 1;
   optional int32 node_id = 2;
   repeated int32 dims = 3;
-  optional int32 max_byte_size = 4; // only support 32-bit len
+  optional int32 max_byte_size = 4;  // only support 32-bit len
   optional DataType data_type = 5 [default = DT_FLOAT];
 }
 message OutputInfo {
   optional string name = 1;
   optional int32 node_id = 2;
   repeated int32 dims = 3;
-  optional int32 max_byte_size = 4; // only support 32-bit len
+  optional int32 max_byte_size = 4;  // only support 32-bit len
   optional DataType data_type = 5 [default = DT_FLOAT];
 }
 

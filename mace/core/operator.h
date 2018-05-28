@@ -35,28 +35,18 @@ class OperatorBase {
   explicit OperatorBase(const OperatorDef &operator_def, Workspace *ws);
   virtual ~OperatorBase() noexcept {}
 
-  inline bool HasArgument(const std::string &name) const {
-    MACE_CHECK(operator_def_, "operator_def was null!");
-    return ArgumentHelper::HasArgument(*operator_def_, name);
-  }
   template <typename T>
-  inline T GetSingleArgument(const std::string &name,
-                             const T &default_value) const {
+  inline T GetOptionalArg(const std::string &name,
+                          const T &default_value) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
-    return ArgumentHelper::GetSingleArgument<OperatorDef, T>(
+    return ProtoArgHelper::GetOptionalArg<OperatorDef, T>(
         *operator_def_, name, default_value);
   }
   template <typename T>
-  inline bool HasSingleArgumentOfType(const std::string &name) const {
-    MACE_CHECK(operator_def_, "operator_def was null!");
-    return ArgumentHelper::HasSingleArgumentOfType<OperatorDef, T>(
-        *operator_def_, name);
-  }
-  template <typename T>
-  inline std::vector<T> GetRepeatedArgument(
+  inline std::vector<T> GetRepeatedArgs(
       const std::string &name, const std::vector<T> &default_value = {}) const {
     MACE_CHECK(operator_def_, "operator_def was null!");
-    return ArgumentHelper::GetRepeatedArgument<OperatorDef, T>(
+    return ProtoArgHelper::GetRepeatedArgs<OperatorDef, T>(
         *operator_def_, name, default_value);
   }
 
@@ -93,7 +83,7 @@ class OperatorBase {
   std::vector<const Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
 
-  DISABLE_COPY_AND_ASSIGN(OperatorBase);
+  MACE_DISABLE_COPY_AND_ASSIGN(OperatorBase);
 };
 
 template <DeviceType D, class T>
@@ -188,7 +178,7 @@ class OperatorRegistry {
 
  private:
   RegistryType registry_;
-  DISABLE_COPY_AND_ASSIGN(OperatorRegistry);
+  MACE_DISABLE_COPY_AND_ASSIGN(OperatorRegistry);
 };
 
 MACE_DECLARE_REGISTRY(OpRegistry,

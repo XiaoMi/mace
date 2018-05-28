@@ -26,14 +26,14 @@ class ProposalOp : public Operator<D, T> {
  public:
   ProposalOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("min_size", 16),
-                 OperatorBase::GetSingleArgument<float>("nms_thresh", 0.7),
-                 OperatorBase::GetSingleArgument<int>("pre_nms_top_n", 6000),
-                 OperatorBase::GetSingleArgument<int>("post_nms_top_n", 300),
-                 OperatorBase::GetSingleArgument<int>("feat_stride", 0),
-                 OperatorBase::GetSingleArgument<int>("base_size", 12),
-                 OperatorBase::GetRepeatedArgument<int>("scales"),
-                 OperatorBase::GetRepeatedArgument<float>("ratios")) {}
+        functor_(OperatorBase::GetOptionalArg<int>("min_size", 16),
+                 OperatorBase::GetOptionalArg<float>("nms_thresh", 0.7),
+                 OperatorBase::GetOptionalArg<int>("pre_nms_top_n", 6000),
+                 OperatorBase::GetOptionalArg<int>("post_nms_top_n", 300),
+                 OperatorBase::GetOptionalArg<int>("feat_stride", 0),
+                 OperatorBase::GetOptionalArg<int>("base_size", 12),
+                 OperatorBase::GetRepeatedArgs<int>("scales"),
+                 OperatorBase::GetRepeatedArgs<float>("ratios")) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *rpn_cls_prob = this->Input(RPN_CLS_PROB);
