@@ -84,7 +84,11 @@ cc_library(
     hdrs = glob([
         "runtime/opencl/*.h",
     ]),
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
     deps = [
         "@opencl_clhpp//:opencl_clhpp",
         "@opencl_headers//:opencl20_headers",
@@ -101,19 +105,15 @@ cc_library(
     hdrs = [
         "testing/test_benchmark.h",
     ],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
     deps = [
         ":core",
         "//external:gflags_nothreads",
         "//mace/utils",
     ],
     alwayslink = 1,
-)
-
-cc_binary(
-    name = "libmace.so",
-    linkshared = 1,
-    deps = [
-        "//mace/core",
-    ],
 )
