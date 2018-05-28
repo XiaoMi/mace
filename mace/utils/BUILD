@@ -31,28 +31,6 @@ cc_library(
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
-    ],
-)
-
-cc_library(
-    name = "utils_dev",
-    srcs = [
-        "tuner_development.cc",
-    ],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-    deps = [
-        ":utils",
-    ],
-)
-
-cc_library(
-    name = "utils_prod",
-    srcs = [
-        "tuner_production.cc",
-    ],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-    deps = [
-        ":utils",
         "//mace/codegen:generated_tuning_params",
     ],
 )
@@ -70,7 +48,7 @@ cc_test(
     ]),
     linkstatic = 1,
     deps = [
-        ":utils_dev",
+        ":utils",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

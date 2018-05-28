@@ -115,6 +115,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
       kernel_error_->UnMap();
     }
     if (runtime->is_profiling_enabled()) {
+      event.wait();
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);
       call_stats.start_micros =
@@ -123,8 +124,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     }
   }
   if (future != nullptr) {
-    future->wait_fn = [runtime, event, call_stats](CallStats *stats) {
-      event.wait();
+    future->wait_fn = [runtime, call_stats](CallStats *stats) {
       if (stats != nullptr) {
         stats->start_micros = call_stats.start_micros;
         stats->end_micros = stats->start_micros + call_stats.end_micros;

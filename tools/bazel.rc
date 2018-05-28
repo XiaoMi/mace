@@ -1,0 +1,57 @@
+# Partially borrowed from tensorflow tools/bazel.rc
+
+# By default, we don't distinct target and host platfroms.
+# When doing cross compilation, use --config=cross_compile to distinct them.
+build --distinct_host_configuration=false
+build:cross_compile --distinct_host_configuration=true
+
+build --verbose_failures
+build --copt=-std=c++11
+build --copt=-D_GLIBCXX_USE_C99_MATH_TR1
+build --copt=-DMACE_OBFUSCATE_LITERALS
+
+# Usage example: bazel build --config android
+build:android --crosstool_top=//external:android/crosstool
+build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:android --config=cross_compile
+
+# Usage example: bazel build --config optimization 
+build:optimization -c opt
+build:optimization --copt=-O3
+build:optimization --strip=always
+
+# Address sanitizer
+build:asan --strip=never
+build:asan --copt -fsanitize=address
+build:asan --copt -D_FORTIFY_SOURCE
+build:asan --copt -DADDRESS_SANITIZER
+build:asan --copt -O0
+build:asan --copt -g
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address
+
+# Thread sanitizer
+build:tsan --strip=never
+build:tsan --copt -fsanitize=thread
+build:tsan --copt -DTHREAD_SANITIZER
+build:tsan --copt -DDYNAMIC_ANNOTATIONS_ENABLED=1
+build:tsan --copt -DDYNAMIC_ANNOTATIONS_EXTERNAL_IMPL=1
+build:tsan --copt -O0
+build:tsan --copt -fno-omit-frame-pointer
+build:tsan --linkopt -fsanitize=thread
+
+# Memory sanitizer
+build:msan --strip=never
+build:msan --copt -fsanitize=memory
+build:msan --copt -DADDRESS_SANITIZER
+build:msan --copt -O0
+build:msan --copt -fno-omit-frame-pointer
+build:msan --linkopt -fsanitize=memory
+
+# Undefined Behavior Sanitizer
+build:ubsan --strip=never
+build:ubsan --copt -fsanitize=undefined
+build:ubsan --copt -O0
+build:ubsan --copt -fno-omit-frame-pointer
+build:ubsan --linkopt -fsanitize=undefined
+build:ubsan --linkopt -lubsan

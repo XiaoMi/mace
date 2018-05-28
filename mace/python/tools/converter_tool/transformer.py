@@ -52,7 +52,7 @@ class Transformer(base_converter.ConverterInterface):
     """
 
     def __init__(self, option, model):
-        # DO NOT reorder the following transformers
+        # DO NOT reorder the following transformers' order
         self._registered_transformers_order = [
             TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
@@ -940,8 +940,9 @@ class Transformer(base_converter.ConverterInterface):
             op_def.type = MaceKeyword.mace_image_to_buffer
             op_def.input.extend([output_node.name])
             op_def.output.extend([output_name])
-            output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(output_node.shape)
+            if output_node.shape:
+                output_shape = op_def.output_shape.add()
+                output_shape.dims.extend(output_node.shape)
 
             arg = op_def.arg.add()
             arg.name = MaceKeyword.mace_buffer_type

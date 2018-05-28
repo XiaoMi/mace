@@ -46,14 +46,14 @@ Configurations
       - The SHA256 checksum of the model file
     * - weight_sha256_checksum
       - The SHA256 checksum of the weight file, used by Caffe model
-    * - input_nodes
-      - The input node names, one or more strings
-    * - output_nodes
-      - The output node names, one or more strings
+    * - input_tensors
+      - The input tensor names (tensorflow), top name of inputs' layer (caffe). one or more strings
+    * - output_tensors
+      - The output tensor names (tensorflow), top name of outputs' layer (caffe). one or more strings
     * - input_shapes
-      - The shapes of the input nodes, in NHWC order
+      - The shapes of the input tensors, in NHWC order
     * - output_shapes
-      - The shapes of the output nodes, in NHWC order
+      - The shapes of the output tensors, in NHWC order
     * - runtime
       - The running device, one of CPU, GPU or DSP
     * - limit_opencl_kernel_time

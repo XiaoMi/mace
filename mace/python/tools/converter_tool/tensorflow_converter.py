@@ -395,12 +395,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
         align_corners_arg.i = tf_op.get_attr(tf_align_corners)
 
     def convert_space_batch(self, tf_op):
-        print """You might want to try 'flatten_atrous_conv' in
-         transform graph to turn atrous conv2d into regular conv2d.
-         This may give you performance benefit on GPU.
-         (see https://github.com/tensorflow/tensorflow/blob/master/
-         tensorflow/tools/graph_transforms/README.md#flatten_atrous_conv)
-         """
 
         op = self.convert_general_op(tf_op)
         del op.input[1:]

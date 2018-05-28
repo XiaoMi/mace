@@ -29,10 +29,6 @@
 
 namespace mace {
 
-extern bool GetTuningParams(
-    const char *path,
-    std::unordered_map<std::string, std::vector<unsigned int>> *param_table);
-
 template <typename param_type>
 class Tuner {
  public:
@@ -74,9 +70,6 @@ class Tuner {
                         : "");
         return func(param_table_[obfucated_param_key], nullptr, nullptr);
       } else {
-#ifndef MACE_DISABLE_NO_TUNING_WARNING
-        LOG(WARNING) << "Fallback to default parameter: " << param_key;
-#endif
         return func(default_param, nullptr, nullptr);
       }
     }
@@ -124,9 +117,16 @@ class Tuner {
   }
 
   inline void ReadRunParamters() {
-    bool success = GetTuningParams(path_, &param_table_);
-    if (!success) {
-      LOG(WARNING) << "Get run parameter failed.";
+    extern const std::map<std::string, std::vector<unsigned int>>
+        kTuningParamsData;
+    if (!kTuningParamsData.empty()) {
+      for (auto it = kTuningParamsData.begin(); it != kTuningParamsData.end();
+           ++it) {
+        param_table_.emplace(it->first, std::vector<unsigned int>(
+            it->second.begin(), it->second.end()));
+      }
+    } else {
+      LOG(INFO) << "There is no tuned parameters.";
     }
   }
 
