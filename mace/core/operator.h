@@ -124,20 +124,19 @@ class Operator : public OperatorBase {
   ~Operator() noexcept override {}
 };
 
-// OP_INPUT_TAGS and OP_OUTPUT_TAGS are optional features to name the indices of
-// the
-// operator's inputs and outputs, in order to avoid confusion. For example, for
-// a fully convolution layer that has input, weight and bias, you can define its
-// input tags as:
-//     OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
+// MACE_OP_INPUT_TAGS and MACE_OP_OUTPUT_TAGS are optional features to name the
+// indices of the operator's inputs and outputs, in order to avoid confusion.
+// For example, for a fully convolution layer that has input, weight and bias,
+// you can define its input tags as:
+//     MACE_OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
 // And in the code, instead of doing
 //     auto& weight = Input(1);
 // you can now do
 //     auto& weight = Input(WEIGHT);
 // to make it more clear.
-#define OP_INPUT_TAGS(first_input, ...) \
+#define MACE_OP_INPUT_TAGS(first_input, ...) \
   enum _InputTags { first_input = 0, __VA_ARGS__ }
-#define OP_OUTPUT_TAGS(first_input, ...) \
+#define MACE_OP_OUTPUT_TAGS(first_input, ...) \
   enum _OutputTags { first_input = 0, __VA_ARGS__ }
 
 class OpKeyBuilder {
@@ -186,7 +185,7 @@ MACE_DECLARE_REGISTRY(OpRegistry,
                       const OperatorDef &,
                       Workspace *);
 
-#define REGISTER_OPERATOR(op_registry, name, ...) \
+#define MACE_REGISTER_OPERATOR(op_registry, name, ...) \
   MACE_REGISTER_CLASS(OpRegistry, op_registry->registry(), name, __VA_ARGS__)
 
 }  // namespace mace

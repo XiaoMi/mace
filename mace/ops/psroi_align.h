@@ -43,8 +43,8 @@ class PSROIAlignOp : public Operator<D, T> {
   kernels::PSROIAlignFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, ROIS);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, ROIS);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

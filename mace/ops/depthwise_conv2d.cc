@@ -18,24 +18,24 @@ namespace mace {
 namespace ops {
 
 void Register_DepthwiseConv2d(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    DepthwiseConv2dOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         DepthwiseConv2dOp<DeviceType::CPU, float>);
 
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    DepthwiseConv2dOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         DepthwiseConv2dOp<DeviceType::GPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    DepthwiseConv2dOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("DepthwiseConv2d")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         DepthwiseConv2dOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

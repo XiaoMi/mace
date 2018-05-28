@@ -30,9 +30,9 @@
 
 #ifdef MACE_ENABLE_NEON
 // Avoid over-bound accessing memory
-#define EXTRA_BUFFER_PAD_SIZE 64
+#define MACE_EXTRA_BUFFER_PAD_SIZE 64
 #else
-#define EXTRA_BUFFER_PAD_SIZE 0
+#define MACE_EXTRA_BUFFER_PAD_SIZE 0
 #endif
 
 namespace mace {
@@ -210,16 +210,16 @@ class Tensor {
     image_shape_.clear();
     if (buffer_ != nullptr) {
       MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
-      if (raw_size() + EXTRA_BUFFER_PAD_SIZE > buffer_->size()) {
+      if (raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE > buffer_->size()) {
         LOG(WARNING) << "Resize buffer from size " << buffer_->size() << " to "
-                     << raw_size() + EXTRA_BUFFER_PAD_SIZE;
-        return buffer_->Resize(raw_size() + EXTRA_BUFFER_PAD_SIZE);
+                     << raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE;
+        return buffer_->Resize(raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE);
       }
       return MaceStatus::MACE_SUCCESS;
     } else {
       MACE_CHECK(is_buffer_owner_);
       buffer_ = new Buffer(allocator_);
-      return buffer_->Allocate(raw_size() + EXTRA_BUFFER_PAD_SIZE);
+      return buffer_->Allocate(raw_size() + MACE_EXTRA_BUFFER_PAD_SIZE);
     }
   }
 

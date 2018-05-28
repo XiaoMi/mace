@@ -18,24 +18,24 @@ namespace mace {
 namespace ops {
 
 void Register_Pooling(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    PoolingOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         PoolingOp<DeviceType::CPU, float>);
 
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    PoolingOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         PoolingOp<DeviceType::GPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    PoolingOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         PoolingOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

@@ -50,8 +50,8 @@ class ChannelShuffleOp : public Operator<D, T> {
 
  protected:
   const int group_;
-  OP_INPUT_TAGS(INPUT);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 
  private:
   kernels::ChannelShuffleFunctor<D, T> functor_;

@@ -18,22 +18,22 @@ namespace mace {
 namespace ops {
 
 void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    BatchToSpaceNDOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         BatchToSpaceNDOp<DeviceType::CPU, float>);
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    BatchToSpaceNDOp<DeviceType::GPU, float>);
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    BatchToSpaceNDOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         BatchToSpaceNDOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         BatchToSpaceNDOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

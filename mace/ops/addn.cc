@@ -18,24 +18,24 @@ namespace mace {
 namespace ops {
 
 void Register_AddN(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         AddNOp<DeviceType::CPU, float>);
 
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         AddNOp<DeviceType::GPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    AddNOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         AddNOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

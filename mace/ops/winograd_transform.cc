@@ -19,17 +19,17 @@ namespace ops {
 
 void Register_WinogradTransform(OperatorRegistry *op_registry) {
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    WinogradTransformOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         WinogradTransformOp<DeviceType::GPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    WinogradTransformOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         WinogradTransformOp<DeviceType::GPU, half>);
 #else
   MACE_UNUSED(op_registry);
 #endif  // MACE_ENABLE_OPENCL

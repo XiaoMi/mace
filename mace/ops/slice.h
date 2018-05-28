@@ -46,7 +46,7 @@ class SliceOp : public Operator<D, T> {
   kernels::SliceFunctor<D, T> functor_;
 
  private:
-  OP_INPUT_TAGS(INPUT);
+  MACE_OP_INPUT_TAGS(INPUT);
 };
 
 }  // namespace ops

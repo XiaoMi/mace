@@ -18,24 +18,24 @@ namespace mace {
 namespace ops {
 
 void Register_Slice(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    SliceOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         SliceOp<DeviceType::CPU, float>);
 
 #ifdef MACE_ENABLE_OPENCL
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    SliceOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         SliceOp<DeviceType::GPU, float>);
 
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                     .Device(DeviceType::GPU)
-                                     .TypeConstraint<half>("T")
-                                     .Build(),
-                    SliceOp<DeviceType::GPU, half>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<half>("T")
+                                          .Build(),
+                         SliceOp<DeviceType::GPU, half>);
 #endif  // MACE_ENABLE_OPENCL
 }
 

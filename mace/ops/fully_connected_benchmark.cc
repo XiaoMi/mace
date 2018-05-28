@@ -82,28 +82,28 @@ void FCBenchmark(
 }
 }  // namespace
 
-#define BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
-  static void BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE( \
-      int iters) {                                                    \
-    const int64_t macc =                                              \
-        static_cast<int64_t>(iters) * N * C * H * W * OC + OC;        \
-    const int64_t tot =                                               \
-        static_cast<int64_t>(iters) * (N + OC) * C * H * W + OC;      \
-    mace::testing::MaccProcessed(macc);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));               \
-    FCBenchmark<DEVICE, TYPE>(iters, N, H, W, C, OC);                 \
-  }                                                                   \
-  BENCHMARK(BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE)
+#define MACE_BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
+  static void MACE_BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE( \
+      int iters) {                                                         \
+    const int64_t macc =                                                   \
+        static_cast<int64_t>(iters) * N * C * H * W * OC + OC;             \
+    const int64_t tot =                                                    \
+        static_cast<int64_t>(iters) * (N + OC) * C * H * W + OC;           \
+    mace::testing::MaccProcessed(macc);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                    \
+    FCBenchmark<DEVICE, TYPE>(iters, N, H, W, C, OC);                      \
+  }                                                                        \
+  MACE_BENCHMARK(MACE_BM_FC_##N##_##H##_##W##_##C##_##OC##_##TYPE##_##DEVICE)
 
-#define BM_FC(N, H, W, C, OC)                 \
-  BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
-  BM_FC_MACRO(N, H, W, C, OC, float, GPU); \
-  BM_FC_MACRO(N, H, W, C, OC, half, GPU);
+#define MACE_BM_FC(N, H, W, C, OC)                 \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU);
 
-BM_FC(1, 16, 16, 32, 32);
-BM_FC(1, 8, 8, 32, 1000);
-BM_FC(1, 2, 2, 512, 2);
-BM_FC(1, 7, 7, 512, 2048);
+MACE_BM_FC(1, 16, 16, 32, 32);
+MACE_BM_FC(1, 8, 8, 32, 1000);
+MACE_BM_FC(1, 2, 2, 512, 2);
+MACE_BM_FC(1, 7, 7, 512, 2048);
 
 }  // namespace test
 }  // namespace ops

@@ -314,7 +314,7 @@ MaceStatus ConstructNCHWInputWithPadding(const Tensor *input_tensor,
 
   // Skip the padded top rows
   if (padding_same_value) {
-#define COPY_INPUT                                                      \
+#define MACE_COPY_INPUT                                                 \
   std::fill(output_data, output_data + padded_left, input[0]);          \
   output_data += padded_left;                                           \
   memcpy(output_data, input, width * sizeof(float));                    \
@@ -328,20 +328,20 @@ MaceStatus ConstructNCHWInputWithPadding(const Tensor *input_tensor,
     for (int i = 0; i < batch; ++i) {
       for (int j = 0; j < channels; ++j) {
         for (int k = 0; k < padded_top; ++k) {
-          COPY_INPUT;
+          MACE_COPY_INPUT;
         }
         for (int k = 0; k < height; ++k) {
-          COPY_INPUT;
+          MACE_COPY_INPUT;
           input += width;
         }
         input -= width;
         for (int k = 0; k < padded_bottom; ++k) {
-          COPY_INPUT;
+          MACE_COPY_INPUT;
         }
         input += width;
       }
     }
-#undef COPY_INPUT
+#undef MACE_COPY_INPUT
   } else {
     output_data += padded_top * output_width;
     for (int i = 0; i < batch; ++i) {

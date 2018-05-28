@@ -54,36 +54,36 @@ void FilterBufferToImage(int iters,
 }
 }  // namespace
 
-#define BM_B2I_MACRO(O, I, H, W, TYPE, DEVICE)                  \
-  static void BM_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE( \
+#define MACE_BM_B2I_MACRO(O, I, H, W, TYPE, DEVICE)                  \
+  static void MACE_BM_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE( \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * O * I * H * W; \
     mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     FilterBufferToImage<DEVICE, TYPE>(iters, O, I, H, W);            \
   }                                                                  \
-  BENCHMARK(BM_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(MACE_BM_B2I_##O##_##I##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_B2I(O, I, H, W)              \
-  BM_B2I_MACRO(O, I, H, W, float, GPU); \
-  BM_B2I_MACRO(O, I, H, W, half, GPU);
+#define MACE_BM_B2I(O, I, H, W)              \
+  MACE_BM_B2I_MACRO(O, I, H, W, float, GPU); \
+  MACE_BM_B2I_MACRO(O, I, H, W, half, GPU);
 
-BM_B2I(5, 3, 3, 3);
-BM_B2I(5, 3, 7, 7);
-BM_B2I(32, 16, 1, 1);
-BM_B2I(32, 16, 3, 3);
-BM_B2I(32, 16, 5, 5);
-BM_B2I(32, 16, 7, 7);
-BM_B2I(64, 32, 1, 1);
-BM_B2I(64, 32, 3, 3);
-BM_B2I(64, 32, 5, 5);
-BM_B2I(64, 32, 7, 7);
-BM_B2I(128, 64, 1, 1);
-BM_B2I(128, 64, 3, 3);
-BM_B2I(128, 32, 1, 1);
-BM_B2I(128, 32, 3, 3);
-BM_B2I(256, 32, 1, 1);
-BM_B2I(256, 32, 3, 3);
+MACE_BM_B2I(5, 3, 3, 3);
+MACE_BM_B2I(5, 3, 7, 7);
+MACE_BM_B2I(32, 16, 1, 1);
+MACE_BM_B2I(32, 16, 3, 3);
+MACE_BM_B2I(32, 16, 5, 5);
+MACE_BM_B2I(32, 16, 7, 7);
+MACE_BM_B2I(64, 32, 1, 1);
+MACE_BM_B2I(64, 32, 3, 3);
+MACE_BM_B2I(64, 32, 5, 5);
+MACE_BM_B2I(64, 32, 7, 7);
+MACE_BM_B2I(128, 64, 1, 1);
+MACE_BM_B2I(128, 64, 3, 3);
+MACE_BM_B2I(128, 32, 1, 1);
+MACE_BM_B2I(128, 32, 3, 3);
+MACE_BM_B2I(256, 32, 1, 1);
+MACE_BM_B2I(256, 32, 3, 3);
 
 }  // namespace test
 }  // namespace ops

@@ -76,30 +76,31 @@ void EltwiseBenchmark(
 }
 }  // namespace
 
-#define BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, DEVICE)             \
-  static void                                                            \
-      BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
-          int iters) {                                                   \
-    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
-    mace::testing::MaccProcessed(tot);                                   \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
-    EltwiseBenchmark<DEVICE, TYPE>(                                      \
-        iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C); \
-  }                                                                      \
-  BENCHMARK(BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
+#define MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, TYPE, DEVICE)             \
+  static void                                                                 \
+      MACE_BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+          int iters) {                                                        \
+    const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;          \
+    mace::testing::MaccProcessed(tot);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
+    EltwiseBenchmark<DEVICE, TYPE>(                                           \
+        iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C);      \
+  }                                                                           \
+  MACE_BENCHMARK(                                                             \
+      MACE_BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, GPU); \
-  BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU);
+#define MACE_BM_ELTWISE(ELT_TYPE, N, H, W, C)                 \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, CPU);    \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, float, GPU);    \
+  MACE_BM_ELTWISE_MACRO(ELT_TYPE, N, H, W, C, half, GPU);
 
-BM_ELTWISE(2, 1, 128, 128, 32);
-BM_ELTWISE(2, 1, 240, 240, 256);
-BM_ELTWISE(2, 1, 256, 256, 32);
-BM_ELTWISE(0, 1, 128, 128, 32);
-BM_ELTWISE(0, 1, 240, 240, 256);
-BM_ELTWISE(5, 1, 128, 128, 32);
-BM_ELTWISE(5, 1, 240, 240, 256);
+MACE_BM_ELTWISE(2, 1, 128, 128, 32);
+MACE_BM_ELTWISE(2, 1, 240, 240, 256);
+MACE_BM_ELTWISE(2, 1, 256, 256, 32);
+MACE_BM_ELTWISE(0, 1, 128, 128, 32);
+MACE_BM_ELTWISE(0, 1, 240, 240, 256);
+MACE_BM_ELTWISE(5, 1, 128, 128, 32);
+MACE_BM_ELTWISE(5, 1, 240, 240, 256);
 
 }  // namespace test
 }  // namespace ops

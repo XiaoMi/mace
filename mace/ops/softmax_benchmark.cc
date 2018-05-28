@@ -70,26 +70,26 @@ void SoftmaxBenchmark(
 }
 }  // namespace
 
-#define BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
-  static void BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
-      int iters) {                                                   \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::MaccProcessed(tot);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    SoftmaxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);               \
-  }                                                                  \
-  BENCHMARK(BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
+#define MACE_BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
+  static void MACE_BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(  \
+      int iters) {                                                        \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
+    mace::testing::MaccProcessed(tot);                                    \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
+    SoftmaxBenchmark<DEVICE, TYPE>(iters, N, C, H, W);                    \
+  }                                                                       \
+  MACE_BENCHMARK(MACE_BM_SOFTMAX_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_SOFTMAX(N, C, H, W)                 \
-  BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
-  BM_SOFTMAX_MACRO(N, C, H, W, float, GPU); \
-  BM_SOFTMAX_MACRO(N, C, H, W, half, GPU);
+#define MACE_BM_SOFTMAX(N, C, H, W)                 \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU);
 
-BM_SOFTMAX(1, 2, 512, 512);
-BM_SOFTMAX(1, 3, 512, 512);
-BM_SOFTMAX(1, 4, 512, 512);
-BM_SOFTMAX(1, 10, 256, 256);
-BM_SOFTMAX(1, 1024, 7, 7);
+MACE_BM_SOFTMAX(1, 2, 512, 512);
+MACE_BM_SOFTMAX(1, 3, 512, 512);
+MACE_BM_SOFTMAX(1, 4, 512, 512);
+MACE_BM_SOFTMAX(1, 10, 256, 256);
+MACE_BM_SOFTMAX(1, 1024, 7, 7);
 
 }  // namespace test
 }  // namespace ops

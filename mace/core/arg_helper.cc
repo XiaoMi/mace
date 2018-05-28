@@ -95,5 +95,4 @@ MACE_GET_REPEATED_ARGUMENT_FUNC(float, floats, false)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int, ints, true)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int64_t, ints, true)
 #undef MACE_GET_REPEATED_ARGUMENT_FUNC
-
 }  // namespace mace

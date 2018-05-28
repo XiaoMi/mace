@@ -21,7 +21,7 @@
 namespace mace {
 namespace kernels {
 
-#define Conv2dArmv8NeonK7x7SnLoadCalc4                           \
+#define MACE_Conv2dArmv8NeonK7x7SnLoadCalc4                      \
   /* load filter (4 outch x 1 height x 4 width) */               \
   float32x4_t vf00, vf01;                                        \
   float32x4_t vf10, vf11;                                        \
@@ -72,7 +72,7 @@ namespace kernels {
   vo3 = vfmaq_laneq_f32(vo3, vi5, vf31, 2);                      \
   vo3 = vfmaq_laneq_f32(vo3, vi6, vf31, 3);
 
-#define Conv2dArmv8NeonK7x7SnLoadCalc1                           \
+#define MACE_Conv2dArmv8NeonK7x7SnLoadCalc1                      \
   /* load filter (1 outch x 1 height x 4 width) */               \
   float32x4_t vf00, vf01;                                        \
   vf00 = vld1q_f32(filter_ptr0);                                 \
@@ -87,7 +87,7 @@ namespace kernels {
   vo0 = vfmaq_laneq_f32(vo0, vi5, vf01, 2);                      \
   vo0 = vfmaq_laneq_f32(vo0, vi6, vf01, 3);
 
-#define Conv2dArmv7NeonK7x7SnLoadCalc4                           \
+#define MACE_Conv2dArmv7NeonK7x7SnLoadCalc4                      \
   /* load filter (4 outch x 1 height x 4 width) */               \
   float32x4_t vf00, vf01;                                        \
   float32x4_t vf10, vf11;                                        \
@@ -138,7 +138,7 @@ namespace kernels {
   vo3 = vmlaq_lane_f32(vo3, vi5, vget_high_f32(vf31), 0);        \
   vo3 = vmlaq_lane_f32(vo3, vi6, vget_high_f32(vf31), 1);
 
-#define Conv2dArmv7NeonK7x7SnLoadCalc1                           \
+#define MACE_Conv2dArmv7NeonK7x7SnLoadCalc1                      \
   /* load filter (1 outch x 1 height x 4 width) */               \
   float32x4_t vf00, vf01;                                        \
   vf00 = vld1q_f32(filter_ptr0);                                 \
@@ -220,9 +220,9 @@ void Conv2dNeonK7x7S1(const float *input,
                 vi6 = vextq_f32(vi4, vi8, 2);
 
 #if defined(__aarch64__)
-                Conv2dArmv8NeonK7x7SnLoadCalc4;
+                MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                Conv2dArmv7NeonK7x7SnLoadCalc4;
+                MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                 in_offset += in_width;
@@ -284,9 +284,9 @@ void Conv2dNeonK7x7S1(const float *input,
                   vi6 = vextq_f32(vi4, vi8, 2);
 
 #if defined(__aarch64__)
-                  Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
 #else
-                  Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
                   in_offset += in_width;
@@ -381,9 +381,9 @@ void Conv2dNeonK7x7S2(const float *input,
                 vi6 = vextq_f32(vi0, vvi1.val[0], 3);  // [6.8.10.12]
 
 #if defined(__aarch64__)
-                  Conv2dArmv8NeonK7x7SnLoadCalc4;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                  Conv2dArmv7NeonK7x7SnLoadCalc4;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                 in_offset += in_width;
@@ -450,9 +450,9 @@ void Conv2dNeonK7x7S2(const float *input,
                   vi6 = vextq_f32(vi0, vvi1.val[0], 3);  // [6.8.10.12]
 
 #if defined(__aarch64__)
-                  Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
 #else
-                  Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
                   in_offset += in_width;
@@ -547,9 +547,9 @@ void Conv2dNeonK7x7S3(const float *input,
                 vi6 = vextq_f32(vi0, vvi1.val[0], 2);  // [6.9.12.15]
 
 #if defined(__aarch64__)
-                  Conv2dArmv8NeonK7x7SnLoadCalc4;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc4;
 #else
-                  Conv2dArmv7NeonK7x7SnLoadCalc4;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc4;
 #endif
 
                 in_offset += in_width;
@@ -616,9 +616,9 @@ void Conv2dNeonK7x7S3(const float *input,
                   vi6 = vextq_f32(vi0, vvi1.val[0], 2);  // [6.9.12.15]
 
 #if defined(__aarch64__)
-                  Conv2dArmv8NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv8NeonK7x7SnLoadCalc1;
 #else
-                  Conv2dArmv7NeonK7x7SnLoadCalc1;
+                  MACE_Conv2dArmv7NeonK7x7SnLoadCalc1;
 #endif
 
                   in_offset += in_width;

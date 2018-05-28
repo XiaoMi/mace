@@ -50,8 +50,8 @@ class QuantizeOp : public Operator<D, T> {
   kernels::QuantizeFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX);
-  OP_OUTPUT_TAGS(OUTPUT, OUT_MIN, OUT_MAX);
+  MACE_OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX);
+  MACE_OP_OUTPUT_TAGS(OUTPUT, OUT_MIN, OUT_MAX);
 };
 
 template<DeviceType D, class T>
@@ -79,8 +79,8 @@ class DequantizeOp : public Operator<D, T> {
   kernels::DequantizeFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 template<DeviceType D, class T>
@@ -131,8 +131,8 @@ class RequantizeOp : public Operator<D, T> {
   kernels::RequantizeFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX, RERANGE_MIN, RERANGE_MAX);
-  OP_OUTPUT_TAGS(OUTPUT, OUT_MIN, OUT_MAX);
+  MACE_OP_INPUT_TAGS(INPUT, IN_MIN, IN_MAX, RERANGE_MIN, RERANGE_MAX);
+  MACE_OP_OUTPUT_TAGS(OUTPUT, OUT_MIN, OUT_MAX);
 };
 
 }  // namespace ops

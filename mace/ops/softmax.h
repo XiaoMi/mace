@@ -40,8 +40,8 @@ class SoftmaxOp : public Operator<D, T> {
   kernels::SoftmaxFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(LOGITS);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(LOGITS);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

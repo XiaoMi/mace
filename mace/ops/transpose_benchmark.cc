@@ -55,41 +55,41 @@ void TransposeBenchmark(int iters,
 }
 }  // namespace
 
-#define BM_TRANSPOSE2D_MACRO(H, W, TYPE, DEVICE)                     \
-  static void BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE(          \
+#define MACE_BM_TRANSPOSE2D_MACRO(H, W, TYPE, DEVICE)                \
+  static void MACE_BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE(     \
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * H * W;         \
     mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
     TransposeBenchmark<DEVICE, TYPE>(iters, {H, W}, {1, 0});         \
   }                                                                  \
-  BENCHMARK(BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(MACE_BM_TRANSPOSE2D_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_TRANSPOSE2D(H, W)                                         \
-  BM_TRANSPOSE2D_MACRO(H, W, float, CPU);
+#define MACE_BM_TRANSPOSE2D(H, W)                                    \
+  MACE_BM_TRANSPOSE2D_MACRO(H, W, float, CPU);
 
-#define BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, TYPE, DEVICE) \
-  static void                                                          \
-  BM_TRANSPOSE4D_##N##_##C##_##H##_##W##_##D0##D1##D2##D3##_##TYPE##_##DEVICE( \
-      int iters) {                                                   \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::MaccProcessed(tot);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    TransposeBenchmark<DEVICE, TYPE>(iters, {N, C, H, W}, {D0, D1, D2, D3}); \
-  }                                                                  \
-  BENCHMARK(                                                         \
-    BM_TRANSPOSE4D_##N##_##C##_##H##_##W##_##D0##D1##D2##D3##_##TYPE##_##DEVICE)
+#define MACE_BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, TYPE, DEVICE)   \
+  static void                                                                 \
+    MACE_BM_TRANSPOSE4D_##N##_##C##_##H##_##W##_##D0##D1##D2##D3##_##TYPE##_##\
+      DEVICE(int iters) {                                                     \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
+    mace::testing::MaccProcessed(tot);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
+    TransposeBenchmark<DEVICE, TYPE>(iters, {N, C, H, W}, {D0, D1, D2, D3});  \
+  }                                                                           \
+  MACE_BENCHMARK(                                                             \
+    MACE_BM_TRANSPOSE4D_##N##_##C##_##H##_##W##_##D0##D1##D2##D3##_##TYPE##_##\
+      DEVICE)
 
-#define BM_TRANSPOSE4D(N, C, H, W, D0, D1, D2, D3)                   \
-  BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, float, CPU);
+#define MACE_BM_TRANSPOSE4D(N, C, H, W, D0, D1, D2, D3)                   \
+  MACE_BM_TRANSPOSE4D_MACRO(N, C, H, W, D0, D1, D2, D3, float, CPU);
 
-
-BM_TRANSPOSE4D(1, 512, 512, 3, 0, 3, 1, 2);
-BM_TRANSPOSE4D(1, 2, 512, 512, 0, 2, 3, 1);
-BM_TRANSPOSE4D(1, 64, 64, 512, 0, 3, 1, 2);
-BM_TRANSPOSE4D(1, 512, 64, 64, 0, 2, 3, 1);
-BM_TRANSPOSE2D(128, 128);
-BM_TRANSPOSE2D(512, 512);
+MACE_BM_TRANSPOSE4D(1, 512, 512, 3, 0, 3, 1, 2);
+MACE_BM_TRANSPOSE4D(1, 2, 512, 512, 0, 2, 3, 1);
+MACE_BM_TRANSPOSE4D(1, 64, 64, 512, 0, 3, 1, 2);
+MACE_BM_TRANSPOSE4D(1, 512, 64, 64, 0, 2, 3, 1);
+MACE_BM_TRANSPOSE2D(128, 128);
+MACE_BM_TRANSPOSE2D(512, 512);
 
 }  // namespace test
 }  // namespace ops

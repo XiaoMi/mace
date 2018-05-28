@@ -18,11 +18,11 @@ namespace mace {
 namespace ops {
 
 void Register_Proposal(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("Proposal")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    ProposalOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Proposal")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         ProposalOp<DeviceType::CPU, float>);
 }
 
 }  // namespace ops

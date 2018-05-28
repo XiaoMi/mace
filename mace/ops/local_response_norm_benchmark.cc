@@ -55,32 +55,34 @@ static void LocalResponseNorm(
   net.Sync();
 }
 
-#define BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, TYPE, DEVICE)                 \
-  static void BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(\
-      int iters) {                                                             \
+#define MACE_BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, TYPE, DEVICE)            \
+  static void                                                                  \
+      MACE_BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(   \
+          int iters) {                                                         \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
     mace::testing::MaccProcessed(tot);                                         \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     LocalResponseNorm<DEVICE, TYPE>(iters, N, C, H, W);                        \
   }                                                                            \
-  BENCHMARK(BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(                                                              \
+      MACE_BM_LOCAL_RESPONSE_NORM_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define BM_LOCAL_RESPONSE_NORM(N, C, H, W)                 \
-  BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, CPU);
+#define MACE_BM_LOCAL_RESPONSE_NORM(N, C, H, W)                 \
+  MACE_BM_LOCAL_RESPONSE_NORM_MACRO(N, C, H, W, float, CPU);
 
-BM_LOCAL_RESPONSE_NORM(1, 1, 512, 512);
-BM_LOCAL_RESPONSE_NORM(1, 3, 128, 128);
-BM_LOCAL_RESPONSE_NORM(1, 3, 512, 512);
-BM_LOCAL_RESPONSE_NORM(1, 32, 112, 112);
-BM_LOCAL_RESPONSE_NORM(1, 64, 256, 256);
-BM_LOCAL_RESPONSE_NORM(1, 64, 512, 512);
-BM_LOCAL_RESPONSE_NORM(1, 128, 56, 56);
-BM_LOCAL_RESPONSE_NORM(1, 128, 256, 256);
-BM_LOCAL_RESPONSE_NORM(1, 256, 14, 14);
-BM_LOCAL_RESPONSE_NORM(1, 512, 14, 14);
-BM_LOCAL_RESPONSE_NORM(1, 1024, 7, 7);
-BM_LOCAL_RESPONSE_NORM(32, 1, 256, 256);
-BM_LOCAL_RESPONSE_NORM(32, 3, 256, 256);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 1, 512, 512);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 3, 128, 128);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 3, 512, 512);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 32, 112, 112);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 64, 256, 256);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 64, 512, 512);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 128, 56, 56);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 128, 256, 256);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 256, 14, 14);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 512, 14, 14);
+MACE_BM_LOCAL_RESPONSE_NORM(1, 1024, 7, 7);
+MACE_BM_LOCAL_RESPONSE_NORM(32, 1, 256, 256);
+MACE_BM_LOCAL_RESPONSE_NORM(32, 3, 256, 256);
 
 }  // namespace test
 }  // namespace ops

@@ -43,9 +43,10 @@ void Deconv2dOpencl(cl::Kernel *kernel,
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   MACE_CHECK(stride > 0, "stride should > 0.");
-#define WIDTH_BLK 5
+#define MACE_WIDTH_BLK 5
   const index_t n_strides = (width + stride - 1) / stride;
-  const index_t width_blocks = ((n_strides + WIDTH_BLK -1)/ WIDTH_BLK) * stride;
+  const index_t width_blocks =
+    ((n_strides + MACE_WIDTH_BLK -1)/ MACE_WIDTH_BLK) * stride;
   const float stride_r = 1.f / static_cast<float>(stride);
   const int padding_h = (paddings[0]+1) >> 1;
   const int padding_w = (paddings[0]+1) >> 1;

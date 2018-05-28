@@ -60,8 +60,8 @@ class BatchNormOp : public Operator<D, T> {
   kernels::BatchNormFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, SCALE, OFFSET, MEAN, VAR);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

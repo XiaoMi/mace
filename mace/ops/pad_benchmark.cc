@@ -65,25 +65,25 @@ void Pad(int iters, int batch, int height,
 }
 }  // namespace
 
-#define BM_PAD_MACRO(N, H, W, C, PAD, TYPE, DEVICE)                  \
-  static void BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE( \
-      int iters) {                                                   \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
-    mace::testing::MaccProcessed(tot);                               \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    Pad<DEVICE, TYPE>(iters, N, H, W, C, PAD);                       \
-  }                                                                  \
-  BENCHMARK(BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE)
+#define MACE_BM_PAD_MACRO(N, H, W, C, PAD, TYPE, DEVICE)                     \
+  static void MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE( \
+      int iters) {                                                           \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;         \
+    mace::testing::MaccProcessed(tot);                                       \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                      \
+    Pad<DEVICE, TYPE>(iters, N, H, W, C, PAD);                               \
+  }                                                                          \
+  MACE_BENCHMARK(MACE_BM_PAD_##N##_##H##_##W##_##C##_##PAD##_##TYPE##_##DEVICE)
 
-#define BM_PAD(N, H, W, C, PAD)                 \
-  BM_PAD_MACRO(N, H, W, C, PAD, float, CPU);    \
-  BM_PAD_MACRO(N, H, W, C, PAD, float, GPU); \
-  BM_PAD_MACRO(N, H, W, C, PAD, half, GPU);
+#define MACE_BM_PAD(N, H, W, C, PAD)                 \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, float, CPU);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, float, GPU);    \
+  MACE_BM_PAD_MACRO(N, H, W, C, PAD, half, GPU);
 
-BM_PAD(1, 512, 512, 1, 2);
-BM_PAD(1, 112, 112, 64, 1);
-BM_PAD(1, 256, 256, 32, 2);
-BM_PAD(1, 512, 512, 16, 2);
+MACE_BM_PAD(1, 512, 512, 1, 2);
+MACE_BM_PAD(1, 112, 112, 64, 1);
+MACE_BM_PAD(1, 256, 256, 32, 2);
+MACE_BM_PAD(1, 512, 512, 16, 2);
 
 }  // namespace test
 }  // namespace ops

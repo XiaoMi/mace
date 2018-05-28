@@ -52,16 +52,16 @@ void ConcatHelper(int iters, int concat_dim, int dim1) {
 }
 }  // namespace
 
-#define BM_CONCAT_CPU_MACRO(DIM0, DIM1)                      \
-  static void BM_CONCAT_CPU_##DIM0##_##DIM1(int iters) {     \
-    ConcatHelper<DeviceType::CPU, float>(iters, DIM0, DIM1); \
-  }                                                          \
-  BENCHMARK(BM_CONCAT_CPU_##DIM0##_##DIM1)
+#define MACE_BM_CONCAT_CPU_MACRO(DIM0, DIM1)                      \
+  static void MACE_BM_CONCAT_CPU_##DIM0##_##DIM1(int iters) {     \
+    ConcatHelper<DeviceType::CPU, float>(iters, DIM0, DIM1);      \
+  }                                                               \
+  MACE_BENCHMARK(MACE_BM_CONCAT_CPU_##DIM0##_##DIM1)
 
-BM_CONCAT_CPU_MACRO(0, 1000);
-BM_CONCAT_CPU_MACRO(0, 100000);
-BM_CONCAT_CPU_MACRO(1, 1000);
-BM_CONCAT_CPU_MACRO(1, 100000);
+MACE_BM_CONCAT_CPU_MACRO(0, 1000);
+MACE_BM_CONCAT_CPU_MACRO(0, 100000);
+MACE_BM_CONCAT_CPU_MACRO(1, 1000);
+MACE_BM_CONCAT_CPU_MACRO(1, 100000);
 
 namespace {
 template <typename T>
@@ -106,22 +106,22 @@ void OpenclConcatHelper(int iters,
 }
 }  // namespace
 
-#define BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE)                           \
-  static void BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE(int iters) { \
-    std::vector<index_t> shape = {N, H, W, C};                             \
-    OpenclConcatHelper<TYPE>(iters, shape, shape, 3);                      \
-  }                                                                        \
-  BENCHMARK(BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE)
+#define MACE_BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE)                          \
+  static void MACE_BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE(int iters) {\
+    std::vector<index_t> shape = {N, H, W, C};                                 \
+    OpenclConcatHelper<TYPE>(iters, shape, shape, 3);                          \
+  }                                                                            \
+  MACE_BENCHMARK(MACE_BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE)
 
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, float);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, float);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, float);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, float);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, float);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, float);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, float);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, float);
 
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, half);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, half);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, half);
-BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, half);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 32, half);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 64, half);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 128, half);
+MACE_BM_CONCAT_OPENCL_MACRO(3, 32, 32, 256, half);
 
 }  // namespace test
 }  // namespace ops

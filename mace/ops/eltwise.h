@@ -43,7 +43,7 @@ class EltwiseOp : public Operator<D, T> {
   kernels::EltwiseFunctor<D, T> functor_;
 
  private:
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

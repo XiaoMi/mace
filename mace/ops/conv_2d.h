@@ -54,8 +54,8 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
   kernels::Conv2dFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, FILTER, BIAS);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops
