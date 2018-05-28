@@ -190,7 +190,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
                          RoundType::CEIL,
                          output_shape.data());
     }
-    MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
     Tensor::MappingGuard input_guard(input_tensor);
     Tensor::MappingGuard output_guard(output_tensor);

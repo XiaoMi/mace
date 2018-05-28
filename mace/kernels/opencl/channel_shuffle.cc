@@ -16,18 +16,16 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/tuner.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
 
 template <typename T>
 MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
-  MACE_FAILURE_RETURN(output->ResizeLike(input));
+    const Tensor *input, Tensor *output, StatsFuture *future) {
+  MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
@@ -36,8 +34,7 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
   const index_t channels_per_group = channels / groups_;
   MACE_CHECK(channels_per_group % 4 == 0,
              "channels per group must be multiple of 4");
-  MACE_CHECK(groups_ % 4 == 0,
-             "groups must be multiple of 4");
+  MACE_CHECK(groups_ % 4 == 0, "groups must be multiple of 4");
   const index_t group_channel_blocks = RoundUpDiv4(channels_per_group);
 
   const uint32_t gws[3] = {static_cast<uint32_t>(group_channel_blocks),
@@ -57,7 +54,7 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -65,8 +62,8 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("channel_shuffle", kernel_name,
-                                   built_options);
+    kernel_ =
+        runtime->BuildKernel("channel_shuffle", kernel_name, built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -76,7 +73,7 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -93,8 +90,8 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
 
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("channel_shuffle_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("channel_shuffle_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -107,9 +104,7 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template
-struct ChannelShuffleFunctor<DeviceType::GPU, float>;
-template
-struct ChannelShuffleFunctor<DeviceType::GPU, half>;
+template struct ChannelShuffleFunctor<DeviceType::GPU, float>;
+template struct ChannelShuffleFunctor<DeviceType::GPU, half>;
 }  // namespace kernels
 }  // namespace mace

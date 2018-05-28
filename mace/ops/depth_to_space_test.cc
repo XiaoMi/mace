@@ -36,9 +36,7 @@ void RunDepthToSpace(const bool d2s,
   const char *ops_test_name = (d2s) ? "DepthToSpaceTest" : "SpaceToDepthTest";
   // Construct graph
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                    NHWC,
-                                                    "InputNCHW",
+    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
     OpDefBuilder(ops_name, ops_test_name)
         .Input("InputNCHW")
@@ -47,10 +45,8 @@ void RunDepthToSpace(const bool d2s,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                    NCHW,
-                                                    "Output",
-                                                    NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
+                                                    "Output", NHWC);
 
   } else {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -64,118 +60,98 @@ void RunDepthToSpace(const bool d2s,
     net.RunOp(D);
   }
 
-
   if (D == DeviceType::GPU) {
     ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-        kernels::BufferType::IN_OUT_CHANNEL);
+                                          kernels::BufferType::IN_OUT_CHANNEL);
   }
   auto expected = CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
-
 class SpaceToDepthOpTest : public OpsTestBase {};
 
 TEST_F(SpaceToDepthOpTest, Input2x4x4_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(false, {1, 2, 4, 4},
+  RunDepthToSpace<DeviceType::CPU>(
+      false, {1, 2, 4, 4},
       {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
        8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31},
-      2,
-      {1, 1, 2, 16},
+      2, {1, 1, 2, 16},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
 TEST_F(SpaceToDepthOpTest, Input2x4x4_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(false, {1, 2, 4, 4},
-      {0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23,
+  RunDepthToSpace<DeviceType::GPU>(
+      false, {1, 2, 4, 4},
+      {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
        8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31},
-      2,
-      {1, 1, 2, 16},
+      2, {1, 1, 2, 16},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
-
-
 TEST_F(SpaceToDepthOpTest, Input2x2x4_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(false, {1, 2, 2, 4},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16},
-      2,
-      {1, 1, 1, 16},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16});
+  RunDepthToSpace<DeviceType::CPU>(
+      false, {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 1, 1, 16},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
 }
 
 TEST_F(SpaceToDepthOpTest, Input4x4x1_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(false, {1, 2, 2, 4},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16},
-      2,
-      {1, 1, 1, 16},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16});
+  RunDepthToSpace<DeviceType::GPU>(
+      false, {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 1, 1, 16},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
 }
 
 class DepthToSpaceOpTest : public OpsTestBase {};
 
 TEST_F(DepthToSpaceOpTest, Input1x2x16_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(true, {1, 1, 2, 16},
+  RunDepthToSpace<DeviceType::CPU>(
+      true, {1, 1, 2, 16},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-      2,
-      {1, 2, 4, 4},
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+      2, {1, 2, 4, 4},
       {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
-      8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
+       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
 TEST_F(DepthToSpaceOpTest, Input1x2x16_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(true, {1, 1, 2, 16},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-      2,
-      {1, 2, 4, 4},
-      {0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23,
-      8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
+  RunDepthToSpace<DeviceType::GPU>(
+      true, {1, 1, 2, 16},
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+      2, {1, 2, 4, 4},
+      {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
+       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
 TEST_F(DepthToSpaceOpTest, Input1x1x16_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(true, {1, 1, 1, 16},
-      {1,  2,  3,  4,  5,  6,  7,  8,
-       9,  10, 11, 12, 13, 14, 15, 16},
-      2,
-      {1, 2, 2, 4},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16});
+  RunDepthToSpace<DeviceType::CPU>(
+      true, {1, 1, 1, 16},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
 }
 
 TEST_F(DepthToSpaceOpTest, Input1x1x16_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(true, {1, 1, 1, 16},
-      {1,  2,  3,  4,  5,  6,  7,  8,
-       9,  10, 11, 12, 13, 14, 15, 16},
-      2,
-      {1, 2, 2, 4},
-      {1, 2, 3, 4, 5, 6, 7, 8,
-       9, 10, 11, 12, 13, 14, 15, 16});
+  RunDepthToSpace<DeviceType::GPU>(
+      true, {1, 1, 1, 16},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
 }
-
 
 TEST_F(DepthToSpaceOpTest, InputLarger_B2_OPENCL) {
-  const std::vector<float > in = std::vector<float >(192 * 192 *128, 1.0);
+  const std::vector<float> in = std::vector<float>(192 * 192 * 128, 1.0);
 
-  RunDepthToSpace<DeviceType::GPU>(true, {1, 192, 192, 128},
-                                      in,
-                                      2,
-                                      {1, 384, 384, 32},
-                                      in);
+  RunDepthToSpace<DeviceType::GPU>(true, {1, 192, 192, 128}, in, 2,
+                                   {1, 384, 384, 32}, in);
 }
-
 
 namespace {
 template <DeviceType D, typename T>
-void RandomTest(const bool d2s, const int block_size,
+void RandomTest(const bool d2s,
+                const int block_size,
                 const std::vector<index_t> &shape) {
   testing::internal::LogToStderr();
   srand(time(NULL));
@@ -188,9 +164,7 @@ void RandomTest(const bool d2s, const int block_size,
 
   // Add input data
   net.AddRandomInput<D, float>("Input", shape);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "InputNCHW",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
   OpDefBuilder(ops_name, ops_test_name)
       .Input("InputNCHW")
@@ -201,11 +175,8 @@ void RandomTest(const bool d2s, const int block_size,
   // Run
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
-
 
   BufferToImage<D, T>(&net, "Input", "InputImg",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -238,15 +209,15 @@ TEST_F(DepthToSpaceOpTest, OPENCLRandomFloat) {
 }
 
 TEST_F(DepthToSpaceOpTest, OPENCLRandomHalf) {
-RandomTest<DeviceType::GPU, half>(true, 2, {1, 192, 192, 128});
+  RandomTest<DeviceType::GPU, half>(true, 2, {1, 192, 192, 128});
 }
 
 TEST_F(SpaceToDepthOpTest, OPENCLRandomFloat) {
-RandomTest<DeviceType::GPU, float>(false, 2, {1, 384, 384, 32});
+  RandomTest<DeviceType::GPU, float>(false, 2, {1, 384, 384, 32});
 }
 
 TEST_F(SpaceToDepthOpTest, OPENCLRandomHalf) {
-RandomTest<DeviceType::GPU, half>(false, 2, {1, 384, 384, 32});
+  RandomTest<DeviceType::GPU, half>(false, 2, {1, 384, 384, 32});
 }
 
 }  // namespace test

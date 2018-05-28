@@ -88,10 +88,9 @@ inline bool LimitKernelTime() {
 }
 
 template <typename T>
-bool IsVecEqual(const std::vector<T> &input0,
-                const std::vector<T> &input1) {
+bool IsVecEqual(const std::vector<T> &input0, const std::vector<T> &input1) {
   return ((input0.size() == input1.size()) &&
-      (std::equal(input0.begin(), input0.end(), input1.begin())));
+          (std::equal(input0.begin(), input0.end(), input1.begin())));
 }
 
 template <typename T>

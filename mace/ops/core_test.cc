@@ -31,9 +31,8 @@ TEST(CoreTest, INIT_MODE) {
       .AddIntArg("mode", static_cast<int>(NetMode::INIT))
       .Finalize(&op_defs[op_defs.size() - 1]);
 
-  Tensor *input =
-      ws.CreateTensor("Input", GetDeviceAllocator(DeviceType::GPU),
-                      DataTypeToEnum<float>::v());
+  Tensor *input = ws.CreateTensor("Input", GetDeviceAllocator(DeviceType::GPU),
+                                  DataTypeToEnum<float>::v());
   input->Resize({1, 3, 3, 3});
   {
     Tensor::MappingGuard input_mapper(input);

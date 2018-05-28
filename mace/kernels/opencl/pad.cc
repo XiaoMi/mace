@@ -20,26 +20,25 @@
 namespace mace {
 namespace kernels {
 
-template<typename T>
-MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
-  MACE_CHECK(
-      this->paddings_.size() == static_cast<size_t>((input->dim_size() * 2)));
-  MACE_CHECK((this->paddings_[0] == 0) && (this->paddings_[1] == 0)
-                 && (this->paddings_[6] == 0) && (this->paddings_[7] == 0))
-    << "Mace only support height/width dimension now";
+template <typename T>
+MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
+                                                      Tensor *output,
+                                                      StatsFuture *future) {
+  MACE_CHECK(this->paddings_.size() ==
+             static_cast<size_t>((input->dim_size() * 2)));
+  MACE_CHECK((this->paddings_[0] == 0) && (this->paddings_[1] == 0) &&
+             (this->paddings_[6] == 0) && (this->paddings_[7] == 0))
+      << "Mace only support height/width dimension now";
   auto input_shape = input->shape();
-  std::vector<index_t>
-      output_shape = {input_shape[0] + this->paddings_[0] + this->paddings_[1],
-                      input_shape[1] + this->paddings_[2] + this->paddings_[3],
-                      input_shape[2] + this->paddings_[4] + this->paddings_[5],
-                      input_shape[3] + this->paddings_[6] + this->paddings_[7]};
+  std::vector<index_t> output_shape = {
+      input_shape[0] + this->paddings_[0] + this->paddings_[1],
+      input_shape[1] + this->paddings_[2] + this->paddings_[3],
+      input_shape[2] + this->paddings_[4] + this->paddings_[5],
+      input_shape[3] + this->paddings_[6] + this->paddings_[7]};
 
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -61,7 +60,7 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -103,9 +102,8 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(
   }
 
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
-  std::string tuning_key =
-      Concat("pad", output->dim(0), output->dim(1), output->dim(2),
-             output->dim(3));
+  std::string tuning_key = Concat("pad", output->dim(0), output->dim(1),
+                                  output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -118,10 +116,8 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template
-struct PadFunctor<DeviceType::GPU, float>;
-template
-struct PadFunctor<DeviceType::GPU, half>;
+template struct PadFunctor<DeviceType::GPU, float>;
+template struct PadFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

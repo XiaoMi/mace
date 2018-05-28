@@ -41,8 +41,7 @@ void Conv2dNeonK7x1S1(const float *input,
       const index_t in_channels = in_shape[1];
       const index_t in_width = in_shape[3];
       if (m + 3 < out_channels) {
-        float *out_ptr0_base =
-            output + b * out_batch_size + m * out_image_size;
+        float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
 #if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
             output + b * out_batch_size + (m + 1) * out_image_size;
@@ -56,12 +55,9 @@ void Conv2dNeonK7x1S1(const float *input,
               input + b * in_batch_size + c * in_image_size;
           const float *filter_ptr0 = filter + m * in_channels * 7 + c * 7;
 #if defined(MACE_ENABLE_NEON)
-          const float *filter_ptr1 =
-              filter + (m + 1) * in_channels * 7 + c * 7;
-          const float *filter_ptr2 =
-              filter + (m + 2) * in_channels * 7 + c * 7;
-          const float *filter_ptr3 =
-              filter + (m + 3) * in_channels * 7 + c * 7;
+          const float *filter_ptr1 = filter + (m + 1) * in_channels * 7 + c * 7;
+          const float *filter_ptr2 = filter + (m + 2) * in_channels * 7 + c * 7;
+          const float *filter_ptr3 = filter + (m + 3) * in_channels * 7 + c * 7;
           /* load filter (4 outch x 4 height x 1 width) */
           float32x4_t vf00, vf01;
           float32x4_t vf10, vf11;
@@ -97,7 +93,6 @@ void Conv2dNeonK7x1S1(const float *input,
                                  out_ptr3_base[out_offset + out_width],
                                  out_ptr3_base[out_offset + 2 * out_width],
                                  out_ptr3_base[out_offset + 3 * out_width]};
-
 
               // input offset
               index_t in_offset = h * in_width + w;
@@ -203,7 +198,7 @@ void Conv2dNeonK7x1S1(const float *input,
               out_ptr3_base[out_offset + 2 * out_width] = vo3[2];
               out_ptr3_base[out_offset + 3 * out_width] = vo3[3];
             }  // w
-          }  // h
+          }    // h
 #else
           for (index_t oc = 0; oc < 4; ++oc) {
             Conv2dCPUKHxKWCalc(in_ptr_base, filter_ptr0 + oc * in_channels * 7,
@@ -280,17 +275,16 @@ void Conv2dNeonK7x1S1(const float *input,
                 out_ptr0_base[out_offset + 2 * out_width] = vo0[2];
                 out_ptr0_base[out_offset + 3 * out_width] = vo0[3];
               }  // w
-            }  // h
+            }    // h
 #else
-            Conv2dCPUKHxKWCalc(in_ptr_base, filter_ptr0,
-                               in_width, 7, 1, out_height, out_width,
-                               out_ptr0_base, 1);
+            Conv2dCPUKHxKWCalc(in_ptr_base, filter_ptr0, in_width, 7, 1,
+                               out_height, out_width, out_ptr0_base, 1);
 #endif
           }  // c
         }
       }  // if
-    }  // m
-  }  // b
+    }    // m
+  }      // b
 }
 
 }  // namespace kernels

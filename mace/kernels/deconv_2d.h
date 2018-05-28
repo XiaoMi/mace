@@ -250,7 +250,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
           strides_, padding_type_,
           output_shape.data(),
           paddings_.data(), true);
-      MACE_FAILURE_RETURN(output->Resize(output_shape));
+      MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     } else {
       output_shape_.clear();
       output_shape_ = std::vector<index_t>(4, 0);
@@ -259,7 +259,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                            strides_,
                            output_shape_.data(),
                            paddings_.data(), true);
-      MACE_FAILURE_RETURN(output->Resize(output_shape_));
+      MACE_RETURN_IF_ERROR(output->Resize(output_shape_));
     }
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);

@@ -22,11 +22,9 @@ namespace mace {
 namespace kernels {
 
 namespace {
-std::vector<uint32_t> LocalWS(const uint32_t *gws,
-                              const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size =
-    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
@@ -37,16 +35,15 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 
 }  // namespace
 
-
-static void Concat2(cl::Kernel *kernel,
-                    const Tensor *input0,
-                    const Tensor *input1,
-                    const DataType dt,
-                    std::vector<index_t> *prev_input_shape,
-                    Tensor *output,
-                    StatsFuture *future,
-                    uint32_t *kwg_size,
-                    std::unique_ptr<BufferBase> *kernel_error) {
+static MaceStatus Concat2(cl::Kernel *kernel,
+                          const Tensor *input0,
+                          const Tensor *input1,
+                          const DataType dt,
+                          std::vector<index_t> *prev_input_shape,
+                          Tensor *output,
+                          StatsFuture *future,
+                          uint32_t *kwg_size,
+                          std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -67,8 +64,8 @@ static void Concat2(cl::Kernel *kernel,
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -95,7 +92,7 @@ static void Concat2(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
@@ -115,8 +112,8 @@ static void Concat2(cl::Kernel *kernel,
 
   const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
   std::string tuning_key =
-      Concat("concat_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -125,15 +122,17 @@ static void Concat2(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
-static void ConcatN(cl::Kernel *kernel,
-                    const std::vector<const Tensor *> &input_list,
-                    const DataType dt,
-                    Tensor *output,
-                    StatsFuture *future,
-                    uint32_t *kwg_size,
-                    std::unique_ptr<BufferBase> *kernel_error) {
+static MaceStatus ConcatN(cl::Kernel *kernel,
+                          const std::vector<const Tensor *> &input_list,
+                          const DataType dt,
+                          Tensor *output,
+                          StatsFuture *future,
+                          uint32_t *kwg_size,
+                          std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -150,7 +149,7 @@ static void ConcatN(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -179,7 +178,7 @@ static void ConcatN(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
@@ -218,8 +217,8 @@ static void ConcatN(cl::Kernel *kernel,
     if (runtime->is_profiling_enabled()) {
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);
-      call_stats.start_micros = std::min<int64_t>(tmp_stats.start_micros,
-                                                   call_stats.start_micros);
+      call_stats.start_micros =
+          std::min<int64_t>(tmp_stats.start_micros, call_stats.start_micros);
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
     }
   }
@@ -232,6 +231,8 @@ static void ConcatN(cl::Kernel *kernel,
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template <typename T>
@@ -266,17 +267,17 @@ MaceStatus ConcatFunctor<DeviceType::GPU, T>::operator()(
       "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   switch (inputs_count) {
     case 2:
-      Concat2(&kernel_, input_list[0], input_list[1], DataTypeToEnum<T>::value,
-              &input_shape_, output, future, &kwg_size_, &kernel_error_);
-      break;
+      return Concat2(&kernel_, input_list[0], input_list[1],
+                     DataTypeToEnum<T>::value, &input_shape_, output, future,
+                     &kwg_size_, &kernel_error_);
     default:
       if (divisible_four) {
-        ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output, future,
-            &kwg_size_, &kernel_error_);
+        return ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output,
+                       future, &kwg_size_, &kernel_error_);
       } else {
         MACE_NOT_IMPLEMENTED;
       }

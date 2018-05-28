@@ -35,9 +35,9 @@ void Register_Dequantize(OperatorRegistry *op_registry) {
 
 void Register_Requantize(OperatorRegistry *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Requantize")
-                                         .Device(DeviceType::CPU)
-                                         .TypeConstraint<uint8_t>("T")
-                                         .Build(),
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<uint8_t>("T")
+                                          .Build(),
                          RequantizeOp<DeviceType::CPU, uint8_t>);
 }
 

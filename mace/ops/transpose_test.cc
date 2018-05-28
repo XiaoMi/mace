@@ -29,18 +29,16 @@ void TransposeNCHWTest(const std::vector<index_t> &input_shape) {
   net.AddRandomInput<CPU, float>("Input", input_shape);
 
   OpDefBuilder("Transpose", "TransposeNCHWTest")
-    .Input("Input")
-    .Output("Output")
-    .AddIntsArg("dims", {0, 3, 1, 2})
-    .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("dims", {0, 3, 1, 2})
+      .Finalize(net.NewOperatorDef());
 
   // Run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  DataFormat::NHWC,
-                                                  "InputNCHW",
-                                                  DataFormat::NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NHWC, "InputNCHW", DataFormat::NCHW);
 
   ExpectTensorNear<float>(*net.GetOutput("InputNCHW"),
                           *net.GetOutput("Output"));
@@ -53,18 +51,16 @@ void TransposeNHWCTest(const std::vector<index_t> &input_shape) {
   net.AddRandomInput<CPU, float>("Input", input_shape);
 
   OpDefBuilder("Transpose", "TransposeNHWCTest")
-    .Input("Input")
-    .Output("Output")
-    .AddIntsArg("dims", {0, 2, 3, 1})
-    .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("dims", {0, 2, 3, 1})
+      .Finalize(net.NewOperatorDef());
 
   // Run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  DataFormat::NCHW,
-                                                  "InputNHWC",
-                                                  DataFormat::NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", DataFormat::NCHW, "InputNHWC", DataFormat::NHWC);
 
   ExpectTensorNear<float>(*net.GetOutput("InputNHWC"),
                           *net.GetOutput("Output"));
@@ -91,16 +87,15 @@ TEST_F(TransposeOpTest, Rank2) {
   net.AddInputFromArray<CPU, float>("Input", {2, 3}, {1, 2, 3, 4, 5, 6});
 
   OpDefBuilder("Transpose", "TransposeNCHWTest")
-    .Input("Input")
-    .Output("Output")
-    .AddIntsArg("dims", {1, 0})
-    .Finalize(net.NewOperatorDef());
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("dims", {1, 0})
+      .Finalize(net.NewOperatorDef());
 
   // Run on cpu
   net.RunOp();
 
-  net.AddInputFromArray<CPU, float>("ExpectedOutput",
-                                    {3, 2},
+  net.AddInputFromArray<CPU, float>("ExpectedOutput", {3, 2},
                                     {1, 4, 2, 5, 3, 6});
 
   ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),

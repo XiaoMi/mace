@@ -29,16 +29,14 @@ class SpaceToBatchNDOp : public Operator<D, T> {
  public:
   SpaceToBatchNDOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(
-            OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
-            OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
-            false) {}
+        functor_(OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
+                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
+                 false) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *space_tensor = this->Input(INPUT);
     Tensor *batch_tensor = this->Output(OUTPUT);
-    return functor_(const_cast<Tensor *>(space_tensor), batch_tensor,
-             future);
+    return functor_(const_cast<Tensor *>(space_tensor), batch_tensor, future);
   }
 
  private:

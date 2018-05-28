@@ -17,8 +17,8 @@
 
 #include "mace/kernels/arm/conv_winograd.h"
 #include "mace/kernels/gemm.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -44,14 +44,13 @@ void TransformInput4x4(const float *input,
       for (index_t h = 0; h < in_height - 2; h += 2) {
         for (index_t w = 0; w < in_width - 2; w += 2) {
           float d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14,
-            d15;
+              d15;
           float s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14,
-            s15;
+              s15;
 
           // load tile data
-          const float *input_ptr =
-            input + n * input_batch_size + c * in_height_width + h * in_width
-              + w;
+          const float *input_ptr = input + n * input_batch_size +
+                                   c * in_height_width + h * in_width + w;
           d0 = input_ptr[0];
           d1 = input_ptr[1];
           d2 = input_ptr[2];
@@ -92,7 +91,7 @@ void TransformInput4x4(const float *input,
 
           // store output
           float *output_ptr =
-            output + n * output_batch_size + c * tile_count + tile_index;
+              output + n * output_batch_size + c * tile_count + tile_index;
           output_ptr[0] = s0;
           output_ptr[1 * stride] = s1;
           output_ptr[2 * stride] = s2;
@@ -166,9 +165,8 @@ void TransformInput8x8(const float *input,
       float s[8][8];
       for (index_t h = 0; h < in_height - 2; h += 6) {
         for (index_t w = 0; w < in_width - 2; w += 6) {
-          const float *input_ptr =
-            input + n * input_batch_size + c * in_height_width + h * in_width
-              + w;
+          const float *input_ptr = input + n * input_batch_size +
+                                   c * in_height_width + h * in_width + w;
 
           for (int i = 0; i < 8; ++i) {
             float d0, d1, d2, d3, d4, d5, d6, d7;
@@ -203,7 +201,7 @@ void TransformInput8x8(const float *input,
           }
 
           float *output_ptr =
-            output + n * output_batch_size + c * tile_count + tile_index;
+              output + n * output_batch_size + c * tile_count + tile_index;
           for (int i = 0; i < 8; ++i) {
             float d0, d1, d2, d3, d4, d5, d6, d7;
             d0 = s[0][i];
@@ -258,27 +256,18 @@ void BatchGemm(const float *input,
   const index_t out_stride = out_channels * tile_count;
 
   if (batch == 1) {
-    Gemm(filter,
-         input,
-         in_tile_area,
-         out_channels,
-         in_channels,
-         tile_count,
+    Gemm(filter, input, in_tile_area, out_channels, in_channels, tile_count,
          output);
   } else {
 #pragma omp parallel for collapse(2)
     for (int b = 0; b < batch; ++b) {
       for (int i = 0; i < in_tile_area; ++i) {
-        const float
-          *in_ptr = input + b * in_batch_size + i * in_stride;
+        const float *in_ptr = input + b * in_batch_size + i * in_stride;
         const float *filter_ptr = filter + i * filter_stride;
         float *out_ptr = output + b * out_batch_size + i * out_stride;
-        Gemm(filter_ptr,
-             in_ptr,
-             1,
-             out_channels,  /* rows */
-             in_channels,   /* K */
-             tile_count,    /* cols */
+        Gemm(filter_ptr, in_ptr, 1, out_channels, /* rows */
+             in_channels,                         /* K */
+             tile_count,                          /* cols */
              out_ptr);
       }
     }
@@ -305,12 +294,12 @@ void TransformOutput4x4(const float *input,
       for (index_t h = 0; h < out_height; h += 2) {
         for (index_t w = 0; w < out_width; w += 2) {
           float d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14,
-            d15;
+              d15;
           float s0, s1, s2, s3, s4, s5, s6, s7;
           float v0, v1, v2, v3;
 
           const float *input_ptr =
-            input + n * input_batch_size + m * tile_count + tile_offset;
+              input + n * input_batch_size + m * tile_count + tile_offset;
           d0 = input_ptr[0];
           d1 = input_ptr[1 * stride];
           d2 = input_ptr[2 * stride];
@@ -345,9 +334,8 @@ void TransformOutput4x4(const float *input,
           v2 = s2 - s4 - s6;
           v3 = s3 - s5 - s7;
 
-          float *output_ptr =
-            output + n * output_batch_size + m * out_image_size + h * out_width
-              + w;
+          float *output_ptr = output + n * output_batch_size +
+                              m * out_image_size + h * out_width + w;
           output_ptr[0] = v0;
           output_ptr[1] = v1;
           output_ptr[out_width] = v2;
@@ -403,7 +391,7 @@ void TransformOutput8x8(const float *input,
       for (index_t h = 0; h < out_height; h += 6) {
         for (index_t w = 0; w < out_width; w += 6) {
           const float *input_ptr =
-            input + n * input_batch_size + m * tile_count + tile_offset;
+              input + n * input_batch_size + m * tile_count + tile_offset;
           for (int i = 0; i < 8; ++i) {
             float d0, d1, d2, d3, d4, d5, d6, d7;
 
@@ -433,9 +421,8 @@ void TransformOutput8x8(const float *input,
             input_ptr += 8 * stride;
           }
 
-          float *output_ptr =
-            output + n * output_batch_size + m * out_image_size + h * out_width
-              + w;
+          float *output_ptr = output + n * output_batch_size +
+                              m * out_image_size + h * out_width + w;
 
           for (int i = 0; i < 6; ++i) {
             float d0, d1, d2, d3, d4, d5, d6, d7;
@@ -471,7 +458,6 @@ void TransformOutput8x8(const float *input,
 }
 }  // namespace
 
-
 // OCHW => TOC
 // no need to optimize, it will exist in converter
 void TransformFilter4x4(const float *filter,
@@ -485,7 +471,7 @@ void TransformFilter4x4(const float *filter,
     for (index_t c = 0; c < in_channels; ++c) {
       float g0, g1, g2, g3, g4, g5, g6, g7, g8;
       float s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14,
-        s15;
+          s15;
 
       // load filter
       index_t filter_offset = (m * in_channels + c) * 9;
@@ -573,16 +559,14 @@ void TransformFilter8x8(const float *filter,
                         float *output) {
   const index_t stride = out_channels * in_channels;
 
-  const float G[8][3] = {
-    {1.0f, 0.0f, 0.0f},
-    {-2.0f / 9, -2.0f / 9, -2.0f / 9},
-    {-2.0f / 9, 2.0f / 9, -2.0f / 9},
-    {1.0f / 90, 1.0f / 45, 2.0f / 45},
-    {1.0f / 90, -1.0f / 45, 2.0f / 45},
-    {1.0f / 45, 1.0f / 90, 1.0f / 180},
-    {1.0f / 45, -1.0f / 90, 1.0f / 180},
-    {0.0f, 0.0f, 1.0f}
-  };
+  const float G[8][3] = {{1.0f, 0.0f, 0.0f},
+                         {-2.0f / 9, -2.0f / 9, -2.0f / 9},
+                         {-2.0f / 9, 2.0f / 9, -2.0f / 9},
+                         {1.0f / 90, 1.0f / 45, 2.0f / 45},
+                         {1.0f / 90, -1.0f / 45, 2.0f / 45},
+                         {1.0f / 45, 1.0f / 90, 1.0f / 180},
+                         {1.0f / 45, -1.0f / 90, 1.0f / 180},
+                         {0.0f, 0.0f, 1.0f}};
 
 #pragma omp parallel for collapse(2)
   for (index_t m = 0; m < out_channels; ++m) {
@@ -612,7 +596,7 @@ void TransformFilter8x8(const float *filter,
       for (int i = 0; i < 8; ++i) {
         for (int j = 0; j < 8; ++j) {
           output[output_offset + (i * 8 + j) * stride] =
-            G[i][0] * s[0][j] + G[i][1] * s[1][j] + G[i][2] * s[2][j];
+              G[i][0] * s[0][j] + G[i][1] * s[1][j] + G[i][2] * s[2][j];
         }
       }
     }
@@ -633,62 +617,38 @@ void WinoGradConv3x3s1(const float *input,
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
   index_t tile_height_count =
-    RoundUpDiv(out_height, static_cast<index_t>(out_tile_size));
+      RoundUpDiv(out_height, static_cast<index_t>(out_tile_size));
   index_t tile_width_count =
-    RoundUpDiv(out_width, static_cast<index_t>(out_tile_size));
+      RoundUpDiv(out_width, static_cast<index_t>(out_tile_size));
   index_t tile_count = tile_height_count * tile_width_count;
 
   switch (out_tile_size) {
     case 2:
-      TransformInput4x4(input,
-                        batch,
-                        in_height,
-                        in_width,
-                        in_channels,
-                        tile_count,
-                        transformed_input);
+      TransformInput4x4(input, batch, in_height, in_width, in_channels,
+                        tile_count, transformed_input);
       break;
     case 6:
-      TransformInput8x8(input,
-                        batch,
-                        in_height,
-                        in_width,
-                        in_channels,
-                        tile_count,
-                        transformed_input);
+      TransformInput8x8(input, batch, in_height, in_width, in_channels,
+                        tile_count, transformed_input);
       break;
-    default:MACE_NOT_IMPLEMENTED;
+    default:
+      MACE_NOT_IMPLEMENTED;
   }
 
-  BatchGemm(transformed_input,
-            transformed_filter,
-            batch,
-            in_channels,
-            out_channels,
-            tile_count,
-            out_tile_size,
-            transformed_output);
+  BatchGemm(transformed_input, transformed_filter, batch, in_channels,
+            out_channels, tile_count, out_tile_size, transformed_output);
 
   switch (out_tile_size) {
     case 2:
-      TransformOutput4x4(transformed_output,
-                         batch,
-                         out_height,
-                         out_width,
-                         out_channels,
-                         tile_count,
-                         output);
+      TransformOutput4x4(transformed_output, batch, out_height, out_width,
+                         out_channels, tile_count, output);
       break;
     case 6:
-      TransformOutput8x8(transformed_output,
-                         batch,
-                         out_height,
-                         out_width,
-                         out_channels,
-                         tile_count,
-                         output);
+      TransformOutput8x8(transformed_output, batch, out_height, out_width,
+                         out_channels, tile_count, output);
       break;
-    default:MACE_NOT_IMPLEMENTED;
+    default:
+      MACE_NOT_IMPLEMENTED;
   }
 }
 
@@ -704,52 +664,39 @@ void WinoGradConv3x3s1(const float *input,
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
   index_t tile_height_count =
-    RoundUpDiv(out_height, static_cast<index_t>(out_tile_size));
+      RoundUpDiv(out_height, static_cast<index_t>(out_tile_size));
   index_t tile_width_count =
-    RoundUpDiv(out_width, static_cast<index_t>(out_tile_size));
+      RoundUpDiv(out_width, static_cast<index_t>(out_tile_size));
   index_t tile_count = tile_height_count * tile_width_count;
   index_t in_tile_area = (out_tile_size + 2) * (out_tile_size + 2);
   index_t transformed_input_size =
-    in_tile_area * batch * in_channels * tile_count;
+      in_tile_area * batch * in_channels * tile_count;
   index_t transformed_filter_size = in_tile_area * out_channels * in_channels;
-  index_t
-    transformed_output_size = in_tile_area * batch * out_channels * tile_count;
+  index_t transformed_output_size =
+      in_tile_area * batch * out_channels * tile_count;
 
-  float *transformed_input = new float[transformed_input_size];  // TNCB
+  float *transformed_input = new float[transformed_input_size];    // TNCB
   float *transformed_filter = new float[transformed_filter_size];  // TOC
   float *transformed_output = new float[transformed_output_size];
 
   switch (out_tile_size) {
     case 2:
-      TransformFilter4x4(filter,
-                         in_channels,
-                         out_channels,
-                         transformed_filter);
+      TransformFilter4x4(filter, in_channels, out_channels, transformed_filter);
       break;
     case 6:
-      TransformFilter8x8(filter,
-                         in_channels,
-                         out_channels,
-                         transformed_filter);
+      TransformFilter8x8(filter, in_channels, out_channels, transformed_filter);
       break;
-    default:MACE_NOT_IMPLEMENTED;
+    default:
+      MACE_NOT_IMPLEMENTED;
   }
 
-  WinoGradConv3x3s1(input,
-                    transformed_filter,
-                    batch,
-                    in_height,
-                    in_width,
-                    in_channels,
-                    out_channels,
-                    out_tile_size,
-                    transformed_input,
-                    transformed_output,
-                    output);
+  WinoGradConv3x3s1(input, transformed_filter, batch, in_height, in_width,
+                    in_channels, out_channels, out_tile_size, transformed_input,
+                    transformed_output, output);
 
-  delete[]transformed_input;
-  delete[]transformed_filter;
-  delete[]transformed_output;
+  delete[] transformed_input;
+  delete[] transformed_filter;
+  delete[] transformed_output;
 }
 
 void ConvRef3x3s1(const float *input,
@@ -769,7 +716,7 @@ void ConvRef3x3s1(const float *input,
       for (index_t h = 0; h < out_height; ++h) {
         for (index_t w = 0; w < out_width; ++w) {
           index_t out_offset =
-            ((b * out_channels + m) * out_height + h) * out_width + w;
+              ((b * out_channels + m) * out_height + h) * out_width + w;
           output[out_offset] = 0;
           for (index_t c = 0; c < in_channels; ++c) {
             for (index_t kh = 0; kh < 3; ++kh) {
@@ -777,11 +724,10 @@ void ConvRef3x3s1(const float *input,
                 index_t ih = h + kh;
                 index_t iw = w + kw;
                 index_t in_offset =
-                  ((b * in_channels + c) * in_height + ih) * in_width + iw;
-                index_t
-                  filter_offset = (((m * in_channels) + c) * 3 + kh) * 3 + kw;
-                output[out_offset] +=
-                  input[in_offset] * filter[filter_offset];
+                    ((b * in_channels + c) * in_height + ih) * in_width + iw;
+                index_t filter_offset =
+                    (((m * in_channels) + c) * 3 + kh) * 3 + kw;
+                output[out_offset] += input[in_offset] * filter[filter_offset];
               }
             }
           }

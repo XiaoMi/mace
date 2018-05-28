@@ -40,7 +40,7 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     output_width = input_width * block_size_;
     output_depth = input_depth / (block_size_ * block_size_);
     MACE_CHECK(output_depth % 4 == 0, "output channel not support:")
-          << output_depth;
+        << output_depth;
     kernel_name = "depth_to_space";
 
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(output_depth));
@@ -53,7 +53,7 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     output_width = input_width / block_size_;
     output_depth = input_depth * block_size_ * block_size_;
     MACE_CHECK(input_depth % 4 == 0, "input channel not support:")
-      << input_depth;
+        << input_depth;
     kernel_name = "space_to_depth";
 
     gws[0] = static_cast<uint32_t>(RoundUpDiv4(input_depth));
@@ -70,7 +70,7 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
 
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   auto runtime = OpenCLRuntime::Global();
 
@@ -87,7 +87,7 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -95,9 +95,8 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ =
-        runtime->BuildKernel("depth_to_space",
-                             obfuscated_kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("depth_to_space", obfuscated_kernel_name,
+                                   built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -107,7 +106,7 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);

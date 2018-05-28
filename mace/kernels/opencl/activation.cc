@@ -21,12 +21,12 @@
 
 namespace mace {
 namespace kernels {
-template<typename T>
-MaceStatus ActivationFunctor<DeviceType::GPU,
-                             T>::operator()(const Tensor *input,
-                                            const Tensor *alpha,
-                                            Tensor *output,
-                                            StatsFuture *future) {
+template <typename T>
+MaceStatus ActivationFunctor<DeviceType::GPU, T>::operator()(
+    const Tensor *input,
+    const Tensor *alpha,
+    Tensor *output,
+    StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -47,7 +47,7 @@ MaceStatus ActivationFunctor<DeviceType::GPU,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -56,22 +56,28 @@ MaceStatus ActivationFunctor<DeviceType::GPU,
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     switch (activation_) {
-      case RELU:tuning_key_prefix_ = "relu_opencl_kernel";
+      case RELU:
+        tuning_key_prefix_ = "relu_opencl_kernel";
         built_options.emplace("-DUSE_RELU");
         break;
-      case RELUX:tuning_key_prefix_ = "relux_opencl_kernel";
+      case RELUX:
+        tuning_key_prefix_ = "relux_opencl_kernel";
         built_options.emplace("-DUSE_RELUX");
         break;
-      case PRELU:tuning_key_prefix_ = "prelu_opencl_kernel";
+      case PRELU:
+        tuning_key_prefix_ = "prelu_opencl_kernel";
         built_options.emplace("-DUSE_PRELU");
         break;
-      case TANH:tuning_key_prefix_ = "tanh_opencl_kernel";
+      case TANH:
+        tuning_key_prefix_ = "tanh_opencl_kernel";
         built_options.emplace("-DUSE_TANH");
         break;
-      case SIGMOID:tuning_key_prefix_ = "sigmoid_opencl_kernel";
+      case SIGMOID:
+        tuning_key_prefix_ = "sigmoid_opencl_kernel";
         built_options.emplace("-DUSE_SIGMOID");
         break;
-      default:LOG(FATAL) << "Unknown activation type: " << activation_;
+      default:
+        LOG(FATAL) << "Unknown activation type: " << activation_;
     }
     kernel_ = runtime->BuildKernel("activation", kernel_name, built_options);
 
@@ -121,9 +127,7 @@ MaceStatus ActivationFunctor<DeviceType::GPU,
   return MACE_SUCCESS;
 }
 
-template
-struct ActivationFunctor<DeviceType::GPU, float>;
-template
-struct ActivationFunctor<DeviceType::GPU, half>;
+template struct ActivationFunctor<DeviceType::GPU, float>;
+template struct ActivationFunctor<DeviceType::GPU, half>;
 }  // namespace kernels
 }  // namespace mace

@@ -24,8 +24,7 @@ namespace kernels {
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (4 + 4 + 1) * 4 * 4;
-std::vector<uint32_t> LocalWS(const uint32_t *gws,
-                              const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t min_lws0 = cache_size / kBaseGPUMemCacheSize;
@@ -40,9 +39,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
     }
   }
   const uint32_t lws_size = lws[0] * lws[1];
-  lws[2] = std::min<uint32_t>(
-      (cache_size / kernel_cache_size / lws_size) * 4,
-      gws[2]);
+  lws[2] = std::min<uint32_t>((cache_size / kernel_cache_size / lws_size) * 4,
+                              gws[2]);
   if (lws[2] == 0) {
     lws[2] = gws[2];
   }
@@ -52,21 +50,21 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 
 }  // namespace
 
-static void DepthwiseConv2d(cl::Kernel *kernel,
-                            const Tensor *input,   // NHWC
-                            const Tensor *filter,  // HWIM
-                            const Tensor *bias,
-                            const int stride,
-                            const int *paddings,
-                            const int *dilations,
-                            const ActivationType activation,
-                            const float relux_max_limit,
-                            const DataType dt,
-                            std::vector<index_t> *prev_input_shape,
-                            Tensor *output,
-                            StatsFuture *future,
-                            uint32_t *kwg_size,
-                            std::unique_ptr<BufferBase> *kernel_error) {
+static MaceStatus DepthwiseConv2d(cl::Kernel *kernel,
+                                  const Tensor *input,   // NHWC
+                                  const Tensor *filter,  // HWIM
+                                  const Tensor *bias,
+                                  const int stride,
+                                  const int *paddings,
+                                  const int *dilations,
+                                  const ActivationType activation,
+                                  const float relux_max_limit,
+                                  const DataType dt,
+                                  std::vector<index_t> *prev_input_shape,
+                                  Tensor *output,
+                                  StatsFuture *future,
+                                  uint32_t *kwg_size,
+                                  std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -98,7 +96,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -149,7 +147,7 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
@@ -181,8 +179,8 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
   }
 
   const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
-  std::string tuning_key = Concat("depthwise_conv2d_ocl_kernel",
-                                  gws[0], gws[1], gws[2], multiplier);
+  std::string tuning_key =
+      Concat("depthwise_conv2d_ocl_kernel", gws[0], gws[1], gws[2], multiplier);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -191,6 +189,8 @@ static void DepthwiseConv2d(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 template <typename T>
@@ -200,7 +200,6 @@ MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *bias,
     Tensor *output,
     StatsFuture *future) {
-
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
   if (strides_[0] != strides_[1]) {
@@ -237,14 +236,12 @@ MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  DepthwiseConv2d(&kernel_, input, filter, bias, strides_[0], paddings.data(),
-                  dilations_, activation_, relux_max_limit_,
-                  DataTypeToEnum<T>::value, &input_shape_, output, future,
-                  &kwg_size_, &kernel_error_);
-
-  return MACE_SUCCESS;
+  return DepthwiseConv2d(
+      &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
+      activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
+      output, future, &kwg_size_, &kernel_error_);
 }
 
 template struct DepthwiseConv2dFunctor<DeviceType::GPU, float>;

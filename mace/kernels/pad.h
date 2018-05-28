@@ -51,7 +51,7 @@ struct PadFunctor : public PadFunctorBase {
     MACE_CHECK(
         this->paddings_.size() == static_cast<size_t>(input->dim_size()) * 2);
     auto input_shape = input->shape();
-    MACE_FAILURE_RETURN(output->Resize({input_shape[0] + this->paddings_[0]
+    MACE_RETURN_IF_ERROR(output->Resize({input_shape[0] + this->paddings_[0]
                                             + this->paddings_[1],
                                         input_shape[1] + this->paddings_[2]
                                             + this->paddings_[3],

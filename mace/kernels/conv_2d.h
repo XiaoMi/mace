@@ -296,7 +296,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          RoundType::FLOOR,
                          output_shape.data());
     }
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     index_t batch = output->dim(0);
     index_t channels = output->dim(1);
@@ -497,7 +497,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
         if (is_filter_transformed_) {
           transformed_filter_ptr = filter_data;
         } else {
-          MACE_FAILURE_RETURN(transformed_filter_.Resize(
+          MACE_RETURN_IF_ERROR(transformed_filter_.Resize(
               transformed_filter_shape));
           switch (winograd_out_tile_size) {
             case 2:
@@ -644,7 +644,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const Tensor *pad_input_ptr = input;
     if (extra_input_height != input_height
       || extra_input_width != input_width) {
-      MACE_FAILURE_RETURN(ConstructNCHWInputWithSpecificPadding(input,
+      MACE_RETURN_IF_ERROR(ConstructNCHWInputWithSpecificPadding(input,
                                             pad_top,
                                             pad_bottom,
                                             pad_left,

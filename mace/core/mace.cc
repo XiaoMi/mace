@@ -155,13 +155,13 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-    MACE_FAILURE_RETURN(ws_->LoadModelTensor(
+    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(
         *net_def, device_type_, model_data));
 
   // Init model
     auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type_,
                          NetMode::INIT);
-    MACE_FAILURE_RETURN(net->Run());
+    MACE_RETURN_IF_ERROR(net->Run());
     net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type_);
 #ifdef MACE_ENABLE_HEXAGON
   }
@@ -195,7 +195,7 @@ MaceStatus MaceEngine::Impl::Run(
                    " please use 1 to fill missing dimensions");
     Tensor *input_tensor =
         ws_->GetTensor(MakeString("mace_input_node_", input.first));
-    input_tensor->Resize(input.second.shape());
+    MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
     {
       Tensor::MappingGuard input_guard(input_tensor);
       float *input_data = input_tensor->mutable_data<float>();
@@ -221,7 +221,7 @@ MaceStatus MaceEngine::Impl::Run(
     hexagon_controller_->ExecuteGraph(*input_tensors[0], output_tensors[0]);
   } else {
 #endif
-    MACE_FAILURE_RETURN(net_->Run(run_metadata));
+    MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif

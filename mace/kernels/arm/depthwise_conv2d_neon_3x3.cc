@@ -16,8 +16,8 @@
 #include <arm_neon.h>
 #endif
 
-#include "mace/kernels/arm/depthwise_conv2d_neon.h"
 #include "mace/core/macros.h"
+#include "mace/kernels/arm/depthwise_conv2d_neon.h"
 
 namespace mace {
 namespace kernels {
@@ -52,9 +52,9 @@ void DepthwiseConv2dPixel(const float *in_base,
 // Ho = 2, Wo = 4, Co = 1
 void DepthwiseConv2dNeonK3x3S1(const float *input,
                                const float *filter,
-                               const index_t* in_shape,
-                               const index_t* out_shape,
-                               const int* pad_hw,
+                               const index_t *in_shape,
+                               const index_t *out_shape,
+                               const int *pad_hw,
                                const index_t valid_h_start,
                                const index_t valid_h_stop,
                                const index_t valid_w_start,
@@ -88,18 +88,9 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       // top
       for (h = 0; h < valid_h_start; ++h) {
         for (w = 0; w < out_shape[3]; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
         }
       }
 
@@ -113,30 +104,12 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       for (h = valid_h_start; h + 1 < valid_h_stop; h += 2) {
         // left
         for (w = 0; w < valid_w_start; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h + 1,
-                               w,
-                               h + 1 - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h + 1, w, h + 1 - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
         }
 
         for (w = valid_w_start; w + 3 < valid_w_stop; w += 4) {
@@ -227,47 +200,20 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
 
         // right
         for (; w < out_width; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h + 1,
-                               w,
-                               h + 1 - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h + 1, w, h + 1 - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
         }
       }  // h
 #else
       for (index_t ih = valid_h_start; ih < valid_h_stop; ++ih) {
         for (index_t iw = 0; iw < out_shape[3]; ++iw) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               ih,
-                               iw,
-                               ih - pad_top,
-                               iw - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, ih, iw, ih - pad_top,
+                               iw - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
         }
       }
 #endif
@@ -275,29 +221,20 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
       // bottom
       for (; h < out_shape[2]; ++h) {
         for (w = 0; w < out_shape[3]; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h - pad_top,
-                               w - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h - pad_top,
+                               w - pad_left, out_width, in_height, in_width, 3,
+                               3, out_base);
         }
       }
     }  // m
-  }  // b
+  }    // b
 }
 
 void DepthwiseConv2dNeonK3x3S2(const float *input,
                                const float *filter,
-                               const index_t* in_shape,
-                               const index_t* out_shape,
-                               const int* pad_hw,
+                               const index_t *in_shape,
+                               const index_t *out_shape,
+                               const int *pad_hw,
                                const index_t valid_h_start,
                                const index_t valid_h_stop,
                                const index_t valid_w_start,
@@ -330,18 +267,9 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
       // top
       for (h = 0; h < valid_h_start; ++h) {
         for (w = 0; w < out_width; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h * 2 - pad_top,
-                               w * 2 - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h * 2 - pad_top,
+                               w * 2 - pad_left, out_width, in_height, in_width,
+                               3, 3, out_base);
         }
       }
 
@@ -355,18 +283,9 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
       for (h = valid_h_start; h < valid_h_stop; ++h) {
         // left
         for (w = 0; w < valid_w_start; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h * 2 - pad_top,
-                               w * 2 - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h * 2 - pad_top,
+                               w * 2 - pad_left, out_width, in_height, in_width,
+                               3, 3, out_base);
         }
 
         for (w = valid_w_start; w + 3 < valid_w_stop; w += 4) {
@@ -397,8 +316,8 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
           index_t out_offset = h * out_width + w;
           vo = vld1q_f32(out_base + out_offset);
 
-          vi00 = vi0.val[0];  // [0.2.4.6]
-          vi01 = vi0.val[1];  // [1.3.5.7]
+          vi00 = vi0.val[0];                // [0.2.4.6]
+          vi01 = vi0.val[1];                // [1.3.5.7]
           vi02 = vextq_f32(vi00, vi0n, 1);  // [2.4.6.8]
           vi10 = vi1.val[0];
           vi11 = vi1.val[1];
@@ -435,35 +354,17 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
 
         // right
         for (; w < out_width; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h * 2 - pad_top,
-                               w * 2 - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h * 2 - pad_top,
+                               w * 2 - pad_left, out_width, in_height, in_width,
+                               3, 3, out_base);
         }
       }  // h
 #else
       for (index_t ih = valid_h_start; ih < valid_h_stop; ++ih) {
         for (index_t iw = 0; iw < out_width; ++iw) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               ih,
-                               iw,
-                               ih * 2 - pad_top,
-                               iw * 2 - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, ih, iw, ih * 2 - pad_top,
+                               iw * 2 - pad_left, out_width, in_height,
+                               in_width, 3, 3, out_base);
         }
       }
 #endif
@@ -471,22 +372,13 @@ void DepthwiseConv2dNeonK3x3S2(const float *input,
       // bottom
       for (; h < out_shape[2]; ++h) {
         for (w = 0; w < out_shape[3]; ++w) {
-          DepthwiseConv2dPixel(in_base,
-                               filter_ptr,
-                               h,
-                               w,
-                               h * 2 - pad_top,
-                               w * 2 - pad_left,
-                               out_width,
-                               in_height,
-                               in_width,
-                               3,
-                               3,
-                               out_base);
+          DepthwiseConv2dPixel(in_base, filter_ptr, h, w, h * 2 - pad_top,
+                               w * 2 - pad_left, out_width, in_height, in_width,
+                               3, 3, out_base);
         }
       }
     }  // m
-  }  // b
+  }    // b
 }
 
 }  // namespace kernels

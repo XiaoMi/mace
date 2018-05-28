@@ -25,8 +25,7 @@ template <DeviceType D, class T>
 class LocalResponseNormOp : public Operator<D, T> {
  public:
   LocalResponseNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_() {
+      : Operator<D, T>(operator_def, ws), functor_() {
     depth_radius_ = OperatorBase::GetOptionalArg<int>("depth_radius", 5);
     bias_ = OperatorBase::GetOptionalArg<float>("bias", 1.0f);
     alpha_ = OperatorBase::GetOptionalArg<float>("alpha", 1.0f);
@@ -40,7 +39,7 @@ class LocalResponseNormOp : public Operator<D, T> {
                input->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     return functor_(input, depth_radius_, bias_, alpha_, beta_, output, future);
   }

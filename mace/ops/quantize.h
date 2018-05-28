@@ -21,12 +21,11 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class QuantizeOp : public Operator<D, T> {
  public:
   QuantizeOp(const OperatorDef &operator_def, Workspace *ws)
-    : Operator<D, T>(operator_def, ws) {
-  }
+      : Operator<D, T>(operator_def, ws) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -39,9 +38,9 @@ class QuantizeOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     Tensor *out_min = this->Output(OUT_MIN);
     Tensor *out_max = this->Output(OUT_MAX);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
-    MACE_FAILURE_RETURN(out_min->ResizeLike(in_min));
-    MACE_FAILURE_RETURN(out_max->ResizeLike(in_max));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(out_min->ResizeLike(in_min));
+    MACE_RETURN_IF_ERROR(out_max->ResizeLike(in_max));
 
     return functor_(input, in_min, in_max, output, out_min, out_max, future);
   }
@@ -54,12 +53,11 @@ class QuantizeOp : public Operator<D, T> {
   MACE_OP_OUTPUT_TAGS(OUTPUT, OUT_MIN, OUT_MAX);
 };
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class DequantizeOp : public Operator<D, T> {
  public:
   DequantizeOp(const OperatorDef &operator_def, Workspace *ws)
-    : Operator<D, T>(operator_def, ws) {
-  }
+      : Operator<D, T>(operator_def, ws) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -70,7 +68,7 @@ class DequantizeOp : public Operator<D, T> {
     MACE_CHECK(in_max->size() == 1, "max val tensor has more than 1 value");
 
     Tensor *output = this->Output(OUTPUT);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     return functor_(input, in_min, in_max, output, future);
   }
@@ -83,12 +81,11 @@ class DequantizeOp : public Operator<D, T> {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class RequantizeOp : public Operator<D, T> {
  public:
   RequantizeOp(const OperatorDef &operator_def, Workspace *ws)
-    : Operator<D, T>(operator_def, ws) {
-  }
+      : Operator<D, T>(operator_def, ws) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -112,19 +109,12 @@ class RequantizeOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     Tensor *out_min = this->Output(OUT_MIN);
     Tensor *out_max = this->Output(OUT_MAX);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
-    MACE_FAILURE_RETURN(out_min->ResizeLike(in_min));
-    MACE_FAILURE_RETURN(out_max->ResizeLike(out_max));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(out_min->ResizeLike(in_min));
+    MACE_RETURN_IF_ERROR(out_max->ResizeLike(out_max));
 
-    return functor_(input,
-             in_min,
-             in_max,
-             rerange_min,
-             rerange_max,
-             output,
-             out_min,
-             out_max,
-             future);
+    return functor_(input, in_min, in_max, rerange_min, rerange_max, output,
+                    out_min, out_max, future);
   }
 
  private:

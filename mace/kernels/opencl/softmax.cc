@@ -24,10 +24,8 @@ namespace kernels {
 
 namespace {
 
-std::vector<uint32_t> LocalWS(const uint32_t *gws,
-                              const uint32_t kwg_size) {
-  uint64_t cache_size =
-    OpenCLRuntime::Global()->device_global_mem_cache_size();
+std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   std::vector<uint32_t> lws(4, 0);
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
@@ -45,8 +43,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 
 template <typename T>
 MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
-                                                       Tensor *output,
-                                                       StatsFuture *future) {
+                                                          Tensor *output,
+                                                          StatsFuture *future) {
   const index_t batch = logits->dim(0);
   const index_t height = logits->dim(1);
   const index_t width = logits->dim(2);
@@ -71,7 +69,7 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -88,7 +86,7 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -105,8 +103,8 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
 
   std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("softmax_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("softmax_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

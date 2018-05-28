@@ -32,12 +32,12 @@ class SliceOp : public Operator<D, T> {
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_CHECK(this->OutputSize() >= 2)
-      << "There must be at least two outputs for slicing";
+        << "There must be at least two outputs for slicing";
     const Tensor *input = this->Input(INPUT);
     const std::vector<Tensor *> output_list = this->Outputs();
     const int32_t slice_axis = OperatorBase::GetOptionalArg<int>("axis", 3);
     MACE_CHECK((input->dim(slice_axis) % this->OutputSize()) == 0)
-      << "Outputs do not split input equally.";
+        << "Outputs do not split input equally.";
 
     return functor_(input, output_list, future);
   }

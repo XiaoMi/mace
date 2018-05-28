@@ -306,7 +306,7 @@ MaceStatus ConstructNCHWInputWithPadding(const Tensor *input_tensor,
   const int padded_top = paddings[0] / 2;
   const int padded_left = paddings[1] / 2;
 
-  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
+  MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
@@ -378,7 +378,7 @@ MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
   const int pad_width = pad_left + pad_right;
   std::vector<index_t> output_shape(
     {batch, channels, height + pad_height, width + pad_width});
-  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
+  MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
   output_tensor->Clear();
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();
@@ -428,7 +428,7 @@ MaceStatus ConstructNHWCInputWithPadding(const Tensor *input_tensor,
   const int padded_top = paddings[0] / 2;
   const int padded_left = paddings[1] / 2;
 
-  MACE_FAILURE_RETURN(output_tensor->Resize(output_shape));
+  MACE_RETURN_IF_ERROR(output_tensor->Resize(output_shape));
 
   Tensor::MappingGuard padded_output_mapper(output_tensor);
   float *output_data = output_tensor->mutable_data<float>();

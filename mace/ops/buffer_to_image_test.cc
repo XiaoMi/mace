@@ -71,27 +71,27 @@ TEST(BufferToImageTest, ArgLarge) {
 
 TEST(BufferToImageTest, InputSmallSingleChannel) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
-                                                      {1, 2, 3, 1});
+                                                   {1, 2, 3, 1});
 }
 
 TEST(BufferToImageTest, InputSmallMultipleChannel) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
-                                                      {1, 2, 3, 3});
+                                                   {1, 2, 3, 3});
 }
 
 TEST(BufferToImageTest, InputSmallMultipleBatchAndChannel) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
-                                                      {3, 2, 3, 3});
+                                                   {3, 2, 3, 3});
 }
 
 TEST(BufferToImageTest, InputMedium) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
-                                                      {3, 13, 17, 128});
+                                                   {3, 13, 17, 128});
 }
 
 TEST(BufferToImageTest, InputLarge) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::IN_OUT_CHANNEL,
-                                                      {3, 64, 64, 256});
+                                                   {3, 64, 64, 256});
 }
 
 TEST(BufferToImageTest, Filter1x1Small) {
@@ -233,8 +233,8 @@ TEST(BufferToImageTest, ArgStringHalfToHalfSmall) {
   const unsigned char input_data[] = {
       0xCD, 0x3C, 0x33, 0x40,
   };
-  TestStringHalfBidirectionTransform<DeviceType::GPU, half>(
-      kernels::ARGUMENT, {2}, input_data);
+  TestStringHalfBidirectionTransform<DeviceType::GPU, half>(kernels::ARGUMENT,
+                                                            {2}, input_data);
 }
 
 }  // namespace test

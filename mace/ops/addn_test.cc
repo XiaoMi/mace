@@ -97,8 +97,8 @@ void SimpleAdd3() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 2, 3, 1},
-                                      {-0.000713, 8, 12, 16, 20, 24});
+  auto expected =
+      CreateTensor<float>({1, 2, 3, 1}, {-0.000713, 8, 12, 16, 20, 24});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4, 1e-3);
 }
@@ -160,8 +160,8 @@ void RandomTest() {
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-2, 1e-2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+                            1e-2);
   }
 }
 }  // namespace

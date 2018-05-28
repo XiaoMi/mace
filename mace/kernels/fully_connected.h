@@ -57,7 +57,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
                   StatsFuture *future) {
     MACE_UNUSED(future);
     std::vector<index_t> output_shape = {input->dim(0), weight->dim(0), 1, 1};
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     const index_t N = output->dim(0);
     const index_t input_size = weight->dim(1) * weight->dim(2) * weight->dim(3);
     const index_t output_size = weight->dim(0);

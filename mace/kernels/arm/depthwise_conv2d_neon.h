@@ -32,15 +32,15 @@ void DepthwiseConv2dNeonK3x3S1(const float *input,
                                float *output);
 
 void DepthwiseConv2dNeonK3x3S2(const float *input,
-                          const float *filter,
-                          const index_t *in_shape,
-                          const index_t *out_shape,
-                          const int *pad_hw,
-                          const index_t valid_h_start,
-                          const index_t valid_h_stop,
-                          const index_t valid_w_start,
-                          const index_t valid_w_stop,
-                          float *output);
+                               const float *filter,
+                               const index_t *in_shape,
+                               const index_t *out_shape,
+                               const int *pad_hw,
+                               const index_t valid_h_start,
+                               const index_t valid_h_stop,
+                               const index_t valid_w_start,
+                               const index_t valid_w_stop,
+                               float *output);
 
 }  // namespace kernels
 }  // namespace mace

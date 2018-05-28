@@ -23,14 +23,15 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                         const Tensor *scale,
-                                                         const Tensor *offset,
-                                                         const Tensor *mean,
-                                                         const Tensor *var,
-                                                         const float epsilon,
-                                                         Tensor *output,
-                                                         StatsFuture *future) {
+MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(
+    const Tensor *input,
+    const Tensor *scale,
+    const Tensor *offset,
+    const Tensor *mean,
+    const Tensor *var,
+    const float epsilon,
+    Tensor *output,
+    StatsFuture *future) {
   MACE_CHECK(folded_constant_ || (mean != nullptr && var != nullptr));
 
   const index_t batch = input->dim(0);
@@ -57,7 +58,7 @@ MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -96,7 +97,7 @@ MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);

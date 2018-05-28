@@ -15,8 +15,8 @@
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/ops/resize_bilinear.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/ops/resize_bilinear.h"
 
 namespace mace {
 namespace ops {
@@ -33,22 +33,18 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "InputNCHW",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
-    .Input("InputNCHW")
-    .Output("OutputNCHW")
-    .AddIntsArg("size", {1, 2})
-    .Finalize(net.NewOperatorDef());
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntsArg("size", {1, 2})
+      .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
 
   // Check
@@ -66,25 +62,20 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
   std::vector<float> input(24);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 2, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "InputNCHW",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
   OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
-    .Input("InputNCHW")
-    .Output("OutputNCHW")
-    .AddIntArg("align_corners", 1)
-    .AddIntsArg("size", {1, 2})
-    .Finalize(net.NewOperatorDef());
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntArg("align_corners", 1)
+      .AddIntsArg("size", {1, 2})
+      .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
-
 
   // Check
   auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
@@ -111,9 +102,7 @@ void TestRandomResizeBilinear() {
     // Add input data
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels});
-    net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                    NHWC,
-                                                    "InputNCHW",
+    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
 
     OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
@@ -124,10 +113,8 @@ void TestRandomResizeBilinear() {
         .Finalize(net.NewOperatorDef());
     // Run on CPU
     net.RunOp(DeviceType::CPU);
-    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                    NCHW,
-                                                    "Output",
-                                                    NHWC);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
+                                                    "Output", NHWC);
 
     Tensor expected;
     expected.Copy(*net.GetOutput("Output"));
@@ -149,8 +136,8 @@ void TestRandomResizeBilinear() {
                               kernels::BufferType::IN_OUT_CHANNEL);
     }
     // Check
-    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"),
-                            1e-5, 1e-6);
+    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-5,
+                            1e-6);
   }
 }
 }  // namespace

@@ -26,17 +26,13 @@ namespace kernels {
 
 template <typename T>
 MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
-    Tensor *space_tensor,
-    Tensor *batch_tensor,
-    StatsFuture *future) {
+    Tensor *space_tensor, Tensor *batch_tensor, StatsFuture *future) {
   std::vector<index_t> output_shape(4, 0);
   if (b2s_) {
-    CalculateBatchToSpaceOutputShape(batch_tensor,
-                                     DataFormat::NHWC,
+    CalculateBatchToSpaceOutputShape(batch_tensor, DataFormat::NHWC,
                                      output_shape.data());
   } else {
-    CalculateSpaceToBatchOutputShape(space_tensor,
-                                     DataFormat::NHWC,
+    CalculateSpaceToBatchOutputShape(space_tensor, DataFormat::NHWC,
                                      output_shape.data());
   }
 
@@ -45,12 +41,12 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
   if (b2s_) {
-    MACE_FAILURE_RETURN(space_tensor->ResizeImage(output_shape,
-                                                  output_image_shape));
+    MACE_RETURN_IF_ERROR(
+        space_tensor->ResizeImage(output_shape, output_image_shape));
     kernel_name = "batch_to_space";
   } else {
-    MACE_FAILURE_RETURN(batch_tensor->ResizeImage(output_shape,
-                                                  output_image_shape));
+    MACE_RETURN_IF_ERROR(
+        batch_tensor->ResizeImage(output_shape, output_image_shape));
     kernel_name = "space_to_batch";
   }
   const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
@@ -73,7 +69,7 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -81,9 +77,8 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ =
-        runtime->BuildKernel("space_to_batch",
-                             obfuscated_kernel_name, built_options);
+    kernel_ = runtime->BuildKernel("space_to_batch", obfuscated_kernel_name,
+                                   built_options);
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -92,7 +87,7 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);

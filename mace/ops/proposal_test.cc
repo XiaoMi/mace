@@ -45,17 +45,17 @@ TEST_F(ProposalOpTest, CPUSimple) {
       .Finalize(net.NewOperatorDef());
 
   std::vector<float> scores(height * width * 18);
-  for (size_t i = 0 ; i < scores.size(); ++i) {
+  for (size_t i = 0; i < scores.size(); ++i) {
     scores[i] = i;
   }
 
   // Add input data
-  net.AddInputFromArray<DeviceType::CPU, float>(
-      "RpnCLSProb", {1, height, width, 18}, scores);
-  net.AddRepeatedInput<DeviceType::CPU, float>(
-      "RpnBBoxPred", {1, height, width, 4 * 9}, 1);
-  net.AddInputFromArray<DeviceType::CPU, float>(
-      "ImgInfo", {1, 1, 1, 3}, {img_height, img_width, 2});
+  net.AddInputFromArray<DeviceType::CPU, float>("RpnCLSProb",
+                                                {1, height, width, 18}, scores);
+  net.AddRepeatedInput<DeviceType::CPU, float>("RpnBBoxPred",
+                                               {1, height, width, 4 * 9}, 1);
+  net.AddInputFromArray<DeviceType::CPU, float>("ImgInfo", {1, 1, 1, 3},
+                                                {img_height, img_width, 2});
 
   // Run
   net.RunOp();
@@ -64,7 +64,6 @@ TEST_F(ProposalOpTest, CPUSimple) {
 
   ExpectTensorNear<float>(*expected_tensor, *net.GetTensor("Output"), 1e-5);
 }
-
 
 }  // namespace test
 }  // namespace ops

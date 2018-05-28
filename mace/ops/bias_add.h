@@ -37,7 +37,7 @@ class BiasAddOp : public Operator<D, T> {
                bias->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     return functor_(input, bias, output, future);
   }

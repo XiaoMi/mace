@@ -92,8 +92,7 @@ TEST_F(MatMulOpTest, SimpleCPUWithBatch) {
 
 TEST_F(MatMulOpTest, SimpleOPENCL) {
   Simple<DeviceType::GPU>({1, 2, 3, 1}, {1, 2, 3, 4, 5, 6}, {1, 3, 2, 1},
-                             {1, 2, 3, 4, 5, 6}, {1, 2, 2, 1},
-                             {22, 28, 49, 64});
+                          {1, 2, 3, 4, 5, 6}, {1, 2, 2, 1}, {22, 28, 49, 64});
   Simple<DeviceType::GPU>(
       {1, 5, 5, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
                      14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
@@ -127,10 +126,9 @@ void Complex(const index_t batch,
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("A",
-                                                {batch, height, channels, 1});
-  net.AddRandomInput<DeviceType::GPU, float>(
-      "B", {batch, channels, out_width, 1});
+  net.AddRandomInput<DeviceType::GPU, float>("A", {batch, height, channels, 1});
+  net.AddRandomInput<DeviceType::GPU, float>("B",
+                                             {batch, channels, out_width, 1});
 
   // run cpu
   net.RunOp();
@@ -141,9 +139,9 @@ void Complex(const index_t batch,
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, T>(&net, "A", "AImage",
-                                       kernels::BufferType::IN_OUT_WIDTH);
+                                    kernels::BufferType::IN_OUT_WIDTH);
   BufferToImage<DeviceType::GPU, T>(&net, "B", "BImage",
-                                       kernels::BufferType::IN_OUT_HEIGHT);
+                                    kernels::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("AImage")
@@ -156,13 +154,13 @@ void Complex(const index_t batch,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                           kernels::BufferType::IN_OUT_HEIGHT);
+                                        kernels::BufferType::IN_OUT_HEIGHT);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-2, 1e-1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+                            1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-5, 1e-5);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5,
+                            1e-5);
   }
 }
 }  // namespace

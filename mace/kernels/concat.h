@@ -68,7 +68,7 @@ struct ConcatFunctor : ConcatFunctorBase {
       outer_sizes[i] = input->size() / inner_size;
       output_shape[axis_] += input->dim(axis_);
     }
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     T *output_ptr = output->mutable_data<T>();
 

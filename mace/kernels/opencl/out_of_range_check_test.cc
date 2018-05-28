@@ -58,7 +58,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
     built_options.emplace("-DOUT_OF_RANGE_CHECK");
     kernel_error = std::move(std::unique_ptr<Buffer>(
         new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-    kernel_error->Allocate(1);
+    MACE_RETURN_IF_ERROR(kernel_error->Allocate(1));
     kernel_error->Map(nullptr);
     *(kernel_error->mutable_data<char>()) = 0;
     kernel_error->UnMap();
@@ -70,7 +70,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     b2f_kernel.setArg(idx++,
-        *(static_cast<cl::Buffer *>(kernel_error->buffer())));
+                      *(static_cast<cl::Buffer *>(kernel_error->buffer())));
   }
   if (!runtime->IsNonUniformWorkgroupsSupported()) {
     b2f_kernel.setArg(idx++, gws[0]);
@@ -113,8 +113,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
   bool is_out_of_range = false;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error->Map(nullptr);
-    is_out_of_range =
-        *(kernel_error->mutable_data<char>()) == 1 ? true : false;
+    is_out_of_range = *(kernel_error->mutable_data<char>()) == 1 ? true : false;
     kernel_error->UnMap();
   }
   return is_out_of_range;
@@ -124,9 +123,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
 
 class OutOfRangeCheckTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
-    setenv("OUT_OF_RANGE_CHECK", "1", 1);
-  }
+  virtual void SetUp() { setenv("OUT_OF_RANGE_CHECK", "1", 1); }
 };
 
 TEST(OutOfRangeCheckTest, RandomTest) {
@@ -137,14 +134,13 @@ TEST(OutOfRangeCheckTest, RandomTest) {
 
   std::vector<index_t> buffer_shape = {batch, height, width, channels};
   Workspace ws;
-  Tensor *buffer = ws.CreateTensor("Buffer",
-                                   GetDeviceAllocator(DeviceType::GPU),
-                                   DataTypeToEnum<float>::v());
+  Tensor *buffer =
+      ws.CreateTensor("Buffer", GetDeviceAllocator(DeviceType::GPU),
+                      DataTypeToEnum<float>::v());
   buffer->Resize(buffer_shape);
 
   std::vector<size_t> image_shape;
-  Tensor *image = ws.CreateTensor("Image",
-                                  GetDeviceAllocator(DeviceType::GPU),
+  Tensor *image = ws.CreateTensor("Image", GetDeviceAllocator(DeviceType::GPU),
                                   DataTypeToEnum<float>::v());
   CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
   image->ResizeImage(buffer->shape(), image_shape);

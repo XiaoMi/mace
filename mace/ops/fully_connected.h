@@ -23,15 +23,15 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class FullyConnectedOp : public Operator<D, T> {
  public:
   FullyConnectedOp(const OperatorDef &operator_def, Workspace *ws)
-    : Operator<D, T>(operator_def, ws),
-      functor_(kernels::StringToActivationType(
-                 OperatorBase::GetOptionalArg<std::string>("activation",
-                                                           "NOOP")),
-               OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
+      : Operator<D, T>(operator_def, ws),
+        functor_(kernels::StringToActivationType(
+                     OperatorBase::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
@@ -40,29 +40,19 @@ class FullyConnectedOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
 
     if (D == DeviceType::CPU) {
-      MACE_CHECK(input->dim(1) == weight->dim(1)
-                     && input->dim(2) == weight->dim(2)
-                     && input->dim(3) == weight->dim(3)
-                     && weight->dim(0) == bias->dim(0),
-                 "The shape of Input: ",
-                 MakeString(input->shape()),
-                 "The shape of Weight: ",
-                 MakeString(weight->shape()),
-                 " and Bias ",
-                 bias->dim(0),
-                 " don't match.");
+      MACE_CHECK(
+          input->dim(1) == weight->dim(1) && input->dim(2) == weight->dim(2) &&
+              input->dim(3) == weight->dim(3) && weight->dim(0) == bias->dim(0),
+          "The shape of Input: ", MakeString(input->shape()),
+          "The shape of Weight: ", MakeString(weight->shape()), " and Bias ",
+          bias->dim(0), " don't match.");
     } else {
-      MACE_CHECK(input->dim(1) == weight->dim(2)
-                     && input->dim(2) == weight->dim(3)
-                     && input->dim(3) == weight->dim(1)
-                     && weight->dim(0) == bias->dim(0),
-                 "The shape of Input: ",
-                 MakeString(input->shape()),
-                 "The shape of Weight: ",
-                 MakeString(weight->shape()),
-                 " and Bias ",
-                 bias->dim(0),
-                 " don't match.");
+      MACE_CHECK(
+          input->dim(1) == weight->dim(2) && input->dim(2) == weight->dim(3) &&
+              input->dim(3) == weight->dim(1) && weight->dim(0) == bias->dim(0),
+          "The shape of Input: ", MakeString(input->shape()),
+          "The shape of Weight: ", MakeString(weight->shape()), " and Bias ",
+          bias->dim(0), " don't match.");
     }
 
     return functor_(input, weight, bias, output, future);

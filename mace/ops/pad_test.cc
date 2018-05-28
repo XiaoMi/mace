@@ -45,9 +45,7 @@ void Simple() {
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                    NHWC,
-                                                    "TInput",
+    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
                                                     NCHW);
     OpDefBuilder("Pad", "PadTest")
         .Input("TInput")
@@ -59,33 +57,25 @@ void Simple() {
     // Run
     net.RunOp();
 
-    net.TransformDataFormat<DeviceType::CPU, float>("TOutput",
-                                                    NCHW,
-                                                    "Output",
+    net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                     NHWC);
   }
 
   auto output = net.GetTensor("Output");
 
-  auto expected = CreateTensor<float>({1, 5, 6, 1},
-                                      {
-                                          1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                                          1.0, 2, 2, 2, 1.0, 1.0,
-                                          1.0, 2, 2, 2, 1.0, 1.0,
-                                          1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                                          1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                                      });
+  auto expected = CreateTensor<float>(
+      {1, 5, 6, 1}, {
+                        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2,   2,   2,
+                        1.0, 1.0, 1.0, 2,   2,   2,   1.0, 1.0, 1.0, 1.0,
+                        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                    });
   ExpectTensorNear<float>(*expected, *output, 1e-5);
 }
 }  // namespace
 
-TEST_F(PadTest, SimpleCPU) {
-  Simple<DeviceType::CPU>();
-}
+TEST_F(PadTest, SimpleCPU) { Simple<DeviceType::CPU>(); }
 
-TEST_F(PadTest, SimpleGPU) {
-  Simple<DeviceType::GPU>();
-}
+TEST_F(PadTest, SimpleGPU) { Simple<DeviceType::GPU>(); }
 
 TEST_F(PadTest, ComplexCPU) {
   // Construct graph
@@ -93,9 +83,7 @@ TEST_F(PadTest, ComplexCPU) {
 
   // Add input data
   net.AddRepeatedInput<DeviceType::CPU, float>("Input", {1, 1, 1, 2}, 2);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "TInput",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
                                                   NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
@@ -106,9 +94,7 @@ TEST_F(PadTest, ComplexCPU) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                   NHWC);
 
   auto output = net.GetTensor("Output");
@@ -134,9 +120,7 @@ void Complex(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input", input_shape);
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "TInput",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
                                                   NCHW);
   OpDefBuilder("Pad", "PadTest")
       .Input("TInput")
@@ -147,16 +131,14 @@ void Complex(const std::vector<index_t> &input_shape,
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("TOutput",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                   NHWC);
 
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                                       kernels::BufferType::IN_OUT_CHANNEL);
+                                    kernels::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pad", "PadTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -168,7 +150,7 @@ void Complex(const std::vector<index_t> &input_shape,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OpenCLOutput",
-                                           kernels::BufferType::IN_OUT_CHANNEL);
+                                        kernels::BufferType::IN_OUT_CHANNEL);
 
   auto output = net.GetTensor("OpenCLOutput");
 
@@ -181,24 +163,23 @@ void Complex(const std::vector<index_t> &input_shape,
 }  // namespace
 
 TEST_F(PadTest, ComplexFloat) {
-  Complex<float>({1, 32, 32, 4},
-                 {0, 0, 0, 0, 2, 2, 1, 1}, {0, 0, 2, 2, 1, 1, 0, 0});
-  Complex<float>({1, 31, 37, 16},
-                 {0, 0, 0, 0, 2, 0, 1, 0}, {0, 0, 2, 0, 1, 0, 0, 0});
-  Complex<float>({1, 128, 128, 32},
-                 {0, 0, 0, 0, 0, 1, 0, 2}, {0, 0, 0, 1, 0, 2, 0, 0});
+  Complex<float>({1, 32, 32, 4}, {0, 0, 0, 0, 2, 2, 1, 1},
+                 {0, 0, 2, 2, 1, 1, 0, 0});
+  Complex<float>({1, 31, 37, 16}, {0, 0, 0, 0, 2, 0, 1, 0},
+                 {0, 0, 2, 0, 1, 0, 0, 0});
+  Complex<float>({1, 128, 128, 32}, {0, 0, 0, 0, 0, 1, 0, 2},
+                 {0, 0, 0, 1, 0, 2, 0, 0});
 }
 
 TEST_F(PadTest, ComplexHalf) {
-  Complex<half>({1, 32, 32, 4},
-                {0, 0, 0, 0, 2, 2, 1, 1}, {0, 0, 2, 2, 1, 1, 0, 0});
-  Complex<half>({1, 31, 37, 16},
-                {0, 0, 0, 0, 2, 0, 1, 0}, {0, 0, 2, 0, 1, 0, 0, 0});
-  Complex<half>({1, 128, 128, 32},
-                {0, 0, 0, 0, 0, 1, 0, 2}, {0, 0, 0, 1, 0, 2, 0, 0});
+  Complex<half>({1, 32, 32, 4}, {0, 0, 0, 0, 2, 2, 1, 1},
+                {0, 0, 2, 2, 1, 1, 0, 0});
+  Complex<half>({1, 31, 37, 16}, {0, 0, 0, 0, 2, 0, 1, 0},
+                {0, 0, 2, 0, 1, 0, 0, 0});
+  Complex<half>({1, 128, 128, 32}, {0, 0, 0, 0, 0, 1, 0, 2},
+                {0, 0, 0, 1, 0, 2, 0, 0});
 }
 
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
-

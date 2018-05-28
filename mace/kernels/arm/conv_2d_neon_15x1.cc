@@ -38,15 +38,14 @@ inline void Conv2dCPUK15x1Calc(const float *in_ptr,
     for (index_t iw = 0; iw < tile_width && w + iw < out_width; ++iw) {
       for (int i = 0; i < 15; ++i) {
         for (int j = 0; j < 1; ++j) {
-          out_ptr[io * out_image_size + ih * out_width + w + iw]
-              += in_ptr[(ih * stride + i) * in_width + ((w + iw) * stride + j)]
-              * filter_ptr[io * in_channels * 15 + i * 1 + j];
+          out_ptr[io * out_image_size + ih * out_width + w + iw] +=
+              in_ptr[(ih * stride + i) * in_width + ((w + iw) * stride + j)] *
+              filter_ptr[io * in_channels * 15 + i * 1 + j];
         }
       }
     }
   }
 }
-
 
 // Ho = 4, Wo = 1, Co = 1
 void Conv2dNeonK15x1S1(const float *input,
@@ -59,7 +58,7 @@ void Conv2dNeonK15x1S1(const float *input,
   const index_t in_batch_size = in_shape[1] * in_image_size;
   const index_t out_batch_size = out_shape[1] * out_image_size;
   const index_t tile_width =
-      out_shape[1] < 4 ?  RoundUpDiv4(out_shape[3]) : out_shape[3];
+      out_shape[1] < 4 ? RoundUpDiv4(out_shape[3]) : out_shape[3];
 
 #pragma omp parallel for collapse(3)
   for (index_t b = 0; b < out_shape[0]; ++b) {
@@ -69,8 +68,7 @@ void Conv2dNeonK15x1S1(const float *input,
         const index_t out_width = out_shape[3];
         const index_t in_channels = in_shape[1];
         const index_t in_width = in_shape[3];
-        float *out_ptr_base =
-            output + b * out_batch_size + m * out_image_size;
+        float *out_ptr_base = output + b * out_batch_size + m * out_image_size;
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr_base =
               input + b * in_batch_size + c * in_image_size;
@@ -147,16 +145,16 @@ void Conv2dNeonK15x1S1(const float *input,
               out_ptr_base[out_offset + 2 * out_width] = vo[2];
               out_ptr_base[out_offset + 3 * out_width] = vo[3];
             }  // wt
-          }  // h
+          }    // h
 #else
           Conv2dCPUK15x1Calc(in_ptr_base, filter_ptr, in_width, in_channels,
                              out_height, out_width, w, tile_width,
                              out_image_size, out_ptr_base, 0, 1);
 #endif
         }  // c
-      }  // w
-    }  // m
-  }  // b
+      }    // w
+    }      // m
+  }        // b
 }
 
 }  // namespace kernels

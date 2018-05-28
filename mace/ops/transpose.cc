@@ -19,9 +19,9 @@ namespace ops {
 
 void Register_Transpose(OperatorRegistry *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Transpose")
-                                        .Device(DeviceType::CPU)
-                                        .TypeConstraint<float>("T")
-                                        .Build(),
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
                          TransposeOp<DeviceType::CPU, float>);
 }
 

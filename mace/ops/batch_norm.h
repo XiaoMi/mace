@@ -51,7 +51,7 @@ class BatchNormOp : public Operator<D, T> {
                var->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     return functor_(input, scale, offset, mean, var, epsilon_, output, future);
   }
 

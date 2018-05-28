@@ -22,16 +22,15 @@ namespace kernels {
 
 template <typename T>
 MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
-                                                       const Tensor *input1,
-                                                       Tensor *output,
-                                                       StatsFuture *future) {
+                                                          const Tensor *input1,
+                                                          Tensor *output,
+                                                          StatsFuture *future) {
   MACE_UNUSED(future);
   bool swapped = false;
   if (input1 != nullptr) {
-    MACE_CHECK(input0->dim_size() == input1->dim_size()
-                   || input0->dim_size() == 1
-                   || input1->dim_size() == 1)
-      << "Inputs of Eltwise op must be same shape";
+    MACE_CHECK(input0->dim_size() == input1->dim_size() ||
+               input0->dim_size() == 1 || input1->dim_size() == 1)
+        << "Inputs of Eltwise op must be same shape";
     if (input0->size() != input1->size()) {
       if (input0->size() < input1->size()) {
         std::swap(input0, input1);
@@ -39,28 +38,26 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
       }
       if (input1->dim_size() == 1) {
         MACE_CHECK(input0->dim(3) == input1->dim(0))
-          << "Element-Wise op only support channel dimension broadcast";
+            << "Element-Wise op only support channel dimension broadcast";
       } else {
         MACE_CHECK((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1) &&
-            input0->dim(3) == input1->dim(3) &&
-            input1->dim(1) == 1 &&
-            input1->dim(2) == 1)
-          << "Element-Wise op only support channel dimension broadcast";
+                   input0->dim(3) == input1->dim(3) && input1->dim(1) == 1 &&
+                   input1->dim(2) == 1)
+            << "Element-Wise op only support channel dimension broadcast";
       }
     }
   }
 
-  std::vector<index_t > output_shape(4);
+  std::vector<index_t> output_shape(4);
   output_shape[0] = input0->dim(0);
   output_shape[1] = input0->dim(1);
   output_shape[2] = input0->dim(2);
   output_shape[3] = input0->dim(3);
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape,
-                  BufferType::IN_OUT_CHANNEL,
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -98,7 +95,7 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -115,7 +112,7 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -142,8 +139,8 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
 
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("eltwise_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("eltwise_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

@@ -18,61 +18,61 @@
 namespace mace {
 namespace kernels {
 
-extern void Conv2dOpenclK1x1(cl::Kernel *kernel,
-                             const Tensor *input,
-                             const Tensor *filter,
-                             const Tensor *bias,
-                             const int stride,
-                             const int *padding,
-                             const int *dilations,
-                             const ActivationType activation,
-                             const float relux_max_limit,
-                             const DataType dt,
-                             std::vector<index_t> *prev_input_shape,
-                             Tensor *output,
-                             StatsFuture *future,
-                             uint32_t *kwg_size,
-                             std::unique_ptr<BufferBase> *kernel_error);
+extern MaceStatus Conv2dOpenclK1x1(cl::Kernel *kernel,
+                                   const Tensor *input,
+                                   const Tensor *filter,
+                                   const Tensor *bias,
+                                   const int stride,
+                                   const int *padding,
+                                   const int *dilations,
+                                   const ActivationType activation,
+                                   const float relux_max_limit,
+                                   const DataType dt,
+                                   std::vector<index_t> *prev_input_shape,
+                                   Tensor *output,
+                                   StatsFuture *future,
+                                   uint32_t *kwg_size,
+                                   std::unique_ptr<BufferBase> *kernel_error);
 
-extern void Conv2dOpenclK3x3(cl::Kernel *kernel,
-                             const Tensor *input,
-                             const Tensor *filter,
-                             const Tensor *bias,
-                             const int stride,
-                             const int *padding,
-                             const int *dilations,
-                             const ActivationType activation,
-                             const float relux_max_limit,
-                             const DataType dt,
-                             std::vector<index_t> *prev_input_shape,
-                             Tensor *output,
-                             StatsFuture *future,
-                             uint32_t *kwg_size,
-                             std::unique_ptr<BufferBase> *kernel_error);
+extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
+                                   const Tensor *input,
+                                   const Tensor *filter,
+                                   const Tensor *bias,
+                                   const int stride,
+                                   const int *padding,
+                                   const int *dilations,
+                                   const ActivationType activation,
+                                   const float relux_max_limit,
+                                   const DataType dt,
+                                   std::vector<index_t> *prev_input_shape,
+                                   Tensor *output,
+                                   StatsFuture *future,
+                                   uint32_t *kwg_size,
+                                   std::unique_ptr<BufferBase> *kernel_error);
 
-extern void Conv2dOpencl(cl::Kernel *kernel,
-                         const Tensor *input,
-                         const Tensor *filter,
-                         const Tensor *bias,
-                         const int stride,
-                         const int *padding,
-                         const int *dilations,
-                         const ActivationType activation,
-                         const float relux_max_limit,
-                         const DataType dt,
-                         std::vector<index_t> *prev_input_shape,
-                         Tensor *output,
-                         StatsFuture *future,
-                         uint32_t *kwg_size,
-                         std::unique_ptr<BufferBase> *kernel_error);
+extern MaceStatus Conv2dOpencl(cl::Kernel *kernel,
+                               const Tensor *input,
+                               const Tensor *filter,
+                               const Tensor *bias,
+                               const int stride,
+                               const int *padding,
+                               const int *dilations,
+                               const ActivationType activation,
+                               const float relux_max_limit,
+                               const DataType dt,
+                               std::vector<index_t> *prev_input_shape,
+                               Tensor *output,
+                               StatsFuture *future,
+                               uint32_t *kwg_size,
+                               std::unique_ptr<BufferBase> *kernel_error);
 
 template <typename T>
 MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                      const Tensor *filter,
-                                                      const Tensor *bias,
-                                                      Tensor *output,
-                                                      StatsFuture *future) {
-  typedef void (*Conv2dOpenclFunction)(
+                                                         const Tensor *filter,
+                                                         const Tensor *bias,
+                                                         Tensor *output,
+                                                         StatsFuture *future) {
+  typedef MaceStatus (*Conv2dOpenclFunction)(
       cl::Kernel * kernel, const Tensor *input, const Tensor *filter,
       const Tensor *bias, const int stride, const int *padding,
       const int *dilations, const ActivationType activation,
@@ -111,23 +111,21 @@ MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   if (kernel_h == kernel_w && kernel_h <= 5 &&
       selector[kernel_h - 1] != nullptr) {
     auto conv2d_func = selector[kernel_h - 1];
-    conv2d_func(&kernel_, input, filter, bias, strides_[0], paddings.data(),
-                dilations_, activation_, relux_max_limit_,
-                DataTypeToEnum<T>::value, &input_shape_, output, future,
-                &kwg_size_, &kernel_error_);
+    return conv2d_func(
+        &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
+        activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
+        output, future, &kwg_size_, &kernel_error_);
   } else {
-    Conv2dOpencl(&kernel_, input, filter, bias, strides_[0], paddings.data(),
-                 dilations_, activation_, relux_max_limit_,
-                 DataTypeToEnum<T>::value, &input_shape_, output, future,
-                 &kwg_size_, &kernel_error_);
+    return Conv2dOpencl(
+        &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
+        activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
+        output, future, &kwg_size_, &kernel_error_);
   }
-
-  return MACE_SUCCESS;
 }
 
 template struct Conv2dFunctor<DeviceType::GPU, float>;

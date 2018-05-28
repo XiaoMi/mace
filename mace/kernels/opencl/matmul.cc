@@ -22,14 +22,14 @@ namespace kernels {
 
 template <typename T>
 MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
-                                                      const Tensor *B,
-                                                      Tensor *C,
-                                                      StatsFuture *future) {
+                                                         const Tensor *B,
+                                                         Tensor *C,
+                                                         StatsFuture *future) {
   MACE_UNUSED(future);
   std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
   std::vector<size_t> c_image_shape;
   CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
-  MACE_FAILURE_RETURN(C->ResizeImage(c_shape, c_image_shape));
+  MACE_RETURN_IF_ERROR(C->ResizeImage(c_shape, c_image_shape));
 
   const index_t batch = C->dim(0);
   const index_t height = C->dim(1);
@@ -55,7 +55,7 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -71,7 +71,7 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_.setArg(idx++,
-        *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                   *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
   }
   if (!runtime->IsNonUniformWorkgroupsSupported()) {
     kernel_.setArg(idx++, gws[0]);
@@ -87,9 +87,8 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
 
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
-  std::string tuning_key =
-      Concat("matmul_opencl_kernel", C->dim(0),
-             C->dim(1), C->dim(2), C->dim(3));
+  std::string tuning_key = Concat("matmul_opencl_kernel", C->dim(0), C->dim(1),
+                                  C->dim(2), C->dim(3));
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

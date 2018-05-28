@@ -150,7 +150,7 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
     index_t out_width = out_width_;
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> out_shape{batch, channels, out_height, out_width};
-    MACE_FAILURE_RETURN(output->Resize(out_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(out_shape));
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard output_mapper(output);

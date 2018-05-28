@@ -59,7 +59,7 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -71,7 +71,7 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
     kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
 
     kwg_size_ =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
+        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
   std::vector<index_t> output_shape = input_tensors[0]->shape();
@@ -87,13 +87,13 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    MACE_FAILURE_RETURN(output_tensor->ResizeImage(output_shape,
-                                                   output_image_shape));
+    MACE_RETURN_IF_ERROR(
+        output_tensor->ResizeImage(output_shape, output_image_shape));
 
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
