@@ -15,7 +15,7 @@ http_archive(
 
 new_http_archive(
     name = "gtest",
-    build_file = "mace/third_party/googletest/googletest.BUILD",
+    build_file = "third_party/googletest/googletest.BUILD",
     sha256 = "f3ed3b58511efd272eb074a3a6d6fb79d7c2e6a0e374323d1e6bcbcc1ef141bf",
     strip_prefix = "googletest-release-1.8.0",
     urls = [
@@ -26,7 +26,7 @@ new_http_archive(
 
 new_http_archive(
     name = "opencl_headers",
-    build_file = "mace/third_party/opencl-headers/opencl-headers.BUILD",
+    build_file = "third_party/opencl-headers/opencl-headers.BUILD",
     sha256 = "5dc7087680853b5c825360fc04ca26534f4b9f22ac114c4d3a306bfbec3cd0f2",
     strip_prefix = "OpenCL-Headers-master",
     urls = [
@@ -37,7 +37,7 @@ new_http_archive(
 
 new_http_archive(
     name = "opencl_clhpp",
-    build_file = "mace/third_party/opencl-clhpp/opencl-clhpp.BUILD",
+    build_file = "third_party/opencl-clhpp/opencl-clhpp.BUILD",
     sha256 = "dab6f1834ec6e3843438cc0f97d63817902aadd04566418c1fcc7fb78987d4e7",
     strip_prefix = "OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12",
     urls = [
@@ -48,7 +48,7 @@ new_http_archive(
 
 new_http_archive(
     name = "half",
-    build_file = "mace/third_party/half/half.BUILD",
+    build_file = "third_party/half/half.BUILD",
     sha256 = "0f514a1e877932b21dc5edc26a148ddc700b6af2facfed4c030ca72f74d0219e",
     strip_prefix = "half-code-356-trunk",
     urls = [
@@ -59,7 +59,7 @@ new_http_archive(
 
 new_http_archive(
     name = "six_archive",
-    build_file = "mace/third_party/six/six.BUILD",
+    build_file = "third_party/six/six.BUILD",
     sha256 = "105f8d68616f8248e24bf0e9372ef04d3cc10104f1980f54d57b2ce73a5ad56a",
     strip_prefix = "six-1.10.0",
     urls = [

@@ -59,7 +59,7 @@ please refer to [the contribution guide](docs/development/contributing.md).
 
 ## Acknowledgement
 MiAI Compute Engine depends on several open source projects located in
-[third_party](mace/third_party) directory. Particularly, we learned a lot from
+[third_party](third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
 * [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
   depends on this library.

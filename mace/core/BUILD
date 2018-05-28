@@ -75,7 +75,7 @@ cc_library(
     ]) + if_not_production_mode([
         "//mace/utils:utils_dev",
     ]) + if_hexagon_enabled([
-        "//mace/third_party/nnlib:libhexagon",
+        "//third_party/nnlib:libhexagon",
     ]),
 )
 
@@ -108,4 +108,12 @@ cc_library(
         "//mace/utils",
     ],
     alwayslink = 1,
+)
+
+cc_binary(
+    name = "libmace.so",
+    linkshared = 1,
+    deps = [
+        "//mace/core",
+    ],
 )
