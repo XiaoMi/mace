@@ -27,10 +27,10 @@ class LocalResponseNormOp : public Operator<D, T> {
   LocalResponseNormOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
         functor_() {
-    depth_radius_ = OperatorBase::GetSingleArgument<int>("depth_radius", 5);
-    bias_ = OperatorBase::GetSingleArgument<float>("bias", 1.0f);
-    alpha_ = OperatorBase::GetSingleArgument<float>("alpha", 1.0f);
-    beta_ = OperatorBase::GetSingleArgument<float>("beta", 0.5f);
+    depth_radius_ = OperatorBase::GetOptionalArg<int>("depth_radius", 5);
+    bias_ = OperatorBase::GetOptionalArg<float>("bias", 1.0f);
+    alpha_ = OperatorBase::GetOptionalArg<float>("alpha", 1.0f);
+    beta_ = OperatorBase::GetOptionalArg<float>("beta", 0.5f);
   }
 
   MaceStatus Run(StatsFuture *future) override {

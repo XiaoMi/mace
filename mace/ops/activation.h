@@ -29,9 +29,9 @@ class ActivationOp : public Operator<D, T> {
   ActivationOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
         functor_(kernels::StringToActivationType(
-                     OperatorBase::GetSingleArgument<std::string>("activation",
-                                                                  "NOOP")),
-                 static_cast<T>(OperatorBase::GetSingleArgument<float>(
+                     OperatorBase::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                 static_cast<T>(OperatorBase::GetOptionalArg<float>(
                      "max_limit", 0.0f))) {}
 
   MaceStatus Run(StatsFuture *future) override {

@@ -117,7 +117,7 @@ class LatencyLogger {
   const std::string message_;
   int64_t start_micros_;
 
-  DISABLE_COPY_AND_ASSIGN(LatencyLogger);
+  MACE_DISABLE_COPY_AND_ASSIGN(LatencyLogger);
 };
 
 #define MACE_LATENCY_LOGGER(vlog_level, ...)              \

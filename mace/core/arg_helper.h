@@ -15,61 +15,41 @@
 #ifndef MACE_CORE_ARG_HELPER_H_
 #define MACE_CORE_ARG_HELPER_H_
 
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 #include "mace/proto/mace.pb.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 
-/**
- * @brief A helper class to index into arguments.
- *
- * This helper helps us to more easily index into a set of arguments
- * that are present in the operator. To save memory, the argument helper
- * does not copy the operator def, so one would need to make sure that the
- * lifetime of the OperatorDef object outlives that of the ArgumentHelper.
- */
-class ArgumentHelper {
+// Refer to caffe2
+class ProtoArgHelper {
  public:
-  template <typename Def>
-  static bool HasArgument(const Def &def, const std::string &name) {
-    return ArgumentHelper(def).HasArgument(name);
+  template <typename Def, typename T>
+  static T GetOptionalArg(const Def &def,
+                          const std::string &arg_name,
+                          const T &default_value) {
+    return ProtoArgHelper(def).GetOptionalArg<T>(arg_name, default_value);
   }
 
   template <typename Def, typename T>
-  static T GetSingleArgument(const Def &def,
-                             const std::string &name,
-                             const T &default_value) {
-    return ArgumentHelper(def).GetSingleArgument<T>(name, default_value);
-  }
-
-  template <typename Def, typename T>
-  static bool HasSingleArgumentOfType(const Def &def, const std::string &name) {
-    return ArgumentHelper(def).HasSingleArgumentOfType<T>(name);
-  }
-
-  template <typename Def, typename T>
-  static std::vector<T> GetRepeatedArgument(
+  static std::vector<T> GetRepeatedArgs(
       const Def &def,
-      const std::string &name,
+      const std::string &arg_name,
       const std::vector<T> &default_value = std::vector<T>()) {
-    return ArgumentHelper(def).GetRepeatedArgument<T>(name, default_value);
+    return ProtoArgHelper(def).GetRepeatedArgs<T>(arg_name, default_value);
   }
 
-  explicit ArgumentHelper(const OperatorDef &def);
-  explicit ArgumentHelper(const NetDef &netdef);
-  bool HasArgument(const std::string &name) const;
+  explicit ProtoArgHelper(const OperatorDef &def);
+  explicit ProtoArgHelper(const NetDef &netdef);
 
   template <typename T>
-  T GetSingleArgument(const std::string &name, const T &default_value) const;
+  T GetOptionalArg(const std::string &arg_name, const T &default_value) const;
   template <typename T>
-  bool HasSingleArgumentOfType(const std::string &name) const;
-  template <typename T>
-  std::vector<T> GetRepeatedArgument(
-      const std::string &name,
+  std::vector<T> GetRepeatedArgs(
+      const std::string &arg_name,
       const std::vector<T> &default_value = std::vector<T>()) const;
 
  private:

@@ -55,9 +55,9 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
     Workspace *ws,
     DeviceType type,
     const NetMode mode) const {
-  const int dtype = ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+  const int dtype = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
       operator_def, "T", static_cast<int>(DT_FLOAT));
-  const int op_mode_i = ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+  const int op_mode_i = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
       operator_def, "mode", static_cast<int>(NetMode::NORMAL));
   const NetMode op_mode = static_cast<NetMode>(op_mode_i);
   if (op_mode == mode) {

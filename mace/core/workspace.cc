@@ -136,11 +136,11 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   for (auto &op : net_def.op()) {
     // TODO(liuqi): refactor based on PB
     const int op_device =
-        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));
     if (op_device == device_type && !op.mem_id().empty()) {
       const DataType op_dtype = static_cast<DataType>(
-          ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+          ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
               op, "T", static_cast<int>(DT_FLOAT)));
       if (op_dtype != DataType::DT_INVALID) {
         dtype = op_dtype;
@@ -182,7 +182,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   for (auto &op : net_def.op()) {
     // TODO(liuqi): refactor based on PB
     const int op_device =
-        ArgumentHelper::GetSingleArgument<OperatorDef, int>(
+        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));
     if (op_device == device_type && !op.mem_id().empty()) {
       auto mem_ids = op.mem_id();

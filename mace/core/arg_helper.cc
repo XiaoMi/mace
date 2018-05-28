@@ -20,112 +20,80 @@
 
 namespace mace {
 
-ArgumentHelper::ArgumentHelper(const OperatorDef &def) {
+ProtoArgHelper::ProtoArgHelper(const OperatorDef &def) {
   for (auto &arg : def.arg()) {
-    if (arg_map_.find(arg.name()) != arg_map_.end()) {
-      LOG(WARNING) << "Duplicated argument name found in operator def: "
-                   << def.name() << " " << arg.name();
+    if (arg_map_.count(arg.name())) {
+      LOG(WARNING) << "Duplicated argument " << arg.name()
+                   << " found in operator " << def.name();
     }
-
     arg_map_[arg.name()] = arg;
   }
 }
 
-ArgumentHelper::ArgumentHelper(const NetDef &netdef) {
+ProtoArgHelper::ProtoArgHelper(const NetDef &netdef) {
   for (auto &arg : netdef.arg()) {
     MACE_CHECK(arg_map_.count(arg.name()) == 0,
-               "Duplicated argument name found in net def.");
+               "Duplicated argument found in net def.");
     arg_map_[arg.name()] = arg;
   }
-}
-
-bool ArgumentHelper::HasArgument(const std::string &name) const {
-  return arg_map_.count(name);
 }
 
 namespace {
-// Helper function to verify that conversion between types won't loose any
-// significant bit.
 template <typename InputType, typename TargetType>
-bool SupportsLosslessConversion(const InputType &value) {
+inline bool IsCastLossless(const InputType &value) {
   return static_cast<InputType>(static_cast<TargetType>(value)) == value;
 }
 }
 
-#define INSTANTIATE_GET_SINGLE_ARGUMENT(T, fieldname,                         \
-                                        enforce_lossless_conversion)          \
-  template <>                                                                 \
-  T ArgumentHelper::GetSingleArgument<T>(const std::string &name,             \
-                                         const T &default_value) const {      \
-    if (arg_map_.count(name) == 0) {                                          \
-      VLOG(3) << "Using default parameter value " << default_value            \
-              << " for parameter " << name;                                   \
-      return default_value;                                                   \
-    }                                                                         \
-    MACE_CHECK(arg_map_.at(name).has_##fieldname(), "Argument ", name,        \
-               " does not have the right field: expected field " #fieldname); \
-    auto value = arg_map_.at(name).fieldname();                               \
-    if (enforce_lossless_conversion) {                                        \
-      auto supportsConversion =                                               \
-          SupportsLosslessConversion<decltype(value), T>(value);              \
-      MACE_CHECK(supportsConversion, "Value", value, " of argument ", name,   \
-                 "cannot be represented correctly in a target type");         \
-    }                                                                         \
-    return value;                                                             \
-  }                                                                           \
-  template <>                                                                 \
-  bool ArgumentHelper::HasSingleArgumentOfType<T>(                            \
-      const std::string &name) const {                                        \
-    if (arg_map_.count(name) == 0) {                                          \
-      return false;                                                           \
-    }                                                                         \
-    return arg_map_.at(name).has_##fieldname();                               \
+#define MACE_GET_OPTIONAL_ARGUMENT_FUNC(T, fieldname, lossless_conversion)     \
+  template <>                                                                  \
+  T ProtoArgHelper::GetOptionalArg<T>(const std::string &arg_name,             \
+                                      const T &default_value) const {          \
+    if (arg_map_.count(arg_name) == 0) {                                       \
+      VLOG(3) << "Using default parameter " << default_value << " for "        \
+              << arg_name;                                                     \
+      return default_value;                                                    \
+    }                                                                          \
+    MACE_CHECK(arg_map_.at(arg_name).has_##fieldname(), "Argument ", arg_name, \
+               " not found!");                                                 \
+    auto value = arg_map_.at(arg_name).fieldname();                            \
+    if (lossless_conversion) {                                                 \
+      const bool castLossless = IsCastLossless<decltype(value), T>(value);     \
+      MACE_CHECK(castLossless, "Value", value, " of argument ", arg_name,      \
+                 "cannot be casted losslessly to a target type");              \
+    }                                                                          \
+    return value;                                                              \
   }
 
-INSTANTIATE_GET_SINGLE_ARGUMENT(float, f, false)
-INSTANTIATE_GET_SINGLE_ARGUMENT(double, f, false)
-INSTANTIATE_GET_SINGLE_ARGUMENT(bool, i, false)
-INSTANTIATE_GET_SINGLE_ARGUMENT(int8_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(int16_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(int, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(int64_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(uint8_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(uint16_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(size_t, i, true)
-INSTANTIATE_GET_SINGLE_ARGUMENT(std::string, s, false)
-#undef INSTANTIATE_GET_SINGLE_ARGUMENT
+MACE_GET_OPTIONAL_ARGUMENT_FUNC(float, f, false)
+MACE_GET_OPTIONAL_ARGUMENT_FUNC(bool, i, false)
+MACE_GET_OPTIONAL_ARGUMENT_FUNC(int, i, true)
+MACE_GET_OPTIONAL_ARGUMENT_FUNC(std::string, s, false)
+#undef MACE_GET_OPTIONAL_ARGUMENT_FUNC
 
-#define INSTANTIATE_GET_REPEATED_ARGUMENT(T, fieldname,                     \
-                                          enforce_lossless_conversion)      \
-  template <>                                                               \
-  std::vector<T> ArgumentHelper::GetRepeatedArgument<T>(                    \
-      const std::string &name, const std::vector<T> &default_value) const { \
-    if (arg_map_.count(name) == 0) {                                        \
-      return default_value;                                                 \
-    }                                                                       \
-    std::vector<T> values;                                                  \
-    for (const auto &v : arg_map_.at(name).fieldname()) {                   \
-      if (enforce_lossless_conversion) {                                    \
-        auto supportsConversion =                                           \
-            SupportsLosslessConversion<decltype(v), T>(v);                  \
-        MACE_CHECK(supportsConversion, "Value", v, " of argument ", name,   \
-                   "cannot be represented correctly in a target type");     \
-      }                                                                     \
-      values.push_back(v);                                                  \
-    }                                                                       \
-    return values;                                                          \
+#define MACE_GET_REPEATED_ARGUMENT_FUNC(T, fieldname, lossless_conversion) \
+  template <>                                                              \
+  std::vector<T> ProtoArgHelper::GetRepeatedArgs<T>(                       \
+      const std::string &arg_name, const std::vector<T> &default_value)    \
+      const {                                                              \
+    if (arg_map_.count(arg_name) == 0) {                                   \
+      return default_value;                                                \
+    }                                                                      \
+    std::vector<T> values;                                                 \
+    for (const auto &v : arg_map_.at(arg_name).fieldname()) {              \
+      if (lossless_conversion) {                                           \
+        const bool castLossless = IsCastLossless<decltype(v), T>(v);       \
+        MACE_CHECK(castLossless, "Value", v, " of argument ", arg_name,    \
+                   "cannot be casted losslessly to a target type");        \
+      }                                                                    \
+      values.push_back(v);                                                 \
+    }                                                                      \
+    return values;                                                         \
   }
 
-INSTANTIATE_GET_REPEATED_ARGUMENT(float, floats, false)
-INSTANTIATE_GET_REPEATED_ARGUMENT(double, floats, false)
-INSTANTIATE_GET_REPEATED_ARGUMENT(bool, ints, false)
-INSTANTIATE_GET_REPEATED_ARGUMENT(int8_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(int16_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(int, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(int64_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(uint8_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(uint16_t, ints, true)
-INSTANTIATE_GET_REPEATED_ARGUMENT(size_t, ints, true)
-#undef INSTANTIATE_GET_REPEATED_ARGUMENT
+MACE_GET_REPEATED_ARGUMENT_FUNC(float, floats, false)
+MACE_GET_REPEATED_ARGUMENT_FUNC(int, ints, true)
+MACE_GET_REPEATED_ARGUMENT_FUNC(int64_t, ints, true)
+#undef MACE_GET_REPEATED_ARGUMENT_FUNC
 
 }  // namespace mace

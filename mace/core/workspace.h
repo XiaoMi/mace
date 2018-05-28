@@ -65,7 +65,7 @@ class Workspace {
 
   std::unique_ptr<ScratchBuffer> host_scratch_buffer_;
 
-  DISABLE_COPY_AND_ASSIGN(Workspace);
+  MACE_DISABLE_COPY_AND_ASSIGN(Workspace);
 };
 
 }  // namespace mace

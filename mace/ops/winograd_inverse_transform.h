@@ -30,13 +30,13 @@ class WinogradInverseTransformOp : public Operator<D, T> {
  public:
   WinogradInverseTransformOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetSingleArgument<int>("batch", 1),
-                 OperatorBase::GetSingleArgument<int>("height", 0),
-                 OperatorBase::GetSingleArgument<int>("width", 0),
+        functor_(OperatorBase::GetOptionalArg<int>("batch", 1),
+                 OperatorBase::GetOptionalArg<int>("height", 0),
+                 OperatorBase::GetOptionalArg<int>("width", 0),
                  kernels::StringToActivationType(
-                     OperatorBase::GetSingleArgument<std::string>("activation",
-                                                                  "NOOP")),
-                 OperatorBase::GetSingleArgument<float>("max_limit", 0.0f)) {}
+                     OperatorBase::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

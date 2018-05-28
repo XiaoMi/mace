@@ -213,7 +213,7 @@ class Buffer : public BufferBase {
   void *mapped_buf_;
   bool is_data_owner_;
 
-  DISABLE_COPY_AND_ASSIGN(Buffer);
+  MACE_DISABLE_COPY_AND_ASSIGN(Buffer);
 };
 
 class Image : public BufferBase {
@@ -330,7 +330,7 @@ class Image : public BufferBase {
   void *buf_;
   void *mapped_buf_;
 
-  DISABLE_COPY_AND_ASSIGN(Image);
+  MACE_DISABLE_COPY_AND_ASSIGN(Image);
 };
 
 class BufferSlice : public BufferBase {

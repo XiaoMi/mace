@@ -29,7 +29,7 @@ class SpaceToDepthOp : public Operator<D, T> {
  public:
   SpaceToDepthOp(const OperatorDef &op_def, Workspace *ws)
     : Operator<D, T>(op_def, ws),
-      functor_(OperatorBase::GetSingleArgument<int>("block_size", 1), false) {
+      functor_(OperatorBase::GetOptionalArg<int>("block_size", 1), false) {
   }
 
   MaceStatus Run(StatsFuture *future) override {
@@ -37,7 +37,7 @@ class SpaceToDepthOp : public Operator<D, T> {
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
     const int block_size =
-      OperatorBase::GetSingleArgument<int>("block_size", 1);
+      OperatorBase::GetOptionalArg<int>("block_size", 1);
     index_t input_height;
     index_t input_width;
     index_t input_depth;

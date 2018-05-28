@@ -348,7 +348,7 @@ class Tensor {
     const Tensor *tensor_;
     std::vector<size_t> mapped_image_pitch_;
 
-    DISABLE_COPY_AND_ASSIGN(MappingGuard);
+    MACE_DISABLE_COPY_AND_ASSIGN(MappingGuard);
   };
 
  private:
@@ -361,7 +361,7 @@ class Tensor {
   bool is_buffer_owner_;
   std::string name_;
 
-  DISABLE_COPY_AND_ASSIGN(Tensor);
+  MACE_DISABLE_COPY_AND_ASSIGN(Tensor);
 };
 
 }  // namespace mace

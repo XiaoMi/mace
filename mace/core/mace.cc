@@ -110,7 +110,7 @@ class MaceEngine::Impl {
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
 
-  DISABLE_COPY_AND_ASSIGN(Impl);
+  MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
 
 MaceEngine::Impl::Impl(DeviceType device_type)
@@ -146,7 +146,7 @@ MaceStatus MaceEngine::Impl::Init(
     hexagon_controller_->SetDebugLevel(
         static_cast<int>(mace::logging::LogMessage::MinVLogLevel()));
     int dsp_mode =
-        ArgumentHelper::GetSingleArgument<NetDef, int>(*net_def, "dsp_mode", 0);
+        ProtoArgHelper::GetOptionalArg<NetDef, int>(*net_def, "dsp_mode", 0);
     hexagon_controller_->SetGraphMode(dsp_mode);
     MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
                "hexagon setup graph error");

@@ -61,7 +61,7 @@ class HexagonControlWrapper {
   uint32_t num_inputs_;
   uint32_t num_outputs_;
 
-  DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
+  MACE_DISABLE_COPY_AND_ASSIGN(HexagonControlWrapper);
 };
 }  // namespace mace
 
