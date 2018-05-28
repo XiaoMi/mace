@@ -657,7 +657,7 @@ def tuning_run(abi,
         if not embed_model_data:
             adb_push("%s/%s.data" % (model_output_dir, model_tag),
                      phone_data_dir, serialno)
-        adb_push("nnlib/libhexagon_controller.so",
+        adb_push("third_party/nnlib/libhexagon_controller.so",
                  phone_data_dir, serialno)
 
         if mace_model_dir:
