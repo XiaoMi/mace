@@ -51,7 +51,7 @@ class ConcatOp : public Operator<D, T> {
   kernels::ConcatFunctor<D, T> functor_;
 
  private:
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

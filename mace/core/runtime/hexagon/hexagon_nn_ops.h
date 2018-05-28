@@ -22,7 +22,7 @@
 
 namespace mace {
 
-#define OP_INVALID -1
+#define MACE_OP_INVALID -1
 
 typedef enum op_type_enum {
 #define DEF_OP(NAME, ...) OP_##NAME,
@@ -48,7 +48,7 @@ class OpMap {
       return op_map_[op_type];
     } else {
       LOG(ERROR) << "DSP unsupoorted op type: " << op_type;
-      return OP_INVALID;
+      return MACE_OP_INVALID;
     }
   }
 

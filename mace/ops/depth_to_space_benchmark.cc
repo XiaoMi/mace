@@ -69,25 +69,26 @@ void DepthToSpace(
 }
 }  // namespace
 
-#define BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
-  static void                                                            \
-      BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
-          int iters) {                                                   \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;     \
-    mace::testing::MaccProcessed(tot);                                   \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
-    DepthToSpace<DEVICE, TYPE>(iters, N, C, H, W, G);                    \
-  }                                                                      \
-  BENCHMARK(BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
+#define MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
+  static void                                                                 \
+      MACE_BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
+          int iters) {                                                        \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;          \
+    mace::testing::MaccProcessed(tot);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
+    DepthToSpace<DEVICE, TYPE>(iters, N, C, H, W, G);                         \
+  }                                                                           \
+  MACE_BENCHMARK(                                                             \
+      MACE_BM_DEPTH_TO_SPACE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
 
-#define BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
-  BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU);    \
-  BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, GPU); \
-  BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, half, GPU);
+#define MACE_BM_DEPTH_TO_SPACE(N, C, H, W, G)                 \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, CPU);    \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, float, GPU);    \
+  MACE_BM_DEPTH_TO_SPACE_MACRO(N, C, H, W, G, half, GPU);
 
-BM_DEPTH_TO_SPACE(1, 64, 64, 64, 4);
-BM_DEPTH_TO_SPACE(1, 64, 128, 128, 4);
-BM_DEPTH_TO_SPACE(1, 64, 256, 256, 4);
+MACE_BM_DEPTH_TO_SPACE(1, 64, 64, 64, 4);
+MACE_BM_DEPTH_TO_SPACE(1, 64, 128, 128, 4);
+MACE_BM_DEPTH_TO_SPACE(1, 64, 256, 256, 4);
 
 }  // namespace test
 }  // namespace ops

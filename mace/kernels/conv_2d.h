@@ -465,7 +465,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
       padded_input_size =
         batch * input_channels * (input_height + pad_top + pad_bottom)
           * (input_width + pad_left + pad_right) * sizeof(float) +
-            EXTRA_BUFFER_PAD_SIZE;
+            MACE_EXTRA_BUFFER_PAD_SIZE;
       total_scratch_size += padded_input_size;
     }
     if (extra_output_height != height || extra_output_width != width) {

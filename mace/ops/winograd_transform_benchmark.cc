@@ -51,22 +51,24 @@ void BMWinogradTransform(
 }
 }  // namespace
 
-#define BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)                  \
-  static void BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
+#define MACE_BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)             \
+  static void                                                                  \
+    MACE_BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(      \
       int iters) {                                                             \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
     mace::testing::MaccProcessed(tot);                                         \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     BMWinogradTransform<DEVICE, TYPE>(iters, N, H, W, C);                      \
   }                                                                            \
-  BENCHMARK(BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(                                                              \
+      MACE_BM_WINOGRAD_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_WINOGRAD_TRANSFORM(N, H, W, C) \
-  BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, half, GPU);
+#define MACE_BM_WINOGRAD_TRANSFORM(N, H, W, C) \
+  MACE_BM_WINOGRAD_TRANSFORM_MACRO(N, H, W, C, half, GPU);
 
-BM_WINOGRAD_TRANSFORM(1, 16, 16, 128);
-BM_WINOGRAD_TRANSFORM(1, 64, 64, 128);
-BM_WINOGRAD_TRANSFORM(1, 128, 128, 128);
+MACE_BM_WINOGRAD_TRANSFORM(1, 16, 16, 128);
+MACE_BM_WINOGRAD_TRANSFORM(1, 64, 64, 128);
+MACE_BM_WINOGRAD_TRANSFORM(1, 128, 128, 128);
 
 namespace {
 template <DeviceType D, typename T>
@@ -103,24 +105,24 @@ void BMWinogradInverseTransform(
 }
 }  // namespace
 
-#define BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)          \
+#define MACE_BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, TYPE, DEVICE)     \
   static void                                                                  \
-      BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE( \
-          int iters) {                                                         \
+  MACE_BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE(\
+      int iters) {                                                             \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
     mace::testing::MaccProcessed(tot);                                         \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
     BMWinogradInverseTransform<DEVICE, TYPE>(iters, N, H, W, C);               \
   }                                                                            \
-  BENCHMARK(                                                                   \
-      BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(                                                              \
+  MACE_BM_WINOGRAD_INVERSE_TRANSFORM_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)
 
-#define BM_WINOGRAD_INVERSE_TRANSFORM(N, H, W, C) \
-  BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, half, GPU);
+#define MACE_BM_WINOGRAD_INVERSE_TRANSFORM(N, H, W, C) \
+  MACE_BM_WINOGRAD_INVERSE_TRANSFORM_MACRO(N, H, W, C, half, GPU);
 
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 14, 14, 32);
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 62, 62, 32);
-BM_WINOGRAD_INVERSE_TRANSFORM(1, 126, 126, 32);
+MACE_BM_WINOGRAD_INVERSE_TRANSFORM(1, 14, 14, 32);
+MACE_BM_WINOGRAD_INVERSE_TRANSFORM(1, 62, 62, 32);
+MACE_BM_WINOGRAD_INVERSE_TRANSFORM(1, 126, 126, 32);
 
 }  // namespace test
 }  // namespace ops

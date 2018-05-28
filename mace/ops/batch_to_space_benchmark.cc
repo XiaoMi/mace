@@ -64,25 +64,26 @@ void BMBatchToSpace(
 }
 }  // namespace
 
-#define BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, DEVICE)             \
-  static void                                                              \
-      BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE( \
-          int iters) {                                                     \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;       \
-    mace::testing::MaccProcessed(tot);                                     \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                    \
-    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W, ARG);                  \
-  }                                                                        \
-  BENCHMARK(BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
+#define MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, TYPE, DEVICE)            \
+  static void                                                                  \
+      MACE_BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE(\
+          int iters) {                                                         \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
+    mace::testing::MaccProcessed(tot);                                         \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    BMBatchToSpace<DEVICE, TYPE>(iters, N, C, H, W, ARG);                      \
+  }                                                                            \
+  MACE_BENCHMARK(                                                              \
+      MACE_BM_BATCH_TO_SPACE_##N##_##H##_##W##_##C##_##ARG##_##TYPE##_##DEVICE)
 
-#define BM_BATCH_TO_SPACE(N, H, W, C, ARG) \
-  BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, GPU); \
-  BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
+#define MACE_BM_BATCH_TO_SPACE(N, H, W, C, ARG)              \
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, GPU); \
+  MACE_BM_BATCH_TO_SPACE_MACRO(N, H, W, C, ARG, float, CPU);
 
-BM_BATCH_TO_SPACE(128, 8, 8, 128, 2);
-BM_BATCH_TO_SPACE(4, 128, 128, 32, 2);
-BM_BATCH_TO_SPACE(16, 64, 64, 32, 4);
-BM_BATCH_TO_SPACE(64, 32, 32, 32, 8);
+MACE_BM_BATCH_TO_SPACE(128, 8, 8, 128, 2);
+MACE_BM_BATCH_TO_SPACE(4, 128, 128, 32, 2);
+MACE_BM_BATCH_TO_SPACE(16, 64, 64, 32, 4);
+MACE_BM_BATCH_TO_SPACE(64, 32, 32, 32, 8);
 
 }  // namespace test
 }  // namespace ops

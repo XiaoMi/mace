@@ -52,8 +52,8 @@ class PoolingOp : public ConvPool2dOpBase<D, T> {
   PoolingType pooling_type_;
   kernels::PoolingFunctor<D, T> functor_;
 
-  OP_INPUT_TAGS(INPUT);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

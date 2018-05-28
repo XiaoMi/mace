@@ -125,7 +125,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
 class OutOfRangeCheckTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    setenv("MACE_OUT_OF_RANGE_CHECK", "1", 1);
+    setenv("OUT_OF_RANGE_CHECK", "1", 1);
   }
 };
 

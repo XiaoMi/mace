@@ -32,7 +32,7 @@ inline int64_t NowMicros() {
 
 namespace mace {
 
-#define MAX_NODE 2048
+#define MACE_MAX_NODE 2048
 
 enum {
   NN_GRAPH_PERFEVENT_CYCLES = 0,
@@ -229,13 +229,13 @@ bool HexagonControlWrapper::TeardownGraph() {
   return hexagon_nn_teardown(nn_id_) == 0;
 }
 
-#define PRINT_BUFSIZE (2 * 1024 * 1024)
+#define MACE_PRINT_BUFSIZE (2 * 1024 * 1024)
 
 void HexagonControlWrapper::PrintLog() {
   char *buf;
-  if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
+  if ((buf = new char[MACE_PRINT_BUFSIZE]) == NULL) return;
   MACE_CHECK(hexagon_nn_getlog(nn_id_, reinterpret_cast<unsigned char *>(buf),
-                               PRINT_BUFSIZE) == 0,
+                               MACE_PRINT_BUFSIZE) == 0,
              "print log error");
   LOG(INFO) << std::string(buf);
   delete[] buf;
@@ -244,9 +244,9 @@ void HexagonControlWrapper::PrintLog() {
 void HexagonControlWrapper::PrintGraph() {
   LOG(INFO) << "Print Graph";
   char *buf;
-  if ((buf = new char[PRINT_BUFSIZE]) == NULL) return;
+  if ((buf = new char[MACE_PRINT_BUFSIZE]) == NULL) return;
   MACE_CHECK(hexagon_nn_snpprint(nn_id_, reinterpret_cast<unsigned char *>(buf),
-                                 PRINT_BUFSIZE) == 0,
+                                 MACE_PRINT_BUFSIZE) == 0,
              "print graph error");
   LOG(INFO) << std::string(buf);
   delete[] buf;
@@ -265,9 +265,9 @@ void HexagonControlWrapper::SetGraphMode(int mode) {
 
 void HexagonControlWrapper::GetPerfInfo() {
   LOG(INFO) << "Get perf info";
-  std::vector<hexagon_nn_perfinfo> perf_info(MAX_NODE);
+  std::vector<hexagon_nn_perfinfo> perf_info(MACE_MAX_NODE);
   unsigned int n_items = 0;
-  MACE_CHECK(hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MAX_NODE,
+  MACE_CHECK(hexagon_nn_get_perfinfo(nn_id_, perf_info.data(), MACE_MAX_NODE,
                                      &n_items) == 0,
              "get perf info error");
 
@@ -284,8 +284,8 @@ void HexagonControlWrapper::GetPerfInfo() {
          perf_info[i].counter_lo) *
         1.0f / perf_info[i].executions;
 
-    char node_type_buf[MAX_NODE];
-    hexagon_nn_op_id_to_name(node_type_id, node_type_buf, MAX_NODE);
+    char node_type_buf[MACE_MAX_NODE];
+    hexagon_nn_op_id_to_name(node_type_id, node_type_buf, MACE_MAX_NODE);
     std::string node_type(node_type_buf);
     LOG(INFO) << "node id: " << perf_info[i].node_id
               << ", node type: " << node_type

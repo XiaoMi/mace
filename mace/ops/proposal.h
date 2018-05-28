@@ -49,8 +49,8 @@ class ProposalOp : public Operator<D, T> {
   kernels::ProposalFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(RPN_CLS_PROB, RPN_BBOX_PRED, IMG_INFO);
-  OP_OUTPUT_TAGS(ROIS);
+  MACE_OP_INPUT_TAGS(RPN_CLS_PROB, RPN_BBOX_PRED, IMG_INFO);
+  MACE_OP_OUTPUT_TAGS(ROIS);
 };
 
 }  // namespace ops

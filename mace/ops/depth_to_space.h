@@ -55,8 +55,8 @@ class DepthToSpaceOp : public Operator<D, T> {
 
  protected:
   const int block_size_;
-  OP_INPUT_TAGS(INPUT);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 
  private:
   kernels::DepthToSpaceOpFunctor<D, T> functor_;

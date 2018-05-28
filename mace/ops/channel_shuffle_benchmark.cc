@@ -69,25 +69,26 @@ void ChannelShuffle(
 }
 }  // namespace
 
-#define BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
-  static void                                                             \
-      BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
-          int iters) {                                                    \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;      \
-    mace::testing::MaccProcessed(tot);                                    \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
-    ChannelShuffle<DEVICE, TYPE>(iters, N, C, H, W, G);                   \
-  }                                                                       \
-  BENCHMARK(BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
+#define MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, TYPE, DEVICE)             \
+  static void                                                                  \
+      MACE_BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE( \
+          int iters) {                                                         \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
+    mace::testing::MaccProcessed(tot);                                         \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    ChannelShuffle<DEVICE, TYPE>(iters, N, C, H, W, G);                        \
+  }                                                                            \
+  MACE_BENCHMARK(                                                              \
+      MACE_BM_CHANNEL_SHUFFLE_##N##_##C##_##H##_##W##_##G##_##TYPE##_##DEVICE)
 
-#define BM_CHANNEL_SHUFFLE(N, C, H, W, G)                 \
-  BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU);    \
-  BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, GPU); \
-  BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, half, GPU);
+#define MACE_BM_CHANNEL_SHUFFLE(N, C, H, W, G)                 \
+  MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, CPU);    \
+  MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, float, GPU);    \
+  MACE_BM_CHANNEL_SHUFFLE_MACRO(N, C, H, W, G, half, GPU);
 
-BM_CHANNEL_SHUFFLE(1, 64, 64, 64, 8);
-BM_CHANNEL_SHUFFLE(1, 64, 128, 128, 8);
-BM_CHANNEL_SHUFFLE(1, 64, 256, 256, 8);
+MACE_BM_CHANNEL_SHUFFLE(1, 64, 64, 64, 8);
+MACE_BM_CHANNEL_SHUFFLE(1, 64, 128, 128, 8);
+MACE_BM_CHANNEL_SHUFFLE(1, 64, 256, 256, 8);
 
 }  // namespace test
 }  // namespace ops

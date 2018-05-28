@@ -46,8 +46,8 @@ class BiasAddOp : public Operator<D, T> {
   kernels::BiasAddFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, BIAS);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, BIAS);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

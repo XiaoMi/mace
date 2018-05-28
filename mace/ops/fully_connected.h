@@ -72,8 +72,8 @@ class FullyConnectedOp : public Operator<D, T> {
   kernels::FullyConnectedFunctor<D, T> functor_;
 
  protected:
-  OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
-  OP_OUTPUT_TAGS(OUTPUT);
+  MACE_OP_INPUT_TAGS(INPUT, WEIGHT, BIAS);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
 }  // namespace ops

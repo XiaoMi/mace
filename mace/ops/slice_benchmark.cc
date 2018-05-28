@@ -73,26 +73,28 @@ void BMSliceHelper(int iters,
 }
 }  // namespace
 
-#define BM_SLICE_MACRO(N, H, W, C, NO, TYPE, DEVICE)                         \
+#define MACE_BM_SLICE_MACRO(N, H, W, C, NO, TYPE, DEVICE)                    \
   static void                                                                \
-      BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE(int iters) { \
+      MACE_BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE(        \
+          int iters) {                                                       \
         const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
         mace::testing::MaccProcessed(tot);                                   \
         mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
         BMSliceHelper<DEVICE, TYPE>(iters, {N, H, W, C}, NO);                \
       }                                                                      \
-      BENCHMARK(BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE)
+      MACE_BENCHMARK(                                                        \
+          MACE_BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE)
 
-#define BM_SLICE(N, H, W, C, NO)                 \
-  BM_SLICE_MACRO(N, H, W, C, NO, float, CPU);    \
-  BM_SLICE_MACRO(N, H, W, C, NO, float, GPU); \
-  BM_SLICE_MACRO(N, H, W, C, NO, half, GPU);
+#define MACE_BM_SLICE(N, H, W, C, NO)                 \
+  MACE_BM_SLICE_MACRO(N, H, W, C, NO, float, CPU);    \
+  MACE_BM_SLICE_MACRO(N, H, W, C, NO, float, GPU);    \
+  MACE_BM_SLICE_MACRO(N, H, W, C, NO, half, GPU);
 
-BM_SLICE(1, 32, 32, 32, 2);
-BM_SLICE(1, 32, 32, 128, 2);
-BM_SLICE(1, 32, 32, 256, 2);
-BM_SLICE(1, 128, 128, 32, 2);
-BM_SLICE(1, 128, 128, 128, 2);
+MACE_BM_SLICE(1, 32, 32, 32, 2);
+MACE_BM_SLICE(1, 32, 32, 128, 2);
+MACE_BM_SLICE(1, 32, 32, 256, 2);
+MACE_BM_SLICE(1, 128, 128, 32, 2);
+MACE_BM_SLICE(1, 128, 128, 128, 2);
 
 }  // namespace test
 }  // namespace ops

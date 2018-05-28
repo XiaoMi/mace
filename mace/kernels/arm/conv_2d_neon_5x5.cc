@@ -21,7 +21,7 @@
 namespace mace {
 namespace kernels {
 
-#define Conv2dNeonK5x5SnLoadCalc4                                \
+#define MACE_Conv2dNeonK5x5SnLoadCalc4                           \
   /* load filter (4 outch x 1 height x 4 width) */               \
   float32x4_t vf00, vf10, vf20, vf30;                            \
   float32x2_t vf01, vf11, vf21, vf31;                            \
@@ -62,7 +62,7 @@ namespace kernels {
   vo3 = vmlaq_lane_f32(vo3, vi3, vget_high_f32(vf30), 1);        \
   vo3 = vmlaq_lane_f32(vo3, vi4, vf31, 1);
 
-#define Conv2dNeonK5x5SnLoadCalc1                                \
+#define MACE_Conv2dNeonK5x5SnLoadCalc1                           \
   /* load filter (1 outch x 1 height x 4 width) */               \
   float32x4_t vf00;                                              \
   float32x2_t vf01;                                              \
@@ -138,7 +138,7 @@ void Conv2dNeonK5x5S1(const float *input,
                 vi2 = vextq_f32(vi0, vi4, 2);
                 vi3 = vextq_f32(vi0, vi4, 3);
 
-                Conv2dNeonK5x5SnLoadCalc4;
+                MACE_Conv2dNeonK5x5SnLoadCalc4;
 
                 in_offset += in_width;
                 filter_ptr0 += 5;
@@ -194,7 +194,7 @@ void Conv2dNeonK5x5S1(const float *input,
                   vi2 = vextq_f32(vi0, vi4, 2);
                   vi3 = vextq_f32(vi0, vi4, 3);
 
-                  Conv2dNeonK5x5SnLoadCalc1;
+                  MACE_Conv2dNeonK5x5SnLoadCalc1;
 
                   in_offset += in_width;
                   filter_ptr0 += 5;

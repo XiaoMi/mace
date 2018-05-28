@@ -18,11 +18,11 @@ namespace mace {
 namespace ops {
 
 void Register_PSROIAlign(OperatorRegistry *op_registry) {
-  REGISTER_OPERATOR(op_registry, OpKeyBuilder("PSROIAlign")
-                                     .Device(DeviceType::CPU)
-                                     .TypeConstraint<float>("T")
-                                     .Build(),
-                    PSROIAlignOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("PSROIAlign")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         PSROIAlignOp<DeviceType::CPU, float>);
 }
 
 }  // namespace ops
