@@ -64,7 +64,7 @@ cc_test(
         "tuner_test.cc",
     ],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-    linkopts = if_android([
+    linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",  # Required by unordered_map
     ]),

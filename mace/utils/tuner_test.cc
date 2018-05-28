@@ -33,6 +33,8 @@ TEST_F(TunerTest, SimpleRun) {
   int expect = 1;
   auto TunerFunc = [&](const std::vector<unsigned int> &params, Timer *timer,
                        std::vector<uint32_t> *tuning_result) -> int {
+    (void)(timer);
+    (void)(tuning_result);
     if (params.front() == 1) {
       return expect;
     } else {
