@@ -31,15 +31,15 @@ class ActivationOp : public Operator<D, T> {
         functor_(kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
-                 static_cast<T>(OperatorBase::GetOptionalArg<float>(
-                     "max_limit", 0.0f))) {}
+                 static_cast<T>(
+                     OperatorBase::GetOptionalArg<float>("max_limit", 0.0f))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(0);
     const Tensor *alpha_tensor =
         this->InputSize() >= 2 ? this->Input(1) : nullptr;
     Tensor *output_tensor = this->Output(0);
-    MACE_FAILURE_RETURN(output_tensor->ResizeLike(input_tensor));
+    MACE_RETURN_IF_ERROR(output_tensor->ResizeLike(input_tensor));
 
     return functor_(input_tensor, alpha_tensor, output_tensor, future);
   }

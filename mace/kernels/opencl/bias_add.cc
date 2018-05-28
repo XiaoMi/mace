@@ -23,9 +23,9 @@ namespace kernels {
 
 template <typename T>
 MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                       const Tensor *bias,
-                                                       Tensor *output,
-                                                       StatsFuture *future) {
+                                                          const Tensor *bias,
+                                                          Tensor *output,
+                                                          StatsFuture *future) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -50,7 +50,7 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -67,7 +67,7 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -91,8 +91,7 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   } else {
     std::vector<uint32_t> roundup_gws(lws.size());
     for (size_t i = 0; i < lws.size(); ++i) {
-      if (lws[i] != 0)
-        roundup_gws[i] = RoundUp(gws[i], lws[i]);
+      if (lws[i] != 0) roundup_gws[i] = RoundUp(gws[i], lws[i]);
     }
 
     error = runtime->command_queue().enqueueNDRangeKernel(

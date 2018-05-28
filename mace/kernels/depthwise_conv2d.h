@@ -161,7 +161,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
                          RoundType::FLOOR,
                          output_shape.data());
     }
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     output->Clear();
 
     index_t batch = output->dim(0);

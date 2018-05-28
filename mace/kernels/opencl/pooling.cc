@@ -23,15 +23,13 @@ namespace kernels {
 
 namespace {
 
-std::vector<uint32_t> LocalWS(const uint32_t *gws,
-                              const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size =
-    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-  lws[2] = std::min<uint32_t>(std::min<uint32_t>(gws[2], base),
-                              kwg_size / lws[1]);
+  lws[2] =
+      std::min<uint32_t>(std::min<uint32_t>(gws[2], base), kwg_size / lws[1]);
   const uint32_t lws_size = lws[1] * lws[2];
   lws[0] = gws[0] / 4;
   if (lws[0] == 0) {
@@ -45,8 +43,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 
 template <typename T>
 MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                       Tensor *output,
-                                                       StatsFuture *future) {
+                                                          Tensor *output,
+                                                          StatsFuture *future) {
   MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1)
       << "Pooling opencl kernel not support dilation yet";
 
@@ -73,7 +71,7 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -108,7 +106,7 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
+    MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
     index_t batch = output->dim(0);
     index_t out_height = output->dim(1);
@@ -125,7 +123,7 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -159,8 +157,8 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
 
   const std::vector<uint32_t> lws = LocalWS(gws.data(), kwg_size_);
   std::string tuning_key =
-      Concat("pooling_opencl_kernel_", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("pooling_opencl_kernel_", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3));
   TuningOrRun3DKernel(kernel_, tuning_key, gws.data(), lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

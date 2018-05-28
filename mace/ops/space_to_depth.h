@@ -24,20 +24,18 @@
 namespace mace {
 namespace ops {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 class SpaceToDepthOp : public Operator<D, T> {
  public:
   SpaceToDepthOp(const OperatorDef &op_def, Workspace *ws)
-    : Operator<D, T>(op_def, ws),
-      functor_(OperatorBase::GetOptionalArg<int>("block_size", 1), false) {
-  }
+      : Operator<D, T>(op_def, ws),
+        functor_(OperatorBase::GetOptionalArg<int>("block_size", 1), false) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
-    const int block_size =
-      OperatorBase::GetOptionalArg<int>("block_size", 1);
+    const int block_size = OperatorBase::GetOptionalArg<int>("block_size", 1);
     index_t input_height;
     index_t input_width;
     index_t input_depth;
@@ -55,9 +53,9 @@ class SpaceToDepthOp : public Operator<D, T> {
     MACE_CHECK((input_depth % 4) == 0,
                "input channel should be dividable by 4");
     MACE_CHECK(
-      (input_width % block_size == 0) && (input_height % block_size == 0),
-      "input width and height should be dividable by block_size",
-      input->dim(3));
+        (input_width % block_size == 0) && (input_height % block_size == 0),
+        "input width and height should be dividable by block_size",
+        input->dim(3));
     return functor_(input, output, future);
   }
 

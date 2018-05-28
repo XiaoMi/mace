@@ -20,20 +20,20 @@ namespace kernels {
 
 namespace {
 
-void Deconv2dOpencl(cl::Kernel *kernel,
-                    const Tensor *input,
-                    const Tensor *filter,
-                    const Tensor *bias,
-                    const int stride,
-                    const int *paddings,
-                    const ActivationType activation,
-                    const float relux_max_limit,
-                    const DataType dt,
-                    std::vector<index_t> *prev_input_shape,
-                    Tensor *output,
-                    StatsFuture *future,
-                    uint32_t *kwg_size,
-                    std::unique_ptr<BufferBase> *kernel_error) {
+MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
+                          const Tensor *input,
+                          const Tensor *filter,
+                          const Tensor *bias,
+                          const int stride,
+                          const int *paddings,
+                          const ActivationType activation,
+                          const float relux_max_limit,
+                          const DataType dt,
+                          std::vector<index_t> *prev_input_shape,
+                          Tensor *output,
+                          StatsFuture *future,
+                          uint32_t *kwg_size,
+                          std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -46,10 +46,10 @@ void Deconv2dOpencl(cl::Kernel *kernel,
 #define MACE_WIDTH_BLK 5
   const index_t n_strides = (width + stride - 1) / stride;
   const index_t width_blocks =
-    ((n_strides + MACE_WIDTH_BLK -1)/ MACE_WIDTH_BLK) * stride;
+      ((n_strides + MACE_WIDTH_BLK - 1) / MACE_WIDTH_BLK) * stride;
   const float stride_r = 1.f / static_cast<float>(stride);
-  const int padding_h = (paddings[0]+1) >> 1;
-  const int padding_w = (paddings[0]+1) >> 1;
+  const int padding_h = (paddings[0] + 1) >> 1;
+  const int padding_w = (paddings[0] + 1) >> 1;
 
   const int align_h = stride - 1 - padding_h;
   const int align_w = stride - 1 - padding_w;
@@ -67,7 +67,7 @@ void Deconv2dOpencl(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -77,16 +77,22 @@ void Deconv2dOpencl(cl::Kernel *kernel,
     }
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
-      case NOOP:break;
-      case RELU:built_options.emplace("-DUSE_RELU");
+      case NOOP:
         break;
-      case RELUX:built_options.emplace("-DUSE_RELUX");
+      case RELU:
+        built_options.emplace("-DUSE_RELU");
         break;
-      case TANH:built_options.emplace("-DUSE_TANH");
+      case RELUX:
+        built_options.emplace("-DUSE_RELUX");
         break;
-      case SIGMOID:built_options.emplace("-DUSE_SIGMOID");
+      case TANH:
+        built_options.emplace("-DUSE_TANH");
         break;
-      default:LOG(FATAL) << "Unknown activation type: " << activation;
+      case SIGMOID:
+        built_options.emplace("-DUSE_SIGMOID");
+        break;
+      default:
+        LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
     *kernel = runtime->BuildKernel("deconv_2d", kernel_name, built_options);
@@ -150,16 +156,19 @@ void Deconv2dOpencl(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 }  // namespace
 
 template <typename T>
-MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
-                                                      const Tensor *filter,
-                                                      const Tensor *bias,
-                                                      Tensor *output,
-                                                      StatsFuture *future) {
+MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
+    const Tensor *input,
+    const Tensor *filter,
+    const Tensor *bias,
+    Tensor *output,
+    StatsFuture *future) {
   MACE_CHECK_NOTNULL(input);
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
@@ -167,34 +176,25 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   if (output_shape_.size() == 4) {
     paddings_.clear();
     paddings_ = std::vector<int>(2, 0);
-    CalcDeconvPaddingAndInputSize(
-        input->shape().data(),
-        filter->shape().data(),
-        strides_, padding_type_,
-        output_shape_.data(),
-        paddings_.data());
+    CalcDeconvPaddingAndInputSize(input->shape().data(), filter->shape().data(),
+                                  strides_, padding_type_, output_shape_.data(),
+                                  paddings_.data());
   } else {
     output_shape_.clear();
     output_shape_ = std::vector<index_t>(4, 0);
-    CalcDeconvOutputSize(input->shape().data(),
-                         filter->shape().data(),
-                         strides_,
-                         output_shape_.data(),
-                         paddings_.data());
+    CalcDeconvOutputSize(input->shape().data(), filter->shape().data(),
+                         strides_, output_shape_.data(), paddings_.data());
   }
 
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape_, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape_, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape_, output_image_shape));
 
-  Deconv2dOpencl(&kernel_, input, filter, bias,
-                 strides_[0], paddings_.data(),
-                 activation_, relux_max_limit_,
-                 DataTypeToEnum<T>::value, &input_shape_,
-                 output, future, &kwg_size_, &kernel_error_);
-
-  return MACE_SUCCESS;
+  return Deconv2dOpencl(&kernel_, input, filter, bias, strides_[0],
+                        paddings_.data(), activation_, relux_max_limit_,
+                        DataTypeToEnum<T>::value, &input_shape_, output, future,
+                        &kwg_size_, &kernel_error_);
 }
 
 template struct Deconv2dFunctor<DeviceType::GPU, float>;

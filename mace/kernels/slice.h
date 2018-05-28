@@ -61,7 +61,7 @@ struct SliceFunctor : SliceFunctorBase {
                                                1,
                                                std::multiplies<index_t>());
     for (size_t i= 0; i < outputs_count; ++i) {
-      MACE_FAILURE_RETURN(output_list[i]->Resize(output_shape));
+      MACE_RETURN_IF_ERROR(output_list[i]->Resize(output_shape));
       output_ptrs[i] = output_list[i]->mutable_data<T>();
     }
     const T *input_ptr = input->data<T>();

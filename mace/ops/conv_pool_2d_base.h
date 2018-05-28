@@ -32,8 +32,7 @@ class ConvPool2dOpBase : public Operator<D, T> {
         padding_type_(static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
             "padding", static_cast<int>(SAME)))),
         paddings_(OperatorBase::GetRepeatedArgs<int>("padding_values")),
-        dilations_(
-            OperatorBase::GetRepeatedArgs<int>("dilations", {1, 1})) {}
+        dilations_(OperatorBase::GetRepeatedArgs<int>("dilations", {1, 1})) {}
 
  protected:
   std::vector<int> strides_;

@@ -40,7 +40,7 @@ struct AddNFunctor {
                   Tensor *output_tensor,
                   StatsFuture *future) {
     MACE_UNUSED(future);
-    MACE_FAILURE_RETURN(output_tensor->ResizeLike(input_tensors[0]));
+    MACE_RETURN_IF_ERROR(output_tensor->ResizeLike(input_tensors[0]));
     index_t size = output_tensor->size();
     Tensor::MappingGuard output_map(output_tensor);
     float *output_data = output_tensor->mutable_data<float>();

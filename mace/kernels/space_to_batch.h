@@ -150,12 +150,12 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
       CalculateBatchToSpaceOutputShape(batch_tensor,
                                        DataFormat::NCHW,
                                        output_shape.data());
-      MACE_FAILURE_RETURN(space_tensor->Resize(output_shape));
+      MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
     } else {
       CalculateSpaceToBatchOutputShape(space_tensor,
                                        DataFormat::NCHW,
                                        output_shape.data());
-      MACE_FAILURE_RETURN(batch_tensor->Resize(output_shape));
+      MACE_RETURN_IF_ERROR(batch_tensor->Resize(output_shape));
     }
 
     Tensor::MappingGuard input_guard(space_tensor);

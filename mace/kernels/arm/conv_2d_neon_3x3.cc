@@ -45,7 +45,7 @@ void Conv2dNeonK3x3S1(const float *input,
         float *out_ptr0_base = output + b * out_batch_size + m * out_image_size;
 #if defined(MACE_ENABLE_NEON)
         float *out_ptr1_base =
-          output + b * out_batch_size + (m + 1) * out_image_size;
+            output + b * out_batch_size + (m + 1) * out_image_size;
 #endif
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr0 = input + b * in_batch_size + c * in_image_size;
@@ -54,11 +54,11 @@ void Conv2dNeonK3x3S1(const float *input,
 #if defined(MACE_ENABLE_NEON)
           float *out_ptr1 = out_ptr1_base;
           const float *in_ptr1 =
-            input + b * in_batch_size + c * in_image_size + 1 * in_width;
+              input + b * in_batch_size + c * in_image_size + 1 * in_width;
           const float *in_ptr2 =
-            input + b * in_batch_size + c * in_image_size + 2 * in_width;
+              input + b * in_batch_size + c * in_image_size + 2 * in_width;
           const float *in_ptr3 =
-            input + b * in_batch_size + c * in_image_size + 3 * in_width;
+              input + b * in_batch_size + c * in_image_size + 3 * in_width;
           const float *filter_ptr1 = filter + (m + 1) * in_channels * 9 + c * 9;
 #endif
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
@@ -74,7 +74,6 @@ void Conv2dNeonK3x3S1(const float *input,
           vf10 = vld1q_f32(filter_ptr1);
           vf11 = vld1q_f32(filter_ptr1 + 3);
           vf12 = vld1q_f32(filter_ptr1 + 6);
-
 
           for (index_t h = 0; h + 1 < out_height; h += 2) {
             for (index_t w = 0; w + 3 < out_width; w += 4) {
@@ -179,7 +178,7 @@ void Conv2dNeonK3x3S1(const float *input,
 
             out_ptr0 += out_width;
             out_ptr1 += out_width;
-          }  // h
+          }                      // h
 #elif defined(MACE_ENABLE_NEON)  // arm v7
           float *out_ptr0 = out_ptr0_base;
 
@@ -197,7 +196,6 @@ void Conv2dNeonK3x3S1(const float *input,
           vf145 = vld1_f32(filter_ptr1 + 4);
           vf167 = vld1_f32(filter_ptr1 + 6);
           vf189 = vld1_f32(filter_ptr1 + 8);
-
 
           for (index_t h = 0; h + 1 < out_height; h += 2) {
             for (index_t w = 0; w + 3 < out_width; w += 4) {
@@ -313,18 +311,18 @@ void Conv2dNeonK3x3S1(const float *input,
         }  // c
       } else {
         for (index_t mm = m; mm < out_channels; ++mm) {
-          float
-            *out_ptr0_base = output + b * out_batch_size + mm * out_image_size;
+          float *out_ptr0_base =
+              output + b * out_batch_size + mm * out_image_size;
           for (index_t c = 0; c < in_channels; ++c) {
-            const float
-              *in_ptr0 = input + b * in_batch_size + c * in_image_size;
+            const float *in_ptr0 =
+                input + b * in_batch_size + c * in_image_size;
 #if defined(MACE_ENABLE_NEON)
             const float *in_ptr1 =
-              input + b * in_batch_size + c * in_image_size + 1 * in_width;
+                input + b * in_batch_size + c * in_image_size + 1 * in_width;
             const float *in_ptr2 =
-              input + b * in_batch_size + c * in_image_size + 2 * in_width;
+                input + b * in_batch_size + c * in_image_size + 2 * in_width;
             const float *in_ptr3 =
-              input + b * in_batch_size + c * in_image_size + 3 * in_width;
+                input + b * in_batch_size + c * in_image_size + 3 * in_width;
 #endif
             const float *filter_ptr0 = filter + mm * in_channels * 9 + c * 9;
 
@@ -396,7 +394,6 @@ void Conv2dNeonK3x3S1(const float *input,
                 vst1q_f32(out_ptr0, vo00);
                 vst1q_f32(out_ptr0 + out_width, vo01);
 
-
                 in_ptr0 += 4;
                 in_ptr1 += 4;
                 in_ptr2 += 4;
@@ -411,7 +408,7 @@ void Conv2dNeonK3x3S1(const float *input,
               in_ptr3 += 2 + in_width;
 
               out_ptr0 += out_width;
-            }  // h
+            }                    // h
 #elif defined(MACE_ENABLE_NEON)  // arm v7
             float *out_ptr0 = out_ptr0_base;
 
@@ -482,7 +479,6 @@ void Conv2dNeonK3x3S1(const float *input,
                 vst1q_f32(out_ptr0, vo00);
                 vst1q_f32(out_ptr0 + out_width, vo01);
 
-
                 in_ptr0 += 4;
                 in_ptr1 += 4;
                 in_ptr2 += 4;
@@ -499,15 +495,14 @@ void Conv2dNeonK3x3S1(const float *input,
               out_ptr0 += out_width;
             }  // h
 #else
-            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0,
-                               in_width, 3, 3, out_height, out_width,
-                               out_ptr0_base, 1);
+            Conv2dCPUKHxKWCalc(in_ptr0, filter_ptr0, in_width, 3, 3, out_height,
+                               out_width, out_ptr0_base, 1);
 #endif
           }  // c
-        }  // mm
-      }  // if
-    }  // m
-  }  // b
+        }    // mm
+      }      // if
+    }        // m
+  }          // b
 }
 
 void Conv2dNeonK3x3S2(const float *input,
@@ -529,8 +524,7 @@ void Conv2dNeonK3x3S2(const float *input,
         const index_t out_height = out_shape[2];
         const index_t out_width = out_shape[3];
         const float *in_base = input + b * in_batch_size + c * in_image_size;
-        const float
-          *filter_ptr = filter + m * in_channels * 9 + c * 9;
+        const float *filter_ptr = filter + m * in_channels * 9 + c * 9;
         float *out_base = output + b * out_batch_size + m * out_image_size;
 
 #if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
@@ -569,8 +563,8 @@ void Conv2dNeonK3x3S2(const float *input,
             index_t out_offset = h * out_width + w;
             vo = vld1q_f32(out_base + out_offset);
 
-            vi00 = vi0.val[0];  // [0.2.4.6]
-            vi01 = vi0.val[1];  // [1.3.5.7]
+            vi00 = vi0.val[0];                // [0.2.4.6]
+            vi01 = vi0.val[1];                // [1.3.5.7]
             vi02 = vextq_f32(vi00, vi0n, 1);  // [2.4.6.8]
             vi10 = vi1.val[0];
             vi11 = vi1.val[1];
@@ -591,8 +585,8 @@ void Conv2dNeonK3x3S2(const float *input,
             vo = vfmaq_laneq_f32(vo, vi22, vf02, 3);
 
             vst1q_f32(out_base + out_offset, vo);
-          }  // w
-        }  // h
+          }                      // w
+        }                        // h
 #elif defined(MACE_ENABLE_NEON)  // arm v7
         // load filter (1 outch x 3 height x 3 width): vf_outch_height
         float32x2_t vf01, vf23, vf45, vf67, vf78;
@@ -631,8 +625,8 @@ void Conv2dNeonK3x3S2(const float *input,
             index_t out_offset = h * out_width + w;
             vo = vld1q_f32(out_base + out_offset);
 
-            vi00 = vi0.val[0];  // [0.2.4.6]
-            vi01 = vi0.val[1];  // [1.3.5.7]
+            vi00 = vi0.val[0];                // [0.2.4.6]
+            vi01 = vi0.val[1];                // [1.3.5.7]
             vi02 = vextq_f32(vi00, vi0n, 1);  // [2.4.6.8]
             vi10 = vi1.val[0];
             vi11 = vi1.val[1];
@@ -654,15 +648,14 @@ void Conv2dNeonK3x3S2(const float *input,
 
             vst1q_f32(out_base + out_offset, vo);
           }  // w
-        }  // h
+        }    // h
 #else
-        Conv2dCPUKHxKWCalc(in_base, filter_ptr,
-                           in_width, 3, 3, out_height, out_width,
-                           out_base, 2);
+        Conv2dCPUKHxKWCalc(in_base, filter_ptr, in_width, 3, 3, out_height,
+                           out_width, out_base, 2);
 #endif
       }  // c
-    }  // m
-  }  // b
+    }    // m
+  }      // b
 }
 
 }  // namespace kernels

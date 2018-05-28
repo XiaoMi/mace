@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include <functional>
+#include <string>
 
 #include "gmock/gmock.h"
-#include "mace/ops/ops_test_util.h"
 #include "mace/ops/concat.h"
+#include "mace/ops/ops_test_util.h"
 
 namespace mace {
 namespace ops {
@@ -163,7 +163,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   int concat_axis_size = 0;
   // Construct graph
   std::vector<std::vector<float>> inputs(num_inputs, std::vector<float>());
-  std::vector<const float*> input_ptrs(num_inputs);
+  std::vector<const float *> input_ptrs(num_inputs);
   OpsTestNet net;
   for (int i = 0; i < num_inputs; ++i) {
     const std::string input_name = MakeString("Input", i);
@@ -171,10 +171,10 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     concat_axis_size += shapes[i][axis];
     GenerateRandomRealTypeData(shapes[i], &inputs[i]);
     input_ptrs[i] = inputs[i].data();
-    net.AddInputFromArray<DeviceType::GPU, float>(input_name,
-                                                     shapes[i], inputs[i]);
+    net.AddInputFromArray<DeviceType::GPU, float>(input_name, shapes[i],
+                                                  inputs[i]);
     BufferToImage<DeviceType::GPU, T>(&net, input_name, image_name,
-                                         kernels::BufferType::IN_OUT_CHANNEL);
+                                      kernels::BufferType::IN_OUT_CHANNEL);
   }
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -191,7 +191,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                           kernels::BufferType::IN_OUT_CHANNEL);
+                                        kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto output = net.GetOutput("Output");

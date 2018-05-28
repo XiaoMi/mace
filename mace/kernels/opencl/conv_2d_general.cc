@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/conv_2d.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/activation.h"
+#include "mace/kernels/conv_2d.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/tuner.h"
 #include "mace/utils/utils.h"
@@ -30,8 +30,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
                               const uint32_t kernel_size,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size =
-    OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
   uint32_t base = cache_size / kBaseGPUMemCacheSize;
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
@@ -41,10 +40,10 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
   }
   lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
   const uint32_t lws_size = lws[0] * lws[1];
-  lws[2] = std::min<uint32_t>(
-      (cache_size / kernel_cache_size / kernel_size / lws_size / compute_units)
-          * 8,
-      gws[2]);
+  lws[2] = std::min<uint32_t>((cache_size / kernel_cache_size / kernel_size /
+                               lws_size / compute_units) *
+                                  8,
+                              gws[2]);
   if (lws[2] == 0) {
     if (gws[2] < lws_limit) {
       lws[2] = gws[2];
@@ -58,21 +57,21 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
 
 }  // namespace
 
-extern void Conv2dOpencl(cl::Kernel *kernel,
-                         const Tensor *input,
-                         const Tensor *filter,
-                         const Tensor *bias,
-                         const int stride,
-                         const int *padding,
-                         const int *dilations,
-                         const ActivationType activation,
-                         const float relux_max_limit,
-                         const DataType dt,
-                         std::vector<index_t> *prev_input_shape,
-                         Tensor *output,
-                         StatsFuture *future,
-                         uint32_t *kwg_size,
-                         std::unique_ptr<BufferBase> *kernel_error) {
+extern MaceStatus Conv2dOpencl(cl::Kernel *kernel,
+                               const Tensor *input,
+                               const Tensor *filter,
+                               const Tensor *bias,
+                               const int stride,
+                               const int *padding,
+                               const int *dilations,
+                               const ActivationType activation,
+                               const float relux_max_limit,
+                               const DataType dt,
+                               std::vector<index_t> *prev_input_shape,
+                               Tensor *output,
+                               StatsFuture *future,
+                               uint32_t *kwg_size,
+                               std::unique_ptr<BufferBase> *kernel_error) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -95,7 +94,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -137,7 +136,7 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, gws[0]);
@@ -168,11 +167,10 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
   }
 
   std::string tuning_key =
-      Concat("conv2d_general_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3),
-             filter->dim(2), filter->dim(3));
+      Concat("conv2d_general_opencl_kernel", output->dim(0), output->dim(1),
+             output->dim(2), output->dim(3), filter->dim(2), filter->dim(3));
   std::vector<uint32_t> lws =
-    LocalWS(gws, filter->dim(2) * filter->dim(3), *kwg_size);
+      LocalWS(gws, filter->dim(2) * filter->dim(3), *kwg_size);
   TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -181,6 +179,8 @@ extern void Conv2dOpencl(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 
 }  // namespace kernels

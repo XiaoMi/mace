@@ -29,23 +29,19 @@ TEST_F(ChannelShuffleOpTest, C8G4_CPU) {
       "Input", {1, 1, 2, 8},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "InputNCHW",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
   // Construct graph
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
-    .Input("InputNCHW")
-    .Output("OutputNCHW")
-    .AddIntArg("group", 4)
-    .Finalize(net.NewOperatorDef());
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntArg("group", 4)
+      .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW",
-                                                  NCHW,
-                                                  "Output",
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
 
   // Check
@@ -65,7 +61,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                           kernels::BufferType::IN_OUT_CHANNEL);
+                                        kernels::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
       .Input("InputImage")
@@ -78,7 +74,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
 
   // Transfer output
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                           kernels::BufferType::IN_OUT_CHANNEL);
+                                        kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto expected = CreateTensor<float>(

@@ -18,31 +18,31 @@
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/kernels/transpose.h"
 #include "mace/kernels/softmax.h"
+#include "mace/kernels/transpose.h"
 
 namespace mace {
 
-template<DeviceType D, class T>
+template <DeviceType D, class T>
 class TransposeOp : public Operator<D, T> {
  public:
   TransposeOp(const OperatorDef &operator_def, Workspace *ws)
-    : Operator<D, T>(operator_def, ws),
-      dims_(OperatorBase::GetRepeatedArgs<int>("dims")),
-      functor_(dims_) {}
+      : Operator<D, T>(operator_def, ws),
+        dims_(OperatorBase::GetRepeatedArgs<int>("dims")),
+        functor_(dims_) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     const std::vector<index_t> &input_shape = input->shape();
-    MACE_CHECK((input_shape.size() == 4 && dims_.size() == 4)
-                 || (input_shape.size() == 2 && dims_.size() == 2),
+    MACE_CHECK((input_shape.size() == 4 && dims_.size() == 4) ||
+                   (input_shape.size() == 2 && dims_.size() == 2),
                "rank should be 2 or 4");
     std::vector<index_t> output_shape;
     for (size_t i = 0; i < dims_.size(); ++i) {
       output_shape.push_back(input_shape[dims_[i]]);
     }
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     return functor_(input, output, future);
   }
 

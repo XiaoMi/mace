@@ -120,7 +120,6 @@ TEST_F(ActivationOpTest, OPENCLUnalignedSimpleRelu) {
   TestUnalignedSimpleRelu<DeviceType::GPU>();
 }
 
-
 namespace {
 template <DeviceType D>
 void TestSimpleRelux() {
@@ -169,9 +168,7 @@ void TestSimpleRelux() {
 
 TEST_F(ActivationOpTest, CPUSimple) { TestSimpleRelux<DeviceType::CPU>(); }
 
-TEST_F(ActivationOpTest, OPENCLSimple) {
-  TestSimpleRelux<DeviceType::GPU>();
-}
+TEST_F(ActivationOpTest, OPENCLSimple) { TestSimpleRelux<DeviceType::GPU>(); }
 
 namespace {
 template <DeviceType D>
@@ -278,9 +275,7 @@ void TestSimplePrelu() {
 }
 }  // namespace
 
-TEST_F(ActivationOpTest, CPUSimplePrelu) {
-  TestSimplePrelu<DeviceType::CPU>();
-}
+TEST_F(ActivationOpTest, CPUSimplePrelu) { TestSimplePrelu<DeviceType::CPU>(); }
 
 TEST_F(ActivationOpTest, OPENCLSimplePrelu) {
   TestSimplePrelu<DeviceType::GPU>();

@@ -24,7 +24,7 @@ namespace test {
 class FullyConnectedOpTest : public OpsTestBase {};
 
 namespace {
-template<DeviceType D>
+template <DeviceType D>
 void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input_value,
             const std::vector<index_t> &weight_shape,
@@ -42,11 +42,11 @@ void Simple(const std::vector<index_t> &input_shape,
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
-      .Input("Input")
-      .Input("Weight")
-      .Input("Bias")
-      .Output("OutputNCHW")
-      .Finalize(net.NewOperatorDef());
+        .Input("Input")
+        .Input("Weight")
+        .Input("Bias")
+        .Output("OutputNCHW")
+        .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
@@ -59,11 +59,11 @@ void Simple(const std::vector<index_t> &input_shape,
                             kernels::BufferType::ARGUMENT);
 
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
-      .Input("InputImage")
-      .Input("WeightImage")
-      .Input("BiasImage")
-      .Output("OutputImage")
-      .Finalize(net.NewOperatorDef());
+        .Input("InputImage")
+        .Input("WeightImage")
+        .Input("BiasImage")
+        .Output("OutputImage")
+        .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
 
@@ -86,14 +86,14 @@ TEST_F(FullyConnectedOpTest, SimpleCPU) {
                           {1, 2, 3, 4, 5, 6, 7, 8}, {1}, {2}, {1, 1, 1, 1},
                           {206});
   Simple<DeviceType::CPU>(
-    {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 1, 2, 5},
-    {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-    {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 1, 2, 5},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
   Simple<DeviceType::CPU>(
-    {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 1, 2, 3},
-    {1, 2, 3, 4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3,
-     4, 5, 6, 10, 20, 30, 40, 50, 60, 1, 2, 3, 4, 5, 6},
-    {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 1, 2, 3},
+      {1, 2, 3, 4,  5,  6,  10, 20, 30, 40, 50, 60, 1, 2, 3,
+       4, 5, 6, 10, 20, 30, 40, 50, 60, 1,  2,  3,  4, 5, 6},
+      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
@@ -103,26 +103,26 @@ TEST_F(FullyConnectedOpTest, SimpleCPUWithBatch) {
 
 TEST_F(FullyConnectedOpTest, SimpleOPENCL) {
   Simple<DeviceType::GPU>({1, 2, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 2, 2},
-                             {1, 3, 5, 7, 2, 4, 6, 8}, {1}, {2}, {1, 1, 1, 1},
-                             {206});
+                          {1, 3, 5, 7, 2, 4, 6, 8}, {1}, {2}, {1, 1, 1, 1},
+                          {206});
   Simple<DeviceType::GPU>(
-    {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 5, 1, 2},
-    {1, 6, 2, 7, 3, 8, 4, 9, 5, 10, 10, 60, 20, 70, 30, 80, 40, 90, 50, 100},
-    {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
+      {1, 1, 2, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {2, 5, 1, 2},
+      {1, 6, 2, 7, 3, 8, 4, 9, 5, 10, 10, 60, 20, 70, 30, 80, 40, 90, 50, 100},
+      {2}, {2, 3}, {1, 1, 1, 2}, {387, 3853});
   Simple<DeviceType::GPU>(
-    {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 3, 1, 2},
-    {1, 4, 2, 5, 3, 6, 10, 40, 20, 50, 30, 60, 1, 4, 2, 5, 3, 6,
-     10, 40, 20, 50, 30, 60, 1, 4, 2, 5, 3, 6},
-    {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
+      {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {5, 3, 1, 2},
+      {1, 4, 2, 5,  3,  6,  10, 40, 20, 50, 30, 60, 1, 4, 2,
+       5, 3, 6, 10, 40, 20, 50, 30, 60, 1,  4,  2,  5, 3, 6},
+      {5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5}, {92, 912, 94, 914, 96});
 }
 
 TEST_F(FullyConnectedOpTest, SimpleGPUWithBatch) {
   Simple<DeviceType::GPU>({2, 1, 2, 2}, {1, 2, 3, 4, 5, 6, 7, 8}, {1, 2, 1, 2},
-                             {1, 3, 2, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
+                          {1, 3, 2, 4}, {1}, {2}, {2, 1, 1, 1}, {32, 72});
 }
 
 namespace {
-template<typename T>
+template <typename T>
 void Random(const index_t batch,
             const index_t height,
             const index_t width,
@@ -134,22 +134,20 @@ void Random(const index_t batch,
   OpsTestNet net;
 
   // Add input data
+  net.AddRandomInput<DeviceType::GPU, float>("Input",
+                                             {batch, height, width, channels});
   net.AddRandomInput<DeviceType::GPU, float>(
-    "Input", {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>(
-    "Weight", {out_channel, channels, height, width});
+      "Weight", {out_channel, channels, height, width});
   net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
 
-  net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                  NHWC,
-                                                  "InputNCHW",
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
-    .Input("InputNCHW")
-    .Input("Weight")
-    .Input("Bias")
-    .Output("OutputNCHW")
-    .Finalize(net.NewOperatorDef());
+      .Input("InputNCHW")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .Finalize(net.NewOperatorDef());
 
   // run cpu
   net.RunOp();
@@ -169,12 +167,12 @@ void Random(const index_t batch,
                                     kernels::BufferType::ARGUMENT);
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
-    .Input("InputImage")
-    .Input("WeightImage")
-    .Input("BiasImage")
-    .Output("OutputImage")
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-    .Finalize(net.NewOperatorDef());
+      .Input("InputImage")
+      .Input("WeightImage")
+      .Input("BiasImage")
+      .Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::GPU);
@@ -182,11 +180,11 @@ void Random(const index_t batch,
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-1, 1e-1);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1,
+                            1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"),
-                            1e-2, 1e-3);
+    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+                            1e-3);
   }
 }
 }  // namespace

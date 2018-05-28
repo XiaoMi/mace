@@ -20,18 +20,18 @@ namespace kernels {
 
 namespace {
 template <typename T>
-void FCWXKernel(cl::Kernel *kernel,
-                const Tensor *input,
-                const Tensor *weight,
-                const Tensor *bias,
-                std::vector<index_t> *prev_input_shape,
-                Tensor *output,
-                const ActivationType activation,
-                std::vector<uint32_t> *gws,
-                std::vector<uint32_t> *lws,
-                const float relux_max_limit,
-                StatsFuture *future,
-                std::unique_ptr<BufferBase> *kernel_error) {
+MaceStatus FCWXKernel(cl::Kernel *kernel,
+                      const Tensor *input,
+                      const Tensor *weight,
+                      const Tensor *bias,
+                      std::vector<index_t> *prev_input_shape,
+                      Tensor *output,
+                      const ActivationType activation,
+                      std::vector<uint32_t> *gws,
+                      std::vector<uint32_t> *lws,
+                      const float relux_max_limit,
+                      StatsFuture *future,
+                      std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
   auto runtime = OpenCLRuntime::Global();
@@ -75,7 +75,7 @@ void FCWXKernel(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -115,7 +115,7 @@ void FCWXKernel(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, (*gws)[0]);
@@ -170,21 +170,23 @@ void FCWXKernel(cl::Kernel *kernel,
       }
     };
   }
+
+  return MACE_SUCCESS;
 }
 
 template <typename T>
-void FCWTXKernel(cl::Kernel *kernel,
-                 const Tensor *input,
-                 const Tensor *weight,
-                 const Tensor *bias,
-                 std::vector<index_t> *prev_input_shape,
-                 Tensor *output,
-                 const ActivationType activation,
-                 std::vector<uint32_t> *gws,
-                 std::vector<uint32_t> *lws,
-                 const float relux_max_limit,
-                 StatsFuture *future,
-                 std::unique_ptr<BufferBase> *kernel_error) {
+MaceStatus FCWTXKernel(cl::Kernel *kernel,
+                       const Tensor *input,
+                       const Tensor *weight,
+                       const Tensor *bias,
+                       std::vector<index_t> *prev_input_shape,
+                       Tensor *output,
+                       const ActivationType activation,
+                       std::vector<uint32_t> *gws,
+                       std::vector<uint32_t> *lws,
+                       const float relux_max_limit,
+                       StatsFuture *future,
+                       std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
   auto runtime = OpenCLRuntime::Global();
@@ -202,7 +204,7 @@ void FCWTXKernel(cl::Kernel *kernel,
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       *kernel_error = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      (*kernel_error)->Allocate(1);
+      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
       (*kernel_error)->Map(nullptr);
       *((*kernel_error)->mutable_data<char>()) = 0;
       (*kernel_error)->UnMap();
@@ -233,7 +235,7 @@ void FCWTXKernel(cl::Kernel *kernel,
 
     uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
-    *lws = {16, kwg_size/16, 0};
+    *lws = {16, kwg_size / 16, 0};
   }
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t batch = output->dim(0);
@@ -246,7 +248,7 @@ void FCWTXKernel(cl::Kernel *kernel,
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel->setArg(idx++,
-          *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
+                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel->setArg(idx++, (*gws)[0]);
@@ -268,8 +270,8 @@ void FCWTXKernel(cl::Kernel *kernel,
   }
 
   std::string tuning_key =
-      Concat("fc_opencl_kernel", output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("fc_opencl_kernel", output->dim(0), output->dim(1), output->dim(2),
+             output->dim(3));
   TuningOrRun2DKernel(*kernel, tuning_key, gws->data(), *lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -278,6 +280,8 @@ void FCWTXKernel(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
+
+  return MACE_SUCCESS;
 }
 }  // namespace
 
@@ -292,13 +296,11 @@ MaceStatus FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_FAILURE_RETURN(output->ResizeImage(output_shape, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
-                activation_, &gws_, &lws_, relux_max_limit_, future,
-                &kernel_error_);
-
-  return MACE_SUCCESS;
+  return FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
+                       activation_, &gws_, &lws_, relux_max_limit_, future,
+                       &kernel_error_);
 }
 
 template struct FullyConnectedFunctor<DeviceType::GPU, float>;

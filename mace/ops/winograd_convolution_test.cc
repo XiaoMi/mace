@@ -83,7 +83,7 @@ void WinogradConvolution(const index_t batch,
 
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                          kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
   auto output_shape = expected.shape();
@@ -132,34 +132,29 @@ void WinogradConvolution(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
-                            1e-2, 1e-2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
-                            1e-5, 1e-4);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-5, 1e-4);
   }
 }
 }  // namespace
 
 TEST_F(WinogradConvlutionTest, AlignedConvolution) {
   WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 32, 16,
-                                                 Padding::VALID);
-  WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 32, 16,
-                                                 Padding::SAME);
+                                              Padding::VALID);
+  WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 32, 16, Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolution) {
   WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 31, 37,
-                                                 Padding::VALID);
-  WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 37, 31,
-                                                 Padding::SAME);
+                                              Padding::VALID);
+  WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 37, 31, Padding::SAME);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolution) {
   WinogradConvolution<DeviceType::GPU, float>(3, 64, 64, 32, 32,
-                                                 Padding::VALID);
-  WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31,
-                                                 Padding::SAME);
+                                              Padding::VALID);
+  WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31, Padding::SAME);
 }
 
 namespace {
@@ -199,7 +194,7 @@ void WinogradConvolutionWithPad(const index_t batch,
 
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                          kernels::BufferType::IN_OUT_CHANNEL);
   Tensor expected;
   expected.Copy(*net.GetOutput("ConvOutput"));
   auto output_shape = expected.shape();
@@ -248,34 +243,26 @@ void WinogradConvolutionWithPad(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
-                            1e-2, 1e-2);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"),
-                            1e-5, 1e-4);
+    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-5, 1e-4);
   }
 }
 }  // namespace
 
 TEST_F(WinogradConvlutionTest, AlignedConvolutionWithPad) {
-  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
-                                                     1);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16,
-                                                    2);
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16, 1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16, 2);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolutionWithPad) {
-  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
-                                                     1);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31,
-                                                    2);
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37, 1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31, 2);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolutionWithPad) {
-  WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
-                                                     1);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31,
-                                                    2);
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32, 1);
+  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31, 2);
 }
 
 }  // namespace test

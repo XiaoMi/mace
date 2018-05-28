@@ -50,7 +50,7 @@ struct PSROIAlignFunctor {
     const index_t num_rois = rois->dim(0);
     const index_t batch_size = input->dim(0);
 
-    MACE_FAILURE_RETURN(output->Resize({num_rois, pooled_height, pooled_width,
+    MACE_RETURN_IF_ERROR(output->Resize({num_rois, pooled_height, pooled_width,
                                         output_dim_}));
     T *output_ptr = output->mutable_data<T>();
 

@@ -44,7 +44,7 @@ struct MatMulFunctor {
                   StatsFuture *future) {
     MACE_UNUSED(future);
     std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
-    MACE_FAILURE_RETURN(C->Resize(c_shape));
+    MACE_RETURN_IF_ERROR(C->Resize(c_shape));
 
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);

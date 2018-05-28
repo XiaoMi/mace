@@ -47,7 +47,7 @@ class FoldedBatchNormOp : public Operator<D, T> {
                offset->dim_size());
 
     Tensor *output = this->Output(OUTPUT);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     return functor_(input, scale, offset, nullptr, nullptr, 0, output, future);
   }

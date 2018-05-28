@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <random>
 #include <algorithm>
 #include <memory>
+#include <random>
 
-#include "mace/kernels/arm/conv_winograd.h"
-#include "mace/core/types.h"
 #include "mace/core/tensor.h"
+#include "mace/core/types.h"
+#include "mace/kernels/arm/conv_winograd.h"
 
 namespace mace {
 namespace kernels {
@@ -55,32 +55,18 @@ TEST(ConvWinogradTest, winograd) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
-  std::generate(input_data, input_data + input_size,
-                [&gen, &nd] {
-                  return std::max(-1.0f, std::min(1.0f, nd(gen)));
-                });
-  std::generate(filter_data, filter_data + filter_size,
-                [&gen, &nd] {
-                  return std::max(-1.0f, std::min(1.0f, nd(gen)));
-                });
+  std::generate(input_data, input_data + input_size, [&gen, &nd] {
+    return std::max(-1.0f, std::min(1.0f, nd(gen)));
+  });
+  std::generate(filter_data, filter_data + filter_size, [&gen, &nd] {
+    return std::max(-1.0f, std::min(1.0f, nd(gen)));
+  });
 
-  kernels::ConvRef3x3s1(input_data,
-                        filter_data,
-                        batch,
-                        in_height,
-                        in_width,
-                        in_channels,
-                        out_channels,
-                        output_data_ref);
+  kernels::ConvRef3x3s1(input_data, filter_data, batch, in_height, in_width,
+                        in_channels, out_channels, output_data_ref);
 
-  kernels::WinoGradConv3x3s1(input_data,
-                             filter_data,
-                             batch,
-                             in_height,
-                             in_width,
-                             in_channels,
-                             out_channels,
-                             6,
+  kernels::WinoGradConv3x3s1(input_data, filter_data, batch, in_height,
+                             in_width, in_channels, out_channels, 6,
                              output_data);
 
   // test

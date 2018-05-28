@@ -65,7 +65,7 @@ enum MaceStatus {
   MACE_OUT_OF_RESOURCES = 2
 };
 
-#define MACE_FAILURE_RETURN(stmt)                                          \
+#define MACE_RETURN_IF_ERROR(stmt)                                          \
   {                                                                        \
     MaceStatus status = (stmt);                                            \
     if (status != MACE_SUCCESS) {                                          \

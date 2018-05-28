@@ -55,7 +55,7 @@ struct DepthToSpaceOpFunctor {
     std::vector<index_t> output_shape = {batch_size, output_depth,
                                          output_height, output_width};
 
-    MACE_FAILURE_RETURN(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
     Tensor::MappingGuard logits_guard(input);
     Tensor::MappingGuard output_guard(output);

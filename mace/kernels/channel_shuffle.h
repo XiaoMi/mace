@@ -32,7 +32,7 @@ struct ChannelShuffleFunctor {
                         Tensor *output,
                         StatsFuture *future) {
     MACE_UNUSED(future);
-    MACE_FAILURE_RETURN(output->ResizeLike(input));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
     Tensor::MappingGuard logits_guard(input);
     Tensor::MappingGuard output_guard(output);

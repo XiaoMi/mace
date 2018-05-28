@@ -17,8 +17,8 @@
 #endif
 
 #include "mace/kernels/arm/conv_2d_neon.h"
-#include "mace/utils/utils.h"
 #include "mace/utils/logging.h"
+#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -39,15 +39,14 @@ inline void Conv2dCPUK1x15Calc(const float *in_ptr,
     for (index_t iw = 0; iw < out_width; ++iw) {
       for (int i = 0; i < 1; ++i) {
         for (int j = 0; j < 15; ++j) {
-          out_ptr[io * out_image_size + (h + ih) * out_width + iw]
-              += in_ptr[((h + ih) * stride + i) * in_width + (iw * stride + j)]
-              * filter_ptr[io * in_channels * 15 + i * 15 + j];
+          out_ptr[io * out_image_size + (h + ih) * out_width + iw] +=
+              in_ptr[((h + ih) * stride + i) * in_width + (iw * stride + j)] *
+              filter_ptr[io * in_channels * 15 + i * 15 + j];
         }
       }
     }
   }
 }
-
 
 // Ho = 1, Wo = 4, Co = 1
 void Conv2dNeonK1x15S1(const float *input,
@@ -70,8 +69,7 @@ void Conv2dNeonK1x15S1(const float *input,
         const index_t out_width = out_shape[3];
         const index_t in_channels = in_shape[1];
         const index_t in_width = in_shape[3];
-        float *out_ptr_base =
-            output + b * out_batch_size + m * out_image_size;
+        float *out_ptr_base = output + b * out_batch_size + m * out_image_size;
         for (index_t c = 0; c < in_channels; ++c) {
           const float *in_ptr_base =
               input + b * in_batch_size + c * in_image_size;
@@ -133,16 +131,16 @@ void Conv2dNeonK1x15S1(const float *input,
 
               vst1q_f32(out_ptr_base + out_offset, vo);
             }  // w
-          }  // ht
+          }    // ht
 #else
           Conv2dCPUK1x15Calc(in_ptr_base, filter_ptr, in_width, in_channels,
                              out_height, h, tile_height, out_width,
                              out_image_size, out_ptr_base, 0, 1);
 #endif
         }  // c
-      }  // h
-    }  // m
-  }  // b
+      }    // h
+    }      // m
+  }        // b
 }
 
 }  // namespace kernels

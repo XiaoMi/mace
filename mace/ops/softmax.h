@@ -31,7 +31,7 @@ class SoftmaxOp : public Operator<D, T> {
     const Tensor *logits = this->Input(LOGITS);
 
     Tensor *output = this->Output(OUTPUT);
-    output->ResizeLike(logits);
+    MACE_RETURN_IF_ERROR(output->ResizeLike(logits));
 
     return functor_(logits, output, future);
   }

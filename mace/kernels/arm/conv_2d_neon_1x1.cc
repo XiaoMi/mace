@@ -31,12 +31,8 @@ void Conv2dNeonK1x1S1(const float *input,
                       const index_t out_channels,
                       float *output) {
   for (index_t b = 0; b < batch; ++b) {
-    Gemm(filter,
-         input + b * in_channels * height * width,
-         1,
-         out_channels,
-         in_channels,
-         height * width,
+    Gemm(filter, input + b * in_channels * height * width, 1, out_channels,
+         in_channels, height * width,
          output + b * out_channels * height * width);
   }
 }

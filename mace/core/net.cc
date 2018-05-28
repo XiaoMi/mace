@@ -71,7 +71,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     CallStats call_stats;
     if (future_wait) {
       StatsFuture future;
-      MACE_FAILURE_RETURN(op->Run(&future));
+      MACE_RETURN_IF_ERROR(op->Run(&future));
       if (run_metadata != nullptr) {
         future.wait_fn(&call_stats);
       } else {
@@ -79,10 +79,10 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
       }
     } else if (run_metadata != nullptr) {
       call_stats.start_micros = NowMicros();
-      MACE_FAILURE_RETURN(op->Run(nullptr));
+      MACE_RETURN_IF_ERROR(op->Run(nullptr));
       call_stats.end_micros = NowMicros();
     } else {
-      MACE_FAILURE_RETURN(op->Run(nullptr));
+      MACE_RETURN_IF_ERROR(op->Run(nullptr));
     }
 
     if (run_metadata != nullptr) {

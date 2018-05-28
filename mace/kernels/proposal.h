@@ -267,7 +267,7 @@ struct ProposalFunctor {
     // Our RPN implementation only supports a single input image, so all
     // batch inds are 0
     size = static_cast<int>(nms_result.size());
-    MACE_FAILURE_RETURN(output->Resize({size, 1, 1, 5}));
+    MACE_RETURN_IF_ERROR(output->Resize({size, 1, 1, 5}));
     auto output_ptr = output->mutable_data<float>();
 #pragma omp parallel for
     for (int i = 0; i < size; ++i) {

@@ -83,10 +83,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
     } else {
       tensor_buffer_ = std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(type)));
-      MaceStatus status = tensor_buffer_->Allocate(model_data_size);
-      if (status != MaceStatus::MACE_SUCCESS) {
-        return status;
-      }
+      MACE_RETURN_IF_ERROR(tensor_buffer_->Allocate(model_data_size));
       tensor_buffer_->Map(nullptr);
       tensor_buffer_->Copy(const_cast<unsigned char*>(model_data),
                            0, model_data_size);
@@ -156,11 +153,8 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
       if (mem_block.mem_id() >= 20000) {
         std::unique_ptr<BufferBase> image_buf(
             new Image());
-        MaceStatus status = image_buf->Allocate(
-            {mem_block.x(), mem_block.y()}, dtype);
-        if (status != MaceStatus::MACE_SUCCESS) {
-          return status;
-        }
+        MACE_RETURN_IF_ERROR(image_buf->Allocate(
+            {mem_block.x(), mem_block.y()}, dtype));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(image_buf));
       }
@@ -168,12 +162,9 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
       if (mem_block.mem_id() < 20000) {
         std::unique_ptr<BufferBase> tensor_buf(
             new Buffer(GetDeviceAllocator(device_type)));
-        MaceStatus status = tensor_buf->Allocate(
+        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
             mem_block.x() * GetEnumTypeSize(dtype)
-            + MACE_EXTRA_BUFFER_PAD_SIZE);
-        if (status != MaceStatus::MACE_SUCCESS) {
-          return status;
-        }
+            + MACE_EXTRA_BUFFER_PAD_SIZE));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(tensor_buf));
       }

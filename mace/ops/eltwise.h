@@ -26,15 +26,15 @@ class EltwiseOp : public Operator<D, T> {
  public:
   EltwiseOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(static_cast<kernels::EltwiseType>(
-                     OperatorBase::GetOptionalArg<int>(
-                         "type", static_cast<int>(kernels::EltwiseType::NONE))),
-                 OperatorBase::GetRepeatedArgs<float>("coeff"),
-                 OperatorBase::GetOptionalArg<float>("x", 1.0)) {}
+        functor_(
+            static_cast<kernels::EltwiseType>(OperatorBase::GetOptionalArg<int>(
+                "type", static_cast<int>(kernels::EltwiseType::NONE))),
+            OperatorBase::GetRepeatedArgs<float>("coeff"),
+            OperatorBase::GetOptionalArg<float>("x", 1.0)) {}
 
   MaceStatus Run(StatsFuture *future) override {
-    const Tensor* input0 = this->Input(0);
-    const Tensor* input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
+    const Tensor *input0 = this->Input(0);
+    const Tensor *input1 = this->InputSize() == 2 ? this->Input(1) : nullptr;
     Tensor *output = this->Output(OUTPUT);
     return functor_(input0, input1, output, future);
   }

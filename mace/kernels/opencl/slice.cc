@@ -20,7 +20,7 @@
 namespace mace {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const std::vector<Tensor *> &output_list,
@@ -29,14 +29,15 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
   MACE_CHECK(output_channels % 4 == 0)
-    << "output channels of slice op must be divisible by 4";
-  std::vector<index_t> output_shape({input->dim(0), input->dim(1),
-                                     input->dim(2), output_channels});
+      << "output channels of slice op must be divisible by 4";
+  std::vector<index_t> output_shape(
+      {input->dim(0), input->dim(1), input->dim(2), output_channels});
 
   std::vector<size_t> image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
-  for (size_t i= 0; i < outputs_count; ++i) {
-    MACE_FAILURE_RETURN(output_list[i]->ResizeImage(output_shape, image_shape));
+  for (size_t i = 0; i < outputs_count; ++i) {
+    MACE_RETURN_IF_ERROR(
+        output_list[i]->ResizeImage(output_shape, image_shape));
   }
 
   auto runtime = OpenCLRuntime::Global();
@@ -46,13 +47,13 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
-    built_options.emplace("-DCMD_DATA_TYPE="
-                           + DtToCLCMDDt(DataTypeToEnum<T>::value));
+    built_options.emplace("-DCMD_DATA_TYPE=" +
+                          DtToCLCMDDt(DataTypeToEnum<T>::value));
     if (runtime->IsOutOfRangeCheckEnabled()) {
       built_options.emplace("-DOUT_OF_RANGE_CHECK");
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -68,8 +69,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   const index_t channel_blk = RoundUpDiv4(output_channels);
 
   const uint32_t gws[3] = {
-      static_cast<uint32_t>(channel_blk),
-      static_cast<uint32_t>(input->dim(2)),
+      static_cast<uint32_t>(channel_blk), static_cast<uint32_t>(input->dim(2)),
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
 
@@ -80,7 +80,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     uint32_t idx = 0;
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_.setArg(idx++,
-          *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
     }
     if (!runtime->IsNonUniformWorkgroupsSupported()) {
       kernel_.setArg(idx++, gws[0]);
@@ -117,8 +117,8 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->is_profiling_enabled()) {
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);
-      call_stats.start_micros = std::min<int64_t>(tmp_stats.start_micros,
-                                                   call_stats.start_micros);
+      call_stats.start_micros =
+          std::min<int64_t>(tmp_stats.start_micros, call_stats.start_micros);
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
     }
   }
@@ -135,10 +135,8 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template
-struct SliceFunctor<DeviceType::GPU, float>;
-template
-struct SliceFunctor<DeviceType::GPU, half>;
+template struct SliceFunctor<DeviceType::GPU, float>;
+template struct SliceFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

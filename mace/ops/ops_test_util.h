@@ -112,12 +112,12 @@ class OpsTestNet {
  public:
   OpsTestNet() : op_registry_(new OperatorRegistry()) {}
 
-  template<DeviceType D, typename T>
+  template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data) {
     Tensor *input =
-      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -125,25 +125,25 @@ class OpsTestNet {
     memcpy(input_data, data.data(), data.size() * sizeof(T));
   }
 
-  template<DeviceType D, typename T>
+  template <DeviceType D, typename T>
   void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
-      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
     std::fill(input_data, input_data + input->size(), data);
   }
 
-  template<DeviceType D, typename T>
+  template <DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
                       bool positive = true,
                       bool truncate = false) {
     Tensor *input =
-      ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -153,15 +153,15 @@ class OpsTestNet {
     std::normal_distribution<float> nd(0, 1);
     if (DataTypeToEnum<T>::value == DT_HALF) {
       std::generate(
-        input_data, input_data + input->size(),
-        [&gen, &nd, positive, truncate] {
-          float d = nd(gen);
-          if (truncate) {
-            if (std::abs(d) > 100.f) d = 100.f;
-            if (std::abs(d) < 0.001f) d = 0.001f;
-          }
-          return half_float::half_cast<half>(positive ?std::abs(d) : d);
-        });
+          input_data, input_data + input->size(),
+          [&gen, &nd, positive, truncate] {
+            float d = nd(gen);
+            if (truncate) {
+              if (std::abs(d) > 100.f) d = 100.f;
+              if (std::abs(d) < 0.001f) d = 0.001f;
+            }
+            return half_float::half_cast<half>(positive ? std::abs(d) : d);
+          });
     } else {
       std::generate(input_data, input_data + input->size(),
                     [&gen, &nd, positive, truncate] {
@@ -170,17 +170,15 @@ class OpsTestNet {
                         if (std::abs(d) > 100.f) d = 100.f;
                         if (std::abs(d) < 0.001f) d = 0.001f;
                       }
-                      return (positive ?std::abs(d) : d);
+                      return (positive ? std::abs(d) : d);
                     });
     }
   }
 
-  template<DeviceType D, typename T>
-  void Transpose2D(const std::string &src_name,
-                   const std::string &dst_name) {
+  template <DeviceType D, typename T>
+  void Transpose2D(const std::string &src_name, const std::string &dst_name) {
     Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(dst_name,
-                                      GetDeviceAllocator(D),
+    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
                                       DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 2, "input shape != 2");
@@ -192,19 +190,18 @@ class OpsTestNet {
     for (index_t i = 0; i < input_shape[0]; ++i) {
       for (index_t j = 0; j < input_shape[1]; ++j) {
         output_data[j * input_shape[0] + i] =
-          input_data[i * input_shape[1] + j];
+            input_data[i * input_shape[1] + j];
       }
     }
   }
 
-  template<DeviceType D, typename T>
+  template <DeviceType D, typename T>
   void TransformDataFormat(const std::string &src_name,
                            const DataFormat src_format,
                            const std::string &dst_name,
                            const DataFormat dst_format) {
     Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(dst_name,
-                                      GetDeviceAllocator(D),
+    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
                                       DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 4, "input shape != 4");
@@ -224,7 +221,7 @@ class OpsTestNet {
           for (index_t h = 0; h < height; ++h) {
             for (index_t w = 0; w < width; ++w) {
               output_data[((b * channels + c) * height + h) * width + w] =
-                input_data[((b * height + h) * width + w) * channels + c];
+                  input_data[((b * height + h) * width + w) * channels + c];
             }
           }
         }
@@ -244,7 +241,7 @@ class OpsTestNet {
           for (index_t w = 0; w < width; ++w) {
             for (index_t c = 0; c < channels; ++c) {
               output_data[((b * height + h) * width + w) * channels + c] =
-                input_data[((b * channels + c) * height + h) * width + w];
+                  input_data[((b * channels + c) * height + h) * width + w];
             }
           }
         }
@@ -264,7 +261,7 @@ class OpsTestNet {
       for (index_t i = 0; i < oi; ++i) {
         for (index_t j = 0; j < hw; ++j) {
           output_data[i * height * width + j] =
-            input_data[j * out_channels * in_channels + i];
+              input_data[j * out_channels * in_channels + i];
         }
       }
     } else if (src_format == OIHW && dst_format == HWOI) {
@@ -282,7 +279,7 @@ class OpsTestNet {
       for (index_t i = 0; i < hw; ++i) {
         for (index_t j = 0; j < oi; ++j) {
           output_data[i * out_channels * in_channels + j] =
-            input_data[j * height * width + i];
+              input_data[j * height * width + i];
         }
       }
     } else if (src_format == HWIO && dst_format == OIHW) {
@@ -300,7 +297,8 @@ class OpsTestNet {
         for (index_t c = 0; c < in_channels; ++c) {
           for (index_t k = 0; k < hw; ++k) {
             output_data[((m * in_channels) + c) * height * width + k] =
-              input_data[k * out_channels * in_channels + c * out_channels + m];
+                input_data[k * out_channels * in_channels + c * out_channels +
+                           m];
           }
         }
       }
@@ -309,12 +307,11 @@ class OpsTestNet {
     }
   }
 
-  template<DeviceType D, typename T>
+  template <DeviceType D, typename T>
   void FillNHWCInputToNCHWInput(const std::string &name_nchw,
                                 const std::string &name_nhwc) {
     Tensor *input = ws_.GetTensor(name_nhwc);
-    Tensor *output = ws_.CreateTensor(name_nchw,
-                                      GetDeviceAllocator(D),
+    Tensor *output = ws_.CreateTensor(name_nchw, GetDeviceAllocator(D),
                                       DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     index_t batch = input_shape[0];
@@ -329,7 +326,7 @@ class OpsTestNet {
         for (index_t h = 0; h < height; ++h) {
           for (index_t w = 0; w < width; ++w) {
             output_data[((b * channels + c) * height + h) * width + w] =
-              input_data[((b * height + h) * width + w) * channels + c];
+                input_data[((b * height + h) * width + w) * channels + c];
           }
         }
       }
@@ -370,14 +367,12 @@ class OpsTestNet {
   // DEPRECATED(liyin):
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
-  MaceStatus RunOp() {
-    return RunOp(DeviceType::CPU);
-  }
+  MaceStatus RunOp() { return RunOp(DeviceType::CPU); }
 
   MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
     device_ = device;
     net_ = CreateNet(op_registry_, net_def, &ws_, device, NetMode::INIT);
-    MACE_FAILURE_RETURN(net_->Run());
+    MACE_RETURN_IF_ERROR(net_->Run());
     net_ = CreateNet(op_registry_, net_def, &ws_, device);
     return net_->Run();
   }
@@ -415,7 +410,7 @@ class OpsTestBase : public ::testing::Test {
   }
 };
 
-template<typename T>
+template <typename T>
 void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
                                 std::vector<T> *res,
                                 bool positive = true) {
@@ -430,11 +425,10 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
   res->resize(size);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    std::generate(res->begin(), res->end(),
-                  [&gen, &nd, positive] {
-                    return half_float::half_cast<half>(
-                      positive ? std::abs(nd(gen)) : nd(gen));
-                  });
+    std::generate(res->begin(), res->end(), [&gen, &nd, positive] {
+      return half_float::half_cast<half>(positive ? std::abs(nd(gen))
+                                                  : nd(gen));
+    });
   } else {
     std::generate(res->begin(), res->end(), [&gen, &nd, positive] {
       return positive ? std::abs(nd(gen)) : nd(gen);
@@ -442,7 +436,7 @@ void GenerateRandomRealTypeData(const std::vector<index_t> &shape,
   }
 }
 
-template<typename T>
+template <typename T>
 void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
                                std::vector<T> *res,
                                const T a = 0,
@@ -460,7 +454,7 @@ void GenerateRandomIntTypeData(const std::vector<index_t> &shape,
   std::generate(res->begin(), res->end(), [&gen, &nd] { return nd(gen); });
 }
 
-template<typename T>
+template <typename T>
 std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
   std::vector<T> dest;
   dest.reserve(src.size());
@@ -470,11 +464,11 @@ std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
   return std::move(dest);
 }
 
-template<typename T>
+template <typename T>
 std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
                                      const std::vector<T> &data) {
   std::unique_ptr<Tensor> res(
-    new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
+      new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
   res->Resize(shape);
   T *input_data = res->mutable_data<T>();
   memcpy(input_data, data.data(), data.size() * sizeof(T));
@@ -504,24 +498,24 @@ inline std::string ShapeToString(const Tensor &x) {
   return std::string(stream.str());
 }
 
-template<typename T>
+template <typename T>
 struct is_floating_point_type {
   static const bool value = std::is_same<T, float>::value ||
-    std::is_same<T, double>::value ||
-    std::is_same<T, half>::value;
+                            std::is_same<T, double>::value ||
+                            std::is_same<T, half>::value;
 };
 
-template<typename T>
+template <typename T>
 inline void ExpectEqual(const T &a, const T &b) {
   EXPECT_EQ(a, b);
 }
 
-template<>
+template <>
 inline void ExpectEqual<float>(const float &a, const float &b) {
   EXPECT_FLOAT_EQ(a, b);
 }
 
-template<>
+template <>
 inline void ExpectEqual<double>(const double &a, const double &b) {
   EXPECT_DOUBLE_EQ(a, b);
 }
@@ -531,13 +525,13 @@ inline void AssertSameDims(const Tensor &x, const Tensor &y) {
                                 << "y.shape [ " << ShapeToString(y) << "]";
 }
 
-template<typename EXP_TYPE,
-  typename RES_TYPE,
-  bool is_fp = is_floating_point_type<EXP_TYPE>::value>
+template <typename EXP_TYPE,
+          typename RES_TYPE,
+          bool is_fp = is_floating_point_type<EXP_TYPE>::value>
 struct Expector;
 
 // Partial specialization for float and double.
-template<typename EXP_TYPE, typename RES_TYPE>
+template <typename EXP_TYPE, typename RES_TYPE>
 struct Expector<EXP_TYPE, RES_TYPE, true> {
   static void Equal(const EXP_TYPE &a, const RES_TYPE &b) { ExpectEqual(a, b); }
 
@@ -554,7 +548,8 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
     }
   }
 
-  static void Near(const Tensor &x, const Tensor &y,
+  static void Near(const Tensor &x,
+                   const Tensor &y,
                    const double rel_err,
                    const double abs_err) {
     ASSERT_EQ(x.dtype(), DataTypeToEnum<EXP_TYPE>::v());
@@ -588,7 +583,7 @@ struct Expector<EXP_TYPE, RES_TYPE, true> {
   }
 };
 
-template<typename EXP_TYPE, typename RES_TYPE>
+template <typename EXP_TYPE, typename RES_TYPE>
 struct Expector<EXP_TYPE, RES_TYPE, false> {
   static void Equal(const EXP_TYPE &a, const RES_TYPE &b) { ExpectEqual(a, b); }
 
@@ -605,7 +600,8 @@ struct Expector<EXP_TYPE, RES_TYPE, false> {
     }
   }
 
-  static void Near(const Tensor &x, const Tensor &y,
+  static void Near(const Tensor &x,
+                   const Tensor &y,
                    const double rel_err,
                    const double abs_err) {
     MACE_UNUSED(rel_err);
@@ -614,21 +610,23 @@ struct Expector<EXP_TYPE, RES_TYPE, false> {
   }
 };
 
-template<typename T>
-void ExpectTensorNear(const Tensor &x, const Tensor &y,
+template <typename T>
+void ExpectTensorNear(const Tensor &x,
+                      const Tensor &y,
                       const double rel_err = 1e-5,
                       const double abs_err = 1e-8) {
   Expector<T, T>::Near(x, y, rel_err, abs_err);
 }
 
-template<typename EXP_TYPE, typename RES_TYPE>
-void ExpectTensorNear(const Tensor &x, const Tensor &y,
+template <typename EXP_TYPE, typename RES_TYPE>
+void ExpectTensorNear(const Tensor &x,
+                      const Tensor &y,
                       const double rel_err = 1e-5,
                       const double abs_err = 1e-8) {
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, rel_err, abs_err);
 }
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 void BufferToImage(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -636,11 +634,11 @@ void BufferToImage(OpsTestNet *net,
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("BufferToImage", "BufferToImageTest")
-    .Input(input_name)
-    .Output(output_name)
-    .AddIntArg("buffer_type", type)
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-    .Finalize(net->NewOperatorDef());
+      .Input(input_name)
+      .Output(output_name)
+      .AddIntArg("buffer_type", type)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);
@@ -648,7 +646,7 @@ void BufferToImage(OpsTestNet *net,
   net->Sync();
 }
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
@@ -656,11 +654,11 @@ void ImageToBuffer(OpsTestNet *net,
   MACE_CHECK_NOTNULL(net);
 
   OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
-    .Input(input_name)
-    .Output(output_name)
-    .AddIntArg("buffer_type", type)
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-    .Finalize(net->NewOperatorDef());
+      .Input(input_name)
+      .Output(output_name)
+      .AddIntArg("buffer_type", type)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net->NewOperatorDef());
 
   // Run
   net->RunOp(D);

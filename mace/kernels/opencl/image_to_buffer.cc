@@ -25,10 +25,9 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     const BufferType type,
     Tensor *buffer,
     StatsFuture *future) {
-
   std::vector<size_t> image_shape;
   CalImage2DShape(image->shape(), type, &image_shape);
-  MACE_FAILURE_RETURN(buffer->Resize(image->shape()));
+  MACE_RETURN_IF_ERROR(buffer->Resize(image->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -87,7 +86,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     if (!kernel_error_) {
       kernel_error_ = std::move(std::unique_ptr<Buffer>(
           new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      kernel_error_->Allocate(1);
+      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
       kernel_error_->Map(nullptr);
       *(kernel_error_->mutable_data<char>()) = 0;
       kernel_error_->UnMap();
@@ -100,7 +99,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     b2f_kernel.setArg(idx++,
-        *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
+                      *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
   }
   if (!runtime->IsNonUniformWorkgroupsSupported()) {
     b2f_kernel.setArg(idx++, gws[0]);
@@ -108,8 +107,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
   }
   b2f_kernel.setArg(idx++, *(buffer->opencl_buffer()));
   if (type == CONV2D_FILTER) {
-    const index_t inner_size =
-        buffer->dim(1) * buffer->dim(2) * buffer->dim(3);
+    const index_t inner_size = buffer->dim(1) * buffer->dim(2) * buffer->dim(3);
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));

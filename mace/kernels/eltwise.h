@@ -494,7 +494,7 @@ struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
         }
       }
     }
-    MACE_FAILURE_RETURN(output->ResizeLike(input0));
+    MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
 
     Tensor::MappingGuard input0_guard(input0);
     Tensor::MappingGuard output_guard(output);
