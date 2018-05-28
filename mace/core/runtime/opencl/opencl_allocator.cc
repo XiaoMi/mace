@@ -45,6 +45,11 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
     return MaceStatus::MACE_SUCCESS;
   }
   VLOG(3) << "Allocate OpenCL buffer: " << nbytes;
+
+  if (ShouldMockRuntimeFailure()) {
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
   cl_int error;
   cl::Buffer *buffer = new cl::Buffer(OpenCLRuntime::Global()->context(),
                                       CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
@@ -67,6 +72,10 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
   VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", "
           << image_shape[1];
+
+  if (ShouldMockRuntimeFailure()) {
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
 
   cl::ImageFormat img_format(CL_RGBA, DataTypeToCLChannelType(dt));
 

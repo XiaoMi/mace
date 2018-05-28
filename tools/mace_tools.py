@@ -171,7 +171,8 @@ def tuning_run(target_abi,
                omp_num_threads=-1,
                cpu_affinity_policy=1,
                gpu_perf_hint=3,
-               gpu_priority_hint=3):
+               gpu_priority_hint=3,
+               runtime_failure_ratio=0.0):
     stdout = sh_commands.tuning_run(
         target_abi,
         serialno,
@@ -195,6 +196,7 @@ def tuning_run(target_abi,
         cpu_affinity_policy,
         gpu_perf_hint,
         gpu_priority_hint,
+        runtime_failure_ratio,
         valgrind=FLAGS.valgrind,
         valgrind_path=FLAGS.valgrind_path,
         valgrind_args=FLAGS.valgrind_args
@@ -543,6 +545,11 @@ def parse_args():
         type=str,
         default="half",
         help="[half | float].")
+    parser.add_argument(
+        "--runtime_failure_ratio",
+        type=float,
+        default=0.0,
+        help="[mock runtime failure ratio].")
     return parser.parse_known_args()
 
 
@@ -632,6 +639,11 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
 
         if FLAGS.mode == "run" or FLAGS.mode == "validate" or \
            FLAGS.mode == "all":
+            if FLAGS.mode == "run":
+                runtime_failure_ratio = FLAGS.runtime_failure_ratio
+            else:
+                runtime_failure_ratio = 0.0
+
             tuning_run(target_abi,
                        serialno,
                        vlog_level,
@@ -651,7 +663,8 @@ def process_models(project_name, configs, embed_model_data, vlog_level,
                        omp_num_threads=FLAGS.omp_num_threads,
                        cpu_affinity_policy=FLAGS.cpu_affinity_policy,
                        gpu_perf_hint=FLAGS.gpu_perf_hint,
-                       gpu_priority_hint=FLAGS.gpu_priority_hint)
+                       gpu_priority_hint=FLAGS.gpu_priority_hint,
+                       runtime_failure_ratio=runtime_failure_ratio)
 
         if FLAGS.mode == "benchmark":
             gen_opencl_and_tuning_code(

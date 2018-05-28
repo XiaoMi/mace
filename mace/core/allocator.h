@@ -25,7 +25,9 @@
 #include "mace/core/macros.h"
 #include "mace/core/registry.h"
 #include "mace/core/types.h"
+#include "mace/core/runtime_failure_mock.h"
 #include "mace/public/mace.h"
+#include "mace/public/mace_runtime.h"
 
 namespace mace {
 
@@ -65,6 +67,11 @@ class CPUAllocator : public Allocator {
     if (nbytes == 0) {
       return MaceStatus::MACE_SUCCESS;
     }
+
+    if (ShouldMockRuntimeFailure()) {
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
+
     void *data = nullptr;
 #if defined(__ANDROID__) || defined(__hexagon__)
     data = memalign(kMaceAlignment, nbytes);

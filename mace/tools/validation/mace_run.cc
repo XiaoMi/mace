@@ -120,45 +120,48 @@ struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
   if (prev.arena != curr.arena) {
     LOG(INFO) << "Non-mmapped space allocated (bytes): " << curr.arena
-              << ", diff: " << ((int64_t)curr.arena - (int64_t)prev.arena);
+              << ", diff: " << ((int64_t) curr.arena - (int64_t) prev.arena);
   }
   if (prev.ordblks != curr.ordblks) {
     LOG(INFO) << "Number of free chunks: " << curr.ordblks
-              << ", diff: " << ((int64_t)curr.ordblks - (int64_t)prev.ordblks);
+              << ", diff: "
+              << ((int64_t) curr.ordblks - (int64_t) prev.ordblks);
   }
   if (prev.smblks != curr.smblks) {
     LOG(INFO) << "Number of free fastbin blocks: " << curr.smblks
-              << ", diff: " << ((int64_t)curr.smblks - (int64_t)prev.smblks);
+              << ", diff: " << ((int64_t) curr.smblks - (int64_t) prev.smblks);
   }
   if (prev.hblks != curr.hblks) {
     LOG(INFO) << "Number of mmapped regions: " << curr.hblks
-              << ", diff: " << ((int64_t)curr.hblks - (int64_t)prev.hblks);
+              << ", diff: " << ((int64_t) curr.hblks - (int64_t) prev.hblks);
   }
   if (prev.hblkhd != curr.hblkhd) {
     LOG(INFO) << "Space allocated in mmapped regions (bytes): " << curr.hblkhd
-              << ", diff: " << ((int64_t)curr.hblkhd - (int64_t)prev.hblkhd);
+              << ", diff: " << ((int64_t) curr.hblkhd - (int64_t) prev.hblkhd);
   }
   if (prev.usmblks != curr.usmblks) {
     LOG(INFO) << "Maximum total allocated space (bytes): " << curr.usmblks
-              << ", diff: " << ((int64_t)curr.usmblks - (int64_t)prev.usmblks);
+              << ", diff: "
+              << ((int64_t) curr.usmblks - (int64_t) prev.usmblks);
   }
   if (prev.fsmblks != curr.fsmblks) {
     LOG(INFO) << "Space in freed fastbin blocks (bytes): " << curr.fsmblks
-              << ", diff: " << ((int64_t)curr.fsmblks - (int64_t)prev.fsmblks);
+              << ", diff: "
+              << ((int64_t) curr.fsmblks - (int64_t) prev.fsmblks);
   }
   if (prev.uordblks != curr.uordblks) {
     LOG(INFO) << "Total allocated space (bytes): " << curr.uordblks
               << ", diff: "
-              << ((int64_t)curr.uordblks - (int64_t)prev.uordblks);
+              << ((int64_t) curr.uordblks - (int64_t) prev.uordblks);
   }
   if (prev.fordblks != curr.fordblks) {
     LOG(INFO) << "Total free space (bytes): " << curr.fordblks << ", diff: "
-              << ((int64_t)curr.fordblks - (int64_t)prev.fordblks);
+              << ((int64_t) curr.fordblks - (int64_t) prev.fordblks);
   }
   if (prev.keepcost != curr.keepcost) {
     LOG(INFO) << "Top-most, releasable space (bytes): " << curr.keepcost
               << ", diff: "
-              << ((int64_t)curr.keepcost - (int64_t)prev.keepcost);
+              << ((int64_t) curr.keepcost - (int64_t) prev.keepcost);
   }
   return curr;
 }
@@ -227,39 +230,48 @@ bool RunModel(const std::string &model_name,
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
 
-  std::shared_ptr<mace::MaceEngine> engine;
-  MaceStatus create_engine_status;
-  // Create Engine
-  int64_t t0 = NowMicros();
+  std::vector<unsigned char> model_pb_data;
   if (FLAGS_model_file != "") {
-    std::vector<unsigned char> model_pb_data;
     if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
-    create_engine_status =
-        CreateMaceEngineFromProto(model_pb_data,
-                                  FLAGS_model_data_file,
-                                  input_names,
-                                  output_names,
-                                  device_type,
-                                  &engine);
-  } else {
-    create_engine_status =
-        CreateMaceEngineFromCode(model_name,
-                                 FLAGS_model_data_file,
-                                 input_names,
-                                 output_names,
-                                 device_type,
-                                 &engine);
-  }
-  int64_t t1 = NowMicros();
-
-  if (create_engine_status != MaceStatus::MACE_SUCCESS) {
-    LOG(FATAL) << "Create engine error, please check the arguments";
   }
 
-  double init_millis = (t1 - t0) / 1000.0;
-  LOG(INFO) << "Total init latency: " << init_millis << " ms";
+  std::shared_ptr<mace::MaceEngine> engine;
+  MaceStatus create_engine_status;
+
+  double init_millis;
+  while (true) {
+    // Create Engine
+    int64_t t0 = NowMicros();
+    if (FLAGS_model_file != "") {
+      create_engine_status =
+          CreateMaceEngineFromProto(model_pb_data,
+                                    FLAGS_model_data_file,
+                                    input_names,
+                                    output_names,
+                                    device_type,
+                                    &engine);
+    } else {
+      create_engine_status =
+          CreateMaceEngineFromCode(model_name,
+                                   FLAGS_model_data_file,
+                                   input_names,
+                                   output_names,
+                                   device_type,
+                                   &engine);
+    }
+    int64_t t1 = NowMicros();
+
+    if (create_engine_status != MACE_SUCCESS) {
+      LOG(ERROR) << "Create engine runtime error, retry ... errcode: "
+                 << create_engine_status;
+    } else {
+      init_millis = (t1 - t0) / 1000.0;
+      LOG(INFO) << "Total init latency: " << init_millis << " ms";
+      break;
+    }
+  }
 
   const size_t input_count = input_names.size();
   const size_t output_count = output_names.size();
@@ -297,26 +309,84 @@ bool RunModel(const std::string &model_name,
   }
 
   LOG(INFO) << "Warm up run";
-  int64_t t3 = NowMicros();
-  engine->Run(inputs, &outputs);
-  int64_t t4 = NowMicros();
-  double warmup_millis = (t4 - t3) / 1000.0;
-  LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
+  double warmup_millis;
+  while (true) {
+    int64_t t3 = NowMicros();
+    MaceStatus warmup_status = engine->Run(inputs, &outputs);
+    if (warmup_status != MACE_SUCCESS) {
+      LOG(ERROR) << "Warmup runtime error, retry ... errcode: "
+                 << warmup_status;
+      do {
+        if (FLAGS_model_file != "") {
+          create_engine_status =
+              CreateMaceEngineFromProto(model_pb_data,
+                                        FLAGS_model_data_file,
+                                        input_names,
+                                        output_names,
+                                        device_type,
+                                        &engine);
+        } else {
+          create_engine_status =
+              CreateMaceEngineFromCode(model_name,
+                                       FLAGS_model_data_file,
+                                       input_names,
+                                       output_names,
+                                       device_type,
+                                       &engine);
+        }
+      } while (create_engine_status != MACE_SUCCESS);
+    } else {
+      int64_t t4 = NowMicros();
+      warmup_millis = (t4 - t3) / 1000.0;
+      LOG(INFO) << "1st warm up run latency: " << warmup_millis << " ms";
+      break;
+    }
+  }
 
   double model_run_millis = -1;
   if (FLAGS_round > 0) {
     LOG(INFO) << "Run model";
-    int64_t t0 = NowMicros();
+    int64_t total_run_duration = 0;
     struct mallinfo prev = mallinfo();
     for (int i = 0; i < FLAGS_round; ++i) {
-      engine->Run(inputs, &outputs);
+      MaceStatus run_status;
+      while (true) {
+        int64_t t0 = NowMicros();
+        run_status = engine->Run(inputs, &outputs);
+        if (run_status != MACE_SUCCESS) {
+          LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
+                     << run_status;
+          do {
+            if (FLAGS_model_file != "") {
+              create_engine_status =
+                  CreateMaceEngineFromProto(model_pb_data,
+                                            FLAGS_model_data_file,
+                                            input_names,
+                                            output_names,
+                                            device_type,
+                                            &engine);
+            } else {
+              create_engine_status =
+                  CreateMaceEngineFromCode(model_name,
+                                           FLAGS_model_data_file,
+                                           input_names,
+                                           output_names,
+                                           device_type,
+                                           &engine);
+            }
+          } while (create_engine_status != MACE_SUCCESS);
+        } else {
+          int64_t t1 = NowMicros();
+          total_run_duration += (t1 - t0);
+          break;
+        }
+      }
       if (FLAGS_malloc_check_cycle >= 1 && i % FLAGS_malloc_check_cycle == 0) {
         LOG(INFO) << "=== check malloc info change #" << i << " ===";
         prev = LogMallinfoChange(prev);
       }
     }
-    int64_t t1 = NowMicros();
-    model_run_millis = (t1 - t0) / 1000.0 / FLAGS_round;
+    model_run_millis = total_run_duration / 1000.0 / FLAGS_round;
     LOG(INFO) << "Average latency: " << model_run_millis << " ms";
   }
 

@@ -597,6 +597,7 @@ def tuning_run(abi,
                cpu_affinity_policy=1,
                gpu_perf_hint=3,
                gpu_priority_hint=3,
+               runtime_failure_ratio=0.0,
                valgrind=False,
                valgrind_path="/data/local/tmp/valgrind",
                valgrind_args="",
@@ -617,6 +618,7 @@ def tuning_run(abi,
             [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
+                "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
                 "%s/mace_run" % model_output_dir,
                 "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
@@ -678,6 +680,7 @@ def tuning_run(abi,
             "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % phone_data_dir,
             "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
             "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
+            "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
         ]
         if valgrind:
             adb_cmd.extend([
