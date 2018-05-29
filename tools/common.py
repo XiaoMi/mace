@@ -44,5 +44,7 @@ class CaffeEnvType(enum.Enum):
 # common functions
 ################################
 def formatted_file_name(input_file_name, input_name):
-    return input_file_name + '_' + \
-           re.sub('[^0-9a-zA-Z]+', '_', input_name)
+    res = input_file_name + '_'
+    for c in input_name:
+        res += c if c.isalnum() else '_'
+    return res
