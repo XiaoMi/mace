@@ -20,6 +20,10 @@ targets:
 * Power consumption
   * Chip dependent power options like big.LITTLE scheduling, Adreno GPU hints are
     included as advanced API.
+* Responsiveness
+  * UI responsiveness gurantee is sometimes obligatory when runing a model.
+    Mechanism like automatically breaking OpenCL kernel into small units is
+    introduced to allow better preemption for the UI rendering task.
 * Memory usage and library footprint
   * Graph level memory allocation optimization and buffer reuse is supported.
     The core library tries to keep minium external dependencies to keep the
