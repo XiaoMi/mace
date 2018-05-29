@@ -19,7 +19,6 @@
 
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/kernels/gemm.h"
-#include "public/gemmlowp.h"
 
 namespace mace {
 namespace kernels {
