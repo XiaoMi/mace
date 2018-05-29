@@ -1,4 +1,4 @@
-FROM cr.d.xiaomi.net/mace/mace-dev:latest
+FROM miaimace/mace-dev:latest
 
 # Update source
 RUN apt-get update -y

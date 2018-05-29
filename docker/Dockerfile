@@ -32,26 +32,6 @@ RUN apt-get install -y --no-install-recommends \
     bsdmainutils
 RUN pip install --upgrade pip
 
-ENV ANDROID_NDK_HOME /opt/android-ndk
-ENV ANDROID_NDK /opt/android-ndk
-ENV ANDROID_NDK_VERSION r12b
-
-# Android NDK
-# download
-RUN mkdir /opt/android-ndk-tmp && \
-    cd /opt/android-ndk-tmp && \
-    wget -q https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip && \
-# uncompress
-    unzip -q android-ndk-${ANDROID_NDK_VERSION}-linux-x86_64.zip && \
-# move to its final location
-    mv ./android-ndk-${ANDROID_NDK_VERSION} ${ANDROID_NDK_HOME} && \
-# remove temp dir
-    cd ${ANDROID_NDK_HOME} && \
-    rm -rf /opt/android-ndk-tmp
-
-# add to PATH
-ENV PATH ${PATH}:${ANDROID_NDK_HOME}
-
 # Set up Bazel.
 # Running bazel inside a `docker build` command causes trouble, cf:
 #   https://github.com/bazelbuild/bazel/issues/134
@@ -106,6 +86,25 @@ RUN apt-get install -y --no-install-recommends \
     screen \
     android-tools-adb
 
+# Download NDK in different versions
+RUN cd /opt/ && \
+    wget -q https://dl.google.com/android/repository/android-ndk-r12b-linux-x86_64.zip && \
+    unzip -q android-ndk-r12b-linux-x86_64.zip && \
+    rm -f android-ndk-r12b-linux-x86_64.zip && \
+    wget -q https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip && \
+    unzip -q android-ndk-r15c-linux-x86_64.zip && \
+    rm -f android-ndk-r15c-linux-x86_64.zip && \
+    wget -q https://dl.google.com/android/repository/android-ndk-r16-linux-x86_64.zip && \
+    unzip -q android-ndk-r16-linux-x86_64.zip && \
+    rm -f android-ndk-r16-linux-x86_64.zip
+
+ENV ANDROID_NDK_VERSION r12b
+ENV ANDROID_NDK /opt/android-ndk-${ANDROID_NDK_VERSION}
+ENV ANDROID_NDK_HOME ${ANDROID_NDK}
+
+# add to PATH
+ENV PATH ${PATH}:${ANDROID_NDK_HOME}
+
 # Install tools
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.7.0 \
@@ -120,7 +119,3 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     sphinx-autobuild \
     sphinx_rtd_theme \
     recommonmark
-
-# Download tensorflow tools
-RUN wget https://cnbj1.fds.api.xiaomi.com/mace/tools/transform_graph && \
-    chmod +x transform_graph
