@@ -9,7 +9,7 @@ http_archive(
     strip_prefix = "protobuf-3.4.0",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/protobuf/protobuf-3.4.0.zip",
-        "https://github.com/google/protobuf/archive/v3.4.0.zip"
+        "https://github.com/google/protobuf/archive/v3.4.0.zip",
     ],
 )
 
@@ -20,7 +20,7 @@ new_http_archive(
     strip_prefix = "googletest-release-1.8.0",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/googletest/googletest-release-1.8.0.zip",
-        "https://github.com/google/googletest/archive/release-1.8.0.zip"
+        "https://github.com/google/googletest/archive/release-1.8.0.zip",
     ],
 )
 
@@ -31,7 +31,7 @@ new_http_archive(
     strip_prefix = "OpenCL-Headers-master",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/OpenCL-Headers-master.zip",
-        "https://github.com/KhronosGroup/OpenCL-Headers/archive/master.zip"
+        "https://github.com/KhronosGroup/OpenCL-Headers/archive/master.zip",
     ],
 )
 
@@ -42,7 +42,7 @@ new_http_archive(
     strip_prefix = "OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-CLHPP/OpenCL-CLHPP-4c6f7d56271727e37fb19a9b47649dd175df2b12.zip",
-        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/4c6f7d56271727e37fb19a9b47649dd175df2b12.zip"
+        "https://github.com/KhronosGroup/OpenCL-CLHPP/archive/4c6f7d56271727e37fb19a9b47649dd175df2b12.zip",
     ],
 )
 
@@ -53,7 +53,29 @@ new_http_archive(
     strip_prefix = "half-code-356-trunk",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/half/half-code-356-trunk.zip",
-        "https://sourceforge.net/code-snapshots/svn/h/ha/half/code/half-code-356-trunk.zip"
+        "https://sourceforge.net/code-snapshots/svn/h/ha/half/code/half-code-356-trunk.zip",
+    ],
+)
+
+new_http_archive(
+    name = "eigen",
+    build_file = "third_party/eigen3/eigen.BUILD",
+    sha256 = "ca7beac153d4059c02c8fc59816c82d54ea47fe58365e8aded4082ded0b820c4",
+    strip_prefix = "eigen-eigen-f3a22f35b044",
+    urls = [
+        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/eigen/f3a22f35b044.tar.gz",
+        "http://mirror.bazel.build/bitbucket.org/eigen/eigen/get/f3a22f35b044.tar.gz",
+        "https://bitbucket.org/eigen/eigen/get/f3a22f35b044.tar.gz",
+    ],
+)
+
+http_archive(
+    name = "gemmlowp",
+    sha256 = "b87faa7294dfcc5d678f22a59d2c01ca94ea1e2a3b488c38a95a67889ed0a658",
+    strip_prefix = "gemmlowp-38ebac7b059e84692f53e5938f97a9943c120d98",
+    urls = [
+        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/gemmlowp/38ebac7b059e84692f53e5938f97a9943c120d98.zip",
+        "https://github.com/google/gemmlowp/archive/38ebac7b059e84692f53e5938f97a9943c120d98.zip",
     ],
 )
 
@@ -81,7 +103,7 @@ http_archive(
     strip_prefix = "gflags-30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",
     urls = [
         "https://cnbj1.fds.api.xiaomi.com/mace/third-party/gflags/gflags-30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.zip",
-        "https://github.com/gflags/gflags/archive/30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.zip"
+        "https://github.com/gflags/gflags/archive/30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.zip",
     ],
 )
 
