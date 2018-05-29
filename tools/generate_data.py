@@ -16,6 +16,7 @@ import argparse
 import sys
 import numpy as np
 import re
+import common
 
 # Validation Flow:
 # 1. Generate input data
@@ -29,8 +30,7 @@ import re
 def generate_data(name, shape, input_file):
     np.random.seed()
     data = np.random.random(shape) * 2 - 1
-    input_file_name = input_file + "_" + re.sub('[^0-9a-zA-Z]+', '_',
-                                                name)
+    input_file_name = common.formatted_file_name(input_file, name)
     print 'Generate input file: ', input_file_name
     data.astype(np.float32).tofile(input_file_name)
 
