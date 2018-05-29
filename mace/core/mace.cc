@@ -121,14 +121,16 @@ MaceEngine::Impl::Impl(DeviceType device_type)
 #ifdef MACE_ENABLE_HEXAGON
       , hexagon_controller_(nullptr)
 #endif
-{}
+{
+  LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
+}
 
 MaceStatus MaceEngine::Impl::Init(
     const NetDef *net_def,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
     const unsigned char *model_data) {
-  LOG(INFO) << "MACE version: " << MaceVersion();
+  LOG(INFO) << "Initializing MaceEngine";
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
     ws_->CreateTensor(MakeString("mace_input_node_", input_name),
@@ -158,7 +160,7 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(
         *net_def, device_type_, model_data));
 
-  // Init model
+    // Init model
     auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type_,
                          NetMode::INIT);
     MACE_RETURN_IF_ERROR(net->Run());
@@ -170,6 +172,7 @@ MaceStatus MaceEngine::Impl::Init(
 }
 
 MaceEngine::Impl::~Impl() {
+  LOG(INFO) << "Destroying MaceEngine";
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
     if (VLOG_IS_ON(2)) {
