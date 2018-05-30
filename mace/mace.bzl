@@ -24,18 +24,6 @@ def if_android_arm64(a):
       "//conditions:default": [],
   })
 
-def if_production_mode(a):
-  return select({
-      "//mace:production_mode": a,
-      "//conditions:default": [],
-  })
-
-def if_not_production_mode(a):
-  return select({
-      "//mace:production_mode": [],
-      "//conditions:default": a,
-  })
-
 def if_neon_enabled(a):
   return select({
       "//mace:neon_enabled": a,

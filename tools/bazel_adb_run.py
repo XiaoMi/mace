@@ -95,21 +95,6 @@ def parse_args():
         type=str2bool,
         default=False,
         help="Whether to run the target")
-    parser.add_argument(
-        "--valgrind",
-        type=bool,
-        default=False,
-        help="Whether to use valgrind to check memory error.")
-    parser.add_argument(
-        "--valgrind_path",
-        type=str,
-        default="/data/local/tmp/valgrind",
-        help="Valgrind install path.")
-    parser.add_argument(
-        "--valgrind_args",
-        type=str,
-        default="",
-        help="Valgrind command args.")
     parser.add_argument("--args", type=str, default="", help="Command args")
     parser.add_argument(
         "--stdout_processor",
@@ -121,6 +106,10 @@ def parse_args():
         type=str2bool,
         default=True,
         help="Whether to use neon optimization")
+    parser.add_argument(
+        '--address_sanitizer',
+        action="store_true",
+        help="Whether to enable AddressSanitizer")
     return parser.parse_known_args()
 
 
@@ -145,16 +134,12 @@ def main(unused_args):
     sh_commands.gen_encrypted_opencl_source()
     sh_commands.gen_compiled_opencl_source()
     sh_commands.gen_mace_version()
+    sh_commands.gen_tuning_param_code([])
 
-    strip = "always"
-    debug = False
-    if FLAGS.valgrind:
-        strip = "never"
-        debug = True
     for target_abi in target_abis:
-        sh_commands.bazel_build(target, strip=strip, abi=target_abi,
-                                disable_no_tuning_warning=True, debug=debug,
-                                enable_neon=FLAGS.enable_neon)
+        sh_commands.bazel_build(target, abi=target_abi,
+                                enable_neon=FLAGS.enable_neon,
+                                address_sanitizer=FLAGS.address_sanitizer)
         if FLAGS.run_target:
             for serialno in target_devices:
                 if target_abi not in set(
@@ -162,28 +147,17 @@ def main(unused_args):
                     print("Skip device %s which does not support ABI %s" %
                           (serialno, target_abi))
                     continue
-                if FLAGS.valgrind:
-                    stdouts = sh_commands.adb_run_valgrind(
-                        serialno,
-                        host_bin_path,
-                        bin_name,
-                        valgrind_path=FLAGS.valgrind_path,
-                        valgrind_args=FLAGS.valgrind_args,
-                        args=FLAGS.args,
-                        opencl_profiling=1,
-                        vlog_level=0,
-                        device_bin_path="/data/local/tmp/mace",
-                        out_of_range_check=1)
-                else:
-                    stdouts = sh_commands.adb_run(
-                        serialno,
-                        host_bin_path,
-                        bin_name,
-                        args=FLAGS.args,
-                        opencl_profiling=1,
-                        vlog_level=0,
-                        device_bin_path="/data/local/tmp/mace",
-                        out_of_range_check=1)
+                stdouts = sh_commands.adb_run(
+                    target_abi,
+                    serialno,
+                    host_bin_path,
+                    bin_name,
+                    args=FLAGS.args,
+                    opencl_profiling=True,
+                    vlog_level=0,
+                    device_bin_path="/data/local/tmp/mace",
+                    out_of_range_check=True,
+                    address_sanitizer=FLAGS.address_sanitizer)
                 device_properties = sh_commands.adb_getprop_by_serialno(
                     serialno)
                 globals()[FLAGS.stdout_processor](stdouts, device_properties,

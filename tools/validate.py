@@ -36,6 +36,8 @@ import common
 #        --input_shape 1,64,64,3 \
 #        --output_shape 1,64,64,2
 
+VALIDATION_MODULE = 'VALIDATION'
+
 
 def load_data(file):
     if os.path.isfile(file):
@@ -51,18 +53,21 @@ def compare_output(platform, device_type, output_name, mace_out_value,
         mace_out_value = mace_out_value.reshape(-1)
         assert len(out_value) == len(mace_out_value)
         similarity = (1 - spatial.distance.cosine(out_value, mace_out_value))
-        print output_name, 'MACE VS', platform.upper(
-        ), 'similarity: ', similarity
+        common.MaceLogger.summary(
+            output_name + ' MACE VS ' + platform.upper()
+            + ' similarity: ' + str(similarity))
         if (device_type == "CPU" and similarity > 0.999) or \
             (device_type == "GPU" and similarity > 0.995) or \
                 (device_type == "HEXAGON" and similarity > 0.930):
-            print '===================Similarity Test Passed=================='
+            common.MaceLogger.summary(
+                common.StringFormatter.block("Similarity Test Passed"))
         else:
-            print '===================Similarity Test Failed=================='
-            sys.exit(-1)
+            common.MaceLogger.error(
+                "", common.StringFormatter.block("Similarity Test Failed"))
     else:
-        print '=======================Skip empty node==================='
-        sys.exit(-1)
+        common.MaceLogger.error(
+            "", common.StringFormatter.block(
+                "Similarity Test failed because of empty output"))
 
 
 def normalize_tf_tensor_name(name):
@@ -76,8 +81,9 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                       mace_out_file, input_names, input_shapes, output_names):
     import tensorflow as tf
     if not os.path.isfile(model_file):
-        print("Input graph file '" + model_file + "' does not exist!")
-        sys.exit(-1)
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input graph file '" + model_file + "' does not exist!")
 
     tf.reset_default_graph()
     input_graph_def = tf.GraphDef()
@@ -118,11 +124,13 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
     import caffe
     if not os.path.isfile(model_file):
-        print("Input graph file '" + model_file + "' does not exist!")
-        sys.exit(-1)
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input graph file '" + model_file + "' does not exist!")
     if not os.path.isfile(weight_file):
-        print("Input weight file '" + weight_file + "' does not exist!")
-        sys.exit(-1)
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input weight file '" + weight_file + "' does not exist!")
 
     caffe.set_mode_cpu()
 

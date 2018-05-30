@@ -12,8 +12,6 @@ load(
     "if_android",
     "if_hexagon_enabled",
     "if_not_hexagon_enabled",
-    "if_production_mode",
-    "if_not_production_mode",
     "if_openmp_enabled",
     "if_neon_enabled",
 )
@@ -63,17 +61,13 @@ cc_library(
     ]),
     deps = [
         "//mace/codegen:generated_version",
+        "//mace/codegen:generated_tuning_params",
         "//mace/proto:mace_cc",
         "//mace/utils",
     ] + if_android([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
         "@half//:half",
-    ]) + if_production_mode([
-        "//mace/codegen:generated_tuning_params",
-        "//mace/utils:utils_prod",
-    ]) + if_not_production_mode([
-        "//mace/utils:utils_dev",
     ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),

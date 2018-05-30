@@ -238,7 +238,7 @@ std::string OpStat::StatByNodeType() const {
 std::string OpStat::Summary() const {
   std::stringstream stream;
   if (!records_.empty()) {
-    stream << total_time_.ToString("Summary") << std::endl;
+    stream << total_time_.ToString("Summary of Ops' Stat") << std::endl;
   }
 
   stream << records_.size() << " ops total." << std::endl;

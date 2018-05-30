@@ -21,8 +21,7 @@ import copy
 from mace.proto import mace_pb2
 from mace.python.tools import tf_dsp_converter_lib
 from mace.python.tools import memory_optimizer
-from mace.python.tools import source_converter_lib
-from mace.python.tools import tensor_util
+from mace.python.tools import model_saver
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import tensorflow_converter
 from mace.python.tools.converter_tool import caffe_converter
@@ -40,6 +39,20 @@ FLAGS = None
 device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'gpu': cvt.DeviceType.GPU.value,
                    'dsp': cvt.DeviceType.HEXAGON.value}
+
+
+def parse_data_type(data_type, device_type):
+    if device_type == cvt.DeviceType.GPU.value:
+        if data_type == 'fp32_fp32':
+            return mace_pb2.DT_FLOAT
+        else:
+            return mace_pb2.DT_HALF
+    elif device_type == cvt.DeviceType.CPU.value:
+        return mace_pb2.DT_FLOAT
+    elif device_type == cvt.DeviceType.HEXAGON.value:
+        return mace_pb2.DT_UINT8
+    else:
+        print("Invalid device type: " + device_type)
 
 
 def file_checksum(fname):
@@ -82,7 +95,7 @@ def main(unused_args):
     if FLAGS.platform not in ['tensorflow', 'caffe']:
         print ("platform %s is not supported." % FLAGS.platform)
         sys.exit(-1)
-    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', '']:
+    if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'cpu+gpu']:
         print ("runtime %s is not supported." % FLAGS.runtime)
         sys.exit(-1)
 
@@ -114,7 +127,6 @@ def main(unused_args):
             output_node.name = output_node_names[i]
             option.add_output_node(output_node)
 
-        print("Convert model to mace model.")
         if FLAGS.platform == 'tensorflow':
             converter = tensorflow_converter.TensorflowConverter(
                 option, FLAGS.model_file)
@@ -122,24 +134,18 @@ def main(unused_args):
             converter = caffe_converter.CaffeConverter(option,
                                                        FLAGS.model_file,
                                                        FLAGS.weight_file)
+        else:
+            print("Mace do not support platorm %s yet." & FLAGS.platform)
+            exit(1)
 
         output_graph_def = converter.run()
 
-        if FLAGS.gpu_data_type == 'half':
-            gpu_data_type = mace_pb2.DT_HALF
-        else:
-            gpu_data_type = mace_pb2.DT_FLOAT
-        device_data_type_map = {
-            cvt.DeviceType.CPU.value: mace_pb2.DT_FLOAT,
-            cvt.DeviceType.GPU.value: gpu_data_type,
-            cvt.DeviceType.HEXAGON.value: mace_pb2.DT_UINT8
-        }
-
         print("Transform model to one that can better run on device")
-        if not FLAGS.runtime:
+        if FLAGS.runtime == 'cpu+gpu':
             cpu_graph_def = copy.deepcopy(output_graph_def)
             option.device = cvt.DeviceType.CPU.value
-            option.data_type = device_data_type_map[cvt.DeviceType.CPU.value]
+            option.data_type = parse_data_type(
+                FLAGS.data_type, cvt.DeviceType.CPU.value)
             option.disable_transpose_filters()
             mace_cpu_transformer = transformer.Transformer(
                 option, cpu_graph_def)
@@ -149,7 +155,8 @@ def main(unused_args):
             print "CPU memory optimization done."
 
             option.device = cvt.DeviceType.GPU.value
-            option.data_type = device_data_type_map[cvt.DeviceType.GPU.value]
+            option.data_type = parse_data_type(
+                FLAGS.data_type, cvt.DeviceType.GPU.value)
             option.enable_transpose_filters()
             mace_gpu_transformer = transformer.Transformer(
                 option, output_graph_def)
@@ -165,7 +172,8 @@ def main(unused_args):
             print "Merge done"
         else:
             option.device = device_type_map[FLAGS.runtime]
-            option.data_type = device_data_type_map[option.device]
+            option.data_type = parse_data_type(
+                FLAGS.data_type, option.device)
             mace_transformer = transformer.Transformer(
                 option, output_graph_def)
             output_graph_def = mace_transformer.run()
@@ -180,36 +188,13 @@ def main(unused_args):
 
             print "Memory optimization done."
 
-    if FLAGS.obfuscate:
-        tensor_util.obfuscate_name(output_graph_def)
-    else:
-        tensor_util.rename_tensor(output_graph_def)
-
-    tensor_infos, model_data = tensor_util.get_tensor_info_and_model_data(
-            output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
-
-    source_converter_lib.convert_to_source(
-            output_graph_def, model_checksum, weight_checksum, FLAGS.template,
-            FLAGS.obfuscate, FLAGS.model_tag, FLAGS.codegen_output,
-            FLAGS.runtime, FLAGS.embed_model_data, FLAGS.winograd,
-            FLAGS.model_load_type, tensor_infos, model_data)
-
-    if not FLAGS.embed_model_data:
-        output_dir = os.path.dirname(FLAGS.codegen_output) + '/'
-        with open(output_dir + FLAGS.model_tag + '.data', "wb") as f:
-            f.write(bytearray(model_data))
-
-    if FLAGS.model_load_type == 'pb':
-        tensor_util.del_tensor_data(
-                output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
-        tensor_util.update_tensor_data_type(
-                output_graph_def, FLAGS.runtime, FLAGS.gpu_data_type)
-        with open(FLAGS.pb_output, "wb") as f:
-            f.write(output_graph_def.SerializeToString())
-        # with open(FLAGS.pb_output + '_txt', "wb") as f:
-        #     # output_graph_def.ClearField('tensors')
-        #     f.write(str(output_graph_def))
-    print("Model conversion is completed.")
+    model_saver.save_model(
+        output_graph_def, model_checksum, weight_checksum,
+        FLAGS.template_dir, FLAGS.obfuscate, FLAGS.model_tag,
+        FLAGS.output_dir, FLAGS.runtime,
+        FLAGS.embed_model_data,
+        FLAGS.winograd, FLAGS.data_type,
+        FLAGS.model_build_type)
 
 
 def str2bool(v):
@@ -244,15 +229,10 @@ def parse_args():
         default="",
         help="Weight file sha256 checksum")
     parser.add_argument(
-        "--codegen_output",
+        "--output_dir",
         type=str,
         default="",
         help="File to save the output graph to.")
-    parser.add_argument(
-        "--pb_output",
-        type=str,
-        default="",
-        help="File to save the mace model to.")
     parser.add_argument(
         "--runtime", type=str, default="", help="Runtime: cpu/gpu/dsp")
     parser.add_argument(
@@ -263,7 +243,7 @@ def parse_args():
     parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
     parser.add_argument(
-        "--template", type=str, default="", help="template path")
+        "--template_dir", type=str, default="", help="template path")
     parser.add_argument(
         "--obfuscate",
         type=str2bool,
@@ -295,13 +275,16 @@ def parse_args():
         default=True,
         help="embed model data.")
     parser.add_argument(
-        "--model_load_type",
+        "--model_build_type",
         type=str,
-        default="source",
-        help="[source|pb] Load models in generated `source` code" +
-                "or `pb` file.")
+        default="code",
+        help="[proto|code] build models to code" +
+                "or `Protobuf` file.")
     parser.add_argument(
-        "--gpu_data_type", type=str, default="half", help="half/float")
+        "--data_type",
+        type=str,
+        default="fp16_fp32",
+        help="fp16_fp32/fp32_fp32")
     return parser.parse_known_args()
 
 

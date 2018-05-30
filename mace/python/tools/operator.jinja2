@@ -94,10 +94,11 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
 
   {% endfor %}
 
+  {% if net.op[i].output_shape|length > 0 %}
   op->mutable_output_shape()->Reserve({{ net.op[i].output_shape|length }});
   mace::OutputShape * output_shape = nullptr;
   {% for shape in net.op[i].output_shape %}
-	{% if shape.dims|length > 0 %}
+  {% if shape.dims|length > 0 %}
   output_shape = op->add_output_shape();
 
   output_shape->mutable_dims()->Reserve({{ shape.dims|length }});
@@ -105,8 +106,9 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   output_shape->add_dims({{ dim }});
   {% endfor %}
 
-	{% endif %}
+  {% endif %}
   {% endfor %}
+  {% endif %}
 
   std::vector<int> output_types_int({ {{ net.op[i].output_type | join(', ') }} });
   std::vector<mace::DataType> output_types({{ net.op[i].output_type | length }});

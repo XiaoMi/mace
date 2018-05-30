@@ -126,6 +126,7 @@ Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/grap
             strip_unused_nodes(type=float, shape="1,64,64,3")
             remove_nodes(op=Identity, op=CheckNumerics)
             fold_constants(ignore_errors=true)
+            flatten_atrous_conv
             fold_batch_norms
             fold_old_batch_norms
             strip_unused_nodes
@@ -165,44 +166,116 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 
 模型静态库的生成需要使用目标机型，\ ***并且要求必须在目标SOC的机型上编译生成静态库。***
 
-我们提供了\ ``mace_tools.py``\ 工具，可以将模型文件转换成静态库。\ ``tools/mace_tools.py``\ 使用步骤：
+我们提供了\ ``converter.py``\ 工具，可以将模型文件转换成静态库。\ ``tools/converter.py``\ 使用步骤：
 
 
 
-3.2 运行\ ``tools/mace_tools.py``\ 脚本
+3.2 运行\ ``tools/converter.py``\ 脚本
+
+**Commands**
+
+    **build**
+
+        .. note::
+
+            build模型静态库以及测试工具。
+
+        * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
+        * *--tuning* (default=false, optional)：是否为特定SOC调制GPU参数.
+        * *--enable_openmp* (default=true, optional)：是否启用openmp.
+
+    **run**
+
+        .. note::
+
+            命令行运行模型
+
+        * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
+        * *--round* (type=int, default=1,  optional)：模型运行次数。
+        * *--validate* (default=false, optional): 是否需要验证运行结果与框架运行结果是否一致。
+        * *--caffe_env* (type=local/docker, default=docker,  optional)：当vaildate时，可以选择指定caffe环境,local表示本地，docker表示使用docker容器.
+        * *--restart_round* (type=int, default=1,  optional)：模型重启次数。
+        * *--check_gpu_out_of_memory* (default=false, optional): 是否需要检查gpu内存越界。
+        * *--vlog_level* (type=int[0-5], default=0,  optional)：详细日志级别.
+
+        .. warning::
+
+            run依赖于build命令.build完成以后才可以执行run命令
+
+    **benchmark**
+        * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
+
+        .. warning::
+
+            benchmark依赖于build命令.
+
+    **通用参数**
+
+    .. list-table::
+        :widths: auto
+        :header-rows: 1
+        :align: left
+
+        * - argument(key)
+          - argument(value)
+          - default
+          - required
+          - commands
+          - explanation
+        * - --omp_num_threads
+          - int
+          - -1
+          - N
+          - run/benchmark
+          - number of threads
+        * - --cpu_affinity_policy
+          - int
+          - 1
+          - N
+          - run/benchmark
+          - 0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY
+        * - --gpu_perf_hint
+          - int
+          - 3
+          - N
+          - run/benchmark
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
+        * - --gpu_perf_hint
+          - int
+          - 3
+          - N
+          - run/benchmark
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
+        * - --gpu_priority_hint
+          - int
+          - 3
+          - N
+          - run/benchmark
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
 
 .. code:: sh
 
     # print help message
-    # python tools/mace_tools.py --help
-    # --config 配置文件的路径
-    # --output_dir 编译结果的输出文件目录，默认为`./build`
-    # --round 调用`examples/mace_run`运行模型的次数，默认为`1`
-    # --tuning 对opencl的参数调参，该项通常只有开发人员用到，默认为`true`
-    # --mode 运行模式，包含build/run/validate/merge/all/benchmark，默认为`all`
+    python tools/converter.py -h
+    python tools/converter.py build -h
+    python tools/converter.py run -h
+    python tools/converter.py benchmark -h
 
     # 仅编译模型和生成静态库
-    python tools/mace_tools.py --config=models/config.yaml --mode=build
+    python tools/converter.py build --config=models/config.yaml
 
     # 测试模型的运行时间
-    python tools/mace_tools.py --config=models/config.yaml --mode=run --round=1000
+    python tools/converter.py run --config=models/config.yaml --round=100
 
     # 对比编译好的模型在mace上与直接使用tensorflow或者caffe运行的结果，相似度使用`余弦距离表示`
     # 其中使用OpenCL设备，默认相似度大于等于`0.995`为通过；DSP设备下，相似度需要达到`0.930`。
-    python tools/mace_tools.py --config=models/config.yaml --mode=run --round=1000
-
-    # 将已编译好的多个模型合并成静态库
-    # 比如编译了8个模型，决定使用其中2个模型，这时候可以不重新build，直接修改全局配置文件，合并生成静态库
-    python tools/mace_tools.py --config=models/config.yaml --mode=merge
-
-    # 运行以上所有项（可用于测试速度，建议 round=20）
-    python tools/mace_tools.py --config=models/config.yaml --mode=all --round=1000
+    python tools/converter.py run --config=models/config.yaml --validate
 
     # 模型Benchmark：查看每个Op的运行时间
-    python tools/mace_tools.py --config=models/config.yaml --mode=benchmark
+    python tools/converter.py benchmark --config=models/config.yaml
 
     # 查看模型运行时占用内存（如果有多个模型，可能需要注释掉一部分配置，只剩一个模型的配置）
-    python tools/mace_tools.py --config=models/config.yaml --mode=run --round=10000 &
+    python tools/converter.py run --config=models/config.yaml --round=10000 &
     adb shell dumpsys meminfo | grep mace_run
     sleep 10
     kill %1
@@ -211,21 +284,34 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 
 通过前面的步骤，我们得到了包含业务模型的库文件。在业务代码中，我们只需要引入下面3组文件（\ ``./build/``\ 是默认的编译结果输出目录）：
 
-头文件(包含mace.h和各个模型的头文件)： \*
-``./build/${project_name}/${target_abi}/include/mace/public/*.h``
+**头文件**
+    * ``./build/${library_name}/include/mace/public/*.h``
 
-静态库（包含mace engine、opencl和模型相关库）： \*
-``./build/${project_name}/${target_abi}/*.a``
+**静态库**
+    * ``./build/${library_name}/library/${target_abi}/*.a``
 
-动态库（仅编译的模型中包含dsp模式时用到）： \*
-``./build/${project_name}/${target_abi}/libhexagon_controller.so``
+**动态库**
+    * ``./build/${library_name}/library/${target_abi}/libhexagon_controller.so``
 
-模型数据文件（仅在EMBED\_MODEL\_DATA=0时产生）： \*
-``./build/${project_name}/data/${MODEL_TAG}.data``
+    .. note::
 
-编译过程中间文件： \* ``./build/${project_name}/build/``
+        仅编译的模型中包含dsp模式时用到
 
-库文件tar包： \* ``./build/${project_name}/${project_name}.tar.gz``
+**模型文件**
+    * ``./build/${library_name}/model/${MODEL_TAG}.pb``
+    * ``./build/${library_name}/model/${MODEL_TAG}.data``
+
+    .. note::
+
+        pb文件紧当模型build_type设置为proto时才会产生。
+
+
+**库文件tar包**
+    * ``./build/${library_name}/libmace_${library_name}.tar.gz``
+
+    .. note::
+
+        该文件包含了上述所有文件，可以发布使用。
 
 5. 使用
 

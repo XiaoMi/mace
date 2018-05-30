@@ -284,16 +284,16 @@ const unsigned char *LoadModelData(const std::string &model_data_file,
                                    const size_t &data_size) {
   int fd = open(model_data_file.c_str(), O_RDONLY);
   MACE_CHECK(fd >= 0, "Failed to open model data file ",
-             model_data_file, ", error code: ", errno);
+             model_data_file, ", error code: ", strerror(errno));
 
   const unsigned char *model_data = static_cast<const unsigned char *>(
       mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, fd, 0));
   MACE_CHECK(model_data != MAP_FAILED, "Failed to map model data file ",
-             model_data_file, ", error code: ", errno);
+             model_data_file, ", error code: ", strerror(errno));
 
   int ret = close(fd);
   MACE_CHECK(ret == 0, "Failed to close model data file ",
-             model_data_file, ", error code: ", errno);
+             model_data_file, ", error code: ", strerror(errno));
 
   return model_data;
 }
@@ -302,7 +302,8 @@ void UnloadModelData(const unsigned char *model_data,
                      const size_t &data_size) {
   int ret = munmap(const_cast<unsigned char *>(model_data),
                    data_size);
-  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ", errno);
+  MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ",
+             strerror(errno));
 }
 
 MaceStatus CreateMaceEngineFromProto(

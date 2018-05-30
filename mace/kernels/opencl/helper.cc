@@ -209,8 +209,9 @@ std::string DtToUpstreamCLCMDDt(const DataType dt) {
 std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
                                        const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  uint64_t cache_size =
+      OpenCLRuntime::Global()->device_global_mem_cache_size();
+  uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   lws[2] =
       std::min<uint32_t>(std::min<uint32_t>(gws[2], base), kwg_size / lws[1]);

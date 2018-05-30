@@ -2,8 +2,6 @@
 # Examples
 load(
     "//mace:mace.bzl",
-    "if_production_mode",
-    "if_not_production_mode",
     "if_hexagon_enabled",
     "if_openmp_enabled",
     "if_android",
