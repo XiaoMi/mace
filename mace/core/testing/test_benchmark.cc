@@ -37,9 +37,7 @@ Benchmark::Benchmark(const char *name, void (*benchmark_func)(int))
   Register();
 }
 
-// Run all benchmarks
-void Benchmark::Run() { Run("all"); }
-
+// Run all benchmarks that matches the pattern
 void Benchmark::Run(const char *pattern) {
   if (!all_benchmarks) return;
 
