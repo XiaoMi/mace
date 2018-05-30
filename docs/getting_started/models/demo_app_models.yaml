@@ -7,7 +7,7 @@ target_socs: [msm8998]
 embed_model_data: 1
 build_type: code # 模型build类型。code表示将模型转为代码，proto表示将模型转为protobuf文件
 models: # 一个配置文件可以包含多个模型的配置信息，最终生成的库中包含多个模型
-  first_net: # 模型的标签，在调度模型的时候，会用这个变量，必须唯一
+  model_name: # 模型的标签，在调度模型的时候，会用这个变量，必须唯一
     platform: tensorflow
     model_file_path: path/to/model64.pb # also support http:// and https://
     model_sha256_checksum: 7f7462333406e7dea87222737590ebb7d94490194d2f21a7d72bafa87e64e9f9

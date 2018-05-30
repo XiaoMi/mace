@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# python tools/mace_tools.py \
-#     --config=tools/example.yaml \
-#     --round=100 \
-#     --mode=all
-
 import argparse
 import filelock
 import hashlib
 import os
+import re
 import sh
 import subprocess
 import sys
 import urllib
 import yaml
-import re
+
 from enum import Enum
 
 import sh_commands
@@ -46,13 +42,23 @@ MODEL_OUTPUT_DIR_NAME = 'model'
 BUILD_TMP_DIR_NAME = '_tmp'
 BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
 OUTPUT_LIBRARY_DIR_NAME = 'library'
+CL_BUILT_KERNEL_FILE_NAME = "mace_cl_compiled_program.bin"
+CL_PLATFORM_INFO_FILE_NAME = "mace_cl_platform_info.txt"
+CODEGEN_BASE_DIR = 'mace/codegen'
+MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
+MACE_RUN_TARGET = "//mace/tools/validation:mace_run"
 
 ABITypeStrs = [
-    "armeabi-v7a",
-    "arm64-v8a",
-    "host",
+    'armeabi-v7a',
+    'arm64-v8a',
+    'host',
 ]
-ABIType = Enum('ABIType', [(ele, ele) for ele in ABITypeStrs], type=str)
+
+
+class ABIType(object):
+    armeabi_v7a = 'armeabi-v7a'
+    arm64_v8a = 'arm64-v8a'
+    host = 'host'
 
 
 PlatformTypeStrs = [
@@ -92,6 +98,13 @@ GPUDataTypeStrs = [
 GPUDataType = Enum('GPUDataType', [(ele, ele) for ele in GPUDataTypeStrs],
                    type=str)
 
+DSPDataTypeStrs = [
+    "uint8",
+]
+
+DSPDataType = Enum('DSPDataType', [(ele, ele) for ele in DSPDataTypeStrs],
+                   type=str)
+
 
 class DefaultValues(object):
     omp_num_threads = -1,
@@ -129,6 +142,8 @@ class YAMLKeyword(object):
 class ModuleName(object):
     YAML_CONFIG = 'YAML CONFIG'
     MODEL_CONVERTER = 'Model Converter'
+    RUN = 'RUN'
+    BENCHMARK = 'Benchmark'
 
 
 CPP_KEYWORDS = [
@@ -171,11 +186,13 @@ def parse_device_type(runtime):
 
 def get_hexagon_mode(configs):
     runtime_list = []
-    for model_name in configs["models"]:
-        model_runtime = configs["models"][model_name].get("runtime", "")
+    for model_name in configs[YAMLKeyword.models]:
+        model_runtime =\
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.runtime, "")
         runtime_list.append(model_runtime.lower())
 
-    if "dsp" in runtime_list:
+    if RuntimeType.dsp in runtime_list:
         return True
     return False
 
@@ -200,7 +217,7 @@ def format_model_config(config_file_path):
 
     library_name = configs.get(YAMLKeyword.library_name, "")
     mace_check(len(library_name) > 0,
-               ModuleName.YAML_CONFIG, "library name shuold not be empty")
+               ModuleName.YAML_CONFIG, "library name should not be empty")
 
     target_abis = configs.get(YAMLKeyword.target_abis, [])
     mace_check((isinstance(target_abis, list) and len(target_abis) > 0),
@@ -216,7 +233,8 @@ def format_model_config(config_file_path):
     elif not isinstance(target_socs, list):
         configs[YAMLKeyword.target_socs] = [target_socs]
 
-    if ABIType.host not in target_abis:
+    if ABIType.armeabi_v7a in target_abis \
+            or ABIType.arm64_v8a in target_abis:
         available_socs = sh_commands.adb_get_all_socs()
         if YAMLKeyword.target_socs in configs:
             target_socs = set(configs[YAMLKeyword.target_socs])
@@ -261,7 +279,7 @@ def format_model_config(config_file_path):
         mace_check((model_name[0] == '_' or model_name[0].isalpha())
                    and bool(model_name_reg.match(model_name)),
                    ModuleName.YAML_CONFIG,
-                   "model name shuold Meet the c++ naming convention"
+                   "model name should Meet the c++ naming convention"
                    " which start with '_' or alpha"
                    " and only contain alpha, number and '_'")
 
@@ -318,6 +336,15 @@ def format_model_config(config_file_path):
             else:
                 model_config[YAMLKeyword.data_type] =\
                     GPUDataType.fp16_fp32.value
+        elif runtime == RuntimeType.dsp:
+            if len(data_type) > 0:
+                mace_check(data_type in DSPDataTypeStrs,
+                           ModuleName.YAML_CONFIG,
+                           "'data_type' must be in " + str(DSPDataTypeStrs)
+                           + " for dsp runtime")
+            else:
+                model_config[YAMLKeyword.data_type] = \
+                    DSPDataType.uint8.value
 
         subgraphs = model_config.get(YAMLKeyword.subgraphs, "")
         mace_check(len(subgraphs) > 0, ModuleName.YAML_CONFIG,
@@ -342,15 +369,17 @@ def format_model_config(config_file_path):
             if value == "":
                 model_config[key] = 0
 
-        validation_inputs_data = model_config.get("validation_inputs_data",
-                                                  [])
-        model_config["validation_inputs_data"] = validation_inputs_data
+        validation_inputs_data = model_config.get(
+            YAMLKeyword.validation_inputs_data, [])
         if not isinstance(validation_inputs_data, list):
-            model_config["validation_inputs_data"] = [
+            model_config[YAMLKeyword.validation_inputs_data] = [
                 validation_inputs_data]
+        else:
+            model_config[YAMLKeyword.validation_inputs_data] = \
+                validation_inputs_data
 
-        weight_file_path = model_config.get("weight_file_path", "")
-        model_config["weight_file_path"] = weight_file_path
+        weight_file_path = model_config.get(YAMLKeyword.weight_file_path, "")
+        model_config[YAMLKeyword.weight_file_path] = weight_file_path
 
     return configs
 
@@ -359,9 +388,9 @@ def get_build_binary_dir(library_name, target_abi, target_soc,
                          serial_num):
     if not target_soc or not serial_num:
         binary_path_digest = md5sum(target_abi)
+        binary_path_digest = "%s_%s" % (target_abi, binary_path_digest)
     else:
-        device_name = sh_commands.adb_get_device_name_by_serialno(serial_num)\
-                .replace(' ', '')
+        device_name = sh_commands.adb_get_device_name_by_serialno(serial_num)
         binary_path_digest = md5sum(target_abi + target_soc + serial_num)
         binary_path_digest = "%s_%s_%s" % \
                              (device_name, target_soc, binary_path_digest)
@@ -386,7 +415,7 @@ def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
         device_name = \
             sh_commands.adb_get_device_name_by_serialno(serial_num)
         model_output_dir = "%s/%s_%s/%s" % (
-            model_output_base_dir, device_name.replace(' ', ''),
+            model_output_base_dir, device_name,
             target_soc, target_abi)
 
     mace_model_dir = \
@@ -401,21 +430,16 @@ def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
 def pull_opencl_binary_and_tuning_param(target_abi,
                                         serialno,
                                         model_output_dirs):
-    cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
-    cl_platform_info_file_name = "mace_cl_platform_info.txt"
     sh_commands.pull_binaries(target_abi, serialno, model_output_dirs,
-                              cl_built_kernel_file_name,
-                              cl_platform_info_file_name)
+                              CL_BUILT_KERNEL_FILE_NAME,
+                              CL_PLATFORM_INFO_FILE_NAME)
 
 
 def gen_opencl_and_tuning_code(model_output_dirs):
-    cl_built_kernel_file_name = "mace_cl_compiled_program.bin"
-    cl_platform_info_file_name = "mace_cl_platform_info.txt"
-
     # generate opencl binary code
     sh_commands.gen_opencl_binary_code(model_output_dirs,
-                                       cl_built_kernel_file_name,
-                                       cl_platform_info_file_name)
+                                       CL_BUILT_KERNEL_FILE_NAME,
+                                       CL_PLATFORM_INFO_FILE_NAME)
 
     sh_commands.gen_tuning_param_code(model_output_dirs)
 
@@ -475,8 +499,9 @@ def convert_model(configs):
     library_name = configs[YAMLKeyword.library_name]
     if not os.path.exists(BUILD_OUTPUT_DIR):
         os.makedirs(BUILD_OUTPUT_DIR)
-    elif not os.path.exists(os.path.join(BUILD_OUTPUT_DIR, library_name)):
-        os.makedirs(os.path.join(BUILD_OUTPUT_DIR, library_name))
+    elif os.path.exists(os.path.join(BUILD_OUTPUT_DIR, library_name)):
+        sh.rm("-rf", os.path.join(BUILD_OUTPUT_DIR, library_name))
+    os.makedirs(os.path.join(BUILD_OUTPUT_DIR, library_name))
 
     model_output_dir = \
         '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
@@ -527,12 +552,10 @@ def convert_model(configs):
                                  "weight file sha256checksum not match")
 
         data_type = model_config[YAMLKeyword.data_type]
-        if ABIType.host.value in configs[YAMLKeyword.target_abis]:
-            data_type = CPUDataType.fp32.value
         # TODO(liuqi): support multiple subgraphs
         subgraphs = model_config[YAMLKeyword.subgraphs]
 
-        model_codegen_dir = "mace/codegen/models/%s" % model_name
+        model_codegen_dir = "%s/%s" % (MODEL_CODEGEN_DIR, model_name)
         sh_commands.gen_model_code(
             model_codegen_dir,
             model_config[YAMLKeyword.platform],
@@ -561,14 +584,13 @@ def convert_model(configs):
                 output_dir=model_output_dir
             )
 
-        MaceLogger.header(
+        MaceLogger.summary(
             StringFormatter.block("Model %s converted" % model_name))
 
 
 def build_specific_lib(target_abi, target_soc, serial_num,
                        configs, tuning, enable_openmp,
                        address_sanitizer):
-    mace_run_target = "//mace/tools/validation:mace_run"
     library_name = configs[YAMLKeyword.library_name]
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
@@ -583,7 +605,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
 
     gen_opencl_and_tuning_code([])
     sh_commands.bazel_build(
-        mace_run_target,
+        MACE_RUN_TARGET,
         abi=target_abi,
         hexagon_mode=hexagon_mode,
         enable_openmp=enable_openmp,
@@ -608,7 +630,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         os.makedirs(model_output_dir)
 
         # build for specified soc
-        if not address_sanitizer and target_abi != ABIType.host \
+        if not address_sanitizer and tuning and target_abi != ABIType.host \
                 and target_soc is not None and \
                 model_runtime in [RuntimeType.gpu, RuntimeType.cpu_gpu]:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
@@ -653,7 +675,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     if binary_changed:
         gen_opencl_and_tuning_code(model_output_dirs)
         sh_commands.bazel_build(
-            mace_run_target,
+            MACE_RUN_TARGET,
             abi=target_abi,
             hexagon_mode=hexagon_mode,
             enable_openmp=enable_openmp,
@@ -671,6 +693,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
 
     # generate library
     sh_commands.merge_libs(target_soc,
+                           serial_num,
                            target_abi,
                            library_name,
                            BUILD_OUTPUT_DIR,
@@ -705,17 +728,18 @@ def generate_library(configs, tuning, enable_openmp, address_sanitizer):
 
     target_socs = configs[YAMLKeyword.target_socs]
     for target_abi in configs[YAMLKeyword.target_abis]:
-        if not target_socs or target_abi == ABIType.host.value:
+        if not target_socs or target_abi == ABIType.host:
             build_specific_lib(target_abi, None, None, configs,
                                tuning, enable_openmp, address_sanitizer)
         else:
             for target_soc in target_socs:
-                serial_num = sh_commands.get_target_soc_serial_number(
-                    target_soc)
-                with sh_commands.device_lock(serial_num):
-                    build_specific_lib(target_abi, target_soc, serial_num,
-                                       configs, tuning, enable_openmp,
-                                       address_sanitizer)
+                serial_nums = \
+                    sh_commands.get_target_socs_serialnos([target_soc])
+                for serial_num in serial_nums:
+                    with sh_commands.device_lock(serial_num):
+                        build_specific_lib(target_abi, target_soc, serial_num,
+                                           configs, tuning, enable_openmp,
+                                           address_sanitizer)
 
     # package library
     sh_commands.packaging_lib(BUILD_OUTPUT_DIR,
@@ -804,8 +828,19 @@ def run_specific_target(flags, configs, target_abi,
     else:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     target_soc, serial_num)
+    mace_check(os.path.exists(build_tmp_binary_dir),
+               ModuleName.RUN,
+               'You should build before run.')
 
     for model_name in configs[YAMLKeyword.models]:
+        if target_abi == ABIType.host:
+            device_name = ABIType.host
+        else:
+            device_name =\
+                sh_commands.adb_get_device_name_by_serialno(serial_num)
+        MaceLogger.header(
+            StringFormatter.block(
+                "Run model %s on %s" % (model_name, device_name)))
         model_config = configs[YAMLKeyword.models][model_name]
         model_runtime = model_config[YAMLKeyword.runtime]
         subgraphs = model_config[YAMLKeyword.subgraphs]
@@ -820,6 +855,10 @@ def run_specific_target(flags, configs, target_abi,
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      target_soc, serial_num,
                                      model_config[YAMLKeyword.model_file_path])
+        mace_check(os.path.exists(model_output_dir)
+                   and os.path.exists(mace_model_dir),
+                   ModuleName.RUN,
+                   'You should build before run.')
         if target_abi != ABIType.host:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
 
@@ -869,9 +908,9 @@ def run_specific_target(flags, configs, target_abi,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files_path(
-                    model_config["model_file_path"],
+                    model_config[YAMLKeyword.model_file_path],
                     model_output_base_dir,
-                    model_config["weight_file_path"])
+                    model_config[YAMLKeyword.weight_file_path])
 
                 sh_commands.validate_model(
                     abi=target_abi,
@@ -899,20 +938,21 @@ def run_mace(flags):
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs:
         target_socs = sh_commands.adb_get_all_socs()
-    if ABIType.host not in configs[YAMLKeyword.target_abis] \
-            and not target_socs:
-        MaceLogger.warning('There is no device plugin the computer.')
 
     for target_abi in configs[YAMLKeyword.target_abis]:
         if target_abi == ABIType.host:
             run_specific_target(flags, configs, target_abi, None, None)
         else:
             for target_soc in target_socs:
-                serial_num = sh_commands.get_target_soc_serial_number(
-                    target_soc)
-                with sh_commands.device_lock(serial_num):
-                    run_specific_target(flags, configs, target_abi,
-                                        target_soc, serial_num)
+                serial_nums = \
+                    sh_commands.get_target_socs_serialnos([target_soc])
+                mace_check(serial_nums,
+                           ModuleName.RUN,
+                           'There is no device with soc: ' + target_soc)
+                for serial_num in serial_nums:
+                    with sh_commands.device_lock(serial_num):
+                        run_specific_target(flags, configs, target_abi,
+                                            target_soc, serial_num)
 
 
 ################################
@@ -928,8 +968,19 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     else:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     target_soc, serial_num)
+    mace_check(os.path.exists(build_tmp_binary_dir),
+               ModuleName.BENCHMARK,
+               'You should build before benchmark.')
 
     for model_name in configs[YAMLKeyword.models]:
+        if target_abi == ABIType.host:
+            device_name = ABIType.host
+        else:
+            device_name = \
+                sh_commands.adb_get_device_name_by_serialno(serial_num)
+        MaceLogger.header(
+            StringFormatter.block(
+                "Benchmark model %s on %s" % (model_name, device_name)))
         model_config = configs[YAMLKeyword.models][model_name]
         model_runtime = model_config[YAMLKeyword.runtime]
         subgraphs = model_config[YAMLKeyword.subgraphs]
@@ -944,6 +995,10 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      target_soc, serial_num,
                                      model_config[YAMLKeyword.model_file_path])
+        mace_check(os.path.exists(model_output_dir)
+                   and os.path.exists(mace_model_dir),
+                   ModuleName.BENCHMARK,
+                   'You should build before benchmark.')
         if target_abi != ABIType.host:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
 
@@ -990,20 +1045,21 @@ def benchmark_model(flags):
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs:
         target_socs = sh_commands.adb_get_all_socs()
-    if ABIType.host.value not in configs[YAMLKeyword.target_abis] \
-            and not target_socs:
-        MaceLogger.warning('There is no device plugin the computer.')
 
     for target_abi in configs[YAMLKeyword.target_abis]:
-        if target_abi == ABIType.host.value:
+        if target_abi == ABIType.host:
             bm_specific_target(flags, configs, target_abi, None, None)
         else:
             for target_soc in target_socs:
-                serial_num = sh_commands.get_target_soc_serial_number(
-                    target_soc)
-                with sh_commands.device_lock(serial_num):
-                    bm_specific_target(flags, configs, target_abi,
-                                       target_soc, serial_num)
+                serial_nums = \
+                    sh_commands.get_target_socs_serialnos([target_soc])
+                mace_check(serial_nums,
+                           ModuleName.BENCHMARK,
+                           'There is no device with soc: ' + target_soc)
+                for serial_num in serial_nums:
+                    with sh_commands.device_lock(serial_num):
+                        bm_specific_target(flags, configs, target_abi,
+                                           target_soc, serial_num)
 
 
 ################################

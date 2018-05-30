@@ -166,11 +166,11 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 
 模型静态库的生成需要使用目标机型，\ ***并且要求必须在目标SOC的机型上编译生成静态库。***
 
-我们提供了\ ``mace_tools.py``\ 工具，可以将模型文件转换成静态库。\ ``tools/mace_tools.py``\ 使用步骤：
+我们提供了\ ``converter.py``\ 工具，可以将模型文件转换成静态库。\ ``tools/converter.py``\ 使用步骤：
 
 
 
-3.2 运行\ ``tools/mace_tools.py``\ 脚本
+3.2 运行\ ``tools/converter.py``\ 脚本
 
 **Commands**
 
@@ -181,8 +181,8 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
             build模型静态库以及测试工具。
 
         * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
-        * *--tuning* (optional)：是否为特定SOC调制GPU参数.
-        * *--enable_openmp* (optional)：是否启用openmp.
+        * *--tuning* (default=false, optional)：是否为特定SOC调制GPU参数.
+        * *--enable_openmp* (default=true, optional)：是否启用openmp.
 
     **run**
 
@@ -192,10 +192,10 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 
         * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
         * *--round* (type=int, default=1,  optional)：模型运行次数。
-        * *--validate* (optional): 是否需要验证运行结果与框架运行结果是否一致。
+        * *--validate* (default=false, optional): 是否需要验证运行结果与框架运行结果是否一致。
         * *--caffe_env* (type=local/docker, default=docker,  optional)：当vaildate时，可以选择指定caffe环境,local表示本地，docker表示使用docker容器.
         * *--restart_round* (type=int, default=1,  optional)：模型重启次数。
-        * *--check_gpu_out_of_memory* (optional): 是否需要检查gpu内存越界。
+        * *--check_gpu_out_of_memory* (default=false, optional): 是否需要检查gpu内存越界。
         * *--vlog_level* (type=int[0-5], default=0,  optional)：详细日志级别.
 
         .. warning::
@@ -256,26 +256,26 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
 .. code:: sh
 
     # print help message
-    python tools/mace_tools.py -h
-    python tools/mace_tools.py build -h
-    python tools/mace_tools.py run -h
-    python tools/mace_tools.py benchmark -h
+    python tools/converter.py -h
+    python tools/converter.py build -h
+    python tools/converter.py run -h
+    python tools/converter.py benchmark -h
 
     # 仅编译模型和生成静态库
-    python tools/mace_tools.py build --config=models/config.yaml
+    python tools/converter.py build --config=models/config.yaml
 
     # 测试模型的运行时间
-    python tools/mace_tools.py run --config=models/config.yaml --round=100
+    python tools/converter.py run --config=models/config.yaml --round=100
 
     # 对比编译好的模型在mace上与直接使用tensorflow或者caffe运行的结果，相似度使用`余弦距离表示`
     # 其中使用OpenCL设备，默认相似度大于等于`0.995`为通过；DSP设备下，相似度需要达到`0.930`。
-    python tools/mace_tools.py run --config=models/config.yaml --validate
+    python tools/converter.py run --config=models/config.yaml --validate
 
     # 模型Benchmark：查看每个Op的运行时间
-    python tools/mace_tools.py benchmark --config=models/config.yaml
+    python tools/converter.py benchmark --config=models/config.yaml
 
     # 查看模型运行时占用内存（如果有多个模型，可能需要注释掉一部分配置，只剩一个模型的配置）
-    python tools/mace_tools.py run --config=models/config.yaml --round=10000 &
+    python tools/converter.py run --config=models/config.yaml --round=10000 &
     adb shell dumpsys meminfo | grep mace_run
     sleep 10
     kill %1

@@ -136,11 +136,6 @@ def main(unused_args):
     sh_commands.gen_mace_version()
     sh_commands.gen_tuning_param_code([])
 
-    strip = "always"
-    debug = False
-    if FLAGS.address_sanitizer:
-        strip = "never"
-        debug = True
     for target_abi in target_abis:
         sh_commands.bazel_build(target, abi=target_abi,
                                 enable_neon=FLAGS.enable_neon,
@@ -158,10 +153,10 @@ def main(unused_args):
                     host_bin_path,
                     bin_name,
                     args=FLAGS.args,
-                    opencl_profiling=1,
+                    opencl_profiling=True,
                     vlog_level=0,
                     device_bin_path="/data/local/tmp/mace",
-                    out_of_range_check=1,
+                    out_of_range_check=True,
                     address_sanitizer=FLAGS.address_sanitizer)
                 device_properties = sh_commands.adb_getprop_by_serialno(
                     serialno)

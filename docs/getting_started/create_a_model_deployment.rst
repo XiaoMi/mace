@@ -30,22 +30,31 @@ Configurations
     :header-rows: 1
     :align: left
 
-    * - Configuration key
-      - Description
+    * - library_name
+      - library name
     * - target_abis
       - The target ABI to build, can be one or more of 'host', 'armeabi-v7a' or 'arm64-v8a'
+    * - target_socs
+      - build for specified socs if you just want use the model for that socs.
     * - embed_model_data
-      - Whether embedding model weights as the code, default to 1
+      - Whether embedding model weights as the code, default to 0
+    * - build_type
+      - model build type, can be ['proto', 'code']. 'proto' for converting model to ProtoBuf file and 'code' for converting model to c++ code.
+    * - model_name
+      - model name. should be unique if there are multiple models.
+        **LIMIT: if build_type is code, model_name will used in c++ code so that model_name must fulfill c++ name specification.**
     * - platform
-      - The source framework, tensorflow or caffe
+      - The source framework, one of [tensorflow, caffe]
     * - model_file_path
       - The path of the model file, can be local or remote
-    * - weight_file_path
-      - The path of the model weights file, used by Caffe model
     * - model_sha256_checksum
       - The SHA256 checksum of the model file
+    * - weight_file_path
+      - The path of the model weights file, used by Caffe model
     * - weight_sha256_checksum
       - The SHA256 checksum of the weight file, used by Caffe model
+    * - subgraphs
+      - subgraphs key. ** DO NOT EDIT **
     * - input_tensors
       - The input tensor names (tensorflow), top name of inputs' layer (caffe). one or more strings
     * - output_tensors
@@ -55,14 +64,16 @@ Configurations
     * - output_shapes
       - The shapes of the output tensors, in NHWC order
     * - runtime
-      - The running device, one of CPU, GPU or DSP
+      - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains cpu and gpu model definition so you can run the model on both cpu and gpu.
+    * - data_type
+      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for gpu, default is fp16_fp32. [fp32] for cpu. [uint8] for dsp.
     * - limit_opencl_kernel_time
-      - Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default to 0
-    * - dsp_mode
-      - Control the DSP precision and performance, default to 0 usually works for most cases
+      - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default to 0
+    * - nnlib_graph_mode
+      - [optional] Control the DSP precision and performance, default to 0 usually works for most cases
     * - obfuscate
-      - Whether to obfuscate the model operator name, default to 0
-    * - fast_conv
-      - Whether to enable Winograd convolution, **will increase memory consumption**
+      - [optional] Whether to obfuscate the model operator name, default to 0
+    * - winograd
+      - [optional] Whether to enable Winograd convolution, **will increase memory consumption**
     * - input_files
-      - Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used
+      - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used
