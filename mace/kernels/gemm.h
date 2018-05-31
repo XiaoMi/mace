@@ -34,6 +34,7 @@ void Gemm(const float *A,
 
 void GemmRef(const float *A,
              const float *B,
+             const index_t batch,
              const index_t height,
              const index_t K,
              const index_t width,
