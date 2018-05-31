@@ -844,7 +844,8 @@ def merge_libs(target_soc,
     project_output_dir = "%s/%s" % (build_output_dir, project_name)
     model_header_dir = "%s/include/mace/public" % project_output_dir
     hexagon_lib_file = "third_party/nnlib/libhexagon_controller.so"
-    model_bin_dir = "%s/%s/%s/" % (project_output_dir, library_output_dir, abi)
+    library_dir = "%s/%s" % (project_output_dir, library_output_dir)
+    model_bin_dir = "%s/%s/" % (library_dir, abi)
 
     if os.path.exists(model_bin_dir):
         sh.rm("-rf", model_bin_dir)
@@ -855,7 +856,7 @@ def merge_libs(target_soc,
     # copy header files
     sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
     if hexagon_mode:
-        sh.cp("-f", hexagon_lib_file, model_bin_dir)
+        sh.cp("-f", hexagon_lib_file, library_dir)
 
     if model_build_type == BuildType.code:
         sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
