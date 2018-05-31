@@ -183,7 +183,7 @@ bool RunModel(const std::vector<std::string> &input_names,
                                   &engine);
   } else {
     create_engine_status =
-        CreateMaceEngineFromCode(model_name,
+        CreateMaceEngineFromCode(FLAGS_model_name,
                                  FLAGS_model_data_file,
                                  input_names,
                                  output_names,

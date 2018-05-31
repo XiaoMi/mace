@@ -279,7 +279,7 @@ def format_model_config(config_file_path):
     mace_check(len(model_names) > 0, ModuleName.YAML_CONFIG,
                "no model found in config file")
 
-    model_name_reg = re.compile(r'^[a-z0-9_]+$')
+    model_name_reg = re.compile(r'^[a-zA-Z0-9_]+$')
     for model_name in model_names:
         # check model_name legality
         mace_check(model_name not in CPP_KEYWORDS,
