@@ -27,7 +27,9 @@ DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
 
 int main(int argc, char **argv) {
-  gflags::SetUsageMessage("some usage message");
+  std::string usage = "run ops benchmark\nusage: " + std::string(argv[0])
+      + " [flags]";
+  gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // config runtime

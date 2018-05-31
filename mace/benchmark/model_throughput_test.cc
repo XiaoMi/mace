@@ -163,7 +163,9 @@ DEFINE_string(dsp_model_data_file, "", "dsp model data file name");
 DEFINE_int32(run_seconds, 10, "run seconds");
 
 int Main(int argc, char **argv) {
-  gflags::SetUsageMessage("some usage message");
+  std::string usage = "model throughput test\nusage: " + std::string(argv[0])
+      + " [flags]";
+  gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();

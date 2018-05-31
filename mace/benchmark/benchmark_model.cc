@@ -201,7 +201,9 @@ DEFINE_int32(cpu_affinity_policy, 1,
 int Main(int argc, char **argv) {
   MACE_CHECK(FLAGS_device != "HEXAGON",
              "Model benchmark tool do not support DSP.");
-  gflags::SetUsageMessage("some usage message");
+  std::string usage = "benchmark model\nusage: " + std::string(argv[0])
+      + " [flags]";
+  gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "Model name: [" << FLAGS_model_name << "]";

@@ -258,7 +258,9 @@ bool RunModel(const std::vector<std::string> &input_names,
 }
 
 int Main(int argc, char **argv) {
-  gflags::SetUsageMessage("some usage message");
+  std::string usage = "example run\nusage: " + std::string(argv[0])
+      + " [flags]";
+  gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "mace version: " << MaceVersion();
