@@ -21,6 +21,7 @@
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
+#include "mace/core/types.h"
 
 namespace {
 inline int64_t NowMicros() {
@@ -138,8 +139,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
         inputs[i].src_id = node_id(op.node_input()[i].node_id());
         inputs[i].output_idx = op.node_input()[i].output_port();
       }
-      outputs.resize(op.out_max_byte_size().size());
-      for (size_t i = 0; i < op.out_max_byte_size().size(); ++i) {
+      outputs.resize(op.output_shape().size());
+      for (int i = 0; i < op.output_shape().size(); ++i) {
         outputs[i].rank = op.output_shape()[i].dims().size();
         for (size_t j = 0; j < outputs[i].rank; ++j) {
           outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
@@ -149,7 +150,8 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
           outputs[i].max_sizes[0] = 1;
         }
         outputs[i].max_sizes[outputs[i].rank] = 0;
-        outputs[i].elementsize = GetEnumTypeSize(op.output_type()[i]);
+        outputs[i].elementsize = GetEnumTypeSize(
+            static_cast<DataType>(op.output_type()[i]));
         outputs[i].zero_offset = 0;
         outputs[i].stepsize = 0;
       }
