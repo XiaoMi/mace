@@ -520,11 +520,20 @@ def gen_random_input(model_output_dir,
                     sh.cp("-f", input_file_list[i], dst_input_file)
 
 
-def update_mace_run_lib(model_output_dir):
-    mace_run_filepath = model_output_dir + "/mace_run"
+def update_mace_run_lib(build_tmp_binary_dir):
+    mace_run_filepath = build_tmp_binary_dir + "/mace_run"
     if os.path.exists(mace_run_filepath):
         sh.rm("-rf", mace_run_filepath)
-    sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run", model_output_dir)
+    sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run",
+          build_tmp_binary_dir)
+
+
+def touch_tuned_file_flag(build_tmp_binary_dir):
+    sh.touch(build_tmp_binary_dir + '/tuned')
+
+
+def is_binary_tuned(build_tmp_binary_dir):
+    return os.path.exists(build_tmp_binary_dir + '/tuned')
 
 
 def mv_model_file_to_output_dir(
