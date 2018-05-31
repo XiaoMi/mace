@@ -239,9 +239,11 @@ def adb_run(abi,
             "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
             "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
             "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
-            "%s %s" % (device_bin_full_path, args),
+            device_bin_full_path,
+            args,
+            _tty_in=True,
             _out=process_output,
-            _fg=True)
+            _err_to_out=True)
         return "".join(stdout_buff)
 
 
@@ -283,8 +285,6 @@ def bazel_build(target,
                 enable_neon=True,
                 address_sanitizer=False):
     print("* Build %s with ABI %s" % (target, abi))
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     if abi == "host":
         bazel_args = (
             "build",
@@ -310,11 +310,9 @@ def bazel_build(target,
     else:
         bazel_args += ("--config", "optimization")
     sh.bazel(
-        _out=process_output,
         _fg=True,
         *bazel_args)
     print("Build done!\n")
-    return "".join(stdout_buff)
 
 
 def bazel_build_common(target, build_args=""):
@@ -323,8 +321,9 @@ def bazel_build_common(target, build_args=""):
     sh.bazel(
         "build",
         target + build_args,
+        _tty_in=True,
         _out=process_output,
-        _fg=True)
+        _err_to_out=True)
     return "".join(stdout_buff)
 
 
@@ -456,8 +455,6 @@ def gen_model_code(model_codegen_dir,
         sh.rm("-rf", model_codegen_dir)
     sh.mkdir("-p", model_codegen_dir)
 
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     sh.python("bazel-bin/mace/python/tools/converter",
               "-u",
               "--platform=%s" % platform,
@@ -478,7 +475,6 @@ def gen_model_code(model_codegen_dir,
               "--output_dir=%s" % model_codegen_dir,
               "--model_build_type=%s" % model_build_type,
               "--data_type=%s" % data_type,
-              _out=process_output,
               _fg=True)
 
 
@@ -691,8 +687,9 @@ def tuning_run(abi,
             serialno,
             "shell",
             adb_cmd,
+            _tty_in=True,
             _out=process_output,
-            _fg=True)
+            _err_to_out=True)
         print("Running finished!\n")
         return "".join(stdout_buff)
 
@@ -792,8 +789,6 @@ def validate_model(abi,
             sh.docker("cp", model_file_path, "%s:/mace" % container_name)
             sh.docker("cp", weight_file_path, "%s:/mace" % container_name)
 
-            stdout_buff = []
-            process_output = make_output_processor(stdout_buff)
             sh.docker(
                 "exec",
                 container_name,
@@ -810,7 +805,6 @@ def validate_model(abi,
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
-                _out=process_output,
                 _fg=True)
 
     print("Validation done!\n")
@@ -960,15 +954,12 @@ def packaging_lib(libmace_output_dir, project_name):
 
     print("Start packaging '%s' libs into %s" % (project_name,
                                                  tar_package_path))
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     sh.tar(
         "cvzf",
         "%s" % tar_package_path,
         glob.glob("%s/*" % project_dir),
         "--exclude",
         "%s/_tmp" % project_dir,
-        _out=process_output,
         _fg=True)
     print("Packaging Done!\n")
 
@@ -1011,8 +1002,6 @@ def benchmark_model(abi,
                     input_file_name="model_input"):
     print("* Benchmark for %s" % model_tag)
 
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     mace_model_path = ""
     if build_type == BuildType.proto:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
@@ -1083,11 +1072,9 @@ def benchmark_model(abi,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
             "--model_file=%s" % mace_model_phone_path,
-            _out=process_output,
             _fg=True)
 
     print("Benchmark done!\n")
-    return "".join(stdout_buff)
 
 
 def build_run_throughput_test(abi,
@@ -1121,8 +1108,6 @@ def build_run_throughput_test(abi,
                                 dsp_model_tag
 
     sh.cp("-f", merged_lib_file, "mace/benchmark/libmace_merged.a")
-    stdout_buff = []
-    process_output = make_output_processor(stdout_buff)
     sh.bazel(
         "build",
         "-c",
@@ -1143,7 +1128,6 @@ def build_run_throughput_test(abi,
         "--define",
         "openmp=true",
         model_tag_build_flag,
-        _out=process_output,
         _fg=True)
 
     sh.rm("mace/benchmark/libmace_merged.a")
@@ -1195,7 +1179,6 @@ def build_run_throughput_test(abi,
         "--dsp_model_data_file=%s/%s.data" % (phone_data_dir,
                                               dsp_model_tag),
         "--run_seconds=%s" % run_seconds,
-        _out=process_output,
         _fg=True)
 
     print("throughput_test done!\n")
