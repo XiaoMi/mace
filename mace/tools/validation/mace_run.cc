@@ -423,7 +423,9 @@ bool RunModel(const std::string &model_name,
 }
 
 int Main(int argc, char **argv) {
-  gflags::SetUsageMessage("some usage message");
+  std::string usage = "mace run model\nusage: " + std::string(argv[0])
+      + " [flags]";
+  gflags::SetUsageMessage(usage);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "model name: " << FLAGS_model_name;
