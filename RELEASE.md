@@ -17,4 +17,9 @@ v0.7.0 (2018-05-18)
 ------
 1. Change interface that report error type
 2. Improve cpu performace
-3. Merge cpu/gpu engine to one
+3. Merge cpu/gpu engine to on
+
+v0.8.0 (2018-05-31)
+------
+1. Change build and run tools
+2. Handle runtime failure
