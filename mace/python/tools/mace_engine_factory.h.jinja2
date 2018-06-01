@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 
@@ -92,12 +91,12 @@ MaceStatus CreateMaceEngineFromCode(
     const std::vector<std::string> &output_nodes,
     const DeviceType device_type,
     std::shared_ptr<MaceEngine> *engine) {
-  MACE_UNUSED(model_name);
-  MACE_UNUSED(model_data_file);
-  MACE_UNUSED(input_nodes);
-  MACE_UNUSED(output_nodes);
-  MACE_UNUSED(device_type);
-  MACE_UNUSED(engine);
+  (void)(model_name);
+  (void)(model_data_file);
+  (void)(input_nodes);
+  (void)(output_nodes);
+  (void)(device_type);
+  (void)(engine);
   return MaceStatus::MACE_INVALID_ARGS;
 }
 {% endif %}
