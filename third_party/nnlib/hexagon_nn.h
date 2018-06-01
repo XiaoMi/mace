@@ -77,8 +77,11 @@ struct hexagon_nn_input {
 };
 typedef struct hexagon_nn_output hexagon_nn_output;
 struct hexagon_nn_output {
-  unsigned int max_size;
-  unsigned int unused;
+  unsigned int rank;
+  unsigned int max_sizes[8];
+  unsigned int elementsize;
+  int zero_offset;
+  float stepsize;
 };
 typedef struct hexagon_nn_perfinfo hexagon_nn_perfinfo;
 struct hexagon_nn_perfinfo {
@@ -128,7 +131,7 @@ struct hexagon_nn_const_node {
 };
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config)(void)
     __QAIC_HEADER_ATTRIBUTE;
-__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(void)
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(hexagon_nn_nn_id* g)
     __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_debug_level)(
     hexagon_nn_nn_id id, int level) __QAIC_HEADER_ATTRIBUTE;

@@ -21,6 +21,7 @@
 
 #include "mace/core/runtime/hexagon/hexagon_control_wrapper.h"
 #include "mace/core/runtime/hexagon/hexagon_nn_ops.h"
+#include "mace/core/types.h"
 
 namespace {
 inline int64_t NowMicros() {
@@ -58,9 +59,9 @@ bool HexagonControlWrapper::Config() {
 
 bool HexagonControlWrapper::Init() {
   LOG(INFO) << "Hexagon init";
-  nn_id_ = hexagon_nn_init();
+  MACE_CHECK(hexagon_nn_init(&nn_id_) == 0, "hexagon_nn_init failed");
   ResetPerfInfo();
-  return nn_id_ != 0;
+  return true;
 }
 
 bool HexagonControlWrapper::Finalize() {
@@ -138,9 +139,21 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
         inputs[i].src_id = node_id(op.node_input()[i].node_id());
         inputs[i].output_idx = op.node_input()[i].output_port();
       }
-      outputs.resize(op.out_max_byte_size().size());
-      for (int i = 0; i < op.out_max_byte_size().size(); ++i) {
-        outputs[i].max_size = op.out_max_byte_size()[i];
+      outputs.resize(op.output_shape().size());
+      for (int i = 0; i < op.output_shape().size(); ++i) {
+        outputs[i].rank = op.output_shape()[i].dims().size();
+        for (size_t j = 0; j < outputs[i].rank; ++j) {
+          outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
+        }
+        if (outputs[i].rank == 0) {
+          outputs[i].rank = 1;
+          outputs[i].max_sizes[0] = 1;
+        }
+        outputs[i].max_sizes[outputs[i].rank] = 0;
+        outputs[i].elementsize = GetEnumTypeSize(
+            static_cast<DataType>(op.output_type()[i]));
+        outputs[i].zero_offset = 0;
+        outputs[i].stepsize = 0;
       }
       cached_inputs.push_back(inputs);
       cached_outputs.push_back(outputs);
@@ -215,13 +228,13 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
 
   int64_t t1 = NowMicros();
 
-  int res = hexagon_nn_prepare(nn_id_);
+  MACE_CHECK(hexagon_nn_prepare(nn_id_) == 0, "hexagon_nn_prepare failed");
 
   int64_t t2 = NowMicros();
 
   VLOG(1) << "Setup time: " << t1 - t0 << " " << t2 - t1;
 
-  return res == 0;
+  return true;
 }
 
 bool HexagonControlWrapper::TeardownGraph() {
@@ -289,6 +302,7 @@ void HexagonControlWrapper::GetPerfInfo() {
     std::string node_type(node_type_buf);
     LOG(INFO) << "node id: " << perf_info[i].node_id
               << ", node type: " << node_type
+              << ", node type id: " << node_type_id
               << ", executions: " << perf_info[i].executions
               << ", duration: " << node_id_counters[node_id];
 
