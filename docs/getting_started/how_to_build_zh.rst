@@ -390,6 +390,13 @@ Mace目前只提供静态库，有以下两种使用场景。
         new FileStorageFactory(file_path));
     ConfigKVStorageFactory(storage_factory);
 
+    // 2. 如果你使用特定SOC的GPU，可以设置OpenCL预编译的二进制文件路径。
+    //    * 该二进制文件是依赖于手机上OpenCL driver的，如果OpenCL driver改变了，
+    //      你需要重新编译并更新该二进制文件。
+    if (device_type == DeviceType::GPU) {
+      mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+    }
+
     //1. 声明设备类型(必须与build时指定的runtime一致）
     DeviceType device_type = DeviceType::GPU;
 

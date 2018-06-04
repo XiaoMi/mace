@@ -66,6 +66,7 @@ class OpenCLRuntime {
  public:
   static OpenCLRuntime *Global();
   static void Configure(GPUPerfHint, GPUPriorityHint);
+  static void ConfigureOpenCLBinaryPath(const std::vector<std::string> &paths);
 
   cl::Context &context();
   cl::Device &device();
@@ -99,11 +100,11 @@ class OpenCLRuntime {
                     const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
-  bool BuildProgramFromBinary(
+  bool BuildProgramFromCache(
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
-  bool BuildProgramFromCache(
+  bool BuildProgramFromPrecompiledBinary(
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
@@ -115,7 +116,8 @@ class OpenCLRuntime {
   const std::string ParseDeviceVersion(const std::string &device_version);
 
  private:
-  std::unique_ptr<KVStorage> storage_;
+  std::unique_ptr<KVStorage> precompiled_binary_storage_;
+  std::unique_ptr<KVStorage> cache_storage_;
   bool is_profiling_enabled_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
@@ -126,6 +128,8 @@ class OpenCLRuntime {
   std::mutex program_build_mutex_;
   std::string platform_info_;
   std::string opencl_version_;
+  std::string precompiled_binary_platform_info_;
+  std::string cached_binary_platform_info_;
   bool out_of_range_check_;
   uint64_t device_gloabl_mem_cache_size_;
   uint32_t device_compute_units_;
@@ -133,6 +137,7 @@ class OpenCLRuntime {
 
   static GPUPerfHint kGPUPerfHint;
   static GPUPriorityHint kGPUPriorityHint;
+  static std::string kPrecompiledBinaryPath;
 };
 
 }  // namespace mace

@@ -123,6 +123,9 @@ DEFINE_string(model_data_file,
 DEFINE_string(model_file,
               "",
               "model file name, used when load mace model in pb");
+DEFINE_string(opencl_binary_file,
+              "",
+              "compiled opencl binary file path");
 DEFINE_string(device, "GPU", "CPU/GPU/HEXAGON");
 DEFINE_int32(round, 1, "round");
 DEFINE_int32(restart_round, 1, "restart round");
@@ -151,6 +154,10 @@ bool RunModel(const std::vector<std::string> &input_names,
   }
 #endif  // MACE_ENABLE_OPENCL
 
+  if (device_type == DeviceType::GPU) {
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+  }
   // DO NOT USE tmp directory.
   // Please use APP's own directory and make sure the directory exists.
   // Just call once

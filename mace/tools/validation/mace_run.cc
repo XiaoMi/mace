@@ -38,9 +38,6 @@
 #include "mace/utils/logging.h"
 #include "mace/utils/utils.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#endif  // MACE_ENABLE_OPENCL
 #include "mace/codegen/engine/mace_engine_factory.h"
 
 namespace mace {
@@ -99,22 +96,6 @@ DeviceType ParseDeviceType(const std::string &device_str) {
     return DeviceType::CPU;
   }
 }
-
-#ifdef MACE_ENABLE_OPENCL
-void WriteOpenCLPlatformInfo(const std::string &output_dir) {
-  std::string platform_info = OpenCLRuntime::Global()->platform_info();
-  const std::string cl_platform_info_file_name = output_dir
-      + "/mace_cl_platform_info.txt";
-
-  std::ofstream ofs(cl_platform_info_file_name);
-  if (ofs.is_open()) {
-    ofs << platform_info;
-    ofs.close();
-  } else {
-    LOG(WARNING) << "Write opencl platform info failed.";
-  }
-}
-#endif  // MACE_ENABLE_OPENCL
 
 struct mallinfo LogMallinfoChange(struct mallinfo prev) {
   struct mallinfo curr = mallinfo();
@@ -187,6 +168,9 @@ DEFINE_string(input_file,
 DEFINE_string(output_file,
               "",
               "output file name | output file prefix for multiple outputs");
+DEFINE_string(opencl_binary_file,
+              "",
+              "compiled opencl binary file path");
 DEFINE_string(model_data_file,
               "",
               "model data file name, used when EMBED_MODEL_DATA set to 0 or 2");
@@ -229,6 +213,11 @@ bool RunModel(const std::string &model_name,
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
+
+  if (device_type == DeviceType::GPU) {
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+  }
 
   std::vector<unsigned char> model_pb_data;
   if (FLAGS_model_file != "") {
@@ -397,11 +386,6 @@ bool RunModel(const std::string &model_name,
   printf("time %11.3f %11.3f %11.3f\n",
          init_millis, warmup_millis, model_run_millis);
 
-#ifdef MACE_ENABLE_OPENCL
-  if (device_type == DeviceType::GPU) {
-    WriteOpenCLPlatformInfo(kernel_file_path);
-  }
-#endif  // MACE_ENABLE_OPENCL
 
   for (size_t i = 0; i < output_count; ++i) {
     std::string output_name =
