@@ -58,6 +58,7 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
     LOG(WARNING) << "Allocate OpenCL Buffer with "
                  << nbytes << " bytes failed because of"
                  << OpenCLErrorToString(error);
+    delete buffer;
     *result = nullptr;
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   } else {
@@ -89,6 +90,7 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                  << image_shape[0] << ", " << image_shape[1]
                  << "] failed because of"
                  << OpenCLErrorToString(error);
+    delete cl_image;
     *result = nullptr;
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   } else {
