@@ -109,6 +109,15 @@ class StringFormatter:
 
 
 ################################
+# definitions
+################################
+class DeviceType(object):
+    CPU = 'CPU'
+    GPU = 'GPU'
+    HEXAGON = 'HEXAGON'
+
+
+################################
 # Argument types
 ################################
 class CaffeEnvType(enum.Enum):

@@ -365,6 +365,16 @@ The followings list the details.
 
         ``.pb`` file will be generated only when build_type is ``proto``.
 
+**OpenCL compiled kernel binary file**
+    * ``opencl/compiled_kernel.bin``
+
+    .. note::
+
+        This file will be generated only when specify ``target_soc`` and runtime is ``gpu``.
+
+    .. warning::
+
+        This file rely on the OpenCL driver on the phone, you should update the file when OpenCL driver changed.
 
 =============
 5. how to use
@@ -385,14 +395,21 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
         new FileStorageFactory(file_path));
     ConfigKVStorageFactory(storage_factory);
 
-    //1. Declare the device type(must be same with ``runtime`` in configuration file)
+    // 1. set precompiled OpenCL binary file paths if you use gpu of specified SOC,
+    //    Besides the binary rely on the OpenCL driver of the SOC,
+    //    if OpenCL driver changed, you should recompiled the binary file.
+    if (device_type == DeviceType::GPU) {
+      mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+    }
+
+    // 2. Declare the device type(must be same with ``runtime`` in configuration file)
     DeviceType device_type = DeviceType::GPU;
 
-    //2. Define the input and output tensor names.
+    // 3. Define the input and output tensor names.
     std::vector<std::string> input_names = {...};
     std::vector<std::string> output_names = {...};
 
-    //3. Create MaceEngine object
+    // 4. Create MaceEngine object
     std::shared_ptr<mace::MaceEngine> engine;
     MaceStatus create_engine_status;
     // Create Engine from code
@@ -415,7 +432,7 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
       // do something
     }
 
-    //4. Create Input and Output objects
+    // 5. Create Input and Output objects
     std::map<std::string, mace::MaceTensor> inputs;
     std::map<std::string, mace::MaceTensor> outputs;
     for (size_t i = 0; i < input_count; ++i) {
@@ -440,6 +457,6 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
       outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
     }
 
-    //5. Run the model
+    // 6. Run the model
     MaceStatus status = engine.Run(inputs, &outputs);
 

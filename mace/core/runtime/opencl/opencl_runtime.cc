@@ -14,6 +14,8 @@
 
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 
+#include <sys/stat.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <memory>
@@ -32,9 +34,6 @@
 namespace mace {
 
 extern const std::map<std::string, std::vector<unsigned char>>
-    kCompiledProgramMap;
-extern const std::string kCompiledProgramPlatform;
-extern const std::map<std::string, std::vector<unsigned char>>
     kEncryptedProgramMap;
 
 void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
@@ -42,6 +41,12 @@ void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
           << ", gpu_priority_hint: " << gpu_priority_hint;
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
+
+// Set OpenCL Compiled Binary paths, just call once. (Not thread-safe)
+void SetOpenCLBinaryPaths(const std::vector<std::string> &paths) {
+  OpenCLRuntime::ConfigureOpenCLBinaryPath(paths);
+}
+
 
 const std::string OpenCLErrorToString(cl_int error) {
   switch (error) {
@@ -237,6 +242,25 @@ GPUType ParseGPUType(const std::string &device_name) {
     return GPUType::UNKNOWN;
   }
 }
+
+std::string FindFirstExistPath(const std::vector<std::string> &paths) {
+  std::string result;
+  struct stat st;
+  for (auto path : paths) {
+    if (stat(path.c_str(), &st) == 0) {
+      if (S_ISREG(st.st_mode)) {
+        result = path;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+const char *kOpenCLPlatformInfoKey =
+    "mace_opencl_precompiled_platform_info_key";
+const char *kPrecompiledProgramFileName =
+    "mace_cl_compiled_program.bin";
 }  // namespace
 
 void OpenCLProfilingTimer::StartTiming() {}
@@ -267,6 +291,8 @@ void OpenCLProfilingTimer::ClearTiming() {
 GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_NORMAL;
 GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
     GPUPriorityHint::PRIORITY_DEFAULT;
+std::string
+    OpenCLRuntime::kPrecompiledBinaryPath = "";  // NOLINT(runtime/string)
 
 OpenCLRuntime *OpenCLRuntime::Global() {
   static OpenCLRuntime runtime;
@@ -279,9 +305,19 @@ void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
   OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
 }
 
+void OpenCLRuntime::ConfigureOpenCLBinaryPath(
+    const std::vector<std::string> &paths) {
+  OpenCLRuntime::kPrecompiledBinaryPath = FindFirstExistPath(paths);
+  if (OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
+    LOG(WARNING) << "There is no precompiled OpenCL binary file in "
+                 << MakeString(paths);
+  }
+}
 
 OpenCLRuntime::OpenCLRuntime():
-    storage_(nullptr), is_profiling_enabled_(false) {
+    precompiled_binary_storage_(nullptr),
+    cache_storage_(nullptr),
+    is_profiling_enabled_(false) {
   LoadOpenCLLibrary();
 
   std::vector<cl::Platform> all_platforms;
@@ -369,12 +405,38 @@ OpenCLRuntime::OpenCLRuntime():
 
   extern std::shared_ptr<KVStorageFactory> kStorageFactory;
   if (kStorageFactory != nullptr) {
-    const std::string cl_compiled_file_name = "mace_cl_compiled_program.bin";
-    storage_ = kStorageFactory->CreateStorage(cl_compiled_file_name);
+    cache_storage_ =
+        kStorageFactory->CreateStorage(kPrecompiledProgramFileName);
 
-    if (platform_info_ != kCompiledProgramPlatform) {
-      if (storage_->Load() != 0) {
-        LOG(FATAL) << "Load opencl compiled kernel file failed";
+    if (cache_storage_->Load() != 0) {
+      LOG(FATAL) << "Load OpenCL cached compiled kernel file failed";
+    }
+    auto platform_info_array =
+        this->cache_storage_->Find(kOpenCLPlatformInfoKey);
+    if (platform_info_array != nullptr) {
+      cached_binary_platform_info_ =
+          std::string(platform_info_array->begin(),
+                      platform_info_array->end());
+    }
+  }
+
+  if (cached_binary_platform_info_ != platform_info_) {
+    if (OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
+      LOG(WARNING) << "There is no precompiled OpenCL binary in"
+          " all OpenCL binary paths";
+    } else {
+      precompiled_binary_storage_.reset(
+          new FileStorage(OpenCLRuntime::kPrecompiledBinaryPath));
+      if (precompiled_binary_storage_->Load() != 0) {
+        LOG(FATAL) << "Load OpenCL precompiled kernel file failed";
+      }
+
+      auto platform_info_array =
+          this->precompiled_binary_storage_->Find(kOpenCLPlatformInfoKey);
+      if (platform_info_array != nullptr) {
+        precompiled_binary_platform_info_ =
+            std::string(platform_info_array->begin(),
+                        platform_info_array->end());
       }
     }
   }
@@ -416,44 +478,18 @@ uint32_t OpenCLRuntime::device_compute_units() const {
   return device_compute_units_;
 }
 
-bool OpenCLRuntime::BuildProgramFromBinary(
-    const std::string &built_program_key,
-    const std::string &build_options_str,
-    cl::Program *program) {
-  // Find from binary
-  if (kCompiledProgramPlatform != platform_info_) return false;
-  auto it_binary = kCompiledProgramMap.find(built_program_key);
-  if (it_binary == kCompiledProgramMap.end()) return false;
-
-  *program = cl::Program(context(), {device()}, {it_binary->second});
-  cl_int ret = program->build({device()}, build_options_str.c_str());
-  if (ret != CL_SUCCESS) {
-    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
-        CL_BUILD_ERROR) {
-      std::string build_log =
-          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
-      LOG(INFO) << "Program build log: " << build_log;
-    }
-    LOG(WARNING) << "Build program "
-                 << built_program_key << " from Binary failed:"
-                 << (ret == CL_INVALID_PROGRAM ? "CL_INVALID_PROGRAM, possible "
-                     "cause 1: the MACE library is built from SoC 1 but is "
-                     "used on different SoC 2, possible cause 2: the MACE "
-                     "buffer is corrupted make sure your code has no "
-                     "out-of-range memory writing" : MakeString(ret));
-    return false;
-  }
-  VLOG(3) << "Program from Binary: " << built_program_key;
-  return true;
-}
-
 bool OpenCLRuntime::BuildProgramFromCache(
     const std::string &built_program_key,
     const std::string &build_options_str,
     cl::Program *program) {
   // Find from binary
-  if (this->storage_ == nullptr) return false;
-  auto content = this->storage_->Find(built_program_key);
+  if (this->cache_storage_ == nullptr) return false;
+  if (cached_binary_platform_info_ != platform_info_) {
+    VLOG(3) << "cached OpenCL binary version is not same"
+        " with current version";
+    return false;
+  }
+  auto content = this->cache_storage_->Find(built_program_key);
   if (content == nullptr) {
     return false;
   }
@@ -473,6 +509,41 @@ bool OpenCLRuntime::BuildProgramFromCache(
     return false;
   }
   VLOG(3) << "Program from Cache: " << built_program_key;
+  return true;
+}
+
+bool OpenCLRuntime::BuildProgramFromPrecompiledBinary(
+    const std::string &built_program_key,
+    const std::string &build_options_str,
+    cl::Program *program) {
+  // Find from binary
+  if (this->precompiled_binary_storage_ == nullptr) return false;
+  if (precompiled_binary_platform_info_ != platform_info_) {
+    VLOG(3) << "precompiled OpenCL binary version "
+            << precompiled_binary_platform_info_
+            << " is not same with current version";
+    return false;
+  }
+  auto content = this->precompiled_binary_storage_->Find(built_program_key);
+  if (content == nullptr) {
+    return false;
+  }
+
+  *program = cl::Program(context(), {device()}, {*content});
+  cl_int ret = program->build({device()}, build_options_str.c_str());
+  if (ret != CL_SUCCESS) {
+    if (program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(device()) ==
+        CL_BUILD_ERROR) {
+      std::string build_log =
+          program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device());
+      LOG(INFO) << "Program build log: " << build_log;
+    }
+    LOG(WARNING) << "Build program "
+                 << built_program_key << " from precompiled binary failed:"
+                 << MakeString(ret);
+    return false;
+  }
+  VLOG(3) << "Program from precompiled binary: " << built_program_key;
   return true;
 }
 
@@ -527,8 +598,8 @@ void OpenCLRuntime::BuildProgramFromSource(
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
             program_binary_sizes[0]);
 
-    if (this->storage_ != nullptr) {
-      this->storage_->Insert(built_program_key, content);
+    if (this->cache_storage_ != nullptr) {
+      this->cache_storage_->Insert(built_program_key, content);
     }
 
     VLOG(3) << "Program from source: " << built_program_key;
@@ -543,13 +614,12 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
 
   std::string build_options_str =
       build_options + " -Werror -cl-mad-enable -cl-fast-relaxed-math";
-  // TODO(heliangliang) -cl-unsafe-math-optimizations -cl-fast-relaxed-math
-  bool ret = BuildProgramFromBinary(built_program_key,
-                                    build_options_str, program);
+  // Build flow: cache -> precompiled binary -> source
+  bool ret = BuildProgramFromCache(built_program_key,
+                                   build_options_str, program);
   if (!ret) {
-    ret = BuildProgramFromCache(built_program_key,
-                                build_options_str, program);
-    // Fallback to source.
+    ret = BuildProgramFromPrecompiledBinary(built_program_key,
+                                            build_options_str, program);
     if (!ret) {
       BuildProgramFromSource(program_name, built_program_key,
                              build_options_str, program);
@@ -581,8 +651,12 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 }
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
-  if (storage_ != nullptr) {
-    if (storage_->Flush() != 0) {
+  if (cache_storage_ != nullptr) {
+    // update platform info
+    cache_storage_->Insert(kOpenCLPlatformInfoKey,
+                           std::vector<unsigned char>(platform_info_.begin(),
+                                                      platform_info_.end()));
+    if (cache_storage_->Flush() != 0) {
       LOG(FATAL) << "Store OPENCL compiled kernel to file failed."
           " Please Make sure the storage directory exist.";
     }

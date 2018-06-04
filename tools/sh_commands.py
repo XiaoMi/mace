@@ -16,9 +16,11 @@ import falcon_cli
 import filelock
 import glob
 import logging
+import numpy as np
 import os
 import re
 import sh
+import struct
 import subprocess
 import sys
 import time
@@ -30,7 +32,6 @@ import common
 sys.path.insert(0, "mace/python/tools")
 try:
     from encrypt_opencl_codegen import encrypt_opencl_codegen
-    from opencl_codegen import opencl_codegen
     from binary_codegen import tuning_param_codegen
     from generate_data import generate_input_data
     from validate import validate
@@ -362,8 +363,7 @@ def gen_mace_engine_factory_source(model_tags,
 
 
 def pull_binaries(abi, serialno, model_output_dirs,
-                  cl_built_kernel_file_name,
-                  cl_platform_info_file_name):
+                  cl_built_kernel_file_name):
     compiled_opencl_dir = "/data/local/tmp/mace_run/interior/"
     mace_run_param_file = "mace_run.config"
 
@@ -379,26 +379,66 @@ def pull_binaries(abi, serialno, model_output_dirs,
         if abi != "host":
             adb_pull(compiled_opencl_dir + cl_built_kernel_file_name,
                      cl_bin_dir, serialno)
-            adb_pull(compiled_opencl_dir + cl_platform_info_file_name,
-                     cl_bin_dir, serialno)
             adb_pull("/data/local/tmp/mace_run/%s" % mace_run_param_file,
                      cl_bin_dir, serialno)
 
 
-def gen_opencl_binary_code(model_output_dirs,
-                           cl_built_kernel_file_name,
-                           cl_platform_info_file_name,
-                           codegen_path="mace/codegen"):
-    opencl_codegen_file = "%s/opencl/opencl_compiled_program.cc" % codegen_path
-
+def merge_opencl_binaries(binaries_dirs,
+                          cl_compiled_program_file_name,
+                          output_file_path):
+    platform_info_key = 'mace_opencl_precompiled_platform_info_key'
     cl_bin_dirs = []
-    for d in model_output_dirs:
+    for d in binaries_dirs:
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
-    cl_bin_dirs_str = ",".join(cl_bin_dirs)
-    opencl_codegen(opencl_codegen_file,
-                   cl_bin_dirs_str,
-                   cl_built_kernel_file_name,
-                   cl_platform_info_file_name)
+    # create opencl binary output dir
+    opencl_binary_dir = os.path.dirname(output_file_path)
+    if os.path.exists(opencl_binary_dir):
+        sh.rm("-rf", opencl_binary_dir)
+    sh.mkdir("-p", opencl_binary_dir)
+    kvs = {}
+    for binary_dir in cl_bin_dirs:
+        binary_path = os.path.join(binary_dir, cl_compiled_program_file_name)
+        if not os.path.exists(binary_path):
+            continue
+
+        print 'generate opencl code from', binary_path
+        with open(binary_path, "rb") as f:
+            binary_array = np.fromfile(f, dtype=np.uint8)
+
+        idx = 0
+        size, = struct.unpack("Q", binary_array[idx:idx + 8])
+        idx += 8
+        for _ in xrange(size):
+            key_size, = struct.unpack("i", binary_array[idx:idx + 4])
+            idx += 4
+            key, = struct.unpack(
+                str(key_size) + "s", binary_array[idx:idx + key_size])
+            idx += key_size
+            value_size, = struct.unpack("i", binary_array[idx:idx + 4])
+            idx += 4
+            if key == platform_info_key and key in kvs:
+                common.mace_check(
+                    (kvs[key] == binary_array[idx:idx + value_size]).all(),
+                    "",
+                    "There exists more than one OpenCL version for models:"
+                    " %s vs %s " %
+                    (kvs[key], binary_array[idx:idx + value_size]))
+            else:
+                kvs[key] = binary_array[idx:idx + value_size]
+            idx += value_size
+
+    output_byte_array = bytearray()
+    data_size = len(kvs)
+    output_byte_array.extend(struct.pack("Q", data_size))
+    for key, value in kvs.iteritems():
+        key_size = len(key)
+        output_byte_array.extend(struct.pack("i", key_size))
+        output_byte_array.extend(struct.pack(str(key_size) + "s", key))
+        value_size = len(value)
+        output_byte_array.extend(struct.pack("i", value_size))
+        output_byte_array.extend(value)
+
+    np.array(output_byte_array).tofile(output_file_path)
 
 
 def gen_tuning_param_code(model_output_dirs,
@@ -424,12 +464,6 @@ def gen_mace_version(codegen_path="mace/codegen"):
     sh.mkdir("-p", "%s/version" % codegen_path)
     sh.bash("mace/tools/git/gen_version_source.sh",
             "%s/version/version.cc" % codegen_path)
-
-
-def gen_compiled_opencl_source(codegen_path="mace/codegen"):
-    opencl_codegen_file = "%s/opencl/opencl_compiled_program.cc" % codegen_path
-    sh.mkdir("-p", "%s/opencl" % codegen_path)
-    opencl_codegen(opencl_codegen_file)
 
 
 def gen_model_code(model_codegen_dir,
@@ -576,6 +610,7 @@ def tuning_run(abi,
                out_of_range_check,
                phone_data_dir,
                build_type,
+               opencl_binary_file,
                omp_num_threads=-1,
                cpu_affinity_policy=1,
                gpu_perf_hint=3,
@@ -641,6 +676,10 @@ def tuning_run(abi,
             adb_push("%s/%s.data" % (mace_model_dir, model_tag),
                      phone_data_dir, serialno)
 
+        if device_type == common.DeviceType.GPU\
+                and os.path.exists(opencl_binary_file):
+            adb_push(opencl_binary_file, phone_data_dir, serialno)
+
         adb_push("third_party/nnlib/libhexagon_controller.so",
                  phone_data_dir, serialno)
 
@@ -689,6 +728,8 @@ def tuning_run(abi,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
             "--model_file=%s" % mace_model_phone_path,
+            "--opencl_binary_file=%s/%s" %
+            (phone_data_dir, os.path.basename(opencl_binary_file)),
         ])
         adb_cmd = ' '.join(adb_cmd)
         sh.adb(
@@ -1005,6 +1046,7 @@ def benchmark_model(abi,
                     device_type,
                     phone_data_dir,
                     build_type,
+                    opencl_binary_file,
                     omp_num_threads=-1,
                     cpu_affinity_policy=1,
                     gpu_perf_hint=3,
@@ -1049,6 +1091,9 @@ def benchmark_model(abi,
         if not embed_model_data:
             adb_push("%s/%s.data" % (mace_model_dir, model_tag),
                      phone_data_dir, serialno)
+        if device_type == common.DeviceType.GPU \
+                and os.path.exists(opencl_binary_file):
+            adb_push(opencl_binary_file, phone_data_dir, serialno)
         mace_model_phone_path = ""
         if build_type == BuildType.proto:
             mace_model_phone_path = "%s/%s.pb" % (phone_data_dir, model_tag)
@@ -1082,6 +1127,8 @@ def benchmark_model(abi,
             "--gpu_perf_hint=%s" % gpu_perf_hint,
             "--gpu_priority_hint=%s" % gpu_priority_hint,
             "--model_file=%s" % mace_model_phone_path,
+            "--opencl_binary_file=%s/%s" %
+            (phone_data_dir, os.path.basename(opencl_binary_file)),
             _fg=True)
 
     print("Benchmark done!\n")

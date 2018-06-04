@@ -76,8 +76,15 @@ class FileStorageFactory : public KVStorageFactory {
   std::unique_ptr<Impl> impl_;
 };
 
-// Set KV store factory used as OpenCL cache.
+// Set KV store factory used as OpenCL cache. (Call Once)
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
+
+// Just call once. (Not thread-safe)
+// Set paths of OpenCL Compiled Binary file if you use gpu of specific soc.
+// Using OpenCL binary will speed up the initialization.
+// OpenCL binary is corresponding to the OpenCL Driver version,
+// you should update the binary when OpenCL Driver changed.
+void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
 
 // Set GPU hints, currently only supports Adreno GPU.
 //

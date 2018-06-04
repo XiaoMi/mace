@@ -188,6 +188,9 @@ DEFINE_string(input_file, "", "input file name");
 DEFINE_int32(max_num_runs, 100, "number of runs max");
 DEFINE_string(max_time, "10.0", "length to run max");
 DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
+DEFINE_string(opencl_binary_file,
+              "",
+              "compiled opencl binary file path");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(model_file, "",
@@ -269,6 +272,11 @@ int Main(int argc, char **argv) {
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
+
+  if (device_type == DeviceType::GPU) {
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+  }
 
   // Create Engine
   std::shared_ptr<mace::MaceEngine> engine;

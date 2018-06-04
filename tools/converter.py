@@ -29,6 +29,7 @@ import sh_commands
 from sh_commands import BuildType
 
 from common import CaffeEnvType
+from common import DeviceType
 from common import mace_check
 from common import MaceLogger
 from common import StringFormatter
@@ -37,13 +38,14 @@ from common import StringFormatter
 # common definitions
 ################################
 BUILD_OUTPUT_DIR = 'build'
-PHONE_DATA_DIR = "/data/local/tmp/mace_run/"
+PHONE_DATA_DIR = "/data/local/tmp/mace_run"
 MODEL_OUTPUT_DIR_NAME = 'model'
 BUILD_TMP_DIR_NAME = '_tmp'
 BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
 OUTPUT_LIBRARY_DIR_NAME = 'library'
-CL_BUILT_KERNEL_FILE_NAME = "mace_cl_compiled_program.bin"
-CL_PLATFORM_INFO_FILE_NAME = "mace_cl_platform_info.txt"
+OUTPUT_OPENCL_BINARY_DIR_NAME = 'opencl'
+OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel.bin'
+CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 MACE_RUN_TARGET = "//mace/tools/validation:mace_run"
@@ -176,11 +178,11 @@ def parse_device_type(runtime):
     device_type = ""
 
     if runtime == RuntimeType.dsp:
-        device_type = "HEXAGON"
+        device_type = DeviceType.HEXAGON
     elif runtime == RuntimeType.gpu:
-        device_type = "GPU"
+        device_type = DeviceType.GPU
     elif runtime == RuntimeType.cpu:
-        device_type = "CPU"
+        device_type = DeviceType.CPU
 
     return device_type
 
@@ -433,6 +435,13 @@ def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
     return model_output_base_dir, model_output_dir, mace_model_dir
 
 
+def get_opencl_binary_output_path(library_name):
+    return '%s/%s/%s/%s' % (BUILD_OUTPUT_DIR,
+                            library_name,
+                            OUTPUT_OPENCL_BINARY_DIR_NAME,
+                            OUTPUT_OPENCL_BINARY_FILE_NAME)
+
+
 ################################
 # build
 ################################
@@ -440,17 +449,7 @@ def pull_opencl_binary_and_tuning_param(target_abi,
                                         serialno,
                                         model_output_dirs):
     sh_commands.pull_binaries(target_abi, serialno, model_output_dirs,
-                              CL_BUILT_KERNEL_FILE_NAME,
-                              CL_PLATFORM_INFO_FILE_NAME)
-
-
-def gen_opencl_and_tuning_code(model_output_dirs):
-    # generate opencl binary code
-    sh_commands.gen_opencl_binary_code(model_output_dirs,
-                                       CL_BUILT_KERNEL_FILE_NAME,
-                                       CL_PLATFORM_INFO_FILE_NAME)
-
-    sh_commands.gen_tuning_param_code(model_output_dirs)
+                              CL_COMPILED_BINARY_FILE_NAME)
 
 
 def print_configuration(flags, configs):
@@ -612,7 +611,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
 
-    gen_opencl_and_tuning_code([])
+    sh_commands.gen_tuning_param_code(model_output_dirs)
     sh_commands.bazel_build(
         MACE_RUN_TARGET,
         abi=target_abi,
@@ -639,7 +638,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         os.makedirs(model_output_dir)
 
         # build for specified soc
-        if not address_sanitizer and tuning and target_abi != ABIType.host \
+        if not address_sanitizer and target_abi != ABIType.host \
                 and target_soc is not None and \
                 model_runtime in [RuntimeType.gpu, RuntimeType.cpu_gpu]:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
@@ -674,7 +673,8 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 tuning=tuning,
                 out_of_range_check=False,
                 phone_data_dir=PHONE_DATA_DIR,
-                build_type=build_type
+                build_type=build_type,
+                opencl_binary_file="",
             )
 
             pull_opencl_binary_and_tuning_param(target_abi, serial_num,
@@ -683,7 +683,10 @@ def build_specific_lib(target_abi, target_soc, serial_num,
             binary_changed = True
 
     if binary_changed:
-        gen_opencl_and_tuning_code(model_output_dirs)
+        sh_commands.merge_opencl_binaries(
+            model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
+            get_opencl_binary_output_path(library_name))
+        sh_commands.gen_tuning_param_code(model_output_dirs)
         sh_commands.bazel_build(
             MACE_RUN_TARGET,
             abi=target_abi,
@@ -919,6 +922,7 @@ def run_specific_target(flags, configs, target_abi,
                 gpu_priority_hint=flags.gpu_priority_hint,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
+                opencl_binary_file=get_opencl_binary_output_path(library_name),
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files_path(
@@ -1051,7 +1055,8 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 omp_num_threads=flags.omp_num_threads,
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
-                gpu_priority_hint=flags.gpu_priority_hint)
+                gpu_priority_hint=flags.gpu_priority_hint,
+                opencl_binary_file=get_opencl_binary_output_path(library_name))
 
 
 def benchmark_model(flags):
