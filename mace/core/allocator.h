@@ -88,6 +88,9 @@ class CPUAllocator : public Allocator {
       LOG(WARNING) << "Allocate CPU Buffer with "
                    << nbytes << " bytes failed because of"
                    << strerror(errno);
+      if (data != NULL) {
+        free(data);
+      }
       *result = nullptr;
       return MaceStatus::MACE_OUT_OF_RESOURCES;
     }
