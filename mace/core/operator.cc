@@ -89,6 +89,7 @@ extern void Register_Dequantize(OperatorRegistry *op_registry);
 extern void Register_Eltwise(OperatorRegistry *op_registry);
 extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
 extern void Register_FullyConnected(OperatorRegistry *op_registry);
+extern void Register_Gather(OperatorRegistry *op_registry);
 extern void Register_LocalResponseNorm(OperatorRegistry *op_registry);
 extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_Pad(OperatorRegistry *op_registry);
@@ -130,6 +131,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Eltwise(this);
   ops::Register_FoldedBatchNorm(this);
   ops::Register_FullyConnected(this);
+  ops::Register_Gather(this);
   ops::Register_LocalResponseNorm(this);
   ops::Register_MatMul(this);
   ops::Register_Pad(this);
