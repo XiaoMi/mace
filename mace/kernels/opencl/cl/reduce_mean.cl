@@ -3,7 +3,7 @@
 __kernel void reduce_mean(KERNEL_ERROR_PARAMS
                           GLOBAL_WORK_GROUP_SIZE_DIM3
                           __read_only image2d_t input,
-                          __local float4* group_sum,
+                          __local DATA_TYPE4 *group_sum,
                           __private const int group_size,
                           __private const int partial_len,
                           __private const int remain_index,
@@ -19,12 +19,10 @@ __kernel void reduce_mean(KERNEL_ERROR_PARAMS
   const int k = get_global_id(2);
 
 #ifndef NON_UNIFORM_WORK_GROUP
-  if (i >= local_size_dim0 || j >= local_size_dim1 || k >= global_size_dim2)
+  if (k >= global_size_dim2)
     return;
-  const int dim0_size = local_size_dim0;
-#else
-  const int dim0_size = get_local_size(0);
 #endif
+  const int dim0_size = get_local_size(0);
   DATA_TYPE4 tmp = (DATA_TYPE4){0, 0, 0, 0};
   const int index = j * dim0_size + i;
   const int b = k / channel_blocks;

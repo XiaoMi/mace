@@ -98,7 +98,7 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
       kernel_.setArg(idx++, gws[2]);
     }
     kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, (group_size * 4 * sizeof(float)),
+    kernel_.setArg(idx++, (group_size * 4 * sizeof(T)),
                    nullptr);
     kernel_.setArg(idx++, static_cast<int32_t>(group_size));
     kernel_.setArg(idx++, static_cast<int32_t>(partial_len));

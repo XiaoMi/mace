@@ -149,6 +149,7 @@ class MaceKeyword(object):
     mace_device = 'device'
     mace_value_str = 'value'
     mace_wino_block_size = 'wino_block_size'
+    mace_output_shape_str = 'output_shape'
     mace_begin_mask_str = 'begin_mask'
     mace_end_mask_str = 'end_mask'
     mace_ellipsis_mask_str = 'ellipsis_mask'

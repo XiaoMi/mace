@@ -146,7 +146,7 @@ struct Deconv2dFunctorBase {
 
   static void CalcDeconvPaddingAndInputSize(
       const index_t *input_shape,   // NHWC
-      const index_t *filter_shape,  // OIHW
+      const index_t *filter_shape,  // HWOI
       const int *strides,
       Padding padding,
       const index_t *output_shape,

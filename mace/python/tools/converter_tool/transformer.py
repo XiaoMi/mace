@@ -919,7 +919,10 @@ class Transformer(base_converter.ConverterInterface):
                         filter = self._consts[op.input[1]]
                         filter_data = np.array(filter.float_data).reshape(
                             filter.dims)
-                        filter_data = filter_data.transpose(3, 2, 0, 1)
+                        if op.type == MaceOp.Deconv2D.name:
+                            filter_data = filter_data.transpose(2, 3, 0, 1)
+                        else:
+                            filter_data = filter_data.transpose(3, 2, 0, 1)
                         filter.float_data[:] = filter_data.flat
                         filter.dims[:] = filter_data.shape
                 if op.type == MaceOp.FullyConnected.name:
@@ -993,6 +996,13 @@ class Transformer(base_converter.ConverterInterface):
                     self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.BiasAdd.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+            elif op.type == MaceOp.Eltwise.name and len(op.input) == 2:
+                if op.input[0] in self._consts \
+                        and len(self._consts[op.input[0]].dims) == 1:
+                    self.buffer_to_image(op, 0, OpenCLBufferType.ARGUMENT)
+                if op.input[1] in self._consts \
+                        and len(self._consts[op.input[1]].dims) == 1:
+                    self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.FoldedBatchNorm.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
                 self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)

@@ -74,9 +74,9 @@ __kernel void eltwise(KERNEL_ERROR_PARAMS
   out = diff * diff;
 #elif ELTWISE_TYPE == 9
   #ifdef SWAPPED
-    out = pow(in0, in1);
-  #else
     out = pow(in1, in0);
+  #else
+    out = pow(in0, in1);
   #endif
 #endif
 
