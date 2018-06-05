@@ -309,6 +309,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
         type_arg.name = MaceKeyword.mace_element_type_str
         type_arg.i = self.eltwise_type[tf_op.type].value
 
+        if len(tf_op.inputs[0].shape) == 0:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_value_str
+            value_arg.f = tf_op.inputs[0].eval().astype(np.float32)
+            self._skip_tensor.add(tf_op.inputs[0].name)
+            del op.input[0]
+        elif len(tf_op.inputs[1].shape) == 0:
+            value_arg = op.arg.add()
+            value_arg.name = MaceKeyword.mace_value_str
+            value_arg.f = tf_op.inputs[1].eval().astype(np.float32)
+            self._skip_tensor.add(tf_op.inputs[1].name)
+            del op.input[1]
+
     def convert_biasadd(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.BiasAdd.name

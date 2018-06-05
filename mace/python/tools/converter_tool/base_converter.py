@@ -139,6 +139,7 @@ class MaceKeyword(object):
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
     mace_device = 'device'
+    mace_value_str = 'value'
 
 
 class TransformerRule(Enum):
