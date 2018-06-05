@@ -202,6 +202,9 @@ bool RunModel(const std::string &model_name,
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
+
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
   }
 #endif  // MACE_ENABLE_OPENCL
 
@@ -213,11 +216,6 @@ bool RunModel(const std::string &model_name,
   std::shared_ptr<KVStorageFactory> storage_factory(
       new FileStorageFactory(kernel_file_path));
   SetKVStorageFactory(storage_factory);
-
-  if (device_type == DeviceType::GPU) {
-    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
-    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
-  }
 
   std::vector<unsigned char> model_pb_data;
   if (FLAGS_model_file != "") {

@@ -409,7 +409,9 @@ OpenCLRuntime::OpenCLRuntime():
         kStorageFactory->CreateStorage(kPrecompiledProgramFileName);
 
     if (cache_storage_->Load() != 0) {
-      LOG(FATAL) << "Load OpenCL cached compiled kernel file failed";
+      LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
+                   << "Please make sure the storage directory exist "
+                   << "and you have Write&Read permission";
     }
     auto platform_info_array =
         this->cache_storage_->Find(kOpenCLPlatformInfoKey);
@@ -428,7 +430,9 @@ OpenCLRuntime::OpenCLRuntime():
       precompiled_binary_storage_.reset(
           new FileStorage(OpenCLRuntime::kPrecompiledBinaryPath));
       if (precompiled_binary_storage_->Load() != 0) {
-        LOG(FATAL) << "Load OpenCL precompiled kernel file failed";
+        LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
+                     << "Please make sure the storage directory exist "
+                     << "and you have Write&Read permission";
       }
 
       auto platform_info_array =
@@ -657,8 +661,9 @@ void OpenCLRuntime::SaveBuiltCLProgram() {
                            std::vector<unsigned char>(platform_info_.begin(),
                                                       platform_info_.end()));
     if (cache_storage_->Flush() != 0) {
-      LOG(FATAL) << "Store OPENCL compiled kernel to file failed."
-          " Please Make sure the storage directory exist.";
+      LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
+                 << "Please make sure the storage directory exist "
+                 << "and you have Write&Read permission";
     }
   }
 }

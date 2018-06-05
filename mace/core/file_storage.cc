@@ -68,7 +68,7 @@ int FileStorage::Load() {
       return 0;
     } else {
       LOG(WARNING) << "Stat file " << file_path_
-                   << " failed, error code: " << errno;
+                   << " failed, error code: " << strerror(errno);
       return -1;
     }
   }
@@ -81,7 +81,7 @@ int FileStorage::Load() {
       return 0;
     } else {
       LOG(WARNING) << "open file " << file_path_
-                   << " failed, error code: " << errno;
+                   << " failed, error code: " << strerror(errno);
       return -1;
     }
   }
@@ -92,12 +92,12 @@ int FileStorage::Load() {
   int res = 0;
   if (file_data == MAP_FAILED) {
     LOG(WARNING) << "mmap file " << file_path_
-                 << " failed, error code: " << errno;
+                 << " failed, error code: " << strerror(errno);
 
     res = close(fd);
     if (res != 0) {
       LOG(WARNING) << "close file " << file_path_
-                   << " failed, error code: " << errno;
+                   << " failed, error code: " << strerror(errno);
     }
     return -1;
   }
@@ -130,18 +130,18 @@ int FileStorage::Load() {
   res = munmap(file_data, file_size);
   if (res != 0) {
     LOG(WARNING) << "munmap file " << file_path_
-                 << " failed, error code: " << errno;
+                 << " failed, error code: " << strerror(errno);
     res = close(fd);
     if (res != 0) {
       LOG(WARNING) << "close file " << file_path_
-                   << " failed, error code: " << errno;
+                   << " failed, error code: " << strerror(errno);
     }
     return -1;
   }
   res = close(fd);
   if (res != 0) {
     LOG(WARNING) << "close file " << file_path_
-                 << " failed, error code: " << errno;
+                 << " failed, error code: " << strerror(errno);
     return -1;
   }
   return 0;
@@ -169,7 +169,7 @@ int FileStorage::Flush() {
   int fd = open(file_path_.c_str(), O_WRONLY | O_CREAT, 0600);
   if (fd < 0) {
     LOG(WARNING) << "open file " << file_path_
-                 << " failed, error code:" << errno;
+                 << " failed, error code: " << strerror(errno);
     return -1;
   }
 
@@ -208,11 +208,11 @@ int FileStorage::Flush() {
     res = write(fd, buffer_ptr, buffer_size);
     if (res == -1) {
       LOG(WARNING) << "write file " << file_path_
-                   << " failed, error code: " << errno;
+                   << " failed, error code: " << strerror(errno);
       res = close(fd);
       if (res != 0) {
         LOG(WARNING) << "close file " << file_path_
-                     << " failed, error code: " << errno;
+                     << " failed, error code: " << strerror(errno);
       }
       return -1;
     }
@@ -223,7 +223,7 @@ int FileStorage::Flush() {
   res = close(fd);
   if (res != 0) {
     LOG(WARNING) << "close file " << file_path_
-                 << " failed, error code: " << errno;
+                 << " failed, error code: " << strerror(errno);
     return -1;
   }
   data_changed_ = false;
