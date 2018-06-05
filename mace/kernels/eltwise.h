@@ -17,8 +17,8 @@
 
 #include <algorithm>
 #include <memory>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -44,46 +44,241 @@ enum EltwiseType {
   NONE = 10,
 };
 
-inline void TensorScalar(const EltwiseType type,
-                         const float *input0,
-                         const float value,
-                         const index_t size,
-                         float *output) {
+inline void TensorBroadcastEltwise(const EltwiseType type,
+                                   const float *input0,
+                                   const float *input1,
+                                   const std::vector<float> &coeff,
+                                   const index_t diff_size,
+                                   const index_t common_size,
+                                   const bool swapped,
+                                   float *output) {
   switch (type) {
     case SUM:
-#pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] + value;
+      if (coeff.empty()) {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input0[i + d * common_size] + input1[i];
+          }
+        }
+      } else {
+        std::vector<float> coeff_copy = coeff;
+        if (swapped) {
+          std::swap(coeff_copy[0], coeff_copy[1]);
+        }
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input0[i + d * common_size] * coeff_copy[0] +
+                input1[i] * coeff_copy[1];
+          }
+        }
       }
       break;
     case SUB:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input0[i + d * common_size] - input1[i];
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input1[i] - input0[i + d * common_size];
+          }
+        }
+      }
+      break;
+    case PROD:
+#pragma omp parallel for collapse(2)
+      for (index_t d = 0; d < diff_size; ++d) {
+        for (index_t i = 0; i < common_size; ++i) {
+          output[i + d * common_size] = input0[i + d * common_size] * input1[i];
+        }
+      }
+      break;
+    case DIV:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input0[i + d * common_size] / input1[i];
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                input1[i] / input0[i + d * common_size];
+          }
+        }
+      }
+      break;
+    case MIN:
+#pragma omp parallel for collapse(2)
+      for (index_t d = 0; d < diff_size; ++d) {
+        for (index_t i = 0; i < common_size; ++i) {
+          output[i + d * common_size] =
+              std::min(input0[i + d * common_size], input1[i]);
+        }
+      }
+      break;
+    case MAX:
+#pragma omp parallel for collapse(2)
+      for (index_t d = 0; d < diff_size; ++d) {
+        for (index_t i = 0; i < common_size; ++i) {
+          output[i + d * common_size] =
+              std::max(input0[i + d * common_size], input1[i]);
+        }
+      }
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for collapse(2)
+      for (index_t d = 0; d < diff_size; ++d) {
+        for (index_t i = 0; i < common_size; ++i) {
+          output[i + d * common_size] =
+              std::pow(input0[i + d * common_size] - input1[i], 2.f);
+        }
+      }
+      break;
+    case POW:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                std::pow(input0[i + d * common_size], input1[i]);
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t d = 0; d < diff_size; ++d) {
+          for (index_t i = 0; i < common_size; ++i) {
+            output[i + d * common_size] =
+                std::pow(input1[i], input0[i + d * common_size]);
+          }
+        }
+      }
+      break;
+    case NEG:
 #pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] - value;
+      for (index_t i = 0; i < diff_size * common_size; ++i) {
+        output[i] = -input0[i];
+      }
+      break;
+    case ABS:
+#pragma omp parallel for
+      for (index_t i = 0; i < diff_size * common_size; ++i) {
+        output[i] = std::fabs(input0[i]);
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
+
+// Multiplication is costly, so we specialize the following case.
+inline void TensorEltwise(const EltwiseType type,
+                          const float *input0,
+                          const float *input1,
+                          const std::vector<float> &coeff,
+                          const index_t size,
+                          const bool swapped,
+                          float *output) {
+  switch (type) {
+    case SUM:
+      if (coeff.empty()) {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] + input1[i];
+        }
+
+      } else {
+        std::vector<float> coeff_copy = coeff;
+        if (swapped) {
+          std::swap(coeff_copy[0], coeff_copy[1]);
+        }
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] * coeff_copy[0] + input1[i] * coeff_copy[1];
+        }
+      }
+      break;
+    case SUB:
+      if (!swapped) {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] - input1[i];
+        }
+
+      } else {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input1[i] - input0[i];
+        }
       }
       break;
     case PROD:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] * value;
+        output[i] = input0[i] * input1[i];
       }
+
       break;
     case DIV:
+      if (!swapped) {
 #pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] / value;
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] / input1[i];
+        }
+
+      } else {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input1[i] / input0[i];
+        }
       }
       break;
     case MIN:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::min<float>(input0[i], value);
+        output[i] = std::min(input0[i], input1[i]);
       }
+
       break;
     case MAX:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::max<float>(input0[i], value);
+        output[i] = std::max(input0[i], input1[i]);
+      }
+
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::pow(input0[i] - input1[i], 2.f);
+      }
+
+      break;
+    case POW:
+      if (!swapped) {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::pow(input0[i], input1[i]);
+        }
+      } else {
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::pow(input1[i], input0[i]);
+        }
       }
       break;
     case NEG:
@@ -95,19 +290,7 @@ inline void TensorScalar(const EltwiseType type,
     case ABS:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::abs(input0[i]);
-      }
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i] - value, 2.f);
-      }
-      break;
-    case POW:
-#pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i], value);
+        output[i] = std::fabs(input0[i]);
       }
       break;
     default:
@@ -115,328 +298,111 @@ inline void TensorScalar(const EltwiseType type,
   }
 }
 
-inline void TensorBatchVector(const EltwiseType type,
-                              const float *input0,
-                              const float *input1,
-                              const index_t batch,
-                              const index_t channel,
-                              const index_t hw,
-                              const bool swapped,
-                              float *output) {
+// Multiplication is costly, so we specialize the following case.
+inline void TensorScalarEltwise(const EltwiseType type,
+                                const float *input0,
+                                const float input1,
+                                const std::vector<float> &coeff,
+                                const index_t size,
+                                const bool swapped,
+                                float *output) {
   switch (type) {
     case SUM:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = input0[idx0] + input1[idx1];
-          }
-        }
-      }
-      break;
-    case SUB:
-      if (swapped) {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = b * channel + c;
-              output[idx0] = input1[idx1] - input0[idx0];
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = b * channel + c;
-              output[idx0] = input0[idx0] - input1[idx1];
-            }
-          }
-        }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = input0[idx0] * input1[idx1];
-          }
-        }
-      }
-      break;
-    case DIV:
-      if (swapped) {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = b * channel + c;
-              output[idx0] = input1[idx1] / input0[idx0];
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = b * channel + c;
-              output[idx0] = input0[idx0] / input1[idx1];
-            }
-          }
-        }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = std::min<float>(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    case MAX:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = std::max<float>(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = std::pow(input0[idx0] - input1[idx1], 2.f);
-          }
-        }
-      }
-      break;
-    case POW:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = b * channel + c;
-            output[idx0] = std::pow(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
-}
-inline void TensorVector(const EltwiseType type,
-                         const float *input0,
-                         const float *input1,
-                         const index_t batch,
-                         const index_t channel,
-                         const index_t hw,
-                         const bool swapped,
-                         float *output) {
-  switch (type) {
-    case SUM:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = input0[idx0] + input1[idx1];
-          }
-        }
-      }
-      break;
-    case SUB:
-      if (swapped) {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = c;
-              output[idx0] = input1[idx1] - input0[idx0];
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = c;
-              output[idx0] = input0[idx0] - input1[idx1];
-            }
-          }
-        }
-      }
-      break;
-    case PROD:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = input0[idx0] * input1[idx1];
-          }
-        }
-      }
-      break;
-    case DIV:
-      if (swapped) {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = c;
-              output[idx0] = input1[idx1] / input0[idx0];
-            }
-          }
-        }
-      } else {
-#pragma omp parallel for collapse(3)
-        for (index_t b = 0; b < batch; ++b) {
-          for (index_t c = 0; c < channel; ++c) {
-            for (index_t i = 0; i < hw; ++i) {
-              const index_t idx0 = (b * channel + c) * hw + i;
-              const index_t idx1 = c;
-              output[idx0] = input0[idx0] / input1[idx1];
-            }
-          }
-        }
-      }
-      break;
-    case MIN:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = std::min<float>(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    case MAX:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = std::max<float>(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    case SQR_DIFF:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = std::pow(input0[idx0] - input1[idx1], 2.f);
-          }
-        }
-      }
-      break;
-    case POW:
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channel; ++c) {
-          for (index_t i = 0; i < hw; ++i) {
-            const index_t idx0 = (b * channel + c) * hw + i;
-            const index_t idx1 = c;
-            output[idx0] = std::pow(input0[idx0], input1[idx1]);
-          }
-        }
-      }
-      break;
-    default:
-      LOG(FATAL) << "Eltwise op not support type " << type;
-  }
-}
-inline void TensorEltwise(const EltwiseType type,
-                          const float *input0,
-                          const float *input1,
-                          const index_t size,
-                          float *output) {
-  switch (type) {
-    case SUM:
+      if (coeff.empty()) {
 #pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] + input1[i];
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] + input1;
+        }
+
+      } else {
+        std::vector<float> coeff_copy = coeff;
+        if (swapped) {
+          std::swap(coeff_copy[0], coeff_copy[1]);
+        }
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] * coeff_copy[0] + input1 * coeff_copy[1];
+        }
       }
       break;
     case SUB:
+      if (!swapped) {
 #pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] - input1[i];
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] - input1;
+        }
+
+      } else {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input1 - input0[i];
+        }
       }
       break;
     case PROD:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] * input1[i];
+        output[i] = input0[i] * input1;
       }
+
       break;
     case DIV:
+      if (!swapped) {
 #pragma omp parallel for
-      for (index_t i = 0; i < size; ++i) {
-        output[i] = input0[i] / input1[i];
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input0[i] / input1;
+        }
+
+      } else {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = input1 / input0[i];
+        }
       }
       break;
     case MIN:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::min<float>(input0[i], input1[i]);
+        output[i] = std::min(input0[i], input1);
       }
+
       break;
     case MAX:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::max<float>(input0[i], input1[i]);
+        output[i] = std::max(input0[i], input1);
       }
+
       break;
     case SQR_DIFF:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i] - input1[i], 2.f);
+        output[i] = std::pow(input0[i] - input1, 2.f);
       }
+
       break;
     case POW:
+      if (!swapped) {
+#pragma omp parallel for
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::pow(input0[i], input1);
+        }
+      } else {
+        for (index_t i = 0; i < size; ++i) {
+          output[i] = std::pow(input1, input0[i]);
+        }
+      }
+      break;
+    case NEG:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        output[i] = std::pow(input0[i], input1[i]);
+        output[i] = -input0[i];
+      }
+      break;
+    case ABS:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output[i] = std::fabs(input0[i]);
       }
       break;
     default:
@@ -444,95 +410,302 @@ inline void TensorEltwise(const EltwiseType type,
   }
 }
 
+inline void TensorEltwisePerChannel(const EltwiseType type,
+                                    const float *input0,
+                                    const float *input1,
+                                    const std::vector<float> &coeff,
+                                    const index_t batch0,
+                                    const index_t batch1,
+                                    const index_t channel,
+                                    const index_t image_size,
+                                    const bool swapped,
+                                    float *output) {
+  switch (type) {
+    case SUM:
+      if (coeff.empty()) {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in0_ptr[i] + in1_ptr[c];
+            }
+          }
+        }
+      } else {
+        std::vector<float> coeff_copy = coeff;
+        if (swapped) {
+          std::swap(coeff_copy[0], coeff_copy[1]);
+        }
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] =
+                  in0_ptr[i] * coeff_copy[0] + in1_ptr[c] * coeff_copy[1];
+            }
+          }
+        }
+      }
+      break;
+    case SUB:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in0_ptr[i] - in1_ptr[c];
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in1_ptr[c] - in0_ptr[i];
+            }
+          }
+        }
+      }
+      break;
+    case PROD:
+#pragma omp parallel for collapse(2)
+      for (index_t b = 0; b < batch0; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+          const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+          float *out_ptr = output + ((b * channel) + c) * image_size;
+          for (index_t i = 0; i < image_size; ++i) {
+            out_ptr[i] = in0_ptr[i] * in1_ptr[c];
+          }
+        }
+      }
+      break;
+    case DIV:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in0_ptr[i] / in1_ptr[c];
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = in1_ptr[c] / in0_ptr[i];
+            }
+          }
+        }
+      }
+      break;
+    case MIN:
+#pragma omp parallel for collapse(2)
+      for (index_t b = 0; b < batch0; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+          const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+          float *out_ptr = output + ((b * channel) + c) * image_size;
+          for (index_t i = 0; i < image_size; ++i) {
+            out_ptr[i] = std::min(in0_ptr[i], in1_ptr[c]);
+          }
+        }
+      }
+      break;
+    case MAX:
+#pragma omp parallel for collapse(2)
+      for (index_t b = 0; b < batch0; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+          const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+          float *out_ptr = output + ((b * channel) + c) * image_size;
+          for (index_t i = 0; i < image_size; ++i) {
+            out_ptr[i] = std::max(in0_ptr[i], in1_ptr[c]);
+          }
+        }
+      }
+      break;
+    case SQR_DIFF:
+#pragma omp parallel for collapse(2)
+      for (index_t b = 0; b < batch0; ++b) {
+        for (index_t c = 0; c < channel; ++c) {
+          const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+          const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+          float *out_ptr = output + ((b * channel) + c) * image_size;
+          for (index_t i = 0; i < image_size; ++i) {
+            out_ptr[i] = std::pow(in0_ptr[i] - in1_ptr[c], 2.f);
+          }
+        }
+      }
+      break;
+    case POW:
+      if (!swapped) {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = std::pow(in0_ptr[i], in1_ptr[c]);
+            }
+          }
+        }
+      } else {
+#pragma omp parallel for collapse(2)
+        for (index_t b = 0; b < batch0; ++b) {
+          for (index_t c = 0; c < channel; ++c) {
+            const float *in0_ptr = input0 + ((b * channel) + c) * image_size;
+            const float *in1_ptr = input1 + (batch1 > 1 ? b * channel : 0);
+            float *out_ptr = output + ((b * channel) + c) * image_size;
+            for (index_t i = 0; i < image_size; ++i) {
+              out_ptr[i] = std::pow(in1_ptr[c], in0_ptr[i]);
+            }
+          }
+        }
+      }
+      break;
+    case NEG:
+#pragma omp parallel for
+      for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
+        output[i] = -input0[i];
+      }
+      break;
+    case ABS:
+#pragma omp parallel for
+      for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
+        output[i] = std::fabs(input0[i]);
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
 
 struct EltwiseFunctorBase {
   EltwiseFunctorBase(const EltwiseType type,
                      const std::vector<float> &coeff,
-                     const float value)
-      : type_(type), coeff_(coeff), value_(value) {}
+                     const float value,
+                     const DataFormat data_format)
+      : type_(type), coeff_(coeff), value_(value), data_format_(data_format) {}
 
   EltwiseType type_;
   std::vector<float> coeff_;
   float value_;
+  DataFormat data_format_;
 };
 
 template <DeviceType D, typename T>
 struct EltwiseFunctor;
 
 template <>
-struct EltwiseFunctor<DeviceType::CPU, float>: EltwiseFunctorBase {
+struct EltwiseFunctor<DeviceType::CPU, float> : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
                  const std::vector<float> &coeff,
-                 const float value)
-      : EltwiseFunctorBase(type, coeff, value) {}
+                 const float value,
+                 const DataFormat data_format)
+      : EltwiseFunctorBase(type, coeff, value, data_format) {}
 
   MaceStatus operator()(const Tensor *input0,
-                  const Tensor *input1,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        const Tensor *input1,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
+
+    if (input1 == nullptr) {
+      scalar_tensor_.Resize({});
+      Tensor::MappingGuard guard(&scalar_tensor_);
+      auto scalar_data = scalar_tensor_.mutable_data<float>();
+      scalar_data[0] = value_;
+      input1 = &scalar_tensor_;
+    }
+
     bool swapped = false;
-    if (input1 != nullptr) {
-      MACE_CHECK(input0->dim_size() == input1->dim_size()
-                     || input0->dim_size() == 1
-                     || input1->dim_size() == 1)
-        << "Inputs of Eltwise op must be same shape";
-      if (input0->size() != input1->size()) {
-        if (input0->size() < input1->size()) {
-          std::swap(input0, input1);
-          swapped = true;
-        }
-        if (input1->dim_size() == 1) {
-          MACE_CHECK(input0->dim(1) == input1->dim(0))
-            << "Element-Wise op only support channel dimension broadcast";
-        } else {
-          MACE_CHECK((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1)
-                         && input0->dim(1) == input1->dim(1)
-                         && input1->dim(2) == 1
-                         && input1->dim(3) == 1)
-            << "Element-Wise op only support channel dimension broadcast";
+    if (input0->size() < input1->size()) {
+      std::swap(input0, input1);
+      swapped = true;
+    }
+
+    // check if we can broadcast tensor
+    uint32_t rank_diff =
+        static_cast<uint32_t>(input0->dim_size() - input1->dim_size());
+    if (data_format_ == NCHW) {
+      MACE_CHECK(
+          input0->dim_size() == 4 &&
+              (input1->dim_size() == 0 ||
+               input1->dim_size() == 4 && input1->dim(1) == input0->dim(1) &&
+                   (input1->dim(0) == input0->dim(0) || input1->dim(0) == 1) ||
+               input1->dim_size() == 1 && input1->dim(0) == input0->dim(1)),
+          "only support broadcast channel dimension");
+    } else {
+      if (rank_diff > 0 && rank_diff < input0->dim_size()) {
+        for (uint32_t i = 0; i < input1->dim_size(); ++i) {
+          MACE_CHECK(input0->dim(rank_diff + i) == input1->dim(i),
+                     "Element-Wise op only support tail dimensions broadcast");
         }
       }
     }
+
+    index_t common_size = input1->size();
+    index_t diff_size = input0->size() / common_size;
+
     MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
 
     Tensor::MappingGuard input0_guard(input0);
+    Tensor::MappingGuard input1_guard(input1);
     Tensor::MappingGuard output_guard(output);
 
     const float *input0_ptr = input0->data<float>();
+    const float *input1_ptr = input1->data<float>();
     float *output_ptr = output->mutable_data<float>();
-    const index_t size = input0->size();
-    if (input1 == nullptr) {
-      TensorScalar(type_, input0_ptr, value_, size, output_ptr);
-    } else {
-      Tensor::MappingGuard input1_guard(input1);
 
-      const float *input1_ptr = input1->data<float>();
-      if (input1->size() != input0->size()) {
-        const index_t batch = input0->dim(0);
-        const index_t channel = input0->dim(1);
-        const index_t hw = input0->dim(2) * input0->dim(3);
-        if (input1->dim(0) == 1 || input1->dim_size() == 1)
-          TensorVector(type_, input0_ptr, input1_ptr,
-                       batch, channel, hw, swapped, output_ptr);
-        else
-          TensorBatchVector(type_, input0_ptr, input1_ptr,
-                            batch, channel, hw, swapped, output_ptr);
-      } else {
-        if (!coeff_.empty() && type_ == SUM) {
-#pragma omp parallel for
-          for (index_t i = 0; i < size; ++i) {
-            output_ptr[i] = coeff_[0] * input0_ptr[i] +
-                coeff_[1] * input1_ptr[i];
-          }
+    if (data_format_ == NCHW && input1->dim_size() > 0 &&
+        input1->size() < input0->size()) {
+      TensorEltwisePerChannel(
+          type_, input0_ptr, input1_ptr, coeff_, input0->dim(0),
+          input1->dim_size() == 1 ? 1 : input1->dim(0), input0->dim(1),
+          input0->dim(2) * input0->dim(3), swapped, output_ptr);
+
+    } else {
+      if (input1->size() == input0->size()) {
+        TensorEltwise(type_, input0_ptr, input1_ptr, coeff_, input0->size(),
+                      swapped, output_ptr);
+      } else if (input1->size() < input0->size()) {
+        if (input1->size() > 1) {
+          TensorBroadcastEltwise(type_, input0_ptr, input1_ptr, coeff_,
+                                 diff_size, common_size, swapped, output_ptr);
         } else {
-          TensorEltwise(type_, input0_ptr, input1_ptr, size, output_ptr);
+          TensorScalarEltwise(type_, input0_ptr, input1_ptr[0], coeff_,
+                              input0->size(), swapped, output_ptr);
         }
       }
     }
 
     return MACE_SUCCESS;
   }
+
+  Tensor scalar_tensor_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
@@ -540,13 +713,14 @@ template <typename T>
 struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
                  const std::vector<float> &coeff,
-                 const float value)
-      : EltwiseFunctorBase(type, coeff, value) {}
+                 const float value,
+                 const DataFormat data_format)
+      : EltwiseFunctorBase(type, coeff, value, data_format) {}
 
   MaceStatus operator()(const Tensor *input0,
-                  const Tensor *input1,
-                  Tensor *output,
-                  StatsFuture *future);
+                        const Tensor *input1,
+                        Tensor *output,
+                        StatsFuture *future);
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;

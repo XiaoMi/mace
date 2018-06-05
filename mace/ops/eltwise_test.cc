@@ -41,6 +41,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
         .Input("TInput")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("value", x)
+        .AddIntArg("data_format", DataFormat::NCHW)
         .Output("TOutput")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -84,15 +85,24 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
   net.AddInputFromArray<D, float>("Input1", shape1, input1);
 
   if (D == DeviceType::CPU) {
-    net.TransformDataFormat<D, float>("Input0", NHWC, "TInput0", NCHW);
-    net.TransformDataFormat<D, float>("Input1", NHWC, "TInput1", NCHW);
-    OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("TInput0")
-        .Input("TInput1")
+    auto op_builder = OpDefBuilder("Eltwise", "EltwiseTest")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatsArg("coeff", coeff)
-        .Output("TOutput")
-        .Finalize(net.NewOperatorDef());
+        .AddIntArg("data_format", DataFormat::NCHW)
+        .Output("TOutput");
+    if (shape0.size() > 1) {
+      net.TransformDataFormat<D, float>("Input0", NHWC, "TInput0", NCHW);
+      op_builder.Input("TInput0");
+    } else {
+      op_builder.Input("Input0");
+    }
+    if (shape1.size() > 1) {
+      net.TransformDataFormat<D, float>("Input1", NHWC, "TInput1", NCHW);
+      op_builder.Input("TInput1");
+    } else {
+      op_builder.Input("Input1");
+    }
+    op_builder.Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
@@ -214,6 +224,35 @@ TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
       kernels::EltwiseType::SQR_DIFF, {1, 1, 1, 5}, {1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
+
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {3},
+      {1, 2, 3}, {2, 4, 6, 5, 7, 9});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {5}, {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SUB, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, -5, -5, -5, -5, -5});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::PROD, {3}, {1, 2, 3}, {1, 2, 1, 3},
+      {1, 2, 3, 4, 5, 6}, {1, 4, 9, 4, 10, 18});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::MIN, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+  SimpleTensorEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SQR_DIFF, {5}, {1, 2, 3, 4, 5},
+      {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
 }
 
 TEST_F(EltwiseOpTest, GPUSimpleTensorVector) {
@@ -322,6 +361,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatArg("value", 0.1)
+      .AddIntArg("data_format", DataFormat::NCHW)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -375,6 +415,7 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
       .Input("TInput1")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", coeff)
+      .AddIntArg("data_format", DataFormat::NCHW)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
 

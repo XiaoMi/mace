@@ -29,8 +29,12 @@ void Simple() {
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 1, 2, 4},
                                   {1, 1, 1, 1, 1, 2, 3, 4});
+  auto expected = CreateTensor<float>(
+      {1, 1, 2, 4},
+      {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
 
   if (D == DeviceType::CPU) {
+    // test 4d softmax
     net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputNCHW")
@@ -40,6 +44,21 @@ void Simple() {
     // Run
     net.RunOp(D);
     net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+
+    // check 2d softmax
+    net.AddInputFromArray<D, float>("Input2d", {2, 4},
+                                    {1, 1, 1, 1, 1, 2, 3, 4});
+    OpDefBuilder("Softmax", "SoftmaxTest")
+        .Input("Input2d")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+    net.GetOutput("Output")->Reshape({1, 1, 2, 4});
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
@@ -55,15 +74,11 @@ void Simple() {
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
+
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-
-  auto expected = CreateTensor<float>(
-      {1, 1, 2, 4},
-      {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
