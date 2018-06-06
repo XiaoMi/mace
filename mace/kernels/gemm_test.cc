@@ -13,17 +13,22 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <random>
 #include <memory>
+#include <random>
 
-#include "mace/kernels/gemm.h"
 #include "mace/core/types.h"
+#include "mace/kernels/gemm.h"
 
 namespace mace {
 
 namespace {
 
-void GemmTest(index_t batch, index_t N, index_t K, index_t M) {
+void GemmTest(index_t batch,
+              index_t N,
+              index_t K,
+              index_t M,
+              bool transpose_a,
+              bool transpose_b) {
   std::unique_ptr<float[]> A(new float[batch * N * K]);
   std::unique_ptr<float[]> B(new float[batch * K * M]);
   std::unique_ptr<float[]> C(new float[batch * N * M]);
@@ -34,15 +39,13 @@ void GemmTest(index_t batch, index_t N, index_t K, index_t M) {
   std::normal_distribution<float> nd(0, 1);
 
   std::generate(A.get(), A.get() + batch * N * K,
-                [&gen, &nd] {
-                  return nd(gen);
-                });
+                [&gen, &nd] { return nd(gen); });
   std::generate(B.get(), B.get() + batch * K * M,
-                [&gen, &nd] {
-                  return nd(gen);
-                });
-  kernels::Gemm(A.get(), B.get(), batch, N, K, M, C.get());
-  kernels::GemmRef(A.get(), B.get(), batch, N, K, M, C_ref.get());
+                [&gen, &nd] { return nd(gen); });
+  kernels::Gemm(A.get(), B.get(), batch, N, K, M, C.get(), transpose_a,
+                transpose_b);
+  kernels::GemmRef(A.get(), B.get(), batch, N, K, M, C_ref.get(), transpose_a,
+                   transpose_b);
 
   for (int i = 0; i < batch * N * M; ++i) {
     EXPECT_NEAR(C_ref[i], C[i], 0.1);
@@ -59,14 +62,8 @@ void GemvTest(index_t batch, index_t N, index_t M) {
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
 
-  std::generate(A.get(), A.get() + N * M,
-                [&gen, &nd] {
-                  return nd(gen);
-                });
-  std::generate(B.get(), B.get() + batch * M,
-                [&gen, &nd] {
-                  return nd(gen);
-                });
+  std::generate(A.get(), A.get() + N * M, [&gen, &nd] { return nd(gen); });
+  std::generate(B.get(), B.get() + batch * M, [&gen, &nd] { return nd(gen); });
   kernels::Gemv(A.get(), B.get(), batch, M, N, C.get());
   kernels::GemvRef(A.get(), B.get(), batch, M, N, C_ref.get());
 
@@ -78,36 +75,36 @@ void GemvTest(index_t batch, index_t N, index_t M) {
 }  // namespace
 
 TEST(GEMMTest, AlignedWithoutBatch) {
-  GemmTest(1, 1, 64, 128);
-  GemmTest(1, 2, 64, 128);
-  GemmTest(1, 3, 64, 128);
-  GemmTest(1, 4, 64, 128);
-  GemmTest(1, 5, 64, 128);
-  GemmTest(1, 6, 64, 128);
-  GemmTest(1, 7, 64, 128);
-  GemmTest(1, 17, 64, 128);
+  GemmTest(1, 1, 64, 128, false, false);
+  GemmTest(1, 2, 64, 128, false, true);
+  GemmTest(1, 3, 64, 128, true, false);
+  GemmTest(1, 4, 64, 128, true, true);
+  GemmTest(1, 5, 64, 128, false, false);
+  GemmTest(1, 6, 64, 128, false, true);
+  GemmTest(1, 7, 64, 128, true, false);
+  GemmTest(1, 17, 64, 128, true, true);
 }
 
 TEST(GEMMTest, UnalignedWithoutBatch) {
-  GemmTest(1, 1, 63, 127);
-  GemmTest(1, 2, 63, 127);
-  GemmTest(1, 3, 63, 127);
-  GemmTest(1, 4, 63, 127);
-  GemmTest(1, 5, 63, 127);
-  GemmTest(1, 6, 63, 127);
-  GemmTest(1, 7, 63, 127);
-  GemmTest(1, 17, 63, 127);
+  GemmTest(1, 1, 63, 127, false, false);
+  GemmTest(1, 2, 63, 127, false, true);
+  GemmTest(1, 3, 63, 127, true, false);
+  GemmTest(1, 4, 63, 127, true, true);
+  GemmTest(1, 5, 63, 127, false, false);
+  GemmTest(1, 6, 63, 127, false, true);
+  GemmTest(1, 7, 63, 127, true, false);
+  GemmTest(1, 17, 63, 127, true, true);
 }
 
 TEST(GEMMTest, UnalignedWithBatch) {
-  GemmTest(3, 1, 63, 127);
-  GemmTest(3, 2, 63, 127);
-  GemmTest(3, 3, 63, 127);
-  GemmTest(3, 4, 63, 127);
-  GemmTest(3, 5, 63, 127);
-  GemmTest(3, 6, 63, 127);
-  GemmTest(3, 7, 63, 127);
-  GemmTest(3, 17, 63, 127);
+  GemmTest(3, 1, 63, 127, false, false);
+  GemmTest(3, 2, 63, 127, false, true);
+  GemmTest(3, 3, 63, 127, true, false);
+  GemmTest(3, 4, 63, 127, true, true);
+  GemmTest(3, 5, 63, 127, false, false);
+  GemmTest(3, 6, 63, 127, false, true);
+  GemmTest(3, 7, 63, 127, true, false);
+  GemmTest(3, 17, 63, 127, true, true);
 }
 
 TEST(GEMMTest, gemv) {

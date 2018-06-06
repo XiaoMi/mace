@@ -122,7 +122,11 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
   } else {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+    if (buffer->dim_size() < 4) {
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
+    } else {
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+    }
   }
   b2f_kernel.setArg(idx++, *(image->opencl_image()));
 

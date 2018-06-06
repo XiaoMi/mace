@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
 #include <algorithm>
 #include <cstring>
+
+#include "mace/core/tensor.h"
+#include "mace/kernels/gemm.h"
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
-
-#include "mace/core/macros.h"
-#include "mace/kernels/gemm.h"
-#include "mace/utils/logging.h"
 
 #if defined(MACE_ENABLE_NEON) && !defined(__aarch64__)
 #define vaddvq_f32(v) ((v)[0] + (v)[1] + (v)[2] + (v)[3])
@@ -37,13 +35,14 @@ inline void GemmBlock(const float *A,
                       const index_t height,
                       const index_t K,
                       const index_t width,
-                      const index_t stride_k,
-                      const index_t stride_w,
+                      const index_t stride_a,
+                      const index_t stride_b,
+                      const index_t stride_c,
                       float *C) {
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       for (int k = 0; k < K; ++k) {
-        C[i * stride_w + j] += A[i * stride_k + k] * B[k * stride_w + j];
+        C[i * stride_c + j] += A[i * stride_a + k] * B[k * stride_b + j];
       }
     }
   }
@@ -75,8 +74,9 @@ inline void GemmBlock(const float *A,
 
 inline void Gemm884(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14,
@@ -86,38 +86,38 @@ inline void Gemm884(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-  a6 = vld1q_f32(a_ptr + 3 * stride_k);
-  a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
-  a8 = vld1q_f32(a_ptr + 4 * stride_k);
-  a9 = vld1q_f32(a_ptr + 4 * stride_k + 4);
-  a10 = vld1q_f32(a_ptr + 5 * stride_k);
-  a11 = vld1q_f32(a_ptr + 5 * stride_k + 4);
-  a12 = vld1q_f32(a_ptr + 6 * stride_k);
-  a13 = vld1q_f32(a_ptr + 6 * stride_k + 4);
-  a14 = vld1q_f32(a_ptr + 7 * stride_k);
-  a15 = vld1q_f32(a_ptr + 7 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+  a6 = vld1q_f32(a_ptr + 3 * stride_a);
+  a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
+  a8 = vld1q_f32(a_ptr + 4 * stride_a);
+  a9 = vld1q_f32(a_ptr + 4 * stride_a + 4);
+  a10 = vld1q_f32(a_ptr + 5 * stride_a);
+  a11 = vld1q_f32(a_ptr + 5 * stride_a + 4);
+  a12 = vld1q_f32(a_ptr + 6 * stride_a);
+  a13 = vld1q_f32(a_ptr + 6 * stride_a + 4);
+  a14 = vld1q_f32(a_ptr + 7 * stride_a);
+  a15 = vld1q_f32(a_ptr + 7 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
-  c3 = vld1q_f32(c_ptr + 3 * stride_w);
-  c4 = vld1q_f32(c_ptr + 4 * stride_w);
-  c5 = vld1q_f32(c_ptr + 5 * stride_w);
-  c6 = vld1q_f32(c_ptr + 6 * stride_w);
-  c7 = vld1q_f32(c_ptr + 7 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
+  c3 = vld1q_f32(c_ptr + 3 * stride_c);
+  c4 = vld1q_f32(c_ptr + 4 * stride_c);
+  c5 = vld1q_f32(c_ptr + 5 * stride_c);
+  c6 = vld1q_f32(c_ptr + 6 * stride_c);
+  c7 = vld1q_f32(c_ptr + 7 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -140,25 +140,28 @@ inline void Gemm884(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
-  vst1q_f32(c_ptr + 3 * stride_w, c3);
-  vst1q_f32(c_ptr + 4 * stride_w, c4);
-  vst1q_f32(c_ptr + 5 * stride_w, c5);
-  vst1q_f32(c_ptr + 6 * stride_w, c6);
-  vst1q_f32(c_ptr + 7 * stride_w, c7);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
+  vst1q_f32(c_ptr + 3 * stride_c, c3);
+  vst1q_f32(c_ptr + 4 * stride_c, c4);
+  vst1q_f32(c_ptr + 5 * stride_c, c5);
+  vst1q_f32(c_ptr + 6 * stride_c, c6);
+  vst1q_f32(c_ptr + 7 * stride_c, c7);
 #else
-  GemmBlock(a_ptr, b_ptr, 8, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 8, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm184(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
-  MACE_UNUSED(stride_k);
 #if defined(MACE_ENABLE_NEON)
+  MACE_UNUSED(stride_a);
+  MACE_UNUSED(stride_c);
+
   float32x4_t a0, a1;
   float32x4_t b0, b1, b2, b3, b4, b5, b6, b7;
   float32x4_t c0;
@@ -167,13 +170,13 @@ inline void Gemm184(const float *a_ptr,
   a1 = vld1q_f32(a_ptr + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
 
@@ -185,14 +188,15 @@ inline void Gemm184(const float *a_ptr,
 
   vst1q_f32(c_ptr, c0);
 #else
-  GemmBlock(a_ptr, b_ptr, 1, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 1, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm284(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3;
@@ -201,20 +205,20 @@ inline void Gemm284(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -225,16 +229,17 @@ inline void Gemm284(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
 #else
-  GemmBlock(a_ptr, b_ptr, 2, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 2, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm384(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5;
@@ -243,23 +248,23 @@ inline void Gemm384(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -272,17 +277,18 @@ inline void Gemm384(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
 #else
-  GemmBlock(a_ptr, b_ptr, 3, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 3, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm484(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5, a6, a7;
@@ -291,26 +297,26 @@ inline void Gemm484(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-  a6 = vld1q_f32(a_ptr + 3 * stride_k);
-  a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+  a6 = vld1q_f32(a_ptr + 3 * stride_a);
+  a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
-  c3 = vld1q_f32(c_ptr + 3 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
+  c3 = vld1q_f32(c_ptr + 3 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -325,18 +331,19 @@ inline void Gemm484(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
-  vst1q_f32(c_ptr + 3 * stride_w, c3);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
+  vst1q_f32(c_ptr + 3 * stride_c, c3);
 #else
-  GemmBlock(a_ptr, b_ptr, 4, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 4, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm584(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5, a6, a7, a8, a9;
@@ -345,29 +352,29 @@ inline void Gemm584(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-  a6 = vld1q_f32(a_ptr + 3 * stride_k);
-  a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
-  a8 = vld1q_f32(a_ptr + 4 * stride_k);
-  a9 = vld1q_f32(a_ptr + 4 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+  a6 = vld1q_f32(a_ptr + 3 * stride_a);
+  a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
+  a8 = vld1q_f32(a_ptr + 4 * stride_a);
+  a9 = vld1q_f32(a_ptr + 4 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
-  c3 = vld1q_f32(c_ptr + 3 * stride_w);
-  c4 = vld1q_f32(c_ptr + 4 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
+  c3 = vld1q_f32(c_ptr + 3 * stride_c);
+  c4 = vld1q_f32(c_ptr + 4 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -384,19 +391,20 @@ inline void Gemm584(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
-  vst1q_f32(c_ptr + 3 * stride_w, c3);
-  vst1q_f32(c_ptr + 4 * stride_w, c4);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
+  vst1q_f32(c_ptr + 3 * stride_c, c3);
+  vst1q_f32(c_ptr + 4 * stride_c, c4);
 #else
-  GemmBlock(a_ptr, b_ptr, 5, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 5, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm684(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11;
@@ -405,32 +413,32 @@ inline void Gemm684(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-  a6 = vld1q_f32(a_ptr + 3 * stride_k);
-  a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
-  a8 = vld1q_f32(a_ptr + 4 * stride_k);
-  a9 = vld1q_f32(a_ptr + 4 * stride_k + 4);
-  a10 = vld1q_f32(a_ptr + 5 * stride_k);
-  a11 = vld1q_f32(a_ptr + 5 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+  a6 = vld1q_f32(a_ptr + 3 * stride_a);
+  a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
+  a8 = vld1q_f32(a_ptr + 4 * stride_a);
+  a9 = vld1q_f32(a_ptr + 4 * stride_a + 4);
+  a10 = vld1q_f32(a_ptr + 5 * stride_a);
+  a11 = vld1q_f32(a_ptr + 5 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
-  c3 = vld1q_f32(c_ptr + 3 * stride_w);
-  c4 = vld1q_f32(c_ptr + 4 * stride_w);
-  c5 = vld1q_f32(c_ptr + 5 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
+  c3 = vld1q_f32(c_ptr + 3 * stride_c);
+  c4 = vld1q_f32(c_ptr + 4 * stride_c);
+  c5 = vld1q_f32(c_ptr + 5 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -449,21 +457,22 @@ inline void Gemm684(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
-  vst1q_f32(c_ptr + 3 * stride_w, c3);
-  vst1q_f32(c_ptr + 4 * stride_w, c4);
-  vst1q_f32(c_ptr + 5 * stride_w, c5);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
+  vst1q_f32(c_ptr + 3 * stride_c, c3);
+  vst1q_f32(c_ptr + 4 * stride_c, c4);
+  vst1q_f32(c_ptr + 5 * stride_c, c5);
 
 #else
-  GemmBlock(a_ptr, b_ptr, 6, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 6, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void Gemm784(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13;
@@ -472,35 +481,35 @@ inline void Gemm784(const float *a_ptr,
 
   a0 = vld1q_f32(a_ptr);
   a1 = vld1q_f32(a_ptr + 4);
-  a2 = vld1q_f32(a_ptr + 1 * stride_k);
-  a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-  a4 = vld1q_f32(a_ptr + 2 * stride_k);
-  a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-  a6 = vld1q_f32(a_ptr + 3 * stride_k);
-  a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
-  a8 = vld1q_f32(a_ptr + 4 * stride_k);
-  a9 = vld1q_f32(a_ptr + 4 * stride_k + 4);
-  a10 = vld1q_f32(a_ptr + 5 * stride_k);
-  a11 = vld1q_f32(a_ptr + 5 * stride_k + 4);
-  a12 = vld1q_f32(a_ptr + 6 * stride_k);
-  a13 = vld1q_f32(a_ptr + 6 * stride_k + 4);
+  a2 = vld1q_f32(a_ptr + 1 * stride_a);
+  a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+  a4 = vld1q_f32(a_ptr + 2 * stride_a);
+  a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+  a6 = vld1q_f32(a_ptr + 3 * stride_a);
+  a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
+  a8 = vld1q_f32(a_ptr + 4 * stride_a);
+  a9 = vld1q_f32(a_ptr + 4 * stride_a + 4);
+  a10 = vld1q_f32(a_ptr + 5 * stride_a);
+  a11 = vld1q_f32(a_ptr + 5 * stride_a + 4);
+  a12 = vld1q_f32(a_ptr + 6 * stride_a);
+  a13 = vld1q_f32(a_ptr + 6 * stride_a + 4);
 
   b0 = vld1q_f32(b_ptr);
-  b1 = vld1q_f32(b_ptr + 1 * stride_w);
-  b2 = vld1q_f32(b_ptr + 2 * stride_w);
-  b3 = vld1q_f32(b_ptr + 3 * stride_w);
-  b4 = vld1q_f32(b_ptr + 4 * stride_w);
-  b5 = vld1q_f32(b_ptr + 5 * stride_w);
-  b6 = vld1q_f32(b_ptr + 6 * stride_w);
-  b7 = vld1q_f32(b_ptr + 7 * stride_w);
+  b1 = vld1q_f32(b_ptr + 1 * stride_b);
+  b2 = vld1q_f32(b_ptr + 2 * stride_b);
+  b3 = vld1q_f32(b_ptr + 3 * stride_b);
+  b4 = vld1q_f32(b_ptr + 4 * stride_b);
+  b5 = vld1q_f32(b_ptr + 5 * stride_b);
+  b6 = vld1q_f32(b_ptr + 6 * stride_b);
+  b7 = vld1q_f32(b_ptr + 7 * stride_b);
 
   c0 = vld1q_f32(c_ptr);
-  c1 = vld1q_f32(c_ptr + 1 * stride_w);
-  c2 = vld1q_f32(c_ptr + 2 * stride_w);
-  c3 = vld1q_f32(c_ptr + 3 * stride_w);
-  c4 = vld1q_f32(c_ptr + 4 * stride_w);
-  c5 = vld1q_f32(c_ptr + 5 * stride_w);
-  c6 = vld1q_f32(c_ptr + 6 * stride_w);
+  c1 = vld1q_f32(c_ptr + 1 * stride_c);
+  c2 = vld1q_f32(c_ptr + 2 * stride_c);
+  c3 = vld1q_f32(c_ptr + 3 * stride_c);
+  c4 = vld1q_f32(c_ptr + 4 * stride_c);
+  c5 = vld1q_f32(c_ptr + 5 * stride_c);
+  c6 = vld1q_f32(c_ptr + 6 * stride_c);
 
 #if defined(__aarch64__)
   MACE_GEMM_PART_CAL(0, 0, 1);
@@ -521,48 +530,49 @@ inline void Gemm784(const float *a_ptr,
 #endif
 
   vst1q_f32(c_ptr, c0);
-  vst1q_f32(c_ptr + 1 * stride_w, c1);
-  vst1q_f32(c_ptr + 2 * stride_w, c2);
-  vst1q_f32(c_ptr + 3 * stride_w, c3);
-  vst1q_f32(c_ptr + 4 * stride_w, c4);
-  vst1q_f32(c_ptr + 5 * stride_w, c5);
-  vst1q_f32(c_ptr + 6 * stride_w, c6);
+  vst1q_f32(c_ptr + 1 * stride_c, c1);
+  vst1q_f32(c_ptr + 2 * stride_c, c2);
+  vst1q_f32(c_ptr + 3 * stride_c, c3);
+  vst1q_f32(c_ptr + 4 * stride_c, c4);
+  vst1q_f32(c_ptr + 5 * stride_c, c5);
+  vst1q_f32(c_ptr + 6 * stride_c, c6);
 
 #else
-  GemmBlock(a_ptr, b_ptr, 7, 8, 4, stride_k, stride_w, c_ptr);
+  GemmBlock(a_ptr, b_ptr, 7, 8, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
 }
 
 inline void GemmX84(const float *a_ptr,
                     const float *b_ptr,
-                    index_t stride_k,
-                    index_t stride_w,
+                    const index_t stride_a,
+                    const index_t stride_b,
+                    const index_t stride_c,
                     float *c_ptr,
                     int row) {
   switch (row) {
     case 1:
-      Gemm184(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm184(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 2:
-      Gemm284(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm284(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 3:
-      Gemm384(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm384(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 4:
-      Gemm484(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm484(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 5:
-      Gemm584(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm584(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 6:
-      Gemm684(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm684(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 7:
-      Gemm784(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm784(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     case 8:
-      Gemm884(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+      Gemm884(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       break;
     default:
       MACE_NOT_IMPLEMENTED;
@@ -574,14 +584,15 @@ inline void GemmTile(const float *A,
                      const index_t height,
                      const index_t K,
                      const index_t width,
-                     const index_t stride_k,
-                     const index_t stride_w,
+                     const index_t stride_a,
+                     const index_t stride_b,
+                     const index_t stride_c,
                      float *C) {
 #if defined(MACE_ENABLE_NEON)
   index_t h, w, k;
   for (h = 0; h < height - 7; h += 8) {
     for (k = 0; k < K - 7; k += 8) {
-      const float *a_ptr = A + (h * stride_k + k);
+      const float *a_ptr = A + (h * stride_a + k);
 #if defined(__aarch64__) && defined(__clang__)
       int nw = width >> 2;
       if (nw > 0) {
@@ -590,38 +601,38 @@ inline void GemmTile(const float *A,
             a14, a15;
         a0 = vld1q_f32(a_ptr);
         a1 = vld1q_f32(a_ptr + 4);
-        a2 = vld1q_f32(a_ptr + 1 * stride_k);
-        a3 = vld1q_f32(a_ptr + 1 * stride_k + 4);
-        a4 = vld1q_f32(a_ptr + 2 * stride_k);
-        a5 = vld1q_f32(a_ptr + 2 * stride_k + 4);
-        a6 = vld1q_f32(a_ptr + 3 * stride_k);
-        a7 = vld1q_f32(a_ptr + 3 * stride_k + 4);
-        a8 = vld1q_f32(a_ptr + 4 * stride_k);
-        a9 = vld1q_f32(a_ptr + 4 * stride_k + 4);
-        a10 = vld1q_f32(a_ptr + 5 * stride_k);
-        a11 = vld1q_f32(a_ptr + 5 * stride_k + 4);
-        a12 = vld1q_f32(a_ptr + 6 * stride_k);
-        a13 = vld1q_f32(a_ptr + 6 * stride_k + 4);
-        a14 = vld1q_f32(a_ptr + 7 * stride_k);
-        a15 = vld1q_f32(a_ptr + 7 * stride_k + 4);
+        a2 = vld1q_f32(a_ptr + 1 * stride_a);
+        a3 = vld1q_f32(a_ptr + 1 * stride_a + 4);
+        a4 = vld1q_f32(a_ptr + 2 * stride_a);
+        a5 = vld1q_f32(a_ptr + 2 * stride_a + 4);
+        a6 = vld1q_f32(a_ptr + 3 * stride_a);
+        a7 = vld1q_f32(a_ptr + 3 * stride_a + 4);
+        a8 = vld1q_f32(a_ptr + 4 * stride_a);
+        a9 = vld1q_f32(a_ptr + 4 * stride_a + 4);
+        a10 = vld1q_f32(a_ptr + 5 * stride_a);
+        a11 = vld1q_f32(a_ptr + 5 * stride_a + 4);
+        a12 = vld1q_f32(a_ptr + 6 * stride_a);
+        a13 = vld1q_f32(a_ptr + 6 * stride_a + 4);
+        a14 = vld1q_f32(a_ptr + 7 * stride_a);
+        a15 = vld1q_f32(a_ptr + 7 * stride_a + 4);
 
-        const float *b_ptr0 = B + k * stride_w;
-        const float *b_ptr1 = B + (k + 1) * stride_w;
-        const float *b_ptr2 = B + (k + 2) * stride_w;
-        const float *b_ptr3 = B + (k + 3) * stride_w;
-        const float *b_ptr4 = B + (k + 4) * stride_w;
-        const float *b_ptr5 = B + (k + 5) * stride_w;
-        const float *b_ptr6 = B + (k + 6) * stride_w;
-        const float *b_ptr7 = B + (k + 7) * stride_w;
+        const float *b_ptr0 = B + k * stride_b;
+        const float *b_ptr1 = B + (k + 1) * stride_b;
+        const float *b_ptr2 = B + (k + 2) * stride_b;
+        const float *b_ptr3 = B + (k + 3) * stride_b;
+        const float *b_ptr4 = B + (k + 4) * stride_b;
+        const float *b_ptr5 = B + (k + 5) * stride_b;
+        const float *b_ptr6 = B + (k + 6) * stride_b;
+        const float *b_ptr7 = B + (k + 7) * stride_b;
 
-        float *c_ptr0 = C + h * stride_w;
-        float *c_ptr1 = C + (h + 1) * stride_w;
-        float *c_ptr2 = C + (h + 2) * stride_w;
-        float *c_ptr3 = C + (h + 3) * stride_w;
-        float *c_ptr4 = C + (h + 4) * stride_w;
-        float *c_ptr5 = C + (h + 5) * stride_w;
-        float *c_ptr6 = C + (h + 6) * stride_w;
-        float *c_ptr7 = C + (h + 7) * stride_w;
+        float *c_ptr0 = C + h * stride_c;
+        float *c_ptr1 = C + (h + 1) * stride_c;
+        float *c_ptr2 = C + (h + 2) * stride_c;
+        float *c_ptr3 = C + (h + 3) * stride_c;
+        float *c_ptr4 = C + (h + 4) * stride_c;
+        float *c_ptr5 = C + (h + 5) * stride_c;
+        float *c_ptr6 = C + (h + 6) * stride_c;
+        float *c_ptr7 = C + (h + 7) * stride_c;
 
         asm volatile(
             "prfm   pldl1keep, [%9, #128]       \n"
@@ -824,53 +835,68 @@ inline void GemmTile(const float *A,
       }
 #else   // gcc || armv7a
       for (w = 0; w + 3 < width; w += 4) {
-        const float *b_ptr = B + (k * stride_w + w);
-        float *c_ptr = C + (h * stride_w + w);
-        Gemm884(a_ptr, b_ptr, stride_k, stride_w, c_ptr);
+        const float *b_ptr = B + (k * stride_b + w);
+        float *c_ptr = C + (h * stride_c + w);
+        Gemm884(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       }
 #endif  // clang && armv8a
       if (w < width) {
-        const float *b_ptr = B + (k * stride_w + w);
-        float *c_ptr = C + (h * stride_w + w);
-        GemmBlock(a_ptr, b_ptr, 8, 8, width - w, stride_k, stride_w, c_ptr);
+        const float *b_ptr = B + (k * stride_b + w);
+        float *c_ptr = C + (h * stride_c + w);
+        GemmBlock(a_ptr, b_ptr, 8, 8, width - w, stride_a, stride_b, stride_c,
+                  c_ptr);
       }
     }
     if (k < K) {
-      const float *a_ptr = A + (h * stride_k + k);
-      const float *b_ptr = B + k * stride_w;
-      float *c_ptr = C + h * stride_w;
-      GemmBlock(a_ptr, b_ptr, 8, K - k, width, stride_k, stride_w, c_ptr);
+      const float *a_ptr = A + (h * stride_a + k);
+      const float *b_ptr = B + k * stride_b;
+      float *c_ptr = C + h * stride_c;
+      GemmBlock(a_ptr, b_ptr, 8, K - k, width, stride_a, stride_b, stride_c,
+                c_ptr);
     }
   }
   if (h < height) {
     index_t remain_h = height - h;
     for (k = 0; k < K - 7; k += 8) {
-      const float *a_ptr = A + (h * stride_k + k);
+      const float *a_ptr = A + (h * stride_a + k);
       index_t w;
       for (w = 0; w + 3 < width; w += 4) {
-        const float *b_ptr = B + (k * stride_w + w);
-        float *c_ptr = C + (h * stride_w + w);
-        GemmX84(a_ptr, b_ptr, stride_k, stride_w, c_ptr, remain_h);
+        const float *b_ptr = B + (k * stride_b + w);
+        float *c_ptr = C + (h * stride_c + w);
+        GemmX84(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr, remain_h);
       }
       if (w < width) {
-        const float *b_ptr = B + (k * stride_w + w);
-        float *c_ptr = C + (h * stride_w + w);
-        GemmBlock(a_ptr, b_ptr, remain_h, 8, width - w, stride_k, stride_w,
-                  c_ptr);
+        const float *b_ptr = B + (k * stride_b + w);
+        float *c_ptr = C + (h * stride_c + w);
+        GemmBlock(a_ptr, b_ptr, remain_h, 8, width - w, stride_a, stride_b,
+                  stride_c, c_ptr);
       }
     }
     if (k < K) {
-      const float *a_ptr = A + (h * stride_k + k);
-      const float *b_ptr = B + k * stride_w;
-      float *c_ptr = C + h * stride_w;
-      GemmBlock(a_ptr, b_ptr, remain_h, K - k, width, stride_k, stride_w,
-                c_ptr);
+      const float *a_ptr = A + (h * stride_a + k);
+      const float *b_ptr = B + k * stride_b;
+      float *c_ptr = C + h * stride_c;
+      GemmBlock(a_ptr, b_ptr, remain_h, K - k, width, stride_a, stride_b,
+                stride_c, c_ptr);
     }
   }
 #else
-  GemmBlock(A, B, height, K, width, stride_k, stride_w, C);
+  GemmBlock(A, B, height, K, width, stride_a, stride_b, stride_c, C);
 #endif  // MACE_ENABLE_NEON
 }
+
+void Transpose(const float *src,
+               index_t height,
+               index_t width,
+               index_t stride_w,
+               float *dst) {
+  for (index_t h = 0; h < height; ++h) {
+    for (index_t w = 0; w < width; ++w) {
+      dst[w * height + h] = src[h * stride_w + w];
+    }
+  }
+}
+
 }  // namespace
 
 // A: height x K, B: K x width, C: height x width
@@ -880,7 +906,9 @@ void Gemm(const float *A,
           const index_t height,
           const index_t K,
           const index_t width,
-          float *C) {
+          float *C,
+          const bool transpose_a,
+          const bool transpose_b) {
   if (width == 1) {
     for (index_t b = 0; b < batch; ++b) {
       Gemv(A + b * height * K, B + b * K, 1, K, height, C + b * height);
@@ -898,41 +926,77 @@ void Gemm(const float *A,
   const index_t block_tile_height = RoundUpDiv(height, block_size);
   const index_t block_tile_width = RoundUpDiv(width, block_size);
   const index_t block_tile_k = RoundUpDiv(K, block_size);
+  const index_t block_tile[3] = {block_tile_height, block_tile_width,
+                                 block_tile_k};
   const index_t remain_height = height % block_size;
   const index_t remain_width = width % block_size;
   const index_t remain_k = K % block_size;
+  const index_t remain[3] = {remain_height, remain_width, remain_k};
 
 #pragma omp parallel for collapse(3)
   for (index_t n = 0; n < batch; ++n) {
-    for (index_t bh = 0; bh < block_tile_height; ++bh) {
-      for (index_t bw = 0; bw < block_tile_width; ++bw) {
+    for (index_t bh = 0; bh < block_tile[0]; ++bh) {
+      for (index_t bw = 0; bw < block_tile[1]; ++bw) {
         const float *a_base = A + n * height * K;
         const float *b_base = B + n * K * width;
         float *c_base = C + n * height * width;
 
         const index_t ih_begin = bh * block_size;
         const index_t ih_end =
-            bh * block_size + (bh == block_tile_height - 1 && remain_height > 0
-                                   ? remain_height
-                                   : block_size);
+            bh * block_size +
+            (bh == block_tile[0] - 1 && remain[0] > 0 ? remain[0] : block_size);
         const index_t iw_begin = bw * block_size;
         const index_t iw_end =
-            bw * block_size + (bw == block_tile_width - 1 && remain_width > 0
-                                   ? remain_width
-                                   : block_size);
+            bw * block_size +
+            (bw == block_tile[1] - 1 && remain[1] > 0 ? remain[1] : block_size);
 
-        for (index_t bk = 0; bk < block_tile_k; ++bk) {
+        for (index_t bk = 0; bk < block_tile[2]; ++bk) {
           const index_t ik_begin = bk * block_size;
           const index_t ik_end =
-              bk * block_size +
-              (bk == block_tile_k - 1 && remain_k > 0 ? remain_k : block_size);
+              bk * block_size + (bk == block_tile[2] - 1 && remain[2] > 0
+                                     ? remain[2]
+                                     : block_size);
+
+          Tensor trans_a;
+          Tensor trans_b;
+          const float *real_a = nullptr;
+          const float *real_b = nullptr;
+          float *real_c = c_base + (ih_begin * width + iw_begin);
+          index_t stride_a;
+          index_t stride_b;
+          index_t stride_c = width;
+
+          if (transpose_a) {
+            trans_a.Resize({block_size, block_size});
+            float *trans_a_data = trans_a.mutable_data<float>();
+            // A[K, H] -> A[H, K]
+            Transpose(a_base + (ik_begin * height + ih_begin),
+                      ik_end - ik_begin, ih_end - ih_begin, height,
+                      trans_a_data);
+            real_a = trans_a_data;
+            stride_a = ik_end - ik_begin;
+          } else {
+            real_a = a_base + (ih_begin * K + ik_begin);
+            stride_a = K;
+          }
+
+          if (transpose_b) {
+            trans_b.Resize({block_size, block_size});
+            float *trans_b_data = trans_b.mutable_data<float>();
+            // B[W, K] -> B[K, W]
+            Transpose(b_base + (iw_begin * K + ik_begin), iw_end - iw_begin,
+                      ik_end - ik_begin, K, trans_b_data);
+            real_b = trans_b_data;
+            stride_b = iw_end - iw_begin;
+          } else {
+            real_b = b_base + (ik_begin * width + iw_begin);
+            stride_b = width;
+          }
 
           // inside block:
           // calculate C[bh, bw] += A[bh, bk] * B[bk, bw] for one k
-          GemmTile(a_base + (ih_begin * K + ik_begin),
-                   b_base + (ik_begin * width + iw_begin), ih_end - ih_begin,
-                   ik_end - ik_begin, iw_end - iw_begin, K, width,
-                   c_base + (ih_begin * width + iw_begin));
+          GemmTile(real_a, real_b, ih_end - ih_begin, ik_end - ik_begin,
+                   iw_end - iw_begin, stride_a, stride_b, stride_c, real_c);
         }  // bk
       }    // bw
     }      // bh
@@ -946,14 +1010,47 @@ void GemmRef(const float *A,
              const index_t height,
              const index_t K,
              const index_t width,
-             float *C) {
+             float *C,
+             const bool transpose_a,
+             const bool transpose_b) {
   memset(C, 0, sizeof(float) * batch * height * width);
+
+  Tensor trans_a;
+  Tensor trans_b;
+  float *trans_a_data = nullptr;
+  float *trans_b_data = nullptr;
+  if (transpose_a) {
+    trans_a.Resize({height, K});
+    trans_a_data = trans_a.mutable_data<float>();
+  }
+  if (transpose_b) {
+    trans_b.Resize({K, width});
+    trans_b_data = trans_b.mutable_data<float>();
+  }
+
   for (index_t b = 0; b < batch; ++b) {
+    const float *real_a = nullptr;
+    const float *real_b = nullptr;
+    float *real_c = C + b * height * width;
+    if (transpose_a) {
+      // A[K, H] -> A[H, K]
+      Transpose(A + b * height * K, K, height, height, trans_a_data);
+      real_a = trans_a_data;
+    } else {
+      real_a = A + b * height * K;
+    }
+    if (transpose_b) {
+      // B[W, K] -> B[K, W]
+      Transpose(B + b * width * K, width, K, K, trans_b_data);
+      real_b = trans_b_data;
+    } else {
+      real_b = B + b * width * K;
+    }
+
     for (index_t i = 0; i < height; ++i) {
       for (index_t j = 0; j < width; ++j) {
         for (index_t k = 0; k < K; ++k) {
-          C[(b * height + i) * width + j] +=
-              A[(b * height + i) * K + k] * B[(b * K + k) * width + j];
+          real_c[i * width + j] += real_a[i * K + k] * real_b[k * width + j];
         }
       }
     }

@@ -74,7 +74,7 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
       static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(3)))};
 
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
-    output_shape = {16, input_tensor->dim(3), out_width, 1};
+    output_shape = {16, input_tensor->dim(3), out_width};
     std::vector<size_t> image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, &image_shape);
     MACE_RETURN_IF_ERROR(output_tensor->ResizeImage(output_shape, image_shape));
@@ -104,7 +104,7 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
   const std::vector<uint32_t> lws = {kwg_size_ / 8, 8, 0};
   std::string tuning_key = Concat("winograd_transform_kernel",
                                   output_tensor->dim(0), output_tensor->dim(1),
-                                  output_tensor->dim(2), output_tensor->dim(3));
+                                  output_tensor->dim(2));
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

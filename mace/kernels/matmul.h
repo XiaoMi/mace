@@ -20,6 +20,8 @@
 #endif
 
 #include <algorithm>
+#include <utility>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -36,14 +38,39 @@
 namespace mace {
 namespace kernels {
 
-template<DeviceType D, typename T>
+template <DeviceType D, typename T>
 struct MatMulFunctor {
   MaceStatus operator()(const Tensor *A,
-                  const Tensor *B,
-                  Tensor *C,
-                  StatsFuture *future) {
+                        const Tensor *B,
+                        Tensor *C,
+                        bool transpose_a,
+                        bool transpose_b,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
-    std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
+
+    index_t batch;
+    index_t height;
+    index_t K;
+    index_t width;
+
+    index_t rank = A->dim_size();
+    height = A->dim(rank - 2);
+    K = A->dim(rank - 1);
+    if (transpose_a) {
+      std::swap(height, K);
+    }
+    if (transpose_b) {
+      width = B->dim(rank - 2);
+    } else {
+      width = B->dim(rank - 1);
+    }
+    batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
+                            std::multiplies<index_t>());
+
+    std::vector<index_t> c_shape = A->shape();
+    c_shape[rank - 2] = height;
+    c_shape[rank - 1] = width;
+
     MACE_RETURN_IF_ERROR(C->Resize(c_shape));
 
     Tensor::MappingGuard guarda(A);
@@ -53,28 +80,27 @@ struct MatMulFunctor {
     const T *b_ptr_base = B->data<T>();
     T *c_ptr_base = C->mutable_data<T>();
 
-    const index_t batch = C->dim(0);
-    const index_t height = C->dim(1);
-    const index_t width = C->dim(2);
-    const index_t K = A->dim(2);
     // It is better to use large block size if it fits for fast cache.
     // Assume l1 cache size is 32k, we load three blocks at a time (A, B, C),
     // the block size should be sqrt(32k / sizeof(T) / 3).
     memset(c_ptr_base, 0, batch * height * width * sizeof(T));
 
-    Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base);
+    Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base,
+         transpose_a, transpose_b);
 
     return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template<typename T>
+template <typename T>
 struct MatMulFunctor<DeviceType::GPU, T> {
   MaceStatus operator()(const Tensor *A,
-                  const Tensor *B,
-                  Tensor *C,
-                  StatsFuture *future);
+                        const Tensor *B,
+                        Tensor *C,
+                        bool transpose_a,
+                        bool transpose_b,
+                        StatsFuture *future);
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;

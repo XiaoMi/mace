@@ -25,24 +25,37 @@ template <DeviceType D, class T>
 class MatMulOp : public Operator<D, T> {
  public:
   MatMulOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {}
+      : Operator<D, T>(operator_def, ws),
+        transpose_a_(OperatorBase::GetOptionalArg<bool>("transpose_a", false)),
+        transpose_b_(OperatorBase::GetOptionalArg<bool>("transpose_b", false)) {
+  }
 
   MaceStatus Run(StatsFuture *future) override {
-    const Tensor *A = this->Input(0);
-    const Tensor *B = this->Input(1);
-    Tensor *C = this->Output(0);
-    MACE_CHECK(A->dim_size() == 4 && 4 == B->dim_size())
-        << "The dimension of A and B should be 4";
-    MACE_CHECK(A->dim(0) == B->dim(0)) << "A and B must have same batch size";
-    MACE_CHECK(A->dim(2) == B->dim(1))
-        << "the number of A's column " << A->dim(2)
-        << " must be equal to B's row " << B->dim(1);
+    const Tensor *A = this->Input(INPUT_A);
+    const Tensor *B = this->Input(INPUT_B);
+    Tensor *C = this->Output(OUTPUT);
+    MACE_CHECK(A->dim_size() == B->dim_size() && A->dim_size() >= 2,
+               "rank(A) should be equal to rank(B), rank should be greater "
+               "than or equal to 2");
+    index_t rank = A->dim_size();
+    for (index_t i = 0; i < rank - 2; ++i) {
+      MACE_CHECK(A->dim(i) == B->dim(i), "batch dimensions are not equal");
+    }
+    index_t ak = transpose_a_ ? A->dim(rank - 2) : A->dim(rank - 1);
+    index_t bk = transpose_b_ ? B->dim(rank - 1) : B->dim(rank - 2);
+    MACE_CHECK(ak == bk, "the number of A's column ", ak,
+               " must be equal to B's row ", bk);
 
-    return functor_(A, B, C, future);
+    return functor_(A, B, C, transpose_a_, transpose_b_, future);
   }
 
  private:
+  MACE_OP_INPUT_TAGS(INPUT_A, INPUT_B);
+  MACE_OP_OUTPUT_TAGS(OUTPUT);
+
   kernels::MatMulFunctor<D, T> functor_;
+  bool transpose_a_;
+  bool transpose_b_;
 };
 
 }  // namespace ops

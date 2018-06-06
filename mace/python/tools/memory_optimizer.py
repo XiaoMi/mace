@@ -167,7 +167,7 @@ class GPUMemoryOptimizer(MemoryOptimizer):
     def get_op_mem_block(self, op_type, output_shape):
         mem_block = [0, 0]
         if op_type == 'WinogradTransform' or op_type == 'MatMul':
-            mem_block[0] = output_shape[2] * output_shape[3]
+            mem_block[0] = output_shape[2]
             mem_block[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
         else:
             mem_block[0] = output_shape[2] * int((output_shape[3] + 3) / 4)

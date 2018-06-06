@@ -518,7 +518,7 @@ class Transformer(base_converter.ConverterInterface):
                     wt_output_width = batch * (
                         (out_height + 1) / 2) * ((out_width + 1) / 2)
                     wt_output_shape.dims.extend(
-                        [16, in_channels, wt_output_width, 1])
+                        [16, in_channels, wt_output_width])
 
                     if ConverterUtil.get_arg(op,
                                              MaceKeyword.mace_padding_str) \
@@ -543,7 +543,7 @@ class Transformer(base_converter.ConverterInterface):
                     matmul_op.output.extend([matmul_op.name])
                     matmul_output_shape = matmul_op.output_shape.add()
                     matmul_output_shape.dims.extend(
-                        [16, out_channels, wt_output_width, 1])
+                        [16, out_channels, wt_output_width])
 
                     arg = matmul_op.arg.add()
                     arg.name = MaceKeyword.mace_winograd_filter_transformed
