@@ -30,7 +30,9 @@ class EltwiseOp : public Operator<D, T> {
             static_cast<kernels::EltwiseType>(OperatorBase::GetOptionalArg<int>(
                 "type", static_cast<int>(kernels::EltwiseType::NONE))),
             OperatorBase::GetRepeatedArgs<float>("coeff"),
-            OperatorBase::GetOptionalArg<float>("value", 1.0)) {}
+            OperatorBase::GetOptionalArg<float>("value", 1.0),
+            static_cast<DataFormat>(OperatorBase::GetOptionalArg<int>(
+                "data_format", 0))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input0 = this->Input(0);
