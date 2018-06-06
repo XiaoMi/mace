@@ -43,7 +43,6 @@ except Exception as e:
 ################################
 # common
 ################################
-logger = logging.getLogger('MACE')
 
 
 def strip_invalid_utf8(str):
@@ -83,6 +82,15 @@ def is_device_locked(serialno):
 class BuildType(object):
     proto = 'proto'
     code = 'code'
+
+
+def stdout_success(stdout):
+    stdout_lines = stdout.split("\n")
+    for line in stdout_lines:
+        if "Aborted" in line or "FAILED" in line or \
+                        "Segmentation fault" in line:
+            return False
+    return True
 
 
 ################################
@@ -740,8 +748,11 @@ def tuning_run(abi,
             _tty_in=True,
             _out=process_output,
             _err_to_out=True)
+        stdout = "".join(stdout_buff)
+        if not stdout_success(stdout):
+            common.MaceLogger.error("Mace Run", "Mace run failed.")
         print("Running finished!\n")
-        return "".join(stdout_buff)
+        return stdout
 
 
 def validate_model(abi,
