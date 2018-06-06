@@ -42,7 +42,7 @@ RUN echo "startup --batch" >>/etc/bazel.bazelrc
 RUN echo "build --spawn_strategy=standalone --genrule_strategy=standalone" \
     >>/etc/bazel.bazelrc
 # Install the most recent bazel release.
-ENV BAZEL_VERSION 0.7.0
+ENV BAZEL_VERSION 0.13.1
 WORKDIR /
 RUN mkdir /bazel && \
     cd /bazel && \
@@ -84,7 +84,8 @@ RUN apt-get install -y --no-install-recommends \
     net-tools \
     inetutils-ping \
     screen \
-    android-tools-adb
+    android-tools-adb \
+    htop
 
 # Download NDK in different versions
 RUN cd /opt/ && \
@@ -107,7 +108,7 @@ ENV PATH ${PATH}:${ANDROID_NDK_HOME}
 
 # Install tools
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
-RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.7.0 \
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.8.0 \
     numpy>=1.14.0 \
     scipy \
     jinja2 \
