@@ -40,7 +40,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("TInput")
         .AddIntArg("type", static_cast<int>(type))
-        .AddFloatArg("x", x)
+        .AddFloatArg("value", x)
         .Output("TOutput")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -52,7 +52,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg")
         .AddIntArg("type", static_cast<int>(type))
-        .AddFloatArg("x", x)
+        .AddFloatArg("value", x)
         .Output("OutputImg")
         .Finalize(net.NewOperatorDef());
 
@@ -321,7 +321,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
-      .AddFloatArg("x", 0.1)
+      .AddFloatArg("value", 0.1)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -336,7 +336,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg")
       .AddIntArg("type", static_cast<int>(type))
-      .AddFloatArg("x", 0.1)
+      .AddFloatArg("value", 0.1)
       .Output("OutputImg")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
