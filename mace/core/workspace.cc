@@ -176,7 +176,8 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
     const int op_device =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));
-    if (op_device == device_type && !op.mem_id().empty()) {
+    if (op_device == device_type && !op.mem_id().empty()
+        && op.type() != "Reshape") {
       auto mem_ids = op.mem_id();
       int count = mem_ids.size();
       for (int i = 0; i < count; ++i) {
