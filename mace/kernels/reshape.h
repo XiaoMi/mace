@@ -36,7 +36,8 @@ struct ReshapeFunctor {
                   Tensor *output,
                   StatsFuture *future) {
     MACE_UNUSED(future);
-    output->ResizeWithBuffer(out_shape, input->UnderlyingBuffer());
+    output->ReuseTensorBuffer(*input);
+    output->Reshape(out_shape);
 
     return MACE_SUCCESS;
   }

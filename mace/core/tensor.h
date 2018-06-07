@@ -223,16 +223,19 @@ class Tensor {
     }
   }
 
-  inline void ResizeWithBuffer(const std::vector<index_t> &shape,
-                               BufferBase *buffer) {
-    MACE_CHECK(!has_opencl_image(), "Cannot resize image, use ResizeImage.");
-    shape_ = shape;
-    image_shape_.clear();
-    if (buffer_ != nullptr && is_buffer_owner_) {
+  // Make this tensor reuse other tensor's buffer.
+  // This tensor has the same dtype, shape and image_shape.
+  // It could be reshaped later (with image shape unchanged).
+  inline void ReuseTensorBuffer(const Tensor &other) {
+    if (is_buffer_owner_ && buffer_ != nullptr) {
       delete buffer_;
     }
-    buffer_ = buffer;
     is_buffer_owner_ = false;
+    buffer_ = other.buffer_;
+    allocator_ = other.allocator_;
+    dtype_ = other.dtype_;
+    shape_ = other.shape_;
+    image_shape_ = other.image_shape_;
   }
 
   inline MaceStatus ResizeImage(const std::vector<index_t> &shape,
