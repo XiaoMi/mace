@@ -24,16 +24,26 @@ template <typename T>
 MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
                                                          const Tensor *B,
                                                          Tensor *C,
+                                                         bool transpose_a,
+                                                         bool transpose_b,
                                                          StatsFuture *future) {
   MACE_UNUSED(future);
-  std::vector<index_t> c_shape = {A->dim(0), A->dim(1), B->dim(2), 1};
+  MACE_CHECK(!transpose_a && !transpose_b,
+             "GPU does not support transpose matmul");
+
+  index_t rank = A->dim_size();
+  index_t height = A->dim(rank - 2);
+  index_t K = A->dim(rank - 1);
+  index_t width = B->dim(rank - 1);
+  index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
+                                  std::multiplies<index_t>());
+
+  std::vector<index_t> c_shape = A->shape();
+  c_shape[rank - 2] = height;
+  c_shape[rank - 1] = width;
   std::vector<size_t> c_image_shape;
   CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
   MACE_RETURN_IF_ERROR(C->ResizeImage(c_shape, c_image_shape));
-
-  const index_t batch = C->dim(0);
-  const index_t height = C->dim(1);
-  const index_t width = C->dim(2);
 
   const index_t height_blocks = RoundUpDiv4(height);
   const index_t width_blocks = RoundUpDiv4(width);
@@ -82,13 +92,12 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, *(C->opencl_image()));
   kernel_.setArg(idx++, static_cast<int>(height));
   kernel_.setArg(idx++, static_cast<int>(width));
-  kernel_.setArg(idx++, static_cast<int>(A->dim(2)));
+  kernel_.setArg(idx++, static_cast<int>(K));
   kernel_.setArg(idx++, static_cast<int>(height_blocks));
-  kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(A->dim(2))));
+  kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(K)));
 
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
-  std::string tuning_key = Concat("matmul_opencl_kernel", C->dim(0), C->dim(1),
-                                  C->dim(2), C->dim(3));
+  std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
   TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

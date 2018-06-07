@@ -31,8 +31,8 @@ void MatMulBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("A", {batch, height, channels, 1});
-  net.AddRandomInput<D, float>("B", {batch, channels, out_width, 1});
+  net.AddRandomInput<D, float>("A", {batch, height, channels});
+  net.AddRandomInput<D, float>("B", {batch, channels, out_width});
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
@@ -65,6 +65,41 @@ void MatMulBenchmark(
   }
   net.Sync();
 }
+
+template <DeviceType D, typename T>
+void MatMulTransposeBenchmark(
+    int iters, int batch, int height, int channels, int out_width) {
+  mace::testing::StopTiming();
+
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<D, float>("A", {batch, height, channels});
+  net.AddRandomInput<D, float>("B", {batch, out_width, channels});
+
+  if (D == DeviceType::CPU) {
+    OpDefBuilder("MatMul", "MatMulBM")
+        .Input("A")
+        .Input("B")
+        .AddIntArg("transpose_b", 1)
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  // Warm-up
+  for (int i = 0; i < 5; ++i) {
+    net.RunOp(D);
+  }
+  net.Sync();
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    net.RunOp(D);
+  }
+  net.Sync();
+}
 }  // namespace
 
 #define MACE_BM_MATMUL_MACRO(N, H, C, W, TYPE, DEVICE)                         \
@@ -83,12 +118,33 @@ void MatMulBenchmark(
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, GPU);    \
   MACE_BM_MATMUL_MACRO(N, H, C, W, half, GPU);
 
+#define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \
+  static void MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(    \
+      int iters) {                                                             \
+    const int64_t macc = static_cast<int64_t>(iters) * N * C * H * W;          \
+    const int64_t tot = static_cast<int64_t>(iters) * N * (C * H + H * W);     \
+    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    MatMulTransposeBenchmark<DEVICE, TYPE>(iters, N, H, C, W);                 \
+  }                                                                            \
+  MACE_BENCHMARK(MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
+
+#define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);
+
 MACE_BM_MATMUL(16, 32, 128, 49);
 MACE_BM_MATMUL(16, 32, 128, 961);
 MACE_BM_MATMUL(16, 32, 128, 3969);
 MACE_BM_MATMUL(16, 128, 128, 49);
 MACE_BM_MATMUL(16, 128, 128, 961);
 MACE_BM_MATMUL(16, 128, 128, 3969);
+
+MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 49);
+MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 961);
+MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 3969);
+MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 49);
+MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 961);
+MACE_BM_MATMUL_TRANPOSE(16, 128, 128, 3969);
 
 }  // namespace test
 }  // namespace ops

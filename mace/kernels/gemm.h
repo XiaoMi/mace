@@ -30,7 +30,9 @@ void Gemm(const float *A,
           const index_t height,
           const index_t K,
           const index_t width,
-          float *C);
+          float *C,
+          const bool transpose_a = false,
+          const bool transpose_b = false);
 
 void GemmRef(const float *A,
              const float *B,
@@ -38,7 +40,9 @@ void GemmRef(const float *A,
              const index_t height,
              const index_t K,
              const index_t width,
-             float *C);
+             float *C,
+             const bool transpose_a = false,
+             const bool transpose_b = false);
 
 void Gemv(const float *m_ptr,
           const float *v_ptr,

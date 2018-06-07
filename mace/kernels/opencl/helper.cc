@@ -76,19 +76,27 @@ void CalWinogradFilterImageShape(
 // [W * C, N * RoundUp<4>(H)]
 void CalInOutHeightImageShape(const std::vector<index_t> &shape, /* NHWC */
                               std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 4);
+  std::vector<index_t> padded_shape = shape;
+  while (padded_shape.size() < 4) {
+    padded_shape.push_back(1);
+  }
+  MACE_CHECK(padded_shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = shape[2] * shape[3];
-  (*image_shape)[1] = shape[0] * RoundUpDiv4(shape[1]);
+  (*image_shape)[0] = padded_shape[2] * padded_shape[3];
+  (*image_shape)[1] = padded_shape[0] * RoundUpDiv4(padded_shape[1]);
 }
 
 // [RoundUp<4>(W) * C, N * H]
 void CalInOutWidthImageShape(const std::vector<index_t> &shape, /* NHWC */
                              std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 4);
+  std::vector<index_t> padded_shape = shape;
+  while (padded_shape.size() < 4) {
+    padded_shape.push_back(1);
+  }
+  MACE_CHECK(padded_shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = RoundUpDiv4(shape[2]) * shape[3];
-  (*image_shape)[1] = shape[0] * shape[1];
+  (*image_shape)[0] = RoundUpDiv4(padded_shape[2]) * padded_shape[3];
+  (*image_shape)[1] = padded_shape[0] * padded_shape[1];
 }
 
 // [Ic * H * W, (Oc + 3) / 4]
@@ -150,10 +158,10 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
 std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
                                       const BufferType type) {
   if (type == WINOGRAD_FILTER) {
-    return {16, shape[0], shape[1], 1};
+    return {16, shape[0], shape[1]};
   } else if (type == IN_OUT_HEIGHT) {
     index_t out_width = shape[0] * ((shape[1] - 1) / 2) * ((shape[2] - 1) / 2);
-    return {16, shape[3], out_width, 1};
+    return {16, shape[3], out_width};
   } else {
     LOG(FATAL) << "Mace not supported yet.";
     return std::vector<index_t>();
