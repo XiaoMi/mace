@@ -371,6 +371,14 @@ def format_model_config(config_file_path):
                            "'%s' is necessary in subgraph" % key)
                 if not isinstance(value, list):
                     subgraph[key] = [value]
+            validation_inputs_data = subgraph.get(
+                YAMLKeyword.validation_inputs_data, [])
+            if not isinstance(validation_inputs_data, list):
+                subgraph[YAMLKeyword.validation_inputs_data] = [
+                    validation_inputs_data]
+            else:
+                subgraph[YAMLKeyword.validation_inputs_data] = \
+                    validation_inputs_data
 
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.nnlib_graph_mode,
@@ -379,15 +387,6 @@ def format_model_config(config_file_path):
             value = model_config.get(key, "")
             if value == "":
                 model_config[key] = 0
-
-        validation_inputs_data = model_config.get(
-            YAMLKeyword.validation_inputs_data, [])
-        if not isinstance(validation_inputs_data, list):
-            model_config[YAMLKeyword.validation_inputs_data] = [
-                validation_inputs_data]
-        else:
-            model_config[YAMLKeyword.validation_inputs_data] = \
-                validation_inputs_data
 
         weight_file_path = model_config.get(YAMLKeyword.weight_file_path, "")
         model_config[YAMLKeyword.weight_file_path] = weight_file_path
