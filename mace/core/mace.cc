@@ -237,11 +237,6 @@ MaceStatus MaceEngine::Impl::Run(
                  << "' is not belong to model's outputs: "
                  << MakeString(MapKeys(output_info_map_));
     }
-    if (device_type_ == DeviceType::GPU) {
-      MACE_CHECK(output.second.shape().size() == 4,
-                 "The outputs' shape must be 4-dimension with NHWC format,"
-                     " please use 1 to fill missing dimensions");
-    }
     Tensor *output_tensor =
         ws_->GetTensor(MakeString("mace_output_node_", output.first));
     output_tensors.push_back(output_tensor);

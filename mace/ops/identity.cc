@@ -12,30 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/reshape.h"
+#include "mace/ops/identity.h"
 
 namespace mace {
 namespace ops {
 
-void Register_Reshape(OperatorRegistry *op_registry) {
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Reshape")
+void Register_Identity(OperatorRegistry *op_registry) {
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Identity")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")
                                           .Build(),
-                         ReshapeOp<DeviceType::CPU, float>);
+                         IdentityOp<DeviceType::CPU, float>);
 
 #ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Reshape")
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Identity")
                                           .Device(DeviceType::GPU)
                                           .TypeConstraint<float>("T")
                                           .Build(),
-                         ReshapeOp<DeviceType::GPU, float>);
+                         IdentityOp<DeviceType::GPU, float>);
 
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Reshape")
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Identity")
                                           .Device(DeviceType::GPU)
                                           .TypeConstraint<half>("T")
                                           .Build(),
-                         ReshapeOp<DeviceType::GPU, half>);
+                         IdentityOp<DeviceType::GPU, half>);
 #endif
 }
 

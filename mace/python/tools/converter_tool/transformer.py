@@ -56,7 +56,6 @@ class Transformer(base_converter.ConverterInterface):
         # DO NOT reorder the following transformers' order
         self._registered_transformers_order = [
             TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-            TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
             TransformerRule.FOLD_RESHAPE,
@@ -81,8 +80,6 @@ class Transformer(base_converter.ConverterInterface):
         self._registered_transformers = {
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
                 self.add_in_out_tensor_info,
-            TransformerRule.REMOVE_USELESS_RESHAPE_OP:
-                self.remove_useless_reshape_op,
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
@@ -286,19 +283,6 @@ class Transformer(base_converter.ConverterInterface):
             output_info.name = output_node.name
             output_info.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
-
-        return False
-
-    def remove_useless_reshape_op(self):
-        net = self._model
-        for op in net.op:
-            if op.type == MaceOp.Reshape.name:
-                shape = list(ConverterUtil.get_arg(
-                    op, MaceKeyword.mace_shape_str).ints)
-                if shape == self.get_tensor_shape(op.input[0]):
-                    print("Remove useless reshape: %s(%s)"
-                          % (op.name, op.type))
-                    op.type = 'Identity'
 
         return False
 
@@ -791,6 +775,26 @@ class Transformer(base_converter.ConverterInterface):
                                        "channel dimension")
                             arg.i = 3
 
+            elif op.type == MaceOp.Squeeze.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if ConverterUtil.data_format(
+                                op) == DataFormat.NHWC \
+                                and self._target_data_format == DataFormat.NCHW:  # noqa
+                            print("Transpose squeeze args: %s(%s)"
+                                  % (op.name, op.type))
+                            mace_check(list(arg.ints) == [1, 2],
+                                       'only support squeeze at at [1, 2]')
+                            arg.ints[:] = [2, 3]
+                        elif ConverterUtil.data_format(
+                                op) == DataFormat.NCHW \
+                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                            print("Transpose squeeze args: %s(%s)"
+                                  % (op.name, op.type))
+                            mace_check(list(arg.ints) == [2, 3],
+                                       'only support squeeze at at [2, 3]')
+                            arg.ints[:] = [1, 2]
+
             # transpose op output shape
             data_format = ConverterUtil.data_format(op)
             if data_format is not None \
@@ -818,16 +822,19 @@ class Transformer(base_converter.ConverterInterface):
                                  + '_' + input_node.name
                 op = net.op.add()
                 op.name = self.normalize_op_name(input_node.name)
-                op.type = MaceOp.Transpose.name
                 op.input.extend([new_input_name])
                 op.output.extend([input_node.name])
                 output_shape = op.output_shape.add()
                 output_shape.dims.extend(input_node.shape)
-                self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
+                if len(output_shape.dims) == 4:
+                    op.type = MaceOp.Transpose.name
+                    self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
 
-                dims_arg = op.arg.add()
-                dims_arg.name = MaceKeyword.mace_dims_str
-                dims_arg.ints.extend([0, 3, 1, 2])
+                    dims_arg = op.arg.add()
+                    dims_arg.name = MaceKeyword.mace_dims_str
+                    dims_arg.ints.extend([0, 3, 1, 2])
+                else:
+                    op.type = MaceOp.Identity.name
 
                 ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
@@ -836,19 +843,22 @@ class Transformer(base_converter.ConverterInterface):
                               + '_' + output_node.name
                 op = self._model.op.add()
                 op.name = self.normalize_op_name(output_name)
-                op.type = MaceOp.Transpose.name
                 op.input.extend([output_node.name])
                 op.output.extend([output_name])
                 output_shape = op.output_shape.add()
                 output_shape.dims.extend(
                     self._producer[output_node.name].output_shape[0].dims)
-                self.transpose_shape(output_shape.dims, [0, 2, 3, 1])
+                if len(output_shape.dims) == 4:
+                    op.type = MaceOp.Transpose.name
+                    self.transpose_shape(output_shape.dims, [0, 2, 3, 1])
 
-                dims_arg = op.arg.add()
-                dims_arg.name = MaceKeyword.mace_dims_str
-                dims_arg.ints.extend([0, 2, 3, 1])
+                    dims_arg = op.arg.add()
+                    dims_arg.name = MaceKeyword.mace_dims_str
+                    dims_arg.ints.extend([0, 2, 3, 1])
 
-                ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                    ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                else:
+                    op.type = MaceOp.Identity.name
 
         return False
 
@@ -1003,36 +1013,51 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def fold_reshape(self):
-        changed = False
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Softmax.name or op.type == MaceOp.MatMul.name:
-                print("Fold reshape: %s(%s)" % (op.name, op.type))
-                if self.consumer_count(op.output[0]) == 1:
-                    consumer = self._consumers[op.output[0]][0]
-                    if consumer.type == MaceOp.Reshape.name:
-                        shape = ConverterUtil.get_arg(consumer,
-                                                      MaceKeyword.mace_shape_str).ints  # noqa
-                        del op.output_shape[0].dims[:]
-                        op.output_shape[0].dims.extend(shape)
-                        self.safe_remove_node(consumer, op)
-                        changed = True
-
+            if op.type == MaceOp.Softmax.name:
+                # see if possible to fold
+                # Reshape(xd->2d) + Softmax(2d) + Reshape(xd) to Softmax(xd)
+                should_fold = False
+                if op.input[0] in self._producer \
+                        and self._producer[op.input[0]].type \
+                        == MaceOp.Reshape.name \
+                        and len(op.output_shape[0].dims) == 2 \
+                        and self.consumer_count(op.output[0]) == 1:
                     producer = self._producer[op.input[0]]
-                    if producer.type == MaceOp.Reshape.name:
-                        self.safe_remove_node(producer,
-                                              self._producer[
-                                                  producer.input[0]])
-                        changed = True
+                    consumer = self._consumers[op.output[0]][0]
 
-                if len(op.output_shape[0].dims) < 4:
-                    shape = ([1, 1, 1, 1] + list(op.output_shape[0].dims))[-4:]
-                    op.output_shape[0].dims[:] = shape[:]
-                    changed = True
+                    if (consumer.type == MaceOp.Reshape.name
+                        and op.output_shape[0].dims[-1]
+                            == consumer.output_shape[0].dims[-1]
+                        and op.output_shape[0].dims[-1] != -1
+                        and self.get_tensor_shape(producer.input[0])
+                            == consumer.output_shape[0].dims):
+                            should_fold = True
 
-                if changed:
+                if should_fold:
+                    print(
+                        "Fold reshape and softmax: %s(%s)"
+                        % (op.name, op.type))
+                    producer = self._producer[op.input[0]]
+                    consumer = self._consumers[op.output[0]][0]
+                    op.output_shape[0].dims[:] = self.get_tensor_shape(
+                        producer.input[0])
+
+                    # if there is a shape op, remove it too
+                    if (consumer.input[1] in self._producer
+                        and self._producer[consumer.input[1]].type
+                            == 'Shape'):
+                        self.safe_remove_node(
+                            self._producer[consumer.input[1]], None)
+                    # remove consumer reshape
+                    self.safe_remove_node(consumer, op)
+                    # remove producer reshape
+                    self.safe_remove_node(producer,
+                                          self._producer.get(producer.input[0],
+                                                             None))
+
                     return True
-
         return False
 
     def transform_matmul_to_fc(self):

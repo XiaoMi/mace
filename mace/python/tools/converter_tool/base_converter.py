@@ -84,6 +84,8 @@ MaceSupportedOps = [
     'Eltwise',
     'FoldedBatchNorm',
     'FullyConnected',
+    'Gather',
+    'Identity',
     'LocalResponseNorm',
     'MatMul',
     'Pad',
@@ -95,6 +97,10 @@ MaceSupportedOps = [
     'Reshape',
     'ResizeBilinear',
     'Slice',
+    'Shape',
+    'Squeeze',
+    'Stack',
+    'StridedSlice',
     'Softmax',
     'SpaceToBatchND',
     'SpaceToDepth',
@@ -144,7 +150,6 @@ class MaceKeyword(object):
 
 
 class TransformerRule(Enum):
-    REMOVE_USELESS_RESHAPE_OP = 0
     REMOVE_IDENTITY_OP = 1
     TRANSFORM_GLOBAL_POOLING = 2
     FOLD_RESHAPE = 3
@@ -212,7 +217,6 @@ class ConverterOption(object):
         self._winograd_enabled = False
         self._transformer_option = [
             TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-            TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
             TransformerRule.FOLD_RESHAPE,

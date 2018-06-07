@@ -93,17 +93,25 @@ void Complex(const std::vector<index_t> &logits_shape) {
   // Add input data
   net.AddRandomInput<D, float>("Input", logits_shape);
 
-  net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
+  if (logits_shape.size() == 4) {
+    net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
 
-  OpDefBuilder("Softmax", "SoftmaxTest")
-      .Input("InputNCHW")
-      .Output("OutputNCHW")
-      .Finalize(net.NewOperatorDef());
-
+    OpDefBuilder("Softmax", "SoftmaxTest")
+        .Input("InputNCHW")
+        .Output("OutputNCHW")
+        .Finalize(net.NewOperatorDef());
+  } else {
+    OpDefBuilder("Softmax", "SoftmaxTest")
+        .Input("Input")
+        .Output("Output")
+        .Finalize(net.NewOperatorDef());
+  }
   // Run on cpu
   net.RunOp();
 
-  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+  if (logits_shape.size() == 4) {
+    net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+  }
 
   Tensor expected;
   expected.Copy(*net.GetOutput("Output"));
@@ -140,6 +148,11 @@ TEST_F(SoftmaxOpTest, OPENCLMulBatchAligned) {
 TEST_F(SoftmaxOpTest, OPENCLUnAligned) {
   Complex<DeviceType::GPU>({1, 113, 107, 13});
   Complex<DeviceType::GPU>({5, 211, 107, 1});
+}
+
+TEST_F(SoftmaxOpTest, OPENCLAlignedRank2) {
+  Complex<DeviceType::GPU>({1, 1001});
+  Complex<DeviceType::GPU>({3, 1001});
 }
 
 }  // namespace test

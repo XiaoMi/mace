@@ -45,10 +45,26 @@ template <typename T>
 MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
                                                           Tensor *output,
                                                           StatsFuture *future) {
-  const index_t batch = logits->dim(0);
-  const index_t height = logits->dim(1);
-  const index_t width = logits->dim(2);
-  const index_t channels = logits->dim(3);
+  index_t batch = 0;
+  index_t height = 0;
+  index_t width = 0;
+  index_t channels = 0;
+
+  if (logits->dim_size() == 2) {
+    batch = logits->dim(0);
+    height = 1;
+    width = 1;
+    channels = logits->dim(1);
+
+  } else if (logits->dim_size() == 4) {
+    batch = logits->dim(0);
+    height = logits->dim(1);
+    width = logits->dim(2);
+    channels = logits->dim(3);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
   const index_t channel_blocks = RoundUpDiv4(channels);
   const int remain_channels = channel_blocks * 4 - channels;
 
@@ -103,8 +119,7 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
 
   std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
   std::string tuning_key =
-      Concat("softmax_opencl_kernel", output->dim(0), output->dim(1),
-             output->dim(2), output->dim(3));
+      Concat("softmax_opencl_kernel", batch, height, width, channels);
   TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
 
   if (runtime->IsOutOfRangeCheckEnabled()) {

@@ -123,7 +123,19 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-  } else {
+  } else if (type == IN_OUT_CHANNEL) {
+    if (buffer->dim_size() == 4) {  // NHWC
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+    } else if (buffer->dim_size() == 2) {  // NC
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
+      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  } else if (type == IN_OUT_WIDTH || type == IN_OUT_HEIGHT) {
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     if (buffer->dim_size() < 4) {
@@ -131,6 +143,10 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     } else {
       b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
     }
+  } else {
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
   }
   b2f_kernel.setArg(idx++, *(image->opencl_image()));
 
