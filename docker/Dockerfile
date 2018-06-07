@@ -32,6 +32,12 @@ RUN apt-get install -y --no-install-recommends \
     bsdmainutils
 RUN pip install --upgrade pip
 
+# Upgrade CMake
+RUN wget https://cmake.org/files/v3.11/cmake-3.11.3-Linux-x86_64.tar.gz -P /tmp/ && \
+    tar zxf /tmp/cmake-3.11.3-Linux-x86_64.tar.gz --strip-components=1 -C /usr/local/ && \
+    update-alternatives --install /usr/bin/cmake cmake /usr/local/bin/cmake 1 --force && \
+    rm -f /tmp/cmake-3.11.3-Linux-x86_64.tar.gz
+
 # Set up Bazel.
 # Running bazel inside a `docker build` command causes trouble, cf:
 #   https://github.com/bazelbuild/bazel/issues/134
