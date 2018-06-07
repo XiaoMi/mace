@@ -645,12 +645,11 @@ def build_specific_lib(target_abi, target_soc, serial_num,
 
             subgraphs = model_config[YAMLKeyword.subgraphs]
             # generate input data
-            input_file_list = model_config[YAMLKeyword.validation_inputs_data]
             sh_commands.gen_random_input(
                 model_output_dir,
                 subgraphs[0][YAMLKeyword.input_tensors],
                 subgraphs[0][YAMLKeyword.input_shapes],
-                input_file_list)
+                subgraphs[0][YAMLKeyword.validation_inputs_data])
 
             device_type = parse_device_type(RuntimeType.gpu)
             sh_commands.tuning_run(
@@ -880,12 +879,11 @@ def run_specific_target(flags, configs, target_abi,
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
 
         # generate input data
-        input_file_list = model_config[YAMLKeyword.validation_inputs_data]
         sh_commands.gen_random_input(
             model_output_dir,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
-            input_file_list)
+            subgraphs[0][YAMLKeyword.validation_inputs_data])
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
@@ -1021,12 +1019,11 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
         if target_abi != ABIType.host:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
 
-        input_file_list = model_config[YAMLKeyword.validation_inputs_data]
         sh_commands.gen_random_input(
             model_output_dir,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
-            input_file_list)
+            subgraphs[0][YAMLKeyword.validation_inputs_data])
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
