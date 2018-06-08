@@ -108,9 +108,13 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
         }
       }
 
+      std::vector<std::vector<int64_t>> output_shapes;
+      for (auto output_shape : op->debug_def().output_shape()) {
+        output_shapes.push_back({output_shape.dims().begin(),
+                                 output_shape.dims().end()});
+      }
       OperatorStats op_stats = {op->debug_def().name(), op->debug_def().type(),
-                                {op->debug_def().output_shape().begin(),
-                                op->debug_def().output_shape().end()},
+                                output_shapes,
                                 {strides, padding_type, paddings, dilations,
                                  kernels}, call_stats};
       run_metadata->op_stats.emplace_back(op_stats);

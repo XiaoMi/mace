@@ -15,7 +15,6 @@ cc_library(
     hdrs = ["statistics.h"],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
-        "//mace/kernels",
         "//mace/utils",
     ],
 )
