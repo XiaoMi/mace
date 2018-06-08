@@ -26,7 +26,6 @@
 
 namespace mace {
 
-class OutputShape;
 class NetDef;
 
 enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
@@ -47,7 +46,7 @@ struct ConvPoolArgs {
 struct OperatorStats {
   std::string operator_name;
   std::string type;
-  std::vector<OutputShape> output_shape;
+  std::vector<std::vector<int64_t>> output_shape;
   ConvPoolArgs args;
   CallStats stats;
 };

@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/public/mace.h"
 #include "mace/utils/string_util.h"
 
 namespace mace {
@@ -142,7 +142,7 @@ class OpStat{
   struct Record{
     std::string name;
     std::string type;
-    std::vector<OutputShape> output_shape;
+    std::vector<std::vector<int64_t>> output_shape;
     ConvPoolArgs args;
     int64_t order;
     TimeInfo<int64_t> start;

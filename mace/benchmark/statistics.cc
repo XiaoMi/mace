@@ -16,7 +16,6 @@
 
 #include <set>
 
-#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/string_util.h"
 
@@ -39,18 +38,18 @@ std::string MetricToString(const Metric metric) {
 
 std::string PaddingTypeToString(int padding_type) {
   std::stringstream stream;
-  Padding type = static_cast<Padding>(padding_type);
-  switch (type) {
-    case VALID: stream << "VALID"; break;
-    case SAME: stream << "SAME"; break;
-    case FULL: stream << "FULL"; break;
+  switch (padding_type) {
+    case 0: stream << "VALID"; break;
+    case 1: stream << "SAME"; break;
+    case 2: stream << "FULL"; break;
     default: stream << padding_type; break;
   }
 
   return stream.str();
 }
 
-std::string ShapeToString(const std::vector<OutputShape> &output_shape) {
+std::string ShapeToString(
+    const std::vector<std::vector<int64_t>> &output_shape) {
   if (output_shape.empty()) {
     return "";
   }
@@ -58,9 +57,9 @@ std::string ShapeToString(const std::vector<OutputShape> &output_shape) {
   std::stringstream stream;
   stream << "[";
   for (size_t i = 0; i < output_shape.size(); ++i) {
-    size_t dims_size = output_shape[i].dims_size();
+    size_t dims_size = output_shape[i].size();
     for (size_t j = 0; j < dims_size; ++j) {
-      stream << output_shape[i].dims(j);
+      stream << output_shape[i][j];
       if (j != dims_size - 1) {
         stream << ",";
       }
@@ -176,7 +175,7 @@ std::string OpStat::StatByMetric(const Metric metric,
     } else {
       tuple.push_back(VectorToString<int>(record.args.paddings));
     }
-    tuple.push_back(VectorToString<index_t>(record.args.kernels));
+    tuple.push_back(VectorToString<int64_t>(record.args.kernels));
     tuple.push_back(ShapeToString(record.output_shape));
     tuple.push_back(VectorToString<int>(record.args.dilations));
     tuple.push_back(record.name);
