@@ -35,7 +35,7 @@ Configurations
     * - target_abis
       - The target ABI to build, can be one or more of 'host', 'armeabi-v7a' or 'arm64-v8a'
     * - target_socs
-      - build for specified socs if you just want use the model for that socs.
+      - [optional] build for specified socs if you just want use the model for that socs.
     * - embed_model_data
       - Whether embedding model weights as the code, default to 0
     * - build_type
@@ -50,9 +50,9 @@ Configurations
     * - model_sha256_checksum
       - The SHA256 checksum of the model file
     * - weight_file_path
-      - The path of the model weights file, used by Caffe model
+      - [optional] The path of the model weights file, used by Caffe model
     * - weight_sha256_checksum
-      - The SHA256 checksum of the weight file, used by Caffe model
+      - [optional] The SHA256 checksum of the weight file, used by Caffe model
     * - subgraphs
       - subgraphs key. ** DO NOT EDIT **
     * - input_tensors
@@ -63,6 +63,8 @@ Configurations
       - The shapes of the input tensors, in NHWC order
     * - output_shapes
       - The shapes of the output tensors, in NHWC order
+    * - validation_inputs_data
+      - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used
     * - runtime
       - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains cpu and gpu model definition so you can run the model on both cpu and gpu.
     * - data_type
@@ -75,5 +77,3 @@ Configurations
       - [optional] Whether to obfuscate the model operator name, default to 0
     * - winograd
       - [optional] Whether to enable Winograd convolution, **will increase memory consumption**
-    * - input_files
-      - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used

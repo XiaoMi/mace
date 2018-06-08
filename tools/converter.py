@@ -435,10 +435,11 @@ def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
 
 
 def get_opencl_binary_output_path(library_name):
-    return '%s/%s/%s/%s' % (BUILD_OUTPUT_DIR,
-                            library_name,
-                            OUTPUT_OPENCL_BINARY_DIR_NAME,
-                            OUTPUT_OPENCL_BINARY_FILE_NAME)
+    return '%s/%s/%s/%s' % \
+           (BUILD_OUTPUT_DIR,
+            library_name,
+            OUTPUT_OPENCL_BINARY_DIR_NAME,
+            library_name + '_' + OUTPUT_OPENCL_BINARY_FILE_NAME)
 
 
 ################################

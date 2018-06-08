@@ -604,6 +604,11 @@ void OpenCLRuntime::BuildProgramFromSource(
 
     if (this->cache_storage_ != nullptr) {
       this->cache_storage_->Insert(built_program_key, content);
+      // update platform info
+      this->cache_storage_->Insert(
+          kOpenCLPlatformInfoKey,
+          std::vector<unsigned char>(platform_info_.begin(),
+                                     platform_info_.end()));
     }
 
     VLOG(3) << "Program from source: " << built_program_key;
@@ -656,10 +661,6 @@ cl::Kernel OpenCLRuntime::BuildKernel(
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
   if (cache_storage_ != nullptr) {
-    // update platform info
-    cache_storage_->Insert(kOpenCLPlatformInfoKey,
-                           std::vector<unsigned char>(platform_info_.begin(),
-                                                      platform_info_.end()));
     if (cache_storage_->Flush() != 0) {
       LOG(FATAL) << "Store OPENCL compiled kernel to file failed. "
                  << "Please make sure the storage directory exist "
