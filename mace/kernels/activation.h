@@ -86,8 +86,7 @@ void DoActivation(const T *input_ptr,
     case TANH:
 #pragma omp parallel for
       for (index_t i = 0; i < size; ++i) {
-        T in_exp = std::exp(-2 * input_ptr[i]);
-        output_ptr[i] = (1 - in_exp) / (1 + in_exp);
+        output_ptr[i] = std::tanh(input_ptr[i]);
       }
       break;
     case SIGMOID:
