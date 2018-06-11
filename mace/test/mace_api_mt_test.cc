@@ -298,6 +298,8 @@ void MaceRunFunc(const int in_out_size) {
                         {mem_map[input_names[i]]},
                         device,
                         net_def.get());
+    InputInfo *info = net_def->add_input_info();
+    info->set_name(input_names[i]);
   }
   BufferToImage<half>(filter_tensor_name, filter_tensor_img_name,
                       mace::kernels::CONV2D_FILTER, {}, device,
@@ -315,6 +317,8 @@ void MaceRunFunc(const int in_out_size) {
                          mace::kernels::IN_OUT_CHANNEL,
                          device,
                          net_def.get());
+    OutputInfo *info = net_def->add_output_info();
+    info->set_name(output_names[i]);
   }
 
   const std::string file_path ="/data/local/tmp/mace";

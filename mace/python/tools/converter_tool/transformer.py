@@ -55,6 +55,7 @@ class Transformer(base_converter.ConverterInterface):
     def __init__(self, option, model):
         # DO NOT reorder the following transformers' order
         self._registered_transformers_order = [
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
@@ -78,6 +79,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.SORT_BY_EXECUTION,
         ]
         self._registered_transformers = {
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO:
+                self.add_in_out_tensor_info,
             TransformerRule.REMOVE_USELESS_RESHAPE_OP:
                 self.remove_useless_reshape_op,
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
@@ -270,6 +273,21 @@ class Transformer(base_converter.ConverterInterface):
                     replace_op.output[i] = op.output[i]
 
         self._model.op.remove(op)
+
+    def add_in_out_tensor_info(self):
+        net = self._model
+        for input_node in self._option.input_nodes.values():
+            input_info = net.input_info.add()
+            input_info.name = input_node.name
+            input_info.dims.extend(input_node.shape)
+
+        for output_node in self._option.output_nodes.values():
+            output_info = net.output_info.add()
+            output_info.name = output_node.name
+            output_info.dims.extend(
+                self._producer[output_node.name].output_shape[0].dims)
+
+        return False
 
     def remove_useless_reshape_op(self):
         net = self._model

@@ -281,7 +281,9 @@ bool OpenCLLibraryImpl::Load() {
   }
 
   if (handle_ == nullptr) {
-    LOG(ERROR) << "Failed to load OpenCL library";
+    LOG(ERROR) << "Failed to load OpenCL library, "
+        "please make sure there exist OpenCL library on your device, "
+        "and your APP have right to access the library.";
     return false;
   }
 

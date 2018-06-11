@@ -106,6 +106,8 @@ class MaceEngine::Impl {
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
+  std::map<std::string, mace::InputInfo> input_info_map_;
+  std::map<std::string, mace::OutputInfo> output_info_map_;
 #ifdef MACE_ENABLE_HEXAGON
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
@@ -131,12 +133,29 @@ MaceStatus MaceEngine::Impl::Init(
     const std::vector<std::string> &output_nodes,
     const unsigned char *model_data) {
   LOG(INFO) << "Initializing MaceEngine";
+  // Get input and output information.
+  for (auto &input_info : net_def->input_info()) {
+    input_info_map_[input_info.name()] = input_info;
+  }
+  for (auto &output_info : net_def->output_info()) {
+    output_info_map_[output_info.name()] = output_info;
+  }
   // Set storage path for internal usage
   for (auto input_name : input_nodes) {
+    if (input_info_map_.find(input_name) == input_info_map_.end()) {
+      LOG(FATAL) << "'" << input_name
+                 << "' is not belong to model's inputs: "
+                 << MakeString(MapKeys(input_info_map_));
+    }
     ws_->CreateTensor(MakeString("mace_input_node_", input_name),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
   for (auto output_name : output_nodes) {
+    if (output_info_map_.find(output_name) == output_info_map_.end()) {
+      LOG(FATAL) << "'" << output_name
+                 << "' is not belong to model's outputs "
+                 << MakeString(MapKeys(output_info_map_));
+    }
     ws_->CreateTensor(MakeString("mace_output_node_", output_name),
                       GetDeviceAllocator(device_type_), DT_FLOAT);
   }
@@ -193,6 +212,11 @@ MaceStatus MaceEngine::Impl::Run(
   std::vector<Tensor *> input_tensors;
   std::vector<Tensor *> output_tensors;
   for (auto &input : inputs) {
+    if (input_info_map_.find(input.first) == input_info_map_.end()) {
+      LOG(FATAL) << "'" << input.first
+                 << "' is not belong to model's inputs: "
+                 << MakeString(MapKeys(input_info_map_));
+    }
     MACE_CHECK(input.second.shape().size() == 4,
                "The Inputs' shape must be 4-dimension with NHWC format,"
                    " please use 1 to fill missing dimensions");
@@ -208,6 +232,11 @@ MaceStatus MaceEngine::Impl::Run(
     input_tensors.push_back(input_tensor);
   }
   for (auto &output : *outputs) {
+    if (output_info_map_.find(output.first) == output_info_map_.end()) {
+      LOG(FATAL) << "'" << output.first
+                 << "' is not belong to model's outputs: "
+                 << MakeString(MapKeys(output_info_map_));
+    }
     if (device_type_ == DeviceType::GPU) {
       MACE_CHECK(output.second.shape().size() == 4,
                  "The outputs' shape must be 4-dimension with NHWC format,"
@@ -245,7 +274,7 @@ MaceStatus MaceEngine::Impl::Run(
                                             std::multiplies<int64_t>());
       MACE_CHECK(!shape.empty()) << "Output's shape must greater than 0";
       MACE_CHECK(shape == output.second.shape())
-          << "Output shape mispatch: "
+          << "Output shape mismatch: "
           << MakeString<int64_t>(output.second.shape())
           << " != " << MakeString<int64_t>(shape);
       std::memcpy(output.second.data().get(), output_tensor->data<float>(),

@@ -166,6 +166,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
         ConverterUtil.set_filter_format(self._mace_net_def, FilterFormat.HWIO)
+
+        # import tensorflow graph
         tf_graph_def = tf.GraphDef()
         with tf.gfile.Open(src_model_file, 'rb') as f:
             tf_graph_def.ParseFromString(f.read())
