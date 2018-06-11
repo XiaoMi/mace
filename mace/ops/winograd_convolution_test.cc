@@ -281,63 +281,63 @@ void WinogradConvolutionWithPad(const index_t batch,
 TEST_F(WinogradConvlutionTest, AlignedConvolutionM2WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                      1, 2);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                     2, 2);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM2WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                      1, 2);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                     2, 2);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolutionWithM2Pad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                      1, 2);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(5, 61, 67, 37, 31,
                                                     2, 2);
 }
 
 TEST_F(WinogradConvlutionTest, AlignedConvolutionM6WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                      1, 6);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                     2, 6);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM6WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                      1, 6);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                     2, 6);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolutionWithM6Pad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                      1, 6);
-//  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31,
-//                                                    2, 6);
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(5, 61, 67, 37, 31,
+                                                    2, 6);
 }
 
 TEST_F(WinogradConvlutionTest, AlignedConvolutionM4WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                      1, 4);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 32, 32, 32, 16,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                     2, 4);
 }
 
 TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM4WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                      1, 4);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(1, 61, 67, 37, 31,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                     2, 4);
 }
 
 TEST_F(WinogradConvlutionTest, BatchConvolutionWithM4Pad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                      1, 4);
-  WinogradConvolutionWithPad<DeviceType::GPU, half>(5, 61, 67, 37, 31,
+  WinogradConvolutionWithPad<DeviceType::GPU, float>(5, 61, 67, 37, 31,
                                                     2, 4);
 }
 
