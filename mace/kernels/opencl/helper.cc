@@ -66,12 +66,14 @@ void CalArgImageShape(const std::vector<index_t> &shape,
 // [ (Ic + 3) / 4, 16 * Oc]
 void CalWinogradFilterImageShape(
     const std::vector<index_t> &shape, /* Oc, Ic, H, W*/
-    std::vector<size_t> *image_shape) {
+    std::vector<size_t> *image_shape,
+    const int blk_size) {
   MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
   (*image_shape)[0] = RoundUpDiv4(shape[1]);
-  (*image_shape)[1] = (shape[0] << 4);
+  (*image_shape)[1] = (shape[0] * (blk_size + 2) * (blk_size + 2));
 }
+
 
 // [W * C, N * RoundUp<4>(H)]
 void CalInOutHeightImageShape(const std::vector<index_t> &shape, /* NHWC */
@@ -120,7 +122,8 @@ void CalWeightWidthImageShape(const std::vector<index_t> &shape, /* OIHW */
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
-                     std::vector<size_t> *image_shape) {
+                     std::vector<size_t> *image_shape,
+                     const int wino_block_size) {
   MACE_CHECK_NOTNULL(image_shape);
   switch (type) {
     case CONV2D_FILTER:
@@ -142,7 +145,7 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
       CalInOutWidthImageShape(shape, image_shape);
       break;
     case WINOGRAD_FILTER:
-      CalWinogradFilterImageShape(shape, image_shape);
+      CalWinogradFilterImageShape(shape, image_shape, wino_block_size);
       break;
     case WEIGHT_HEIGHT:
       CalWeightHeightImageShape(shape, image_shape);
@@ -156,12 +159,15 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
 }
 
 std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
-                                      const BufferType type) {
+                                      const BufferType type,
+                                      const int wino_blk_size) {
   if (type == WINOGRAD_FILTER) {
-    return {16, shape[0], shape[1]};
+    return {(wino_blk_size + 2) * (wino_blk_size + 2), shape[0], shape[1]};
   } else if (type == IN_OUT_HEIGHT) {
-    index_t out_width = shape[0] * ((shape[1] - 1) / 2) * ((shape[2] - 1) / 2);
-    return {16, shape[3], out_width};
+    index_t out_width =
+        shape[0] * ((shape[1] + wino_blk_size - 1) / wino_blk_size) *
+            ((shape[2] + wino_blk_size - 1) / wino_blk_size);
+    return {(wino_blk_size + 2) * (wino_blk_size + 2), shape[3], out_width};
   } else {
     LOG(FATAL) << "Mace not supported yet.";
     return std::vector<index_t>();

@@ -25,14 +25,17 @@ namespace mace {
 namespace kernels {
 
 struct BufferToImageFunctorBase {
-  BufferToImageFunctorBase()
-    : kernel_error_(nullptr) {}
+  explicit BufferToImageFunctorBase(const int wino_blk_size)
+    : kernel_error_(nullptr),
+      wino_blk_size_(wino_blk_size) {}
   std::unique_ptr<BufferBase> kernel_error_;
+  const int wino_blk_size_;
 };
 
 template <DeviceType D, typename T>
 struct BufferToImageFunctor : BufferToImageFunctorBase {
-  BufferToImageFunctor() {}
+  explicit BufferToImageFunctor(const int wino_blk_size)
+    : BufferToImageFunctorBase(wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,
@@ -48,7 +51,8 @@ struct BufferToImageFunctor : BufferToImageFunctorBase {
 
 template <typename T>
 struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
-  BufferToImageFunctor() {}
+  explicit BufferToImageFunctor(const int wino_blk_size)
+      : BufferToImageFunctorBase(wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
                   const BufferType type,
                   Tensor *output,

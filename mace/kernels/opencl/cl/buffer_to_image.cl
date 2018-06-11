@@ -617,7 +617,7 @@ __kernel void weight_width_image_to_buffer(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_buffer_to_image_2x2(KERNEL_ERROR_PARAMS
                                               GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
@@ -724,7 +724,7 @@ __kernel void winograd_filter_buffer_to_image(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_image_to_buffer_2x2(KERNEL_ERROR_PARAMS
                                               GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
@@ -761,6 +761,335 @@ __kernel void winograd_filter_image_to_buffer(KERNEL_ERROR_PARAMS
       vstore4(values, 0, output + offset);
     }
 
+    coord.y += height;
+    offset += height * width;
+  }
+}
+
+// only support 3x3 now
+__kernel void winograd_filter_buffer_to_image_6x6(KERNEL_ERROR_PARAMS
+                                                  GLOBAL_WORK_GROUP_SIZE_DIM2
+                                                  __global const DATA_TYPE *input, //Oc, Ic, H, W
+                                                  __private const int input_offset,
+                                                  __private const int in_channels,
+                                                  __private const int height,
+                                                  __private const int width,
+                                                  __write_only image2d_t output) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int out_channels = global_size_dim1;
+#else
+  const int out_channels = get_global_size(1);
+#endif
+
+  const int out_channel_idx = h;
+  const int in_channel_idx = w << 2;
+  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int length = min((in_channels - in_channel_idx) * 9, 36);
+  DATA_TYPE in[36] = {0};
+  DATA_TYPE4 tt0, tt1, t1;
+  DATA_TYPE4 tu0[3], tu1[3], tu2[3], tu3[3], tu4[3], tu5[3], tu6[3], tu7[3];
+
+  const float a = -0.222222222f;
+  const float b = 0.011111111f;
+  const float c = 0.005555556f;
+
+#pragma unroll
+  for (short i = 0; i < length; ++i) {
+    in[i] = *(input + offset + i);
+  }
+
+  tu0[0] = (DATA_TYPE4)(in[0], in[9], in[18], in[27]);
+  t1 = (DATA_TYPE4)(in[3], in[12], in[21], in[30]);
+  tu7[0] = (DATA_TYPE4)(in[6], in[15], in[24], in[33]);
+
+  tt0 = tu0[0] + tu7[0];
+  tt1 = t1;
+  tu1[0] = mad(tt0 + tt1, a, 0);
+  tu2[0] = mad(tt0 - tt1, a, 0);
+  tt0 = mad(tu7[0], 4, tu0[0]);
+  tt1 = mad(t1, 2, 0);
+  tu3[0] = mad(tt0 + tt1, b, 0);
+  tu4[0] = mad(tt0 - tt1, b, 0);
+  tt0 = mad(tu0[0], 4, tu7[0]);
+  tt1 = mad(t1, 2, 0);
+  tu5[0] = mad(tt0 + tt1, c, 0);
+  tu6[0] = mad(tt0 - tt1, c, 0);
+
+  tu0[1] = (DATA_TYPE4)(in[1], in[10], in[19], in[28]);
+  t1 = (DATA_TYPE4)(in[4], in[13], in[22], in[31]);
+  tu7[1] = (DATA_TYPE4)(in[7], in[16], in[25], in[34]);
+
+  tt0 = tu0[1] + tu7[1];
+  tt1 = t1;
+  tu1[1] = mad(tt0 + tt1, a, 0);
+  tu2[1] = mad(tt0 - tt1, a, 0);
+
+  tt0 = mad(tu7[1], 4, tu0[1]);
+  tt1 = mad(t1, 2, 0);
+  tu3[1] = mad(tt0 + tt1, b, 0);
+  tu4[1] = mad(tt0 - tt1, b, 0);
+
+  tt0 = mad(tu0[1], 4, tu7[1]);
+  tt1 = mad(t1, 2, 0);
+  tu5[1] = mad(tt0 + tt1, c, 0);
+  tu6[1] = mad(tt0 - tt1, c, 0);
+
+  tu0[2] = (DATA_TYPE4)(in[2], in[11], in[20], in[29]);
+  t1 = (DATA_TYPE4)(in[5], in[14], in[23], in[32]);
+  tu7[2] = (DATA_TYPE4)(in[8], in[17], in[26], in[35]);
+
+  tt0 = tu0[2] + tu7[2];
+  tt1 = t1;
+  tu1[2] = mad(tt0 + tt1, a, 0);
+  tu2[2] = mad(tt0 - tt1, a, 0);
+
+  tt0 = mad(tu7[2], 4, tu0[2]);
+  tt1 = mad(t1, 2, 0);
+  tu3[2] = mad(tt0 + tt1, b, 0);
+  tu4[2] = mad(tt0 - tt1, b, 0);
+
+  tt0 = mad(tu0[2], 4, tu7[2]);
+  tt1 = mad(t1, 2, 0);
+  tu5[2] = mad(tt0 + tt1, c, 0);
+  tu6[2] = mad(tt0 - tt1, c, 0);
+
+#define PROCESS(i)                             \
+  t1 = tu##i[0];                               \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  tt0 = tu##i[0] + tu##i[2];                   \
+  tt1 = tu##i[1];                              \
+  t1 = mad(tt0 + tt1, a, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  t1 = mad(tt0 - tt1, a, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  tt0 = mad(tu##i[2], 4, tu##i[0]);            \
+  tt1 = mad(tu##i[1], 2, 0);                   \
+  t1 = mad(tt0 + tt1, b, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  t1 = mad(tt0 - tt1, b, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  tt0 = mad(tu##i[0], 4, tu##i[2]);            \
+  tt1 = mad(tu##i[1], 2, 0);                   \
+  t1 = mad(tt0 + tt1, c, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  t1 = mad(tt0 - tt1, c, 0);                   \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+  t1 = tu##i[2];                               \
+  WRITE_IMAGET(output, (int2)(w, h), t1);      \
+  h += out_channels;                           \
+
+PROCESS(0);
+PROCESS(1);
+PROCESS(2);
+PROCESS(3);
+PROCESS(4);
+PROCESS(5);
+PROCESS(6);
+PROCESS(7);
+
+#undef PROCESS
+
+}
+__kernel void winograd_filter_image_to_buffer_6x6(KERNEL_ERROR_PARAMS
+                                                  GLOBAL_WORK_GROUP_SIZE_DIM2
+                                                  __global DATA_TYPE *output, //Oc, Ic, H, W
+                                                  __private const int height,
+                                                  __private const int width,
+                                                  __private const int channel,
+                                                  __read_only image2d_t input) {
+  const int w = get_global_id(0);
+  const int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
+  const int width_idx = w << 2;
+  const int size = width - width_idx;
+  int offset = h * width + width_idx;
+
+  int2 coord = (int2)(w, h);
+  DATA_TYPE4 values;
+  for (short i = 0; i < 64; ++i) {
+    values = READ_IMAGET(input, SAMPLER, coord);
+    if (size < 4) {
+      switch (size) {
+        case 3:
+          output[offset+2] = values.z;
+        case 2:
+          output[offset+1] = values.y;
+        case 1:
+          output[offset] = values.x;
+      }
+    } else {
+      vstore4(values, 0, output + offset);
+    }
+    coord.y += height;
+    offset += height * width;
+  }
+}
+
+// only support 3x3 now
+__kernel void winograd_filter_buffer_to_image_4x4(KERNEL_ERROR_PARAMS
+                                                  GLOBAL_WORK_GROUP_SIZE_DIM2
+                                                  __global const DATA_TYPE *input, //Oc, Ic, H, W
+                                                  __private const int input_offset,
+                                                  __private const int in_channels,
+                                                  __private const int height,
+                                                  __private const int width,
+                                                  __write_only image2d_t output) {
+  int w = get_global_id(0);
+  int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+  const int out_channels = global_size_dim1;
+#else
+  const int out_channels = get_global_size(1);
+#endif
+
+  const int out_channel_idx = h;
+  const int in_channel_idx = w << 2;
+  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int length = min((in_channels - in_channel_idx) * 9, 36);
+  DATA_TYPE in[36] = {0};
+  DATA_TYPE4 tt0, tt1, tt2;
+  DATA_TYPE4 tu0[3], tu1[3], tu2[3], tu3[3], tu4[3], tu5[3];
+  const float a = 0.25f;
+  const float b = -0.166666667f;
+  const float c = 0.041666667f;
+
+#pragma unroll
+  for (short i = 0; i < length; ++i) {
+    in[i] = *(input + offset + i);
+  }
+
+  tt0 = (DATA_TYPE4)(in[0], in[9], in[18], in[27]);
+  tt1 = (DATA_TYPE4)(in[3], in[12], in[21], in[30]);
+  tt2 = (DATA_TYPE4)(in[6], in[15], in[24], in[33]);
+
+  tu0[0] = mad(tt0, a, 0);
+  tu1[0] = mad((tt0 + tt1 + tt2), b, 0);
+  tu2[0] = mad((tt0 - tt1 + tt2), b, 0);
+  tt0 = mad(tt2, 4, tt0);
+  tu3[0] = mad(mad(tt1, 2, tt0), c, 0);
+  tu4[0] = mad(mad(tt1, -2, tt0), c, 0);
+
+  tu5[0] = tt2;
+
+  tt0 = (DATA_TYPE4)(in[1], in[10], in[19], in[28]);
+  tt1 = (DATA_TYPE4)(in[4], in[13], in[22], in[31]);
+  tt2 = (DATA_TYPE4)(in[7], in[16], in[25], in[34]);
+
+  tu0[1] = mad(tt0, a, 0);
+  tu1[1] = mad((tt0 + tt1 + tt2), b, 0);
+  tu2[1] = mad((tt0 - tt1 + tt2), b, 0);
+  tt0 = mad(tt2, 4, tt0);
+  tu3[1] = mad(mad(tt1, 2, tt0), c, 0);
+  tu4[1] = mad(mad(tt1, -2, tt0), c, 0);
+
+  tu5[1] = tt2;
+
+  tt0 = (DATA_TYPE4)(in[2], in[11], in[20], in[29]);
+  tt1 = (DATA_TYPE4)(in[5], in[14], in[23], in[32]);
+  tt2 = (DATA_TYPE4)(in[8], in[17], in[26], in[35]);
+
+  tu0[2] = mad(tt0, a, 0);
+  tu1[2] = mad((tt0 + tt1 + tt2), b, 0);
+  tu2[2] = mad((tt0 - tt1 + tt2), b, 0);
+  tt0 = mad(tt2, 4, tt0);
+  tu3[2] = mad(mad(tt1, 2, tt0), c, 0);
+  tu4[2] = mad(mad(tt1, -2, tt0), c, 0);
+
+  tu5[2] = tt2;
+
+#define PROCESS(i)                               \
+    tt2 = mad(tu##i[0], a, 0);                   \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+    tt0 = tu##i[1];                              \
+    tt1 = tu##i[0] + tu##i[2];                   \
+    tt2 = mad((tt0 + tt1), b, 0);                \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+    tt2 = mad(tt1 - tt0, b, 0);                  \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+    tt0 = mad(tu##i[2], 4, tu##i[0]);            \
+    tt1 = 2 * tu##i[1];                          \
+    tt2 = mad(tt0 + tt1, c, 0);                  \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+    tt2 = mad(tt0 - tt1, c, 0);                  \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+    tt2 = tu##i[2];                              \
+    WRITE_IMAGET(output, (int2)(w, h), tt2);     \
+    h += out_channels;                           \
+
+  PROCESS(0);
+  PROCESS(1);
+  PROCESS(2);
+  PROCESS(3);
+  PROCESS(4);
+  PROCESS(5);
+
+#undef PROCESS
+
+}
+__kernel void winograd_filter_image_to_buffer_4x4(KERNEL_ERROR_PARAMS
+                                                  GLOBAL_WORK_GROUP_SIZE_DIM2
+                                                  __global DATA_TYPE *output, //Oc, Ic, H, W
+                                                  __private const int height,
+                                                  __private const int width,
+                                                  __private const int channel,
+                                                  __read_only image2d_t input) {
+  const int w = get_global_id(0);
+  const int h = get_global_id(1);
+
+#ifndef NON_UNIFORM_WORK_GROUP
+  if (w >= global_size_dim0 || h >= global_size_dim1) {
+    return;
+  }
+#endif
+
+  const int width_idx = w << 2;
+  const int size = width - width_idx;
+  int offset = h * width + width_idx;
+
+  int2 coord = (int2)(w, h);
+  DATA_TYPE4 values;
+  for (short i = 0; i < 36; ++i) {
+    values = READ_IMAGET(input, SAMPLER, coord);
+    if (size < 4) {
+      switch (size) {
+        case 3:
+          output[offset+2] = values.z;
+        case 2:
+          output[offset+1] = values.y;
+        case 1:
+          output[offset] = values.x;
+      }
+    } else {
+      vstore4(values, 0, output + offset);
+    }
     coord.y += height;
     offset += height * width;
   }

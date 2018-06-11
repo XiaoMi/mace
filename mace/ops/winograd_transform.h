@@ -30,7 +30,9 @@ class WinogradTransformOp : public Operator<D, T> {
       : Operator<D, T>(op_def, ws),
         functor_(static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
                      "padding", static_cast<int>(VALID))),
-                 OperatorBase::GetRepeatedArgs<int>("padding_values")) {}
+                 OperatorBase::GetRepeatedArgs<int>("padding_values"),
+                 OperatorBase::GetOptionalArg<int>(
+                     "wino_block_size", 2)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

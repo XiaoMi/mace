@@ -36,7 +36,8 @@ class WinogradInverseTransformOp : public Operator<D, T> {
                  kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
-                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),
+                 OperatorBase::GetOptionalArg<int>("wino_block_size", 2)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

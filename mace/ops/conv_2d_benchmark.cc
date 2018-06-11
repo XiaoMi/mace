@@ -175,6 +175,11 @@ MACE_BM_CONV_2D(1, 160, 17, 17, 7, 1, 1, 1, SAME, 192);
 MACE_BM_CONV_2D(1, 32, 256, 256, 1, 15, 1, 1, SAME, 2);
 MACE_BM_CONV_2D(1, 32, 256, 256, 15, 1, 1, 1, SAME, 2);
 MACE_BM_CONV_2D(1, 64, 64, 64, 15, 1, 1, 1, SAME, 2);
+
+MACE_BM_CONV_2D(1, 3, 128, 128, 3, 3, 1, 1, SAME, 16);
+MACE_BM_CONV_2D(1, 3, 256, 256, 3, 3, 1, 1, SAME, 16);
+MACE_BM_CONV_2D(1, 3, 64, 64, 3, 3, 1, 1, SAME, 16);
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
