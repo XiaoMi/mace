@@ -12,14 +12,14 @@
     * - Platform
       - Explanation
     * - Tensorflow
-      - >= 1.6.0. (first choice, convenient for Android NN API in the future)
+      - >= 1.6.0.
     * - Caffe
       - >= 1.0.
 
 环境要求
 ---------
 
-``mace``\ 提供了包含开发运行所需环境的docker镜像，镜像文件可以参考\ ``./docker/``\ 。启动命令：
+MiAI计算引擎提供了包含开发运行所需环境的docker镜像，镜像文件可以参考\ ``./docker/``\ 。启动命令：
 
 .. code:: sh
 
@@ -218,7 +218,7 @@ Mace目前只提供静态库，有以下两种使用场景。
 
 .. warning::
 
-     必须在mace项目的根目录下运行\ ``tools/converter.py``\ 脚本。
+     必须在项目的根目录下运行\ ``tools/converter.py``\ 脚本。
 
 
 ---------------------------------------
@@ -248,7 +248,7 @@ Mace目前只提供静态库，有以下两种使用场景。
         * *--validate* (default=false, optional): 是否需要验证运行结果与框架运行结果是否一致。
         * *--caffe_env* (type=local/docker, default=docker,  optional)：当vaildate时，可以选择指定caffe环境,local表示本地，docker表示使用docker容器.
         * *--restart_round* (type=int, default=1,  optional)：模型重启次数。
-        * *--check_gpu_out_of_memory* (default=false, optional): 是否需要检查gpu内存越界。
+        * *--gpu_out_of_range_check* (default=false, optional): 是否需要检查gpu内存越界。
         * *--vlog_level* (type=int[0-5], default=0,  optional)：详细日志级别.
 
         .. warning::
@@ -323,7 +323,7 @@ Mace目前只提供静态库，有以下两种使用场景。
     # 测试模型的运行时间
     python tools/converter.py run --config=models/config.yaml --round=100
 
-    # 对比编译好的模型在mace上与直接使用tensorflow或者caffe运行的结果，相似度使用`余弦距离表示`
+    # 对比编译好的模型在MiAI计算引擎上与直接使用tensorflow或者caffe运行的结果，相似度使用`余弦距离表示`
     # 其中使用OpenCL设备，默认相似度大于等于`0.995`为通过；DSP设备下，相似度需要达到`0.930`。
     python tools/converter.py run --config=models/config.yaml --validate
 

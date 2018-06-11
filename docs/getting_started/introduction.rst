@@ -14,7 +14,7 @@ Model format
 
 MiAI Compute Engine defines a customized model format which is similar to
 Caffe2. The MiAI model can be converted from exported models by TensorFlow
-and Caffe. We define a YAML schema to describe the model deployment. In the
+and Caffe. A YAML file is used to describe the model deployment details. In the
 next chapter, there is a detailed guide showing how to create this YAML file.
 
 Model conversion
@@ -29,7 +29,7 @@ Model loading
 The MiAI model format contains two parts: the model graph definition and
 the model parameter tensors. The graph part utilizes Protocol Buffers
 for serialization. All the model parameter tensors are concatenated
-together into a continuous array, and we call this array tensor data in
+together into a continuous byte array, and we call this array tensor data in
 the following paragraphs. In the model graph, the tensor data offsets
 and lengths are recorded.
 

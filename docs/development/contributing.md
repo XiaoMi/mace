@@ -5,7 +5,7 @@ License
 -------
 
 The source file should contains a license header. See the existing files
-as an example.
+as the example.
 
 Python coding style
 -------------------
@@ -13,7 +13,7 @@ Python coding style
 Changes to Python code should conform to [PEP8 Style Guide for Python
 Code](https://www.python.org/dev/peps/pep-0008/).
 
-You can use pycodestyle to check the style.
+You can use [pycodestyle](ihttps://github.com/PyCQA/pycodestyle) check the style.
 
 C++ coding style
 ----------------
