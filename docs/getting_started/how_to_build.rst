@@ -366,7 +366,7 @@ The followings list the details.
         ``.pb`` file will be generated only when build_type is ``proto``.
 
 **OpenCL compiled kernel binary file**
-    * ``opencl/compiled_kernel.bin``
+    * ``opencl/${target_abi}/${library_name}_compiled_opencl_kernel.${device_name}.${target_soc}.bin``
 
     .. note::
 
@@ -375,6 +375,13 @@ The followings list the details.
     .. warning::
 
         This file rely on the OpenCL driver on the phone, you should update the file when OpenCL driver changed.
+
+**tar package**
+    * ``./build/${library_name}/libmace_${library_name}.tar.gz``
+
+    .. note::
+
+        This file package all the above files which used for deployment.
 
 =============
 5. how to use

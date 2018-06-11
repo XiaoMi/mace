@@ -364,6 +364,16 @@ Mace目前只提供静态库，有以下两种使用场景。
 
         pb文件紧当模型build_type设置为proto时才会产生。
 
+**OpenCL预编译文件**
+    * ``opencl/${target_abi}/${library_name}_compiled_opencl_kernel.${device_name}.${target_soc}.bin``
+
+    .. note::
+
+        只有指定了``target_soc``并且``runtime==gpu``的情况下才会生成。
+
+    .. warning::
+
+        该文件依赖于手机上opencl驱动，如果OpenCL版本变化，请更新该文件。
 
 **库文件tar包**
     * ``./build/${library_name}/libmace_${library_name}.tar.gz``

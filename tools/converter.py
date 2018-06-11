@@ -14,6 +14,7 @@
 
 import argparse
 import filelock
+import glob
 import hashlib
 import os
 import re
@@ -40,11 +41,12 @@ from common import StringFormatter
 BUILD_OUTPUT_DIR = 'build'
 PHONE_DATA_DIR = "/data/local/tmp/mace_run"
 MODEL_OUTPUT_DIR_NAME = 'model'
+MODEL_HEADER_DIR_PATH = 'include/mace/public'
 BUILD_TMP_DIR_NAME = '_tmp'
 BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
 OUTPUT_LIBRARY_DIR_NAME = 'library'
 OUTPUT_OPENCL_BINARY_DIR_NAME = 'opencl'
-OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel.bin'
+OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel'
 CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
@@ -434,12 +436,19 @@ def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
     return model_output_base_dir, model_output_dir, mace_model_dir
 
 
-def get_opencl_binary_output_path(library_name):
-    return '%s/%s/%s/%s' % \
+def get_opencl_binary_output_path(library_name, target_abi,
+                                  target_soc, serial_num):
+    device_name = \
+        sh_commands.adb_get_device_name_by_serialno(serial_num)
+    return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
            (BUILD_OUTPUT_DIR,
             library_name,
             OUTPUT_OPENCL_BINARY_DIR_NAME,
-            library_name + '_' + OUTPUT_OPENCL_BINARY_FILE_NAME)
+            target_abi,
+            library_name,
+            OUTPUT_OPENCL_BINARY_FILE_NAME,
+            device_name,
+            target_soc)
 
 
 ################################
@@ -513,9 +522,16 @@ def convert_model(configs):
 
     model_output_dir = \
         '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
+    model_header_dir = \
+        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_HEADER_DIR_PATH)
     if os.path.exists(model_output_dir):
         sh.rm("-rf", model_output_dir)
     os.makedirs(model_output_dir)
+    if os.path.exists(model_header_dir):
+        sh.rm("-rf", model_header_dir)
+    os.makedirs(model_header_dir)
+    # copy header files
+    sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
 
     embed_model_data = configs[YAMLKeyword.embed_model_data]
 
@@ -583,14 +599,20 @@ def convert_model(configs):
             configs[YAMLKeyword.build_type],
             data_type)
 
-        # mv pb and data file to build/model_name/model
         if not embed_model_data:
-            sh_commands.mv_model_file_to_output_dir(
-                model_build_type=configs[YAMLKeyword.build_type],
-                model_codegen_dir=model_codegen_dir,
-                model_name=model_name,
-                output_dir=model_output_dir
-            )
+            # mv pb and data file to build/model_name/model
+            sh.mv("-f",
+                  '%s/%s.data' % (model_codegen_dir, model_name),
+                  model_output_dir)
+            if configs[YAMLKeyword.build_type] == BuildType.proto:
+                sh.mv("-f",
+                      '%s/%s.pb' % (model_codegen_dir, model_name),
+                      model_output_dir)
+            else:
+                sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
+                      model_header_dir)
+                sh.cp("-f", glob.glob("mace/codegen/models/*/*.h"),
+                      model_header_dir)
 
         MaceLogger.summary(
             StringFormatter.block("Model %s converted" % model_name))
@@ -682,9 +704,12 @@ def build_specific_lib(target_abi, target_soc, serial_num,
             binary_changed = True
 
     if binary_changed:
+        opencl_output_bin_path = get_opencl_binary_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
         sh_commands.merge_opencl_binaries(
             model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
-            get_opencl_binary_output_path(library_name))
+            opencl_output_bin_path)
         sh_commands.gen_tuning_param_code(model_output_dirs)
         sh_commands.bazel_build(
             MACE_RUN_TARGET,
@@ -838,12 +863,16 @@ def run_specific_target(flags, configs, target_abi,
     library_name = configs[YAMLKeyword.library_name]
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
+    opencl_output_bin_path = ""
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
     else:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     target_soc, serial_num)
+        opencl_output_bin_path = get_opencl_binary_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
     mace_check(os.path.exists(build_tmp_binary_dir),
                ModuleName.RUN,
                'You should build before run.')
@@ -893,6 +922,7 @@ def run_specific_target(flags, configs, target_abi,
             runtime_list.extend([model_runtime])
         for runtime in runtime_list:
             device_type = parse_device_type(runtime)
+
             run_output = sh_commands.tuning_run(
                 abi=target_abi,
                 serialno=serial_num,
@@ -920,7 +950,7 @@ def run_specific_target(flags, configs, target_abi,
                 gpu_priority_hint=flags.gpu_priority_hint,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
-                opencl_binary_file=get_opencl_binary_output_path(library_name),
+                opencl_binary_file=opencl_output_bin_path,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files_path(
@@ -979,12 +1009,16 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     library_name = configs[YAMLKeyword.library_name]
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
+    opencl_output_bin_path = ""
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
     else:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     target_soc, serial_num)
+        opencl_output_bin_path = get_opencl_binary_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
     mace_check(os.path.exists(build_tmp_binary_dir),
                ModuleName.BENCHMARK,
                'You should build before benchmark.')
@@ -1053,7 +1087,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
                 gpu_priority_hint=flags.gpu_priority_hint,
-                opencl_binary_file=get_opencl_binary_output_path(library_name))
+                opencl_binary_file=opencl_output_bin_path)
 
 
 def benchmark_model(flags):
