@@ -400,9 +400,8 @@ def merge_opencl_binaries(binaries_dirs,
         cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
     # create opencl binary output dir
     opencl_binary_dir = os.path.dirname(output_file_path)
-    if os.path.exists(opencl_binary_dir):
-        sh.rm("-rf", opencl_binary_dir)
-    sh.mkdir("-p", opencl_binary_dir)
+    if not os.path.exists(opencl_binary_dir):
+        sh.mkdir("-p", opencl_binary_dir)
     kvs = {}
     for binary_dir in cl_bin_dirs:
         binary_path = os.path.join(binary_dir, cl_compiled_program_file_name)
@@ -576,20 +575,6 @@ def touch_tuned_file_flag(build_tmp_binary_dir):
 
 def is_binary_tuned(build_tmp_binary_dir):
     return os.path.exists(build_tmp_binary_dir + '/tuned')
-
-
-def mv_model_file_to_output_dir(
-        model_build_type,
-        model_codegen_dir,
-        model_name,
-        output_dir):
-    if model_build_type == BuildType.proto:
-        sh.mv("-f",
-              '%s/%s.pb' % (model_codegen_dir, model_name),
-              output_dir)
-    sh.mv("-f",
-          '%s/%s.data' % (model_codegen_dir, model_name),
-          output_dir)
 
 
 def create_internal_storage_dir(serialno, phone_data_dir):
@@ -897,25 +882,14 @@ def merge_libs(target_soc,
                hexagon_mode):
     print("* Merge mace lib")
     project_output_dir = "%s/%s" % (build_output_dir, project_name)
-    model_header_dir = "%s/include/mace/public" % project_output_dir
     hexagon_lib_file = "third_party/nnlib/libhexagon_controller.so"
     library_dir = "%s/%s" % (project_output_dir, library_output_dir)
     model_bin_dir = "%s/%s/" % (library_dir, abi)
 
-    if os.path.exists(model_bin_dir):
-        sh.rm("-rf", model_bin_dir)
-    sh.mkdir("-p", model_bin_dir)
-    if os.path.exists(model_header_dir):
-        sh.rm("-rf", model_header_dir)
-    sh.mkdir("-p", model_header_dir)
-    # copy header files
-    sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
+    if not os.path.exists(model_bin_dir):
+        sh.mkdir("-p", model_bin_dir)
     if hexagon_mode:
         sh.cp("-f", hexagon_lib_file, library_dir)
-
-    if model_build_type == BuildType.code:
-        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"), model_header_dir)
-        sh.cp("-f", glob.glob("mace/codegen/models/*/*.h"), model_header_dir)
 
     # make static library
     mri_stream = ""

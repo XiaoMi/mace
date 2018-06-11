@@ -150,8 +150,10 @@ int FileStorage::Load() {
 bool FileStorage::Insert(const std::string &key,
                          const std::vector<unsigned char> &value) {
   utils::WriteLock lock(&data_mutex_);
-  data_.emplace(key, value);
-  data_changed_ = true;
+  auto res = data_.emplace(key, value);
+  if (res.second) {
+    data_changed_ = true;
+  }
   return true;
 }
 
