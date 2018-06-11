@@ -1,4 +1,4 @@
-FROM miaimace/mace-dev:latest
+FROM xiaomimace/mace-dev:latest
 
 # Update source
 RUN apt-get update -y

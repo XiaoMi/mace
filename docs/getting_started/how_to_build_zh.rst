@@ -23,8 +23,16 @@ MiAI计算引擎提供了包含开发运行所需环境的docker镜像，镜像�
 
 .. code:: sh
 
-    sudo docker pull cr.d.xiaomi.net/mace/mace-dev
-    sudo docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path cr.d.xiaomi.net/mace/mace-dev /bin/bash
+    # 从Dockerfile编译镜像
+    cd docker
+    docker build -t xiaomimace/mace-dev
+
+    # 从docker hub拉取镜像
+    docker pull xiaomimace/mace-dev
+
+    # 创建容器
+    # 为了adb连接需要设置'host'参数
+    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
 
 如果用户希望配置开发机上的环境，可以参考如下环境要求：
 
@@ -70,35 +78,6 @@ MiAI计算引擎提供了包含开发运行所需环境的docker镜像，镜像�
       - >= 17.09.0-ce
       - `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
 
-Docker Images
-----------------
-
-* Login in `Xiaomi Docker Registry <http://docs.api.xiaomi.net/docker-registry/>`__
-
-.. code:: sh
-
-    docker login cr.d.xiaomi.net
-
-* Build with Dockerfile
-
-.. code:: sh
-
-    docker build -t cr.d.xiaomi.net/mace/mace-dev
-
-
-* Pull image from docker registry
-
-.. code:: sh
-
-    docker pull cr.d.xiaomi.net/mace/mace-dev
-
-* Create container
-
-.. code:: sh
-
-    # Set 'host' network to use ADB
-    docker run -it --rm -v /local/path:/container/path --net=host cr.d.xiaomi.net/mace/mace-dev /bin/bash
-
 
 使用简介
 --------
@@ -133,10 +112,7 @@ Docker Images
 TensorFlow训练得到的模型进行一系列的转换，可以提升设备上的运行速度。TensorFlow提供了官方工具
 `TensorFlow Graph Transform
 Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-来进行模型优化
-(此工具Docker镜像中已经提供，也可以直接点击
-`transform_graph <http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph>`__
-下载这个工具，用户亦可从官方源码编译)。以下分别是GPU模型和DSP模型的优化命令：
+来进行模型优化。以下分别是GPU模型和DSP模型的优化命令：
 
 .. code:: sh
 
