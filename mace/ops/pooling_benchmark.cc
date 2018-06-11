@@ -103,13 +103,15 @@ void Pooling(int iters,
         ##DEVICE)
 
 #define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
-  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU); \
-  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, GPU);
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, GPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);
+
 
 MACE_BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 3, 513, 513, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 3, 1025, 1025, 2, 2, SAME, MAX);
+MACE_BM_POOLING(1, 32, 480, 640, 480, 640, VALID, AVG);
 
 }  // namespace test
 }  // namespace ops

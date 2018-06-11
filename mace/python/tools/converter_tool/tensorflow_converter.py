@@ -536,21 +536,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
         del op.input[1:]
 
         reduce_dims = tf_op.inputs[1].eval()
-        mace_check(reduce_dims[0] == 1 and reduce_dims[1] == 2,
-                   "Mean only support reduce dim 1, 2")
-
-        op.type = MaceOp.Pooling.name
-        pooling_type_arg = op.arg.add()
-        pooling_type_arg.name = MaceKeyword.mace_pooling_type_str
-        pooling_type_arg.i = PoolingType.AVG.value
-        padding_arg = op.arg.add()
-        padding_arg.name = MaceKeyword.mace_padding_str
-        padding_arg.i = PaddingMode.VALID.value
-        strides_arg = op.arg.add()
-        strides_arg.name = MaceKeyword.mace_strides_str
-        strides_arg.ints.extend([1, 1])
-        kernels_arg = op.arg.add()
-        kernels_arg.name = MaceKeyword.mace_kernel_str
-        kernels_arg.ints.extend(tf_op.inputs[0].shape.as_list()[1:3])
+        op.type = MaceOp.ReduceMean.name
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.ints.extend(reduce_dims)
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+        keep_dims_arg.i = tf_op.get_attr(MaceKeyword.mace_keepdims_str)
 
         self._skip_tensor.add(tf_op.inputs[1].name)

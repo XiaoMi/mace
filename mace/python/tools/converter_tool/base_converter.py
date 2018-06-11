@@ -93,6 +93,7 @@ MaceSupportedOps = [
     'Proposal',
     'PSROIAlign',
     'Quantize',
+    'ReduceMean',
     'Requantize',
     'Reshape',
     'ResizeBilinear',
@@ -142,6 +143,7 @@ class MaceKeyword(object):
     mace_constant_value_str = 'constant_value'
     mace_dims_str = 'dims'
     mace_axis_str = 'axis'
+    mace_keepdims_str = 'keepdims'
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
     mace_device = 'device'
