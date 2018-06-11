@@ -68,38 +68,16 @@ the pre-built image is also available:
 
 .. code:: sh
 
-    sudo docker pull cr.d.xiaomi.net/mace/mace-dev
-    sudo docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path cr.d.xiaomi.net/mace/mace-dev /bin/bash
+    # Build with Dockerfile
+    cd docker
+    docker build -t xiaomimace/mace-dev
 
+    # Pull image from docker hub
+    docker pull xiaomimace/mace-dev
 
-Docker Images
-----------------
-
-* Login in `Xiaomi Docker Registry <http://docs.api.xiaomi.net/docker-registry/>`__
-
-.. code:: sh
-
-    docker login cr.d.xiaomi.net
-
-* Build with Dockerfile
-
-.. code:: sh
-
-    docker build -t cr.d.xiaomi.net/mace/mace-dev
-
-
-* Pull image from docker registry
-
-.. code:: sh
-
-    docker pull cr.d.xiaomi.net/mace/mace-dev
-
-* Create container
-
-.. code:: sh
-
+    # Create container
     # Set 'host' network to use ADB
-    docker run -it --rm -v /local/path:/container/path --net=host cr.d.xiaomi.net/mace/mace-dev /bin/bash
+    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
 
 
 Usage
@@ -130,9 +108,7 @@ Usage
 
 TensorFlow provides a
 `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-to improve inference efficiency. You can build it from TensorFlow source,
-or download `a pre-compiled x86-64 binary <http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph>`__.
-The MiAI Compute Engine docker image has this tool pre-installed.
+to improve inference efficiency.
 
 The following commands show the suggested graph transformations and
 optimizations for CPU, GPU and DSP runtime.
