@@ -11,23 +11,15 @@ Supported Platforms
 
     * - Platform
       - Explanation
-    * - Tensorflow
-      - >= 1.6.0. (first choice, convenient for Android NN API in the future)
+    * - TensorFlow
+      - >= 1.6.0.
     * - Caffe
       - >= 1.0.
 
 Environment Requirement
 -------------------------
 
-``mace``\ supply a docker image which contains all required environment. ``Dockerfile`` under the ``./docker`` directory.
-the followings are start commands:
-
-.. code:: sh
-
-    sudo docker pull cr.d.xiaomi.net/mace/mace-dev
-    sudo docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path cr.d.xiaomi.net/mace/mace-dev /bin/bash
-
-if you want to run on your local computer, you have to install the following softwares.
+MiAI Compute Engine requires the following dependencies:
 
 .. list-table::
     :widths: auto
@@ -71,6 +63,14 @@ if you want to run on your local computer, you have to install the following sof
       - >= 17.09.0-ce
       - `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
 
+MiAI Compute Engine provides Dockerfile with these dependencies installed and
+the pre-built image is also available:
+
+.. code:: sh
+
+    sudo docker pull cr.d.xiaomi.net/mace/mace-dev
+    sudo docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path cr.d.xiaomi.net/mace/mace-dev /bin/bash
+
 
 Docker Images
 ----------------
@@ -105,40 +105,37 @@ Docker Images
 Usage
 --------
 
-============================
-1. Pull code with latest tag
-============================
-
-.. warning::
-
-    please do not use master branch for deployment.
+=======================================
+1. Pull MiAI Compute Engine source code
+=======================================
 
 .. code:: sh
 
     git clone git@v9.git.n.xiaomi.com:deep-computing/mace.git
-
-    # update
     git fetch --all --tags --prune
 
-    # get latest tag version
+    # Checkout the latest tag (i.e. release version)
     tag_name=`git describe --abbrev=0 --tags`
+    git checkout tags/${tag_name}
 
-    # checkout to latest tag branch
-    git checkout -b ${tag_name} tags/${tag_name}
+.. note::
+
+    It's highly recommanded to use a release version instead of master branch.
 
 ============================
 2. Model Optimization
 ============================
 
--  Tensorflow
+-  TensorFlow
 
-Tensorflow supply a
-`model optimization tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-for speed up inference. The docker image contain the tool,
-by the way you can download from `transform_graph <http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph>`__
-or compile from tensorflow source code.
+TensorFlow provides a
+`Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
+to improve inference efficiency. You can build it from TensorFlow source,
+or download `a pre-compiled x86-64 binary <http://cnbj1-inner-fds.api.xiaomi.net/mace/tool/transform_graph>`__.
+The MiAI Compute Engine docker image has this tool pre-installed.
 
-The following commands are optimization for CPU, GPU and DSP.
+The following commands show the suggested graph transformations and
+optimizations for CPU, GPU and DSP runtime.
 
 .. code:: sh
 
@@ -157,6 +154,8 @@ The following commands are optimization for CPU, GPU and DSP.
             fold_old_batch_norms
             strip_unused_nodes
             sort_by_execution_order'
+
+.. code:: sh
 
     # DSP:
     ./transform_graph \
@@ -178,7 +177,8 @@ The following commands are optimization for CPU, GPU and DSP.
 
 -  Caffe
 
-Only support versions greater then 1.0, please use the tools caffe supplied to upgrade the models.
+The converter only supports Caffe 1.0+, please upgrade your models with Caffe
+built-in tool when necessary.
 
 .. code:: bash
 
@@ -195,34 +195,38 @@ Only support versions greater then 1.0, please use the tools caffe supplied to u
 -----------------
 3.1 Overview
 -----------------
-Mace only build static library. the followings are two use cases.
+MiAI Compute Engine only build static library. The followings are two use cases.
 
-* **build for specified SOC**
+* **Build well tuned library for specific SoCs**
 
-    You must assign ``target_socs`` in yaml configuration file.
-    if you want to use gpu for the soc, mace will tuning the parameters for better performance automatically.
+    When ``target_socs`` is specified in YAML model deployment file, the build
+    tool will enable automatic tuning for GPU kernels. This usually takes some
+    time to finish depending on the complexity of your model.
 
-    .. warning::
+    .. note::
 
-         you should plug in a phone with that soc.
+         You should plug in device(s) with the correspoding SoC(s).
 
-* **build for all SOC**
+* **Build generic library for all SoCs**
 
-    When no ``target_soc`` specified, the library is suitable for all soc.
+    When ``target_soc`` is not specified, the generated library is compatible
+    with general devices.
 
-    .. warning::
+    .. note::
 
-         The performance will be a little poorer than the first case.
+         There will be around of 1 ~ 10% performance drop for GPU
+         runtime compared to the well tuned library.
 
-We supply a python script ``tools/converter.py`` to build the library and run the model on the command line.
+MiAI Compute Engine provide command line tool (``tools/converter.py``) for
+model conversion, compiling, test run, benchmark and correctness validation.
 
-.. warning::
+.. note::
 
-     must run the script on the root directory of the mace code.
+     ``tools/converter.py`` should be run at the root directory of this project.
 
 
 ------------------------------------------
-3.2 \ ``tools/converter.py``\  explanation
+3.2 \ ``tools/converter.py``\  usage
 ------------------------------------------
 
 **Commands**
@@ -231,24 +235,24 @@ We supply a python script ``tools/converter.py`` to build the library and run th
 
         .. note::
 
-            build static library and test tools.
+           build static library and test tools.
 
         * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
-        * *--tuning* (default=false, optional)： whether tuning the parameters for the GPU of specified SOC.
+        * *--tuning* (default=false, optional)： whether tuning the parameters for the GPU of specified SoC.
         * *--enable_openmp* (default=true, optional)： whether use openmp.
 
     * **run**
 
         .. note::
 
-           run the models in command line
+           run the model(s).
 
         * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
         * *--round* (type=int, default=1,  optional)： times for run.
-        * *--validate* (default=false, optional): whether to verify the results of mace are consistent with the frameworks。
+        * *--validate* (default=false, optional): whether to verify the results are consistent with the frameworks。
         * *--caffe_env* (type=local/docker, default=docker,  optional)： you can specific caffe environment for validation. local environment or caffe docker image.
         * *--restart_round* (type=int, default=1,  optional)： restart round between run.
-        * *--check_gpu_out_of_memory* (default=false, optional): whether check out of memory for gpu.
+        * *--gpu_out_of_range_check* (default=false, optional): whether check out of memory for gpu.
         * *--vlog_level* (type=int[0-5], default=0,  optional): verbose log level for debug.
 
         .. warning::
@@ -306,17 +310,21 @@ We supply a python script ``tools/converter.py`` to build the library and run th
           - ``run``/``benchmark``
           - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
 
+Using ``-h`` to get detailed help.
+
+.. code:: sh
+
+    python tools/converter.py -h
+    python tools/converter.py build -h
+    python tools/converter.py run -h
+    python tools/converter.py benchmark -h
+
+
 ---------------------------------------------
 3.3 \ ``tools/converter.py``\ usage examples
 ---------------------------------------------
 
 .. code:: sh
-
-    # print help message
-    python tools/converter.py -h
-    python tools/converter.py build -h
-    python tools/converter.py run -h
-    python tools/converter.py benchmark -h
 
     # Build the static library
     python tools/converter.py build --config=models/config.yaml
@@ -324,102 +332,98 @@ We supply a python script ``tools/converter.py`` to build the library and run th
     # Test model run time
     python tools/converter.py run --config=models/config.yaml --round=100
 
-    # Compare the results of mace and platform. use the **cosine distance** to represent similarity.
+    # Validate the correctness by comparing the results against the
+    # original model and framework, measured with cosine distance for similarity.
     python tools/converter.py run --config=models/config.yaml --validate
 
-    # Benchmark Model: check the execution time of each Op.
+    # Benchmark and profiling model, get detailed statistics of each Op.
     python tools/converter.py benchmark --config=models/config.yaml
 
     # Check the memory usage of the model(**Just keep only one model in configuration file**)
     python tools/converter.py run --config=models/config.yaml --round=10000 &
+    sleep 5
     adb shell dumpsys meminfo | grep mace_run
-    sleep 10
     kill %1
 
 =============
 4. Deployment
 =============
 
-``build`` command will generate a package which contains the static library, model files and header files.
-the package is at ``./build/${library_name}/libmace_${library_name}.tar.gz``.
-The followings list the details.
+``build`` command will generate the static library, model files and header files
+and packaged as ``build/${library_name}/libmace_${library_name}.tar.gz``.
+They are organized as follows,
 
-**header files**
-    * ``include/mace/public/*.h``
+.. code::
 
-**static libraries**
-    * ``library/${target_abi}/*.a``
+      build/
+      └── mobilenet-v2-gpu
+          ├── include
+          │   └── mace
+          │       └── public
+          │           ├── mace.h
+          │           └── mace_runtime.h
+          ├── libmace_mobilenet-v2-gpu.tar.gz
+          ├── library
+          │   ├── arm64-v8a
+          │   │   └── libmace_mobilenet-v2-gpu.MI6.msm8998.a
+          │   └── armeabi-v7a
+          │       └── libmace_mobilenet-v2-gpu.MI6.msm8998.a
+          ├── model
+          │   ├── mobilenet_v2.data
+          │   └── mobilenet_v2.pb
+          └─── opencl
+               └── compiled_opencl_kernel.bin
 
-**dynamic libraries**
-    * ``library/libhexagon_controller.so``
+.. note::
 
-    .. note::
+    1. DSP runtime depends on ``libhexagon_controller.so``.
+    2. ``${MODEL_TAG}.pb`` file will be generated only when ``build_type`` is ``proto``.
+    3. ``compiled_kernel.bin`` will be generated only when ``target_soc`` and ``gpu`` runtime are specified.
 
-        only use for DSP
+.. warning::
 
-**model files**
-    * ``model/${MODEL_TAG}.pb``
-    * ``model/${MODEL_TAG}.data``
+    ``compiled_kernel.bin`` depends on the OpenCL version of the device, you should maintan the
+    compatibility or configure compiling cache store with ``ConfigKVStorageFactory``.
 
-    .. note::
+=========================================
+5. How to use the library in your project
+=========================================
 
-        ``.pb`` file will be generated only when build_type is ``proto``.
-
-**OpenCL compiled kernel binary file**
-    * ``opencl/${target_abi}/${library_name}_compiled_opencl_kernel.${device_name}.${target_soc}.bin``
-
-    .. note::
-
-        This file will be generated only when specify ``target_soc`` and runtime is ``gpu``.
-
-    .. warning::
-
-        This file rely on the OpenCL driver on the phone, you should update the file when OpenCL driver changed.
-
-**tar package**
-    * ``./build/${library_name}/libmace_${library_name}.tar.gz``
-
-    .. note::
-
-        This file package all the above files which used for deployment.
-
-=============
-5. how to use
-=============
-
-Please refer to \ ``mace/examples/example.cc``\ for full usage. the following list the key steps.
+Please refer to \ ``mace/examples/example.cc``\ for full usage. The following list the key steps.
 
 .. code:: cpp
 
-    // include the header files
+    // Include the headers
     #include "mace/public/mace.h"
     #include "mace/public/mace_runtime.h"
     #include "mace/public/mace_engine_factory.h"
 
-    // 0. set internal storage factory（**Call once**）
-    const std::string file_path ="/path/to/store/internel/files";
-    std::shared_ptr<KVStorageFactory> storage_factory(
-        new FileStorageFactory(file_path));
-    ConfigKVStorageFactory(storage_factory);
-
-    // 1. set precompiled OpenCL binary file paths if you use gpu of specified SOC,
-    //    Besides the binary rely on the OpenCL driver of the SOC,
-    //    if OpenCL driver changed, you should recompiled the binary file.
+    // 0. Set pre-compiled OpenCL binary program file paths when available
     if (device_type == DeviceType::GPU) {
       mace::SetOpenCLBinaryPaths(opencl_binary_paths);
     }
 
-    // 2. Declare the device type(must be same with ``runtime`` in configuration file)
+    // 1. Set compiled OpenCL kernel cache, this is used to reduce the
+    // initialization time since the compiling is too slow. It's suggested
+    // to set this even when pre-compiled OpenCL program file is provided
+    // because the OpenCL version upgrade may also leads to kernel
+    // recompilations.
+    const std::string file_path ="path/to/opencl_cache_file";
+    std::shared_ptr<KVStorageFactory> storage_factory(
+        new FileStorageFactory(file_path));
+    ConfigKVStorageFactory(storage_factory);
+
+    // 2. Declare the device type (must be same with ``runtime`` in configuration file)
     DeviceType device_type = DeviceType::GPU;
 
     // 3. Define the input and output tensor names.
     std::vector<std::string> input_names = {...};
     std::vector<std::string> output_names = {...};
 
-    // 4. Create MaceEngine object
+    // 4. Create MaceEngine instance 
     std::shared_ptr<mace::MaceEngine> engine;
     MaceStatus create_engine_status;
-    // Create Engine from code
+    // Create Engine from compiled code
     create_engine_status =
         CreateMaceEngineFromCode(model_name.c_str(),
                                  nullptr,
@@ -427,7 +431,7 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
                                  output_names,
                                  device_type,
                                  &engine);
-    // Create Engine from proto file
+    // Create Engine from model file
     create_engine_status =
         CreateMaceEngineFromProto(model_pb_data,
                                   model_data_file.c_str(),
@@ -436,10 +440,10 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
                                   device_type,
                                   &engine);
     if (create_engine_status != MaceStatus::MACE_SUCCESS) {
-      // do something
+      // Report error
     }
 
-    // 5. Create Input and Output objects
+    // 5. Create Input and Output tensor buffers
     std::map<std::string, mace::MaceTensor> inputs;
     std::map<std::string, mace::MaceTensor> outputs;
     for (size_t i = 0; i < input_count; ++i) {
@@ -449,8 +453,8 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. the following li
                           std::multiplies<int64_t>());
       auto buffer_in = std::shared_ptr<float>(new float[input_size],
                                               std::default_delete<float[]>());
-      // load input
-      ...
+      // Load input here
+      // ...
 
       inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in);
     }

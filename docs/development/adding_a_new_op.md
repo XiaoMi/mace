@@ -3,7 +3,7 @@ Adding a new Op
 
 You can create a custom op if it is not supported yet.
 
-To add a custom op, you need to finish the following steps:
+To add a custom op, you need to follow these steps:
 
 Define the Op class
 --------------------
@@ -93,7 +93,7 @@ kernel with NEON.
 
 Add test and benchmark
 ----------------------
-It's strongly recommended to add unit test and micro benchmark for your
+It's strongly recommended to add unit tests and micro benchmarks for your
 new Op. If you wish to contribute back, it's required.
 
 Document the new Op

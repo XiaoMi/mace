@@ -941,7 +941,7 @@ def run_specific_target(flags, configs, target_abi,
                 restart_round=flags.restart_round,
                 limit_opencl_kernel_time=model_config[YAMLKeyword.limit_opencl_kernel_time],  # noqa
                 tuning=False,
-                out_of_range_check=flags.check_gpu_out_of_memory,
+                out_of_range_check=flags.gpu_out_of_range_check,
                 phone_data_dir=PHONE_DATA_DIR,
                 build_type=build_type,
                 omp_num_threads=flags.omp_num_threads,
@@ -1211,7 +1211,7 @@ def parse_args():
         default=0,
         help="VLOG level: [1~5].")
     run.add_argument(
-        "--check_gpu_out_of_memory",
+        "--gpu_out_of_range_check",
         action="store_true",
         help="Enable out of memory check for gpu.")
     run.add_argument(
