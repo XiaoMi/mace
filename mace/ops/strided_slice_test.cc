@@ -37,11 +37,18 @@ void TestSlice(const std::vector<index_t> &input_shape,
                const std::vector<float> &output) {
   OpsTestNet net;
   net.AddInputFromArray<CPU, float>("Input", input_shape, input);
-  net.AddInputFromArray<CPU, int32_t>("BeginIndices", {input_shape.size()},
+  net.AddInputFromArray<CPU, int32_t>("BeginIndices",
+                                      {static_cast<int32_t>(
+                                           input_shape.size())},
                                       begin_indices);
-  net.AddInputFromArray<CPU, int32_t>("EndIndices", {input_shape.size()},
+  net.AddInputFromArray<CPU, int32_t>("EndIndices",
+                                      {static_cast<int32_t>(
+                                           input_shape.size())},
                                       end_indices);
-  net.AddInputFromArray<CPU, int32_t>("Strides", {input_shape.size()}, strides);
+  net.AddInputFromArray<CPU, int32_t>("Strides",
+                                      {static_cast<int32_t>(
+                                           input_shape.size())},
+                                      strides);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
       .Input("Input")
