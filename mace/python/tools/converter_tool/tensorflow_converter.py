@@ -41,6 +41,8 @@ tf_kernel_str = 'ksize'
 tf_epsilon_str = 'epsilon'
 tf_align_corners = 'align_corners'
 tf_block_size = 'block_size'
+tf_squeeze_dims = 'squeeze_dims'
+tf_axis = 'axis'
 
 TFSupportedOps = [
     'Conv2D',
@@ -149,7 +151,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.MatMul.name: self.convert_matmul,
             TFOpType.Identity.name: self.convert_identity,
             TFOpType.Reshape.name: self.convert_reshape,
-            TFOpType.Shape.name: self.convert_nop,
+            TFOpType.Shape.name: self.convert_shape,
+            TFOpType.Squeeze.name: self.convert_squeeze,
             TFOpType.Transpose.name: self.convert_transpose,
             TFOpType.Softmax.name: self.convert_softmax,
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
@@ -257,6 +260,16 @@ class TensorflowConverter(base_converter.ConverterInterface):
         tensor.data_type = data_type
         tensor.float_data.extend(value.flat)
 
+    # this function tries to infer tensor shape, but some dimension shape
+    # may be undefined due to variance of input length
+    @staticmethod
+    def infer_tensor_shape(tensor):
+        shape = tensor.shape.as_list()
+
+        def normalize_func(dim):
+            return dim if dim else - 1
+        return [normalize_func(dim) for dim in shape]
+
     def convert_nop(self, tf_op):
         pass
 
@@ -268,7 +281,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output.extend([tf_output.name for tf_output in tf_op.outputs])
         for tf_output in tf_op.outputs:
             output_shape = op.output_shape.add()
-            output_shape.dims.extend(tf_output.shape.as_list())
+            output_shape.dims.extend(self.infer_tensor_shape(tf_output))
 
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
@@ -481,24 +494,29 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.MatMul.name
 
+    def convert_shape(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Shape.name
+        op.output_type.extend([mace_pb2.DT_INT32])
+
     def convert_reshape(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Reshape.name
-        del op.input[1:]
 
-        shape_arg = op.arg.add()
-        shape_arg.name = MaceKeyword.mace_shape_str
-        shape_value = []
-        if tf_op.inputs[1].op.type == TFOpType.Const.name:
-            shape_value = list(tf_op.inputs[1].eval().astype(np.int32))
-            for i in xrange(len(shape_value)):
-                if shape_value[i] == -1:
-                    shape_value[i] = 1
-            self._skip_tensor.add(tf_op.inputs[-1].name)
-        elif tf_op.inputs[1].op.type == TFOpType.Shape.name:
-            shape_value = list(tf_op.inputs[1].op.inputs[0].shape.as_list())
+    def convert_squeeze(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Squeeze.name
 
-        shape_arg.ints.extend(shape_value)
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        try:
+            axis_value = tf_op.get_attr('squeeze_dims')
+        except ValueError:
+            try:
+                axis_value = tf_op.get_attr('axis')
+            except ValueError:
+                axis_value = []
+        axis_arg.ints.extend(axis_value)
 
     def convert_transpose(self, tf_op):
         perm = tf_op.inputs[1].eval().astype(np.int32)

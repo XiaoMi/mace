@@ -20,25 +20,22 @@ namespace mace {
 namespace ops {
 namespace test {
 
-class ReshapeTest : public OpsTestBase {};
+class SqueezeOpTest : public OpsTestBase {};
 
 namespace {
-void TestReshape(const std::vector<index_t> &org_shape,
-                 const std::vector<int> &output_shape,
+void TestSqueeze(const std::vector<index_t> &org_shape,
+                 const std::vector<int> &axis,
                  const std::vector<index_t> &res_shape) {
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("Reshape", "ReshapeTest")
+  OpDefBuilder("Squeeze", "SqueezeTest")
       .Input("Input")
-      .Input("Shape")
+      .AddIntsArg("axis", axis)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Add input data
   net.AddRandomInput<DeviceType::CPU, float>("Input", org_shape);
-  net.AddInputFromArray<DeviceType::CPU, int32_t>("Shape",
-                                                  {output_shape.size()},
-                                                  output_shape);
 
   // Run
   net.RunOp();
@@ -57,18 +54,11 @@ void TestReshape(const std::vector<index_t> &org_shape,
 }
 }  // namespace
 
-TEST_F(ReshapeTest, Simple) {
-  TestReshape({1, 2, 3, 4}, {1, 2, -1, 4}, {1, 2, 3, 4});
-  TestReshape({1, 2, 3, 4}, {1, 2, -1, 2}, {1, 2, 6, 2});
-  TestReshape({1, 2, 3, 4}, {1, -1, 3, 2}, {1, 4, 3, 2});
-  TestReshape({1, 2, 3, 4}, {2, 2, 3, 2}, {2, 2, 3, 2});
-}
-
-TEST_F(ReshapeTest, Complex) {
-  TestReshape({1, 2, 3, 4}, {-1}, {24});
-  TestReshape({1, 2, 3, 4}, {1, -1}, {1, 24});
-  TestReshape({1, 2, 3, 4}, {-1, 1}, {24, 1});
-  TestReshape({1, 2, 3, 4}, {1, 3, 8}, {1, 3, 8});
+TEST_F(SqueezeOpTest, TestSqueeze) {
+  TestSqueeze({1, 2, 1, 4}, {}, {2, 4});
+  TestSqueeze({1, 2, 1, 4}, {1}, {1, 2, 1, 4});
+  TestSqueeze({1, 2, 1, 4}, {2}, {1, 2, 4});
+  TestSqueeze({1}, {}, {});
 }
 
 }  // namespace test

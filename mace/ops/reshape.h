@@ -27,26 +27,29 @@ template <DeviceType D, typename T>
 class ReshapeOp : public Operator<D, T> {
  public:
   ReshapeOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        shape_(OperatorBase::GetRepeatedArgs<int64_t>("shape")) {}
+      : Operator<D, T>(op_def, ws) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
-    const index_t num_dims = shape_.size();
+    const Tensor *shape = this->Input(SHAPE);
+    const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
+    Tensor::MappingGuard shape_guard(shape);
+    const int32_t *shape_data = shape->data<int32_t>();
+
     int unknown_idx = -1;
     index_t product = 1;
     std::vector<index_t> out_shape;
 
     for (int i = 0; i < num_dims; ++i) {
-      if (shape_[i] == -1) {
+      if (shape_data[i] == -1) {
         MACE_CHECK(unknown_idx == -1) << "Only one input size may be -1";
         unknown_idx = i;
         out_shape.push_back(1);
       } else {
-        MACE_CHECK(shape_[i] >= 0) << "Shape must be non-negative: "
-                                   << shape_[i];
-        out_shape.push_back(shape_[i]);
-        product *= shape_[i];
+        MACE_CHECK(shape_data[i] >= 0) << "Shape must be non-negative: "
+                                   << shape_data[i];
+        out_shape.push_back(shape_data[i]);
+        product *= shape_data[i];
       }
     }
 
@@ -65,11 +68,10 @@ class ReshapeOp : public Operator<D, T> {
   }
 
  private:
-  std::vector<int64_t> shape_;
   kernels::ReshapeFunctor<D, T> functor_;
 
  private:
-  MACE_OP_INPUT_TAGS(INPUT);
+  MACE_OP_INPUT_TAGS(INPUT, SHAPE);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 

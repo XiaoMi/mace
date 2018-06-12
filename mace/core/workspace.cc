@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <utility>
 
 #include "mace/core/arg_helper.h"
@@ -21,6 +22,15 @@
 #include "mace/utils/timer.h"
 
 namespace mace {
+
+namespace {
+bool ShouldPreallocateMemoryForOp(const OperatorDef &op) {
+  static const std::unordered_set<std::string> reuse_buffer_ops {
+      "Reshape", "Identity", "Squeeze"
+  };
+  return reuse_buffer_ops.find(op.type()) == reuse_buffer_ops.end();
+}
+}  // namespace
 
 Workspace::Workspace() : host_scratch_buffer_(new ScratchBuffer(
   GetDeviceAllocator(DeviceType::CPU))) {}
@@ -177,7 +187,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));
     if (op_device == device_type && !op.mem_id().empty()
-        && op.type() != "Reshape") {
+        && ShouldPreallocateMemoryForOp(op)) {
       auto mem_ids = op.mem_id();
       int count = mem_ids.size();
       for (int i = 0; i < count; ++i) {

@@ -482,6 +482,7 @@ def print_configuration(flags, configs):
 def download_model_files(model_file_path,
                          model_output_dir,
                          weight_file_path=""):
+    MaceLogger.info("Downloading model, please wait ...")
     if model_file_path.startswith("http://") or \
             model_file_path.startswith("https://"):
         model_file = model_output_dir + "/model.pb"
@@ -491,6 +492,7 @@ def download_model_files(model_file_path,
             weight_file_path.startswith("https://"):
         weight_file = model_output_dir + "/model.caffemodel"
         urllib.urlretrieve(weight_file_path, weight_file)
+    MaceLogger.info("Model downloaded successfully.")
 
 
 def get_model_files_path(model_file_path,

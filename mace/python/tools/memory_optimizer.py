@@ -83,6 +83,11 @@ class MemoryOptimizer(object):
             optimized_mem_size += self.mem_size(self.mem_block[mem])
         return optimized_mem_size
 
+    @staticmethod
+    def is_memory_reuse_op(op):
+        return op.type == 'Reshape' or op.type == 'Identity' \
+               or op.type == 'Squeeze'
+
     def optimize(self):
         for op in self.net_def.op:
             if not self.op_need_optimize_memory(op):
@@ -96,51 +101,59 @@ class MemoryOptimizer(object):
                       'the number of output.')
                 return
             for i in range(len(op.output)):
-                op_mem_block = self.get_op_mem_block(op.type,
-                                                     op.output_shape[i].dims)
-                mem_id = -1
-                if len(self.idle_mem) > 0:
-                    best_mem_add_size = sys.maxint
-                    best_mem_waste_size = sys.maxint
-                    for mid in self.idle_mem:
-                        old_mem_block = self.mem_block[mid]
-                        new_mem_block = self.resize_mem_block(
-                            old_mem_block, op_mem_block)
-                        add_mem_size = self.sub_mem_block(new_mem_block,
-                                                          old_mem_block)
-                        waste_mem_size = self.sub_mem_block(new_mem_block,
-                                                            op_mem_block)
+                if self.is_memory_reuse_op(op):
+                    # make these ops reuse memory of input tensor
+                    mem_id = self.op_mem.get(op.input[0], -1)
+                else:
+                    op_mem_block = self.get_op_mem_block(
+                        op.type,
+                        op.output_shape[i].dims)
+                    mem_id = -1
+                    if len(self.idle_mem) > 0:
+                        best_mem_add_size = sys.maxint
+                        best_mem_waste_size = sys.maxint
+                        for mid in self.idle_mem:
+                            old_mem_block = self.mem_block[mid]
+                            new_mem_block = self.resize_mem_block(
+                                old_mem_block, op_mem_block)
+                            add_mem_size = self.sub_mem_block(new_mem_block,
+                                                              old_mem_block)
+                            waste_mem_size = self.sub_mem_block(new_mem_block,
+                                                                op_mem_block)
 
-                        # minimize add_mem_size; if best_mem_add_size is 0,
-                        # then minimize waste_mem_size
-                        if (best_mem_add_size > 0 and
-                                add_mem_size < best_mem_add_size) \
-                                or (best_mem_add_size == 0 and
-                                    waste_mem_size < best_mem_waste_size):
-                            best_mem_id = mid
-                            best_mem_add_size = add_mem_size
-                            best_mem_waste_size = waste_mem_size
-                            best_mem_block = new_mem_block
+                            # minimize add_mem_size; if best_mem_add_size is 0,
+                            # then minimize waste_mem_size
+                            if (best_mem_add_size > 0 and
+                                    add_mem_size < best_mem_add_size) \
+                                    or (best_mem_add_size == 0 and
+                                        waste_mem_size < best_mem_waste_size):
+                                best_mem_id = mid
+                                best_mem_add_size = add_mem_size
+                                best_mem_waste_size = waste_mem_size
+                                best_mem_block = new_mem_block
 
-                    # if add mem size < op mem size, then reuse it
-                    if best_mem_add_size <= self.mem_size(op_mem_block):
-                        self.mem_block[best_mem_id] = best_mem_block
-                        mem_id = best_mem_id
-                        self.idle_mem.remove(mem_id)
+                        # if add mem size < op mem size, then reuse it
+                        if best_mem_add_size <= self.mem_size(op_mem_block):
+                            self.mem_block[best_mem_id] = best_mem_block
+                            mem_id = best_mem_id
+                            self.idle_mem.remove(mem_id)
 
-                if mem_id == -1:
-                    mem_id = self.mem_id_base() + self.total_mem_count
-                    self.total_mem_count += 1
-                    self.mem_block[mem_id] = op_mem_block
+                    if mem_id == -1:
+                        mem_id = self.mem_id_base() + self.total_mem_count
+                        self.total_mem_count += 1
+                        self.mem_block[mem_id] = op_mem_block
 
-                op.mem_id.extend([mem_id])
-                self.op_mem[op.output[i]] = mem_id
+                if mem_id != -1:
+                    op.mem_id.extend([mem_id])
+                    self.op_mem[op.output[i]] = mem_id
 
             # de-ref input tensor mem
-            for ipt in op.input:
+            for idx in xrange(len(op.input)):
+                ipt = op.input[idx]
                 if ipt in self.ref_counter:
                     self.ref_counter[ipt] -= 1
-                    if self.ref_counter[ipt] == 0:
+                    if self.ref_counter[ipt] == 0 and \
+                            (idx > 0 or not self.is_memory_reuse_op(op)):
                         self.idle_mem.add(self.op_mem[ipt])
                     elif self.ref_counter[ipt] < 0:
                         raise Exception('ref count is less than 0')
@@ -170,8 +183,10 @@ class GPUMemoryOptimizer(MemoryOptimizer):
             mem_block[0] = output_shape[2]
             mem_block[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
         else:
-            mem_block[0] = output_shape[2] * int((output_shape[3] + 3) / 4)
-            mem_block[1] = output_shape[0] * output_shape[1]
+            padded_output_shape = ([1, 1, 1, 1] + list(output_shape))[-4:]
+            mem_block[0] = padded_output_shape[2] * int(
+                (padded_output_shape[3] + 3) / 4)
+            mem_block[1] = padded_output_shape[0] * padded_output_shape[1]
         return mem_block
 
     def mem_size(self, memory_block):

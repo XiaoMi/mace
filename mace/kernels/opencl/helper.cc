@@ -28,10 +28,15 @@ namespace {
 // [(C + 3) / 4 * W, N * H]
 void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
                            std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 4);
+  MACE_CHECK(shape.size() == 4 || shape.size() == 2);
   image_shape->resize(2);
-  (*image_shape)[0] = RoundUpDiv4(shape[3]) * shape[2];
-  (*image_shape)[1] = shape[0] * shape[1];
+  if (shape.size() == 4) {
+    (*image_shape)[0] = RoundUpDiv4(shape[3]) * shape[2];
+    (*image_shape)[1] = shape[0] * shape[1];
+  } else if (shape.size() == 2) {
+    (*image_shape)[0] = RoundUpDiv4(shape[1]);
+    (*image_shape)[1] = shape[0];
+  }
 }
 
 // [Ic, H * W * (Oc + 3) / 4]
