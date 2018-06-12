@@ -172,7 +172,7 @@ built-in tool when necessary.
 3.1 Overview
 -----------------
 MiAI Compute Engine can build either static or shared library (which is
-specified by ``dynamic_link`` in YAML model deployment file).
+specified by ``linkshared`` in YAML model deployment file).
 The followings are two use cases.
 
 * **Build well tuned library for specific SoCs**
@@ -201,7 +201,7 @@ model conversion, compiling, test run, benchmark and correctness validation.
 .. note::
 
      1. ``tools/converter.py`` should be run at the root directory of this project.
-     2. When ``dynamic_link`` is set to ``1``, ``build_type`` should be ``proto``.
+     2. When ``linkshared`` is set to ``1``, ``build_type`` should be ``proto``.
         And currently only android devices supported.
 
 

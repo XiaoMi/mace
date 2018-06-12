@@ -51,8 +51,8 @@ CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 LIBMACE_SO_TARGET = "//mace:libmace.so"
-MACE_RUN_TARGET = "//mace/tools/validation:mace_run"
-MACE_RUN_TARGET_DEPS_SO = "//mace/tools/validation:mace_run_deps_so"
+MACE_RUN_STATIC_TARGET = "//mace/tools/validation:mace_run_static"
+MACE_RUN_SHARED_TARGET = "//mace/tools/validation:mace_run_shared"
 ALL_SOC_TAG = 'all'
 
 ABITypeStrs = [
@@ -126,7 +126,7 @@ class YAMLKeyword(object):
     target_socs = 'target_socs'
     build_type = 'build_type'
     embed_model_data = 'embed_model_data'
-    dynamic_link = 'dynamic_link'
+    linkshared = 'linkshared'
     models = 'models'
     platform = 'platform'
     model_file_path = 'model_file_path'
@@ -282,19 +282,19 @@ def format_model_config(config_file_path):
     if build_type == BuildType.proto:
         configs[YAMLKeyword.embed_model_data] = 0
 
-    dynamic_link = configs.get(YAMLKeyword.dynamic_link, "")
-    if dynamic_link == "":
-        configs[YAMLKeyword.dynamic_link] = 0
-        dynamic_link = 0
-    if not isinstance(dynamic_link, int) or dynamic_link < 0 or \
-       dynamic_link > 1:
+    linkshared = configs.get(YAMLKeyword.linkshared, "")
+    if linkshared == "":
+        configs[YAMLKeyword.linkshared] = 0
+        linkshared = 0
+    if not isinstance(linkshared, int) or linkshared < 0 or \
+       linkshared > 1:
         MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "dynamic_link must be 0 or 1. "
+                         "linkshared must be 0 or 1. "
                          "default is 0, for link mace lib statically, "
-                         "1 for dynamic link.")
-    if build_type == BuildType.code and dynamic_link == 1:
+                         "1 for dynamic linking.")
+    if build_type == BuildType.code and linkshared == 1:
         MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "'dynamic_link == 1' only support when "
+                         "'linkshared == 1' only support when "
                          "'build_type == proto'")
 
     model_names = configs.get(YAMLKeyword.models, [])
@@ -500,8 +500,8 @@ def print_configuration(flags, configs):
                  configs[YAMLKeyword.build_type]])
     data.append([YAMLKeyword.embed_model_data,
                  configs[YAMLKeyword.embed_model_data]])
-    data.append([YAMLKeyword.dynamic_link,
-                 configs[YAMLKeyword.dynamic_link]])
+    data.append([YAMLKeyword.linkshared,
+                 configs[YAMLKeyword.linkshared]])
     data.append(["Tuning", flags.tuning])
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
@@ -651,7 +651,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     library_name = configs[YAMLKeyword.library_name]
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
-    dynamic_link = configs[YAMLKeyword.dynamic_link]
+    linkshared = configs[YAMLKeyword.linkshared]
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
 
@@ -662,10 +662,10 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     os.makedirs(build_tmp_binary_dir)
 
     sh_commands.gen_tuning_param_code(model_output_dirs)
-    if dynamic_link == 0:
-        mace_run_target = MACE_RUN_TARGET
+    if linkshared == 0:
+        mace_run_target = MACE_RUN_STATIC_TARGET
     else:
-        mace_run_target = MACE_RUN_TARGET_DEPS_SO
+        mace_run_target = MACE_RUN_SHARED_TARGET
         sh_commands.bazel_build(
             LIBMACE_SO_TARGET,
             abi=target_abi,
@@ -686,7 +686,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         enable_openmp=enable_openmp,
         address_sanitizer=address_sanitizer
     )
-    sh_commands.update_mace_run_lib(build_tmp_binary_dir, dynamic_link)
+    sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
     binary_changed = False
 
     for model_name in configs[YAMLKeyword.models]:
@@ -742,7 +742,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 build_type=build_type,
                 opencl_binary_file="",
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                dynamic_link=dynamic_link,
+                linkshared=linkshared,
             )
 
             pull_opencl_binary_and_tuning_param(target_abi, serial_num,
@@ -765,7 +765,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
             enable_openmp=enable_openmp,
             address_sanitizer=address_sanitizer
         )
-        sh_commands.update_mace_run_lib(build_tmp_binary_dir, dynamic_link)
+        sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
 
     if target_abi == ABIType.host:
         sh_commands.build_host_libraries(build_type, target_abi)
@@ -774,10 +774,10 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     sh_commands.build_benchmark_model(target_abi,
                                       build_tmp_binary_dir,
                                       hexagon_mode,
-                                      dynamic_link)
+                                      linkshared)
 
     # generate library
-    if dynamic_link == 0:
+    if linkshared == 0:
         sh_commands.merge_libs(target_soc,
                                serial_num,
                                target_abi,
@@ -913,7 +913,7 @@ def run_specific_target(flags, configs, target_abi,
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
-    dynamic_link = configs[YAMLKeyword.dynamic_link]
+    linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
@@ -1002,7 +1002,7 @@ def run_specific_target(flags, configs, target_abi,
                 address_sanitizer=flags.address_sanitizer,
                 opencl_binary_file=opencl_output_bin_path,
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                dynamic_link=dynamic_link,
+                linkshared=linkshared,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files_path(
@@ -1062,7 +1062,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
-    dynamic_link = configs[YAMLKeyword.dynamic_link]
+    linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
@@ -1142,7 +1142,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 gpu_priority_hint=flags.gpu_priority_hint,
                 opencl_binary_file=opencl_output_bin_path,
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                dynamic_link=dynamic_link)
+                linkshared=linkshared)
 
 
 def benchmark_model(flags):

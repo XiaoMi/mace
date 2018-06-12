@@ -2,7 +2,7 @@
 load("//mace:mace.bzl", "if_openmp_enabled", "if_android")
 
 cc_binary(
-    name = "mace_run",
+    name = "mace_run_static",
     srcs = ["mace_run.cc"],
     copts = if_android([
         "-DMACE_ENABLE_OPENCL",
@@ -17,7 +17,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "mace_run_deps_so",
+    name = "mace_run_shared",
     srcs = ["mace_run.cc"],
     copts = if_android([
         "-DMACE_ENABLE_OPENCL",

@@ -8,7 +8,7 @@ embed_model_data: 1
 # The build mode for model(s).
 # 'code' stand for transfer model(s) into cpp code, 'proto' for model(s) in protobuf file(s).
 build_type: code
-dynamic_link: 1
+linkshared: 1
 # One yaml config file can contain multi models' config message.
 models:
   model_name: # model tag, which will be used in model loading and must be specific.

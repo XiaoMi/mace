@@ -40,8 +40,8 @@ Configurations
       - Whether embedding model weights as the code, default to 0.
     * - build_type
       - model build type, can be ['proto', 'code']. 'proto' for converting model to ProtoBuf file and 'code' for converting model to c++ code.
-    * - dynamic_link
-      - [optional] link mace library in dynamic method if set to 1, default to 0.
+    * - linkshared
+      - [optional] Use dynamic linking for libmace library when setting to 1, or static linking when setting to 0, default to 0.
     * - model_name
       - model name. should be unique if there are multiple models.
         **LIMIT: if build_type is code, model_name will used in c++ code so that model_name must fulfill c++ name specification.**

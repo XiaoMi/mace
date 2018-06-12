@@ -561,16 +561,20 @@ def gen_random_input(model_output_dir,
                     sh.cp("-f", input_file_list[i], dst_input_file)
 
 
-def update_mace_run_lib(build_tmp_binary_dir, dynamic_link=0):
-    mace_run_filepath = build_tmp_binary_dir + "/mace_run"
+def update_mace_run_lib(build_tmp_binary_dir, linkshared=0):
+    if linkshared == 0:
+        mace_run_filepath = build_tmp_binary_dir + "/mace_run_static"
+    else:
+        mace_run_filepath = build_tmp_binary_dir + "/mace_run_shared"
+
     if os.path.exists(mace_run_filepath):
         sh.rm("-rf", mace_run_filepath)
-    if dynamic_link == 0:
-        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run",
+    if linkshared == 0:
+        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_static",
               build_tmp_binary_dir)
     else:
-        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_deps_so",
-              "%s/mace_run" % build_tmp_binary_dir)
+        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_shared",
+              build_tmp_binary_dir)
 
 
 def touch_tuned_file_flag(build_tmp_binary_dir):
@@ -641,7 +645,7 @@ def tuning_run(abi,
                output_file_name="model_out",
                runtime_failure_ratio=0.0,
                address_sanitizer=False,
-               dynamic_link=0):
+               linkshared=0):
     print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
           "out_of_range_check=%s, omp_num_threads=%s, cpu_affinity_policy=%s, "
           "gpu_perf_hint=%s, gpu_priority_hint=%s" %
@@ -651,13 +655,17 @@ def tuning_run(abi,
     mace_model_path = ""
     if build_type == BuildType.proto:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
+    if linkshared == 0:
+        mace_run_target = "mace_run_static"
+    else:
+        mace_run_target = "mace_run_shared"
     if abi == "host":
         p = subprocess.Popen(
             [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-                "%s/mace_run" % mace_run_dir,
+                "%s/%s" % (mace_run_dir, mace_run_target),
                 "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
@@ -713,14 +721,14 @@ def tuning_run(abi,
                      mace_model_phone_path,
                      serialno)
 
-        if dynamic_link == 1:
+        if linkshared == 1:
             adb_push("%s/libmace.so" % shared_library_dir, phone_data_dir,
                      serialno)
             adb_push("%s/libgnustl_shared.so" % shared_library_dir,
                      phone_data_dir,
                      serialno)
 
-        adb_push("%s/mace_run" % mace_run_dir, phone_data_dir,
+        adb_push("%s/%s" % (mace_run_dir, mace_run_target), phone_data_dir,
                  serialno)
 
         stdout_buff = []
@@ -741,7 +749,7 @@ def tuning_run(abi,
                                       asan_rt_library_names(abi))
             ])
         adb_cmd.extend([
-            "%s/mace_run" % phone_data_dir,
+            "%s/%s" % (phone_data_dir, mace_run_target),
             "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
@@ -1040,12 +1048,12 @@ def packaging_lib(libmace_output_dir, project_name):
 def build_benchmark_model(abi,
                           model_output_dir,
                           hexagon_mode,
-                          dynamic_link=False):
+                          linkshared=False):
     benchmark_binary_file = "%s/benchmark_model" % model_output_dir
     if os.path.exists(benchmark_binary_file):
         sh.rm("-rf", benchmark_binary_file)
 
-    if dynamic_link == 0:
+    if linkshared == 0:
         benchmark_target = "//mace/benchmark:benchmark_model"
     else:
         benchmark_target = "//mace/benchmark:benchmark_model_deps_so"
@@ -1054,7 +1062,7 @@ def build_benchmark_model(abi,
                 hexagon_mode=hexagon_mode)
 
     target_bin = "/".join(bazel_target_to_bin(benchmark_target))
-    if dynamic_link == 0:
+    if linkshared == 0:
         sh.cp("-f", target_bin, model_output_dir)
     else:
         sh.cp("-f", target_bin, "%s/benchmark_model" % model_output_dir)
@@ -1082,7 +1090,7 @@ def benchmark_model(abi,
                     gpu_perf_hint=3,
                     gpu_priority_hint=3,
                     input_file_name="model_input",
-                    dynamic_link=0):
+                    linkshared=0):
     print("* Benchmark for %s" % model_tag)
 
     mace_model_path = ""
@@ -1132,7 +1140,7 @@ def benchmark_model(abi,
                      mace_model_phone_path,
                      serialno)
 
-        if dynamic_link == 1:
+        if linkshared == 1:
             adb_push("%s/libmace.so" % shared_library_dir, phone_data_dir,
                      serialno)
             adb_push("%s/libgnustl_shared.so" % shared_library_dir,
