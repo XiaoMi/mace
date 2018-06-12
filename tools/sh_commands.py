@@ -561,12 +561,20 @@ def gen_random_input(model_output_dir,
                     sh.cp("-f", input_file_list[i], dst_input_file)
 
 
-def update_mace_run_lib(build_tmp_binary_dir):
-    mace_run_filepath = build_tmp_binary_dir + "/mace_run"
+def update_mace_run_lib(build_tmp_binary_dir, linkshared=0):
+    if linkshared == 0:
+        mace_run_filepath = build_tmp_binary_dir + "/mace_run_static"
+    else:
+        mace_run_filepath = build_tmp_binary_dir + "/mace_run_shared"
+
     if os.path.exists(mace_run_filepath):
         sh.rm("-rf", mace_run_filepath)
-    sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run",
-          build_tmp_binary_dir)
+    if linkshared == 0:
+        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_static",
+              build_tmp_binary_dir)
+    else:
+        sh.cp("-f", "bazel-bin/mace/tools/validation/mace_run_shared",
+              build_tmp_binary_dir)
 
 
 def touch_tuned_file_flag(build_tmp_binary_dir):
@@ -581,6 +589,30 @@ def create_internal_storage_dir(serialno, phone_data_dir):
     internal_storage_dir = "%s/interior/" % phone_data_dir
     sh.adb("-s", serialno, "shell", "mkdir", "-p", internal_storage_dir)
     return internal_storage_dir
+
+
+def update_libmace_shared_library(serial_num,
+                                  abi,
+                                  project_name,
+                                  build_output_dir,
+                                  library_output_dir):
+    libmace_name = "libmace.so"
+    mace_library_dir = "./dynamic_lib/"
+    library_dir = "%s/%s/%s/%s" % (
+            build_output_dir, project_name, library_output_dir, abi)
+    libmace_file = "%s/%s" % (library_dir, libmace_name)
+
+    if os.path.exists(libmace_file):
+        sh.rm("-rf", library_dir)
+    sh.mkdir("-p", library_dir)
+    sh.cp("-f", "bazel-bin/mace/libmace.so", library_dir)
+    sh.cp("-f", "%s/%s/libgnustl_shared.so" % (mace_library_dir, abi),
+          library_dir)
+
+    libmace_load_path = "%s/%s" % (mace_library_dir, libmace_name)
+    if os.path.exists(libmace_load_path):
+        sh.rm("-f", libmace_load_path)
+    sh.cp("-f", "bazel-bin/mace/libmace.so", mace_library_dir)
 
 
 def tuning_run(abi,
@@ -604,6 +636,7 @@ def tuning_run(abi,
                phone_data_dir,
                build_type,
                opencl_binary_file,
+               shared_library_dir,
                omp_num_threads=-1,
                cpu_affinity_policy=1,
                gpu_perf_hint=3,
@@ -611,7 +644,8 @@ def tuning_run(abi,
                input_file_name="model_input",
                output_file_name="model_out",
                runtime_failure_ratio=0.0,
-               address_sanitizer=False):
+               address_sanitizer=False,
+               linkshared=0):
     print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
           "out_of_range_check=%s, omp_num_threads=%s, cpu_affinity_policy=%s, "
           "gpu_perf_hint=%s, gpu_priority_hint=%s" %
@@ -621,13 +655,17 @@ def tuning_run(abi,
     mace_model_path = ""
     if build_type == BuildType.proto:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
+    if linkshared == 0:
+        mace_run_target = "mace_run_static"
+    else:
+        mace_run_target = "mace_run_shared"
     if abi == "host":
         p = subprocess.Popen(
             [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-                "%s/mace_run" % mace_run_dir,
+                "%s/%s" % (mace_run_dir, mace_run_target),
                 "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
@@ -683,7 +721,14 @@ def tuning_run(abi,
                      mace_model_phone_path,
                      serialno)
 
-        adb_push("%s/mace_run" % mace_run_dir, phone_data_dir,
+        if linkshared == 1:
+            adb_push("%s/libmace.so" % shared_library_dir, phone_data_dir,
+                     serialno)
+            adb_push("%s/libgnustl_shared.so" % shared_library_dir,
+                     phone_data_dir,
+                     serialno)
+
+        adb_push("%s/%s" % (mace_run_dir, mace_run_target), phone_data_dir,
                  serialno)
 
         stdout_buff = []
@@ -704,7 +749,7 @@ def tuning_run(abi,
                                       asan_rt_library_names(abi))
             ])
         adb_cmd.extend([
-            "%s/mace_run" % phone_data_dir,
+            "%s/%s" % (phone_data_dir, mace_run_target),
             "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
@@ -907,7 +952,7 @@ def merge_libs(target_soc,
             "bazel-bin/mace/codegen/libgenerated_version.pic.a\n")
         mri_stream += (
             "addlib "
-            "bazel-bin/mace/core/libcore.pic.a\n")
+            "bazel-bin/mace/core/libcore.pic.lo\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/kernels/libkernels.pic.a\n")
@@ -951,7 +996,7 @@ def merge_libs(target_soc,
             "bazel-bin/mace/codegen/libgenerated_version.a\n")
         mri_stream += (
             "addlib "
-            "bazel-bin/mace/core/libcore.a\n")
+            "bazel-bin/mace/core/libcore.lo\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/kernels/libkernels.a\n")
@@ -1002,18 +1047,25 @@ def packaging_lib(libmace_output_dir, project_name):
 
 def build_benchmark_model(abi,
                           model_output_dir,
-                          hexagon_mode):
+                          hexagon_mode,
+                          linkshared=False):
     benchmark_binary_file = "%s/benchmark_model" % model_output_dir
     if os.path.exists(benchmark_binary_file):
         sh.rm("-rf", benchmark_binary_file)
 
-    benchmark_target = "//mace/benchmark:benchmark_model"
+    if linkshared == 0:
+        benchmark_target = "//mace/benchmark:benchmark_model"
+    else:
+        benchmark_target = "//mace/benchmark:benchmark_model_deps_so"
     bazel_build(benchmark_target,
                 abi=abi,
                 hexagon_mode=hexagon_mode)
 
     target_bin = "/".join(bazel_target_to_bin(benchmark_target))
-    sh.cp("-f", target_bin, model_output_dir)
+    if linkshared == 0:
+        sh.cp("-f", target_bin, model_output_dir)
+    else:
+        sh.cp("-f", target_bin, "%s/benchmark_model" % model_output_dir)
 
 
 def benchmark_model(abi,
@@ -1032,11 +1084,13 @@ def benchmark_model(abi,
                     phone_data_dir,
                     build_type,
                     opencl_binary_file,
+                    shared_library_dir,
                     omp_num_threads=-1,
                     cpu_affinity_policy=1,
                     gpu_perf_hint=3,
                     gpu_priority_hint=3,
-                    input_file_name="model_input"):
+                    input_file_name="model_input",
+                    linkshared=0):
     print("* Benchmark for %s" % model_tag)
 
     mace_model_path = ""
@@ -1084,6 +1138,13 @@ def benchmark_model(abi,
             mace_model_phone_path = "%s/%s.pb" % (phone_data_dir, model_tag)
             adb_push(mace_model_path,
                      mace_model_phone_path,
+                     serialno)
+
+        if linkshared == 1:
+            adb_push("%s/libmace.so" % shared_library_dir, phone_data_dir,
+                     serialno)
+            adb_push("%s/libgnustl_shared.so" % shared_library_dir,
+                     phone_data_dir,
                      serialno)
         adb_push("%s/benchmark_model" % benchmark_binary_dir, phone_data_dir,
                  serialno)

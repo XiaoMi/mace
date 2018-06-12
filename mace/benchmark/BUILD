@@ -39,6 +39,26 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "benchmark_model_deps_so",
+    srcs = [
+        "benchmark_model.cc",
+    ],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_android(["-DMACE_ENABLE_OPENCL"]),
+    linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
+    linkstatic = 0,
+    deps = [
+        ":statistics",
+        "//external:gflags_nothreads",
+        "//mace/codegen:generated_mace_engine_factory",
+        "@libmace//:libmace",
+    ],
+)
+
 cc_library(
     name = "libmace_merged",
     srcs = [

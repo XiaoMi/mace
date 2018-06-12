@@ -163,18 +163,18 @@ Caffe目前只支持最新版本，旧版本请使用Caffe的工具进行升级�
     $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
 ==================
-3. 生成模型静态库
+3. 生成模型库
 ==================
 
 ---------------------------------------
 3.1 简介
 ---------------------------------------
 
-Mace目前只提供静态库，有以下两种使用场景。
+Mace目前提供静态库和动态库（可以在\ ``yaml``\ 文件中通过\ ``linkshared``\ 指定），有以下两种使用场景。
 
 **特定SOC库**
 
-    该使用场景要求在``yaml``文件中必须制定``target_socs``。主要用于为编译适用于指定手机SOC的静态库。
+    该使用场景要求在\ ``yaml``\ 文件中必须指定\ ``target_socs``\ 。主要用于为编译适用于指定手机SOC的库。
     如果希望使用GPU，那么编译过程会自动测试选择最佳的GPU相关参数以获得更好的性能。
 
     .. warning::
@@ -183,7 +183,7 @@ Mace目前只提供静态库，有以下两种使用场景。
 
 **通用库**
 
-    如果在``yaml``文件中没有指定``target_soc``，生成的静态库适用于所有手机。
+    如果在\ ``yaml``\ 文件中没有指定\ ``target_socs``\ ，生成的库适用于所有手机。
 
     .. warning::
 
@@ -194,7 +194,8 @@ Mace目前只提供静态库，有以下两种使用场景。
 
 .. warning::
 
-     必须在项目的根目录下运行\ ``tools/converter.py``\ 脚本。
+     1. 必须在项目的根目录下运行\ ``tools/converter.py``\ 脚本。
+     2. 当\ ``linkshared``\ 被设置为1时，\ ``build_type``\ 必需设置为\ ``proto``\ 。当前动态链接的方式只支持安卓设备。
 
 
 ---------------------------------------
@@ -207,7 +208,7 @@ Mace目前只提供静态库，有以下两种使用场景。
 
         .. note::
 
-            build模型静态库以及测试工具。
+            build模型库以及测试工具。
 
         * *--config* (type=str,  default="",  required)：模型配置yaml文件路径.
         * *--tuning* (default=false, optional)：是否为特定SOC调制GPU参数.
@@ -293,7 +294,7 @@ Mace目前只提供静态库，有以下两种使用场景。
     python tools/converter.py run -h
     python tools/converter.py benchmark -h
 
-    # 仅编译模型和生成静态库
+    # 仅编译模型和生成库
     python tools/converter.py build --config=models/config.yaml
 
     # 测试模型的运行时间
@@ -316,7 +317,7 @@ Mace目前只提供静态库，有以下两种使用场景。
 4. 发布
 ==========
 
-``build``命令会生成一个tar包，里面包含了发布所需要的所有文件，其位于``./build/${library_name}/libmace_${library_name}.tar.gz``.
+\ ``build``\ 命令会生成一个tar包，里面包含了发布所需要的所有文件，其位于\ ``./build/${library_name}/libmace_${library_name}.tar.gz``\ .
 下面解释了该包中包含了哪些文件。
 
 **头文件**
@@ -326,6 +327,12 @@ Mace目前只提供静态库，有以下两种使用场景。
     * ``./build/${library_name}/library/${target_abi}/*.a``
 
 **动态库**
+    * ``./build/${library_name}/library/${target_abi}/*.so``
+
+    .. note::
+
+        当\ ``linkshared``\ 设置为1时生成动态链接库。
+
     * ``./build/${library_name}/library/${target_abi}/libhexagon_controller.so``
 
     .. note::
@@ -345,7 +352,7 @@ Mace目前只提供静态库，有以下两种使用场景。
 
     .. note::
 
-        只有指定了``target_soc``并且``runtime==gpu``的情况下才会生成。
+        只有指定了\ ``target_socs``\ 并且\ ``runtime==gpu``\ 的情况下才会生成。
 
     .. warning::
 

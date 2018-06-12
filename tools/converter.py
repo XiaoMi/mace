@@ -44,13 +44,15 @@ MODEL_OUTPUT_DIR_NAME = 'model'
 MODEL_HEADER_DIR_PATH = 'include/mace/public'
 BUILD_TMP_DIR_NAME = '_tmp'
 BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
-OUTPUT_LIBRARY_DIR_NAME = 'library'
+OUTPUT_LIBRARY_DIR_NAME = 'lib'
 OUTPUT_OPENCL_BINARY_DIR_NAME = 'opencl'
 OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel'
 CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
-MACE_RUN_TARGET = "//mace/tools/validation:mace_run"
+LIBMACE_SO_TARGET = "//mace:libmace.so"
+MACE_RUN_STATIC_TARGET = "//mace/tools/validation:mace_run_static"
+MACE_RUN_SHARED_TARGET = "//mace/tools/validation:mace_run_shared"
 ALL_SOC_TAG = 'all'
 
 ABITypeStrs = [
@@ -124,6 +126,7 @@ class YAMLKeyword(object):
     target_socs = 'target_socs'
     build_type = 'build_type'
     embed_model_data = 'embed_model_data'
+    linkshared = 'linkshared'
     models = 'models'
     platform = 'platform'
     model_file_path = 'model_file_path'
@@ -278,6 +281,21 @@ def format_model_config(config_file_path):
                          "0 for embed model data to code, 1 not.")
     if build_type == BuildType.proto:
         configs[YAMLKeyword.embed_model_data] = 0
+
+    linkshared = configs.get(YAMLKeyword.linkshared, "")
+    if linkshared == "":
+        configs[YAMLKeyword.linkshared] = 0
+        linkshared = 0
+    if not isinstance(linkshared, int) or linkshared < 0 or \
+       linkshared > 1:
+        MaceLogger.error(ModuleName.YAML_CONFIG,
+                         "linkshared must be 0 or 1. "
+                         "default is 0, for link mace lib statically, "
+                         "1 for dynamic linking.")
+    if build_type == BuildType.code and linkshared == 1:
+        MaceLogger.error(ModuleName.YAML_CONFIG,
+                         "'linkshared == 1' only support when "
+                         "'build_type == proto'")
 
     model_names = configs.get(YAMLKeyword.models, [])
     mace_check(len(model_names) > 0, ModuleName.YAML_CONFIG,
@@ -451,6 +469,13 @@ def get_opencl_binary_output_path(library_name, target_abi,
             target_soc)
 
 
+def get_shared_library_dir(library_name, abi):
+    return '%s/%s/%s/%s' % (BUILD_OUTPUT_DIR,
+                            library_name,
+                            OUTPUT_LIBRARY_DIR_NAME,
+                            abi)
+
+
 ################################
 # build
 ################################
@@ -475,6 +500,8 @@ def print_configuration(flags, configs):
                  configs[YAMLKeyword.build_type]])
     data.append([YAMLKeyword.embed_model_data,
                  configs[YAMLKeyword.embed_model_data]])
+    data.append([YAMLKeyword.linkshared,
+                 configs[YAMLKeyword.linkshared]])
     data.append(["Tuning", flags.tuning])
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
@@ -626,6 +653,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     library_name = configs[YAMLKeyword.library_name]
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
+    linkshared = configs[YAMLKeyword.linkshared]
     hexagon_mode = get_hexagon_mode(configs)
     model_output_dirs = []
 
@@ -636,14 +664,31 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     os.makedirs(build_tmp_binary_dir)
 
     sh_commands.gen_tuning_param_code(model_output_dirs)
+    if linkshared == 0:
+        mace_run_target = MACE_RUN_STATIC_TARGET
+    else:
+        mace_run_target = MACE_RUN_SHARED_TARGET
+        sh_commands.bazel_build(
+            LIBMACE_SO_TARGET,
+            abi=target_abi,
+            hexagon_mode=hexagon_mode,
+            enable_openmp=enable_openmp,
+            address_sanitizer=address_sanitizer
+        )
+        sh_commands.update_libmace_shared_library(serial_num,
+                                                  target_abi,
+                                                  library_name,
+                                                  BUILD_OUTPUT_DIR,
+                                                  OUTPUT_LIBRARY_DIR_NAME)
+
     sh_commands.bazel_build(
-        MACE_RUN_TARGET,
+        mace_run_target,
         abi=target_abi,
         hexagon_mode=hexagon_mode,
         enable_openmp=enable_openmp,
         address_sanitizer=address_sanitizer
     )
-    sh_commands.update_mace_run_lib(build_tmp_binary_dir)
+    sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
     binary_changed = False
 
     for model_name in configs[YAMLKeyword.models]:
@@ -698,6 +743,8 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 phone_data_dir=PHONE_DATA_DIR,
                 build_type=build_type,
                 opencl_binary_file="",
+                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
+                linkshared=linkshared,
             )
 
             pull_opencl_binary_and_tuning_param(target_abi, serial_num,
@@ -714,13 +761,13 @@ def build_specific_lib(target_abi, target_soc, serial_num,
             opencl_output_bin_path)
         sh_commands.gen_tuning_param_code(model_output_dirs)
         sh_commands.bazel_build(
-            MACE_RUN_TARGET,
+            mace_run_target,
             abi=target_abi,
             hexagon_mode=hexagon_mode,
             enable_openmp=enable_openmp,
             address_sanitizer=address_sanitizer
         )
-        sh_commands.update_mace_run_lib(build_tmp_binary_dir)
+        sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
 
     if target_abi == ABIType.host:
         sh_commands.build_host_libraries(build_type, target_abi)
@@ -728,17 +775,19 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     # build benchmark_model binary
     sh_commands.build_benchmark_model(target_abi,
                                       build_tmp_binary_dir,
-                                      hexagon_mode)
+                                      hexagon_mode,
+                                      linkshared)
 
     # generate library
-    sh_commands.merge_libs(target_soc,
-                           serial_num,
-                           target_abi,
-                           library_name,
-                           BUILD_OUTPUT_DIR,
-                           OUTPUT_LIBRARY_DIR_NAME,
-                           build_type,
-                           hexagon_mode)
+    if linkshared == 0:
+        sh_commands.merge_libs(target_soc,
+                               serial_num,
+                               target_abi,
+                               library_name,
+                               BUILD_OUTPUT_DIR,
+                               OUTPUT_LIBRARY_DIR_NAME,
+                               build_type,
+                               hexagon_mode)
 
 
 def generate_library(configs, tuning, enable_openmp, address_sanitizer):
@@ -866,6 +915,7 @@ def run_specific_target(flags, configs, target_abi,
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
+    linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
@@ -953,6 +1003,8 @@ def run_specific_target(flags, configs, target_abi,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
                 opencl_binary_file=opencl_output_bin_path,
+                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
+                linkshared=linkshared,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files_path(
@@ -1012,6 +1064,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
+    linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs]:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
@@ -1089,7 +1142,9 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
                 gpu_priority_hint=flags.gpu_priority_hint,
-                opencl_binary_file=opencl_output_bin_path)
+                opencl_binary_file=opencl_output_bin_path,
+                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
+                linkshared=linkshared)
 
 
 def benchmark_model(flags):
