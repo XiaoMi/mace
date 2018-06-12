@@ -59,3 +59,18 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+cc_binary(
+    name = "libmace.so",
+    linkshared = 1,
+    linkstatic = 0,
+    linkopts = [
+        "-Wl,-soname,libmace.so",
+        "-Wl,--version-script",
+        "mace_version_script.lds",
+    ],
+    deps = [
+        "//mace/ops",
+        ":mace_version_script.lds",
+    ],
+)

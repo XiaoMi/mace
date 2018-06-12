@@ -15,3 +15,19 @@ cc_binary(
         "//mace/codegen:generated_models",
     ],
 )
+
+cc_binary(
+    name = "mace_run_deps_so",
+    srcs = ["mace_run.cc"],
+    copts = if_android([
+        "-DMACE_ENABLE_OPENCL",
+    ]),
+    linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
+    linkstatic = 0,
+    deps = [
+        "//external:gflags_nothreads",
+        "//mace/codegen:generated_mace_engine_factory",
+        "//mace/utils:utils",
+        "@libmace//:libmace",
+    ],
+)

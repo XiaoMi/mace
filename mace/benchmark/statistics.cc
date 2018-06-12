@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/benchmark/statistics.h"
-
 #include <set>
 
+#include "mace/benchmark/statistics.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/string_util.h"
 

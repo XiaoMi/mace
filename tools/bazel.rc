@@ -18,7 +18,7 @@ build:android --config=cross_compile
 # Usage example: bazel build --config optimization 
 build:optimization -c opt
 build:optimization --copt=-O3
-build:optimization --strip=always
+build:optimization --linkopt=-Wl,--strip-all
 
 # Address sanitizer
 build:asan --strip=never

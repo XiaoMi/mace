@@ -71,6 +71,7 @@ cc_library(
     ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),
+    alwayslink = 1,
 )
 
 cc_library(

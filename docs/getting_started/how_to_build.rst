@@ -165,13 +165,15 @@ built-in tool when necessary.
     $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
 ============================
-3. Build static library
+3. Build static/shared library
 ============================
 
 -----------------
 3.1 Overview
 -----------------
-MiAI Compute Engine only build static library. The followings are two use cases.
+MiAI Compute Engine can build either static or shared library (which is
+specified by ``dynamic_link`` in YAML model deployment file).
+The followings are two use cases.
 
 * **Build well tuned library for specific SoCs**
 
@@ -185,7 +187,7 @@ MiAI Compute Engine only build static library. The followings are two use cases.
 
 * **Build generic library for all SoCs**
 
-    When ``target_soc`` is not specified, the generated library is compatible
+    When ``target_socs`` is not specified, the generated library is compatible
     with general devices.
 
     .. note::
@@ -198,7 +200,9 @@ model conversion, compiling, test run, benchmark and correctness validation.
 
 .. note::
 
-     ``tools/converter.py`` should be run at the root directory of this project.
+     1. ``tools/converter.py`` should be run at the root directory of this project.
+     2. When ``dynamic_link`` is set to ``1``, ``build_type`` should be ``proto``.
+        And currently only android devices supported.
 
 
 ------------------------------------------
@@ -211,7 +215,7 @@ model conversion, compiling, test run, benchmark and correctness validation.
 
         .. note::
 
-           build static library and test tools.
+           build library and test tools.
 
         * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
         * *--tuning* (default=false, optional)： whether tuning the parameters for the GPU of specified SoC.
@@ -302,7 +306,7 @@ Using ``-h`` to get detailed help.
 
 .. code:: sh
 
-    # Build the static library
+    # Build library
     python tools/converter.py build --config=models/config.yaml
 
     # Test model run time
@@ -325,9 +329,11 @@ Using ``-h`` to get detailed help.
 4. Deployment
 =============
 
-``build`` command will generate the static library, model files and header files
-and packaged as ``build/${library_name}/libmace_${library_name}.tar.gz``.
-They are organized as follows,
+``build`` command will generate the static/shared library, model files and
+header files and packaged as
+``build/${library_name}/libmace_${library_name}.tar.gz``.
+
+-  The generated ``static`` libraries are organized as follows,
 
 .. code::
 
@@ -347,19 +353,52 @@ They are organized as follows,
           ├── model
           │   ├── mobilenet_v2.data
           │   └── mobilenet_v2.pb
-          └─── opencl
-               └── compiled_opencl_kernel.bin
+          └── opencl
+              ├── arm64-v8a
+              │   └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+              └── armeabi-v7a
+                  └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+
+-  The generated ``shared`` libraries are organized as follows,
+
+.. code::
+
+      build
+      └── mobilenet-v2-gpu
+          ├── include
+          │   └── mace
+          │       └── public
+          │           ├── mace.h
+          │           └── mace_runtime.h
+          ├── lib
+          │   ├── arm64-v8a
+          │   │   ├── libgnustl_shared.so
+          │   │   └── libmace.so
+          │   └── armeabi-v7a
+          │       ├── libgnustl_shared.so
+          │       └── libmace.so
+          ├── model
+          │   ├── mobilenet_v2.data
+          │   └── mobilenet_v2.pb
+          └── opencl
+              ├── arm64-v8a
+              │   └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+              └── armeabi-v7a
+                  └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
 
 .. note::
 
     1. DSP runtime depends on ``libhexagon_controller.so``.
     2. ``${MODEL_TAG}.pb`` file will be generated only when ``build_type`` is ``proto``.
-    3. ``compiled_kernel.bin`` will be generated only when ``target_soc`` and ``gpu`` runtime are specified.
+    3. ``${library_name}_compiled_opencl_kernel.${device_name}.${soc}.bin`` will
+       be generated only when ``target_socs`` and ``gpu`` runtime are specified.
+    4. Generated shared library depends on ``libgnustl_shared.so``.
 
 .. warning::
 
-    ``compiled_kernel.bin`` depends on the OpenCL version of the device, you should maintan the
-    compatibility or configure compiling cache store with ``ConfigKVStorageFactory``.
+    ``${library_name}_compiled_opencl_kernel.${device_name}.${soc}.bin`` depends
+    on the OpenCL version of the device, you should maintan the compatibility or
+    configure compiling cache store with ``ConfigKVStorageFactory``.
 
 =========================================
 5. How to use the library in your project
