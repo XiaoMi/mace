@@ -164,6 +164,7 @@ class TransformerRule(Enum):
     TRANSFORM_BUFFER_IMAGE = 17
     ADD_DEVICE_AND_DATA_TYPE = 18
     SORT_BY_EXECUTION = 19
+    ADD_IN_OUT_TENSOR_INFO = 20
 
 
 class ConverterInterface(object):
@@ -210,6 +211,7 @@ class ConverterOption(object):
         self._device = DeviceType.CPU.value
         self._winograd_enabled = False
         self._transformer_option = [
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.REMOVE_USELESS_RESHAPE_OP,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,

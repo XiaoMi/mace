@@ -38,7 +38,9 @@ void TestShapeOp(const std::vector<index_t> &input_shape) {
   std::vector<int32_t> expected_input_shape(input_shape.begin(),
                                             input_shape.end());
   if (!expected_input_shape.empty()) {
-    net.AddInputFromArray<CPU, int32_t>("ExpectedOutput", {input_shape.size()},
+    net.AddInputFromArray<CPU, int32_t>("ExpectedOutput",
+                                        {static_cast<int32_t>(
+                                             input_shape.size())},
                                         expected_input_shape);
   } else {
     net.AddInputFromArray<CPU, int32_t>("ExpectedOutput", {}, {0});

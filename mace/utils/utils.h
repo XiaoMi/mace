@@ -16,6 +16,7 @@
 #define MACE_UTILS_UTILS_H_
 
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -150,6 +151,15 @@ inline bool ReadBinaryFile(std::vector<unsigned char> *data,
   ifs.close();
 
   return true;
+}
+
+template <typename T>
+std::vector<std::string> MapKeys(const std::map<std::string, T> &data) {
+  std::vector<std::string> keys;
+  for (auto &kv : data) {
+    keys.push_back(kv.first);
+  }
+  return keys;
 }
 
 }  // namespace mace
