@@ -30,13 +30,18 @@ class StridedSliceOp : public Operator<D, T> {
                  OperatorBase::GetOptionalArg<int>("end_mask", 0),
                  OperatorBase::GetOptionalArg<int>("ellipsis_mask", 0),
                  OperatorBase::GetOptionalArg<int>("new_axis_mask", 0),
-                 OperatorBase::GetOptionalArg<int>("shrink_axis_mask", 0)) {}
+                 OperatorBase::GetOptionalArg<int>("shrink_axis_mask", 0),
+                 OperatorBase::GetOptionalArg<bool>("slice",
+                                                    false)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *begin_indices = this->Input(BEGIN);
     const Tensor *end_indices = this->Input(END);
-    const Tensor *strides = this->Input(STRIDES);
+    const Tensor *strides = nullptr;
+    if (this->InputSize() > 3) {
+      strides = this->Input(STRIDES);
+    }
     Tensor *output = this->Output(OUTPUT);
 
     return functor_(input, begin_indices, end_indices, strides, output, future);

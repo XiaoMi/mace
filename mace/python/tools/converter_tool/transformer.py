@@ -1155,5 +1155,6 @@ class Transformer(base_converter.ConverterInterface):
 
         print("Final ops:")
         for op in net.op:
-            print("%s (%s)" % (op.name, op.type))
+            print("%s (%s): %s" % (op.name, op.type, [
+                out_shape.dims for out_shape in op.output_shape]))
         return False

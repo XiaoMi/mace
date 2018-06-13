@@ -32,12 +32,16 @@ struct StridedSliceFunctor {
                       int end_mask,
                       int ellipsis_mask,
                       int new_axis_mask,
-                      int shrink_axis_mask)
+                      int shrink_axis_mask,
+                      bool is_slice = false)
       : begin_mask_(begin_mask),
         end_mask_(end_mask),
         ellipsis_mask_(ellipsis_mask),
         new_axis_mask_(new_axis_mask),
-        shrink_axis_mask_(shrink_axis_mask) {}
+        shrink_axis_mask_(shrink_axis_mask),
+        is_slice_(is_slice),
+        tmp_strides_tensor_(GetDeviceAllocator(D),
+                            DataTypeToEnum<int32_t>::v()) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *begin_indices,
@@ -49,6 +53,14 @@ struct StridedSliceFunctor {
     MACE_CHECK(ellipsis_mask_ == 0 && new_axis_mask_ == 0,
                "ellipsis_mask and new_axis_mask are not supported yet.");
 
+    if (strides == nullptr) {
+      tmp_strides_tensor_.Resize({begin_indices->size()});
+      Tensor::MappingGuard strides_guard(&tmp_strides_tensor_);
+      int32_t *strides_data = tmp_strides_tensor_.mutable_data<int32_t>();
+      std::fill(strides_data, strides_data + tmp_strides_tensor_.size(), 1);
+      strides = &tmp_strides_tensor_;
+    }
+
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard begin_indices_guard(begin_indices);
     Tensor::MappingGuard end_indices_guard(end_indices);
@@ -56,6 +68,19 @@ struct StridedSliceFunctor {
     const T *input_data = input->data<T>();
     const int32_t *begin_indices_data = begin_indices->data<int32_t>();
     const int32_t *end_indices_data = end_indices->data<int32_t>();
+    std::vector<int32_t> slice_end_data;
+    if (is_slice_) {
+      // if this op is slice, the end_indices_data is size actually
+      slice_end_data.resize(end_indices->size());
+      for (int i = 0; i < slice_end_data.size(); ++i) {
+        if (end_indices_data[i] == -1) {
+          slice_end_data[i] = input->dim(i);
+        } else {
+          slice_end_data[i] = begin_indices_data[i] + end_indices_data[i];
+        }
+      }
+      end_indices_data = slice_end_data.data();
+    }
     const int32_t *strides_data = strides->data<int32_t>();
 
     std::vector<index_t> output_shape;
@@ -152,6 +177,8 @@ struct StridedSliceFunctor {
   int ellipsis_mask_;
   int new_axis_mask_;
   int shrink_axis_mask_;
+  bool is_slice_;
+  Tensor tmp_strides_tensor_;
 };
 
 }  // namespace kernels
