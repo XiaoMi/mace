@@ -219,17 +219,21 @@ def sha256_checksum(fname):
     return hash_func.hexdigest()
 
 
-def format_model_config(config_file_path):
-    with open(config_file_path) as f:
+def format_model_config(flags):
+    with open(flags.config) as f:
         configs = yaml.load(f)
 
     library_name = configs.get(YAMLKeyword.library_name, "")
     mace_check(len(library_name) > 0,
                ModuleName.YAML_CONFIG, "library name should not be empty")
 
-    target_abis = configs.get(YAMLKeyword.target_abis, [])
+    if flags.target_abis:
+        target_abis = flags.target_abis.split(',')
+    else:
+        target_abis = configs.get(YAMLKeyword.target_abis, [])
     mace_check((isinstance(target_abis, list) and len(target_abis) > 0),
                ModuleName.YAML_CONFIG, "target_abis list is needed")
+    configs[YAMLKeyword.target_abis] = target_abis
     for abi in target_abis:
         mace_check(abi in ABITypeStrs,
                    ModuleName.YAML_CONFIG,
@@ -261,7 +265,10 @@ def format_model_config(config_file_path):
                            "you must plug in a phone using the SOC")
 
     build_type = BuildType.code
-    build_type_str = configs.get(YAMLKeyword.build_type, "")
+    if flags.build_type:
+        build_type_str = flags.build_type
+    else:
+        build_type_str = configs.get(YAMLKeyword.build_type, "")
     if build_type_str == BuildType.proto:
         build_type = BuildType.proto
     elif build_type_str == BuildType.code:
@@ -272,7 +279,7 @@ def format_model_config(config_file_path):
                          + ". only support [proto|code] format, "
                          + "proto for converting model to ProtoBuf file, "
                          + "code for converting model to c++ code.")
-
+    configs[YAMLKeyword.build_type] = build_type
     embed_model_data = configs.get(YAMLKeyword.embed_model_data, "")
     if embed_model_data == "" or not isinstance(embed_model_data, int) or \
        embed_model_data < 0 or embed_model_data > 1:
@@ -852,7 +859,7 @@ def print_library_summary(configs):
 
 
 def build_library(flags):
-    configs = format_model_config(flags.config)
+    configs = format_model_config(flags)
 
     print_configuration(flags, configs)
 
@@ -1246,6 +1253,16 @@ def parse_args():
         "--enable_openmp",
         action="store_false",
         help="Enable openmp for multiple thread.")
+    build.add_argument(
+        "--build_type",
+        type=str,
+        default="",
+        help="Model build type, can be ['proto', 'code'].")
+    build.add_argument(
+        "--target_abis",
+        type=str,
+        default="",
+        help="Target ABIs, comma seperated list.")
     run = subparsers.add_parser(
         'run',
         parents=[all_type_parent_parser, run_bm_parent_parser,
