@@ -94,8 +94,14 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
   };
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
     output_shape = {blk_sqr, input_tensor->dim(3), out_width};
+    std::vector<index_t> padded_output_shape = {
+        output_shape[0], output_shape[1], output_shape[2], 1
+    };
     std::vector<size_t> image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_HEIGHT, &image_shape);
+    CalImage2DShape(padded_output_shape,
+                    BufferType::IN_OUT_HEIGHT,
+                    &image_shape);
+    // remove unused last dimension
     MACE_RETURN_IF_ERROR(output_tensor->ResizeImage(output_shape, image_shape));
 
     uint32_t idx = 0;

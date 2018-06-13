@@ -42,7 +42,8 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   c_shape[rank - 2] = height;
   c_shape[rank - 1] = width;
   std::vector<size_t> c_image_shape;
-  CalImage2DShape(c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
+  std::vector<index_t> padded_c_shape = {batch, height, width, 1};
+  CalImage2DShape(padded_c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
   MACE_RETURN_IF_ERROR(C->ResizeImage(c_shape, c_image_shape));
 
   const index_t height_blocks = RoundUpDiv4(height);

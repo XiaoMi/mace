@@ -183,10 +183,12 @@ class GPUMemoryOptimizer(MemoryOptimizer):
             mem_block[0] = output_shape[2]
             mem_block[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
         else:
-            padded_output_shape = ([1, 1, 1, 1] + list(output_shape))[-4:]
-            mem_block[0] = padded_output_shape[2] * int(
-                (padded_output_shape[3] + 3) / 4)
-            mem_block[1] = padded_output_shape[0] * padded_output_shape[1]
+            if len(output_shape) == 2:  # only support fc/softmax
+                mem_block[0] = int((output_shape[1] + 3) / 4)
+                mem_block[1] = output_shape[0]
+            else:
+                mem_block[0] = output_shape[2] * int((output_shape[3] + 3) / 4)
+                mem_block[1] = output_shape[0] * output_shape[1]
         return mem_block
 
     def mem_size(self, memory_block):

@@ -216,7 +216,6 @@ class ConverterOption(object):
         self._device = DeviceType.CPU.value
         self._winograd_enabled = False
         self._transformer_option = [
-            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
             TransformerRule.FOLD_RESHAPE,
@@ -231,6 +230,7 @@ class ConverterOption(object):
             TransformerRule.FOLD_ACTIVATION,
             TransformerRule.TRANSPOSE_FILTERS,
             TransformerRule.TRANSPOSE_DATA_FORMAT,
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
             TransformerRule.RESHAPE_FC_WEIGHT,
             TransformerRule.TRANSFORM_BUFFER_IMAGE,

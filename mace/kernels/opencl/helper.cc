@@ -28,15 +28,10 @@ namespace {
 // [(C + 3) / 4 * W, N * H]
 void CalInOutputImageShape(const std::vector<index_t> &shape, /* NHWC */
                            std::vector<size_t> *image_shape) {
-  MACE_CHECK(shape.size() == 4 || shape.size() == 2);
+  MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  if (shape.size() == 4) {
-    (*image_shape)[0] = RoundUpDiv4(shape[3]) * shape[2];
-    (*image_shape)[1] = shape[0] * shape[1];
-  } else if (shape.size() == 2) {
-    (*image_shape)[0] = RoundUpDiv4(shape[1]);
-    (*image_shape)[1] = shape[0];
-  }
+  (*image_shape)[0] = RoundUpDiv4(shape[3]) * shape[2];
+  (*image_shape)[1] = shape[0] * shape[1];
 }
 
 // [Ic, H * W * (Oc + 3) / 4]
@@ -83,27 +78,19 @@ void CalWinogradFilterImageShape(
 // [W * C, N * RoundUp<4>(H)]
 void CalInOutHeightImageShape(const std::vector<index_t> &shape, /* NHWC */
                               std::vector<size_t> *image_shape) {
-  std::vector<index_t> padded_shape = shape;
-  while (padded_shape.size() < 4) {
-    padded_shape.push_back(1);
-  }
-  MACE_CHECK(padded_shape.size() == 4);
+  MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = padded_shape[2] * padded_shape[3];
-  (*image_shape)[1] = padded_shape[0] * RoundUpDiv4(padded_shape[1]);
+  (*image_shape)[0] = shape[2] * shape[3];
+  (*image_shape)[1] = shape[0] * RoundUpDiv4(shape[1]);
 }
 
 // [RoundUp<4>(W) * C, N * H]
 void CalInOutWidthImageShape(const std::vector<index_t> &shape, /* NHWC */
                              std::vector<size_t> *image_shape) {
-  std::vector<index_t> padded_shape = shape;
-  while (padded_shape.size() < 4) {
-    padded_shape.push_back(1);
-  }
-  MACE_CHECK(padded_shape.size() == 4);
+  MACE_CHECK(shape.size() == 4);
   image_shape->resize(2);
-  (*image_shape)[0] = RoundUpDiv4(padded_shape[2]) * padded_shape[3];
-  (*image_shape)[1] = padded_shape[0] * padded_shape[1];
+  (*image_shape)[0] = RoundUpDiv4(shape[2]) * shape[3];
+  (*image_shape)[1] = shape[0] * shape[1];
 }
 
 // [Ic * H * W, (Oc + 3) / 4]
@@ -160,6 +147,36 @@ void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
       break;
     default:
       LOG(FATAL) << "Mace not supported yet.";
+  }
+}
+
+std::vector<index_t> FormatBufferShape(
+    const std::vector<index_t> &buffer_shape,
+    const BufferType type) {
+
+  const size_t buffer_shape_size = buffer_shape.size();
+  switch (type) {
+    case IN_OUT_CHANNEL:
+      if (buffer_shape_size == 4) {  // NHWC
+        return buffer_shape;
+      } else if (buffer_shape_size == 2) {  // NC
+        return {buffer_shape[0], 1, 1, buffer_shape[1]};
+      } else {
+        LOG(FATAL) << "GPU only support 2D or 4D input and output";
+      }
+    case IN_OUT_HEIGHT:
+    case IN_OUT_WIDTH:
+      // only used for matmul test
+      if (buffer_shape_size == 3) {
+        return {buffer_shape[0], buffer_shape[1], buffer_shape[2], 1};
+      } else if (buffer_shape_size == 4) {
+        return buffer_shape;
+      } else {
+        LOG(FATAL) << "GPU only support 3D or 4D for IN_OUT_WIDTH "
+            "and IN_OUT_HEIGHT";
+      }
+    default:
+      return buffer_shape;
   }
 }
 
