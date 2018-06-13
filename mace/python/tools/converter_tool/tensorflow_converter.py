@@ -147,7 +147,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.FusedBatchNorm.name: self.convert_fused_batchnorm,
             TFOpType.AvgPool.name: self.convert_pooling,
             TFOpType.MaxPool.name: self.convert_pooling,
-            TFOpType.Squeeze.name: self.convert_identity,
             TFOpType.MatMul.name: self.convert_matmul,
             TFOpType.Identity.name: self.convert_identity,
             TFOpType.Reshape.name: self.convert_reshape,
