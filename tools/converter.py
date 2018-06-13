@@ -562,6 +562,13 @@ def convert_model(configs):
     # copy header files
     sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
 
+    sh_commands.gen_mace_engine_factory_source(
+        configs[YAMLKeyword.models].keys(),
+        configs[YAMLKeyword.build_type])
+    if configs[YAMLKeyword.build_type] == BuildType.code:
+        sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
+              model_header_dir)
+
     embed_model_data = configs[YAMLKeyword.embed_model_data]
 
     sh_commands.clear_model_codegen()
@@ -628,20 +635,20 @@ def convert_model(configs):
             configs[YAMLKeyword.build_type],
             data_type)
 
-        if not embed_model_data:
-            # mv pb and data file to build/model_name/model
+        if configs[YAMLKeyword.build_type] == BuildType.proto:
+            sh.mv("-f",
+                  '%s/%s.pb' % (model_codegen_dir, model_name),
+                  model_output_dir)
             sh.mv("-f",
                   '%s/%s.data' % (model_codegen_dir, model_name),
                   model_output_dir)
-            if configs[YAMLKeyword.build_type] == BuildType.proto:
+        else:
+            if not embed_model_data:
                 sh.mv("-f",
-                      '%s/%s.pb' % (model_codegen_dir, model_name),
+                      '%s/%s.data' % (model_codegen_dir, model_name),
                       model_output_dir)
-            else:
-                sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
-                      model_header_dir)
-                sh.cp("-f", glob.glob("mace/codegen/models/*/*.h"),
-                      model_header_dir)
+            sh.cp("-f", glob.glob("mace/codegen/models/*/*.h"),
+                  model_header_dir)
 
         MaceLogger.summary(
             StringFormatter.block("Model %s converted" % model_name))
@@ -796,9 +803,6 @@ def generate_library(configs, tuning, enable_openmp, address_sanitizer):
     MaceLogger.info('* generate common source files...')
     sh_commands.gen_mace_version()
     sh_commands.gen_encrypted_opencl_source()
-    sh_commands.gen_mace_engine_factory_source(
-        configs[YAMLKeyword.models].keys(),
-        configs[YAMLKeyword.build_type])
     MaceLogger.info('generate common source files done')
 
     # create build dirs
