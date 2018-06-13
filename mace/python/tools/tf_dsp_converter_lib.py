@@ -480,6 +480,7 @@ def add_input_output_info(net_def, input_node, output_node, graph, dtype):
         get_tensor_name_from_op(output_node, 0))
 
     input_info = net_def.input_info.add()
+    input_info.name = input_node
     input_info.dims.extend(input_tensor.shape.as_list())
     input_info.data_type = dtype
     if dtype == mace_pb2.DT_UINT8:
@@ -489,6 +490,7 @@ def add_input_output_info(net_def, input_node, output_node, graph, dtype):
             input_info.data_type = mace_pb2.DT_FLOAT
 
     output_info = net_def.output_info.add()
+    output_info.name = output_node
     output_info.dims.extend(output_tensor.shape.as_list())
     output_info.data_type = dtype
     if dtype == mace_pb2.DT_UINT8:
