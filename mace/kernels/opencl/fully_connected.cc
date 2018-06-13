@@ -160,7 +160,7 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
-  MACE_CHECK(error == CL_SUCCESS) << "Error code: " << error;
+  MACE_CHECK_CL_SUCCESS(error);
 
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {

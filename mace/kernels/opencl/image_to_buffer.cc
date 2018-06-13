@@ -25,8 +25,9 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     const BufferType type,
     Tensor *buffer,
     StatsFuture *future) {
+  auto formatted_buffer_shape = FormatBufferShape(image->shape(), type);
   std::vector<size_t> image_shape;
-  CalImage2DShape(image->shape(), type, &image_shape, wino_blk_size_);
+  CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size_);
   MACE_RETURN_IF_ERROR(buffer->Resize(image->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
@@ -123,30 +124,10 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
     b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-  } else if (type == IN_OUT_CHANNEL) {
-    if (buffer->dim_size() == 4) {  // NHWC
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-    } else if (buffer->dim_size() == 2) {  // NC
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-  } else if (type == IN_OUT_WIDTH || type == IN_OUT_HEIGHT) {
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-    if (buffer->dim_size() < 4) {
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(1));
-    } else {
-      b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-    }
   } else {
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-    b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(formatted_buffer_shape[1]));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(formatted_buffer_shape[2]));
+    b2f_kernel.setArg(idx++, static_cast<uint32_t>(formatted_buffer_shape[3]));
   }
   b2f_kernel.setArg(idx++, *(image->opencl_image()));
 

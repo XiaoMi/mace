@@ -154,9 +154,10 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
     for i in range(len(output_names)):
         value = net.blobs[net.top_names[output_names[i]][0]].data
         out_shape = output_shapes[i]
-        out_shape[1], out_shape[2], out_shape[3] = out_shape[3], out_shape[
-            1], out_shape[2]
-        value = value.reshape(out_shape).transpose((0, 2, 3, 1))
+        if len(out_shape) == 4:
+            out_shape[1], out_shape[2], out_shape[3] = \
+                out_shape[3], out_shape[1], out_shape[2]
+            value = value.reshape(out_shape).transpose((0, 2, 3, 1))
         output_file_name = common.formatted_file_name(
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)

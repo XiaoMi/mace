@@ -55,7 +55,6 @@ class Transformer(base_converter.ConverterInterface):
     def __init__(self, option, model):
         # DO NOT reorder the following transformers' order
         self._registered_transformers_order = [
-            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.REMOVE_IDENTITY_OP,
             TransformerRule.TRANSFORM_GLOBAL_POOLING,
             TransformerRule.FOLD_RESHAPE,
@@ -71,6 +70,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_ACTIVATION,
             TransformerRule.TRANSPOSE_FILTERS,
             TransformerRule.TRANSPOSE_DATA_FORMAT,
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
             TransformerRule.RESHAPE_FC_WEIGHT,
             TransformerRule.TRANSFORM_BUFFER_IMAGE,
@@ -78,8 +78,6 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.SORT_BY_EXECUTION,
         ]
         self._registered_transformers = {
-            TransformerRule.ADD_IN_OUT_TENSOR_INFO:
-                self.add_in_out_tensor_info,
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
@@ -100,6 +98,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
+            TransformerRule.ADD_IN_OUT_TENSOR_INFO:
+                self.add_in_out_tensor_info,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC:
                 self.transform_global_conv_to_fc,
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
