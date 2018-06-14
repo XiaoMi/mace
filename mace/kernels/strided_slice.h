@@ -72,7 +72,7 @@ struct StridedSliceFunctor {
     if (is_slice_) {
       // if this op is slice, the end_indices_data is size actually
       slice_end_data.resize(end_indices->size());
-      for (int i = 0; i < slice_end_data.size(); ++i) {
+      for (size_t i = 0; i < slice_end_data.size(); ++i) {
         if (end_indices_data[i] == -1) {
           slice_end_data[i] = input->dim(i);
         } else {
