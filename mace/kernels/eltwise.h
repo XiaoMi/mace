@@ -652,11 +652,14 @@ struct EltwiseFunctor<DeviceType::CPU, float> : EltwiseFunctorBase {
         static_cast<uint32_t>(input0->dim_size() - input1->dim_size());
     if (data_format_ == NCHW) {
       MACE_CHECK(
-          input0->dim_size() == 4 &&
-              (input1->dim_size() == 0 ||
-               input1->dim_size() == 4 && input1->dim(1) == input0->dim(1) &&
-                   (input1->dim(0) == input0->dim(0) || input1->dim(0) == 1) ||
-               input1->dim_size() == 1 && input1->dim(0) == input0->dim(1)),
+          (input0->dim_size() == 4)
+              && ((input1->dim_size() == 0)
+                  || (input1->dim_size() == 4
+                      && input1->dim(1) == input0->dim(1)
+                      && (input1->dim(0) == input0->dim(0)
+                          || input1->dim(0) == 1))
+                  || (input1->dim_size() == 1
+                      && input1->dim(0) == input0->dim(1))),
           "only support broadcast channel dimension");
     } else {
       if (rank_diff > 0 && rank_diff < input0->dim_size()) {

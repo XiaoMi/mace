@@ -1045,7 +1045,7 @@ def run_specific_target(flags, configs, target_abi,
 
 
 def run_mace(flags):
-    configs = format_model_config(flags.config)
+    configs = format_model_config(flags)
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
@@ -1159,7 +1159,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
 
 
 def benchmark_model(flags):
-    configs = format_model_config(flags.config)
+    configs = format_model_config(flags)
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
@@ -1211,6 +1211,16 @@ def parse_args():
         default="",
         required=True,
         help="model yaml configuration file path")
+    all_type_parent_parser.add_argument(
+        "--build_type",
+        type=str,
+        default="",
+        help="Model build type, can be ['proto', 'code'].")
+    all_type_parent_parser.add_argument(
+        "--target_abis",
+        type=str,
+        default="",
+        help="Target ABIs, comma seperated list.")
     build_run_parent_parser = argparse.ArgumentParser(add_help=False)
     build_run_parent_parser.add_argument(
         '--address_sanitizer',
@@ -1253,16 +1263,6 @@ def parse_args():
         "--enable_openmp",
         action="store_false",
         help="Enable openmp for multiple thread.")
-    build.add_argument(
-        "--build_type",
-        type=str,
-        default="",
-        help="Model build type, can be ['proto', 'code'].")
-    build.add_argument(
-        "--target_abis",
-        type=str,
-        default="",
-        help="Target ABIs, comma seperated list.")
     run = subparsers.add_parser(
         'run',
         parents=[all_type_parent_parser, run_bm_parent_parser,

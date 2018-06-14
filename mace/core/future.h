@@ -30,6 +30,17 @@ struct StatsFuture {
   };
 };
 
+inline void SetFutureDefaultWaitFn(StatsFuture *future) {
+  if (future != nullptr) {
+    future->wait_fn = [](CallStats * stats) {
+      if (stats != nullptr) {
+        stats->start_micros = NowMicros();
+        stats->end_micros = stats->start_micros;
+      }
+    };
+  }
+}
+
 }  // namespace mace
 
 #endif  // MACE_CORE_FUTURE_H_

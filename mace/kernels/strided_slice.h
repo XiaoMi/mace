@@ -45,7 +45,6 @@ struct StridedSliceFunctor {
                         const Tensor *strides,
                         Tensor *output,
                         StatsFuture *future) {
-    MACE_UNUSED(future);
     MACE_CHECK(ellipsis_mask_ == 0 && new_axis_mask_ == 0,
                "ellipsis_mask and new_axis_mask are not supported yet.");
 
@@ -144,6 +143,7 @@ struct StridedSliceFunctor {
       }
     }
 
+    SetFutureDefaultWaitFn(future);
     return MACE_SUCCESS;
   }
 

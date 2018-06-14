@@ -95,9 +95,9 @@ struct WinogradInverseTransformFunctorBase {
       : batch_(batch),
         height_(height),
         width_(width),
+        wino_blk_size_(block_size),
         activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        wino_blk_size_(block_size) {}
+        relux_max_limit_(relux_max_limit) {}
 
   const int batch_;
   const int height_;
