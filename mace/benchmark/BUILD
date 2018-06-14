@@ -20,7 +20,7 @@ cc_library(
 )
 
 cc_binary(
-    name = "benchmark_model",
+    name = "benchmark_model_static",
     srcs = [
         "benchmark_model.cc",
     ],
@@ -40,7 +40,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "benchmark_model_deps_so",
+    name = "benchmark_model_shared",
     srcs = [
         "benchmark_model.cc",
     ],

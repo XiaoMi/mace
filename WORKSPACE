@@ -126,6 +126,6 @@ android_ndk_repository(
 
 new_local_repository(
     name = "libmace",
-    path = "./dynamic_lib/",
-    build_file = "./dynamic_lib/libmace.BUILD"
+    path = "./",
+    build_file = "./mace/tools/validation/libmace.BUILD"
 )
