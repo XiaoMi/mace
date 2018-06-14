@@ -74,3 +74,9 @@ cc_binary(
         ":mace_version_script.lds",
     ],
 )
+
+cc_library(
+  name = "libmace",
+  srcs = ["libmace.so"],
+  visibility = ["//visibility:public"],
+)

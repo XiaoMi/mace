@@ -596,12 +596,10 @@ def update_libmace_shared_library(serial_num,
                                   project_name,
                                   build_output_dir,
                                   library_output_dir):
-    libmace_name = "libmace.so"
     library_dir = "%s/%s/%s/%s" % (
             build_output_dir, project_name, library_output_dir, abi)
-    libmace_file = "%s/%s" % (library_dir, libmace_name)
 
-    if os.path.exists(libmace_file):
+    if os.path.exists(library_dir):
         sh.rm("-rf", library_dir)
     sh.mkdir("-p", library_dir)
     sh.cp("-f", "bazel-bin/mace/libmace.so", library_dir)
@@ -609,6 +607,10 @@ def update_libmace_shared_library(serial_num,
           "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so" %
           (os.environ["ANDROID_NDK"], abi),
           library_dir)
+
+    if os.path.exists("mace/libmace.so"):
+        sh.rm("-f", "mace/libmace.so")
+    sh.cp("-f", "bazel-bin/mace/libmace.so", "mace/")
 
 
 def tuning_run(abi,

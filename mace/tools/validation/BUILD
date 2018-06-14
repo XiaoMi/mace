@@ -34,6 +34,6 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/utils:utils",
-        "@libmace//:libmace",
+        "//mace:libmace",
     ],
 )
