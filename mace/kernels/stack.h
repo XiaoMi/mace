@@ -34,8 +34,6 @@ struct StackFunctor {
   MaceStatus operator()(const std::vector<const Tensor *> &inputs,
                         Tensor *output,
                         StatsFuture *future) {
-    MACE_UNUSED(future);
-
     MACE_CHECK(!inputs.empty(), "stack inputs are empty.");
     std::vector<index_t> input_shape = inputs[0]->shape();
     MACE_CHECK(axis_ >= -(inputs[0]->dim_size() + 1) &&
@@ -51,7 +49,7 @@ struct StackFunctor {
     // On host, no need to map data
     T *output_data = output->mutable_data<T>();
     std::vector<const T *> input_data(inputs.size());
-    for (int i = 0; i < inputs.size(); ++i) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
       input_data[i] = inputs[i]->data<T>();
     }
 
@@ -62,13 +60,14 @@ struct StackFunctor {
         std::accumulate(input_shape.begin() + axis_, input_shape.end(), 1,
                         std::multiplies<index_t>());
     for (index_t h = 0; h < high_dim_elem_size; ++h) {
-      for (index_t i = 0; i < inputs.size(); ++i) {
+      for (size_t i = 0; i < inputs.size(); ++i) {
         memcpy(output_data, input_data[i] + h * low_dim_elem_size,
                sizeof(T) * low_dim_elem_size);
         output_data += low_dim_elem_size;
       }
     }
 
+    SetFutureDefaultWaitFn(future);
     return MACE_SUCCESS;
   }
 

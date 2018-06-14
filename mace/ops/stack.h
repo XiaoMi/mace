@@ -33,7 +33,6 @@ class StackOp : public Operator<D, T> {
   MaceStatus Run(StatsFuture *future) override {
     const std::vector<const Tensor *> &inputs = this->Inputs();
     Tensor *output = this->Output(OUTPUT);
-
     return functor_(inputs, output, future);
   }
 

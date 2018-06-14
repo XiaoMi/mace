@@ -32,6 +32,7 @@ class IdentityOp : public Operator<D, T> {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     output->ReuseTensorBuffer(*input);
+    SetFutureDefaultWaitFn(future);
     return MACE_SUCCESS;
   }
 

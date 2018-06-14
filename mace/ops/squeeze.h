@@ -31,8 +31,6 @@ class SqueezeOp : public Operator<D, T> {
         axis_(OperatorBase::GetRepeatedArgs<int>("axis", {})) {}
 
   MaceStatus Run(StatsFuture *future) override {
-    MACE_UNUSED(future);
-
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
 
@@ -47,6 +45,7 @@ class SqueezeOp : public Operator<D, T> {
     output->ReuseTensorBuffer(*input);
     output->Reshape(output_shape);
 
+    SetFutureDefaultWaitFn(future);
     return MACE_SUCCESS;
   }
 

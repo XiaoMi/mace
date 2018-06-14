@@ -42,6 +42,7 @@ class ShapeOp : public Operator<D, T> {
     for (index_t i = 0; i < input->dim_size(); ++i) {
       output_data[i] = input->dim(i);
     }
+    SetFutureDefaultWaitFn(future);
 
     return MACE_SUCCESS;
   }

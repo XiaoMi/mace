@@ -29,7 +29,7 @@ void TestStack(const std::vector<index_t> &input_shape,
                const std::vector<index_t> &output_shape,
                const std::vector<float> &output) {
   OpsTestNet net;
-  for (int i = 0; i < inputs.size(); ++i) {
+  for (size_t i = 0; i < inputs.size(); ++i) {
     net.AddInputFromArray<CPU, float>(MakeString("Input", i), input_shape,
                                       inputs[i]);
   }
@@ -38,7 +38,7 @@ void TestStack(const std::vector<index_t> &input_shape,
                         .Output("Output")
                         .AddIntArg("axis", axis);
 
-  for (int i = 0; i < inputs.size(); ++i) {
+  for (size_t i = 0; i < inputs.size(); ++i) {
     op_builder.Input(MakeString("Input", i));
   }
   op_builder.Finalize(net.NewOperatorDef());
