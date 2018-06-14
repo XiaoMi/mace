@@ -98,6 +98,7 @@ extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
 extern void Register_PSROIAlign(OperatorRegistry *op_registry);
 extern void Register_Quantize(OperatorRegistry *op_registry);
+extern void Register_ReduceMean(OperatorRegistry *op_registry);
 extern void Register_Requantize(OperatorRegistry *op_registry);
 extern void Register_Reshape(OperatorRegistry *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
@@ -145,6 +146,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Proposal(this);
   ops::Register_PSROIAlign(this);
   ops::Register_Quantize(this);
+  ops::Register_ReduceMean(this);
   ops::Register_Requantize(this);
   ops::Register_Reshape(this);
   ops::Register_ResizeBilinear(this);

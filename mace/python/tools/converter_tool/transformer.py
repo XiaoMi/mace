@@ -795,6 +795,46 @@ class Transformer(base_converter.ConverterInterface):
                                        'only support squeeze at at [2, 3]')
                             arg.ints[:] = [1, 2]
 
+            elif op.type == MaceOp.ReduceMean.name:
+                for arg in op.arg:
+                    if arg.name == MaceKeyword.mace_axis_str:
+                        if ConverterUtil.data_format(
+                                op) == DataFormat.NHWC \
+                                and self._target_data_format == DataFormat.NCHW:  # noqa
+                            print("Transpose reduce mean args: %s(%s)"
+                                  % (op.name, op.type))
+                            reduce_axises = list(arg.ints)
+                            new_axises = []
+                            for i in range(len(reduce_axises)):
+                                idx = reduce_axises[i]
+                                if idx == 1 or idx == 2:
+                                    new_axises.append(idx + 1)
+                                elif idx == 3:
+                                    new_axises.append(1)
+                                else:
+                                    new_axises.append(idx)
+                            new_axises.sort()
+                            arg.ints[:] = []
+                            arg.ints.extend(new_axises)
+                        elif ConverterUtil.data_format(
+                                op) == DataFormat.NCHW \
+                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                            print("Transpose reduce mean args: %s(%s)"
+                                  % (op.name, op.type))
+                            reduce_axises = list(arg.ints)
+                            new_axises = []
+                            for i in range(len(reduce_axises)):
+                                idx = reduce_axises[i]
+                                if idx == 2 or idx == 3:
+                                    new_axises.append(idx - 1)
+                                elif idx == 1:
+                                    new_axises.append(3)
+                                else:
+                                    new_axises.append(idx)
+                            new_axises.sort()
+                            arg.ints[:] = []
+                            arg.ints.extend(new_axises)
+
             # transpose op output shape
             data_format = ConverterUtil.data_format(op)
             if data_format is not None \

@@ -33,7 +33,7 @@ struct StridedSliceFunctor {
                       int ellipsis_mask,
                       int new_axis_mask,
                       int shrink_axis_mask,
-                      bool is_slice = false)
+                      bool is_slice)
       : begin_mask_(begin_mask),
         end_mask_(end_mask),
         ellipsis_mask_(ellipsis_mask),
