@@ -149,6 +149,13 @@ class MaceKeyword(object):
     mace_device = 'device'
     mace_value_str = 'value'
     mace_wino_block_size = 'wino_block_size'
+    mace_begin_mask_str = 'begin_mask'
+    mace_end_mask_str = 'end_mask'
+    mace_ellipsis_mask_str = 'ellipsis_mask'
+    mace_new_axis_mask_str = 'new_axis_mask'
+    mace_shrink_axis_mask_str = 'shrink_axis_mask'
+    mace_transpose_a_str = 'transpose_a'
+    mace_transpose_b_str = 'transpose_b'
 
 
 class TransformerRule(Enum):

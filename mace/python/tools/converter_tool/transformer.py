@@ -1105,12 +1105,13 @@ class Transformer(base_converter.ConverterInterface):
         for op in net.op:
             if op.type == MaceOp.MatMul.name:
                 input_shape = self.get_tensor_shape(op.input[0])
-                _, h, w, _ = self.sort_feature_map_shape(input_shape,
-                                                         ConverterUtil.data_format(self._producer[op.input[0]]))  # noqa
-                if h == 1 and w == 1 and op.input[1] in self._consts:
-                    weight = self._consts[op.input[1]]
-                    if len(weight.dims) == 2:
-                        op.type = MaceOp.FullyConnected.name
+                if len(input_shape) == 4:
+                    _, h, w, _ = self.sort_feature_map_shape(input_shape,
+                                                             ConverterUtil.data_format(self._producer[op.input[0]]))  # noqa
+                    if h == 1 and w == 1 and op.input[1] in self._consts:
+                        weight = self._consts[op.input[1]]
+                        if len(weight.dims) == 2:
+                            op.type = MaceOp.FullyConnected.name
 
         return False
 
