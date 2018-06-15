@@ -19,6 +19,9 @@ build:android --config=cross_compile
 build:optimization -c opt
 build:optimization --copt=-O3
 build:optimization --linkopt=-Wl,--strip-all
+build:optimization --copt=-ffunction-sections
+build:optimization --copt=-fdata-sections
+build:optimization --linkopt=-Wl,--gc-sections
 
 # Address sanitizer
 build:asan --strip=never
