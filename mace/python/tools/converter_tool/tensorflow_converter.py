@@ -57,6 +57,7 @@ TFSupportedOps = [
     'Max',
     'Neg',
     'Abs',
+    'Pow',
     'RealDiv',
     'Square',
     'SquaredDifference',
@@ -119,6 +120,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Max.name: EltwiseType.MAX,
         TFOpType.Neg.name: EltwiseType.NEG,
         TFOpType.Abs.name: EltwiseType.ABS,
+        TFOpType.Pow.name: EltwiseType.POW,
         TFOpType.RealDiv.name: EltwiseType.DIV,
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
         TFOpType.Square.name: EltwiseType.POW,
@@ -145,6 +147,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Max.name: self.convert_elementwise,
             TFOpType.Neg.name: self.convert_elementwise,
             TFOpType.Abs.name: self.convert_elementwise,
+            TFOpType.Pow.name: self.convert_elementwise,
             TFOpType.RealDiv.name: self.convert_elementwise,
             TFOpType.SquaredDifference.name: self.convert_elementwise,
             TFOpType.Square.name: self.convert_elementwise,
@@ -327,8 +330,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 dilation_val = tf_op.get_attr(tf_dilations_str)[1:3]
             except ValueError:
                 dilation_val = [1, 1]
-
             dilation_arg.ints.extend(dilation_val)
+        else:
+            del op.input[1:]
+            output_shape_arg = op.arg.add()
+            output_shape_arg.name = MaceKeyword.mace_output_shape_str
+            output_shape_value = tf_op.inputs[0].eval().astype(np.int32).flat
+            output_shape_arg.ints.extend(output_shape_value)
+            self._skip_tensor.add(tf_op.inputs[0].name)
+            del op.input[0]
+            if len(tf_op.inputs) >= 3:
+                op.input.extend([tf_op.inputs[2].name, tf_op.inputs[1].name])
 
     def convert_elementwise(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -348,7 +360,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
             value_arg.f = -0.5
 
         if type_arg.i != EltwiseType.NEG.value \
-                and type_arg.i != EltwiseType.POW.value \
                 and type_arg.i != EltwiseType.ABS.value:
             if len(tf_op.inputs[0].shape) == 0:
                 value_arg = op.arg.add()
@@ -578,18 +589,30 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         del op.input[1:]
 
-        reduce_dims = tf_op.inputs[1].eval()
         op.type = MaceOp.ReduceMean.name
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
+        if len(tf_op.inputs) > 1:
+            reduce_dims = tf_op.inputs[1].eval()
+        else:
+            try:
+                reduce_dims = tf_op.get_attr('axis')
+            except ValueError:
+                try:
+                    reduce_dims = tf_op.get_attr('reduction_indices')
+                except ValueError:
+                    reduce_dims = []
         axis_arg.ints.extend(reduce_dims)
+        keep_dims_arg = op.arg.add()
+        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
         try:
-            keep_dims = tf_op.get_attr(MaceKeyword.mace_keepdims_str)
-            keep_dims_arg = op.arg.add()
-            keep_dims_arg.name = MaceKeyword.mace_keepdims_str
-            keep_dims_arg.i = keep_dims
+            keep_dims = tf_op.get_attr('keepdims')
         except ValueError:
-            pass
+            try:
+                keep_dims = tf_op.get_attr('keep_dims')
+            except ValueError:
+                keep_dims = 0
+        keep_dims_arg.i = keep_dims
 
         self._skip_tensor.add(tf_op.inputs[1].name)
 
