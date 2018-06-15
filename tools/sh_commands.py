@@ -596,23 +596,21 @@ def update_libmace_shared_library(serial_num,
                                   project_name,
                                   build_output_dir,
                                   library_output_dir):
-    libmace_name = "libmace.so"
-    mace_library_dir = "./dynamic_lib/"
     library_dir = "%s/%s/%s/%s" % (
             build_output_dir, project_name, library_output_dir, abi)
-    libmace_file = "%s/%s" % (library_dir, libmace_name)
 
-    if os.path.exists(libmace_file):
+    if os.path.exists(library_dir):
         sh.rm("-rf", library_dir)
     sh.mkdir("-p", library_dir)
     sh.cp("-f", "bazel-bin/mace/libmace.so", library_dir)
-    sh.cp("-f", "%s/%s/libgnustl_shared.so" % (mace_library_dir, abi),
+    sh.cp("-f",
+          "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so" %
+          (os.environ["ANDROID_NDK"], abi),
           library_dir)
 
-    libmace_load_path = "%s/%s" % (mace_library_dir, libmace_name)
-    if os.path.exists(libmace_load_path):
-        sh.rm("-f", libmace_load_path)
-    sh.cp("-f", "bazel-bin/mace/libmace.so", mace_library_dir)
+    if os.path.exists("mace/libmace.so"):
+        sh.rm("-f", "mace/libmace.so")
+    sh.cp("-f", "bazel-bin/mace/libmace.so", "mace/")
 
 
 def tuning_run(abi,
@@ -1049,23 +1047,23 @@ def build_benchmark_model(abi,
                           model_output_dir,
                           hexagon_mode,
                           linkshared=False):
-    benchmark_binary_file = "%s/benchmark_model" % model_output_dir
-    if os.path.exists(benchmark_binary_file):
-        sh.rm("-rf", benchmark_binary_file)
-
     if linkshared == 0:
-        benchmark_target = "//mace/benchmark:benchmark_model"
+        target_name = "benchmark_model_static"
     else:
-        benchmark_target = "//mace/benchmark:benchmark_model_deps_so"
+        target_name = "benchmark_model_shared"
+        benchmark_target = "//mace/benchmark:benchmark_model_shared"
+    benchmark_target = "//mace/benchmark:%s" % target_name
+
     bazel_build(benchmark_target,
                 abi=abi,
                 hexagon_mode=hexagon_mode)
 
+    benchmark_binary_file = "%s/%s" % (model_output_dir, target_name)
+    if os.path.exists(benchmark_binary_file):
+        sh.rm("-rf", benchmark_binary_file)
+
     target_bin = "/".join(bazel_target_to_bin(benchmark_target))
-    if linkshared == 0:
-        sh.cp("-f", target_bin, model_output_dir)
-    else:
-        sh.cp("-f", target_bin, "%s/benchmark_model" % model_output_dir)
+    sh.cp("-f", target_bin, model_output_dir)
 
 
 def benchmark_model(abi,
@@ -1093,6 +1091,11 @@ def benchmark_model(abi,
                     linkshared=0):
     print("* Benchmark for %s" % model_tag)
 
+    if linkshared == 0:
+        benchmark_model_target = "benchmark_model_static"
+    else:
+        benchmark_model_target = "benchmark_model_shared"
+
     mace_model_path = ""
     if build_type == BuildType.proto:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
@@ -1101,7 +1104,7 @@ def benchmark_model(abi,
             [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "%s/benchmark_model" % benchmark_binary_dir,
+                "%s/%s" % (benchmark_binary_dir, benchmark_model_target),
                 "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
@@ -1146,7 +1149,8 @@ def benchmark_model(abi,
             adb_push("%s/libgnustl_shared.so" % shared_library_dir,
                      phone_data_dir,
                      serialno)
-        adb_push("%s/benchmark_model" % benchmark_binary_dir, phone_data_dir,
+        adb_push("%s/%s" % (benchmark_binary_dir, benchmark_model_target),
+                 phone_data_dir,
                  serialno)
 
         sh.adb(
@@ -1159,7 +1163,7 @@ def benchmark_model(abi,
             phone_data_dir,
             "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
             "MACE_OPENCL_PROFILING=1",
-            "%s/benchmark_model" % phone_data_dir,
+            "%s/%s" % (phone_data_dir, benchmark_model_target),
             "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),

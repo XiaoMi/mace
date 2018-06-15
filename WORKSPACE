@@ -123,9 +123,3 @@ android_ndk_repository(
     # Android 5.0
     api_level = 21,
 )
-
-new_local_repository(
-    name = "libmace",
-    path = "./dynamic_lib/",
-    build_file = "./dynamic_lib/libmace.BUILD"
-)
