@@ -17,7 +17,7 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
     Tensor *output,
     StatsFuture *future) {
   MACE_CHECK_NOTNULL(input);
-  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
+//  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
   MACE_CHECK(input->dim_size() == 4,
              "reduce mean gpu only support 4-dim input");
   MACE_CHECK(axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2,
@@ -83,8 +83,9 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
   const int group_size = lws[0] * lws[1] * lws[2];
   const int partial_len = (image_size + group_size - 1) / group_size;
   const int remain_index = image_size % group_size;
-  const float in_width_r = 1.f / in_width;
-  const float in_height_r = 1.f / in_height;
+  const float in_width_reciprocal = 1.f / in_width;
+  const float img_size_reciprocal = 1.f / (in_width * in_height);
+  const float channel_blk_reciprocal = 1.f / channel_blocks;
 
   if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
@@ -106,9 +107,10 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(batch));
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
-    kernel_.setArg(idx++, in_height_r);
-    kernel_.setArg(idx++, in_width_r);
+    kernel_.setArg(idx++, img_size_reciprocal);
+    kernel_.setArg(idx++, in_width_reciprocal);
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blocks));
+    kernel_.setArg(idx++, channel_blk_reciprocal);
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();
