@@ -13,8 +13,10 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/cl2_header.h"
+#endif
 
 namespace mace {
 namespace kernels {
@@ -37,8 +39,7 @@ struct ReduceMeanFunctor : ReduceFunctorBase{
                     const bool keep_dims)
       : ReduceFunctorBase(axis, keep_dims) {}
 
-  void Simplify(const Tensor *input,
-                const bool keep_dims) {
+  void Simplify(const Tensor *input) {
     std::vector<bool> bitmap(static_cast<uint32_t>(input->dim_size()), false);
     if (axis_.size() == 0) {
       for (int i = 0; i < input->dim_size(); ++i) {
@@ -56,7 +57,7 @@ struct ReduceMeanFunctor : ReduceFunctorBase{
     for (unsigned int i = 0; i < input->dim_size(); ++i) {
       if (!bitmap[i]) {
         out_shape_.push_back(input->dim(i));
-      } else if (keep_dims) {
+      } else if (keep_dims_) {
         out_shape_.push_back(1);
       }
     }
@@ -198,7 +199,7 @@ struct ReduceMeanFunctor : ReduceFunctorBase{
                   Tensor *output,
                   StatsFuture *future) {
     MACE_UNUSED(future);
-    Simplify(input, true);
+    Simplify(input);
     output->Resize(out_shape_);
     Compute(input, output);
     return MACE_SUCCESS;

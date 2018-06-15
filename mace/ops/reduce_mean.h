@@ -20,7 +20,7 @@ class ReduceMeanOp : public Operator<D, T> {
   ReduceMeanOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
         functor_(OperatorBase::GetRepeatedArgs<int>("axis"),
-                 OperatorBase::GetOptionalArg<bool>("keepdims", true)) {}
+                 OperatorBase::GetOptionalArg<bool>("keepdims", false)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

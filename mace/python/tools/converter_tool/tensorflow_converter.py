@@ -58,8 +58,9 @@ TFSupportedOps = [
     'Neg',
     'Abs',
     'RealDiv',
+    'Square',
     'SquaredDifference',
-    'Pow',
+    'Rsqrt',
     'Relu',
     'Relu6',
     'Tanh',
@@ -69,6 +70,7 @@ TFSupportedOps = [
     'MaxPool',
     'Squeeze',
     'MatMul',
+    'BatchMatMul',
     'Identity',
     'Reshape',
     'Shape',
@@ -84,6 +86,11 @@ TFSupportedOps = [
     'ConcatV2',
     'Mean',
     'Const',
+    'Gather',
+    'StridedSlice',
+    'Slice',
+    'Stack',
+    'Pack',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -114,7 +121,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Abs.name: EltwiseType.ABS,
         TFOpType.RealDiv.name: EltwiseType.DIV,
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
-        TFOpType.Pow.name: EltwiseType.POW
+        TFOpType.Square.name: EltwiseType.POW,
+        TFOpType.Rsqrt.name: EltwiseType.POW
     }
     activation_type = {
         TFOpType.Relu.name: ActivationType.RELU,
@@ -139,7 +147,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Abs.name: self.convert_elementwise,
             TFOpType.RealDiv.name: self.convert_elementwise,
             TFOpType.SquaredDifference.name: self.convert_elementwise,
-            TFOpType.Pow.name: self.convert_elementwise,
+            TFOpType.Square.name: self.convert_elementwise,
+            TFOpType.Rsqrt.name: self.convert_elementwise,
             TFOpType.Relu.name: self.convert_activation,
             TFOpType.Relu6.name: self.convert_activation,
             TFOpType.Tanh.name: self.convert_activation,
@@ -148,6 +157,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.AvgPool.name: self.convert_pooling,
             TFOpType.MaxPool.name: self.convert_pooling,
             TFOpType.MatMul.name: self.convert_matmul,
+            TFOpType.BatchMatMul.name: self.convert_matmul,
             TFOpType.Identity.name: self.convert_identity,
             TFOpType.Reshape.name: self.convert_reshape,
             TFOpType.Shape.name: self.convert_shape,
@@ -164,6 +174,11 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.ConcatV2.name: self.convert_concat,
             TFOpType.Mean.name: self.convert_mean,
             TFOpType.Const.name: self.convert_nop,
+            TFOpType.Gather.name: self.convert_gather,
+            TFOpType.StridedSlice.name: self.convert_stridedslice,
+            TFOpType.Slice.name: self.convert_slice,
+            TFOpType.Pack.name: self.convert_stack,
+            TFOpType.Stack.name: self.convert_stack
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -323,18 +338,30 @@ class TensorflowConverter(base_converter.ConverterInterface):
         type_arg.name = MaceKeyword.mace_element_type_str
         type_arg.i = self.eltwise_type[tf_op.type].value
 
-        if len(tf_op.inputs[0].shape) == 0:
+        if tf_op.type == TFOpType.Square:
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_value_str
-            value_arg.f = tf_op.inputs[0].eval().astype(np.float32)
-            self._skip_tensor.add(tf_op.inputs[0].name)
-            del op.input[0]
-        elif len(tf_op.inputs[1].shape) == 0:
+            value_arg.f = 2.0
+        elif tf_op.type == TFOpType.Rsqrt:
             value_arg = op.arg.add()
             value_arg.name = MaceKeyword.mace_value_str
-            value_arg.f = tf_op.inputs[1].eval().astype(np.float32)
-            self._skip_tensor.add(tf_op.inputs[1].name)
-            del op.input[1]
+            value_arg.f = -0.5
+
+        if type_arg.i != EltwiseType.NEG.value \
+                and type_arg.i != EltwiseType.POW.value \
+                and type_arg.i != EltwiseType.ABS.value:
+            if len(tf_op.inputs[0].shape) == 0:
+                value_arg = op.arg.add()
+                value_arg.name = MaceKeyword.mace_value_str
+                value_arg.f = tf_op.inputs[0].eval().astype(np.float32)
+                self._skip_tensor.add(tf_op.inputs[0].name)
+                del op.input[0]
+            elif len(tf_op.inputs[1].shape) == 0:
+                value_arg = op.arg.add()
+                value_arg.name = MaceKeyword.mace_value_str
+                value_arg.f = tf_op.inputs[1].eval().astype(np.float32)
+                self._skip_tensor.add(tf_op.inputs[1].name)
+                del op.input[1]
 
     def convert_biasadd(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -485,13 +512,27 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis = 4 + axis if axis < 0 else axis
         axis_arg.i = axis
 
-        mace_check(axis == 3, "only support concat at channel dimension")
-
         self._skip_tensor.add(tf_op.inputs[-1].name)
 
     def convert_matmul(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.MatMul.name
+
+        try:
+            adj_x = tf_op.get_attr('adj_x')
+            transpose_a_arg = op.arg.add()
+            transpose_a_arg.name = MaceKeyword.mace_transpose_a_str
+            transpose_a_arg.i = int(adj_x)
+        except ValueError:
+            pass
+
+        try:
+            adj_y = tf_op.get_attr('adj_y')
+            transpose_b_arg = op.arg.add()
+            transpose_b_arg.name = MaceKeyword.mace_transpose_b_str
+            transpose_b_arg.i = int(adj_y)
+        except ValueError:
+            pass
 
     def convert_shape(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -518,18 +559,20 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis_arg.ints.extend(axis_value)
 
     def convert_transpose(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Transpose.name
+
         perm = tf_op.inputs[1].eval().astype(np.int32)
         ordered_perm = np.sort(perm)
 
-        mace_check(np.array_equal(perm, ordered_perm),
-                   "Transpose not supported yet, only internal transpose"
-                   " in composed ops might be supported")
-
-        op = self.convert_general_op(tf_op)
-        op.type = 'Identity'
-        del op.input[1:]
-
-        self._skip_tensor.add(tf_op.inputs[1].name)
+        if np.array_equal(perm, ordered_perm):
+            op.type = MaceOp.Identity.name
+            del op.input[1:]
+            self._skip_tensor.add(tf_op.inputs[1].name)
+        else:
+            dims_arg = op.arg.add()
+            dims_arg.name = MaceKeyword.mace_dims_str
+            dims_arg.ints.extend(perm)
 
     def convert_mean(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -540,8 +583,63 @@ class TensorflowConverter(base_converter.ConverterInterface):
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.ints.extend(reduce_dims)
-        keep_dims_arg = op.arg.add()
-        keep_dims_arg.name = MaceKeyword.mace_keepdims_str
-        keep_dims_arg.i = tf_op.get_attr(MaceKeyword.mace_keepdims_str)
+        try:
+            keep_dims = tf_op.get_attr(MaceKeyword.mace_keepdims_str)
+            keep_dims_arg = op.arg.add()
+            keep_dims_arg.name = MaceKeyword.mace_keepdims_str
+            keep_dims_arg.i = keep_dims
+        except ValueError:
+            pass
 
         self._skip_tensor.add(tf_op.inputs[1].name)
+
+    def convert_gather(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Gather.name
+
+        if len(tf_op.inputs) >= 3:
+            axis_arg = op.arg.add()
+            axis_arg.name = MaceKeyword.mace_axis_str
+            axis_arg.i = tf_op.inputs[2].eval()
+
+    def convert_stridedslice(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.StridedSlice.name
+
+        begin_mask_arg = op.arg.add()
+        begin_mask_arg.name = MaceKeyword.mace_begin_mask_str
+        begin_mask_arg.i = tf_op.get_attr(MaceKeyword.mace_begin_mask_str)
+
+        end_mask_arg = op.arg.add()
+        end_mask_arg.name = MaceKeyword.mace_end_mask_str
+        end_mask_arg.i = tf_op.get_attr(MaceKeyword.mace_end_mask_str)
+
+        ellipsis_mask_arg = op.arg.add()
+        ellipsis_mask_arg.name = MaceKeyword.mace_ellipsis_mask_str
+        ellipsis_mask_arg.i = tf_op.get_attr(
+            MaceKeyword.mace_ellipsis_mask_str)
+
+        new_axis_mask_arg = op.arg.add()
+        new_axis_mask_arg.name = MaceKeyword.mace_new_axis_mask_str
+        new_axis_mask_arg.i = tf_op.get_attr(
+            MaceKeyword.mace_new_axis_mask_str)
+
+        shrink_axis_mask_arg = op.arg.add()
+        shrink_axis_mask_arg.name = MaceKeyword.mace_shrink_axis_mask_str
+        shrink_axis_mask_arg.i = tf_op.get_attr(
+            MaceKeyword.mace_shrink_axis_mask_str)
+
+    def convert_slice(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.StridedSlice.name
+
+    def convert_stack(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Stack.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        try:
+            axis_arg.i = tf_op.get_attr(MaceKeyword.mace_axis_str)
+        except ValueError:
+            axis_arg.i = 0

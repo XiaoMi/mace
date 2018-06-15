@@ -17,7 +17,8 @@ void Simple(const std::vector<index_t> &input_shape,
             const std::vector<float> &input,
             const std::vector<int> &axis,
             const std::vector<index_t> &output_shape,
-            const std::vector<float> &output) {
+            const std::vector<float> &output,
+            const bool keepdims = true) {
   // Construct graph
   OpsTestNet net;
   // Add input data
@@ -27,6 +28,7 @@ void Simple(const std::vector<index_t> &input_shape,
     OpDefBuilder("ReduceMean", "ReduceMeanTest")
         .Input("Input")
         .AddIntsArg("axis", axis)
+        .AddIntArg("keepdims", keepdims ? 1 : 0)
         .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -37,6 +39,7 @@ void Simple(const std::vector<index_t> &input_shape,
     OpDefBuilder("ReduceMean", "ReduceMeanTest")
         .Input("InputImg")
         .AddIntsArg("axis", axis)
+        .AddIntArg("keepdims", keepdims ? 1 : 0)
         .Output("OutputImg")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -302,6 +305,18 @@ TEST_F(ReduceMeanOpTest, CPUSimple3Axis) {
   Simple3Axis<DeviceType::CPU>();
 }
 
+TEST_F(ReduceMeanOpTest, CPUSimpleReduceDims) {
+  Simple<CPU>({2, 2, 3, 4},
+              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+               0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+              {1, 2},
+              {2, 4},
+              {10, 11, 12, 13,
+               10, 11, 12, 13},
+              false);
+}
 
 namespace {
 template <DeviceType D, typename T>
@@ -329,6 +344,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
   OpDefBuilder("ReduceMean", "ReduceMeanTest")
       .Input("InputNCHW")
       .AddIntsArg("axis", axis_cpu)
+      .AddIntArg("keepdims", 1)
       .Output("OutputNCHW")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -340,6 +356,7 @@ void RandomTest(const std::vector<index_t> &input_shape,
   OpDefBuilder("ReduceMean", "ReduceMeanTest")
       .Input("InputImg")
       .AddIntsArg("axis", axis)
+      .AddIntArg("keepdims", 1)
       .Output("OutputImg")
       .Finalize(net.NewOperatorDef());
   // Run
