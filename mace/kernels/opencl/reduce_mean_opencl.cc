@@ -42,15 +42,8 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
     std::set<std::string> built_options;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce_mean");
     built_options.emplace("-Dreduce_mean=" + kernel_name);
-
-    if (input->dtype() == output->dtype()) {
-      built_options.emplace("-DDATA_TYPE=" + DtToCLDt(dt));
-      built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
-      built_options.emplace(dt == DT_HALF ? "-DFP16" : "");
-    } else {
-      built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    }
+    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
     if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_QUALCOMM_ADRENO");
     }
