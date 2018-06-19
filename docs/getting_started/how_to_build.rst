@@ -63,21 +63,28 @@ MiAI Compute Engine requires the following dependencies:
       - >= 17.09.0-ce
       - `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
 
-MiAI Compute Engine provides Dockerfile with these dependencies installed and
-the pre-built image is also available:
+MiAI Compute Engine provides Dockerfile with these dependencies installed,
+you can build the image from the Dockerfile,
 
 .. code:: sh
 
-    # Build with Dockerfile
     cd docker
     docker build -t xiaomimace/mace-dev
 
-    # Pull image from docker hub
+or pull the pre-built image from Docker Hub,
+
+.. code:: sh
+
     docker pull xiaomimace/mace-dev
+
+and then run the container with the following command,
+
+.. code:: sh
 
     # Create container
     # Set 'host' network to use ADB
-    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
+    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host \
+               -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
 
 
 Usage
@@ -101,17 +108,19 @@ Usage
     It's highly recommanded to use a release version instead of master branch.
 
 ============================
-2. Model Optimization
+2. Model Preprocessing
 ============================
 
 -  TensorFlow
 
-TensorFlow provides a
+TensorFlow provides 
 `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-to improve inference efficiency.
+to improve inference efficiency by making various optimizations like Ops
+folding, redundant node removal etc. It's strongly recommended to make these
+optimizations before graph conversion step.
 
 The following commands show the suggested graph transformations and
-optimizations for CPU, GPU and DSP runtime.
+optimizations for different runtimes,
 
 .. code:: sh
 
@@ -153,8 +162,8 @@ optimizations for CPU, GPU and DSP runtime.
 
 -  Caffe
 
-The converter only supports Caffe 1.0+, please upgrade your models with Caffe
-built-in tool when necessary.
+MiAI Compute Engine converter only supports Caffe 1.0+, you need to upgrade
+your models with Caffe built-in tool when necessary,
 
 .. code:: bash
 
@@ -164,9 +173,9 @@ built-in tool when necessary.
     # Upgrade caffemodel
     $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
-============================
+==============================
 3. Build static/shared library
-============================
+==============================
 
 -----------------
 3.1 Overview
