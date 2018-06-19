@@ -1210,7 +1210,7 @@ def parse_args():
         type=str,
         default="",
         required=True,
-        help="model yaml configuration file path")
+        help="the path of model yaml configuration file.")
     all_type_parent_parser.add_argument(
         "--build_type",
         type=str,
@@ -1258,7 +1258,7 @@ def parse_args():
     build.add_argument(
         '--tuning',
         action="store_true",
-        help="tuning gpu parameters for specified SOC")
+        help="whether tuning the parameters for the GPU of specified SoC.")
     build.add_argument(
         "--enable_openmp",
         action="store_false",
@@ -1277,17 +1277,19 @@ def parse_args():
     run.add_argument(
         "--validate",
         action="store_true",
-        help="validate result by comparing mace output and platform's output.")
+        help="whether to verify the results are consistent with "
+             "the frameworks.")
     run.add_argument(
         "--caffe_env",
         type=str_to_caffe_env_type,
         default='docker',
-        help="[docker | local] caffe environment.")
+        help="[docker | local] you can specific caffe environment for"
+             " validation. local environment or caffe docker image.")
     run.add_argument(
         "--vlog_level",
         type=int,
         default=0,
-        help="VLOG level: [1~5].")
+        help="[1~5]. Verbose log level for debug.")
     run.add_argument(
         "--gpu_out_of_range_check",
         action="store_true",
@@ -1296,7 +1298,7 @@ def parse_args():
         "--restart_round",
         type=int,
         default=1,
-        help="restart round for run.")
+        help="restart round between run.")
     run.add_argument(
         "--report",
         action="store_true",

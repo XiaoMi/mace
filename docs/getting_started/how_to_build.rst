@@ -34,7 +34,7 @@ MiAI Compute Engine requires the following dependencies:
       - `bazel installation <https://docs.bazel.build/versions/master/install.html>`__
     * - android-ndk
       - r15c/r16b
-      - reference the docker file
+      - `NDK installation <https://developer.android.com/ndk/guides/setup>`__ or reference the docker file
     * - adb
       - >= 1.0.32
       - apt-get install android-tools-adb
@@ -62,6 +62,10 @@ MiAI Compute Engine requires the following dependencies:
     * - docker (for caffe)
       - >= 17.09.0-ce
       - `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
+
+.. note::
+
+    ``export ANDROID_NDK_HOME=/path/to/ndk`` to Specify ANDROID_NDK_HOME
 
 MiAI Compute Engine provides Dockerfile with these dependencies installed,
 you can build the image from the Dockerfile,
@@ -226,80 +230,24 @@ model conversion, compiling, test run, benchmark and correctness validation.
 
            build library and test tools.
 
-        * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
-        * *--tuning* (default=false, optional)： whether tuning the parameters for the GPU of specified SoC.
-        * *--enable_openmp* (default=true, optional)： whether use openmp.
-
     * **run**
 
         .. note::
 
            run the model(s).
 
-        * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
-        * *--round* (type=int, default=1,  optional)： times for run.
-        * *--validate* (default=false, optional): whether to verify the results are consistent with the frameworks。
-        * *--caffe_env* (type=local/docker, default=docker,  optional)： you can specific caffe environment for validation. local environment or caffe docker image.
-        * *--restart_round* (type=int, default=1,  optional)： restart round between run.
-        * *--gpu_out_of_range_check* (default=false, optional): whether check out of memory for gpu.
-        * *--vlog_level* (type=int[0-5], default=0,  optional): verbose log level for debug.
-
         .. warning::
 
             ``run`` rely on ``build`` command, you should ``run`` after ``build``.
 
     * **benchmark**
-        * *--config* (type=str,  default="",  required)： the path of model yaml configuration file.
 
         .. warning::
 
             ``benchmark`` rely on ``build`` command, you should ``benchmark`` after ``build``.
 
-    **common arguments**
 
-    .. list-table::
-        :widths: auto
-        :header-rows: 1
-        :align: left
-
-        * - argument(key)
-          - argument(value)
-          - default
-          - required
-          - commands
-          - explanation
-        * - --omp_num_threads
-          - int
-          - -1
-          - N
-          - ``run``/``benchmark``
-          - number of threads
-        * - --cpu_affinity_policy
-          - int
-          - 1
-          - N
-          - ``run``/``benchmark``
-          - 0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY
-        * - --gpu_perf_hint
-          - int
-          - 3
-          - N
-          - ``run``/``benchmark``
-          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
-        * - --gpu_perf_hint
-          - int
-          - 3
-          - N
-          - ``run``/``benchmark``
-          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
-        * - --gpu_priority_hint
-          - int
-          - 3
-          - N
-          - ``run``/``benchmark``
-          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
-
-Using ``-h`` to get detailed help.
+Use ``-h`` to get detailed help.
 
 .. code:: sh
 
@@ -354,7 +302,7 @@ header files and packaged as
           │           ├── mace.h
           │           └── mace_runtime.h
           ├── libmace_mobilenet-v2-gpu.tar.gz
-          ├── library
+          ├── lib
           │   ├── arm64-v8a
           │   │   └── libmace_mobilenet-v2-gpu.MI6.msm8998.a
           │   └── armeabi-v7a
@@ -420,6 +368,7 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
     // Include the headers
     #include "mace/public/mace.h"
     #include "mace/public/mace_runtime.h"
+    // If the build_type is code
     #include "mace/public/mace_engine_factory.h"
 
     // 0. Set pre-compiled OpenCL binary program file paths when available
