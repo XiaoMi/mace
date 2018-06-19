@@ -136,7 +136,7 @@ TEST(BufferToImageTest, WeightWidthMedium) {
 
 TEST(BufferToImageTest, WeightWidthLarge) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_WIDTH,
-                                                   {64, 128, 11, 13});
+                                                   {64, 64, 11, 13});
 }
 
 TEST(BufferToImageTest, WeightHeightSmall) {
@@ -151,7 +151,7 @@ TEST(BufferToImageTest, WeightHeightMedium) {
 
 TEST(BufferToImageTest, WeightHeightLarge) {
   TestBidirectionTransform<DeviceType::GPU, float>(kernels::WEIGHT_HEIGHT,
-                                                   {64, 32, 11, 13});
+                                                   {64, 16, 11, 13});
 }
 
 namespace {

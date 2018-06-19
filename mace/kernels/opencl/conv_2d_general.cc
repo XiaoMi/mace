@@ -32,7 +32,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
   std::vector<uint32_t> lws(4, 0);
   uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
   uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
-  uint32_t base = cache_size / kBaseGPUMemCacheSize;
+  const uint32_t base =
+      std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
   lws[1] = std::min<uint32_t>(gws[1], kwg_size);
   lws[0] = gws[0] / 4;
   if (lws[0] == 0) {
@@ -51,7 +52,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
       lws[2] = base;
     }
   }
-  lws[2] = std::min<uint32_t>(lws[2], kwg_size / lws_size);
+  lws[2] = std::max<uint32_t>(std::min<uint32_t>(lws[2], kwg_size / lws_size),
+                              1);
   return lws;
 }
 

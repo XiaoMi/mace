@@ -80,8 +80,8 @@ MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future,
       uint32_t *kwg_size, std::unique_ptr<BufferBase> *kernel_error);
   // Selection matrix: kernel_size x stride_size
-  static const Conv2dOpenclFunction selector[5] = {
-      Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3, nullptr, nullptr};
+  static const Conv2dOpenclFunction selector[3] = {
+      Conv2dOpenclK1x1, nullptr, Conv2dOpenclK3x3};
 
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
@@ -113,7 +113,7 @@ MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                   &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  if (kernel_h == kernel_w && kernel_h <= 5 &&
+  if (kernel_h == kernel_w && kernel_h <= 3 &&
       selector[kernel_h - 1] != nullptr) {
     auto conv2d_func = selector[kernel_h - 1];
     return conv2d_func(

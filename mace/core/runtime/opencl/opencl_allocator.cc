@@ -56,7 +56,7 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
                                       nbytes, nullptr, &error);
   if (error != CL_SUCCESS) {
     LOG(WARNING) << "Allocate OpenCL Buffer with "
-                 << nbytes << " bytes failed because of"
+                 << nbytes << " bytes failed because of "
                  << OpenCLErrorToString(error);
     delete buffer;
     *result = nullptr;

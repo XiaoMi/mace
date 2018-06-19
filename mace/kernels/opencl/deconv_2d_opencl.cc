@@ -144,7 +144,7 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = {8, *kwg_size / 64, 8, 0};
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, *kwg_size);
   std::string tuning_key =
       Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));

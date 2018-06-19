@@ -118,10 +118,7 @@ MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  std::vector<uint32_t> lws(4, 0);
-  lws[1] = std::min<uint32_t>(gws[1], kwg_size_);
-  lws[0] = std::min<uint32_t>(4, kwg_size_ / lws[1]);
-  lws[2] = std::min<uint32_t>(gws[2], kwg_size_ / (lws[1] * lws[0]));
+  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);

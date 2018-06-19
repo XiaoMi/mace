@@ -371,7 +371,8 @@ OpenCLRuntime::OpenCLRuntime():
   }
 
   cl_int err;
-  if (gpu_type_ == GPUType::QUALCOMM_ADRENO) {
+  if (gpu_type_ == GPUType::QUALCOMM_ADRENO
+          && opencl_version_ == OpenCLVersion::CL_VER_2_0) {
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties,
@@ -698,7 +699,7 @@ uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
 
 bool OpenCLRuntime::IsNonUniformWorkgroupsSupported() const {
   return (gpu_type_ == GPUType::QUALCOMM_ADRENO &&
-      opencl_version_ == "2.0");
+      opencl_version_ == OpenCLVersion::CL_VER_2_0);
 }
 
 GPUType OpenCLRuntime::gpu_type() const {
@@ -709,13 +710,24 @@ const std::string OpenCLRuntime::platform_info() const {
   return platform_info_;
 }
 
-const std::string OpenCLRuntime::ParseDeviceVersion(
+OpenCLVersion OpenCLRuntime::ParseDeviceVersion(
     const std::string &device_version) {
   // OpenCL Device version string format:
   // OpenCL<space><major_version.minor_version><space>
   // <vendor-specific information>
   auto words = Split(device_version, ' ');
-  return words[1];
+  if (words[1] == "2.0") {
+    return OpenCLVersion::CL_VER_2_0;
+  } else if (words[1] == "1.2") {
+    return OpenCLVersion::CL_VER_1_2;
+  } else if (words[1] == "1.1") {
+    return OpenCLVersion::CL_VER_1_1;
+  } else if (words[1] == "1.0") {
+    return OpenCLVersion::CL_VER_1_0;
+  } else {
+    LOG(FATAL) << "Do not support OpenCL version: " << words[1];
+    return OpenCLVersion::CL_VER_1_0;
+  }
 }
 
 bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
