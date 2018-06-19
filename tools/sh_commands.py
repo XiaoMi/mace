@@ -605,7 +605,7 @@ def update_libmace_shared_library(serial_num,
     sh.cp("-f", "bazel-bin/mace/libmace.so", library_dir)
     sh.cp("-f",
           "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so" %
-          (os.environ["ANDROID_NDK"], abi),
+          (os.environ["ANDROID_NDK_HOME"], abi),
           library_dir)
 
     if os.path.exists("mace/libmace.so"):
