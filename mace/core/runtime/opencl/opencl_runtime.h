@@ -38,6 +38,13 @@ enum GPUType {
   UNKNOWN,
 };
 
+enum OpenCLVersion {
+  CL_VER_1_0,
+  CL_VER_1_1,
+  CL_VER_1_2,
+  CL_VER_2_0,
+};
+
 
 const std::string OpenCLErrorToString(cl_int error);
 
@@ -113,7 +120,7 @@ class OpenCLRuntime {
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
-  const std::string ParseDeviceVersion(const std::string &device_version);
+  OpenCLVersion ParseDeviceVersion(const std::string &device_version);
 
  private:
   std::unique_ptr<KVStorage> precompiled_binary_storage_;
@@ -127,7 +134,7 @@ class OpenCLRuntime {
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
   std::string platform_info_;
-  std::string opencl_version_;
+  OpenCLVersion opencl_version_;
   std::string precompiled_binary_platform_info_;
   std::string cached_binary_platform_info_;
   bool out_of_range_check_;

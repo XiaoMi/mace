@@ -252,7 +252,8 @@ std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
   lws[2] =
       std::min<uint32_t>(std::min<uint32_t>(gws[2], base), kwg_size / lws[1]);
   const uint32_t lws_size = lws[1] * lws[2];
-  lws[0] = std::min<uint32_t>(base, kwg_size / lws_size);
+  lws[0] = std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size),
+                              1);
   return lws;
 }
 
