@@ -31,10 +31,10 @@ MiAI Compute Engine requires the following dependencies:
       - install command
     * - bazel
       - >= 0.13.0
-      - `bazel installation <https://docs.bazel.build/versions/master/install.html>`__
+      - `bazel installation guide <https://docs.bazel.build/versions/master/install.html>`__
     * - android-ndk
       - r15c/r16b
-      - `NDK installation <https://developer.android.com/ndk/guides/setup>`__ or reference the docker file
+      - `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__ or refers to the docker file
     * - adb
       - >= 1.0.32
       - apt-get install android-tools-adb
@@ -43,29 +43,29 @@ MiAI Compute Engine requires the following dependencies:
       - pip install -I tensorflow==1.6.0 (if you use tensorflow model)
     * - numpy
       - >= 1.14.0
-      - pip install -I numpy=1.14.0
+      - pip install -I numpy==1.14.0
     * - scipy
       - >= 1.0.0
-      - pip install -I scipy=1.0.0
+      - pip install -I scipy==1.0.0
     * - jinja2
       - >= 2.10
-      - pip install -I jinja2=2.10
+      - pip install -I jinja2==2.10
     * - PyYaml
       - >= 3.12.0
-      - pip install -I pyyaml=3.12
+      - pip install -I pyyaml==3.12
     * - sh
       - >= 1.12.14
-      - pip install -I sh=1.12.14
+      - pip install -I sh==1.12.14
     * - filelock
       - >= 3.0.0
-      - pip install -I filelock=3.0.0
+      - pip install -I filelock==3.0.0
     * - docker (for caffe)
       - >= 17.09.0-ce
-      - `install doc <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
+      - `docker installation guide <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
 
 .. note::
 
-    ``export ANDROID_NDK_HOME=/path/to/ndk`` to Specify ANDROID_NDK_HOME
+    ``export ANDROID_NDK_HOME=/path/to/ndk`` to specify ANDROID_NDK_HOME
 
 MiAI Compute Engine provides Dockerfile with these dependencies installed,
 you can build the image from the Dockerfile,
@@ -81,13 +81,13 @@ or pull the pre-built image from Docker Hub,
 
     docker pull xiaomimace/mace-dev
 
-and then run the container with the following command,
+and then run the container with the following command.
 
 .. code:: sh
 
     # Create container
     # Set 'host' network to use ADB
-    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host \
+    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host \ 
                -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
 
 
@@ -100,7 +100,7 @@ Usage
 
 .. code:: sh
 
-    git clone git@v9.git.n.xiaomi.com:deep-computing/mace.git
+    git clone https://github.com/XiaoMi/mace.git
     git fetch --all --tags --prune
 
     # Checkout the latest tag (i.e. release version)
@@ -226,28 +226,92 @@ model conversion, compiling, test run, benchmark and correctness validation.
 
     * **build**
 
-        .. note::
+        build library and test tools.
 
-           build library and test tools.
+    .. code:: sh
+
+        # Build library 
+        python tools/converter.py build --config=models/config.yaml
+
+
 
     * **run**
 
-        .. note::
+        run the model(s).
 
-           run the model(s).
+    .. code:: sh
 
-        .. warning::
+    	# Test model run time
+        python tools/converter.py run --config=models/config.yaml --round=100
 
-            ``run`` rely on ``build`` command, you should ``run`` after ``build``.
+    	# Validate the correctness by comparing the results against the
+    	# original model and framework, measured with cosine distance for similarity.
+    	python tools/converter.py run --config=models/config.yaml --validate
+
+    	# Check the memory usage of the model(**Just keep only one model in configuration file**)
+    	python tools/converter.py run --config=models/config.yaml --round=10000 &
+    	sleep 5
+    	adb shell dumpsys meminfo | grep mace_run
+    	kill %1
+
+
+    .. warning::
+
+        ``run`` rely on ``build`` command, you should ``run`` after ``build``.
 
     * **benchmark**
 
-        .. warning::
+        benchmark and profiling model.
 
-            ``benchmark`` rely on ``build`` command, you should ``benchmark`` after ``build``.
+    .. code:: sh
+
+        # Benchmark model, get detailed statistics of each Op.
+        python tools/converter.py benchmark --config=models/config.yaml
 
 
-Use ``-h`` to get detailed help.
+    .. warning::
+
+        ``benchmark`` rely on ``build`` command, you should ``benchmark`` after ``build``.
+
+**Common arguments**
+
+    .. list-table::
+        :widths: auto
+        :header-rows: 1
+        :align: left
+
+        * - option
+          - type
+          - default
+          - commands
+          - explanation
+        * - --omp_num_threads
+          - int
+          - -1
+          - ``run``/``benchmark``
+          - number of threads
+        * - --cpu_affinity_policy
+          - int
+          - 1
+          - ``run``/``benchmark``
+          - 0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY
+        * - --gpu_perf_hint
+          - int
+          - 3
+          - ``run``/``benchmark``
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
+        * - --gpu_perf_hint
+          - int
+          - 3
+          - ``run``/``benchmark``
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
+        * - --gpu_priority_hint
+          - int
+          - 3
+          - ``run``/``benchmark``
+          - 0:DEFAULT/1:LOW/2:NORMAL/3:HIGH
+
+Using ``-h`` to get detailed help.
 
 .. code:: sh
 
@@ -256,31 +320,6 @@ Use ``-h`` to get detailed help.
     python tools/converter.py run -h
     python tools/converter.py benchmark -h
 
-
----------------------------------------------
-3.3 \ ``tools/converter.py``\ usage examples
----------------------------------------------
-
-.. code:: sh
-
-    # Build library
-    python tools/converter.py build --config=models/config.yaml
-
-    # Test model run time
-    python tools/converter.py run --config=models/config.yaml --round=100
-
-    # Validate the correctness by comparing the results against the
-    # original model and framework, measured with cosine distance for similarity.
-    python tools/converter.py run --config=models/config.yaml --validate
-
-    # Benchmark and profiling model, get detailed statistics of each Op.
-    python tools/converter.py benchmark --config=models/config.yaml
-
-    # Check the memory usage of the model(**Just keep only one model in configuration file**)
-    python tools/converter.py run --config=models/config.yaml --round=10000 &
-    sleep 5
-    adb shell dumpsys meminfo | grep mace_run
-    kill %1
 
 =============
 4. Deployment
