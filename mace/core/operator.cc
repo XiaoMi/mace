@@ -79,6 +79,7 @@ extern void Register_AddN(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
 extern void Register_BatchToSpaceND(OperatorRegistry *op_registry);
 extern void Register_BiasAdd(OperatorRegistry *op_registry);
+extern void Register_Cast(OperatorRegistry *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
 extern void Register_Concat(OperatorRegistry *op_registry);
 extern void Register_Conv2D(OperatorRegistry *op_registry);
@@ -127,6 +128,7 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_BatchNorm(this);
   ops::Register_BatchToSpaceND(this);
   ops::Register_BiasAdd(this);
+  ops::Register_Cast(this);
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);

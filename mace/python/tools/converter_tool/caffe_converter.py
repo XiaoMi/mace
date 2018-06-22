@@ -341,6 +341,10 @@ class CaffeConverter(base_converter.ConverterInterface):
         op.input.extend(caffe_op.layer.bottom)
         op.output.extend(caffe_op.layer.top)
 
+        data_type_arg = op.arg.add()
+        data_type_arg.name = 'T'
+        data_type_arg.i = self._option.data_type
+
         ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
         return op

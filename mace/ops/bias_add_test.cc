@@ -37,6 +37,7 @@ void BiasAddSimple() {
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("InputNCHW")
         .Input("Bias")
+        .AddIntArg("data_format", NCHW)
         .Output("OutputNCHW")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -99,6 +100,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("InputNCHW")
       .Input("Bias")
+      .AddIntArg("data_format", NCHW)
       .Output("OutputNCHW")
       .Finalize(net.NewOperatorDef());
 
@@ -155,6 +157,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("InputNCHW")
       .Input("Bias")
+      .AddIntArg("data_format", NCHW)
       .Output("OutputNCHW")
       .Finalize(net.NewOperatorDef());
 

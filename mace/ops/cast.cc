@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/strided_slice.h"
+#include "mace/ops/cast.h"
 
 namespace mace {
 namespace ops {
 
-void Register_StridedSlice(OperatorRegistry *op_registry) {
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("StridedSlice")
+void Register_Cast(OperatorRegistry *op_registry) {
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Cast")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")
                                           .Build(),
-                         StridedSliceOp<DeviceType::CPU, float>);
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("StridedSlice")
+                         CastOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Cast")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<int32_t>("T")
                                           .Build(),
-                         StridedSliceOp<DeviceType::CPU, int32_t>);
+                         CastOp<DeviceType::CPU, int32_t>);
 }
 
 }  // namespace ops

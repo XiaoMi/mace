@@ -19,6 +19,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <functional>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -43,6 +44,157 @@ enum EltwiseType {
   POW = 9,
   NONE = 10,
 };
+
+inline index_t GetIndex(const std::vector<index_t> &shape,
+                        const std::vector<index_t> &index) {
+  index_t idx = 0;
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] > 1) {
+      idx = idx * shape[i] + index[i];
+    }
+  }
+  return idx;
+}
+
+inline void IncreaseIndex(const std::vector<index_t> &shape,
+                          std::vector<index_t> *index) {
+  for (index_t i = static_cast<index_t>(shape.size()) - 1; i >= 0; --i) {
+    ++(*index)[i];
+    if ((*index)[i] >= shape[i]) {
+      (*index)[i] -= shape[i];
+    } else {
+      break;
+    }
+  }
+}
+
+inline void TensorGeneralBroadcastEltwise(const EltwiseType type,
+                                          const float *input0,
+                                          const float *input1,
+                                          const std::vector<float> &coeff,
+                                          const bool swapped,
+                                          const std::vector<index_t>
+                                          &input0_shape,
+                                          const std::vector<index_t>
+                                          &input1_shape,
+                                          const std::vector<index_t>
+                                          &output_shape,
+                                          float *output) {
+  const index_t output_size = std::accumulate(output_shape.begin(),
+                                              output_shape.end(),
+                                              1,
+                                              std::multiplies<index_t>());
+  std::vector<index_t> out_index(output_shape.size(), 0);
+  switch (type) {
+    case SUM:
+      if (coeff.empty()) {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = input0[idx0] + input1[idx1];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      } else {
+        std::vector<float> coeff_copy = coeff;
+        if (swapped) {
+          std::swap(coeff_copy[0], coeff_copy[1]);
+        }
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] =
+              input0[idx0] * coeff_copy[0] + input1[idx1] * coeff_copy[1];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      }
+      break;
+    case SUB:
+      if (!swapped) {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = input0[idx0] - input1[idx1];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      } else {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = input1[idx1] - input0[idx0];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      }
+      break;
+    case PROD:
+      for (index_t i = 0; i < output_size; ++i) {
+        const index_t idx0 = GetIndex(input0_shape, out_index);
+        const index_t idx1 = GetIndex(input1_shape, out_index);
+        output[i] = input0[idx0] * input1[idx1];
+        IncreaseIndex(output_shape, &out_index);
+      }
+      break;
+    case DIV:
+      if (!swapped) {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = input0[idx0] / input1[idx1];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      } else {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = input1[idx1] / input0[idx0];
+          IncreaseIndex(output_shape, &out_index);
+        }
+      }
+      break;
+    case MIN:
+      for (index_t i = 0; i < output_size; ++i) {
+        const index_t idx0 = GetIndex(input0_shape, out_index);
+        const index_t idx1 = GetIndex(input1_shape, out_index);
+        output[i] = std::min(input1[idx1], input0[idx0]);
+        IncreaseIndex(output_shape, &out_index);
+      }
+      break;
+    case MAX:
+      for (index_t i = 0; i < output_size; ++i) {
+        const index_t idx0 = GetIndex(input0_shape, out_index);
+        const index_t idx1 = GetIndex(input1_shape, out_index);
+        output[i] = std::max(input1[idx1], input0[idx0]);
+        IncreaseIndex(output_shape, &out_index);
+      }
+      break;
+    case SQR_DIFF:
+      for (index_t i = 0; i < output_size; ++i) {
+        const index_t idx0 = GetIndex(input0_shape, out_index);
+        const index_t idx1 = GetIndex(input1_shape, out_index);
+        output[i] = std::pow(input1[idx1] - input0[idx0], 2.f);
+        IncreaseIndex(output_shape, &out_index);
+      }
+      break;
+    case POW:
+      if (!swapped) {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = std::pow(input0[idx0], input1[idx1]);
+          IncreaseIndex(output_shape, &out_index);
+        }
+      } else {
+        for (index_t i = 0; i < output_size; ++i) {
+          const index_t idx0 = GetIndex(input0_shape, out_index);
+          const index_t idx1 = GetIndex(input1_shape, out_index);
+          output[i] = std::pow(input1[idx1], input0[idx0]);
+          IncreaseIndex(output_shape, &out_index);
+        }
+      }
+      break;
+    default:
+      LOG(FATAL) << "Eltwise op not support type " << type;
+  }
+}
 
 inline void TensorBroadcastEltwise(const EltwiseType type,
                                    const float *input0,
@@ -662,40 +814,71 @@ struct EltwiseFunctor<DeviceType::CPU, float> : EltwiseFunctorBase {
                       && input1->dim(0) == input0->dim(1))),
           "only support broadcast channel dimension");
     } else {
-      if (rank_diff > 0 && rank_diff < input0->dim_size()) {
-        for (uint32_t i = 0; i < input1->dim_size(); ++i) {
-          MACE_CHECK(input0->dim(rank_diff + i) == input1->dim(i),
-                     "Element-Wise op only support tail dimensions broadcast");
-        }
+      for (uint32_t i = 0; i < input1->dim_size(); ++i) {
+        MACE_CHECK(input0->dim(rank_diff + i) == 1
+                       || input1->dim(i) == 1
+                       || input0->dim(rank_diff + i) == input1->dim(i),
+                   "Element-Wise op only support tail dimensions broadcast");
       }
     }
 
-    index_t common_size = input1->size();
-    index_t diff_size = input0->size() / common_size;
-
-    MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
-
     Tensor::MappingGuard input0_guard(input0);
     Tensor::MappingGuard input1_guard(input1);
-    Tensor::MappingGuard output_guard(output);
 
     const float *input0_ptr = input0->data<float>();
     const float *input1_ptr = input1->data<float>();
-    float *output_ptr = output->mutable_data<float>();
 
     if (data_format_ == NCHW && input1->dim_size() > 0 &&
         input1->size() < input0->size()) {
+      MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
+      Tensor::MappingGuard output_guard(output);
+      float *output_ptr = output->mutable_data<float>();
       TensorEltwisePerChannel(
           type_, input0_ptr, input1_ptr, coeff_, input0->dim(0),
           input1->dim_size() == 1 ? 1 : input1->dim(0), input0->dim(1),
           input0->dim(2) * input0->dim(3), swapped, output_ptr);
 
     } else {
-      if (input1->size() == input0->size()) {
+      const std::vector<index_t> &input0_shape = input0->shape();
+      std::vector<index_t> input1_shape(rank_diff, 1);
+      input1_shape.insert(input1_shape.end(),
+                          input1->shape().begin(),
+                          input1->shape().end());
+
+      std::vector<index_t> output_shape(input0->dim_size(), 0);
+      for (unsigned int i = 0; i < input0_shape.size(); ++i) {
+        output_shape[i] = std::max(input0_shape[i], input1_shape[i]);
+      }
+      MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+      Tensor::MappingGuard output_guard(output);
+      float *output_ptr = output->mutable_data<float>();
+
+      bool need_general_broadcast = false;
+      for (uint32_t i = 0; i < input1->dim_size(); ++i) {
+        if ((input0->dim(rank_diff + i) == 1 && input1->dim(i) > 1)
+            || (input0->dim(rank_diff + i) > 1 && input1->dim(i) == 1)) {
+          need_general_broadcast = true;
+          break;
+        }
+      }
+
+      if (need_general_broadcast) {
+        TensorGeneralBroadcastEltwise(type_,
+                                      input0_ptr,
+                                      input1_ptr,
+                                      coeff_,
+                                      swapped,
+                                      input0_shape,
+                                      input1_shape,
+                                      output_shape,
+                                      output_ptr);
+      } else if (input1->size() == input0->size()) {
         TensorEltwise(type_, input0_ptr, input1_ptr, coeff_, input0->size(),
                       swapped, output_ptr);
       } else if (input1->size() < input0->size()) {
         if (input1->size() > 1) {
+          index_t common_size = input1->size();
+          index_t diff_size = input0->size() / common_size;
           TensorBroadcastEltwise(type_, input0_ptr, input1_ptr, coeff_,
                                  diff_size, common_size, swapped, output_ptr);
         } else {

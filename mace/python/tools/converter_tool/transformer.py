@@ -53,30 +53,6 @@ class Transformer(base_converter.ConverterInterface):
     """
 
     def __init__(self, option, model):
-        # DO NOT reorder the following transformers' order
-        self._registered_transformers_order = [
-            TransformerRule.REMOVE_IDENTITY_OP,
-            TransformerRule.TRANSFORM_GLOBAL_POOLING,
-            TransformerRule.FOLD_RESHAPE,
-            TransformerRule.TRANSFORM_MATMUL_TO_FC,
-            TransformerRule.FOLD_BATCHNORM,
-            TransformerRule.FOLD_CONV_AND_BN,
-            TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
-            TransformerRule.TRANSFORM_GPU_WINOGRAD,
-            TransformerRule.TRANSFORM_ADD_TO_BIASADD,
-            TransformerRule.FOLD_BIASADD,
-            TransformerRule.FOLD_ACTIVATION,
-            TransformerRule.FLATTEN_ATROUS_CONV,
-            TransformerRule.FOLD_ACTIVATION,
-            TransformerRule.TRANSPOSE_FILTERS,
-            TransformerRule.TRANSPOSE_DATA_FORMAT,
-            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-            TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
-            TransformerRule.RESHAPE_FC_WEIGHT,
-            TransformerRule.TRANSFORM_BUFFER_IMAGE,
-            TransformerRule.ADD_DEVICE_AND_DATA_TYPE,
-            TransformerRule.SORT_BY_EXECUTION,
-        ]
         self._registered_transformers = {
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
@@ -105,8 +81,10 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
             TransformerRule.TRANSFORM_BUFFER_IMAGE:
                 self.transform_buffer_image,
-            TransformerRule.ADD_DEVICE_AND_DATA_TYPE:
-                self.add_device_and_data_type,
+            TransformerRule.ADD_DEVICE:
+                self.add_device,
+            TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES:
+                self.add_mace_input_and_output_nodes,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
         }
 
@@ -119,18 +97,18 @@ class Transformer(base_converter.ConverterInterface):
         self._consumers = {}
         self._producer = {}
         self._target_data_format = DataFormat.NHWC
+        self._input_output_added = False
 
         if self._option.device == DeviceType.CPU.value:
             self._target_data_format = DataFormat.NCHW
 
     def run(self):
-        for key in self._registered_transformers_order:
-            if key in self._option.transformer_option:
-                transformer = self._registered_transformers[key]
-                while True:
-                    self.construct_ops_and_consumers()
-                    changed = transformer()
-                    if not changed:
+        for key in self._option.transformer_option:
+            transformer = self._registered_transformers[key]
+            while True:
+                self.construct_ops_and_consumers()
+                changed = transformer()
+                if not changed:
                         break
 
         return self._model
@@ -900,6 +878,8 @@ class Transformer(base_converter.ConverterInterface):
                 else:
                     op.type = MaceOp.Identity.name
 
+            self._input_output_added = True
+
         return False
 
     def transpose_filters(self):
@@ -1060,6 +1040,8 @@ class Transformer(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
+        self._input_output_added = True
+
         return False
 
     def fold_reshape(self):
@@ -1164,16 +1146,13 @@ class Transformer(base_converter.ConverterInterface):
                                       in_channels * filter_width
                                       * filter_height][:]
 
-    def add_device_and_data_type(self):
+    def add_device(self):
         # TODO(liuqi) add device definition in OperatorDef
         net = self._model
         for op in net.op:
             arg = op.arg.add()
             arg.name = MaceKeyword.mace_device
             arg.i = self._option.device
-            data_type_arg = op.arg.add()
-            data_type_arg.name = 'T'
-            data_type_arg.i = self._option.data_type
 
         return False
 
@@ -1187,6 +1166,37 @@ class Transformer(base_converter.ConverterInterface):
                 elif producer_op.name not in visited:
                     self.sort_dfs(producer_op, visited, sorted_nodes)
         sorted_nodes.append(op)
+
+    def add_mace_input_and_output_nodes(self):
+        if self._input_output_added:
+            return
+
+        print("add mace input and output nodes")
+
+        for input_node in self._option.input_nodes.values():
+            new_input_name = MaceKeyword.mace_input_node_name \
+                             + '_' + input_node.name
+            op_def = self._model.op.add()
+            op_def.name = self.normalize_op_name(input_node.name)
+            op_def.type = MaceOp.Identity.name
+            op_def.input.extend([new_input_name])
+            op_def.output.extend([input_node.name])
+            output_shape = op_def.output_shape.add()
+            output_shape.dims.extend(input_node.shape)
+
+            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+
+        for output_node in self._option.output_nodes.values():
+            output_name = MaceKeyword.mace_output_node_name \
+                          + '_' + output_node.name
+            op_def = self._model.op.add()
+            op_def.name = self.normalize_op_name(output_name)
+            op_def.type = MaceOp.Identity.name
+            op_def.input.extend([output_node.name])
+            op_def.output.extend([output_name])
+            output_shape = op_def.output_shape.add()
+            output_shape.dims.extend(
+                self._producer[output_node.name].output_shape[0].dims)
 
     def sort_by_execution(self):
         print("Sort by execution")

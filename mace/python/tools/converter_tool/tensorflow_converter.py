@@ -92,6 +92,7 @@ TFSupportedOps = [
     'Slice',
     'Stack',
     'Pack',
+    'Cast',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -181,7 +182,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.StridedSlice.name: self.convert_stridedslice,
             TFOpType.Slice.name: self.convert_slice,
             TFOpType.Pack.name: self.convert_stack,
-            TFOpType.Stack.name: self.convert_stack
+            TFOpType.Stack.name: self.convert_stack,
+            TFOpType.Cast.name: self.convert_cast
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -300,6 +302,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
             output_shape = op.output_shape.add()
             output_shape.dims.extend(self.infer_tensor_shape(tf_output))
 
+        data_type_arg = op.arg.add()
+        data_type_arg.name = 'T'
+        try:
+            dtype = tf_op.get_attr('T')
+            if dtype == tf.int32:
+                data_type_arg.i = mace_pb2.DT_INT32
+            elif dtype == tf.float32:
+                data_type_arg.i = self._option.data_type
+            else:
+                mace_check(False, "data type %s not supported" % dtype)
+        except ValueError:
+            data_type_arg.i = self._option.data_type
+
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
         return op
@@ -367,7 +382,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 value_arg.f = tf_op.inputs[0].eval().astype(np.float32)
                 self._skip_tensor.add(tf_op.inputs[0].name)
                 del op.input[0]
-            elif len(tf_op.inputs[1].shape) == 0:
+            elif len(tf_op.inputs) > 1 and len(tf_op.inputs[1].shape) == 0:
                 value_arg = op.arg.add()
                 value_arg.name = MaceKeyword.mace_value_str
                 value_arg.f = tf_op.inputs[1].eval().astype(np.float32)
@@ -655,6 +670,9 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_slice(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.StridedSlice.name
+        arg = op.arg.add()
+        arg.name = 'slice'
+        arg.i = 1
 
     def convert_stack(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -666,3 +684,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
             axis_arg.i = tf_op.get_attr(MaceKeyword.mace_axis_str)
         except ValueError:
             axis_arg.i = 0
+
+    def convert_cast(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Cast.name
+
+        data_type_arg = ConverterUtil.get_arg(op, 'T')
+        try:
+            dtype = tf_op.get_attr('DstT')
+            if dtype == tf.int32:
+                data_type_arg.i = mace_pb2.DT_INT32
+            elif dtype == tf.float32:
+                data_type_arg.i = self._option.data_type
+            else:
+                mace_check(False, "data type %s not supported" % dtype)
+        except ValueError:
+            data_type_arg.i = self._option.data_type

@@ -136,6 +136,7 @@ class YAMLKeyword(object):
     subgraphs = 'subgraphs'
     input_tensors = 'input_tensors'
     input_shapes = 'input_shapes'
+    input_ranges = 'input_ranges'
     output_tensors = 'output_tensors'
     output_shapes = 'output_shapes'
     runtime = 'runtime'
@@ -145,6 +146,7 @@ class YAMLKeyword(object):
     obfuscate = 'obfuscate'
     winograd = 'winograd'
     validation_inputs_data = 'validation_inputs_data'
+    transformers = 'transformers'  # keep it private for now
 
 
 class ModuleName(object):
@@ -640,7 +642,8 @@ def convert_model(configs):
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.build_type],
-            data_type)
+            data_type,
+            ",".join(model_config.get(YAMLKeyword.transformers, [])))
 
         if configs[YAMLKeyword.build_type] == BuildType.proto:
             sh.mv("-f",
@@ -732,7 +735,8 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 model_output_dir,
                 subgraphs[0][YAMLKeyword.input_tensors],
                 subgraphs[0][YAMLKeyword.input_shapes],
-                subgraphs[0][YAMLKeyword.validation_inputs_data])
+                subgraphs[0][YAMLKeyword.validation_inputs_data],
+                input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
 
             device_type = parse_device_type(RuntimeType.gpu)
             sh_commands.tuning_run(
@@ -975,7 +979,8 @@ def run_specific_target(flags, configs, target_abi,
             model_output_dir,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
-            subgraphs[0][YAMLKeyword.validation_inputs_data])
+            subgraphs[0][YAMLKeyword.validation_inputs_data],
+            input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
@@ -1123,7 +1128,8 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
             model_output_dir,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
-            subgraphs[0][YAMLKeyword.validation_inputs_data])
+            subgraphs[0][YAMLKeyword.validation_inputs_data],
+            input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])

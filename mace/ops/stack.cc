@@ -23,6 +23,11 @@ void Register_Stack(OperatorRegistry *op_registry) {
                                           .TypeConstraint<float>("T")
                                           .Build(),
                          StackOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Stack")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<int32_t>("T")
+                                          .Build(),
+                         StackOp<DeviceType::CPU, int32_t>);
 }
 
 }  // namespace ops
