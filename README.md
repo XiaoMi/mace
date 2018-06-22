@@ -9,7 +9,7 @@
 [Demo](mace/android) |
 [中文](README_zh.md)
 
-**MiAI Compute Engine** is a deep learning inference framework optimized for
+**MiAI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
 mobile heterogeneous computing platforms. The design is focused on the following
 targets:
 * Performance
