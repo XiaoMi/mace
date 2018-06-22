@@ -23,25 +23,34 @@ import common
 #    python generate_data.py \
 #        --input_node input_node \
 #        --input_shape 1,64,64,3 \
-#        --input_file input_file
-#
+#        --input_file input_file \
+#        --input_ranges -1,1
 
 
-def generate_data(name, shape, input_file):
+def generate_data(name, shape, input_file, tensor_range):
     np.random.seed()
-    data = np.random.random(shape) * 2 - 1
+    data = np.random.random(shape) * (tensor_range[1] - tensor_range[0]) \
+        + tensor_range[0]
     input_file_name = common.formatted_file_name(input_file, name)
     print 'Generate input file: ', input_file_name
     data.astype(np.float32).tofile(input_file_name)
 
 
-def generate_input_data(input_file, input_node, input_shape):
+def generate_input_data(input_file, input_node, input_shape, input_ranges):
     input_names = [name for name in input_node.split(',')]
     input_shapes = [shape for shape in input_shape.split(':')]
+    if input_ranges:
+        input_ranges = [r for r in input_ranges.split(':')]
+    else:
+        input_ranges = None
     assert len(input_names) == len(input_shapes)
     for i in range(len(input_names)):
         shape = [int(x) for x in input_shapes[i].split(',')]
-        generate_data(input_names[i], shape, input_file)
+        if input_ranges:
+            input_range = [float(x) for x in input_ranges[i].split(',')]
+        else:
+            input_range = [-1, 1]
+        generate_data(input_names[i], shape, input_file, input_range)
     print "Generate input file done."
 
 
@@ -55,10 +64,13 @@ def parse_args():
         "--input_node", type=str, default="input_node", help="input node")
     parser.add_argument(
         "--input_shape", type=str, default="1,64,64,3", help="input shape.")
+    parser.add_argument(
+        "--input_ranges", type=str, default="-1,1", help="input range.")
 
     return parser.parse_known_args()
 
 
 if __name__ == '__main__':
     FLAGS, unparsed = parse_args()
-    generate_input_data(FLAGS.input_file, FLAGS.input_node, FLAGS.input_shape)
+    generate_input_data(FLAGS.input_file, FLAGS.input_node, FLAGS.input_shape,
+                        FLAGS.input_ranges)

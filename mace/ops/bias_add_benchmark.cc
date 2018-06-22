@@ -42,6 +42,7 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
     OpDefBuilder("BiasAdd", "BiasAddBM")
       .Input("Input")
       .Input("Bias")
+      .AddIntArg("data_format", NCHW)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {

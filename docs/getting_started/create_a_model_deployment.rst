@@ -65,6 +65,8 @@ Configurations
       - The shapes of the input tensors, in NHWC order.
     * - output_shapes
       - The shapes of the output tensors, in NHWC order.
+    * - input_ranges
+      - The numerical range of the input tensors, default [-1, 1]. It is only for test.
     * - validation_inputs_data
       - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used.
     * - runtime

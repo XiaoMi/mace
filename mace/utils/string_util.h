@@ -54,10 +54,9 @@ std::string MakeString(const Args &... args) {
 }
 
 template <typename T>
-std::string MakeString(const std::vector<T> &args) {
+std::string MakeListString(const T *args, size_t size) {
   std::stringstream ss;
   ss << "[";
-  const size_t size = args.size();
   for (size_t i = 0; i < size; ++i) {
     ss << args[i];
     if (i < size - 1) {
@@ -66,6 +65,11 @@ std::string MakeString(const std::vector<T> &args) {
   }
   ss << "]";
   return ss.str();
+}
+
+template <typename T>
+std::string MakeString(const std::vector<T> &args) {
+  return MakeListString(args.data(), args.size());
 }
 
 // Specializations for already-a-string types.

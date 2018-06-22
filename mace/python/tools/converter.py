@@ -108,7 +108,10 @@ def main(unused_args):
             print("%s does not support dsp runtime yet." % FLAGS.platform)
             sys.exit(-1)
     else:
-        option = cvt.ConverterOption()
+        if FLAGS.transformers:
+            option = cvt.ConverterOption(FLAGS.transformers.split(','))
+        else:
+            option = cvt.ConverterOption()
         option.winograd_enabled = bool(FLAGS.winograd)
 
         input_node_names = FLAGS.input_node.split(',')
@@ -285,6 +288,11 @@ def parse_args():
         type=str,
         default="fp16_fp32",
         help="fp16_fp32/fp32_fp32")
+    parser.add_argument(
+        "--transformers",
+        type=str,
+        default="",
+        help="model transformers")
     return parser.parse_known_args()
 
 

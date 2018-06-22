@@ -24,7 +24,8 @@ class MemoryOptimizer(object):
         self.op_mem = {}  # op_name->mem_id
         self.mem_block = {}  # mem_id->[size] or mem_id->[x, y]
         self.total_mem_count = 0
-        self.ref_counter = {}
+        self.input_ref_counter = {}
+        self.mem_ref_counter = {}
 
         consumers = {}
         for op in net_def.op:
@@ -41,9 +42,10 @@ class MemoryOptimizer(object):
             for output in op.output:
                 tensor_name = output
                 if tensor_name in consumers:
-                    self.ref_counter[tensor_name] = len(consumers[tensor_name])
+                    self.input_ref_counter[tensor_name] = \
+                        len(consumers[tensor_name])
                 else:
-                    self.ref_counter[tensor_name] = 0
+                    self.input_ref_counter[tensor_name] = 0
 
     def op_need_optimize_memory(self, op):
         return True
@@ -93,8 +95,8 @@ class MemoryOptimizer(object):
             if not self.op_need_optimize_memory(op):
                 continue
             if not op.output_shape:
-                print('WARNING: There is no output shape information to '
-                      'do memory optimization.')
+                print("WARNING: There is no output shape information to "
+                      "do memory optimization. %s (%s)" % (op.name, op.type))
                 return
             if len(op.output_shape) != len(op.output):
                 print('WARNING: the number of output shape is not equal to '
@@ -146,16 +148,23 @@ class MemoryOptimizer(object):
                 if mem_id != -1:
                     op.mem_id.extend([mem_id])
                     self.op_mem[op.output[i]] = mem_id
+                    if mem_id not in self.mem_ref_counter:
+                        self.mem_ref_counter[mem_id] = 1
+                    else:
+                        self.mem_ref_counter[mem_id] += 1
 
             # de-ref input tensor mem
             for idx in xrange(len(op.input)):
                 ipt = op.input[idx]
-                if ipt in self.ref_counter:
-                    self.ref_counter[ipt] -= 1
-                    if self.ref_counter[ipt] == 0 and \
-                            (idx > 0 or not self.is_memory_reuse_op(op)):
-                        self.idle_mem.add(self.op_mem[ipt])
-                    elif self.ref_counter[ipt] < 0:
+                if ipt in self.input_ref_counter:
+                    self.input_ref_counter[ipt] -= 1
+                    if self.input_ref_counter[ipt] == 0 \
+                            and ipt in self.op_mem:
+                        mem_id = self.op_mem[ipt]
+                        self.mem_ref_counter[mem_id] -= 1
+                        if self.mem_ref_counter[mem_id] == 0:
+                            self.idle_mem.add(self.op_mem[ipt])
+                    elif self.input_ref_counter[ipt] < 0:
                         raise Exception('ref count is less than 0')
 
         self.add_net_mem_blocks()

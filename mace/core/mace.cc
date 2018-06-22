@@ -217,9 +217,6 @@ MaceStatus MaceEngine::Impl::Run(
                  << "' is not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
-    MACE_CHECK(input.second.shape().size() == 4,
-               "The Inputs' shape must be 4-dimension with NHWC format,"
-                   " please use 1 to fill missing dimensions");
     Tensor *input_tensor =
         ws_->GetTensor(MakeString("mace_input_node_", input.first));
     MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));

@@ -26,6 +26,9 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                           const Tensor *bias,
                                                           Tensor *output,
                                                           StatsFuture *future) {
+  MACE_CHECK(input->dim_size() == 4 && data_format_ == NHWC,
+             "gpu only support biasadd for 4-dimensional NHWC format tensor");
+
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);

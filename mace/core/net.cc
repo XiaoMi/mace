@@ -63,7 +63,9 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
     MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(), "(",
-                        op->debug_def().type(), ")");
+                        op->debug_def().type(), "), mem_id: ",
+                        MakeListString(op->debug_def().mem_id().data(),
+                                       op->debug_def().mem_id().size()));
     bool future_wait = (device_type_ == DeviceType::GPU &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));

@@ -135,6 +135,41 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
+
+template<DeviceType D, typename T>
+void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
+                                   const std::vector<index_t> &shape0,
+                                   const std::vector<float> &input0,
+                                   const std::vector<index_t> &shape1,
+                                   const std::vector<float> &input1,
+                                   const std::vector<index_t> &output_shape,
+                                   const std::vector<float> &output,
+                                   const std::vector<float> &coeff = {}) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<D, float>("Input0", shape0, input0);
+  net.AddInputFromArray<D, float>("Input1", shape1, input1);
+
+  if (D == DeviceType::CPU) {
+    auto op_builder = OpDefBuilder("Eltwise", "EltwiseTest")
+        .Input("Input0")
+        .Input("Input1")
+        .AddIntArg("type", static_cast<int>(type))
+        .AddFloatsArg("coeff", coeff)
+        .Output("Output");
+    op_builder.Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+
+  auto expected = CreateTensor<float>(output_shape, output);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+}
 }  // namespace
 
 TEST_F(EltwiseOpTest, CPUSimpleTensorScalar) {
@@ -557,6 +592,30 @@ TEST_F(EltwiseOpTest, RandomTensorTensorHalf) {
                             {3, 31, 37, 17});
   RandomTensorEltwise<half>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                             {3, 31, 37, 17});
+}
+
+TEST_F(EltwiseOpTest, TensorGeneralBroadcast) {
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {2, 3, 4, 6, 7, 8});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {0, 1, 2, 2, 3, 4});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 8, 10, 12});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6});
+  TensorGeneralBroadcastEltwise<DeviceType::CPU, float>(
+      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {0, 1, 4, 4, 9, 16});
 }
 
 }  // namespace test

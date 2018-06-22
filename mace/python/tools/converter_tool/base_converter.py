@@ -74,6 +74,7 @@ MaceSupportedOps = [
     'BatchNorm',
     'BatchToSpaceND',
     'BiasAdd',
+    'Cast',
     'ChannelShuffle',
     'Concat',
     'Conv2D',
@@ -177,9 +178,10 @@ class TransformerRule(Enum):
     TRANSPOSE_DATA_FORMAT = 15
     TRANSFORM_GLOBAL_CONV_TO_FC = 16
     TRANSFORM_BUFFER_IMAGE = 17
-    ADD_DEVICE_AND_DATA_TYPE = 18
+    ADD_DEVICE = 18
     SORT_BY_EXECUTION = 19
     ADD_IN_OUT_TENSOR_INFO = 20
+    ADD_MACE_INPUT_AND_OUTPUT_NODES = 21
 
 
 class ConverterInterface(object):
@@ -219,34 +221,39 @@ class NodeInfo(object):
 class ConverterOption(object):
     """A class for specifying options passed to converter tool"""
 
-    def __init__(self):
+    def __init__(self, transformers=None):
         self._input_nodes = {}
         self._output_nodes = {}
         self._data_type = mace_pb2.DT_FLOAT
         self._device = DeviceType.CPU.value
         self._winograd_enabled = False
-        self._transformer_option = [
-            TransformerRule.REMOVE_IDENTITY_OP,
-            TransformerRule.TRANSFORM_GLOBAL_POOLING,
-            TransformerRule.FOLD_RESHAPE,
-            TransformerRule.TRANSFORM_MATMUL_TO_FC,
-            TransformerRule.FOLD_BATCHNORM,
-            TransformerRule.FOLD_CONV_AND_BN,
-            TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
-            TransformerRule.TRANSFORM_GPU_WINOGRAD,
-            TransformerRule.TRANSFORM_ADD_TO_BIASADD,
-            TransformerRule.FOLD_BIASADD,
-            TransformerRule.FLATTEN_ATROUS_CONV,
-            TransformerRule.FOLD_ACTIVATION,
-            TransformerRule.TRANSPOSE_FILTERS,
-            TransformerRule.TRANSPOSE_DATA_FORMAT,
-            TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-            TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
-            TransformerRule.RESHAPE_FC_WEIGHT,
-            TransformerRule.TRANSFORM_BUFFER_IMAGE,
-            TransformerRule.ADD_DEVICE_AND_DATA_TYPE,
-            TransformerRule.SORT_BY_EXECUTION,
-        ]
+        if transformers:
+            self._transformer_option = [TransformerRule[transformer]
+                                        for transformer in transformers]
+        else:
+            self._transformer_option = [
+                TransformerRule.REMOVE_IDENTITY_OP,
+                TransformerRule.TRANSFORM_GLOBAL_POOLING,
+                TransformerRule.FOLD_RESHAPE,
+                TransformerRule.TRANSFORM_MATMUL_TO_FC,
+                TransformerRule.FOLD_BATCHNORM,
+                TransformerRule.FOLD_CONV_AND_BN,
+                TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
+                TransformerRule.TRANSFORM_GPU_WINOGRAD,
+                TransformerRule.TRANSFORM_ADD_TO_BIASADD,
+                TransformerRule.FOLD_BIASADD,
+                TransformerRule.FLATTEN_ATROUS_CONV,
+                TransformerRule.FOLD_ACTIVATION,
+                TransformerRule.TRANSPOSE_FILTERS,
+                TransformerRule.TRANSPOSE_DATA_FORMAT,
+                TransformerRule.ADD_IN_OUT_TENSOR_INFO,
+                TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
+                TransformerRule.RESHAPE_FC_WEIGHT,
+                TransformerRule.TRANSFORM_BUFFER_IMAGE,
+                TransformerRule.ADD_DEVICE,
+                TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
+                TransformerRule.SORT_BY_EXECUTION,
+            ]
 
     @property
     def input_nodes(self):
