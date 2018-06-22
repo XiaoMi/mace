@@ -49,7 +49,8 @@ phones. The benchmark result can be found in the CI result page.
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
-* Gitter:
+* Mailing list: [mace-users@googlegroups.com](mailto:mace-users@googlegroups.com)
+* Google groups: https://groups.google.com/forum/#!forum/mace-users
 * QQ群: 756046893
 
 ## Contributing
