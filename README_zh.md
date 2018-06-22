@@ -40,6 +40,7 @@
 
 ## 交流与反馈
 * 欢迎通过Github Issues提交问题报告与建议
+* 邮件列表: [mace-users@googlegroups.com](mailto:mace-users@googlegroups.com)
 * QQ群: 756046893
 
 ## License
