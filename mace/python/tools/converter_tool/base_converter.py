@@ -158,6 +158,7 @@ class MaceKeyword(object):
     mace_shrink_axis_mask_str = 'shrink_axis_mask'
     mace_transpose_a_str = 'transpose_a'
     mace_transpose_b_str = 'transpose_b'
+    mace_op_data_type_str = 'T'
 
 
 class TransformerRule(Enum):
@@ -182,6 +183,7 @@ class TransformerRule(Enum):
     SORT_BY_EXECUTION = 19
     ADD_IN_OUT_TENSOR_INFO = 20
     ADD_MACE_INPUT_AND_OUTPUT_NODES = 21
+    UPDATE_FLOAT_OP_DATA_TYPE = 22
 
 
 class ConverterInterface(object):
@@ -226,7 +228,7 @@ class ConverterOption(object):
         self._output_nodes = {}
         self._data_type = mace_pb2.DT_FLOAT
         self._device = DeviceType.CPU.value
-        self._winograd_enabled = False
+        self._winograd = 0
         if transformers:
             self._transformer_option = [TransformerRule[transformer]
                                         for transformer in transformers]
@@ -251,6 +253,7 @@ class ConverterOption(object):
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 TransformerRule.TRANSFORM_BUFFER_IMAGE,
                 TransformerRule.ADD_DEVICE,
+                TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
                 TransformerRule.SORT_BY_EXECUTION,
             ]
@@ -272,8 +275,8 @@ class ConverterOption(object):
         return self._device
 
     @property
-    def winograd_enabled(self):
-        return self._winograd_enabled
+    def winograd(self):
+        return self._winograd
 
     @property
     def transformer_option(self):
@@ -303,9 +306,9 @@ class ConverterOption(object):
     def device(self, device):
         self._device = device
 
-    @winograd_enabled.setter
-    def winograd_enabled(self, winograd_enabled):
-        self._winograd_enabled = winograd_enabled
+    @winograd.setter
+    def winograd(self, winograd):
+        self._winograd = winograd
 
     def disable_transpose_filters(self):
         if TransformerRule.TRANSPOSE_FILTERS in self._transformer_option:

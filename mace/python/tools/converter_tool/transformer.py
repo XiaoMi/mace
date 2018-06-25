@@ -31,7 +31,6 @@ from mace.python.tools.converter_tool.base_converter import TransformerRule
 from mace.python.tools.convert_util import mace_check
 
 OPENCL_IMAGE_MAX_SIZE = 16384
-DEFAULT_GPU_WINO_BLK_SIZE = 4
 
 
 class OpenCLBufferType(enum.Enum):
@@ -53,6 +52,8 @@ class Transformer(base_converter.ConverterInterface):
     """
 
     def __init__(self, option, model):
+        # Dependencies
+        # (TRANSFORM_MATMUL_TO_FC, TRANSFORM_GLOBAL_CONV_TO_FC) -> RESHAPE_FC_WEIGHT  # noqa
         self._registered_transformers = {
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
@@ -83,6 +84,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_buffer_image,
             TransformerRule.ADD_DEVICE:
                 self.add_device,
+            TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE:
+                self.update_float_op_data_type,
             TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES:
                 self.add_mace_input_and_output_nodes,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
@@ -90,7 +93,7 @@ class Transformer(base_converter.ConverterInterface):
 
         self._option = option
         self._model = model
-        self._gpu_wino_blk = DEFAULT_GPU_WINO_BLK_SIZE
+        self._gpu_wino_blk = self._option.winograd
 
         self._ops = {}
         self._consts = {}
@@ -442,7 +445,7 @@ class Transformer(base_converter.ConverterInterface):
         return filter_height, filter_width, in_channels, out_channels
 
     def check_if_gpu_use_winograd_conv(self, op):
-        if not self._option.winograd_enabled:
+        if not self._option.winograd:
             return False
         if op.type != MaceOp.Conv2D.name:
             return False
@@ -464,7 +467,6 @@ class Transformer(base_converter.ConverterInterface):
         if filter_height != 3 or filter_width != 3 or strides[0] > 1 \
                 or strides[1] > 1 or dilations[0] > 1 or dilations[1] > 1:
             return False
-        self._gpu_wino_blk = DEFAULT_GPU_WINO_BLK_SIZE
         block_size = self._gpu_wino_blk
         blk_sqr = (block_size + 2) * (block_size + 2)
         width =\
@@ -479,9 +481,9 @@ class Transformer(base_converter.ConverterInterface):
             width = \
                 batch * ((out_height + block_size - 1) / block_size) * \
                 ((out_width + block_size - 1) / block_size)
-        return (blk_sqr * in_channels <= OPENCL_IMAGE_MAX_SIZE) and \
-               (blk_sqr * out_channels <= OPENCL_IMAGE_MAX_SIZE) and \
-               (width <= OPENCL_IMAGE_MAX_SIZE)
+        return (blk_sqr * in_channels < OPENCL_IMAGE_MAX_SIZE) and \
+               (blk_sqr * out_channels < OPENCL_IMAGE_MAX_SIZE) and \
+               (width < OPENCL_IMAGE_MAX_SIZE)
 
     def transform_gpu_winograd(self):
         """Only gpu needs winograd transform."""
@@ -577,17 +579,6 @@ class Transformer(base_converter.ConverterInterface):
                     blk_size_arg.i = block_size
                     ConverterUtil.add_data_format_arg(iwt_op, data_format)
 
-                    filter_data = np.array(filter.float_data).reshape(
-                        filter.dims)
-
-                    weight_tensor_value = filter_data
-                    if filter_format == FilterFormat.HWIO:
-                        weight_tensor_value = filter_data.transpose(3, 2, 0, 1)
-                    elif filter_format == FilterFormat.HWOI:
-                        weight_tensor_value = filter_data.transpose(2, 3, 0, 1)
-                    filter.float_data[:] = weight_tensor_value.flat[:]
-                    filter.dims[:] = weight_tensor_value.shape[:]
-
                     self.safe_remove_node(op, iwt_op)
 
         return False
@@ -608,12 +599,13 @@ class Transformer(base_converter.ConverterInterface):
     def fold_biasadd(self):
         net = self._model
         for op in net.op:
-            if ((op.type == MaceOp.Conv2D.name
-                 or op.type == MaceOp.Deconv2D.name
-                 or op.type == MaceOp.DepthwiseConv2d.name
-                 or op.type == MaceOp.FullyConnected.name
-                 or op.type == MaceOp.WinogradInverseTransform.name)
-                and len(op.input) == 2) \
+            if (((op.type == MaceOp.Conv2D.name
+                  or op.type == MaceOp.Deconv2D.name
+                  or op.type == MaceOp.DepthwiseConv2d.name
+                  or op.type == MaceOp.FullyConnected.name)
+                 and len(op.input) == 2)
+                or (op.type == MaceOp.WinogradInverseTransform.name
+                    and len(op.input) == 1)) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.BiasAdd.name:
@@ -893,25 +885,24 @@ class Transformer(base_converter.ConverterInterface):
                 if op.type == MaceOp.Conv2D.name \
                         or op.type == MaceOp.Deconv2D.name \
                         or op.type == MaceOp.DepthwiseConv2d.name:
-                    if ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_winograd_filter_transformed) \
-                            is None:
-                        filter = self._consts[op.input[1]]
-                        filter_data = np.array(filter.float_data).reshape(
-                            filter.dims)
-                        if op.type == MaceOp.Deconv2D.name:
-                            filter_data = filter_data.transpose(2, 3, 0, 1)
-                        else:
-                            filter_data = filter_data.transpose(3, 2, 0, 1)
-                        filter.float_data[:] = filter_data.flat
-                        filter.dims[:] = filter_data.shape
-                if op.type == MaceOp.FullyConnected.name:
-                    weight = self._consts[op.input[1]]
-                    weight_data = np.array(weight.float_data).reshape(
-                        weight.dims)
-                    weight_data = weight_data.transpose(1, 0)
-                    weight.float_data[:] = weight_data.flat
-                    weight.dims[:] = weight_data.shape
+                    filter = self._consts[op.input[1]]
+                    filter_data = np.array(filter.float_data).reshape(
+                        filter.dims)
+                    if op.type == MaceOp.Deconv2D.name:
+                        filter_data = filter_data.transpose(2, 3, 0, 1)
+                    else:
+                        filter_data = filter_data.transpose(3, 2, 0, 1)
+                    filter.float_data[:] = filter_data.flat
+                    filter.dims[:] = filter_data.shape
+                if (op.type == MaceOp.MatMul.name and
+                            ConverterUtil.get_arg(op, MaceKeyword.mace_winograd_filter_transformed) is not None):  # noqa
+                    filter = self._consts[op.input[0]]
+                    filter_data = np.array(filter.float_data).reshape(
+                        filter.dims)
+                    filter_data = filter_data.transpose(3, 2, 0, 1)
+                    filter.float_data[:] = filter_data.flat
+                    filter.dims[:] = filter_data.shape
+
             self.set_filter_format(FilterFormat.OIHW)
 
         return False
@@ -1104,6 +1095,11 @@ class Transformer(base_converter.ConverterInterface):
                         weight = self._consts[op.input[1]]
                         if len(weight.dims) == 2:
                             op.type = MaceOp.FullyConnected.name
+                            weight_data = np.array(weight.float_data).reshape(
+                                weight.dims)
+                            weight_data = weight_data.transpose(1, 0)
+                            weight.float_data[:] = weight_data.flat
+                            weight.dims[:] = weight_data.shape
 
         return False
 
@@ -1153,6 +1149,22 @@ class Transformer(base_converter.ConverterInterface):
             arg = op.arg.add()
             arg.name = MaceKeyword.mace_device
             arg.i = self._option.device
+
+        return False
+
+    def update_float_op_data_type(self):
+        print("update op with float data type")
+        net = self._model
+        for op in net.op:
+            data_type_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_op_data_type_str)
+            if not data_type_arg:
+                data_type_arg = op.arg.add()
+                data_type_arg.name = MaceKeyword.mace_op_data_type_str
+                data_type_arg.i = self._option.data_type
+            elif data_type_arg.i != self._option.data_type \
+                    and data_type_arg.i == mace_pb2.DT_FLOAT:
+                data_type_arg.i = self._option.data_type
 
         return False
 
