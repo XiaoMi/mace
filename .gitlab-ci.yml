@@ -6,6 +6,7 @@ stages:
   - ndk_versions_compatible_tests
   - ops_test
   - api_test
+  - python_tools_tests
   - ops_benchmark
   - extra_tests
 
@@ -92,3 +93,13 @@ ndk_versions_compatible_tests:
       done
     - export ANDROID_NDK_HOME=$DEFAULT_NDK_PATH
     - export PATH=$ANDROID_NDK_HOME:$PATH
+
+python_tools_tests:
+  stage: python_tools_tests
+  script:
+    - pwd
+    - rm -rf mace-models
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2.yml
+    - sh -c "python tools/converter.py build --config=${CONF_FILE} --disable_tuning && python tools/converter.py run --config=${CONF_FILE} --round=1 --validate" || exit 1
+    - rm -rf mace-models
