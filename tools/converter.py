@@ -112,6 +112,8 @@ DSPDataTypeStrs = [
 DSPDataType = Enum('DSPDataType', [(ele, ele) for ele in DSPDataTypeStrs],
                    type=str)
 
+WinogradParameters = [0, 2, 4]
+
 
 class DefaultValues(object):
     omp_num_threads = -1,
@@ -408,6 +410,12 @@ def format_model_config(flags):
             else:
                 subgraph[YAMLKeyword.validation_inputs_data] = \
                     validation_inputs_data
+            input_ranges = subgraph.get(
+                YAMLKeyword.input_ranges, [])
+            if not isinstance(input_ranges, list):
+                subgraph[YAMLKeyword.input_ranges] = [input_ranges]
+            else:
+                subgraph[YAMLKeyword.input_ranges] = input_ranges
 
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.nnlib_graph_mode,
@@ -416,6 +424,12 @@ def format_model_config(flags):
             value = model_config.get(key, "")
             if value == "":
                 model_config[key] = 0
+
+        mace_check(model_config[YAMLKeyword.winograd] in WinogradParameters,
+                   ModuleName.YAML_CONFIG,
+                   "'winograd' parameters must be in "
+                   + str(WinogradParameters) +
+                   ". 0 for disable winograd convolution")
 
         weight_file_path = model_config.get(YAMLKeyword.weight_file_path, "")
         model_config[YAMLKeyword.weight_file_path] = weight_file_path
@@ -511,7 +525,7 @@ def print_configuration(flags, configs):
                  configs[YAMLKeyword.embed_model_data]])
     data.append([YAMLKeyword.linkshared,
                  configs[YAMLKeyword.linkshared]])
-    data.append(["Tuning", flags.tuning])
+    data.append(["Tuning", flags.disable_tuning])
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
 
@@ -736,7 +750,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 subgraphs[0][YAMLKeyword.input_tensors],
                 subgraphs[0][YAMLKeyword.input_shapes],
                 subgraphs[0][YAMLKeyword.validation_inputs_data],
-                input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
+                input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
 
             device_type = parse_device_type(RuntimeType.gpu)
             sh_commands.tuning_run(
@@ -869,8 +883,8 @@ def build_library(flags):
 
     convert_model(configs)
 
-    generate_library(configs, flags.tuning,
-                     flags.enable_openmp, flags.address_sanitizer)
+    generate_library(configs, flags.disable_tuning,
+                     flags.disable_openmp, flags.address_sanitizer)
 
     print_library_summary(configs)
 
@@ -980,7 +994,7 @@ def run_specific_target(flags, configs, target_abi,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
             subgraphs[0][YAMLKeyword.validation_inputs_data],
-            input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
+            input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
@@ -1129,7 +1143,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
             subgraphs[0][YAMLKeyword.validation_inputs_data],
-            input_ranges=subgraphs[0].get(YAMLKeyword.input_ranges, None))
+            input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
@@ -1262,13 +1276,13 @@ def parse_args():
         help='build model library and test tools')
     build.set_defaults(func=build_library)
     build.add_argument(
-        '--tuning',
-        action="store_true",
-        help="whether tuning the parameters for the GPU of specified SoC.")
-    build.add_argument(
-        "--enable_openmp",
+        '--disable_tuning',
         action="store_false",
-        help="Enable openmp for multiple thread.")
+        help="Disable tuning the parameters for the GPU of specified SoC.")
+    build.add_argument(
+        "--disable_openmp",
+        action="store_false",
+        help="Disable openmp for multiple thread.")
     run = subparsers.add_parser(
         'run',
         parents=[all_type_parent_parser, run_bm_parent_parser,

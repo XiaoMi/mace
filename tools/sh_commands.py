@@ -486,7 +486,7 @@ def gen_model_code(model_codegen_dir,
                    input_shapes,
                    dsp_mode,
                    embed_model_data,
-                   fast_conv,
+                   winograd,
                    obfuscate,
                    model_build_type,
                    data_type,
@@ -512,7 +512,7 @@ def gen_model_code(model_codegen_dir,
               "--input_shape=%s" % input_shapes,
               "--dsp_mode=%s" % dsp_mode,
               "--embed_model_data=%s" % embed_model_data,
-              "--winograd=%s" % fast_conv,
+              "--winograd=%s" % winograd,
               "--obfuscate=%s" % obfuscate,
               "--output_dir=%s" % model_codegen_dir,
               "--model_build_type=%s" % model_build_type,
@@ -525,8 +525,8 @@ def gen_random_input(model_output_dir,
                      input_nodes,
                      input_shapes,
                      input_files,
-                     input_file_name="model_input",
-                     input_ranges=None):
+                     input_ranges,
+                     input_file_name="model_input"):
     for input_name in input_nodes:
         formatted_name = common.formatted_file_name(
             input_file_name, input_name)
@@ -534,10 +534,7 @@ def gen_random_input(model_output_dir,
             sh.rm("%s/%s" % (model_output_dir, formatted_name))
     input_nodes_str = ",".join(input_nodes)
     input_shapes_str = ":".join(input_shapes)
-    if input_ranges:
-        input_ranges_str = ":".join(input_ranges)
-    else:
-        input_ranges_str = None
+    input_ranges_str = ":".join(input_ranges)
     generate_input_data("%s/%s" % (model_output_dir, input_file_name),
                         input_nodes_str,
                         input_shapes_str,

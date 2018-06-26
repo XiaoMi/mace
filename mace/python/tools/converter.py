@@ -112,7 +112,7 @@ def main(unused_args):
             option = cvt.ConverterOption(FLAGS.transformers.split(','))
         else:
             option = cvt.ConverterOption()
-        option.winograd_enabled = bool(FLAGS.winograd)
+        option.winograd = FLAGS.winograd
 
         input_node_names = FLAGS.input_node.split(',')
         input_node_shapes = FLAGS.input_shape.split(':')
@@ -146,6 +146,17 @@ def main(unused_args):
         print("Transform model to one that can better run on device")
         if FLAGS.runtime == 'cpu+gpu':
             cpu_graph_def = copy.deepcopy(output_graph_def)
+
+            option.device = cvt.DeviceType.GPU.value
+            option.data_type = parse_data_type(
+                FLAGS.data_type, cvt.DeviceType.GPU.value)
+            mace_gpu_transformer = transformer.Transformer(
+                option, output_graph_def)
+            output_graph_def = mace_gpu_transformer.run()
+            print "start optimize gpu memory."
+            memory_optimizer.optimize_gpu_memory(output_graph_def)
+            print "GPU memory optimization done."
+
             option.device = cvt.DeviceType.CPU.value
             option.data_type = parse_data_type(
                 FLAGS.data_type, cvt.DeviceType.CPU.value)
@@ -156,17 +167,6 @@ def main(unused_args):
             print "start optimize cpu memory."
             memory_optimizer.optimize_cpu_memory(cpu_graph_def)
             print "CPU memory optimization done."
-
-            option.device = cvt.DeviceType.GPU.value
-            option.data_type = parse_data_type(
-                FLAGS.data_type, cvt.DeviceType.GPU.value)
-            option.enable_transpose_filters()
-            mace_gpu_transformer = transformer.Transformer(
-                option, output_graph_def)
-            output_gpu_graph_def = mace_gpu_transformer.run()
-            print "start optimize gpu memory."
-            memory_optimizer.optimize_gpu_memory(output_gpu_graph_def)
-            print "GPU memory optimization done."
 
             print "Merge cpu and gpu ops together"
             output_graph_def.op.extend(cpu_graph_def.op)
@@ -261,11 +261,9 @@ def parse_args():
         help="model tag for generated function and namespace")
     parser.add_argument(
         "--winograd",
-        type=str2bool,
-        nargs='?',
-        const=False,
-        default=False,
-        help="open winograd convolution or not")
+        type=int,
+        default=0,
+        help="Which version of winograd convolution to use. [2 | 4]")
     parser.add_argument(
         "--dsp_mode", type=int, default=0, help="dsp run mode, defalut=0")
     parser.add_argument(
