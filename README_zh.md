@@ -1,15 +1,15 @@
-# MiAI计算引擎
+# MACE - 移动人工智能计算引擎
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
 
 [文档](docs) |
 [FAQ](docs/faq.md) |
 [发布记录](RELEASE.md) |
-[MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) |
-[Demo](mace/android) |
+[MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
+[Demo](mace/examples/android) |
 [English](README.md)
 
-**MiAI Compute Engine** 是一个专为移动端异构计算平台优化的神经网络计算框架。
+**Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台优化的神经网络计算框架。
 主要从以下的角度做了专门的优化：
 * 性能
   * 代码经过NEON指令，OpenCL以及Hexagon HVX专门优化，并且采用
@@ -35,7 +35,7 @@
 * [如何构建](docs/getting_started/how_to_build.rst)
 
 ## 性能评测
-[MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models)
+[MACE Model Zoo](https://github.com/XiaoMi/mace-models)
 包含若干常用模型，并且会对一组手机进行每日构建。最新的性能评测结果可以从项目的持续集成页面获取。
 
 ## 交流与反馈

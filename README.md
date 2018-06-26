@@ -1,15 +1,15 @@
-# MiAI Compute Engine
+# Mobile AI Compute Engine
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
 
 [Documentation](docs) |
 [FAQ](docs/faq.md) |
 [Release Notes](RELEASE.md) |
-[MiAI Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) |
-[Demo](mace/android) |
+[MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
+[Demo](mace/examples/android) |
 [中文](README_zh.md)
 
-**MiAI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
+**Mobile AI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
 mobile heterogeneous computing platforms. The design is focused on the following
 targets:
 * Performance
@@ -43,7 +43,7 @@ targets:
 * [Create a model deployment file](docs/getting_started/create_a_model_deployment.rst)
 
 ## Performance
-[MiAI Compute Engine Model Zoo](http://v9.git.n.xiaomi.com/deep-computing/mace-models) contains
+[MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains
 several common neural networks models and built daily against a list of mobile
 phones. The benchmark result can be found in the CI result page.
 
@@ -63,7 +63,7 @@ please refer to [the contribution guide](docs/development/contributing.md).
 [Apache License 2.0](LICENSE).
 
 ## Acknowledgement
-MiAI Compute Engine depends on several open source projects located in
+MACE depends on several open source projects located in
 [third_party](third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
 * [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
