@@ -17,7 +17,7 @@ package com.xiaomi.mace.demo.result;
 public class ResultData {
     public String name;
     public float probability;
-    public long costTime;  //毫秒
+    public long costTime;  // ms
 
     public ResultData(String name, float probability) {
         this.name = name;

@@ -25,9 +25,9 @@
 #include <vector>
 #include <numeric>
 
-#include "src/main/cpp/include/mace.h"
-#include "src/main/cpp/include/mace_runtime.h"
-#include "src/main/cpp/include/mace_engine_factory.h"
+#include "src/main/cpp/include/mace/public/mace.h"
+#include "src/main/cpp/include/mace/public/mace_runtime.h"
+#include "src/main/cpp/include/mace/public/mace_engine_factory.h"
 
 namespace {
 
@@ -45,9 +45,9 @@ struct MaceContext {
   mace::DeviceType device_type = mace::DeviceType::CPU;
   std::map<std::string, ModelInfo> model_infos = {
       {"mobilenet_v1", {"input", "MobilenetV1/Predictions/Reshape_1",
-                            {1, 224, 224, 3}, {1, 1, 1, 1001}}},
+                            {1, 224, 224, 3}, {1, 1001}}},
       {"mobilenet_v2", {"input", "MobilenetV2/Predictions/Reshape_1",
-                            {1, 224, 224, 3}, {1, 1, 1, 1001}}}
+                            {1, 224, 224, 3}, {1, 1001}}}
   };
 };
 
@@ -146,11 +146,11 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
 
   mace::MaceStatus create_engine_status =
       CreateMaceEngineFromCode(mace_context.model_name,
-                       std::string(),
-                       input_names,
-                       output_names,
-                       mace_context.device_type,
-                       &mace_context.engine);
+                               std::string(),
+                               input_names,
+                               output_names,
+                               mace_context.device_type,
+                               &mace_context.engine);
 
   __android_log_print(ANDROID_LOG_ERROR,
                       "image_classify attrs",
