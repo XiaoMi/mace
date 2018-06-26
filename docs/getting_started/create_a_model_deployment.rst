@@ -6,15 +6,15 @@ file.
 
 One deployment file describes a case of model deployment,
 each file will generate one static library (if more than one ABIs specified,
-there will be one static library for each). The deployment file can contains
-one or more models, for example, a smart camera application may contains face
+there will be one static library for each). The deployment file can contain
+one or more models, for example, a smart camera application may contain face
 recognition, object recognition, and voice recognition models, which can be
 defined in one deployment file),
 
 
 Example
 ----------
-Here is an deployment file example used by Android demo application.
+Here is an example deployment file used by an Android demo application.
 
 TODO: change this example file to the demo deployment file
 (reuse the same file) and rename to a reasonable name.

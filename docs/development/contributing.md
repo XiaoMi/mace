@@ -4,7 +4,7 @@ Contributing guide
 License
 -------
 
-The source file should contains a license header. See the existing files
+The source file should contain a license header. See the existing files
 as the example.
 
 Python coding style
