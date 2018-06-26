@@ -10,31 +10,31 @@
 [中文](README_zh.md)
 
 **Mobile AI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
-mobile heterogeneous computing platforms. The design is focused on the following
+mobile heterogeneous computing platforms. The design focuses on the following
 targets:
 * Performance
   * The runtime is highly optimized with NEON, OpenCL and Hexagon, and
     [Winograd algorithm](https://arxiv.org/abs/1509.09308) is introduced to
-    speed up the convolution operations. Except for the inference speed, the
-    initialization speed is also intensively optimized.
+    speed up the convolution operations. Besides the fast inference speed, the
+    initialization part is also intensively optimized to be faster.
 * Power consumption
   * Chip dependent power options like big.LITTLE scheduling, Adreno GPU hints are
-    included as advanced API.
+    included as advanced APIs.
 * Responsiveness
-  * UI responsiveness gurantee is sometimes obligatory when runing a model.
+  * UI responsiveness guarantee is sometimes obligatory when running a model.
     Mechanism like automatically breaking OpenCL kernel into small units is
     introduced to allow better preemption for the UI rendering task.
 * Memory usage and library footprint
-  * Graph level memory allocation optimization and buffer reuse is supported.
+  * Graph level memory allocation optimization and buffer reuse are supported.
     The core library tries to keep minium external dependencies to keep the
     library footprint small.
 * Model protection
-  * Model protection is one the highest priority feature from the beginning of 
+  * Model protection is the highest priority feature from the beginning of 
     the design. Various techniques are introduced like coverting models to C++
     code and literal obfuscations.
 * Platform coverage
   * A good coverage of recent Qualcomm, MediaTek, Pinecone and other ARM based
-    chips. CPU runtime is also compitable with most POSIX systems and
+    chips. CPU runtime is also compatible with most POSIX systems and
     archetectures with limited performance.
 
 ## Getting Started
@@ -44,7 +44,7 @@ targets:
 
 ## Performance
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains
-several common neural networks models and built daily against a list of mobile
+several common neural networks and models which will be built daily against a list of mobile
 phones. The benchmark result can be found in the CI result page.
 
 ## Communication
