@@ -1051,16 +1051,17 @@ def packaging_lib(libmace_output_dir, project_name):
 def build_benchmark_model(abi,
                           model_output_dir,
                           hexagon_mode,
+                          enable_openmp,
                           linkshared=False):
-    if linkshared == 0:
+    if not linkshared:
         target_name = "benchmark_model_static"
     else:
         target_name = "benchmark_model_shared"
-        benchmark_target = "//mace/benchmark:benchmark_model_shared"
     benchmark_target = "//mace/benchmark:%s" % target_name
 
     bazel_build(benchmark_target,
                 abi=abi,
+                enable_openmp=enable_openmp,
                 hexagon_mode=hexagon_mode)
 
     benchmark_binary_file = "%s/%s" % (model_output_dir, target_name)

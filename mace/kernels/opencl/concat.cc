@@ -214,7 +214,7 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
       MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
       (*kernel_error)->UnMap();
     }
-    if (runtime->is_profiling_enabled()) {
+    if (future != nullptr && runtime->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);

@@ -97,7 +97,6 @@ extern void Register_MatMul(OperatorRegistry *op_registry);
 extern void Register_Pad(OperatorRegistry *op_registry);
 extern void Register_Pooling(OperatorRegistry *op_registry);
 extern void Register_Proposal(OperatorRegistry *op_registry);
-extern void Register_PSROIAlign(OperatorRegistry *op_registry);
 extern void Register_Quantize(OperatorRegistry *op_registry);
 extern void Register_ReduceMean(OperatorRegistry *op_registry);
 extern void Register_Requantize(OperatorRegistry *op_registry);
@@ -146,7 +145,6 @@ OperatorRegistry::OperatorRegistry() {
   ops::Register_Pad(this);
   ops::Register_Pooling(this);
   ops::Register_Proposal(this);
-  ops::Register_PSROIAlign(this);
   ops::Register_Quantize(this);
   ops::Register_ReduceMean(this);
   ops::Register_Requantize(this);

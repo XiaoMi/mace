@@ -808,6 +808,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
     sh_commands.build_benchmark_model(target_abi,
                                       build_tmp_binary_dir,
                                       hexagon_mode,
+                                      enable_openmp,
                                       linkshared)
 
     # generate library
