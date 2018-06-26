@@ -116,6 +116,7 @@ static void Deconv2d(int iters,
 
 // TODO(liutuo): add cpu benchmark when optimized.
 #define MACE_BM_DECONV_2D(N, C, H, W, KH, KW, S, OH, OW, P, OC)              \
+  MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, CPU); \
   MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, float, GPU); \
   MACE_BM_DECONV_2D_MACRO(N, C, H, W, KH, KW, S, OH, OW, P, OC, half, GPU);
 
@@ -124,6 +125,11 @@ MACE_BM_DECONV_2D(1, 32, 60, 60, 1, 1, 1, 60, 60, VALID, 128);
 
 MACE_BM_DECONV_2D(1, 128, 60, 60, 3, 3, 1, 62, 62, VALID, 128);
 MACE_BM_DECONV_2D(1, 32, 60, 60, 3, 3, 1, 60, 60, SAME, 32);
+
+MACE_BM_DECONV_2D(1, 128, 60, 60, 4, 4, 1, 63, 63, VALID, 128);
+MACE_BM_DECONV_2D(1, 32, 60, 60, 4, 4, 1, 60, 60, SAME, 32);
+MACE_BM_DECONV_2D(1, 3, 224, 224, 4, 4, 2, 448, 448, SAME, 32);
+MACE_BM_DECONV_2D(1, 3, 224, 224, 4, 4, 2, 450, 450, VALID, 32);
 MACE_BM_DECONV_2D(1, 3, 512, 512, 7, 7, 2, 1023, 1023, SAME, 32);
 MACE_BM_DECONV_2D(1, 128, 16, 16, 5, 5, 1, 20, 20, VALID, 32);
 MACE_BM_DECONV_2D(1, 128, 64, 64, 5, 5, 1, 68, 68, VALID, 32);
@@ -134,6 +140,7 @@ MACE_BM_DECONV_2D(1, 64, 32, 32, 1, 1, 1, 32, 32, VALID, 128);
 MACE_BM_DECONV_2D(1, 64, 33, 32, 3, 3, 2, 65, 63, SAME, 128);
 MACE_BM_DECONV_2D(1, 3, 224, 224, 3, 3, 2, 447, 447, SAME, 32);
 MACE_BM_DECONV_2D(1, 3, 224, 224, 3, 3, 2, 449, 449, VALID, 32);
+MACE_BM_DECONV_2D(1, 3, 224, 224, 3, 3, 2, 448, 448, SAME, 32);
 
 }  // namespace test
 }  // namespace ops
