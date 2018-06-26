@@ -1,6 +1,6 @@
-MiAI Compute Engine Documentation
-=================================
-Welcome to MiAI Compute Engine documentation.
+Mobile AI Compute Engine Documentation
+======================================
+Welcome to Mobile AI Compute Engine documentation.
 
 The main documentation is organized into the following sections:
 

@@ -6,7 +6,7 @@
 import recommonmark.parser
 import sphinx_rtd_theme
 
-project = u'MiAI Compute Engine'
+project = u'Mobile AI Compute Engine (MACE)'
 author = u'%s Developers' % project
 copyright = u'2018, %s' % author
 

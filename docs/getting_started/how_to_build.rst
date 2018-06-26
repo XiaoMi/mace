@@ -19,7 +19,7 @@ Supported Platforms
 Environment Requirement
 -------------------------
 
-MiAI Compute Engine requires the following dependencies:
+MACE requires the following dependencies:
 
 .. list-table::
     :widths: auto
@@ -67,7 +67,7 @@ MiAI Compute Engine requires the following dependencies:
 
     ``export ANDROID_NDK_HOME=/path/to/ndk`` to specify ANDROID_NDK_HOME
 
-MiAI Compute Engine provides Dockerfile with these dependencies installed,
+MACE provides Dockerfile with these dependencies installed,
 you can build the image from the Dockerfile,
 
 .. code:: sh
@@ -95,7 +95,7 @@ Usage
 --------
 
 =======================================
-1. Pull MiAI Compute Engine source code
+1. Pull MACE source code
 =======================================
 
 .. code:: sh
@@ -166,7 +166,7 @@ optimizations for different runtimes,
 
 -  Caffe
 
-MiAI Compute Engine converter only supports Caffe 1.0+, you need to upgrade
+MACE converter only supports Caffe 1.0+, you need to upgrade
 your models with Caffe built-in tool when necessary,
 
 .. code:: bash
@@ -184,7 +184,7 @@ your models with Caffe built-in tool when necessary,
 -----------------
 3.1 Overview
 -----------------
-MiAI Compute Engine can build either static or shared library (which is
+MACE can build either static or shared library (which is
 specified by ``linkshared`` in YAML model deployment file).
 The followings are two use cases.
 
@@ -208,7 +208,7 @@ The followings are two use cases.
          There will be around of 1 ~ 10% performance drop for GPU
          runtime compared to the well tuned library.
 
-MiAI Compute Engine provide command line tool (``tools/converter.py``) for
+MACE provide command line tool (``tools/converter.py``) for
 model conversion, compiling, test run, benchmark and correctness validation.
 
 .. note::

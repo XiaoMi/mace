@@ -1,7 +1,7 @@
 Introduction
 ============
 
-MiAI Compute Engine is a deep learning inference framework optimized for
+Mobile AI Compute Engine (MACE) is a deep learning inference framework optimized for
 mobile heterogeneous computing platforms. The following figure shows the
 overall architecture.
 
@@ -12,8 +12,8 @@ overall architecture.
 Model format
 ------------
 
-MiAI Compute Engine defines a customized model format which is similar to
-Caffe2. The MiAI model can be converted from exported models by TensorFlow
+MACE defines a customized model format which is similar to
+Caffe2. The MACE model can be converted from exported models by TensorFlow
 and Caffe. A YAML file is used to describe the model deployment details. In the
 next chapter, there is a detailed guide showing how to create this YAML file.
 
@@ -26,7 +26,7 @@ more frameworks will be supported in the future.
 Model loading
 -------------
 
-The MiAI model format contains two parts: the model graph definition and
+The MACE model format contains two parts: the model graph definition and
 the model parameter tensors. The graph part utilizes Protocol Buffers
 for serialization. All the model parameter tensors are concatenated
 together into a continuous byte array, and we call this array tensor data in
