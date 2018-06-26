@@ -66,11 +66,13 @@ class EltwiseType(Enum):
     ABS = 7
     SQR_DIFF = 8
     POW = 9
+    EQUAL = 10
 
 
 MaceSupportedOps = [
     'Activation',
     'AddN',
+    'ArgMax',
     'BatchNorm',
     'BatchToSpaceND',
     'BiasAdd',

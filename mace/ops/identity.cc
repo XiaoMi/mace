@@ -23,6 +23,11 @@ void Register_Identity(OperatorRegistry *op_registry) {
                                           .TypeConstraint<float>("T")
                                           .Build(),
                          IdentityOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Identity")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<int32_t>("T")
+                                          .Build(),
+                         IdentityOp<DeviceType::CPU, int32_t>);
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Identity")

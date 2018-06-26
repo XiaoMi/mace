@@ -76,6 +76,7 @@ namespace ops {
 // Keep in lexicographical order
 extern void Register_Activation(OperatorRegistry *op_registry);
 extern void Register_AddN(OperatorRegistry *op_registry);
+extern void Register_ArgMax(OperatorRegistry *op_registry);
 extern void Register_BatchNorm(OperatorRegistry *op_registry);
 extern void Register_BatchToSpaceND(OperatorRegistry *op_registry);
 extern void Register_BiasAdd(OperatorRegistry *op_registry);
@@ -124,6 +125,7 @@ OperatorRegistry::OperatorRegistry() {
   // Keep in lexicographical order
   ops::Register_Activation(this);
   ops::Register_AddN(this);
+  ops::Register_ArgMax(this);
   ops::Register_BatchNorm(this);
   ops::Register_BatchToSpaceND(this);
   ops::Register_BiasAdd(this);

@@ -67,6 +67,26 @@ struct StridedSliceFunctor {
     const T *input_data = input->data<T>();
     const int32_t *begin_indices_data = begin_indices->data<int32_t>();
     const int32_t *end_indices_data = end_indices->data<int32_t>();
+    const int32_t *strides_data = strides->data<int32_t>();
+
+    std::vector<int32_t> pad_begin_indices(input->dim_size(), 0);
+    std::vector<int32_t> pad_end_indices(input->dim_size(), 0);
+    std::vector<int32_t> pad_strides_indices(input->dim_size(), 1);
+
+    if (begin_indices->size() < input->dim_size()) {
+      for (index_t i = 0; i < begin_indices->size(); ++i) {
+        pad_begin_indices[i] = begin_indices_data[i];
+        pad_end_indices[i] = end_indices_data[i];
+        pad_strides_indices[i] = strides_data[i];
+      }
+      for (index_t i = begin_indices->size(); i < input->dim_size(); ++i) {
+        pad_end_indices[i] = input->dim(i);
+      }
+      begin_indices_data = pad_begin_indices.data();
+      end_indices_data = pad_end_indices.data();
+      strides_data = pad_strides_indices.data();
+    }
+
     std::vector<int32_t> slice_end_data;
     if (is_slice_) {
       // if this op is slice, the end_indices_data is size actually
@@ -80,7 +100,6 @@ struct StridedSliceFunctor {
       }
       end_indices_data = slice_end_data.data();
     }
-    const int32_t *strides_data = strides->data<int32_t>();
 
     std::vector<index_t> output_shape;
     std::vector<index_t> real_begin_indices(input->dim_size(), 0);

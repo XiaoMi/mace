@@ -22,11 +22,11 @@
 namespace mace {
 namespace ops {
 
-template <DeviceType D, typename DT>
-class CastOp : public Operator<D, DT> {
+template <DeviceType D, typename SrcType>
+class CastOp : public Operator<D, SrcType> {
  public:
   CastOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, DT>(op_def, ws) {}
+      : Operator<D, SrcType>(op_def, ws) {}
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_UNUSED(future);
@@ -36,17 +36,16 @@ class CastOp : public Operator<D, DT> {
 
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    auto src_dtype = input->dtype();
-
-    auto output_data = output->mutable_data<DT>();
+    auto dst_dtype = output->dtype();
 
 #define MACE_CAST_COPY \
-    auto input_data = input->data<T>();                                 \
+    auto output_data = output->mutable_data<T>();                       \
+    auto input_data = input->data<SrcType>();                           \
     for (index_t i = 0; i < output->size(); ++i) {                      \
-      output_data[i] = static_cast<DT>(input_data[i]);                  \
+      output_data[i] = static_cast<T>(input_data[i]);                   \
     }
 
-    MACE_RUN_WITH_TYPE_ENUM(src_dtype, MACE_CAST_COPY);
+    MACE_RUN_WITH_TYPE_ENUM(dst_dtype, MACE_CAST_COPY);
 
     return MACE_SUCCESS;
   }

@@ -62,6 +62,7 @@ TFSupportedOps = [
     'Square',
     'SquaredDifference',
     'Rsqrt',
+    'Equal',
     'Relu',
     'Relu6',
     'Tanh',
@@ -93,6 +94,7 @@ TFSupportedOps = [
     'Stack',
     'Pack',
     'Cast',
+    'ArgMax',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -125,7 +127,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.RealDiv.name: EltwiseType.DIV,
         TFOpType.SquaredDifference.name: EltwiseType.SQR_DIFF,
         TFOpType.Square.name: EltwiseType.POW,
-        TFOpType.Rsqrt.name: EltwiseType.POW
+        TFOpType.Rsqrt.name: EltwiseType.POW,
+        TFOpType.Equal.name: EltwiseType.EQUAL,
     }
     activation_type = {
         TFOpType.Relu.name: ActivationType.RELU,
@@ -153,6 +156,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.SquaredDifference.name: self.convert_elementwise,
             TFOpType.Square.name: self.convert_elementwise,
             TFOpType.Rsqrt.name: self.convert_elementwise,
+            TFOpType.Equal.name: self.convert_elementwise,
             TFOpType.Relu.name: self.convert_activation,
             TFOpType.Relu6.name: self.convert_activation,
             TFOpType.Tanh.name: self.convert_activation,
@@ -183,7 +187,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Slice.name: self.convert_slice,
             TFOpType.Pack.name: self.convert_stack,
             TFOpType.Stack.name: self.convert_stack,
-            TFOpType.Cast.name: self.convert_cast
+            TFOpType.Cast.name: self.convert_cast,
+            TFOpType.ArgMax.name: self.convert_argmax,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -376,18 +381,29 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         if type_arg.i != EltwiseType.NEG.value \
                 and type_arg.i != EltwiseType.ABS.value:
-            if len(tf_op.inputs[0].shape) == 0:
-                value_arg = op.arg.add()
-                value_arg.name = MaceKeyword.mace_value_str
-                value_arg.f = tf_op.inputs[0].eval().astype(np.float32)
-                self._skip_tensor.add(tf_op.inputs[0].name)
-                del op.input[0]
-            elif len(tf_op.inputs) > 1 and len(tf_op.inputs[1].shape) == 0:
-                value_arg = op.arg.add()
-                value_arg.name = MaceKeyword.mace_value_str
-                value_arg.f = tf_op.inputs[1].eval().astype(np.float32)
-                self._skip_tensor.add(tf_op.inputs[1].name)
-                del op.input[1]
+            try:
+                def is_commutative(eltwise_type):
+                    return EltwiseType(eltwise_type) in [
+                        EltwiseType.SUM, EltwiseType.PROD,
+                        EltwiseType.MAX, EltwiseType.MIN]
+
+                if len(tf_op.inputs) > 1 and len(tf_op.inputs[1].shape) == 0:
+                    scalar = tf_op.inputs[1].eval().astype(np.float32)
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_value_str
+                    value_arg.f = scalar
+                    self._skip_tensor.add(tf_op.inputs[1].name)
+                    del op.input[1]
+                elif len(tf_op.inputs[0].shape) == 0 and \
+                        is_commutative(type_arg.i):
+                    scalar = tf_op.inputs[0].eval().astype(np.float32)
+                    value_arg = op.arg.add()
+                    value_arg.name = MaceKeyword.mace_value_str
+                    value_arg.f = scalar
+                    self._skip_tensor.add(tf_op.inputs[0].name)
+                    del op.input[0]
+            except tf.errors.InvalidArgumentError:
+                pass
 
     def convert_biasadd(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -550,7 +566,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
             transpose_a_arg.name = MaceKeyword.mace_transpose_a_str
             transpose_a_arg.i = int(adj_x)
         except ValueError:
-            pass
+            try:
+                transpose_a = tf_op.get_attr('transpose_a')
+                transpose_a_arg = op.arg.add()
+                transpose_a_arg.name = MaceKeyword.mace_transpose_a_str
+                transpose_a_arg.i = int(transpose_a)
+            except ValueError:
+                pass
 
         try:
             adj_y = tf_op.get_attr('adj_y')
@@ -558,7 +580,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
             transpose_b_arg.name = MaceKeyword.mace_transpose_b_str
             transpose_b_arg.i = int(adj_y)
         except ValueError:
-            pass
+            try:
+                transpose_b = tf_op.get_attr('transpose_b')
+                transpose_b_arg = op.arg.add()
+                transpose_b_arg.name = MaceKeyword.mace_transpose_b_str
+                transpose_b_arg.i = int(transpose_b)
+            except ValueError:
+                pass
 
     def convert_shape(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -689,14 +717,18 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Cast.name
 
-        data_type_arg = ConverterUtil.get_arg(op, 'T')
         try:
             dtype = tf_op.get_attr('DstT')
             if dtype == tf.int32:
-                data_type_arg.i = mace_pb2.DT_INT32
+                op.output_type.extend([mace_pb2.DT_INT32])
             elif dtype == tf.float32:
-                data_type_arg.i = self._option.data_type
+                op.output_type.extend([self._option.data_type])
             else:
                 mace_check(False, "data type %s not supported" % dtype)
         except ValueError:
-            data_type_arg.i = self._option.data_type
+            op.output_type.extend([self._option.data_type])
+
+    def convert_argmax(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ArgMax.name
+        op.output_type.extend([mace_pb2.DT_INT32])

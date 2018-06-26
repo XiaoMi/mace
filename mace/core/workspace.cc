@@ -157,6 +157,8 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
     }
   }
   MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
+  // TODO(liyin): memory block should not have concept of type, but to be
+  // consistent with gpu, all memory block use float/half as unit
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
     if (device_type == DeviceType::GPU) {
       // TODO(liuqi): refactor based on PB
@@ -191,8 +193,15 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
       auto mem_ids = op.mem_id();
       int count = mem_ids.size();
       for (int i = 0; i < count; ++i) {
+        DataType output_type;
+        if (i < op.output_type_size()) {
+          output_type = op.output_type(i);
+        } else {
+          output_type = dtype;
+        }
         std::unique_ptr<Tensor> tensor
-            (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]), dtype));
+            (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]),
+                        output_type));
         tensor->SetSourceOpName(op.name());
         if (device_type == DeviceType::GPU) {
           VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
