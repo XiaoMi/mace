@@ -13,7 +13,8 @@ cmake_minimum_required(VERSION 3.4.1)
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../app/libs/${ANDROID_ABI})
 
 include_directories(${CMAKE_SOURCE_DIR}/)
-file(GLOB static_file ${CMAKE_SOURCE_DIR}/../../../build/demo_app_models/lib/arm64-v8a/*.a)
+include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp/include)
+file(GLOB static_file ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/*.a)
 
 MESSAGE(STATUS "FILE URL = ${CMAKE_SOURCE_DIR}")
 MESSAGE(STATUS "FILE URL = ${static_file}")
