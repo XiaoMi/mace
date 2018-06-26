@@ -137,10 +137,10 @@ struct ProposalFunctor {
       anchors_(GenerateAnchors(scales, ratios, base_size)) {}
 
   MaceStatus operator()(const Tensor *rpn_cls_prob,
-                  const Tensor *rpn_bbox_pred,
-                  const Tensor *img_info_tensor,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        const Tensor *rpn_bbox_pred,
+                        const Tensor *img_info_tensor,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     MACE_CHECK(rpn_cls_prob->dim(1) == rpn_bbox_pred->dim(1) &&
         rpn_cls_prob->dim(2) == rpn_bbox_pred->dim(2));

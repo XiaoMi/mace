@@ -467,14 +467,15 @@ class Transformer(base_converter.ConverterInterface):
         if filter_height != 3 or filter_width != 3 or strides[0] > 1 \
                 or strides[1] > 1 or dilations[0] > 1 or dilations[1] > 1:
             return False
-        block_size = self._gpu_wino_blk
+        self._gpu_wino_blk = self._option.winograd
+        block_size = self._option.winograd
         blk_sqr = (block_size + 2) * (block_size + 2)
         width =\
             batch * ((out_height + block_size - 1) / block_size) *\
             ((out_width + block_size - 1) / block_size)
-        if blk_sqr * in_channels > OPENCL_IMAGE_MAX_SIZE \
-                or blk_sqr * out_channels > OPENCL_IMAGE_MAX_SIZE \
-                or width > OPENCL_IMAGE_MAX_SIZE:
+        if blk_sqr * in_channels >= OPENCL_IMAGE_MAX_SIZE \
+                or blk_sqr * out_channels >= OPENCL_IMAGE_MAX_SIZE \
+                or width >= OPENCL_IMAGE_MAX_SIZE:
             self._gpu_wino_blk = 2
             block_size = self._gpu_wino_blk
             blk_sqr = (block_size + 2) * (block_size + 2)

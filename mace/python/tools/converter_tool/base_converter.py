@@ -92,7 +92,6 @@ MaceSupportedOps = [
     'Pad',
     'Pooling',
     'Proposal',
-    'PSROIAlign',
     'Quantize',
     'ReduceMean',
     'Requantize',
