@@ -48,6 +48,10 @@ namespace str_util {
 
 std::vector<std::string> Split(const std::string &str, char delims) {
   std::vector<std::string> result;
+  if (str.empty()) {
+    result.push_back("");
+    return result;
+  }
   std::string tmp = str;
   while (!tmp.empty()) {
     size_t next_offset = tmp.find(delims);

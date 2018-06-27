@@ -773,11 +773,17 @@ def tuning_run(abi,
             (phone_data_dir, os.path.basename(opencl_binary_file)),
         ])
         adb_cmd = ' '.join(adb_cmd)
+        adb_cmd_file = "%s/%s" % (phone_data_dir, 'cmd_file')
+        with open('/tmp/mace_cmd_file', 'w') as cmd_file:
+            cmd_file.write(adb_cmd)
+        adb_push('/tmp/mace_cmd_file', adb_cmd_file, serialno)
+
         sh.adb(
             "-s",
             serialno,
             "shell",
-            adb_cmd,
+            "sh",
+            adb_cmd_file,
             _tty_in=True,
             _out=process_output,
             _err_to_out=True)
@@ -1159,10 +1165,7 @@ def benchmark_model(abi,
                  phone_data_dir,
                  serialno)
 
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
+        adb_cmd = [
             "LD_LIBRARY_PATH=%s" % phone_data_dir,
             "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
             "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" %
@@ -1185,6 +1188,19 @@ def benchmark_model(abi,
             "--model_file=%s" % mace_model_phone_path,
             "--opencl_binary_file=%s/%s" %
             (phone_data_dir, os.path.basename(opencl_binary_file)),
+        ]
+        adb_cmd = ' '.join(adb_cmd)
+        adb_cmd_file = "%s/%s" % (phone_data_dir, 'cmd_file')
+        with open('/tmp/mace_cmd_file', 'w') as cmd_file:
+            cmd_file.write(adb_cmd)
+        adb_push('/tmp/mace_cmd_file', adb_cmd_file, serialno)
+
+        sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            "sh",
+            adb_cmd_file,
             _fg=True)
 
     print("Benchmark done!\n")

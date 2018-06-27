@@ -264,7 +264,6 @@ MaceStatus MaceEngine::Impl::Run(
       auto shape = output_tensor->shape();
       int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
                                             std::multiplies<int64_t>());
-      MACE_CHECK(!shape.empty()) << "Output's shape must greater than 0";
       MACE_CHECK(shape == output.second.shape())
           << "Output shape mismatch: "
           << MakeString<int64_t>(output.second.shape())

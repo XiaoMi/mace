@@ -38,12 +38,12 @@ void TestStridedSlice(const std::vector<index_t> &input_shape,
   OpsTestNet net;
   net.AddInputFromArray<CPU, float>("Input", input_shape, input);
   net.AddInputFromArray<CPU, int32_t>(
-      "BeginIndices", {static_cast<int32_t>(input_shape.size())},
+      "BeginIndices", {static_cast<int32_t>(begin_indices.size())},
       begin_indices);
   net.AddInputFromArray<CPU, int32_t>(
-      "EndIndices", {static_cast<int32_t>(input_shape.size())}, end_indices);
+      "EndIndices", {static_cast<int32_t>(end_indices.size())}, end_indices);
   net.AddInputFromArray<CPU, int32_t>(
-      "Strides", {static_cast<int32_t>(input_shape.size())}, strides);
+      "Strides", {static_cast<int32_t>(strides.size())}, strides);
 
   OpDefBuilder("StridedSlice", "StridedSliceOpTest")
       .Input("Input")
@@ -129,6 +129,8 @@ TEST_F(StridedSliceOpTest, TestStridedSliceRank1) {
 
 TEST_F(StridedSliceOpTest, TestStridedSliceRank2) {
   TestStridedSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {0, 0}, {2, 3}, {1, 1}, 0, 0, 0,
+                   0, 0, {2, 3}, {1, 2, 3, 4, 5, 6});
+  TestStridedSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {0}, {2}, {1}, 0, 0, 0,
                    0, 0, {2, 3}, {1, 2, 3, 4, 5, 6});
   TestStridedSlice({2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1}, {2, 3}, {1, 1}, 0, 0, 0,
                    0, 0, {1, 2}, {5, 6});
