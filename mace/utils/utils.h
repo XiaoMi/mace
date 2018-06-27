@@ -76,7 +76,7 @@ inline std::string ObfuscateString(const std::string &src,
 // ObfuscateString(ObfuscateString(str)) ==> str
 inline std::string ObfuscateString(const std::string &src) {
   // Keep consistent with obfuscation in python tools
-  return ObfuscateString(src, "Xiaomi-AI-Platform-Mace");
+  return ObfuscateString(src, "Mobile-AI-Compute-Engine");
 }
 
 // Obfuscate synbol or path string
