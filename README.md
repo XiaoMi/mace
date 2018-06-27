@@ -1,4 +1,8 @@
-# Mobile AI Compute Engine
+<div  align="center">
+<img src="docs/mace-logo.png" width = "400" alt="MACE" />
+</div>
+
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
 
