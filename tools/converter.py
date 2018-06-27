@@ -1246,7 +1246,7 @@ def parse_args():
     build_run_parent_parser.add_argument(
         '--address_sanitizer',
         action="store_true",
-        help="Whether to use valgrind to check memory error")
+        help="Whether to use address sanitizer to check memory error")
     run_bm_parent_parser = argparse.ArgumentParser(add_help=False)
     run_bm_parent_parser.add_argument(
         "--omp_num_threads",

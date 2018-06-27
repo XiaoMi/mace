@@ -23,7 +23,7 @@ import jinja2
 
 FLAGS = None
 
-encrypt_lookup_table = "Xiaomi-AI-Platform-Mace"
+encrypt_lookup_table = "Mobile-AI-Compute-Engine"
 
 
 def encrypt_code(code_str):
