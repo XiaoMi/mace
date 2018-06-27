@@ -5,6 +5,7 @@
 [Documentation](docs) |
 [FAQ](docs/faq.md) |
 [Release Notes](RELEASE.md) |
+[Roadmap](ROADMAP.md) |
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
 [Demo](mace/examples/android) |
 [中文](README_zh.md)
