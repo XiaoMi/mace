@@ -11,13 +11,13 @@ v0.6.2 (2018-05-17)
 
 v0.6.3 (2018-05-21)
 ------
-1. support `float` data_type when running in gpu
+1. support `float` `data_type` when running in GPU
 
 v0.7.0 (2018-05-18)
 ------
 1. Change interface that report error type
-2. Improve cpu performace
-3. Merge cpu/gpu engine to on
+2. Improve CPU performance
+3. Merge CPU/GPU engine to on
 
 v0.8.0 (2018-05-31)
 ------
