@@ -4,7 +4,7 @@
 
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
+[![pipeline status](https://gitlab.com/llhe/mace/badges/master/pipeline.svg)](https://gitlab.com/llhe/mace/pipelines)
 [![doc build status](https://readthedocs.org/projects/mace/badge/?version=latest)](https://readthedocs.org/projects/mace/badge/?version=latest)
 
 [Documentation](https://mace.readthedocs.io) |
