@@ -1,5 +1,5 @@
-<div  align="center">
-<img src="docs/mace-logo.png" width = "400" alt="MACE" />
+<div align="center">
+<img src="docs/mace-logo.png" width="400" alt="MACE" />
 </div>
 
 
@@ -32,16 +32,16 @@ targets:
     introduced to allow better preemption for the UI rendering task.
 * Memory usage and library footprint
   * Graph level memory allocation optimization and buffer reuse are supported.
-    The core library tries to keep minium external dependencies to keep the
+    The core library tries to keep minimum external dependencies to keep the
     library footprint small.
 * Model protection
   * Model protection is the highest priority feature from the beginning of 
-    the design. Various techniques are introduced like coverting models to C++
+    the design. Various techniques are introduced like converting models to C++
     code and literal obfuscations.
 * Platform coverage
   * A good coverage of recent Qualcomm, MediaTek, Pinecone and other ARM based
     chips. CPU runtime is also compatible with most POSIX systems and
-    archetectures with limited performance.
+    architectures with limited performance.
 
 ## Getting Started
 * [Introduction](https://mace.readthedocs.io/en/latest/getting_started/introduction.html)
@@ -51,12 +51,12 @@ targets:
 ## Performance
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains
 several common neural networks and models which will be built daily against a list of mobile
-phones. The benchmark result can be found in the CI result page.
+phones. The benchmark results can be found in the CI result page.
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
 * Mailing list: [mace-users@googlegroups.com](mailto:mace-users@googlegroups.com)
-* Google groups: https://groups.google.com/forum/#!forum/mace-users
+* Google Groups: https://groups.google.com/forum/#!forum/mace-users
 * QQ群: 756046893
 
 ## Contributing
@@ -69,7 +69,7 @@ please refer to [the contribution guide](https://mace.readthedocs.io/en/latest/d
 [Apache License 2.0](LICENSE).
 
 ## Acknowledgement
-MACE depends on several open source projects located in
+MACE depends on several open source projects located in the
 [third_party](third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
 * [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
@@ -82,4 +82,4 @@ the following projects during the development:
   practices from these projects.
 
 Finally, we also thank the Qualcomm, Pinecone and MediaTek engineering teams for
-their helps.
+their help.
