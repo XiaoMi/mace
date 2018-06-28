@@ -1,9 +1,13 @@
-# MACE - 移动人工智能计算引擎
+<div  align="center">
+<img src="docs/mace-logo.png" width = "400" alt="MACE" />
+</div>
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
+[![doc build status](https://readthedocs.org/projects/mace/badge/?version=latest)](https://readthedocs.org/projects/mace/badge/?version=latest)
 
-[文档](docs) |
-[FAQ](docs/faq.md) |
+[文档](https://mace.readthedocs.io) |
+[FAQ](https://mace.readthedocs.io/en/latest/faq.html) |
 [发布记录](RELEASE.md) |
 [路线图](ROADMAP.md) |
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
@@ -31,9 +35,9 @@
   同时支持在具有POSIX接口的系统的CPU上运行。
 
 ## 开始使用
-* [简介](docs/getting_started/introduction.rst)
-* [创建模型部署文件](docs/getting_started/create_a_model_deployment.rst)
-* [如何构建](docs/getting_started/how_to_build.rst)
+* [简介](https://mace.readthedocs.io/en/latest/getting_started/introduction.html)
+* [创建模型部署文件](https://mace.readthedocs.io/en/latest/getting_started/create_a_model_deployment.html)
+* [如何构建](https://mace.readthedocs.io/en/latest/getting_started/how_to_build.html)
 
 ## 性能评测
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models)

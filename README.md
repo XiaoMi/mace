@@ -5,9 +5,10 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![build status](http://v9.git.n.xiaomi.com/deep-computing/mace/badges/master/build.svg)](http://v9.git.n.xiaomi.com/deep-computing/mace/pipelines)
+[![doc build status](https://readthedocs.org/projects/mace/badge/?version=latest)](https://readthedocs.org/projects/mace/badge/?version=latest)
 
-[Documentation](docs) |
-[FAQ](docs/faq.md) |
+[Documentation](https://mace.readthedocs.io) |
+[FAQ](https://mace.readthedocs.io/en/latest/faq.html) |
 [Release Notes](RELEASE.md) |
 [Roadmap](ROADMAP.md) |
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
@@ -43,9 +44,9 @@ targets:
     archetectures with limited performance.
 
 ## Getting Started
-* [Introduction](docs/getting_started/introduction.rst)
-* [How to build](docs/getting_started/how_to_build.rst)
-* [Create a model deployment file](docs/getting_started/create_a_model_deployment.rst)
+* [Introduction](https://mace.readthedocs.io/en/latest/getting_started/introduction.html)
+* [Create a model deployment file](https://mace.readthedocs.io/en/latest/getting_started/create_a_model_deployment.html)
+* [How to build](https://mace.readthedocs.io/en/latest/getting_started/how_to_build.html)
 
 ## Performance
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains
@@ -62,7 +63,7 @@ phones. The benchmark result can be found in the CI result page.
 Any kind of contributions are welcome. For bug reports, feature requests,
 please just open an issue without any hesitance. For code contributions, it's
 strongly suggested to open an issue for discussion first. For more details,
-please refer to [the contribution guide](docs/development/contributing.md).
+please refer to [the contribution guide](https://mace.readthedocs.io/en/latest/development/contributing.html).
 
 ## License
 [Apache License 2.0](LICENSE).
