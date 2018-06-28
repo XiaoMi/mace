@@ -145,11 +145,16 @@ public class CameraActivity extends Activity implements View.OnClickListener {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == Constant.CAMERA_PERMISSION_REQ) {
+            boolean allGrant = true;
             for (int result : grantResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {
                     mCameraEngage.onResume();
+                    allGrant = false;
                     break;
                 }
+            }
+            if (allGrant) {
+                initData = new InitData();
             }
         }
     }
