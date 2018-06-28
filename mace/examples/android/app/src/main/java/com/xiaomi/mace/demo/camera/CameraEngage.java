@@ -212,9 +212,9 @@ public abstract class CameraEngage implements SurfaceTextureListener {
     }
 
     boolean checkCameraPermission() {
-        if (ContextCompat.checkSelfPermission(mTextureView.getContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+        if (ContextCompat.checkSelfPermission(mTextureView.getContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(mTextureView.getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(mTextureView.getContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ((Activity) mTextureView.getContext()).requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, CAMERA_PERMISSION_REQ);
+            ((Activity) mTextureView.getContext()).requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, CAMERA_PERMISSION_REQ);
             return false;
         }
         return true;

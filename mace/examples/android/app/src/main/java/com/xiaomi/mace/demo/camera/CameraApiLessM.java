@@ -104,8 +104,6 @@ public class CameraApiLessM extends CameraEngage implements Camera.AutoFocusCall
     private void setOutputConfig(int width, int height) {
         Camera.Parameters parameters = mCamera.getParameters();
         parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-        parameters.setPreviewFormat(ImageFormat.JPEG);
-        parameters.setPictureFormat(ImageFormat.JPEG);
         Camera.Size size = getOptimalSize(parameters.getSupportedPreviewSizes(), width, height);
         mPreviewWidth = size.width;
         mPreviewHeight = size.height;

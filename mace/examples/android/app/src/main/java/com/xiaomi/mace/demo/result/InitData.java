@@ -38,7 +38,11 @@ public class InitData {
         gpuPerfHint = 3;
         gpuPriorityHint = 3;
         device = DEVICES[0];
-        kernelPath = Environment.getDownloadCacheDirectory().getAbsolutePath() + File.separator + "mace";
+        kernelPath = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "mace";
+        File file = new File(kernelPath);
+        if (!file.exists()) {
+            file.mkdir();
+        }
 
     }
 
