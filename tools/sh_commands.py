@@ -490,7 +490,7 @@ def gen_model_code(model_codegen_dir,
                    obfuscate,
                    model_build_type,
                    data_type,
-                   transformers):
+                   graph_optimize_options):
     bazel_build_common("//mace/python/tools:converter")
 
     if os.path.exists(model_codegen_dir):
@@ -517,7 +517,7 @@ def gen_model_code(model_codegen_dir,
               "--output_dir=%s" % model_codegen_dir,
               "--model_build_type=%s" % model_build_type,
               "--data_type=%s" % data_type,
-              "--transformers=%s" % transformers,
+              "--graph_optimize_options=%s" % graph_optimize_options,
               _fg=True)
 
 
