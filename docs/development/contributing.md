@@ -13,7 +13,8 @@ Python coding style
 Changes to Python code should conform to [PEP8 Style Guide for Python
 Code](https://www.python.org/dev/peps/pep-0008/).
 
-You can use [pycodestyle](ihttps://github.com/PyCQA/pycodestyle) check the style.
+You can use [pycodestyle](ihttps://github.com/PyCQA/pycodestyle) to check the
+style.
 
 C++ coding style
 ----------------
