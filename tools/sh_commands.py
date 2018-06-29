@@ -773,10 +773,13 @@ def tuning_run(abi,
             (phone_data_dir, os.path.basename(opencl_binary_file)),
         ])
         adb_cmd = ' '.join(adb_cmd)
-        adb_cmd_file = "%s/%s" % (phone_data_dir, 'cmd_file')
-        with open('/tmp/mace_cmd_file', 'w') as cmd_file:
+        cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
+        adb_cmd_file = "%s/%s" % (phone_data_dir, cmd_file_name)
+        tmp_cmd_file = "%s/%s" % ('/tmp', cmd_file_name)
+        with open(tmp_cmd_file, 'w') as cmd_file:
             cmd_file.write(adb_cmd)
-        adb_push('/tmp/mace_cmd_file', adb_cmd_file, serialno)
+        adb_push(tmp_cmd_file, adb_cmd_file, serialno)
+        os.remove(tmp_cmd_file)
 
         sh.adb(
             "-s",
@@ -790,7 +793,17 @@ def tuning_run(abi,
         stdout = "".join(stdout_buff)
         if not stdout_success(stdout):
             common.MaceLogger.error("Mace Run", "Mace run failed.")
+
+        sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            "rm",
+            adb_cmd_file,
+            _fg=True)
+
         print("Running finished!\n")
+
         return stdout
 
 
@@ -1190,16 +1203,27 @@ def benchmark_model(abi,
             (phone_data_dir, os.path.basename(opencl_binary_file)),
         ]
         adb_cmd = ' '.join(adb_cmd)
-        adb_cmd_file = "%s/%s" % (phone_data_dir, 'cmd_file')
-        with open('/tmp/mace_cmd_file', 'w') as cmd_file:
+        cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
+        adb_cmd_file = "%s/%s" % (phone_data_dir, cmd_file_name)
+        tmp_cmd_file = "%s/%s" % ('/tmp', cmd_file_name)
+        with open(tmp_cmd_file, 'w') as cmd_file:
             cmd_file.write(adb_cmd)
-        adb_push('/tmp/mace_cmd_file', adb_cmd_file, serialno)
+        adb_push(tmp_cmd_file, adb_cmd_file, serialno)
+        os.remove(tmp_cmd_file)
 
         sh.adb(
             "-s",
             serialno,
             "shell",
             "sh",
+            adb_cmd_file,
+            _fg=True)
+
+        sh.adb(
+            "-s",
+            serialno,
+            "shell",
+            "rm",
             adb_cmd_file,
             _fg=True)
 
