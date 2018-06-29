@@ -67,8 +67,8 @@ MACE requires the following dependencies:
 
     ``export ANDROID_NDK_HOME=/path/to/ndk`` to specify ANDROID_NDK_HOME
 
-MACE provides Dockerfile with these dependencies installed,
-you can build the image from the Dockerfile,
+MACE provides a Dockerfile with these dependencies installed,
+you can build the image from it,
 
 .. code:: sh
 

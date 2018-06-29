@@ -1,7 +1,7 @@
 Create a model deployment file
 ==============================
 
-The first step to deploy you models is to create a YAML model deployment
+The first step to deploy your models is to create a YAML model deployment
 file.
 
 One deployment file describes a case of model deployment,
@@ -9,7 +9,7 @@ each file will generate one static library (if more than one ABIs specified,
 there will be one static library for each). The deployment file can contain
 one or more models, for example, a smart camera application may contain face
 recognition, object recognition, and voice recognition models, which can be
-defined in one deployment file),
+defined in one deployment file.
 
 
 Example
@@ -43,7 +43,7 @@ Configurations
     * - linkshared
       - [optional] Use dynamic linking for libmace library when setting to 1, or static linking when setting to 0, default to 0.
     * - model_name
-      - model name. should be unique if there are multiple models.
+      - model name, should be unique if there are multiple models.
         **LIMIT: if build_type is code, model_name will used in c++ code so that model_name must fulfill c++ name specification.**
     * - platform
       - The source framework, one of [tensorflow, caffe].
@@ -56,7 +56,7 @@ Configurations
     * - weight_sha256_checksum
       - [optional] The SHA256 checksum of the weight file, used by Caffe model.
     * - subgraphs
-      - subgraphs key. ** DO NOT EDIT **
+      - subgraphs key. **DO NOT EDIT**
     * - input_tensors
       - The input tensor names (tensorflow), top name of inputs' layer (caffe). one or more strings.
     * - output_tensors
@@ -70,9 +70,9 @@ Configurations
     * - validation_inputs_data
       - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used.
     * - runtime
-      - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains cpu and gpu model definition so you can run the model on both cpu and gpu.
+      - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type
-      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for gpu, default is fp16_fp32. [fp32] for cpu. [uint8] for dsp.
+      - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU, default is fp16_fp32. [fp32] for CPU. [uint8] for DSP.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default to 0.
     * - nnlib_graph_mode
