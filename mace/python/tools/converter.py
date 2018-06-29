@@ -108,8 +108,9 @@ def main(unused_args):
             print("%s does not support dsp runtime yet." % FLAGS.platform)
             sys.exit(-1)
     else:
-        if FLAGS.transformers:
-            option = cvt.ConverterOption(FLAGS.transformers.split(','))
+        if FLAGS.graph_optimize_options:
+            option = cvt.ConverterOption(
+                FLAGS.graph_optimize_options.split(','))
         else:
             option = cvt.ConverterOption()
         option.winograd = FLAGS.winograd
@@ -287,10 +288,10 @@ def parse_args():
         default="fp16_fp32",
         help="fp16_fp32/fp32_fp32")
     parser.add_argument(
-        "--transformers",
+        "--graph_optimize_options",
         type=str,
         default="",
-        help="model transformers")
+        help="graph optimize options")
     return parser.parse_known_args()
 
 

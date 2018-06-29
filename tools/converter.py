@@ -148,7 +148,7 @@ class YAMLKeyword(object):
     obfuscate = 'obfuscate'
     winograd = 'winograd'
     validation_inputs_data = 'validation_inputs_data'
-    transformers = 'transformers'  # keep it private for now
+    graph_optimize_options = 'graph_optimize_options'  # internal use for now
 
 
 class ModuleName(object):
@@ -657,7 +657,7 @@ def convert_model(configs):
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.build_type],
             data_type,
-            ",".join(model_config.get(YAMLKeyword.transformers, [])))
+            ",".join(model_config.get(YAMLKeyword.graph_optimize_options, [])))
 
         if configs[YAMLKeyword.build_type] == BuildType.proto:
             sh.mv("-f",
