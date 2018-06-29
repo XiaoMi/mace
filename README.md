@@ -51,7 +51,8 @@ targets:
 ## Performance
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains
 several common neural networks and models which will be built daily against a list of mobile
-phones. The benchmark results can be found in the CI result page.
+phones. The benchmark results can be found in [the CI result page](https://gitlab.com/llhe/mace-models/pipelines)
+(choose the latest passed pipeline, click *release* step and you will see the benchmark results).
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
