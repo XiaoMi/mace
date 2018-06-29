@@ -16,13 +16,13 @@ code.
 Why is the generated static library file size so huge?
 -------------------------------------------------------
 The static library is simply an archive of a set of object files which are
-intermediate and contain many extra information, please check whether the
+intermediate and contain much extra information, please check whether the
 final binary file size is as expected.
 
 Why is the generated binary file (including shared library) size so huge?
 -------------------------------------------------------------------------
 When compiling the model into C++ code, the final binary may contains extra
-debug symbols, they usually takes a lot of space. Try to strip the shared
+debug symbols, they usually take a lot of space. Try to strip the shared
 library or binary and make sure you are following best practices to reduce
 the size of an ELF binary, including disabling C++ exception, disabling RTTI,
 avoiding C++ iostream, hidden internal functions etc.
