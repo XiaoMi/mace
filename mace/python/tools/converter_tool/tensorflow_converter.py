@@ -318,7 +318,16 @@ class TensorflowConverter(base_converter.ConverterInterface):
             else:
                 mace_check(False, "data type %s not supported" % dtype)
         except ValueError:
-            data_type_arg.i = self._option.data_type
+            try:
+                dtype = tf_op.get_attr('SrcT')
+                if dtype == tf.int32 or dtype == tf.bool:
+                    data_type_arg.i = mace_pb2.DT_INT32
+                elif dtype == tf.float32:
+                    data_type_arg.i = self._option.data_type
+                else:
+                    mace_check(False, "data type %s not supported" % dtype)
+            except ValueError:
+                data_type_arg.i = self._option.data_type
 
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
