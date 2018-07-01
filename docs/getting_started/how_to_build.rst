@@ -326,7 +326,7 @@ Using ``-h`` to get detailed help.
 =============
 
 ``build`` command will generate the static/shared library, model files and
-header files and packaged as
+header files and package them as
 ``build/${library_name}/libmace_${library_name}.tar.gz``.
 
 -  The generated ``static`` libraries are organized as follows,
