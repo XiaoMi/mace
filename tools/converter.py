@@ -244,7 +244,10 @@ def format_model_config(flags):
                    "target_abis must be in " + str(ABITypeStrs))
 
     target_socs = configs.get(YAMLKeyword.target_socs, "")
-    if not target_socs:
+    if flags.target_socs:
+        configs[YAMLKeyword.target_socs] = \
+               [soc.lower() for soc in flags.target_socs.split(',')]
+    elif not target_socs:
         configs[YAMLKeyword.target_socs] = []
     elif not isinstance(target_socs, list):
         configs[YAMLKeyword.target_socs] = [target_socs]
@@ -1242,6 +1245,11 @@ def parse_args():
         type=str,
         default="",
         help="Target ABIs, comma seperated list.")
+    all_type_parent_parser.add_argument(
+        "--target_socs",
+        type=str,
+        default="",
+        help="Target SOCs, comma seperated list.")
     build_run_parent_parser = argparse.ArgumentParser(add_help=False)
     build_run_parent_parser.add_argument(
         '--address_sanitizer',
