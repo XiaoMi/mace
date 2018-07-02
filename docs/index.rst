@@ -6,17 +6,24 @@ The main documentation is organized into the following sections:
 
 .. toctree::
    :maxdepth: 1
-   :caption: Getting started
-   :name: sec-start
+   :caption: Introduction
+   :name: sec-intro
 
-   getting_started/introduction
-   getting_started/create_a_model_deployment
-   getting_started/how_to_build
-   getting_started/op_lists
+   introduction
 
 .. toctree::
    :maxdepth: 1
-   :caption: Development
+   :caption: User guide
+   :name: sec-user
+
+   user_guide/installation
+   user_guide/basic_usage
+   user_guide/advanced_usage
+   user_guide/op_lists
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer guide
    :name: sec-devel
 
    development/contributing
