@@ -80,7 +80,8 @@ class FileStorageFactory : public KVStorageFactory {
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 
 // Just call once. (Not thread-safe)
-// Set paths of OpenCL Compiled Binary file if you use gpu of specific soc.
+// Set paths of Generated OpenCL Compiled Kernel Binary file (not libOpenCL.so)
+// if you use gpu of specific soc.
 // Using OpenCL binary will speed up the initialization.
 // OpenCL binary is corresponding to the OpenCL Driver version,
 // you should update the binary when OpenCL Driver changed.

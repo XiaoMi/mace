@@ -51,8 +51,12 @@ CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 LIBMACE_SO_TARGET = "//mace:libmace.so"
-MACE_RUN_STATIC_TARGET = "//mace/tools/validation:mace_run_static"
-MACE_RUN_SHARED_TARGET = "//mace/tools/validation:mace_run_shared"
+MACE_RUN_STATIC_NAME = "mace_run_static"
+MACE_RUN_SHARED_NAME = "mace_run_shared"
+EXAMPLE_STATIC_NAME = "example_static"
+EXAMPLE_SHARED_NAME = "example_shared"
+MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
+MACE_RUN_SHARED_TARGET = "//mace/tools/validation:" + MACE_RUN_SHARED_NAME
 ALL_SOC_TAG = 'all'
 
 ABITypeStrs = [
@@ -699,8 +703,10 @@ def build_specific_lib(target_abi, target_soc, serial_num,
 
     sh_commands.gen_tuning_param_code(model_output_dirs)
     if linkshared == 0:
+        mace_run_name = MACE_RUN_STATIC_NAME
         mace_run_target = MACE_RUN_STATIC_TARGET
     else:
+        mace_run_name = MACE_RUN_SHARED_NAME
         mace_run_target = MACE_RUN_SHARED_TARGET
         sh_commands.bazel_build(
             LIBMACE_SO_TARGET,
@@ -759,7 +765,8 @@ def build_specific_lib(target_abi, target_soc, serial_num,
             sh_commands.tuning_run(
                 abi=target_abi,
                 serialno=serial_num,
-                mace_run_dir=build_tmp_binary_dir,
+                target_dir=build_tmp_binary_dir,
+                target_name=mace_run_name,
                 vlog_level=0,
                 embed_model_data=embed_model_data,
                 model_output_dir=model_output_dir,
@@ -824,6 +831,13 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                                OUTPUT_LIBRARY_DIR_NAME,
                                build_type,
                                hexagon_mode)
+
+    # build example binary
+    sh_commands.build_example(target_soc, serial_num, target_abi,
+                              library_name, BUILD_OUTPUT_DIR,
+                              OUTPUT_LIBRARY_DIR_NAME,
+                              build_tmp_binary_dir, build_type,
+                              hexagon_mode, enable_openmp, linkshared)
 
 
 def generate_library(configs, tuning, enable_openmp, address_sanitizer):
@@ -962,6 +976,17 @@ def run_specific_target(flags, configs, target_abi,
                ModuleName.RUN,
                'You should build before run.')
 
+    if flags.example:
+        if linkshared == 0:
+            target_name = EXAMPLE_STATIC_NAME
+        else:
+            target_name = EXAMPLE_SHARED_NAME
+    else:
+        if linkshared == 0:
+            target_name = MACE_RUN_STATIC_NAME
+        else:
+            target_name = MACE_RUN_SHARED_NAME
+
     for model_name in configs[YAMLKeyword.models]:
         if target_abi == ABIType.host:
             device_name = ABIType.host
@@ -1012,7 +1037,8 @@ def run_specific_target(flags, configs, target_abi,
             run_output = sh_commands.tuning_run(
                 abi=target_abi,
                 serialno=serial_num,
-                mace_run_dir=build_tmp_binary_dir,
+                target_dir=build_tmp_binary_dir,
+                target_name=target_name,
                 vlog_level=flags.vlog_level,
                 embed_model_data=embed_model_data,
                 model_output_dir=model_output_dir,
@@ -1342,6 +1368,10 @@ def parse_args():
         type=float,
         default=0.0,
         help="[mock runtime failure ratio].")
+    run.add_argument(
+        "--example",
+        action="store_true",
+        help="whether to run example.")
     benchmark = subparsers.add_parser(
         'benchmark',
         parents=[all_type_parent_parser, run_bm_parent_parser,
