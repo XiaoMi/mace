@@ -19,12 +19,28 @@ from tensorflow import gfile
 from operator import mul
 from dsp_ops import DspOps
 from mace.python.tools import graph_util
-from mace.python.tools.convert_util import tf_dtype_2_mace_dtype
 
 # converter --input ../libcv/quantized_model.pb \
 #           --output quantized_model_dsp.pb \
 #           --runtime dsp --input_node input_node \
 #           --output_node output_node
+
+TF_DTYPE_2_MACE_DTYPE_MAP = {
+    tf.float32: mace_pb2.DT_FLOAT,
+    tf.half: mace_pb2.DT_HALF,
+    tf.int32: mace_pb2.DT_INT32,
+    tf.qint32: mace_pb2.DT_INT32,
+    tf.quint8: mace_pb2.DT_UINT8,
+    tf.uint8: mace_pb2.DT_UINT8,
+}
+
+
+def tf_dtype_2_mace_dtype(tf_dtype):
+    mace_dtype = TF_DTYPE_2_MACE_DTYPE_MAP.get(tf_dtype, None)
+    if not mace_dtype:
+        raise Exception("Not supported tensorflow dtype: " + tf_dtype)
+    return mace_dtype
+
 
 padding_mode = {
     'NA': 0,
