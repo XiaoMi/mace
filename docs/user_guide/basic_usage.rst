@@ -5,7 +5,7 @@ Basic usage
 Build and run an example model
 --------------------------------
 
-Make sure the environment has been set up correctly already.(refer to `installation`)
+Make sure the environment has been set up correctly already (refer to `Installation`).
 
 Pull the mace model zoo project.
 
@@ -14,7 +14,7 @@ Pull the mace model zoo project.
     git clone https://github.com/XiaoMi/mace-models.git
 
 Here we use the provided mobilenet-v2 model in mace model zoo as an example.
-Plug an android phone into your pc and enable Developer Mode of the phone.
+Plug an android device into your pc and enable Developer Mode for the device.
 
 .. code:: sh
 
@@ -32,7 +32,7 @@ Validate and benchmark the model.
 
 .. note::
 
-     1. If you want to build and run the model on pc, just use the mobilenet-v2-host.yml file instead.
+    If you want to build and run the model on pc, just use the mobilenet-v2-host.yml file instead for ``--config``.
 
 
 Build your own model
@@ -48,11 +48,11 @@ Mace now supports models from tensorflow and caffe.
    Prepare your tensorflow model.pb file.
 
    Use `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
-   to optimize you model for inference.
+   to optimize your model for inference.
    This tool will improve the efficiency of inference by making several optimizations like operations
-   folding, redundant node removal etc. We strongly recommend to use it before building.
+   folding, redundant node removal etc. We strongly recommend MACE users to use it before building.
 
-   The following command shows how to use it for CPU/GPU,
+   The following command shows how to use the graph transform tool for CPU/GPU,
 
    .. code:: bash
 
@@ -75,7 +75,7 @@ Mace now supports models from tensorflow and caffe.
 -  Caffe
 
    MACE converter only supports Caffe 1.0+, you need to upgrade
-   your models with Caffe built-in tool if necessary,
+   your model by using the Caffe built-in tool if your model is from lower version caffe.
 
    .. code:: bash
 
@@ -102,7 +102,7 @@ Modify one of them for your own case.
    .. literalinclude:: models/demo_app_models_caffe.yml
       :language: yaml
 
-More details about model deployment file, refer to `advanced_usage`.
+More details about model deployment file, refer to `Advanced_usage`.
 
 
 ======================================
@@ -110,9 +110,9 @@ More details about model deployment file, refer to `advanced_usage`.
 ======================================
 
 MACE provides a python tool (``tools/converter.py``) for
-model conversion, compiling, test run, benchmark and correctness validation.
+model conversion, compiling, testing, benchmark and validation.
 
-MACE can build either static or shared link library (which is
+MACE can build either static or shared library (which is
 specified by ``linkshared`` in YAML model deployment file).
 
 **Commands**
@@ -151,8 +151,8 @@ specified by ``linkshared`` in YAML model deployment file).
 
     .. warning::
 
-        1. Plug an android phone into your pc and enable Developer Mode before building.
-        2. Please ``build`` your model before ``run`` or ``benchmark`` it.
+        1. Plug an android device into your pc and enable Developer Mode before building.
+        2. If you want to build the model for pc, set ``target_abis: [host]`` and ``runtime: cpu`` in your deployment YAML file.
 
 
 ============================================
@@ -160,10 +160,10 @@ specified by ``linkshared`` in YAML model deployment file).
 ============================================
 
 ``build`` command will generate the static/shared library, model files and
-header files. All of these files have been packaged into
+header files. All of these generated files will be packaged into
 ``path/to/mace/build/${library_name}/libmace_${library_name}.tar.gz``.
 
-``${library_name}`` is the name you defined in the first line of your demployment yaml file.
+``${library_name}`` is the name you defined in the first line of your deployment YAML file.
 
 -  The generated ``static`` library files are organized as follows,
 
@@ -233,6 +233,7 @@ header files. All of these files have been packaged into
 
 
 Unpack the generated libmace_${library_name}.tar.gz file and copy all of the uncompressed files into your project.
+
 Please refer to \ ``mace/examples/example.cc``\ for full usage. The following lists the key steps.
 
 .. code:: cpp
