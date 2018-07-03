@@ -1,5 +1,5 @@
 # Examples
-load("//mace:mace.bzl", "if_openmp_enabled", "if_android")
+load("//mace:mace.bzl", "if_openmp_enabled", "if_android", "if_hexagon_enabled")
 
 cc_binary(
     name = "example_static",
@@ -24,7 +24,9 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace:libmace_static",
-    ],
+    ] + if_hexagon_enabled([
+        "//third_party/nnlib:libhexagon",
+    ]),
 )
 
 cc_binary(
