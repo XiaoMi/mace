@@ -949,7 +949,7 @@ def run_specific_target(flags, configs, target_abi,
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
     linkshared = configs[YAMLKeyword.linkshared]
-    if not configs[YAMLKeyword.target_socs]:
+    if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
     else:
@@ -975,7 +975,7 @@ def run_specific_target(flags, configs, target_abi,
         model_runtime = model_config[YAMLKeyword.runtime]
         subgraphs = model_config[YAMLKeyword.subgraphs]
 
-        if not configs[YAMLKeyword.target_socs]:
+        if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
             model_output_base_dir, model_output_dir, mace_model_dir = \
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      None, None,
@@ -1099,7 +1099,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
     linkshared = configs[YAMLKeyword.linkshared]
-    if not configs[YAMLKeyword.target_socs]:
+    if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     None, None)
     else:
@@ -1125,7 +1125,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
         model_runtime = model_config[YAMLKeyword.runtime]
         subgraphs = model_config[YAMLKeyword.subgraphs]
 
-        if not configs[YAMLKeyword.target_socs]:
+        if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
             model_output_base_dir, model_output_dir, mace_model_dir = \
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      None, None,
