@@ -80,3 +80,9 @@ cc_library(
   srcs = ["libmace.so"],
   visibility = ["//visibility:public"],
 )
+
+cc_library(
+  name = "libmace_static",
+  srcs = ["libmace.a"],
+  visibility = ["//visibility:public"],
+)

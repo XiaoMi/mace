@@ -11,5 +11,6 @@ mace/codegen/version/
 mace/codegen/engine/
 build/
 docs/_build/
+*.a
 
 \.project/

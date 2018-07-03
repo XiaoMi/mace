@@ -292,7 +292,8 @@ def bazel_build(target,
                 hexagon_mode=False,
                 enable_openmp=True,
                 enable_neon=True,
-                address_sanitizer=False):
+                address_sanitizer=False,
+                extra_args=""):
     print("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
         bazel_args = (
@@ -318,6 +319,8 @@ def bazel_build(target,
         bazel_args += ("--config", "asan")
     else:
         bazel_args += ("--config", "optimization")
+    if extra_args:
+        bazel_args += (extra_args, )
     sh.bazel(
         _fg=True,
         *bazel_args)
@@ -620,7 +623,8 @@ def update_libmace_shared_library(serial_num,
 
 def tuning_run(abi,
                serialno,
-               mace_run_dir,
+               target_dir,
+               target_name,
                vlog_level,
                embed_model_data,
                model_output_dir,
@@ -658,17 +662,13 @@ def tuning_run(abi,
     mace_model_path = ""
     if build_type == BuildType.proto:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
-    if linkshared == 0:
-        mace_run_target = "mace_run_static"
-    else:
-        mace_run_target = "mace_run_shared"
     if abi == "host":
         p = subprocess.Popen(
             [
                 "env",
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-                "%s/%s" % (mace_run_dir, mace_run_target),
+                "%s/%s" % (target_dir, target_name),
                 "--model_name=%s" % model_tag,
                 "--input_node=%s" % ",".join(input_nodes),
                 "--output_node=%s" % ",".join(output_nodes),
@@ -731,7 +731,7 @@ def tuning_run(abi,
                      phone_data_dir,
                      serialno)
 
-        adb_push("%s/%s" % (mace_run_dir, mace_run_target), phone_data_dir,
+        adb_push("%s/%s" % (target_dir, target_name), phone_data_dir,
                  serialno)
 
         stdout_buff = []
@@ -752,7 +752,7 @@ def tuning_run(abi,
                                       asan_rt_library_names(abi))
             ])
         adb_cmd.extend([
-            "%s/%s" % (phone_data_dir, mace_run_target),
+            "%s/%s" % (phone_data_dir, target_name),
             "--model_name=%s" % model_tag,
             "--input_node=%s" % ",".join(input_nodes),
             "--output_node=%s" % ",".join(output_nodes),
@@ -926,6 +926,29 @@ def build_host_libraries(model_build_type, abi):
             abi=abi)
 
 
+################################
+# library
+################################
+def get_lib_path(target_soc, serial_num, abi, project_name, build_output_dir,
+                 library_output_dir):
+    project_output_dir = "%s/%s" % (build_output_dir, project_name)
+    library_dir = "%s/%s" % (project_output_dir, library_output_dir)
+    model_bin_dir = "%s/%s/" % (library_dir, abi)
+    if abi == "host":
+        lib_path = "%s/libmace_%s.a" % \
+                   (model_bin_dir, project_name)
+    else:
+        if not target_soc:
+            lib_path = "%s/libmace_%s.a" % \
+                       (model_bin_dir, project_name)
+        else:
+            device_name = adb_get_device_name_by_serialno(serial_num)
+            lib_path = "%s/libmace_%s.%s.%s.a" % \
+                       (model_bin_dir, project_name,
+                        device_name, target_soc)
+    return lib_path
+
+
 def merge_libs(target_soc,
                serial_num,
                abi,
@@ -945,11 +968,12 @@ def merge_libs(target_soc,
     if hexagon_mode:
         sh.cp("-f", hexagon_lib_file, library_dir)
 
+    lib_path = get_lib_path(target_soc, serial_num, abi,
+                            project_name, build_output_dir, library_output_dir)
     # make static library
     mri_stream = ""
     if abi == "host":
-        mri_stream += "create %s/libmace_%s.a\n" % \
-                      (model_bin_dir, project_name)
+        mri_stream += "create %s\n" % lib_path
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_opencl.pic.a\n")
@@ -982,14 +1006,7 @@ def merge_libs(target_soc,
                 "addlib "
                 "bazel-bin/mace/codegen/libgenerated_models.pic.a\n")
     else:
-        if not target_soc:
-            mri_stream += "create %s/libmace_%s.a\n" % \
-                          (model_bin_dir, project_name)
-        else:
-            device_name = adb_get_device_name_by_serialno(serial_num)
-            mri_stream += "create %s/libmace_%s.%s.%s.a\n" % \
-                          (model_bin_dir, project_name,
-                           device_name, target_soc)
+        mri_stream += "create %s\n" % lib_path
         if model_build_type == BuildType.code:
             mri_stream += (
                 "addlib "
@@ -1054,6 +1071,53 @@ def packaging_lib(libmace_output_dir, project_name):
     print("Packaging Done!\n")
 
 
+################################
+# example
+################################
+def build_example(target_soc,
+                  serial_num,
+                  abi,
+                  project_name,
+                  build_output_dir,
+                  library_output_dir,
+                  model_output_dir,
+                  build_type,
+                  hexagon_mode,
+                  enable_openmp,
+                  linkshared=False):
+    static_lib_name = "mace/libmace.a"
+    if not linkshared:
+        target_name = "example_static"
+        lib_path = get_lib_path(target_soc, serial_num, abi, project_name,
+                                build_output_dir, library_output_dir)
+        sh.cp("-f", lib_path, static_lib_name)
+    else:
+        target_name = "example_shared"
+    example_target = "//mace/examples/cli:%s" % target_name
+
+    if build_type == BuildType.code:
+        build_arg = "--per_file_copt=//mace/examples/cli:example.cc@-DCODE_TYPE"  # noqa
+    else:
+        build_arg = ""
+
+    bazel_build(example_target,
+                abi=abi,
+                enable_openmp=enable_openmp,
+                hexagon_mode=hexagon_mode,
+                extra_args=build_arg)
+
+    example_binary_file = "%s/%s" % (model_output_dir, target_name)
+    if os.path.exists(example_binary_file):
+        sh.rm("-rf", example_binary_file)
+
+    target_bin = "/".join(bazel_target_to_bin(example_target))
+    sh.cp("-f", target_bin, model_output_dir)
+    sh.rm("-rf", static_lib_name)
+
+
+################################
+# benchmark
+################################
 def build_benchmark_model(abi,
                           model_output_dir,
                           hexagon_mode,
