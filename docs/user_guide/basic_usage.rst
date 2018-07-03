@@ -311,6 +311,6 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
     }
 
     // 6. Run the model
-    MaceStatus status = engine.Run(inputs, &outputs);
+    engine->Run(inputs, &outputs);
 
 More details in `advanced_usage`.
