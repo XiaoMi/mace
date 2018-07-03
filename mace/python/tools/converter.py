@@ -19,12 +19,9 @@ import os.path
 import copy
 
 from mace.proto import mace_pb2
-from mace.python.tools import tf_dsp_converter_lib
 from mace.python.tools import memory_optimizer
 from mace.python.tools import model_saver
 from mace.python.tools.converter_tool import base_converter as cvt
-from mace.python.tools.converter_tool import tensorflow_converter
-from mace.python.tools.converter_tool import caffe_converter
 from mace.python.tools.converter_tool import transformer
 from mace.python.tools.convert_util import mace_check
 
@@ -101,6 +98,7 @@ def main(unused_args):
 
     if FLAGS.runtime == 'dsp':
         if FLAGS.platform == 'tensorflow':
+            from mace.python.tools import tf_dsp_converter_lib
             output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
                 FLAGS.model_file, FLAGS.input_node, FLAGS.output_node,
                 FLAGS.dsp_mode)
@@ -132,9 +130,11 @@ def main(unused_args):
             option.add_output_node(output_node)
 
         if FLAGS.platform == 'tensorflow':
+            from mace.python.tools.converter_tool import tensorflow_converter
             converter = tensorflow_converter.TensorflowConverter(
                 option, FLAGS.model_file)
         elif FLAGS.platform == 'caffe':
+            from mace.python.tools.converter_tool import caffe_converter
             converter = caffe_converter.CaffeConverter(option,
                                                        FLAGS.model_file,
                                                        FLAGS.weight_file)
