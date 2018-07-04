@@ -360,8 +360,9 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
 
 def gen_mace_engine_factory_source(model_tags,
                                    model_load_type,
+                                   embed_model_data,
                                    codegen_path="mace/codegen"):
-    print("* Genearte mace engine creator source")
+    print("* Generate mace engine creator source")
     codegen_tools_dir = "%s/engine" % codegen_path
     sh.rm("-rf", codegen_tools_dir)
     sh.mkdir("-p", codegen_tools_dir)
@@ -369,8 +370,9 @@ def gen_mace_engine_factory_source(model_tags,
         model_tags,
         "mace/python/tools",
         model_load_type,
+        embed_model_data,
         codegen_tools_dir)
-    print("Genearte mace engine creator source done!\n")
+    print("Generate mace engine creator source done!\n")
 
 
 def pull_binaries(abi, serialno, model_output_dirs,

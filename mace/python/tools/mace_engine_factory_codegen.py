@@ -20,7 +20,8 @@ from jinja2 import Environment, FileSystemLoader
 FLAGS = None
 
 
-def gen_mace_engine_factory(model_tags, template_dir, model_type, output_dir):
+def gen_mace_engine_factory(model_tags, template_dir, model_type,
+                            embed_model_data, output_dir):
     # Create the jinja2 environment.
     j2_env = Environment(
         loader=FileSystemLoader(template_dir), trim_blocks=True)
@@ -28,6 +29,7 @@ def gen_mace_engine_factory(model_tags, template_dir, model_type, output_dir):
     template_name = 'mace_engine_factory.h.jinja2'
     source = j2_env.get_template(template_name).render(
         model_tags=model_tags,
+        embed_model_data=embed_model_data,
         model_type=model_type,
     )
     with open(output_dir + '/mace_engine_factory.h', "wb") as f:
