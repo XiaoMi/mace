@@ -123,7 +123,7 @@ DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
-
+#ifndef CODE_TYPE
 namespace {
 bool ReadBinaryFile(std::vector<unsigned char> *data,
                            const std::string &filename) {
@@ -146,6 +146,7 @@ bool ReadBinaryFile(std::vector<unsigned char> *data,
   return true;
 }
 }  // namespace
+#endif
 
 bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &input_shapes,
@@ -162,10 +163,7 @@ bool RunModel(const std::vector<std::string> &input_names,
     mace::SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-  }
-#endif  // MACE_ENABLE_OPENCL
 
-  if (device_type == DeviceType::GPU) {
     // Just call once. (Not thread-safe)
     // Set paths of Generated OpenCL Compiled Kernel Binary file
     // if you build gpu library of specific soc.
@@ -175,6 +173,8 @@ bool RunModel(const std::vector<std::string> &input_names,
     std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
     mace::SetOpenCLBinaryPaths(opencl_binary_paths);
   }
+#endif  // MACE_ENABLE_OPENCL
+
   // DO NOT USE tmp directory.
   // Please use APP's own directory and make sure the directory exists.
   // Just call once
