@@ -13,6 +13,15 @@ The main documentation is organized into the following sections:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Installation
+   :name: sec-install
+
+   installation/env_requirement
+   installation/using_docker
+   installation/manual_setup
+
+.. toctree::
+   :maxdepth: 1
    :caption: User guide
    :name: sec-user
 
