@@ -5,63 +5,97 @@ Basic usage
 Build and run an example model
 --------------------------------
 
-Make sure the environment has been set up correctly already (refer to `Installation`).
+At first, make sure the environment has been set up correctly already (refer to :doc:`installation`).
 
-Pull the mace model zoo project.
+The followings are instructions about  how to quickly build and run a provided model in *MACE Model Zoo*.
 
-.. code:: sh
+Here we use the mobilenet-v2 model as an example.
 
-    git clone https://github.com/XiaoMi/mace-models.git
+**Commands**
 
-Here we use the provided mobilenet-v2 model in mace model zoo as an example.
-Plug an android device into your pc and enable Developer Mode for the device.
+    1. Pull *MACE* project.
 
-.. code:: sh
+    .. code:: sh
 
-    cd /path/to/mace
-    python tools/converter.py build --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        git clone https://github.com/XiaoMi/mace.git
+        git fetch --all --tags --prune
 
-Validate and benchmark the model.
+        # Checkout the latest tag (i.e. release version)
+        tag_name=`git describe --abbrev=0 --tags`
+        git checkout tags/${tag_name}
 
-.. code:: sh
+    .. note::
 
-    # Validate the model.
-    python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --validate
-    # Benchmark
-    python tools/converter.py benchmark --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        It's highly recommanded to use a release version instead of master branch.
 
-.. note::
 
-    If you want to build and run the model on pc, just use the mobilenet-v2-host.yml file instead for ``--config``.
+    2. Pull *MACE Model Zoo* project.
+
+    .. code:: sh
+
+        git clone https://github.com/XiaoMi/mace-models.git
+
+
+    3. Build MACE.
+
+    .. code:: sh
+
+        cd path/to/mace
+        # Build library
+        python tools/converter.py build --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+
+
+    4. Convert the model to MACE format model.
+
+    .. code:: sh
+
+        cd path/to/mace
+        # Build library
+        python tools/converter.py build --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+
+
+    5. Run the model.
+
+    .. code:: sh
+
+    	# Test model run time
+        python tools/converter.py run --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --round=100
+
+    	# Validate the correctness by comparing the results against the
+    	# original model and framework, measured with cosine distance for similarity.
+    	python tools/converter.py run --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --validate
 
 
 Build your own model
 ----------------------------
+
+This part will show you how to use your pre-trained model in MACE.
+
 ==================================
 1. Prepare your model
 ==================================
 
-Mace now supports models from tensorflow and caffe.
+Mace now supports models from Tensorflow and Caffe(more frameworks will be supported).
 
 -  TensorFlow
 
-   Prepare your tensorflow model.pb file.
+   Prepare your pre-trained Tensorflow model.pb file.
 
    Use `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
    to optimize your model for inference.
-   This tool will improve the efficiency of inference by making several optimizations like operations
+   This tool will improve the efficiency of inference by making several optimizations like operators
    folding, redundant node removal etc. We strongly recommend MACE users to use it before building.
 
-   The following command shows how to use the graph transform tool for CPU/GPU,
+   Usage for CPU/GPU,
 
    .. code:: bash
 
        # CPU/GPU:
        ./transform_graph \
-           --in_graph=tf_model.pb \
-           --out_graph=tf_model_opt.pb \
-           --inputs='input' \
-           --outputs='output' \
+           --in_graph=/path/to/your/tf_model.pb \
+           --out_graph=/path/to/your/output/tf_model_opt.pb \
+           --inputs='input node name' \
+           --outputs='output node name' \
            --transforms='strip_unused_nodes(type=float, shape="1,64,64,3")
                strip_unused_nodes(type=float, shape="1,64,64,3")
                remove_nodes(op=Identity, op=CheckNumerics)
@@ -74,8 +108,9 @@ Mace now supports models from tensorflow and caffe.
 
 -  Caffe
 
-   MACE converter only supports Caffe 1.0+, you need to upgrade
-   your model by using the Caffe built-in tool if your model is from lower version caffe.
+   Caffe 1.0+ models are supported in MACE converter tool.
+
+   If your model is from lower version Caffe, you need to upgrade it by using the Caffe built-in tool before converting.
 
    .. code:: bash
 
@@ -85,12 +120,18 @@ Mace now supports models from tensorflow and caffe.
        # Upgrade caffemodel
        $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
+
 ============================================
 2. Create a deployment file for your model
 ============================================
 
-The followings are basic usage example deployment files for Tensorflow and Caffe models.
-Modify one of them for your own case.
+When converting a model or building a library, MACE needs to read a YAML file which is called model deployment file here.
+
+A model deployment file contains all the information of your model(s) and building options. There are several example
+deployment files in *MACE Model Zoo* project.
+
+The following shows two basic usage of deployment files for Tensorflow and Caffe models.
+Modify one of them and use it for your own case.
 
 -  Tensorflow
 
@@ -102,34 +143,62 @@ Modify one of them for your own case.
    .. literalinclude:: models/demo_app_models_caffe.yml
       :language: yaml
 
-More details about model deployment file, refer to `Advanced_usage`.
-
+More details about model deployment file, please refer to :doc:`advanced_usage`.
 
 ======================================
-3. Build a library for your model
+3. Convert your model
 ======================================
 
-MACE provides a python tool (``tools/converter.py``) for
-model conversion, compiling, testing, benchmark and validation.
+When the deployment file is ready for your model, you can use MACE converter tool to convert your model(s).
 
-MACE can build either static or shared library (which is
+To convert your pre-trained model to a MACE model, you need to set ``build_type:proto`` in your model deployment file.
+
+And then run this command:
+
+.. code:: bash
+
+    python tools/converter.py convert --config=path/to/your/model_deployment.yml
+
+This command will download or load your pre-trained model and convert it to a MACE model proto file and weights file.
+The generated model files will be stored in ``build/${library_name}/model`` folder.
+
+.. warning::
+
+    Please set ``build_type:proto`` in your deployment file before converting.
+    The usage of ``build_type:code`` will be demonstrated in :doc:`advanced_usage`.
+
+======================================
+4. Build MACE into a library
+======================================
+
+MACE can be built into either a static or a shared library (which is
 specified by ``linkshared`` in YAML model deployment file).
 
-**Commands**
-
-    * **build**
-
-        build library.
+Use bazel to build MACE source code into a library.
 
     .. code:: sh
 
         cd path/to/mace
         # Build library
-        python tools/converter.py build --config=path/to/your/model_deployment_file.yml
+        bazel build --config=path/to/your/model_deployment_file.yml
 
-    * **run**
+The above command will generate library files in the ``build/${library_name}/libs`` folder.
 
-        run the model.
+    .. warning::
+
+        1. Please verify the target_abis params in the above command and the deployment file are the same.
+        2. If you want to build a library for a specific soc, please refer to :doc:`advanced_usage`.
+
+
+======================================
+5. Run your model
+======================================
+
+With the converted model, *.so or *.a library and header files, you can use the following commands to run and validate your model.
+
+* **run**
+
+    run the model.
 
     .. code:: sh
 
@@ -140,28 +209,23 @@ specified by ``linkshared`` in YAML model deployment file).
     	# original model and framework, measured with cosine distance for similarity.
     	python tools/converter.py run --config=path/to/your/model_deployment_file.yml --validate
 
-    * **benchmark**
+* **benchmark**
 
-        benchmark and profile the model.
+    benchmark and profile the model.
 
     .. code:: sh
 
         # Benchmark model, get detailed statistics of each Op.
         python tools/converter.py benchmark --config=path/to/your/model_deployment_file.yml
 
-    .. warning::
 
-        1. Plug an android device into your pc and enable Developer Mode before building.
-        2. If you want to build the model for pc, set ``target_abis: [host]`` and ``runtime: cpu`` in your deployment YAML file.
+========================================================
+6. Deploy your model into applications
+========================================================
 
-
-============================================
-4. Deploy generated library in your project
-============================================
-
-``build`` command will generate the static/shared library, model files and
-header files. All of these generated files will be packaged into
-``path/to/mace/build/${library_name}/libmace_${library_name}.tar.gz``.
+In the converting and building steps, you've got the static/shared library, model files and
+header files. All of these generated files have been packaged into
+``build/${library_name}/libmace_${library_name}.tar.gz`` when building.
 
 ``${library_name}`` is the name you defined in the first line of your deployment YAML file.
 
@@ -170,33 +234,33 @@ header files. All of these generated files will be packaged into
 .. code::
 
       build/
-      └── mobilenet-v2-gpu
+      └── mobilenet-v2
           ├── include
           │   └── mace
           │       └── public
           │           ├── mace.h
           │           └── mace_runtime.h
-          ├── libmace_mobilenet-v2-gpu.tar.gz
+          ├── libmace_mobilenet-v2.tar.gz
           ├── lib
           │   ├── arm64-v8a
-          │   │   └── libmace_mobilenet-v2-gpu.MI6.msm8998.a
+          │   │   └── libmace_mobilenet-v2.MI6.msm8998.a
           │   └── armeabi-v7a
-          │       └── libmace_mobilenet-v2-gpu.MI6.msm8998.a
+          │       └── libmace_mobilenet-v2.MI6.msm8998.a
           ├── model
           │   ├── mobilenet_v2.data
           │   └── mobilenet_v2.pb
           └── opencl
               ├── arm64-v8a
-              │   └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+              │   └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
               └── armeabi-v7a
-                  └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+                  └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
 
 -  The generated ``shared`` library files are organized as follows,
 
 .. code::
 
       build
-      └── mobilenet-v2-gpu
+      └── mobilenet-v2
           ├── include
           │   └── mace
           │       └── public
@@ -214,49 +278,37 @@ header files. All of these generated files will be packaged into
           │   └── mobilenet_v2.pb
           └── opencl
               ├── arm64-v8a
-              │   └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
+              │   └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
               └── armeabi-v7a
-                  └── mobilenet-v2-gpu_compiled_opencl_kernel.MI6.msm8998.bin
-
-.. note::
-
-    1. ``${MODEL_TAG}.pb`` file will be generated only when ``build_type`` is ``proto``.
-    2. ``${library_name}_compiled_opencl_kernel.${device_name}.${soc}.bin`` will
-       be generated only when ``target_socs`` and ``gpu`` runtime are specified.
-    3. Generated shared library depends on ``libgnustl_shared.so``.
-
-.. warning::
-
-    ``${library_name}_compiled_opencl_kernel.${device_name}.${soc}.bin`` depends
-    on the OpenCL version of the device, you should maintan the compatibility or
-    configure compiling cache store with ``ConfigKVStorageFactory``.
+                  └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
 
 
 Unpack the generated libmace_${library_name}.tar.gz file and copy all of the uncompressed files into your project.
 
-Please refer to \ ``mace/examples/example.cc``\ for full usage. The following lists the key steps.
+Please refer to \ ``mace/examples/example.cc``\ for full usage. The following list the key steps.
 
 .. code:: cpp
 
     // Include the headers
     #include "mace/public/mace.h"
     #include "mace/public/mace_runtime.h"
-    // If the build_type is code
-    #include "mace/public/mace_engine_factory.h"
 
     // 0. Set pre-compiled OpenCL binary program file paths when available
     if (device_type == DeviceType::GPU) {
       mace::SetOpenCLBinaryPaths(opencl_binary_paths);
     }
 
-    // 1. Set compiled OpenCL kernel cache to reduce the
-    // initialization time.
+    // 1. Set compiled OpenCL kernel cache, this is used to reduce the
+    // initialization time since the compiling is too slow. It's suggested
+    // to set this even when pre-compiled OpenCL program file is provided
+    // because the OpenCL version upgrade may also leads to kernel
+    // recompilations.
     const std::string file_path ="path/to/opencl_cache_file";
     std::shared_ptr<KVStorageFactory> storage_factory(
         new FileStorageFactory(file_path));
     ConfigKVStorageFactory(storage_factory);
 
-    // 2. Declare the device type (must be same with ``runtime`` in deployment file)
+    // 2. Declare the device type (must be same with ``runtime`` in configuration file)
     DeviceType device_type = DeviceType::GPU;
 
     // 3. Define the input and output tensor names.
@@ -266,15 +318,8 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
     // 4. Create MaceEngine instance
     std::shared_ptr<mace::MaceEngine> engine;
     MaceStatus create_engine_status;
-    // If the build_type is code, create Engine from compiled code
-    create_engine_status =
-        CreateMaceEngineFromCode(model_name.c_str(),
-                                 nullptr,
-                                 input_names,
-                                 output_names,
-                                 device_type,
-                                 &engine);
-    // If the build_type is proto, Create Engine from model file
+
+    // Create Engine from model file
     create_engine_status =
         CreateMaceEngineFromProto(model_pb_data,
                                   model_data_file.c_str(),
@@ -312,6 +357,6 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
     }
 
     // 6. Run the model
-    engine->Run(inputs, &outputs);
+    MaceStatus status = engine.Run(inputs, &outputs);
 
-More details in `advanced_usage`.
+More details are in :doc:`advanced_usage`.

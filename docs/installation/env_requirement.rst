@@ -7,9 +7,7 @@ Necessary Dependencies:
 -----------------------
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - software
       - version
@@ -56,9 +54,7 @@ Optional Dependencies:
 ---------------------
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - software
       - version

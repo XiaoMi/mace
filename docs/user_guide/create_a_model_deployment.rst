@@ -19,16 +19,14 @@ Here is an example deployment file used by an Android demo application.
 TODO: change this example file to the demo deployment file
 (reuse the same file) and rename to a reasonable name.
 
-.. literalinclude:: models/demo_app_models.yaml
+.. literalinclude:: models/demo_app_models.yml
    :language: yaml
 
 Configurations
 --------------------
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - library_name
       - library name.
