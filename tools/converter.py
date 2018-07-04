@@ -38,7 +38,7 @@ from common import StringFormatter
 ################################
 # common definitions
 ################################
-BUILD_OUTPUT_DIR = 'build'
+BUILD_OUTPUT_DIR = 'builds'
 PHONE_DATA_DIR = "/data/local/tmp/mace_run"
 MODEL_OUTPUT_DIR_NAME = 'model'
 MODEL_HEADER_DIR_PATH = 'include/mace/public'
