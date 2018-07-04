@@ -28,9 +28,7 @@ namespace mace {
 {% for tag in model_tags %}
 namespace {{tag}} {
 
-extern const unsigned char *LoadModelData(const std::string &model_data_file);
-
-extern void UnloadModelData(const unsigned char *model_data);
+extern const unsigned char *LoadModelData();
 
 extern const std::shared_ptr<NetDef> CreateNet();
 
@@ -66,16 +64,18 @@ MaceStatus CreateMaceEngineFromCode(
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
-   case {{ i }}:
-    model_data =
-        mace::{{model_tags[i]}}::LoadModelData(model_data_file);
-    net_def = mace::{{model_tags[i]}}::CreateNet();
-    engine->reset(new mace::MaceEngine(device_type));
-    status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data);
-    if (device_type == DeviceType::GPU || device_type == DeviceType::HEXAGON) {
-      mace::{{model_tags[i]}}::UnloadModelData(model_data);
-    }
-    break;
+    case {{ i }}:
+      net_def = mace::{{model_tags[i]}}::CreateNet();
+      engine->reset(new mace::MaceEngine(device_type));
+{% if embed_model_data %}
+      (void)model_data_file;
+      model_data =
+          mace::{{model_tags[i]}}::LoadModelData();
+      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data);
+{% else %}
+      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data_file);
+{% endif %}
+      break;
 {% endfor %}
    default:
      status = MaceStatus::MACE_INVALID_ARGS;

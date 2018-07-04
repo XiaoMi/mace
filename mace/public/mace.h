@@ -107,6 +107,11 @@ class MaceEngine {
                   const std::vector<std::string> &output_nodes,
                   const unsigned char *model_data);
 
+  MaceStatus Init(const NetDef *net_def,
+                  const std::vector<std::string> &input_nodes,
+                  const std::vector<std::string> &output_nodes,
+                  const std::string &model_data_file);
+
   MaceStatus Run(const std::map<std::string, MaceTensor> &inputs,
                  std::map<std::string, MaceTensor> *outputs);
 

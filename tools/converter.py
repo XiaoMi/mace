@@ -594,7 +594,8 @@ def convert_model(configs):
 
     sh_commands.gen_mace_engine_factory_source(
         configs[YAMLKeyword.models].keys(),
-        configs[YAMLKeyword.build_type])
+        configs[YAMLKeyword.build_type],
+        configs[YAMLKeyword.embed_model_data])
     if configs[YAMLKeyword.build_type] == BuildType.code:
         sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
               model_header_dir)
