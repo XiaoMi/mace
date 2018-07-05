@@ -1,10 +1,10 @@
 Environment Requirement
-=======================
+========================
 
 MACE requires the following dependencies:
 
 Necessary Dependencies:
------------------------
+------------------------
 
 .. list-table::
     :header-rows: 1
@@ -51,7 +51,7 @@ Necessary Dependencies:
     ``export ANDROID_NDK_HOME=/path/to/ndk`` to specify ANDROID_NDK_HOME
 
 Optional Dependencies:
----------------------
+-----------------------
 
 .. list-table::
     :header-rows: 1

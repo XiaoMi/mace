@@ -1,23 +1,23 @@
 Advanced usage
-==============
+===============
 
 This part contains the full usage of MACE.
 
 
 How to build
---------------------------------
+-------------
 
 
-====================
+=========
 Overview
-====================
+=========
 
 As mentioned in the previous part, a model deployment file defines a case of model deployment.
 The whole building process is loading a deployment file, converting models, building MACE and packing generated files.
 
-====================
+================
 Deployment file
-====================
+================
 
 
 One deployment file will generate one library normally, but if more than one ABIs are specified,
@@ -111,9 +111,9 @@ in one deployment file.
         sha256sum path/to/your/file
 
 
-====================
+=========
 Building
-====================
+=========
 
 * **Build static or shared library**
 
@@ -246,12 +246,12 @@ Use ``-h`` to get detailed help.
 
 
 How to deploy
---------------------------------
+--------------
 
 
-========================
+=========
 Overview
-========================
+=========
 
 ``build`` command will generate the static/shared library, model files and
 header files and package them as

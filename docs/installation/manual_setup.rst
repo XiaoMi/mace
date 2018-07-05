@@ -1,13 +1,13 @@
 Manual setup
-============
+=============
 
 The setup steps are based on ``Ubuntu``. And dependencies to install can refer to :doc:`env_requirement`.
 
 Install Necessary Dependencies
-------------------------------
+-------------------------------
 
 Install Bazel
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Recommend bazel with version larger than ``0.13.0`` (Refer to `Bazel documentation <https://docs.bazel.build/versions/master/install.html>`__).
 
@@ -23,7 +23,7 @@ Recommend bazel with version larger than ``0.13.0`` (Refer to `Bazel documentati
         rm -f /bazel/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
 
 Install NDK
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 Recommend NDK with version r15c or r16 (Refer to `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__).
 
@@ -43,7 +43,7 @@ Recommend NDK with version r15c or r16 (Refer to `NDK installation guide <https:
     export PATH=${PATH}:${ANDROID_NDK_HOME}
 
 Install extra tools
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. code:: sh
 
@@ -61,7 +61,7 @@ Install extra tools
         filelock
 
 Install Optional Dependencies
------------------------------
+------------------------------
 
 .. code:: sh
 

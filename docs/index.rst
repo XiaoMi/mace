@@ -25,7 +25,6 @@ The main documentation is organized into the following sections:
    :caption: User guide
    :name: sec-user
 
-   user_guide/installation
    user_guide/basic_usage
    user_guide/advanced_usage
    user_guide/op_lists

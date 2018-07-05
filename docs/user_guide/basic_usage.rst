@@ -1,11 +1,11 @@
 Basic usage
-=============
+============
 
 
 Build and run an example model
---------------------------------
+-------------------------------
 
-At first, make sure the environment has been set up correctly already (refer to :doc:`installation`).
+At first, make sure the environment has been set up correctly already (refer to :doc:`../installation/env_requirement`).
 
 The followings are instructions about  how to quickly build and run a provided model in *MACE Model Zoo*.
 
@@ -67,13 +67,13 @@ Here we use the mobilenet-v2 model as an example.
 
 
 Build your own model
-----------------------------
+---------------------
 
 This part will show you how to use your pre-trained model in MACE.
 
-==================================
+======================
 1. Prepare your model
-==================================
+======================
 
 Mace now supports models from Tensorflow and Caffe(more frameworks will be supported).
 
@@ -121,9 +121,9 @@ Mace now supports models from Tensorflow and Caffe(more frameworks will be suppo
        $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
 
-============================================
+===========================================
 2. Create a deployment file for your model
-============================================
+===========================================
 
 When converting a model or building a library, MACE needs to read a YAML file which is called model deployment file here.
 
@@ -145,9 +145,9 @@ Modify one of them and use it for your own case.
 
 More details about model deployment file, please refer to :doc:`advanced_usage`.
 
-======================================
+======================
 3. Convert your model
-======================================
+======================
 
 When the deployment file is ready for your model, you can use MACE converter tool to convert your model(s).
 
@@ -167,9 +167,9 @@ The generated model files will be stored in ``build/${library_name}/model`` fold
     Please set ``build_type:proto`` in your deployment file before converting.
     The usage of ``build_type:code`` will be demonstrated in :doc:`advanced_usage`.
 
-======================================
+=============================
 4. Build MACE into a library
-======================================
+=============================
 
 MACE can be built into either a static or a shared library (which is
 specified by ``linkshared`` in YAML model deployment file).
@@ -190,11 +190,12 @@ The above command will generate library files in the ``build/${library_name}/lib
         2. If you want to build a library for a specific soc, please refer to :doc:`advanced_usage`.
 
 
-======================================
+==================
 5. Run your model
-======================================
+==================
 
-With the converted model, *.so or *.a library and header files, you can use the following commands to run and validate your model.
+With the converted model, the static or shared library and header files, you can use the following commands
+to run and validate your model.
 
 * **run**
 
@@ -219,9 +220,9 @@ With the converted model, *.so or *.a library and header files, you can use the 
         python tools/converter.py benchmark --config=path/to/your/model_deployment_file.yml
 
 
-========================================================
+=======================================
 6. Deploy your model into applications
-========================================================
+=======================================
 
 In the converting and building steps, you've got the static/shared library, model files and
 header files. All of these generated files have been packaged into
