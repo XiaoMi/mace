@@ -72,14 +72,13 @@ you can build the image from it,
 
 .. code:: sh
 
-    cd docker
-    docker build -t xiaomimace/mace-dev
+    docker build -t registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite ./docker/mace-dev-lite
 
 or pull the pre-built image from Docker Hub,
 
 .. code:: sh
 
-    docker pull xiaomimace/mace-dev
+    docker pull registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
 
 and then run the container with the following command.
 
@@ -87,8 +86,10 @@ and then run the container with the following command.
 
     # Create container
     # Set 'host' network to use ADB
-    docker run -it --rm --privileged -v /dev/bus/usb:/dev/bus/usb --net=host \ 
-               -v /local/path:/container/path xiaomimace/mace-dev /bin/bash
+    docker run -it --privileged -v /dev/bus/usb:/dev/bus/usb --net=host \
+               -v /local/path:/container/path \
+               registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite \
+               /bin/bash
 
 
 Usage

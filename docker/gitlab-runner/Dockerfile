@@ -1,4 +1,4 @@
-FROM xiaomimace/mace-dev:latest
+FROM registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev:latest
 
 # Update source
 RUN apt-get update -y
