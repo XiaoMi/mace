@@ -108,7 +108,7 @@ in one deployment file.
         adb shell getprop | grep "model\|version.sdk\|manufacturer\|hardware\|platform\|brand"
 
         # command for generating sha256_sum
-        sha256sum path/to/your/file
+        sha256sum /path/to/your/file
 
 
 =========

@@ -36,13 +36,13 @@ Here we use the mobilenet-v2 model as an example.
         git clone https://github.com/XiaoMi/mace-models.git
 
 
-    3. Build MACE.
+    3. Build a general MACE library.
 
     .. code:: sh
 
         cd path/to/mace
         # Build library
-        python tools/converter.py build --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        python tools/converter.py build --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
 
 
     4. Convert the model to MACE format model.
@@ -51,7 +51,7 @@ Here we use the mobilenet-v2 model as an example.
 
         cd path/to/mace
         # Build library
-        python tools/converter.py build --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        python tools/converter.py build --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
 
 
     5. Run the model.
@@ -59,11 +59,11 @@ Here we use the mobilenet-v2 model as an example.
     .. code:: sh
 
     	# Test model run time
-        python tools/converter.py run --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --round=100
+        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --round=100
 
     	# Validate the correctness by comparing the results against the
     	# original model and framework, measured with cosine distance for similarity.
-    	python tools/converter.py run --config=path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --validate
+    	python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --validate
 
 
 Build your own model
@@ -75,7 +75,7 @@ This part will show you how to use your pre-trained model in MACE.
 1. Prepare your model
 ======================
 
-Mace now supports models from Tensorflow and Caffe(more frameworks will be supported).
+Mace now supports models from Tensorflow and Caffe (more frameworks will be supported).
 
 -  TensorFlow
 
@@ -143,23 +143,19 @@ Modify one of them and use it for your own case.
    .. literalinclude:: models/demo_app_models_caffe.yml
       :language: yaml
 
-More details about model deployment file, please refer to :doc:`advanced_usage`.
+More details about model deployment file are in :doc:`advanced_usage`.
 
 ======================
 3. Convert your model
 ======================
 
-When the deployment file is ready for your model, you can use MACE converter tool to convert your model(s).
-
-To convert your pre-trained model to a MACE model, you need to set ``build_type:proto`` in your model deployment file.
-
-And then run this command:
+When the deployment file is ready, you can use MACE converter tool to convert your model(s).
 
 .. code:: bash
 
-    python tools/converter.py convert --config=path/to/your/model_deployment.yml
+    python tools/converter.py convert --config=/path/to/your/model_deployment_file.yml
 
-This command will download or load your pre-trained model and convert it to a MACE model proto file and weights file.
+This command will download or load your pre-trained model and convert it to a MACE model proto file and weights data file.
 The generated model files will be stored in ``build/${library_name}/model`` folder.
 
 .. warning::
@@ -171,22 +167,19 @@ The generated model files will be stored in ``build/${library_name}/model`` fold
 4. Build MACE into a library
 =============================
 
-MACE can be built into either a static or a shared library (which is
-specified by ``linkshared`` in YAML model deployment file).
-
 Use bazel to build MACE source code into a library.
 
     .. code:: sh
 
         cd path/to/mace
         # Build library
-        bazel build --config=path/to/your/model_deployment_file.yml
+        bazel build --config android mace:libmace --define neon=true --define openmp=true -cpu=arm64-v8a
 
-The above command will generate library files in the ``build/${library_name}/libs`` folder.
+The above command will generate a library as ``bazel-bin/mace/libmace.so``.
 
     .. warning::
 
-        1. Please verify the target_abis params in the above command and the deployment file are the same.
+        1. Please verify that the target_abis param in the above command and your deployment file are the same.
         2. If you want to build a library for a specific soc, please refer to :doc:`advanced_usage`.
 
 
@@ -204,11 +197,11 @@ to run and validate your model.
     .. code:: sh
 
     	# Test model run time
-        python tools/converter.py run --config=path/to/your/model_deployment_file.yml --round=100
+        python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --round=100
 
     	# Validate the correctness by comparing the results against the
     	# original model and framework, measured with cosine distance for similarity.
-    	python tools/converter.py run --config=path/to/your/model_deployment_file.yml --validate
+    	python tools/converter.py run --config=/path/to/your/model_deployment_file.yml --validate
 
 * **benchmark**
 
@@ -217,7 +210,7 @@ to run and validate your model.
     .. code:: sh
 
         # Benchmark model, get detailed statistics of each Op.
-        python tools/converter.py benchmark --config=path/to/your/model_deployment_file.yml
+        python tools/converter.py benchmark --config=/path/to/your/model_deployment_file.yml
 
 
 =======================================
