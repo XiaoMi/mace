@@ -1,5 +1,5 @@
 How to run tests
-================
+=================
 
 To run a test, you need to first cross compile the code, push the binary
 into the device and then execute the binary. To automate this process,
@@ -9,7 +9,7 @@ You need to make sure your device is connected to you dev machine before
 running tests.
 
 Run unit tests
---------------
+---------------
 
 MACE use [gtest](https://github.com/google/googletest) for unit tests.
 
