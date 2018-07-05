@@ -5,6 +5,8 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+load("//mace:mace.bzl", "mace_version_genrule", "encrypt_opencl_kernel_genrule")
+
 cc_library(
     name = "generated_models",
     srcs = glob(["models/*/*.cc"]),
@@ -16,15 +18,13 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "generated_opencl",
-    srcs = glob(["opencl/*.cc"]),
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-)
+mace_version_genrule()
+
+encrypt_opencl_kernel_genrule()
 
 cc_library(
-    name = "generated_tuning_params",
-    srcs = ["tuning/tuning_params.cc"],
+    name = "generated_opencl",
+    srcs = ["opencl/encrypt_opencl_kernel.cc"],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
 )
 

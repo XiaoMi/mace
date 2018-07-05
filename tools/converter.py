@@ -53,7 +53,9 @@ BUILD_TMP_GENERAL_OUTPUT_DIR_NAME = 'general'
 OUTPUT_LIBRARY_DIR_NAME = 'lib'
 OUTPUT_OPENCL_BINARY_DIR_NAME = 'opencl'
 OUTPUT_OPENCL_BINARY_FILE_NAME = 'compiled_opencl_kernel'
+OUTPUT_OPENCL_PARAMETER_FILE_NAME = 'tuned_opencl_parameter'
 CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
+CL_TUNED_PARAMETER_FILE_NAME = "mace_run.config"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 LIBMACE_SO_TARGET = "//mace:libmace.so"
@@ -505,6 +507,21 @@ def get_opencl_binary_output_path(library_name, target_abi,
             target_soc)
 
 
+def get_opencl_parameter_output_path(library_name, target_abi,
+                                     target_soc, serial_num):
+    device_name = \
+        sh_commands.adb_get_device_name_by_serialno(serial_num)
+    return '%s/%s/%s/%s/%s_%s.%s.%s.bin' % \
+           (BUILD_OUTPUT_DIR,
+            library_name,
+            OUTPUT_OPENCL_BINARY_DIR_NAME,
+            target_abi,
+            library_name,
+            OUTPUT_OPENCL_PARAMETER_FILE_NAME,
+            device_name,
+            target_soc)
+
+
 def get_shared_library_dir(library_name, abi):
     return '%s/%s/%s/%s' % (BUILD_OUTPUT_DIR,
                             library_name,
@@ -689,7 +706,6 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
 
-    sh_commands.gen_tuning_param_code(model_output_dirs)
     if linkshared == 0:
         mace_run_name = MACE_RUN_STATIC_NAME
         mace_run_target = MACE_RUN_STATIC_TARGET
@@ -773,6 +789,7 @@ def build_specific_lib(target_abi, target_soc, serial_num,
                 phone_data_dir=PHONE_DATA_DIR,
                 build_type=build_type,
                 opencl_binary_file="",
+                opencl_parameter_file="",
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
                 linkshared=linkshared,
             )
@@ -786,10 +803,15 @@ def build_specific_lib(target_abi, target_soc, serial_num,
         opencl_output_bin_path = get_opencl_binary_output_path(
             library_name, target_abi, target_soc, serial_num
         )
+        opencl_parameter_bin_path = get_opencl_parameter_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
         sh_commands.merge_opencl_binaries(
             model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
             opencl_output_bin_path)
-        sh_commands.gen_tuning_param_code(model_output_dirs)
+        sh_commands.merge_opencl_parameters(
+            model_output_dirs, CL_TUNED_PARAMETER_FILE_NAME,
+            opencl_parameter_bin_path)
         sh_commands.bazel_build(
             mace_run_target,
             abi=target_abi,
@@ -950,6 +972,7 @@ def run_specific_target(flags, configs, target_abi,
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
+    opencl_parameter_path = ""
     linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
@@ -960,6 +983,10 @@ def run_specific_target(flags, configs, target_abi,
         opencl_output_bin_path = get_opencl_binary_output_path(
             library_name, target_abi, target_soc, serial_num
         )
+        opencl_parameter_path = get_opencl_parameter_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
+
     mace_check(os.path.exists(build_tmp_binary_dir),
                ModuleName.RUN,
                'You should build before run.')
@@ -1051,6 +1078,7 @@ def run_specific_target(flags, configs, target_abi,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
                 opencl_binary_file=opencl_output_bin_path,
+                opencl_parameter_file=opencl_parameter_path,
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
                 linkshared=linkshared,
             )
@@ -1114,6 +1142,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     build_type = configs[YAMLKeyword.build_type]
     embed_model_data = configs[YAMLKeyword.embed_model_data]
     opencl_output_bin_path = ""
+    opencl_parameter_path = ""
     linkshared = configs[YAMLKeyword.linkshared]
     if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
@@ -1122,6 +1151,9 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
         build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
                                                     target_soc, serial_num)
         opencl_output_bin_path = get_opencl_binary_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
+        opencl_parameter_path = get_opencl_parameter_output_path(
             library_name, target_abi, target_soc, serial_num
         )
     mace_check(os.path.exists(build_tmp_binary_dir),
@@ -1194,6 +1226,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 gpu_perf_hint=flags.gpu_perf_hint,
                 gpu_priority_hint=flags.gpu_priority_hint,
                 opencl_binary_file=opencl_output_bin_path,
+                opencl_parameter_file=opencl_parameter_path,
                 shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
                 linkshared=linkshared)
 

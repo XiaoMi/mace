@@ -108,6 +108,9 @@ DEFINE_string(output_file,
 DEFINE_string(opencl_binary_file,
               "",
               "compiled opencl binary file path");
+DEFINE_string(opencl_parameter_file,
+              "",
+              "tuned OpenCL parameter file path");
 DEFINE_string(model_data_file,
               "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
@@ -172,6 +175,8 @@ bool RunModel(const std::vector<std::string> &input_names,
     // you should update the binary when OpenCL Driver changed.
     std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
     mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+
+    mace::SetOpenCLParameterPath(FLAGS_opencl_parameter_file);
   }
 #endif  // MACE_ENABLE_OPENCL
 

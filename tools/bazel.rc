@@ -9,6 +9,7 @@ build --verbose_failures
 build --copt=-std=c++11
 build --copt=-D_GLIBCXX_USE_C99_MATH_TR1
 build --copt=-DMACE_OBFUSCATE_LITERALS
+build --define openmp=true
 
 # Usage example: bazel build --config android
 build:android --crosstool_top=//external:android/crosstool

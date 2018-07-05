@@ -1,5 +1,12 @@
 workspace(name = "mace")
 
+# generate version and opencl kernel code.
+load("//repository/git:git_configure.bzl", "git_version_repository")
+load("//repository/opencl-kernel:opencl_kernel_configure.bzl", "encrypt_opencl_kernel_repository")
+
+git_version_repository(name="local_version_config")
+encrypt_opencl_kernel_repository(name="local_opencl_kernel_encrypt")
+
 # proto_library rules implicitly depend on @com_google_protobuf//:protoc,
 # which is the proto-compiler.
 # This statement defines the @com_google_protobuf repo.

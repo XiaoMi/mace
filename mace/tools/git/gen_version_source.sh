@@ -13,11 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+MACE_SOURCE_DIR=$(dirname $0)
+
 OUTPUT_FILENAME=$1
 if [[ -z "${OUTPUT_FILENAME}}" ]]; then
   echo "Usage: $0 <filename>"
   exit 1
 fi
+
+OUTPUT_DIR=$(dirname $OUTPUT_FILENAME)
+if [ -d $OUTPUT_DIR ]; then
+  rm -rf $OUTPUT_DIR
+fi
+
+mkdir -p $OUTPUT_DIR
+
+pushd $MACE_SOURCE_DIR
 
 DATE_STR=$(date +%Y%m%d)
 GIT_VERSION=$(git describe --long --tags)
@@ -49,3 +60,5 @@ __attribute__((visibility ("default")))
 const char *MaceVersion() { return "MACEVER-${GIT_VERSION}" + 8; }
 }  // namespace mace
 EOF
+
+popd

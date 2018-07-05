@@ -24,4 +24,10 @@ void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
   kStorageFactory = storage_factory;
 }
 
+std::string kOpenCLParameterPath;
+
+void SetOpenCLParameterPath(const std::string &path) {
+  kOpenCLParameterPath = path;
+}
+
 };  // namespace mace

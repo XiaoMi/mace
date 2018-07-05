@@ -48,3 +48,10 @@ py_binary(
         "@six_archive//:six",
     ],
 )
+
+py_binary(
+    name = "archive_static_lib",
+    srcs = ["archive_static_lib.py"],
+    srcs_version = "PY2AND3",
+    visibility = ["//visibility:public"],
+)

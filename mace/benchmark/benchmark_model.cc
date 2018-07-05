@@ -191,6 +191,9 @@ DEFINE_int32(warmup_runs, 1, "how many runs to initialize model");
 DEFINE_string(opencl_binary_file,
               "",
               "compiled opencl binary file path");
+DEFINE_string(opencl_parameter_file,
+              "",
+              "tuned OpenCL parameter file path");
 DEFINE_string(model_data_file, "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
 DEFINE_string(model_file, "",
@@ -264,6 +267,8 @@ int Main(int argc, char **argv) {
 
     std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
     mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+
+    mace::SetOpenCLParameterPath(FLAGS_opencl_parameter_file);
   }
 #endif  // MACE_ENABLE_OPENCL
 

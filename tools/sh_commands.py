@@ -454,6 +454,54 @@ def merge_opencl_binaries(binaries_dirs,
     np.array(output_byte_array).tofile(output_file_path)
 
 
+def merge_opencl_parameters(binaries_dirs,
+                            cl_parameter_file_name,
+                            output_file_path):
+    cl_bin_dirs = []
+    for d in binaries_dirs:
+        cl_bin_dirs.append(os.path.join(d, "opencl_bin"))
+    # create opencl binary output dir
+    opencl_binary_dir = os.path.dirname(output_file_path)
+    if not os.path.exists(opencl_binary_dir):
+        sh.mkdir("-p", opencl_binary_dir)
+    kvs = {}
+    for binary_dir in cl_bin_dirs:
+        binary_path = os.path.join(binary_dir, cl_parameter_file_name)
+        if not os.path.exists(binary_path):
+            continue
+
+        print 'generate opencl parameter from', binary_path
+        with open(binary_path, "rb") as f:
+            binary_array = np.fromfile(f, dtype=np.uint8)
+
+        idx = 0
+        size, = struct.unpack("Q", binary_array[idx:idx + 8])
+        idx += 8
+        for _ in xrange(size):
+            key_size, = struct.unpack("i", binary_array[idx:idx + 4])
+            idx += 4
+            key, = struct.unpack(
+                str(key_size) + "s", binary_array[idx:idx + key_size])
+            idx += key_size
+            value_size, = struct.unpack("i", binary_array[idx:idx + 4])
+            idx += 4
+            kvs[key] = binary_array[idx:idx + value_size]
+            idx += value_size
+
+    output_byte_array = bytearray()
+    data_size = len(kvs)
+    output_byte_array.extend(struct.pack("Q", data_size))
+    for key, value in kvs.iteritems():
+        key_size = len(key)
+        output_byte_array.extend(struct.pack("i", key_size))
+        output_byte_array.extend(struct.pack(str(key_size) + "s", key))
+        value_size = len(value)
+        output_byte_array.extend(struct.pack("i", value_size))
+        output_byte_array.extend(value)
+
+    np.array(output_byte_array).tofile(output_file_path)
+
+
 def gen_tuning_param_code(model_output_dirs,
                           codegen_path="mace/codegen"):
     mace_run_param_file = "mace_run.config"
@@ -646,6 +694,7 @@ def tuning_run(abi,
                phone_data_dir,
                build_type,
                opencl_binary_file,
+               opencl_parameter_file,
                shared_library_dir,
                omp_num_threads=-1,
                cpu_affinity_policy=1,
@@ -713,9 +762,11 @@ def tuning_run(abi,
             adb_push("%s/%s.data" % (mace_model_dir, model_tag),
                      phone_data_dir, serialno)
 
-        if device_type == common.DeviceType.GPU\
-                and os.path.exists(opencl_binary_file):
-            adb_push(opencl_binary_file, phone_data_dir, serialno)
+        if device_type == common.DeviceType.GPU:
+            if os.path.exists(opencl_binary_file):
+                adb_push(opencl_binary_file, phone_data_dir, serialno)
+            if os.path.exists(opencl_parameter_file):
+                adb_push(opencl_parameter_file, phone_data_dir, serialno)
 
         adb_push("third_party/nnlib/libhexagon_controller.so",
                  phone_data_dir, serialno)
@@ -774,6 +825,8 @@ def tuning_run(abi,
             "--model_file=%s" % mace_model_phone_path,
             "--opencl_binary_file=%s/%s" %
             (phone_data_dir, os.path.basename(opencl_binary_file)),
+            "--opencl_parameter_file=%s/%s" %
+            (phone_data_dir, os.path.basename(opencl_parameter_file)),
         ])
         adb_cmd = ' '.join(adb_cmd)
         cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
@@ -930,7 +983,6 @@ def build_host_libraries(model_build_type, abi):
     bazel_build("@com_google_protobuf//:protobuf_lite", abi=abi)
     bazel_build("//mace/proto:mace_cc", abi=abi)
     bazel_build("//mace/codegen:generated_opencl", abi=abi)
-    bazel_build("//mace/codegen:generated_tuning_params", abi=abi)
     bazel_build("//mace/codegen:generated_version", abi=abi)
     bazel_build("//mace/utils:utils", abi=abi)
     bazel_build("//mace/core:core", abi=abi)
@@ -995,9 +1047,6 @@ def merge_libs(target_soc,
             "bazel-bin/mace/codegen/libgenerated_opencl.pic.a\n")
         mri_stream += (
             "addlib "
-            "bazel-bin/mace/codegen/libgenerated_tuning_params.pic.a\n")
-        mri_stream += (
-            "addlib "
             "bazel-bin/mace/codegen/libgenerated_version.pic.a\n")
         mri_stream += (
             "addlib "
@@ -1030,9 +1079,6 @@ def merge_libs(target_soc,
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_opencl.a\n")
-        mri_stream += (
-            "addlib "
-            "bazel-bin/mace/codegen/libgenerated_tuning_params.a\n")
         mri_stream += (
             "addlib "
             "bazel-bin/mace/codegen/libgenerated_version.a\n")
@@ -1189,6 +1235,7 @@ def benchmark_model(abi,
                     phone_data_dir,
                     build_type,
                     opencl_binary_file,
+                    opencl_parameter_file,
                     shared_library_dir,
                     omp_num_threads=-1,
                     cpu_affinity_policy=1,
@@ -1240,9 +1287,11 @@ def benchmark_model(abi,
         if not embed_model_data:
             adb_push("%s/%s.data" % (mace_model_dir, model_tag),
                      phone_data_dir, serialno)
-        if device_type == common.DeviceType.GPU \
-                and os.path.exists(opencl_binary_file):
-            adb_push(opencl_binary_file, phone_data_dir, serialno)
+        if device_type == common.DeviceType.GPU:
+            if os.path.exists(opencl_binary_file):
+                adb_push(opencl_binary_file, phone_data_dir, serialno)
+            if os.path.exists(opencl_parameter_file):
+                adb_push(opencl_parameter_file, phone_data_dir, serialno)
         mace_model_phone_path = ""
         if build_type == BuildType.proto:
             mace_model_phone_path = "%s/%s.pb" % (phone_data_dir, model_tag)
@@ -1283,6 +1332,8 @@ def benchmark_model(abi,
             "--model_file=%s" % mace_model_phone_path,
             "--opencl_binary_file=%s/%s" %
             (phone_data_dir, os.path.basename(opencl_binary_file)),
+            "--opencl_parameter_file=%s/%s" %
+            (phone_data_dir, os.path.basename(opencl_parameter_file)),
         ]
         adb_cmd = ' '.join(adb_cmd)
         cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
