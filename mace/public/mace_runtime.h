@@ -63,7 +63,8 @@ class KVStorageFactory {
   virtual std::unique_ptr<KVStorage> CreateStorage(const std::string &name) = 0;
 };
 
-class FileStorageFactory : public KVStorageFactory {
+class __attribute__((visibility("default"))) FileStorageFactory
+    : public KVStorageFactory {
  public:
   explicit FileStorageFactory(const std::string &path);
 
@@ -77,6 +78,7 @@ class FileStorageFactory : public KVStorageFactory {
 };
 
 // Set KV store factory used as OpenCL cache. (Call Once)
+__attribute__((visibility("default")))
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 
 // Just call once. (Not thread-safe)
@@ -85,11 +87,13 @@ void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 // Using OpenCL binary will speed up the initialization.
 // OpenCL binary is corresponding to the OpenCL Driver version,
 // you should update the binary when OpenCL Driver changed.
+__attribute__((visibility("default")))
 void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
 
 // Set GPU hints, currently only supports Adreno GPU.
 //
 // Caution: this function may hurt performance if improper parameters provided.
+__attribute__((visibility("default")))
 void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 
 // Set OpenMP threads number and affinity policy.
@@ -109,6 +113,7 @@ void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 // If successful, it returns MACE_SUCCESS and error if it can't reliabley
 // detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
 // suggested to use AFFINITY_NONE to use all cores.
+__attribute__((visibility("default")))
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy);
 
@@ -119,6 +124,7 @@ MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
 // This function may not work well on some chips (e.g. MTK). Setting thread
 // affinity to offline cores may run very slow or unexpectedly. In such cases,
 // please use SetOpenMPThreadPolicy with default policy instead.
+__attribute__((visibility("default")))
 void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids);
 
 // Get ARM big.LITTLE configuration.
@@ -130,6 +136,7 @@ void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids);
 //
 // If successful, it returns MACE_SUCCESS and error if it can't reliabley
 // detect the frequency of big-LITTLE cores (e.g. MTK).
+__attribute__((visibility("default")))
 MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                std::vector<int> *little_core_ids);
 

@@ -74,7 +74,7 @@ enum MaceStatus {
   }
 
 // MACE input/output tensor
-class MaceTensor {
+class __attribute__((visibility("default"))) MaceTensor {
  public:
   // shape - the shape of the tensor, with size n
   // data - the buffer of the tensor, must not be null with size equals
@@ -97,7 +97,7 @@ class MaceTensor {
   std::unique_ptr<Impl> impl_;
 };
 
-class MaceEngine {
+class __attribute__((visibility("default"))) MaceEngine {
  public:
   explicit MaceEngine(DeviceType device_type);
   ~MaceEngine();
@@ -127,6 +127,7 @@ class MaceEngine {
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
 
+__attribute__((visibility("default")))
 MaceStatus CreateMaceEngineFromProto(
     const std::vector<unsigned char> &model_pb,
     const std::string &model_data_file,
