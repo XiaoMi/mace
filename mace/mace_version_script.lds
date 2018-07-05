@@ -2,13 +2,15 @@ mace {
   global:
     *MaceTensor*;
     *MaceEngine*;
-    *MaceVersion*;
-    *SetOpenMPThreadPolicy*;
-    *SetGPUHints*;
-    *SetOpenCLBinaryPaths*;
+    *CreateMaceEngineFromProto*;
     *FileStorageFactory*;
     *SetKVStorageFactory*;
-    *CreateMaceEngineFromProto*;
+    *SetOpenCLBinaryPaths*;
+    *SetGPUHints*;
+    *SetOpenMPThreadPolicy*;
+    *SetOpenMPThreadAffinity*;
+    *GetBigLittleCoreIDs*;
+    *MaceVersion*;
   local:
     *;
 };

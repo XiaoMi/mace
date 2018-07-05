@@ -22,6 +22,7 @@ build:optimization --linkopt=-Wl,--strip-all
 build:optimization --copt=-ffunction-sections
 build:optimization --copt=-fdata-sections
 build:optimization --linkopt=-Wl,--gc-sections
+build:optimization --copt=-fvisibility=hidden
 
 # Address sanitizer
 build:asan --strip=never
