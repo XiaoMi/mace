@@ -55,6 +55,7 @@ phones. The benchmark results can be found in [the CI result page](https://gitla
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
+* Slack: [mace-users.slack.com](https://join.slack.com/t/mace-users/shared_invite/enQtMzkzNjM3MzMxODYwLTAyZTAzMzQyNjc0ZGI5YjU3MjI1N2Q2OWI1ODgwZjAwOWVlNzFlMjFmMTgwYzhjNzU4MDMwZWQ1MjhiM2Y4OTE)
 * Mailing list: [mace-users@googlegroups.com](mailto:mace-users@googlegroups.com)
 * Google Groups: https://groups.google.com/forum/#!forum/mace-users
 * QQ群: 756046893

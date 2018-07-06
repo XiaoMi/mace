@@ -48,6 +48,7 @@
 * 欢迎通过Github Issues提交问题报告与建议
 * 邮件列表: [mace-users@googlegroups.com](mailto:mace-users@googlegroups.com)
 * QQ群: 756046893
+* Slack: [mace-users.slack.com](https://join.slack.com/t/mace-users/shared_invite/enQtMzkzNjM3MzMxODYwLTAyZTAzMzQyNjc0ZGI5YjU3MjI1N2Q2OWI1ODgwZjAwOWVlNzFlMjFmMTgwYzhjNzU4MDMwZWQ1MjhiM2Y4OTE)
 
 ## License
 [Apache License 2.0](LICENSE).
