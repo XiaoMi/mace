@@ -253,9 +253,12 @@ int Main(int argc, char **argv) {
   mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
 
   // config runtime
-  mace::SetOpenMPThreadPolicy(
+  MaceStatus ret = mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+  if (ret != MACE_SUCCESS) {
+    LOG(WARNING) << "Set openmp or cpu affinity failed.";
+  }
 #ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::GPU) {
     mace::SetGPUHints(

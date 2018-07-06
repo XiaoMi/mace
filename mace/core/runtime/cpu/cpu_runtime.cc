@@ -77,14 +77,19 @@ int GetCPUMaxFreq(int cpu_id) {
   return freq;
 }
 
-void SetThreadAffinity(cpu_set_t mask) {
+MaceStatus SetThreadAffinity(cpu_set_t mask) {
 #if defined(__ANDROID__)
   pid_t pid = gettid();
 #else
   pid_t pid = syscall(SYS_gettid);
 #endif
   int err = sched_setaffinity(pid, sizeof(mask), &mask);
-  MACE_CHECK(err == 0, "set affinity error: ", strerror(errno));
+  if (err) {
+    LOG(WARNING) << "set affinity error: " << strerror(errno);
+    return MACE_INVALID_ARGS;
+  } else {
+    return MACE_SUCCESS;
+  }
 }
 
 }  // namespace
@@ -129,8 +134,8 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
   return MACE_SUCCESS;
 }
 
-void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                     const std::vector<int> &cpu_ids) {
+MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
+                                           const std::vector<int> &cpu_ids) {
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
@@ -146,17 +151,23 @@ void SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
   for (auto cpu_id : cpu_ids) {
     CPU_SET(cpu_id, &mask);
   }
-
 #ifdef MACE_ENABLE_OPENMP
+  std::vector<MaceStatus> status(omp_num_threads);
 #pragma omp parallel for
   for (int i = 0; i < omp_num_threads; ++i) {
     VLOG(1) << "Set affinity for OpenMP thread " << omp_get_thread_num()
             << "/" << omp_get_num_threads();
-    SetThreadAffinity(mask);
+    status[i] = SetThreadAffinity(mask);
   }
+  for (int i = 0; i < omp_num_threads; ++i) {
+    if (status[i] != MACE_SUCCESS)
+      return MACE_INVALID_ARGS;
+  }
+  return MACE_SUCCESS;
 #else
-  SetThreadAffinity(mask);
+  MaceStatus status = SetThreadAffinity(mask);
   VLOG(1) << "Set affinity without OpenMP: " << mask.__bits[0];
+  return status;
 #endif
 }
 
@@ -191,8 +202,8 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
       omp_num_threads_hint > static_cast<int>(use_cpu_ids.size())) {
     omp_num_threads_hint = use_cpu_ids.size();
   }
-  SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
-  return MACE_SUCCESS;
+
+  return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
 }
 
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
@@ -202,7 +213,8 @@ MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
   return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint, policy);
 }
 
-void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids) {
+MaceStatus SetOpenMPThreadAffinity(int num_threads,
+                                   const std::vector<int> &cpu_ids) {
   return SetOpenMPThreadsAndAffinityCPUs(num_threads, cpu_ids);
 }
 
