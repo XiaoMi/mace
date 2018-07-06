@@ -1093,12 +1093,12 @@ def packaging_lib(libmace_output_dir, project_name):
             _fg=True)
     elif which_sys == "Darwin":
         sh.tar(
-        "--exclude",
-        "%s/_tmp" % project_dir,
-        "-cvzf",
-        "%s" % tar_package_path,
-        glob.glob("%s/*" % project_dir),
-        _fg=True)
+            "--exclude",
+            "%s/_tmp" % project_dir,
+            "-cvzf",
+            "%s" % tar_package_path,
+            glob.glob("%s/*" % project_dir),
+            _fg=True)
     print("Packaging Done!\n")
 
 
