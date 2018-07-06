@@ -25,6 +25,7 @@ import subprocess
 import sys
 import time
 import urllib
+import platform
 from enum import Enum
 
 import common
@@ -1056,10 +1057,15 @@ def merge_libs(target_soc,
 
     mri_stream += "save\n"
     mri_stream += "end\n"
-
-    cmd = sh.Command("%s/toolchains/" % os.environ["ANDROID_NDK_HOME"] +
-                     "aarch64-linux-android-4.9/prebuilt/linux-x86_64/" +
-                     "bin/aarch64-linux-android-ar")
+    which_sys = platform.system()
+    if which_sys == "Linux":
+        cmd = sh.Command("%s/toolchains/" % os.environ["ANDROID_NDK_HOME"] +
+                        "aarch64-linux-android-4.9/prebuilt/linux-x86_64/" +
+                        "bin/aarch64-linux-android-ar")
+    elif which_sys == "Darwin":
+        cmd = sh.Command("%s/toolchains/" % os.environ["ANDROID_NDK_HOME"] +
+                        "aarch64-linux-android-4.9/prebuilt/darwin-x86_64/" +
+                        "bin/aarch64-linux-android-ar")
 
     cmd("-M", _in=mri_stream)
 
@@ -1076,12 +1082,22 @@ def packaging_lib(libmace_output_dir, project_name):
 
     print("Start packaging '%s' libs into %s" % (project_name,
                                                  tar_package_path))
-    sh.tar(
-        "cvzf",
-        "%s" % tar_package_path,
-        glob.glob("%s/*" % project_dir),
+    which_sys = platform.system()
+    if which_sys == "Linux":
+        sh.tar(
+            "cvzf",
+            "%s" % tar_package_path,
+            glob.glob("%s/*" % project_dir),
+            "--exclude",
+            "%s/_tmp" % project_dir,
+            _fg=True)
+    elif which_sys == "Darwin":
+        sh.tar(
         "--exclude",
         "%s/_tmp" % project_dir,
+        "-cvzf",
+        "%s" % tar_package_path,
+        glob.glob("%s/*" % project_dir),
         _fg=True)
     print("Packaging Done!\n")
 
