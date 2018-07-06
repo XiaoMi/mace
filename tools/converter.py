@@ -35,10 +35,12 @@ from common import mace_check
 from common import MaceLogger
 from common import StringFormatter
 
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 ################################
 # common definitions
 ################################
-BUILD_OUTPUT_DIR = 'build'
+BUILD_OUTPUT_DIR = 'builds'
 BUILD_DOWNLOADS_DIR = BUILD_OUTPUT_DIR + '/downloads'
 PHONE_DATA_DIR = "/data/local/tmp/mace_run"
 MODEL_OUTPUT_DIR_NAME = 'model'

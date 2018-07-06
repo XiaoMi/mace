@@ -13,4 +13,8 @@ build/
 docs/_build/
 *.a
 
+.vscode/
+builds/
+mace/examples/android/macelibrary/src/main/cpp/mace/
+
 \.project/
