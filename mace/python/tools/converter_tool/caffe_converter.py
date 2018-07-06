@@ -167,6 +167,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         self._op_converters = {
             'Input': self.convert_nop,
             'Convolution': self.convert_conv2d,
+            'Deconvolution': self.convert_deconv2d,
             'Eltwise': self.convert_elementwise,
             'Add': self.convert_add,
             'ReLU': self.convert_activation,
@@ -179,6 +180,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'Softmax': self.convert_softmax,
             'InnerProduct': self.convert_fully_connected,
             'BatchNorm': self.convert_folded_batchnorm,
+            'Crop': self.convert_crop,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -397,6 +399,55 @@ class CaffeConverter(base_converter.ConverterInterface):
                             bias_data)
             op.input.extend([bias_tensor_name])
 
+    def convert_deconv2d(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.convolution_param
+        is_depthwise = False
+        if param.HasField(caffe_group_str):
+            filter_data = caffe_op.blobs[0]
+            mace_check(param.group == filter_data.shape[0] and
+                       filter_data.shape[1] == 1,
+                       "Mace does not support group deconvolution yet")
+            is_depthwise = True
+        mace_check(is_depthwise is False,
+                   "Mace do not support depthwise deconvolution yet")
+
+        op.type = MaceOp.Deconv2D.name
+
+        from_caffe_arg = op.arg.add()
+        from_caffe_arg.name = MaceKeyword.mace_from_caffe_str
+        from_caffe_arg.i = 1
+
+        self.add_stride_pad_kernel_arg(param, op)
+        # dilation is specific for convolution in caffe
+        dilations = [1, 1]
+        if len(param.dilation) > 0:
+            dilation_arg = op.arg.add()
+            dilation_arg.name = MaceKeyword.mace_dilations_str
+            if len(param.dilation) == 1:
+                dilations = [param.dilation[0], param.dilation[0]]
+            elif len(param.dilation) == 2:
+                dilations = [param.dilation[0], param.dilation[1]]
+            mace_check(dilations[0] == 1 and dilations[1] == 1,
+                       "Mace only supports dilation == 1 deconvolution.")
+            dilation_arg.ints.extend(dilations)
+
+        filter_tensor_name = op.name + '_filter'
+        filter_data = caffe_op.blobs[0]
+        self.add_tensor(filter_tensor_name, filter_data.shape,
+                        mace_pb2.DT_FLOAT, filter_data)
+        op.input.extend([filter_tensor_name])
+
+        if len(caffe_op.blobs) == 2:
+            bias_tensor_name = op.name + '_bias'
+            bias_data = caffe_op.blobs[1]
+            # caffe of old version has 4-dimension bias, so reshape it
+            # to single dimension
+            self.add_tensor(bias_tensor_name, bias_data.reshape(-1).shape,
+                            mace_pb2.DT_FLOAT,
+                            bias_data)
+            op.input.extend([bias_tensor_name])
+
     def convert_elementwise(self, caffe_op):
         op = self.convert_general_op(caffe_op)
         param = caffe_op.layer.eltwise_param
@@ -474,6 +525,24 @@ class CaffeConverter(base_converter.ConverterInterface):
 
     def convert_softmax(self, caffe_op):
         self.convert_general_op(caffe_op)
+
+    def convert_crop(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        param = caffe_op.layer.crop_param
+        op.type = MaceOp.Crop.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        axis_arg.i = 2
+        if param.HasField('axis'):
+            axis_arg.i = param.axis
+        axis_arg.i = 4 + axis_arg.i if axis_arg.i < 0 else axis_arg.i
+        offset_arg = op.arg.add()
+        offset_arg.name = MaceKeyword.mace_offset_str
+        if len(param.offset) > 0:
+            offset_arg.ints.extend(list(param.offset))
+        else:
+            offset_arg.i = 0
 
     def convert_concat(self, caffe_op):
         op = self.convert_general_op(caffe_op)

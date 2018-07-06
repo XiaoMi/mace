@@ -41,7 +41,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
   net.TransformDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
-
+  bool from_caffe = output_shape.size() != 4;
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
@@ -55,6 +55,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
         .AddIntArg("padding", padding)
         .AddIntsArg("padding_values", padding_size)
         .AddIntsArg("output_shape", output_shape)
+        .AddIntArg("from_caffe", from_caffe)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(D);
@@ -73,6 +74,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
         .AddIntArg("padding", padding)
         .AddIntsArg("padding_values", padding_size)
         .AddIntsArg("output_shape", output_shape)
+        .AddIntArg("from_caffe", from_caffe)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -206,17 +208,6 @@ void TestNHWCSimple3x3VALID_S1() {
        366, 399, 432, 234, 252, 270, 146, 157, 168, 354, 378, 402, 630,
        669, 708, 502, 530, 558, 294, 309, 324, 133, 140, 147, 306, 321,
        336, 522, 546, 570, 398, 415, 432, 225, 234, 243});
-  RunTestSimple<D>(
-      {1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 1, Padding::VALID, {4, 4}, {0},
-      {3, 3, 3, 1}, {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
-                     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
-      {1, 5, 5, 3},
-      {1,   2,   3,   6,   9,   12,  18,  24,  30,  26,  31,  36,  21,
-       24,  27,  14,  19,  24,  54,  66,  78,  126, 147, 168, 130, 146,
-       162, 90,  99,  108, 66,  78,  90,  198, 225, 252, 405, 450, 495,
-       366, 399, 432, 234, 252, 270, 146, 157, 168, 354, 378, 402, 630,
-       669, 708, 502, 530, 558, 294, 309, 324, 133, 140, 147, 306, 321,
-       336, 522, 546, 570, 398, 415, 432, 225, 234, 243});
 }
 
 template <DeviceType D>
@@ -342,6 +333,7 @@ void TestComplexDeconvNxNS12(const int batch,
       paddings.push_back(padding);
       paddings.push_back(padding);
     }
+    bool from_caffe = output_shape.size() != 4;
     // Construct graph
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("InputNCHW")
@@ -352,6 +344,7 @@ void TestComplexDeconvNxNS12(const int batch,
         .AddIntArg("padding", type)
         .AddIntsArg("padding_values", paddings)
         .AddIntsArg("output_shape", output_shape)
+        .AddIntArg("from_caffe", from_caffe)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
 
@@ -382,6 +375,7 @@ void TestComplexDeconvNxNS12(const int batch,
         .AddIntArg("padding", type)
         .AddIntsArg("padding_values", paddings)
         .AddIntsArg("output_shape", output_shape)
+        .AddIntArg("from_caffe", from_caffe)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
     // Run on device

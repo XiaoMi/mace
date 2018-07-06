@@ -173,7 +173,7 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
 
-  if (output_shape_.size() == 4) {
+  if (!from_caffe_) {
     paddings_.clear();
     paddings_ = std::vector<int>(2, 0);
     CalcDeconvPaddingAndInputSize(input->shape().data(), filter->shape().data(),
