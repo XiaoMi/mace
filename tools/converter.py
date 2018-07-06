@@ -35,8 +35,11 @@ from common import mace_check
 from common import MaceLogger
 from common import StringFormatter
 
+################################
+# set environment
+################################
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 ################################
 # common definitions
 ################################
@@ -1219,7 +1222,7 @@ def benchmark_model(flags):
 
 
 ################################
-# Parsing arguments
+# parsing arguments
 ################################
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
