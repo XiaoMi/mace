@@ -1060,12 +1060,12 @@ def merge_libs(target_soc,
     which_sys = platform.system()
     if which_sys == "Linux":
         cmd = sh.Command("%s/toolchains/" % os.environ["ANDROID_NDK_HOME"] +
-                        "aarch64-linux-android-4.9/prebuilt/linux-x86_64/" +
-                        "bin/aarch64-linux-android-ar")
+                         "aarch64-linux-android-4.9/prebuilt/linux-x86_64/" +
+                         "bin/aarch64-linux-android-ar")
     elif which_sys == "Darwin":
         cmd = sh.Command("%s/toolchains/" % os.environ["ANDROID_NDK_HOME"] +
-                        "aarch64-linux-android-4.9/prebuilt/darwin-x86_64/" +
-                        "bin/aarch64-linux-android-ar")
+                         "aarch64-linux-android-4.9/prebuilt/darwin-x86_64/" +
+                         "bin/aarch64-linux-android-ar")
 
     cmd("-M", _in=mri_stream)
 
