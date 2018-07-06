@@ -1,0 +1,9 @@
+language: cpp
+sudo: required
+
+before_install:
+  - sudo pip install pycodestyle
+
+script:
+  - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py
+  - pycodestyle $(find -name "*.py")
