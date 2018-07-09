@@ -198,9 +198,12 @@ bool RunModel(const std::string &model_name,
               const std::vector<std::vector<int64_t>> &output_shapes) {
   DeviceType device_type = ParseDeviceType(FLAGS_device);
   // config runtime
-  mace::SetOpenMPThreadPolicy(
+  MaceStatus status = mace::SetOpenMPThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+  if (status != MACE_SUCCESS) {
+    LOG(WARNING) << "Set openmp or cpu affinity failed.";
+  }
 #ifdef MACE_ENABLE_OPENCL
   if (device_type == DeviceType::GPU) {
     mace::SetGPUHints(

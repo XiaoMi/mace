@@ -34,7 +34,7 @@ public class InitData {
     public InitData() {
         model = MODELS[0];
         ompNumThreads = 2;
-        cpuAffinityPolicy = 1;
+        cpuAffinityPolicy = 0;
         gpuPerfHint = 3;
         gpuPriorityHint = 3;
         device = DEVICES[0];
