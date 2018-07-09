@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import sys
-import os
 
-# python encrypt_opencl_codegen.py --cl_kernel_dir=./mace/kernels/opencl/cl/  \
-#     --output_path=./mace/codegen/opencl_encrypt/opencl_encrypted_program.cc
 
 def is_static_lib(lib_name):
     return lib_name.endswith('.a') or lib_name.endswith('.lo')
+
 
 def merge_libs(input_libs,
                output_lib_path,

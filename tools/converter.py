@@ -28,6 +28,7 @@ from enum import Enum
 
 import sh_commands
 from sh_commands import BuildType
+from sh_commands import ModelFormat
 
 from common import CaffeEnvType
 from common import DeviceType
@@ -58,13 +59,28 @@ CL_COMPILED_BINARY_FILE_NAME = "mace_cl_compiled_program.bin"
 CL_TUNED_PARAMETER_FILE_NAME = "mace_run.config"
 CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
+ENGINE_CODEGEN_DIR = CODEGEN_BASE_DIR + '/engine'
+LIB_CODEGEN_DIR = CODEGEN_BASE_DIR + '/lib'
 LIBMACE_SO_TARGET = "//mace:libmace.so"
+LIBMACE_STATIC_TARGET = "//mace:libmace_static"
+LIBMACE_STATIC_PATH = "bazel-genfiles/mace/libmace.a"
+LIBMACE_DYNAMIC_PATH = "bazel-bin/mace/libmace.so"
+MODEL_LIB_TARGET = "//mace/codegen:generated_models"
+MODEL_LIB_PATH = "bazel-bin/mace/codegen/libgenerated_models.a"
 MACE_RUN_STATIC_NAME = "mace_run_static"
-MACE_RUN_SHARED_NAME = "mace_run_shared"
-EXAMPLE_STATIC_NAME = "example_static"
-EXAMPLE_SHARED_NAME = "example_shared"
+MACE_RUN_DYNAMIC_NAME = "mace_run_dynamic"
 MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
-MACE_RUN_SHARED_TARGET = "//mace/tools/validation:" + MACE_RUN_SHARED_NAME
+MACE_RUN_DYNAMIC_TARGET = "//mace/tools/validation:" + MACE_RUN_DYNAMIC_NAME
+EXAMPLE_STATIC_NAME = "example_static"
+EXAMPLE_DYNAMIC_NAME = "example_dynamic"
+EXAMPLE_STATIC_TARGET = "//mace/examples/cli:" + EXAMPLE_STATIC_NAME
+EXAMPLE_DYNAMIC_TARGET = "//mace/examples/cli:" + EXAMPLE_DYNAMIC_NAME
+BM_MODEL_STATIC_NAME = "benchmark_model_static"
+BM_MODEL_DYNAMIC_NAME = "benchmark_model_dynamic"
+BM_MODEL_STATIC_TARGET = "//mace/benchmark:" + BM_MODEL_STATIC_NAME
+BM_MODEL_DYNAMIC_TARGET = "//mace/benchmark:" + BM_MODEL_DYNAMIC_NAME
+DEVICE_INTERIOR_DIR = PHONE_DATA_DIR + "/interior"
+BUILD_TMP_OPENCL_BIN_DIR = 'opencl_bin'
 ALL_SOC_TAG = 'all'
 
 ABITypeStrs = [
@@ -78,6 +94,17 @@ class ABIType(object):
     armeabi_v7a = 'armeabi-v7a'
     arm64_v8a = 'arm64-v8a'
     host = 'host'
+
+
+ModelFormatStrs = [
+    "file",
+    "code",
+]
+
+
+class MACELibType(object):
+    static = 0
+    dynamic = 1
 
 
 PlatformTypeStrs = [
@@ -128,6 +155,7 @@ WinogradParameters = [0, 2, 4]
 
 
 class DefaultValues(object):
+    mace_lib_type = MACELibType.static
     omp_num_threads = -1,
     cpu_affinity_policy = 1,
     gpu_perf_hint = 3,
@@ -138,8 +166,8 @@ class YAMLKeyword(object):
     library_name = 'library_name'
     target_abis = 'target_abis'
     target_socs = 'target_socs'
-    build_type = 'build_type'
-    embed_model_data = 'embed_model_data'
+    model_graph_format = 'model_graph_format'
+    model_data_format = 'model_data_format'
     linkshared = 'linkshared'
     models = 'models'
     platform = 'platform'
@@ -283,45 +311,30 @@ def format_model_config(flags):
                            "Build specified SOC library, "
                            "you must plug in a phone using the SOC")
 
-    build_type = BuildType.code
-    if flags.build_type:
-        build_type_str = flags.build_type
+    if flags.model_graph_format:
+        model_graph_format = flags.model_graph_format
     else:
-        build_type_str = configs.get(YAMLKeyword.build_type, "")
-    if build_type_str == BuildType.proto:
-        build_type = BuildType.proto
-    elif build_type_str == BuildType.code:
-        build_type = BuildType.code
+        model_graph_format = configs.get(YAMLKeyword.model_graph_format, "")
+    mace_check(model_graph_format in ModelFormatStrs,
+               ModuleName.YAML_CONFIG,
+               'You must set model_graph_format and '
+               "model_graph_format must be in " + str(ModelFormatStrs))
+    configs[YAMLKeyword.model_graph_format] = model_graph_format
+    if flags.model_data_format:
+        model_data_format = flags.model_data_format
     else:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "Invalid build type " + build_type_str
-                         + ". only support [proto|code] format, "
-                         + "proto for converting model to ProtoBuf file, "
-                         + "code for converting model to c++ code.")
-    configs[YAMLKeyword.build_type] = build_type
-    embed_model_data = configs.get(YAMLKeyword.embed_model_data, "")
-    if embed_model_data == "" or not isinstance(embed_model_data, int) or \
-       embed_model_data < 0 or embed_model_data > 1:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "embed_model_data must be 0 or 1. "
-                         "0 for embed model data to code, 1 not.")
-    if build_type == BuildType.proto:
-        configs[YAMLKeyword.embed_model_data] = 0
+        model_data_format = configs.get(YAMLKeyword.model_data_format, "")
+    configs[YAMLKeyword.model_data_format] = model_data_format
+    mace_check(model_data_format in ModelFormatStrs,
+               ModuleName.YAML_CONFIG,
+               'You must set model_data_format and '
+               "model_data_format must be in " + str(ModelFormatStrs))
 
-    linkshared = configs.get(YAMLKeyword.linkshared, "")
-    if linkshared == "":
-        configs[YAMLKeyword.linkshared] = 0
-        linkshared = 0
-    if not isinstance(linkshared, int) or linkshared < 0 or \
-       linkshared > 1:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "linkshared must be 0 or 1. "
-                         "default is 0, for link mace lib statically, "
-                         "1 for dynamic linking.")
-    if build_type == BuildType.code and linkshared == 1:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "'linkshared == 1' only support when "
-                         "'build_type == proto'")
+    mace_check(not (model_graph_format == ModelFormat.file
+                    and model_data_format == ModelFormat.code),
+               ModuleName.YAML_CONFIG,
+               "If model_graph format is 'file',"
+               " the model_data_format must be 'file' too")
 
     model_names = configs.get(YAMLKeyword.models, [])
     mace_check(len(model_names) > 0, ModuleName.YAML_CONFIG,
@@ -452,18 +465,9 @@ def format_model_config(flags):
     return configs
 
 
-def get_build_binary_dir(library_name, target_abi, target_soc,
-                         serial_num):
-    if not target_soc or not serial_num:
-        binary_path_digest = md5sum(target_abi)
-        binary_path_digest = "%s_%s" % (target_abi, binary_path_digest)
-    else:
-        device_name = sh_commands.adb_get_device_name_by_serialno(serial_num)
-        binary_path_digest = md5sum(target_abi + target_soc + serial_num)
-        binary_path_digest = "%s_%s_%s" % \
-                             (device_name, target_soc, binary_path_digest)
+def get_build_binary_dir(library_name, target_abi):
     return "%s/%s/%s/%s" % (
-        BUILD_OUTPUT_DIR, library_name, BUILD_TMP_DIR_NAME, binary_path_digest)
+        BUILD_OUTPUT_DIR, library_name, BUILD_TMP_DIR_NAME, target_abi)
 
 
 def get_build_model_dirs(library_name, model_name, target_abi, target_soc,
@@ -529,17 +533,47 @@ def get_shared_library_dir(library_name, abi):
                             abi)
 
 
-################################
-# build
-################################
-def pull_opencl_binary_and_tuning_param(target_abi,
-                                        serialno,
-                                        model_output_dirs):
-    sh_commands.pull_binaries(target_abi, serialno, model_output_dirs,
-                              CL_COMPILED_BINARY_FILE_NAME)
+def clear_build_dirs(library_name):
+    # make build dir
+    if not os.path.exists(BUILD_OUTPUT_DIR):
+        os.makedirs(BUILD_OUTPUT_DIR)
+    # clear temp build dir
+    tmp_build_dir = os.path.join(BUILD_OUTPUT_DIR, library_name,
+                                 BUILD_TMP_DIR_NAME)
+    if os.path.exists(tmp_build_dir):
+        sh.rm('-rf', tmp_build_dir)
+    os.makedirs(tmp_build_dir)
+    # clear lib dir
+    lib_output_dir = os.path.join(
+        BUILD_OUTPUT_DIR, library_name, OUTPUT_LIBRARY_DIR_NAME)
+    if os.path.exists(lib_output_dir):
+        sh.rm('-rf', lib_output_dir)
 
 
-def print_configuration(flags, configs):
+def check_model_converted(library_name, model_name,
+                          model_graph_format, model_data_format):
+    model_output_dir = \
+        '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
+    if model_graph_format == ModelFormat.file:
+        mace_check(os.path.exists("%s/%s.pb" % (model_output_dir, model_name)),
+                   ModuleName.RUN,
+                   "You shuold convert model first.")
+    else:
+        mace_check(os.path.exists("%s/%s.a" %
+                                  (model_output_dir, library_name)),
+                   ModuleName.RUN,
+                   "You shuold convert model first.")
+    if model_data_format == ModelFormat.file:
+        mace_check(os.path.exists("%s/%s.data" %
+                                  (model_output_dir, model_name)),
+                   ModuleName.RUN,
+                   "You shuold convert model first.")
+
+
+################################
+# convert
+################################
+def print_configuration(configs):
     title = "Common Configuration"
     header = ["key", "value"]
     data = list()
@@ -549,13 +583,10 @@ def print_configuration(flags, configs):
                  configs[YAMLKeyword.target_abis]])
     data.append([YAMLKeyword.target_socs,
                  configs[YAMLKeyword.target_socs]])
-    data.append([YAMLKeyword.build_type,
-                 configs[YAMLKeyword.build_type]])
-    data.append([YAMLKeyword.embed_model_data,
-                 configs[YAMLKeyword.embed_model_data]])
-    data.append([YAMLKeyword.linkshared,
-                 configs[YAMLKeyword.linkshared]])
-    data.append(["Tuning", flags.disable_tuning])
+    data.append([YAMLKeyword.model_graph_format,
+                 configs[YAMLKeyword.model_graph_format]])
+    data.append([YAMLKeyword.model_data_format,
+                 configs[YAMLKeyword.model_data_format]])
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
 
@@ -613,26 +644,29 @@ def convert_model(configs):
         '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
     model_header_dir = \
         '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_HEADER_DIR_PATH)
+    # clear output dir
     if os.path.exists(model_output_dir):
         sh.rm("-rf", model_output_dir)
     os.makedirs(model_output_dir)
     if os.path.exists(model_header_dir):
         sh.rm("-rf", model_header_dir)
-    os.makedirs(model_header_dir)
-    # copy header files
-    sh.cp("-f", glob.glob("mace/public/*.h"), model_header_dir)
 
-    sh_commands.gen_mace_engine_factory_source(
-        configs[YAMLKeyword.models].keys(),
-        configs[YAMLKeyword.build_type],
-        configs[YAMLKeyword.embed_model_data])
-    if configs[YAMLKeyword.build_type] == BuildType.code:
+    embed_model_data = \
+        configs[YAMLKeyword.model_data_format] == ModelFormat.code
+
+    if os.path.exists(MODEL_CODEGEN_DIR):
+        sh.rm("-rf", MODEL_CODEGEN_DIR)
+    if os.path.exists(ENGINE_CODEGEN_DIR):
+        sh.rm("-rf", ENGINE_CODEGEN_DIR)
+
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        os.makedirs(model_header_dir)
+        sh_commands.gen_mace_engine_factory_source(
+            configs[YAMLKeyword.models].keys(),
+            embed_model_data)
         sh.cp("-f", glob.glob("mace/codegen/engine/*.h"),
               model_header_dir)
 
-    embed_model_data = configs[YAMLKeyword.embed_model_data]
-
-    sh_commands.clear_model_codegen()
     for model_name in configs[YAMLKeyword.models]:
         MaceLogger.header(
             StringFormatter.block("Convert %s model" % model_name))
@@ -667,11 +701,11 @@ def convert_model(configs):
             embed_model_data,
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.obfuscate],
-            configs[YAMLKeyword.build_type],
+            configs[YAMLKeyword.model_graph_format],
             data_type,
             ",".join(model_config.get(YAMLKeyword.graph_optimize_options, [])))
 
-        if configs[YAMLKeyword.build_type] == BuildType.proto:
+        if configs[YAMLKeyword.model_graph_format] == ModelFormat.file:
             sh.mv("-f",
                   '%s/%s.pb' % (model_codegen_dir, model_name),
                   model_output_dir)
@@ -690,207 +724,34 @@ def convert_model(configs):
             StringFormatter.block("Model %s converted" % model_name))
 
 
-def build_specific_lib(target_abi, target_soc, serial_num,
-                       configs, tuning, enable_openmp,
-                       address_sanitizer):
-    library_name = configs[YAMLKeyword.library_name]
-    build_type = configs[YAMLKeyword.build_type]
-    embed_model_data = configs[YAMLKeyword.embed_model_data]
-    linkshared = configs[YAMLKeyword.linkshared]
-    hexagon_mode = get_hexagon_mode(configs)
-    model_output_dirs = []
-
-    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
-                                                target_soc, serial_num)
-    if os.path.exists(build_tmp_binary_dir):
-        sh.rm("-rf", build_tmp_binary_dir)
-    os.makedirs(build_tmp_binary_dir)
-
-    if linkshared == 0:
-        mace_run_name = MACE_RUN_STATIC_NAME
-        mace_run_target = MACE_RUN_STATIC_TARGET
-    else:
-        mace_run_name = MACE_RUN_SHARED_NAME
-        mace_run_target = MACE_RUN_SHARED_TARGET
-        sh_commands.bazel_build(
-            LIBMACE_SO_TARGET,
-            abi=target_abi,
-            hexagon_mode=hexagon_mode,
-            enable_openmp=enable_openmp,
-            address_sanitizer=address_sanitizer
-        )
-        sh_commands.update_libmace_shared_library(serial_num,
-                                                  target_abi,
-                                                  library_name,
-                                                  BUILD_OUTPUT_DIR,
-                                                  OUTPUT_LIBRARY_DIR_NAME)
-
-    sh_commands.bazel_build(
-        mace_run_target,
-        abi=target_abi,
-        hexagon_mode=hexagon_mode,
-        enable_openmp=enable_openmp,
-        address_sanitizer=address_sanitizer
-    )
-    sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
-    binary_changed = False
-
-    for model_name in configs[YAMLKeyword.models]:
-        model_config = configs[YAMLKeyword.models][model_name]
-        model_runtime = model_config[YAMLKeyword.runtime]
-        # Create model build directory
-        model_output_base_dir, model_output_dir, mace_model_dir = \
-            get_build_model_dirs(library_name, model_name, target_abi,
-                                 target_soc, serial_num,
-                                 model_config[YAMLKeyword.model_file_path])
-
-        model_output_dirs.append(model_output_dir)
-
-        if os.path.exists(model_output_dir):
-            sh.rm("-rf", model_output_dir)
-        os.makedirs(model_output_dir)
-
-        # build for specified soc
-        if not address_sanitizer and target_abi != ABIType.host \
-                and target_soc is not None and \
-                model_runtime in [RuntimeType.gpu, RuntimeType.cpu_gpu]:
-            sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
-
-            subgraphs = model_config[YAMLKeyword.subgraphs]
-            # generate input data
-            sh_commands.gen_random_input(
-                model_output_dir,
-                subgraphs[0][YAMLKeyword.input_tensors],
-                subgraphs[0][YAMLKeyword.input_shapes],
-                subgraphs[0][YAMLKeyword.validation_inputs_data],
-                input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
-
-            device_type = parse_device_type(RuntimeType.gpu)
-            sh_commands.tuning_run(
-                abi=target_abi,
-                serialno=serial_num,
-                target_dir=build_tmp_binary_dir,
-                target_name=mace_run_name,
-                vlog_level=0,
-                embed_model_data=embed_model_data,
-                model_output_dir=model_output_dir,
-                input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
-                input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
-                mace_model_dir=mace_model_dir,
-                model_tag=model_name,
-                device_type=device_type,
-                running_round=0,
-                restart_round=1,
-                limit_opencl_kernel_time=model_config[YAMLKeyword.limit_opencl_kernel_time],  # noqa
-                tuning=tuning,
-                out_of_range_check=False,
-                phone_data_dir=PHONE_DATA_DIR,
-                build_type=build_type,
-                opencl_binary_file="",
-                opencl_parameter_file="",
-                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                linkshared=linkshared,
-            )
-
-            pull_opencl_binary_and_tuning_param(target_abi, serial_num,
-                                                [model_output_dir])
-            sh_commands.touch_tuned_file_flag(build_tmp_binary_dir)
-            binary_changed = True
-
-    if binary_changed:
-        opencl_output_bin_path = get_opencl_binary_output_path(
-            library_name, target_abi, target_soc, serial_num
-        )
-        opencl_parameter_bin_path = get_opencl_parameter_output_path(
-            library_name, target_abi, target_soc, serial_num
-        )
-        sh_commands.merge_opencl_binaries(
-            model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
-            opencl_output_bin_path)
-        sh_commands.merge_opencl_parameters(
-            model_output_dirs, CL_TUNED_PARAMETER_FILE_NAME,
-            opencl_parameter_bin_path)
-        sh_commands.bazel_build(
-            mace_run_target,
-            abi=target_abi,
-            hexagon_mode=hexagon_mode,
-            enable_openmp=enable_openmp,
-            address_sanitizer=address_sanitizer
-        )
-        sh_commands.update_mace_run_lib(build_tmp_binary_dir, linkshared)
-
-    if target_abi == ABIType.host:
-        sh_commands.build_host_libraries(build_type, target_abi)
-
-    # build benchmark_model binary
-    sh_commands.build_benchmark_model(target_abi,
-                                      build_tmp_binary_dir,
-                                      hexagon_mode,
-                                      enable_openmp,
-                                      linkshared)
-
-    # generate library
-    if linkshared == 0:
-        sh_commands.merge_libs(target_soc,
-                               serial_num,
-                               target_abi,
-                               library_name,
-                               BUILD_OUTPUT_DIR,
-                               OUTPUT_LIBRARY_DIR_NAME,
-                               build_type,
-                               hexagon_mode)
-
-    # build example binary
-    sh_commands.build_example(target_soc, serial_num, target_abi,
-                              library_name, BUILD_OUTPUT_DIR,
-                              OUTPUT_LIBRARY_DIR_NAME,
-                              build_tmp_binary_dir, build_type,
-                              hexagon_mode, enable_openmp, linkshared)
-
-
-def generate_library(configs, tuning, enable_openmp, address_sanitizer):
-    MaceLogger.header(StringFormatter.block("Building library"))
-    # generate source
-    MaceLogger.info('* generate common source files...')
-    sh_commands.gen_mace_version()
-    sh_commands.gen_encrypted_opencl_source()
-    MaceLogger.info('generate common source files done')
-
-    # create build dirs
-    library_name = configs[YAMLKeyword.library_name]
-    if not os.path.exists(BUILD_OUTPUT_DIR):
-        os.makedirs(BUILD_OUTPUT_DIR)
-    tmp_build_dir = os.path.join(BUILD_OUTPUT_DIR, library_name,
-                                 BUILD_TMP_DIR_NAME)
-    if not os.path.exists(tmp_build_dir):
-        os.makedirs(tmp_build_dir)
+def get_model_lib_output_path(library_name):
     library_out_dir = os.path.join(BUILD_OUTPUT_DIR, library_name,
-                                   OUTPUT_LIBRARY_DIR_NAME)
-    if os.path.exists(library_out_dir):
-        sh.rm('-rf', library_out_dir)
+                                   MODEL_OUTPUT_DIR_NAME)
+    lib_output_path = "%s/%s.a" % (library_out_dir, library_name)
+    return lib_output_path
 
-    target_socs = configs[YAMLKeyword.target_socs]
+
+def build_model_lib(configs, address_sanitizer):
+    MaceLogger.header(StringFormatter.block("Building model library"))
+
+    # create model library dir
+    library_name = configs[YAMLKeyword.library_name]
+    model_lib_output_path = get_model_lib_output_path(library_name)
+    library_out_dir = os.path.dirname(model_lib_output_path)
+    if not os.path.exists(library_out_dir):
+        os.makedirs(library_out_dir)
+
     for target_abi in configs[YAMLKeyword.target_abis]:
-        if not target_socs or target_abi == ABIType.host:
-            build_specific_lib(target_abi, None, None, configs,
-                               tuning, enable_openmp, address_sanitizer)
-        else:
-            if ALL_SOC_TAG in target_socs:
-                target_socs = sh_commands.adb_get_all_socs()
-            for target_soc in target_socs:
-                serial_nums = \
-                    sh_commands.get_target_socs_serialnos([target_soc])
-                for serial_num in serial_nums:
-                    with sh_commands.device_lock(serial_num):
-                        build_specific_lib(target_abi, target_soc, serial_num,
-                                           configs, tuning, enable_openmp,
-                                           address_sanitizer)
+        hexagon_mode = get_hexagon_mode(configs)
 
-    # package library
-    sh_commands.packaging_lib(BUILD_OUTPUT_DIR,
-                              configs[YAMLKeyword.library_name])
+        sh_commands.bazel_build(
+            MODEL_LIB_TARGET,
+            abi=target_abi,
+            hexagon_mode=hexagon_mode,
+            address_sanitizer=address_sanitizer
+        )
+
+        sh.cp(MODEL_LIB_PATH, model_lib_output_path)
 
 
 def print_library_summary(configs):
@@ -898,21 +759,27 @@ def print_library_summary(configs):
     title = "Library"
     header = ["key", "value"]
     data = list()
-    data.append(["library package",
-                 "%s/%s/libmace_%s.tar.gz"
-                 % (BUILD_OUTPUT_DIR, library_name, library_name)])
+    data.append(["MACE Model Path",
+                 "%s/%s/%s"
+                 % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)])
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        data.append(["MACE Model Header Path",
+                     "%s/%s/%s"
+                     % (BUILD_OUTPUT_DIR, library_name,
+                        MODEL_HEADER_DIR_PATH)])
+
     MaceLogger.summary(StringFormatter.table(header, data, title))
 
 
-def build_library(flags):
+def convert_func(flags):
     configs = format_model_config(flags)
 
-    print_configuration(flags, configs)
+    print_configuration(configs)
 
     convert_model(configs)
 
-    generate_library(configs, flags.disable_tuning,
-                     flags.disable_openmp, flags.address_sanitizer)
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        build_model_lib(configs, flags.address_sanitizer)
 
     print_library_summary(configs)
 
@@ -948,7 +815,7 @@ def report_run_statistics(stdout,
     if not os.path.exists(report_filename):
         with open(report_filename, 'w') as f:
             f.write("model_name,device_name,soc,abi,runtime,"
-                    "init,warmup,run_avg,tuned\n")
+                    "init(ms),warmup(ms),run_avg(ms),tuned\n")
 
     data_str = "{model_name},{device_name},{soc},{abi},{device_type}," \
                "{init},{warmup},{run_avg},{tuned}\n" \
@@ -960,26 +827,185 @@ def report_run_statistics(stdout,
                 init=metrics[0],
                 warmup=metrics[1],
                 run_avg=metrics[2],
-                tuned=tuned,
-                )
+                tuned=tuned)
     with open(report_filename, 'a') as f:
         f.write(data_str)
+
+
+def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
+                   mace_lib_type):
+    library_name = configs[YAMLKeyword.library_name]
+    hexagon_mode = get_hexagon_mode(configs)
+
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+    if os.path.exists(build_tmp_binary_dir):
+        sh.rm("-rf", build_tmp_binary_dir)
+    os.makedirs(build_tmp_binary_dir)
+
+    mace_run_target = MACE_RUN_STATIC_TARGET
+    if mace_lib_type == MACELibType.dynamic:
+        mace_run_target = MACE_RUN_DYNAMIC_TARGET
+    build_arg = ""
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
+                   ModuleName.RUN,
+                   "You shuold convert model first.")
+        build_arg = "--per_file_copt=mace/tools/validation/mace_run.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+
+    sh_commands.bazel_build(
+        mace_run_target,
+        abi=target_abi,
+        hexagon_mode=hexagon_mode,
+        enable_openmp=enable_openmp,
+        address_sanitizer=address_sanitizer,
+        extra_args=build_arg
+    )
+    sh_commands.update_mace_run_binary(build_tmp_binary_dir,
+                                       mace_lib_type == MACELibType.dynamic)
+
+
+def build_example(configs, target_abi, enable_openmp, mace_lib_type):
+    library_name = configs[YAMLKeyword.library_name]
+    hexagon_mode = get_hexagon_mode(configs)
+
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+    if os.path.exists(build_tmp_binary_dir):
+        sh.rm("-rf", build_tmp_binary_dir)
+    os.makedirs(build_tmp_binary_dir)
+
+    libmace_target = LIBMACE_STATIC_TARGET
+    if mace_lib_type == MACELibType.dynamic:
+        libmace_target = LIBMACE_SO_TARGET
+
+    sh_commands.bazel_build(libmace_target,
+                            abi=target_abi,
+                            enable_openmp=enable_openmp,
+                            hexagon_mode=hexagon_mode)
+
+    if os.path.exists(LIB_CODEGEN_DIR):
+        sh.rm("-rf", LIB_CODEGEN_DIR)
+    sh.mkdir("-p", LIB_CODEGEN_DIR)
+
+    build_arg = ""
+    if mace_lib_type == MACELibType.dynamic:
+        example_target = EXAMPLE_DYNAMIC_TARGET
+        sh.cp("-f", LIBMACE_DYNAMIC_PATH, LIB_CODEGEN_DIR)
+    else:
+        sh.cp("-f", LIBMACE_STATIC_PATH, LIB_CODEGEN_DIR)
+        if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+            mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
+                       ModuleName.RUN,
+                       "You shuold convert model first.")
+            model_lib_path = get_model_lib_output_path(library_name)
+            sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
+            build_arg = "--per_file_copt=mace/examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+
+        example_target = EXAMPLE_STATIC_TARGET
+
+    sh_commands.bazel_build(example_target,
+                            abi=target_abi,
+                            enable_openmp=enable_openmp,
+                            hexagon_mode=hexagon_mode,
+                            extra_args=build_arg)
+
+    target_bin = "/".join(sh_commands.bazel_target_to_bin(example_target))
+    sh.cp("-f", target_bin, build_tmp_binary_dir)
+    if os.path.exists(LIB_CODEGEN_DIR):
+        sh.rm("-rf", LIB_CODEGEN_DIR)
+
+
+def tuning(library_name, model_name, model_config,
+           model_graph_format, model_data_format,
+           target_abi, target_soc, serial_num,
+           mace_lib_type):
+    print('* Tuning, it may take some time...')
+
+    # clear opencl output dir
+    opencl_output_dir = os.path.join(
+        BUILD_OUTPUT_DIR, library_name, OUTPUT_OPENCL_BINARY_DIR_NAME)
+    if os.path.exists(opencl_output_dir):
+        sh.rm('-rf', opencl_output_dir)
+
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+    mace_run_name = MACE_RUN_STATIC_NAME
+    link_dynamic = False
+    if mace_lib_type == MACELibType.dynamic:
+        mace_run_name = MACE_RUN_DYNAMIC_NAME
+        link_dynamic = True
+
+    embed_model_data = model_data_format == ModelFormat.code
+
+    model_output_base_dir, model_output_dir, mace_model_dir = \
+        get_build_model_dirs(library_name, model_name, target_abi,
+                             target_soc, serial_num,
+                             model_config[YAMLKeyword.model_file_path])
+
+    # build for specified soc
+    sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
+
+    subgraphs = model_config[YAMLKeyword.subgraphs]
+    # generate input data
+    sh_commands.gen_random_input(
+        model_output_dir,
+        subgraphs[0][YAMLKeyword.input_tensors],
+        subgraphs[0][YAMLKeyword.input_shapes],
+        subgraphs[0][YAMLKeyword.validation_inputs_data],
+        input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
+
+    sh_commands.tuning_run(
+        abi=target_abi,
+        serialno=serial_num,
+        target_dir=build_tmp_binary_dir,
+        target_name=mace_run_name,
+        vlog_level=0,
+        embed_model_data=embed_model_data,
+        model_output_dir=model_output_dir,
+        input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
+        output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+        input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
+        output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+        mace_model_dir=mace_model_dir,
+        model_tag=model_name,
+        device_type=DeviceType.GPU,
+        running_round=0,
+        restart_round=1,
+        limit_opencl_kernel_time=model_config[YAMLKeyword.limit_opencl_kernel_time],  # noqa
+        tuning=True,
+        out_of_range_check=False,
+        phone_data_dir=PHONE_DATA_DIR,
+        model_graph_format=model_graph_format,
+        opencl_binary_file="",
+        opencl_parameter_file="",
+        libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
+        link_dynamic=link_dynamic,
+    )
+    # pull opencl binary
+    sh_commands.pull_file_from_device(
+        serial_num,
+        DEVICE_INTERIOR_DIR,
+        CL_COMPILED_BINARY_FILE_NAME,
+        "%s/%s" % (model_output_dir, BUILD_TMP_OPENCL_BIN_DIR))
+
+    # pull opencl parameter
+    sh_commands.pull_file_from_device(
+        serial_num,
+        PHONE_DATA_DIR,
+        CL_TUNED_PARAMETER_FILE_NAME,
+        "%s/%s" % (model_output_dir, BUILD_TMP_OPENCL_BIN_DIR))
+
+    print('Tuning done\n')
 
 
 def run_specific_target(flags, configs, target_abi,
                         target_soc, serial_num):
     library_name = configs[YAMLKeyword.library_name]
-    build_type = configs[YAMLKeyword.build_type]
-    embed_model_data = configs[YAMLKeyword.embed_model_data]
+    mace_lib_type = flags.mace_lib_type
+    embed_model_data = \
+        configs[YAMLKeyword.model_data_format] == ModelFormat.code
     opencl_output_bin_path = ""
     opencl_parameter_path = ""
-    linkshared = configs[YAMLKeyword.linkshared]
-    if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
-        build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
-                                                    None, None)
-    else:
-        build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
-                                                    target_soc, serial_num)
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+    if configs[YAMLKeyword.target_socs] and target_abi != ABIType.host:
         opencl_output_bin_path = get_opencl_binary_output_path(
             library_name, target_abi, target_soc, serial_num
         )
@@ -987,30 +1013,36 @@ def run_specific_target(flags, configs, target_abi,
             library_name, target_abi, target_soc, serial_num
         )
 
-    mace_check(os.path.exists(build_tmp_binary_dir),
-               ModuleName.RUN,
-               'You should build before run.')
-
+    # get target name for run
     if flags.example:
-        if linkshared == 0:
+        if mace_lib_type == MACELibType.static:
             target_name = EXAMPLE_STATIC_NAME
         else:
-            target_name = EXAMPLE_SHARED_NAME
+            target_name = EXAMPLE_DYNAMIC_NAME
     else:
-        if linkshared == 0:
+        if mace_lib_type == MACELibType.static:
             target_name = MACE_RUN_STATIC_NAME
         else:
-            target_name = MACE_RUN_SHARED_NAME
+            target_name = MACE_RUN_DYNAMIC_NAME
+
+    link_dynamic = mace_lib_type == MACELibType.dynamic
+    model_output_dirs = []
 
     for model_name in configs[YAMLKeyword.models]:
+        check_model_converted(library_name, model_name,
+                              configs[YAMLKeyword.model_graph_format],
+                              configs[YAMLKeyword.model_data_format])
         if target_abi == ABIType.host:
             device_name = ABIType.host
         else:
-            device_name =\
+            device_name = \
                 sh_commands.adb_get_device_name_by_serialno(serial_num)
+            sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
+
         MaceLogger.header(
             StringFormatter.block(
                 "Run model %s on %s" % (model_name, device_name)))
+
         model_config = configs[YAMLKeyword.models][model_name]
         model_runtime = model_config[YAMLKeyword.runtime]
         subgraphs = model_config[YAMLKeyword.subgraphs]
@@ -1025,12 +1057,24 @@ def run_specific_target(flags, configs, target_abi,
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      target_soc, serial_num,
                                      model_config[YAMLKeyword.model_file_path])
-        mace_check(os.path.exists(model_output_dir)
-                   and os.path.exists(mace_model_dir),
-                   ModuleName.RUN,
-                   'You should build before run.')
-        if target_abi != ABIType.host:
-            sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
+        if os.path.exists(model_output_dir):
+            sh.rm("-rf", model_output_dir)
+        os.makedirs(model_output_dir)
+
+        # tuning for specified soc
+        if not flags.address_sanitizer \
+                and not flags.example \
+                and target_abi != ABIType.host \
+                and configs[YAMLKeyword.target_socs] \
+                and target_soc \
+                and model_runtime in [RuntimeType.gpu, RuntimeType.cpu_gpu] \
+                and not flags.disable_tuning:
+            tuning(library_name, model_name, model_config,
+                   configs[YAMLKeyword.model_graph_format],
+                   configs[YAMLKeyword.model_data_format],
+                   target_abi, target_soc, serial_num,
+                   mace_lib_type)
+            model_output_dirs.append(model_output_dir)
 
         # generate input data
         sh_commands.gen_random_input(
@@ -1039,6 +1083,7 @@ def run_specific_target(flags, configs, target_abi,
             subgraphs[0][YAMLKeyword.input_shapes],
             subgraphs[0][YAMLKeyword.validation_inputs_data],
             input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
+
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])
@@ -1048,7 +1093,7 @@ def run_specific_target(flags, configs, target_abi,
             runtime_list.extend([model_runtime])
         for runtime in runtime_list:
             device_type = parse_device_type(runtime)
-
+            # run for specified soc
             run_output = sh_commands.tuning_run(
                 abi=target_abi,
                 serialno=serial_num,
@@ -1070,7 +1115,7 @@ def run_specific_target(flags, configs, target_abi,
                 tuning=False,
                 out_of_range_check=flags.gpu_out_of_range_check,
                 phone_data_dir=PHONE_DATA_DIR,
-                build_type=build_type,
+                model_graph_format=configs[YAMLKeyword.model_graph_format],
                 omp_num_threads=flags.omp_num_threads,
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
@@ -1079,8 +1124,8 @@ def run_specific_target(flags, configs, target_abi,
                 address_sanitizer=flags.address_sanitizer,
                 opencl_binary_file=opencl_output_bin_path,
                 opencl_parameter_file=opencl_parameter_path,
-                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                linkshared=linkshared,
+                libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
+                link_dynamic=link_dynamic,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files(
@@ -1105,20 +1150,60 @@ def run_specific_target(flags, configs, target_abi,
                     phone_data_dir=PHONE_DATA_DIR,
                     caffe_env=flags.caffe_env)
             if flags.report and flags.round > 0:
+                opencl_parameter_bin_path = get_opencl_parameter_output_path(
+                    library_name, target_abi, target_soc, serial_num
+                )
+                tuned = device_type == DeviceType.GPU\
+                    and os.path.exists(opencl_parameter_bin_path)
                 report_run_statistics(
                     run_output, target_abi, serial_num,
                     model_name, device_type, flags.report_dir,
-                    sh_commands.is_binary_tuned(build_tmp_binary_dir))
+                    tuned)
+
+    if model_output_dirs:
+        opencl_output_bin_path = get_opencl_binary_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
+        opencl_parameter_bin_path = get_opencl_parameter_output_path(
+            library_name, target_abi, target_soc, serial_num
+        )
+        # merge all models' OpenCL binaries together
+        sh_commands.merge_opencl_binaries(
+            model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
+            opencl_output_bin_path)
+        # merge all models' OpenCL parameters together
+        sh_commands.merge_opencl_parameters(
+            model_output_dirs, CL_TUNED_PARAMETER_FILE_NAME,
+            opencl_parameter_bin_path)
 
 
 def run_mace(flags):
     configs = format_model_config(flags)
+    if flags.mace_lib_type == MACELibType.dynamic and \
+       configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        MaceLogger.error(ModuleName.YAML_CONFIG,
+                         "If you want to link MACE dynamic library, "
+                         "you must use file-type MACE model.")
+
+    clear_build_dirs(configs[YAMLKeyword.library_name])
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
         target_socs = sh_commands.adb_get_all_socs()
 
     for target_abi in configs[YAMLKeyword.target_abis]:
+        # build target
+        if flags.example:
+            build_example(configs, target_abi,
+                          not flags.disable_openmp,
+                          flags.mace_lib_type)
+        else:
+            build_mace_run(configs, target_abi,
+                           not flags.disable_openmp,
+                           flags.address_sanitizer,
+                           flags.mace_lib_type)
+
+        # run
         if target_abi == ABIType.host:
             run_specific_target(flags, configs, target_abi, None, None)
         else:
@@ -1137,30 +1222,64 @@ def run_mace(flags):
 ################################
 #  benchmark model
 ################################
+def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
+    library_name = configs[YAMLKeyword.library_name]
+    hexagon_mode = get_hexagon_mode(configs)
+
+    link_dynamic = mace_lib_type == MACELibType.dynamic
+    if link_dynamic:
+        benchmark_target = BM_MODEL_DYNAMIC_TARGET
+    else:
+        benchmark_target = BM_MODEL_STATIC_TARGET
+
+    build_arg = ""
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
+                   ModuleName.BENCHMARK,
+                   "You shuold convert model first.")
+        build_arg = "--per_file_copt=mace/benchmark/benchmark_model.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+
+    sh_commands.bazel_build(benchmark_target,
+                            abi=target_abi,
+                            enable_openmp=enable_openmp,
+                            hexagon_mode=hexagon_mode,
+                            extra_args=build_arg)
+    # clear tmp binary dir
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+    if os.path.exists(build_tmp_binary_dir):
+        sh.rm("-rf", build_tmp_binary_dir)
+    os.makedirs(build_tmp_binary_dir)
+
+    target_bin = "/".join(sh_commands.bazel_target_to_bin(benchmark_target))
+    sh.cp("-f", target_bin, build_tmp_binary_dir)
+
+
 def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     library_name = configs[YAMLKeyword.library_name]
-    build_type = configs[YAMLKeyword.build_type]
-    embed_model_data = configs[YAMLKeyword.embed_model_data]
+    embed_model_data = \
+        configs[YAMLKeyword.model_data_format] == ModelFormat.code
     opencl_output_bin_path = ""
     opencl_parameter_path = ""
-    linkshared = configs[YAMLKeyword.linkshared]
-    if not configs[YAMLKeyword.target_socs] or target_abi == ABIType.host:
-        build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
-                                                    None, None)
+    link_dynamic = flags.mace_lib_type == MACELibType.dynamic
+
+    if link_dynamic:
+        bm_model_binary_name = BM_MODEL_DYNAMIC_NAME
     else:
-        build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi,
-                                                    target_soc, serial_num)
+        bm_model_binary_name = BM_MODEL_STATIC_NAME
+    build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
+
+    if configs[YAMLKeyword.target_socs] and target_abi != ABIType.host:
         opencl_output_bin_path = get_opencl_binary_output_path(
             library_name, target_abi, target_soc, serial_num
         )
         opencl_parameter_path = get_opencl_parameter_output_path(
             library_name, target_abi, target_soc, serial_num
         )
-    mace_check(os.path.exists(build_tmp_binary_dir),
-               ModuleName.BENCHMARK,
-               'You should build before benchmark.')
 
     for model_name in configs[YAMLKeyword.models]:
+        check_model_converted(library_name, model_name,
+                              configs[YAMLKeyword.model_graph_format],
+                              configs[YAMLKeyword.model_data_format])
         if target_abi == ABIType.host:
             device_name = ABIType.host
         else:
@@ -1183,10 +1302,10 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      target_soc, serial_num,
                                      model_config[YAMLKeyword.model_file_path])
-        mace_check(os.path.exists(model_output_dir)
-                   and os.path.exists(mace_model_dir),
-                   ModuleName.BENCHMARK,
-                   'You should build before benchmark.')
+        if os.path.exists(model_output_dir):
+            sh.rm("-rf", model_output_dir)
+        os.makedirs(model_output_dir)
+
         if target_abi != ABIType.host:
             sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
 
@@ -1209,6 +1328,7 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 abi=target_abi,
                 serialno=serial_num,
                 benchmark_binary_dir=build_tmp_binary_dir,
+                benchmark_binary_name=bm_model_binary_name,
                 vlog_level=0,
                 embed_model_data=embed_model_data,
                 model_output_dir=model_output_dir,
@@ -1220,25 +1340,37 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
                 model_tag=model_name,
                 device_type=device_type,
                 phone_data_dir=PHONE_DATA_DIR,
-                build_type=build_type,
+                model_graph_format=configs[YAMLKeyword.model_graph_format],
                 omp_num_threads=flags.omp_num_threads,
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
                 gpu_priority_hint=flags.gpu_priority_hint,
                 opencl_binary_file=opencl_output_bin_path,
                 opencl_parameter_file=opencl_parameter_path,
-                shared_library_dir=get_shared_library_dir(library_name, target_abi),  # noqa
-                linkshared=linkshared)
+                libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
+                link_dynamic=link_dynamic)
 
 
 def benchmark_model(flags):
     configs = format_model_config(flags)
+    if flags.mace_lib_type == MACELibType.dynamic and \
+       configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        MaceLogger.error(ModuleName.YAML_CONFIG,
+                         "If you want to link MACE dynamic library, "
+                         "you must use file-type MACE model.")
+
+    clear_build_dirs(configs[YAMLKeyword.library_name])
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
         target_socs = sh_commands.adb_get_all_socs()
 
     for target_abi in configs[YAMLKeyword.target_abis]:
+        # build benchmark_model binary
+        build_benchmark_model(configs, target_abi,
+                              not flags.disable_openmp,
+                              flags.mace_lib_type)
+
         if target_abi == ABIType.host:
             bm_specific_target(flags, configs, target_abi, None, None)
         else:
@@ -1275,6 +1407,15 @@ def str_to_caffe_env_type(v):
         raise argparse.ArgumentTypeError('[docker | local] expected.')
 
 
+def str_to_mace_lib_type(v):
+    if v.lower() == 'dynamic':
+        return MACELibType.dynamic
+    elif v.lower() == 'static':
+        return MACELibType.static
+    else:
+        raise argparse.ArgumentTypeError('[dynamic| static] expected.')
+
+
 def parse_args():
     """Parses command line arguments."""
     all_type_parent_parser = argparse.ArgumentParser(add_help=False)
@@ -1285,10 +1426,15 @@ def parse_args():
         required=True,
         help="the path of model yaml configuration file.")
     all_type_parent_parser.add_argument(
-        "--build_type",
+        "--model_graph_format",
         type=str,
         default="",
-        help="Model build type, can be ['proto', 'code'].")
+        help="[file, code], MACE Model graph format.")
+    all_type_parent_parser.add_argument(
+        "--model_data_format",
+        type=str,
+        default="",
+        help="['file', 'code'], MACE Model data format.")
     all_type_parent_parser.add_argument(
         "--target_abis",
         type=str,
@@ -1299,12 +1445,21 @@ def parse_args():
         type=str,
         default="",
         help="Target SOCs, comma seperated list.")
-    build_run_parent_parser = argparse.ArgumentParser(add_help=False)
-    build_run_parent_parser.add_argument(
+    convert_run_parent_parser = argparse.ArgumentParser(add_help=False)
+    convert_run_parent_parser.add_argument(
         '--address_sanitizer',
         action="store_true",
         help="Whether to use address sanitizer to check memory error")
     run_bm_parent_parser = argparse.ArgumentParser(add_help=False)
+    run_bm_parent_parser.add_argument(
+        "--mace_lib_type",
+        type=str_to_mace_lib_type,
+        default=DefaultValues.mace_lib_type,
+        help="[static | dynamic], Which type MACE library to use.")
+    run_bm_parent_parser.add_argument(
+        "--disable_openmp",
+        action="store_true",
+        help="Disable openmp for multiple thread.")
     run_bm_parent_parser.add_argument(
         "--omp_num_threads",
         type=int,
@@ -1328,25 +1483,21 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    build = subparsers.add_parser(
-        'build',
-        parents=[all_type_parent_parser, build_run_parent_parser],
-        help='build model library and test tools')
-    build.set_defaults(func=build_library)
-    build.add_argument(
-        '--disable_tuning',
-        action="store_false",
-        help="Disable tuning the parameters for the GPU of specified SoC.")
-    build.add_argument(
-        "--disable_openmp",
-        action="store_false",
-        help="Disable openmp for multiple thread.")
+    convert = subparsers.add_parser(
+        'convert',
+        parents=[all_type_parent_parser, convert_run_parent_parser],
+        help='convert to mace model (file or code)')
+    convert.set_defaults(func=convert_func)
     run = subparsers.add_parser(
         'run',
         parents=[all_type_parent_parser, run_bm_parent_parser,
-                 build_run_parent_parser],
+                 convert_run_parent_parser],
         help='run model in command line')
     run.set_defaults(func=run_mace)
+    run.add_argument(
+        "--disable_tuning",
+        action="store_true",
+        help="Disable tuning for specific thread.")
     run.add_argument(
         "--round",
         type=int,
@@ -1397,8 +1548,7 @@ def parse_args():
         help="whether to run example.")
     benchmark = subparsers.add_parser(
         'benchmark',
-        parents=[all_type_parent_parser, run_bm_parent_parser,
-                 build_run_parent_parser],
+        parents=[all_type_parent_parser, run_bm_parent_parser],
         help='benchmark model for detail information')
     benchmark.set_defaults(func=benchmark_model)
     return parser.parse_known_args()

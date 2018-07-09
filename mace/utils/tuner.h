@@ -134,7 +134,8 @@ class Tuner {
           int32_t params_count = params_size / sizeof(unsigned int);
           std::vector<unsigned int> params(params_count);
           for (int i = 0; i < params_count; ++i) {
-            ifs.read(reinterpret_cast<char *>(&params[i]), sizeof(unsigned int));
+            ifs.read(reinterpret_cast<char *>(&params[i]),
+                     sizeof(unsigned int));
           }
           param_table_.emplace(key, params);
         }

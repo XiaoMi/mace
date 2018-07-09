@@ -103,11 +103,3 @@ genrule(
     tools = ["//mace/python/tools:archive_static_lib"],
     visibility = ["//visibility:public"],
 )
-
-cc_library(
-  name = "libmace_static_lib",
-  srcs = [":libmace_static"],
-  linkstatic = 1,
-  visibility = ["//visibility:public"],
-)
-

@@ -6,6 +6,7 @@ mace {
     *FileStorageFactory*;
     *SetKVStorageFactory*;
     *SetOpenCLBinaryPaths*;
+    *SetOpenCLParameterPath*;
     *SetGPUHints*;
     *SetOpenMPThreadPolicy*;
     *SetOpenMPThreadAffinity*;

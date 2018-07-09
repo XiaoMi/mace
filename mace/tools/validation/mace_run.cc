@@ -38,7 +38,9 @@
 #include "mace/utils/logging.h"
 #include "mace/utils/utils.h"
 
+#ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
+#endif
 
 namespace mace {
 namespace tools {
@@ -240,23 +242,24 @@ bool RunModel(const std::string &model_name,
   while (true) {
     // Create Engine
     int64_t t0 = NowMicros();
-    if (FLAGS_model_file != "") {
-      create_engine_status =
-          CreateMaceEngineFromProto(model_pb_data,
-                                    FLAGS_model_data_file,
-                                    input_names,
-                                    output_names,
-                                    device_type,
-                                    &engine);
-    } else {
-      create_engine_status =
+#ifdef MODEL_GRAPH_FORMAT_CODE
+    create_engine_status =
           CreateMaceEngineFromCode(model_name,
                                    FLAGS_model_data_file,
                                    input_names,
                                    output_names,
                                    device_type,
                                    &engine);
-    }
+#else
+    (void)(model_name);
+    create_engine_status =
+        CreateMaceEngineFromProto(model_pb_data,
+                                  FLAGS_model_data_file,
+                                  input_names,
+                                  output_names,
+                                  device_type,
+                                  &engine);
+#endif
     int64_t t1 = NowMicros();
 
     if (create_engine_status != MACE_SUCCESS) {
@@ -313,23 +316,23 @@ bool RunModel(const std::string &model_name,
       LOG(ERROR) << "Warmup runtime error, retry ... errcode: "
                  << warmup_status;
       do {
-        if (FLAGS_model_file != "") {
-          create_engine_status =
-              CreateMaceEngineFromProto(model_pb_data,
-                                        FLAGS_model_data_file,
-                                        input_names,
-                                        output_names,
-                                        device_type,
-                                        &engine);
-        } else {
-          create_engine_status =
-              CreateMaceEngineFromCode(model_name,
-                                       FLAGS_model_data_file,
-                                       input_names,
-                                       output_names,
-                                       device_type,
-                                       &engine);
-        }
+#ifdef MODEL_GRAPH_FORMAT_CODE
+        create_engine_status =
+          CreateMaceEngineFromCode(model_name,
+                                   FLAGS_model_data_file,
+                                   input_names,
+                                   output_names,
+                                   device_type,
+                                   &engine);
+#else
+        create_engine_status =
+            CreateMaceEngineFromProto(model_pb_data,
+                                      FLAGS_model_data_file,
+                                      input_names,
+                                      output_names,
+                                      device_type,
+                                      &engine);
+#endif
       } while (create_engine_status != MACE_SUCCESS);
     } else {
       int64_t t4 = NowMicros();
@@ -353,23 +356,23 @@ bool RunModel(const std::string &model_name,
           LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
                      << run_status;
           do {
-            if (FLAGS_model_file != "") {
-              create_engine_status =
-                  CreateMaceEngineFromProto(model_pb_data,
-                                            FLAGS_model_data_file,
-                                            input_names,
-                                            output_names,
-                                            device_type,
-                                            &engine);
-            } else {
-              create_engine_status =
-                  CreateMaceEngineFromCode(model_name,
-                                           FLAGS_model_data_file,
-                                           input_names,
-                                           output_names,
-                                           device_type,
-                                           &engine);
-            }
+#ifdef MODEL_GRAPH_FORMAT_CODE
+            create_engine_status =
+              CreateMaceEngineFromCode(model_name,
+                                       FLAGS_model_data_file,
+                                       input_names,
+                                       output_names,
+                                       device_type,
+                                       &engine);
+#else
+            create_engine_status =
+                CreateMaceEngineFromProto(model_pb_data,
+                                          FLAGS_model_data_file,
+                                          input_names,
+                                          output_names,
+                                          device_type,
+                                          &engine);
+#endif
           } while (create_engine_status != MACE_SUCCESS);
         } else {
           int64_t t1 = NowMicros();

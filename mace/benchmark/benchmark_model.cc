@@ -26,7 +26,9 @@
 #include "mace/utils/logging.h"
 #include "mace/utils/utils.h"
 #include "mace/benchmark/statistics.h"
+#ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
+#endif
 
 namespace mace {
 namespace benchmark {
@@ -287,27 +289,30 @@ int Main(int argc, char **argv) {
   // Create Engine
   const char *model_data_file_ptr =
     FLAGS_model_data_file.empty() ? nullptr : FLAGS_model_data_file.c_str();
+
+  std::vector<unsigned char> model_pb_data;
   if (FLAGS_model_file != "") {
-    std::vector<unsigned char> model_pb_data;
     if (!mace::ReadBinaryFile(&model_pb_data, FLAGS_model_file)) {
       LOG(FATAL) << "Failed to read file: " << FLAGS_model_file;
     }
-    create_engine_status =
-        CreateMaceEngineFromProto(model_pb_data,
-                                  model_data_file_ptr,
-                                  input_names,
-                                  output_names,
-                                  device_type,
-                                  &engine);
-  } else {
-    create_engine_status =
+  }
+#ifdef MODEL_GRAPH_FORMAT_CODE
+  create_engine_status =
         CreateMaceEngineFromCode(FLAGS_model_name,
                                  model_data_file_ptr,
                                  input_names,
                                  output_names,
                                  device_type,
                                  &engine);
-  }
+#else
+  create_engine_status =
+      CreateMaceEngineFromProto(model_pb_data,
+                                model_data_file_ptr,
+                                input_names,
+                                output_names,
+                                device_type,
+                                &engine);
+#endif
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
     LOG(FATAL) << "Create engine error, please check the arguments";
   }

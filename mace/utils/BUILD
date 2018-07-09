@@ -48,6 +48,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":utils",
+        "//mace/core",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

@@ -36,11 +36,12 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_models",
         "//mace/codegen:generated_mace_engine_factory",
+        "//mace/ops:ops",
     ],
 )
 
 cc_binary(
-    name = "benchmark_model_shared",
+    name = "benchmark_model_dynamic",
     srcs = [
         "benchmark_model.cc",
     ],

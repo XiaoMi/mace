@@ -24,7 +24,7 @@ void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
   kStorageFactory = storage_factory;
 }
 
-std::string kOpenCLParameterPath;
+std::string kOpenCLParameterPath;  // NOLINT(runtime/string)
 
 void SetOpenCLParameterPath(const std::string &path) {
   kOpenCLParameterPath = path;

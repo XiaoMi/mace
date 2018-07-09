@@ -69,8 +69,6 @@ extra_tests:
 platform_compatible_tests:
   stage: platform_compatible_tests
   script:
-    - mkdir -p mace/codegen/version && bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc
-    - mkdir -p mace/codegen/tuning && python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc
     - bazel build mace/core:core
 
 ndk_versions_compatible_tests:
@@ -101,5 +99,8 @@ python_tools_tests:
     - rm -rf mace-models
     - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/mace-models.git
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2.yml
-    - sh -c "python tools/converter.py build --config=${CONF_FILE} --disable_tuning && python tools/converter.py run --config=${CONF_FILE} --round=1 --validate && python tools/converter.py run --config=${CONF_FILE} --example --round=1 --validate" || exit 1
+    - >
+      python tools/converter.py convert --config=${CONF_FILE} --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
     - rm -rf mace-models
