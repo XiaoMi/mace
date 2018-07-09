@@ -2,13 +2,11 @@
 library_name: mobile_squeeze
 # host, armeabi-v7a or arm64-v8a
 target_abis: [arm64-v8a]
-# set 1 to embed model weights data into code. default is 0, keep weights in model.data file
-embed_model_data: 1
 # The build mode for model(s).
-# 'code' for transferring model(s) into cpp code, 'proto' for keeping model(s) in protobuf file(s).
-build_type: code
-# 0 for static library, 1 for shared library.
-linkshared: 0
+# 'code' for transferring model(s) into cpp code, 'file' for keeping model(s) in protobuf file(s) (.pb).
+model_graph_format: code
+# 'code' for transferring model data(s) into cpp code, 'file' for keeping model data(s) in file(s) (.data).
+model_data_format: code
 # One yaml config file can contain multi models' deployment info.
 models:
   mobilenet_v1:

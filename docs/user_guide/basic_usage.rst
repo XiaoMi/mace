@@ -42,7 +42,8 @@ Here we use the mobilenet-v2 model as an example.
 
         cd path/to/mace
         # Build library
-        python tools/converter.py build --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        # output lib path: builds/lib
+        bash tools/build-standalone-lib.sh
 
 
     4. Convert the model to MACE format model.
@@ -51,10 +52,14 @@ Here we use the mobilenet-v2 model as an example.
 
         cd path/to/mace
         # Build library
-        python tools/converter.py build --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
+        python tools/converter.py convert --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml
 
 
     5. Run the model.
+
+    .. warning::
+
+        If you want to run on device/phone, please plug in at least one device/phone.
 
     .. code:: sh
 
@@ -160,8 +165,8 @@ The generated model files will be stored in ``build/${library_name}/model`` fold
 
 .. warning::
 
-    Please set ``build_type:proto`` in your deployment file before converting.
-    The usage of ``build_type:code`` will be demonstrated in :doc:`advanced_usage`.
+    Please set ``model_graph_format: file`` and ``model_data_format: file`` in your deployment file before converting.
+    The usage of ``model_graph_format: code`` will be demonstrated in :doc:`advanced_usage`.
 
 =============================
 4. Build MACE into a library
@@ -173,14 +178,14 @@ Use bazel to build MACE source code into a library.
 
         cd path/to/mace
         # Build library
-        bazel build --config android mace:libmace --define neon=true --define openmp=true -cpu=arm64-v8a
+        # output lib path: builds/lib
+        bash tools/build-standalone-lib.sh
 
-The above command will generate a library as ``bazel-bin/mace/libmace.so``.
+The above command will generate dynamic library ``builds/lib/${ABI}/libmace.so`` and static library ``builds/lib/${ABI}/libmace.a``.
 
     .. warning::
 
         1. Please verify that the target_abis param in the above command and your deployment file are the same.
-        2. If you want to build a library for a specific soc, please refer to :doc:`advanced_usage`.
 
 
 ==================
@@ -189,6 +194,10 @@ The above command will generate a library as ``bazel-bin/mace/libmace.so``.
 
 With the converted model, the static or shared library and header files, you can use the following commands
 to run and validate your model.
+
+    .. warning::
+
+        If you want to run on device/phone, please plug in at least one device/phone.
 
 * **run**
 
@@ -218,8 +227,7 @@ to run and validate your model.
 =======================================
 
 In the converting and building steps, you've got the static/shared library, model files and
-header files. All of these generated files have been packaged into
-``build/${library_name}/libmace_${library_name}.tar.gz`` when building.
+header files.
 
 ``${library_name}`` is the name you defined in the first line of your deployment YAML file.
 
@@ -227,57 +235,31 @@ header files. All of these generated files have been packaged into
 
 .. code::
 
-      build/
-      └── mobilenet-v2
-          ├── include
-          │   └── mace
-          │       └── public
-          │           ├── mace.h
-          │           └── mace_runtime.h
-          ├── libmace_mobilenet-v2.tar.gz
-          ├── lib
-          │   ├── arm64-v8a
-          │   │   └── libmace_mobilenet-v2.MI6.msm8998.a
-          │   └── armeabi-v7a
-          │       └── libmace_mobilenet-v2.MI6.msm8998.a
-          ├── model
-          │   ├── mobilenet_v2.data
-          │   └── mobilenet_v2.pb
-          └── opencl
-              ├── arm64-v8a
-              │   └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
-              └── armeabi-v7a
-                  └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
+    builds
+    ├── include
+    │   └── mace
+    │       └── public
+    │           ├── mace.h
+    │           └── mace_runtime.h
+    ├── lib
+    │   ├── arm64-v8a
+    │   │   ├── libmace.a
+    │   │   └── libmace.so
+    │   ├── armeabi-v7a
+    │   │   ├── libhexagon_controller.so
+    │   │   ├── libmace.a
+    │   │   └── libmace.so
+    │   └── linux-x86-64
+    │       ├── libmace.a
+    │       └── libmace.so
+    └── mobilenet-v1
+        ├── model
+        │   ├── mobilenet_v1.data
+        │   └── mobilenet_v1.pb
+        └── _tmp
+            └── arm64-v8a
+                └── mace_run_static
 
--  The generated ``shared`` library files are organized as follows,
-
-.. code::
-
-      build
-      └── mobilenet-v2
-          ├── include
-          │   └── mace
-          │       └── public
-          │           ├── mace.h
-          │           └── mace_runtime.h
-          ├── lib
-          │   ├── arm64-v8a
-          │   │   ├── libgnustl_shared.so
-          │   │   └── libmace.so
-          │   └── armeabi-v7a
-          │       ├── libgnustl_shared.so
-          │       └── libmace.so
-          ├── model
-          │   ├── mobilenet_v2.data
-          │   └── mobilenet_v2.pb
-          └── opencl
-              ├── arm64-v8a
-              │   └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
-              └── armeabi-v7a
-                  └── mobilenet-v2_compiled_opencl_kernel.MI6.msm8998.bin
-
-
-Unpack the generated libmace_${library_name}.tar.gz file and copy all of the uncompressed files into your project.
 
 Please refer to \ ``mace/examples/example.cc``\ for full usage. The following list the key steps.
 

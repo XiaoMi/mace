@@ -16,9 +16,6 @@ Example
 ----------
 Here is an example deployment file used by an Android demo application.
 
-TODO: change this example file to the demo deployment file
-(reuse the same file) and rename to a reasonable name.
-
 .. literalinclude:: models/demo_app_models.yml
    :language: yaml
 
@@ -34,12 +31,10 @@ Configurations
       - The target ABI to build, can be one or more of 'host', 'armeabi-v7a' or 'arm64-v8a'.
     * - target_socs
       - [optional] build for specified socs if you just want use the model for that socs.
-    * - embed_model_data
-      - Whether embedding model weights as the code, default to 0.
-    * - build_type
-      - model build type, can be ['proto', 'code']. 'proto' for converting model to ProtoBuf file and 'code' for converting model to c++ code.
-    * - linkshared
-      - [optional] Use dynamic linking for libmace library when setting to 1, or static linking when setting to 0, default to 0.
+    * - model_graph_format
+      - MACE model graph type, could be ['file', 'code']. 'file' for converting model to ProtoBuf(`.pb`) file and 'code' for converting model to c++ code.
+    * - model_data_format
+      - MACE model data type, could be ['file', 'code']. 'file' for converting model to `.data` file and 'code' for converting model to c++ code.
     * - model_name
       - model name, should be unique if there are multiple models.
         **LIMIT: if build_type is code, model_name will used in c++ code so that model_name must fulfill c++ name specification.**
