@@ -204,9 +204,6 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_CHECK(hexagon_controller_->Init(), "hexagon init error");
     hexagon_controller_->SetDebugLevel(
         static_cast<int>(mace::logging::LogMessage::MinVLogLevel()));
-    int dsp_mode =
-        ProtoArgHelper::GetOptionalArg<NetDef, int>(*net_def, "dsp_mode", 0);
-    hexagon_controller_->SetGraphMode(dsp_mode);
     MACE_CHECK(hexagon_controller_->SetupGraph(*net_def, model_data),
                "hexagon setup graph error");
     if (VLOG_IS_ON(2)) {

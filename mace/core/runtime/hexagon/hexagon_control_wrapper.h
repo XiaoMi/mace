@@ -17,10 +17,10 @@
 
 #include <vector>
 
-#include "mace/core/runtime/hexagon/hexagon_controller.h"
 #include "mace/core/runtime/hexagon/quantize.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
+#include "third_party/nnlib/hexagon_nn.h"
 
 namespace mace {
 
@@ -44,7 +44,6 @@ class HexagonControlWrapper {
   void GetPerfInfo();
   void ResetPerfInfo();
   void SetDebugLevel(int level);
-  void SetGraphMode(int mode);
 
  private:
   static constexpr int NODE_ID_OFFSET = 10000;

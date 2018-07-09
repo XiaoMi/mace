@@ -37,7 +37,7 @@
 #define THIRD_PARTY_NNLIB_HEXAGON_NN_H_
 #ifndef __QAIC_HEADER
 #define __QAIC_HEADER(ff) ff
-#endif  // __QAIC_HEADER
+#endif  //__QAIC_HEADER
 
 #ifndef __QAIC_HEADER_EXPORT
 #define __QAIC_HEADER_EXPORT
@@ -49,7 +49,7 @@
 
 #ifndef __QAIC_IMPL
 #define __QAIC_IMPL(ff) ff
-#endif  // __QAIC_IMPL
+#endif  //__QAIC_IMPL
 
 #ifndef __QAIC_IMPL_EXPORT
 #define __QAIC_IMPL_EXPORT
@@ -131,7 +131,7 @@ struct hexagon_nn_const_node {
 };
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_config)(void)
     __QAIC_HEADER_ATTRIBUTE;
-__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(hexagon_nn_nn_id* g)
+__QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_init)(hexagon_nn_nn_id *g)
     __QAIC_HEADER_ATTRIBUTE;
 __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_set_debug_level)(
     hexagon_nn_nn_id id, int level) __QAIC_HEADER_ATTRIBUTE;
@@ -221,6 +221,8 @@ __QAIC_HEADER_EXPORT int __QAIC_HEADER(hexagon_nn_execute_new)(
     int inputsLen,
     hexagon_nn_tensordef *outputs,
     int outputsLen) __QAIC_HEADER_ATTRIBUTE;
+__QAIC_HEADER_EXPORT unsigned int __QAIC_HEADER(hexagon_nn_get_dsp_offset)(void)
+    __QAIC_HEADER_ATTRIBUTE;
 #ifdef __cplusplus
 }
 #endif
