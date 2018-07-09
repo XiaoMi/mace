@@ -20,8 +20,6 @@
 #include <numeric>
 
 #include "gflags/gflags.h"
-#include "mace/utils/env_time.h"
-#include "mace/utils/logging.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 // if convert model to code.
