@@ -99,7 +99,7 @@ python_tools_tests:
   script:
     - pwd
     - rm -rf mace-models
-    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@v9.git.n.xiaomi.com:deep-computing/mace-models.git
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2.yml
     - sh -c "python tools/converter.py build --config=${CONF_FILE} --disable_tuning && python tools/converter.py run --config=${CONF_FILE} --round=1 --validate && python tools/converter.py run --config=${CONF_FILE} --example --round=1 --validate" || exit 1
     - rm -rf mace-models
