@@ -27,11 +27,11 @@ new_http_archive(
 new_http_archive(
     name = "opencl_headers",
     build_file = "third_party/opencl-headers/opencl-headers.BUILD",
-    sha256 = "5dc7087680853b5c825360fc04ca26534f4b9f22ac114c4d3a306bfbec3cd0f2",
-    strip_prefix = "OpenCL-Headers-master",
+    sha256 = "b2b813dd88a7c39eb396afc153070f8f262504a7f956505b2049e223cfc2229b",
+    strip_prefix = "OpenCL-Headers-f039db6764d52388658ef15c30b2237bbda49803",
     urls = [
-        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/OpenCL-Headers-master.zip",
-        "https://github.com/KhronosGroup/OpenCL-Headers/archive/master.zip",
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/OpenCL-Headers/f039db6764d52388658ef15c30b2237bbda49803.zip",
+        "https://github.com/KhronosGroup/OpenCL-Headers/archive/f039db6764d52388658ef15c30b2237bbda49803.zip",
     ],
 )
 

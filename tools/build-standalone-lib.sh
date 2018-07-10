@@ -8,6 +8,16 @@ INCLUDE_DIR=builds/include/mace/public
 mkdir -p $LIB_DIR
 mkdir -p $INCLUDE_DIR
 
+# generate version code
+rm -rf mace/codegen/version
+mkdir -p mace/codegen/version
+bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc
+
+# generate tuning code
+rm -rf mace/codegen/tuning
+mkdir -p mace/codegen/tuning
+python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc
+
 # copy include headers
 cp mace/public/*.h $INCLUDE_DIR/
 
