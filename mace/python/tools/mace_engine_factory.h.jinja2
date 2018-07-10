@@ -59,6 +59,10 @@ MaceStatus CreateMaceEngineFromCode(
     return MaceStatus::MACE_INVALID_ARGS;
   }
   std::shared_ptr<NetDef> net_def;
+{% if embed_model_data %}
+  (void)model_data_file;
+  const unsigned char * model_data;
+{% endif %}
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
 {% for i in range(model_tags |length) %}
@@ -66,12 +70,12 @@ MaceStatus CreateMaceEngineFromCode(
       net_def = mace::{{model_tags[i]}}::CreateNet();
       engine->reset(new mace::MaceEngine(device_type));
 {% if embed_model_data %}
-      (void)model_data_file;
-      const unsigned char * model_data =
-          mace::{{model_tags[i]}}::LoadModelData();
-      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data);
+      model_data = mace::{{model_tags[i]}}::LoadModelData();
+      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
+                               model_data);
 {% else %}
-      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data_file);
+      status = (*engine)->Init(net_def.get(), input_nodes, output_nodes,
+                               model_data_file);
 {% endif %}
       break;
 {% endfor %}

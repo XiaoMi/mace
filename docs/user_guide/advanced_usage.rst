@@ -22,10 +22,9 @@ in one deployment file.
 
 * **Example**
 
-    Here is an example deployment file with two models used by
-    `MACE Android demo application <https://github.com/XiaoMi/mace/blob/master/mace/examples/android>`__.
+    Here is an example deployment file with two models.
 
-    .. literalinclude:: models/demo_app_models.yml
+    .. literalinclude:: models/demo_models.yml
         :language: yaml
 
 
