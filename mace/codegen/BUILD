@@ -5,6 +5,8 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
+load("//mace:mace.bzl", "mace_version_genrule", "encrypt_opencl_kernel_genrule")
+
 cc_library(
     name = "generated_models",
     srcs = glob(["models/*/*.cc"]),
@@ -12,19 +14,16 @@ cc_library(
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/core",
-        "//mace/ops",
     ],
 )
 
-cc_library(
-    name = "generated_opencl",
-    srcs = glob(["opencl/*.cc"]),
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
-)
+mace_version_genrule()
+
+encrypt_opencl_kernel_genrule()
 
 cc_library(
-    name = "generated_tuning_params",
-    srcs = ["tuning/tuning_params.cc"],
+    name = "generated_opencl",
+    srcs = ["opencl/encrypt_opencl_kernel.cc"],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
 )
 
@@ -36,9 +35,22 @@ cc_library(
 
 cc_library(
     name = "generated_mace_engine_factory",
-    hdrs = ["engine/mace_engine_factory.h"],
+    hdrs = glob(["engine/*.h"]),
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
     ],
+)
+
+cc_library(
+  name = "generated_libmace",
+  srcs = glob(["lib/*.so"]),
+  visibility = ["//visibility:public"],
+)
+
+cc_library(
+  name = "generated_libmace_static",
+  srcs = glob(["lib/*.a"]),
+  linkstatic = 1,
+  visibility = ["//visibility:public"],
 )

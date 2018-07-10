@@ -31,7 +31,6 @@ cc_library(
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
-        "//mace/codegen:generated_tuning_params",
     ],
 )
 
@@ -49,6 +48,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":utils",
+        "//mace/core",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],

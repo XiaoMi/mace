@@ -24,7 +24,6 @@
 
 namespace mace {
 
-{% if model_type == 'code' %}
 {% for tag in model_tags %}
 namespace {{tag}} {
 
@@ -59,7 +58,6 @@ MaceStatus CreateMaceEngineFromCode(
   if (engine == nullptr) {
     return MaceStatus::MACE_INVALID_ARGS;
   }
-  const unsigned char * model_data = nullptr;
   std::shared_ptr<NetDef> net_def;
   MaceStatus status = MaceStatus::MACE_SUCCESS;
   switch (model_name_map[model_name]) {
@@ -69,7 +67,7 @@ MaceStatus CreateMaceEngineFromCode(
       engine->reset(new mace::MaceEngine(device_type));
 {% if embed_model_data %}
       (void)model_data_file;
-      model_data =
+      const unsigned char * model_data =
           mace::{{model_tags[i]}}::LoadModelData();
       status = (*engine)->Init(net_def.get(), input_nodes, output_nodes, model_data);
 {% else %}
@@ -83,22 +81,5 @@ MaceStatus CreateMaceEngineFromCode(
 
   return status;
 }
-{% else %}
-MaceStatus CreateMaceEngineFromCode(
-    const std::string &model_name,
-    const std::string &model_data_file,
-    const std::vector<std::string> &input_nodes,
-    const std::vector<std::string> &output_nodes,
-    const DeviceType device_type,
-    std::shared_ptr<MaceEngine> *engine) {
-  (void)(model_name);
-  (void)(model_data_file);
-  (void)(input_nodes);
-  (void)(output_nodes);
-  (void)(device_type);
-  (void)(engine);
-  return MaceStatus::MACE_INVALID_ARGS;
-}
-{% endif %}
 
 }  // namespace mace

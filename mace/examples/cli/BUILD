@@ -23,14 +23,14 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace:libmace_static",
+        "//mace/codegen:generated_libmace_static",
     ] + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),
 )
 
 cc_binary(
-    name = "example_shared",
+    name = "example_dynamic",
     srcs = ["example.cc"],
     copts = [
         "-Werror",
@@ -39,13 +39,20 @@ cc_binary(
     ] + if_android([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
+    linkopts = [
+        "-lm",
+    ] + if_openmp_enabled([
+        "-fopenmp"
+    ]) + if_android([
+        "-ldl",
+        "-pie",
+        "-llog",
+    ]),
     linkstatic = 0,
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/utils:utils",
-        "//mace:libmace",
+        "//mace/codegen:generated_libmace",
     ],
 )
 

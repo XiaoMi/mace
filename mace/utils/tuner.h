@@ -117,13 +117,31 @@ class Tuner {
   }
 
   inline void ReadRunParamters() {
-    extern const std::map<std::string, std::vector<unsigned int>>
-        kTuningParamsData;
-    if (!kTuningParamsData.empty()) {
-      for (auto it = kTuningParamsData.begin(); it != kTuningParamsData.end();
-           ++it) {
-        param_table_.emplace(it->first, std::vector<unsigned int>(
-            it->second.begin(), it->second.end()));
+    extern std::string kOpenCLParameterPath;
+    if (!kOpenCLParameterPath.empty()) {
+      std::ifstream ifs(kOpenCLParameterPath, std::ios::binary | std::ios::in);
+      if (ifs.is_open()) {
+        int64_t num_params = 0;
+        ifs.read(reinterpret_cast<char *>(&num_params), sizeof(num_params));
+        while (num_params--) {
+          int32_t key_size = 0;
+          ifs.read(reinterpret_cast<char *>(&key_size), sizeof(key_size));
+          std::string key(key_size, ' ');
+          ifs.read(&key[0], key_size);
+
+          int32_t params_size = 0;
+          ifs.read(reinterpret_cast<char *>(&params_size), sizeof(params_size));
+          int32_t params_count = params_size / sizeof(unsigned int);
+          std::vector<unsigned int> params(params_count);
+          for (int i = 0; i < params_count; ++i) {
+            ifs.read(reinterpret_cast<char *>(&params[i]),
+                     sizeof(unsigned int));
+          }
+          param_table_.emplace(key, params);
+        }
+        ifs.close();
+      } else {
+        LOG(WARNING) << "Read OpenCL tuned parameters file failed.";
       }
     } else {
       LOG(INFO) << "There is no tuned parameters.";

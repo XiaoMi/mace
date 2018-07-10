@@ -23,7 +23,7 @@
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
 // if convert model to code.
-#ifdef CODE_TYPE
+#ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
 #endif
 
@@ -108,6 +108,9 @@ DEFINE_string(output_file,
 DEFINE_string(opencl_binary_file,
               "",
               "compiled opencl binary file path");
+DEFINE_string(opencl_parameter_file,
+              "",
+              "tuned OpenCL parameter file path");
 DEFINE_string(model_data_file,
               "",
               "model data file name, used when EMBED_MODEL_DATA set to 0");
@@ -123,7 +126,7 @@ DEFINE_int32(gpu_priority_hint, 3, "0:DEFAULT/1:LOW/2:NORMAL/3:HIGH");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
 DEFINE_int32(cpu_affinity_policy, 1,
              "0:AFFINITY_NONE/1:AFFINITY_BIG_ONLY/2:AFFINITY_LITTLE_ONLY");
-#ifndef CODE_TYPE
+#ifndef MODEL_GRAPH_FORMAT_CODE
 namespace {
 bool ReadBinaryFile(std::vector<unsigned char> *data,
                            const std::string &filename) {
@@ -172,6 +175,8 @@ bool RunModel(const std::vector<std::string> &input_names,
     // you should update the binary when OpenCL Driver changed.
     std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
     mace::SetOpenCLBinaryPaths(opencl_binary_paths);
+
+    mace::SetOpenCLParameterPath(FLAGS_opencl_parameter_file);
   }
 #endif  // MACE_ENABLE_OPENCL
 
@@ -191,7 +196,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   MaceStatus create_engine_status;
   // Only choose one of the two type based on the `build_type`
   // in model deployment file(.yml).
-#ifdef CODE_TYPE
+#ifdef MODEL_GRAPH_FORMAT_CODE
   create_engine_status =
       CreateMaceEngineFromCode(FLAGS_model_name,
                                FLAGS_model_data_file,

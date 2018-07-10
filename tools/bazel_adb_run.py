@@ -130,11 +130,6 @@ def main(unused_args):
     host_bin_path, bin_name = sh_commands.bazel_target_to_bin(target)
     target_abis = FLAGS.target_abis.split(',')
 
-    # generate sources
-    sh_commands.gen_encrypted_opencl_source()
-    sh_commands.gen_mace_version()
-    sh_commands.gen_tuning_param_code([])
-
     for target_abi in target_abis:
         sh_commands.bazel_build(target, abi=target_abi,
                                 enable_neon=FLAGS.enable_neon,

@@ -16,11 +16,12 @@ cc_binary(
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_models",
+        "//mace/ops:ops",
     ],
 )
 
 cc_binary(
-    name = "mace_run_shared",
+    name = "mace_run_dynamic",
     srcs = ["mace_run.cc"],
     copts = [
         "-Werror",
@@ -33,7 +34,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/utils:utils",
         "//mace:libmace",
+        "//mace/utils:utils",
     ],
 )

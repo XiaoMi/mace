@@ -61,7 +61,6 @@ cc_library(
     ]),
     deps = [
         "//mace/codegen:generated_version",
-        "//mace/codegen:generated_tuning_params",
         "//mace/proto:mace_cc",
         "//mace/utils",
     ] + if_android([

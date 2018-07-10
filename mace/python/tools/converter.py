@@ -198,7 +198,7 @@ def main(unused_args):
         FLAGS.output_dir, FLAGS.runtime,
         FLAGS.embed_model_data,
         FLAGS.winograd, FLAGS.data_type,
-        FLAGS.model_build_type)
+        FLAGS.model_graph_format)
 
 
 def str2bool(v):
@@ -277,10 +277,10 @@ def parse_args():
         default=True,
         help="embed model data.")
     parser.add_argument(
-        "--model_build_type",
+        "--model_graph_format",
         type=str,
-        default="code",
-        help="[proto|code] build models to code" +
+        default="file",
+        help="[file|code] build models to code" +
                 "or `Protobuf` file.")
     parser.add_argument(
         "--data_type",

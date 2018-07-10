@@ -73,8 +73,33 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-cc_library(
+genrule(
     name = "libmace_static",
-    srcs = ["libmace.a"],
+    srcs = [
+        "//mace/codegen:generated_opencl",
+        "//mace/codegen:generated_version",
+        "//mace/core",
+        "//mace/kernels",
+        "//mace/ops",
+        "//mace/utils",
+        "//mace/proto:mace_cc",
+        "@com_google_protobuf//:protobuf_lite",
+    ],
+    outs = ["libmace.a"],
+    cmd = "tmp_mri_file=$$(mktemp mace-static-lib-mri.XXXXXXXXXX);" +
+          "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
+          "$(locations //mace/codegen:generated_opencl) " +
+          "$(locations //mace/codegen:generated_version) " +
+          "$(locations //mace/core:core) " +
+          "$(locations //mace/kernels:kernels) " +
+          "$(locations //mace/ops:ops) " +
+          "$(locations //mace/utils:utils) " +
+          "$(locations //mace/proto:mace_cc) " +
+          "$(locations @com_google_protobuf//:protobuf_lite) " +
+          "$@ " +
+          "$$tmp_mri_file);" +
+          "$(AR) -M <$$tmp_mri_file;" +
+          "rm -rf $$tmp_mri_file;",
+    tools = ["//mace/python/tools:archive_static_lib"],
     visibility = ["//visibility:public"],
 )

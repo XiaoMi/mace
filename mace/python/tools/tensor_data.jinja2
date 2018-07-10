@@ -14,28 +14,17 @@
 
 // This is a generated file. DO NOT EDIT!
 
-#include <vector>
-#include <string>
-
-#include "mace/core/macros.h"
-#include "mace/public/mace.h"
-#include "mace/utils/env_time.h"
-#include "mace/utils/logging.h"
 
 namespace mace {
 namespace {{tag}} {
 
-{% if embed_model_data %}
 alignas(4) const unsigned char model_data[{{ model_data_size }}] = {
 {% for d in model_data %}{{"0x%02X, " % d }}{%endfor%}
 };
-{% endif %}
 
-{% if embed_model_data %}
 const unsigned char *LoadModelData() {
   return model_data;
 }
-{% endif %}
 
 }  // namespace {{tag}}
 }  // namespace mace
