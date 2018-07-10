@@ -9,14 +9,14 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++14 -fopenmp"
+                cppFlags "-std=c++11 -fopenmp"
                 abiFilters "arm64-v8a"
             }
         }
