@@ -39,12 +39,19 @@ cc_binary(
     ] + if_android([
         "-DMACE_ENABLE_OPENCL",
     ]),
-    linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
+    linkopts = [
+        "-lm",
+    ] + if_openmp_enabled([
+        "-fopenmp"
+    ]) + if_android([
+        "-ldl",
+        "-pie",
+        "-llog",
+    ]),
     linkstatic = 0,
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/utils:utils",
         "//mace/codegen:generated_libmace",
     ],
 )

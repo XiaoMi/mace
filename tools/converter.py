@@ -168,7 +168,6 @@ class YAMLKeyword(object):
     target_socs = 'target_socs'
     model_graph_format = 'model_graph_format'
     model_data_format = 'model_data_format'
-    linkshared = 'linkshared'
     models = 'models'
     platform = 'platform'
     model_file_path = 'model_file_path'
@@ -526,13 +525,6 @@ def get_opencl_parameter_output_path(library_name, target_abi,
             target_soc)
 
 
-def get_shared_library_dir(library_name, abi):
-    return '%s/%s/%s/%s' % (BUILD_OUTPUT_DIR,
-                            library_name,
-                            OUTPUT_LIBRARY_DIR_NAME,
-                            abi)
-
-
 def clear_build_dirs(library_name):
     # make build dir
     if not os.path.exists(BUILD_OUTPUT_DIR):
@@ -751,7 +743,7 @@ def build_model_lib(configs, address_sanitizer):
             address_sanitizer=address_sanitizer
         )
 
-        sh.cp(MODEL_LIB_PATH, model_lib_output_path)
+        sh.cp("-f", MODEL_LIB_PATH, model_lib_output_path)
 
 
 def print_library_summary(configs):

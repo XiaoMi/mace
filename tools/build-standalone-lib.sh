@@ -12,14 +12,14 @@ mkdir -p $INCLUDE_DIR
 cp mace/public/*.h $INCLUDE_DIR/
 
 # make directories
+rm -rf $LIB_DIR/armeabi-v7a
 mkdir -p $LIB_DIR/armeabi-v7a
-rm -f $LIB_DIR/armeabi-v7a/*
 
+rm -rf $LIB_DIR/arm64-v8a
 mkdir -p $LIB_DIR/arm64-v8a
-rm -f $LIB_DIR/arm64-v8a/*
 
+rm -rf $LIB_DIR/linux-x86-64
 mkdir -p $LIB_DIR/linux-x86-64
-rm -f $LIB_DIR/linux-x86-64/*
 
 # build shared libraries
 echo "build shared lib for armeabi-v7a"

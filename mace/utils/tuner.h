@@ -140,6 +140,8 @@ class Tuner {
           param_table_.emplace(key, params);
         }
         ifs.close();
+      } else {
+        LOG(WARNING) << "Read OpenCL tuned parameters file failed.";
       }
     } else {
       LOG(INFO) << "There is no tuned parameters.";
