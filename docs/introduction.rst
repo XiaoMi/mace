@@ -3,7 +3,7 @@ Introduction
 
 Mobile AI Compute Engine (MACE) is a deep learning inference framework optimized for
 mobile heterogeneous computing platforms. MACE cover common mobile computing devices(CPU, GPU and DSP),
-and supplies tools and document to help users to deploy NN model to mobile devices. MACE has been
+and supplies tools and document to help users to deploy neural network model to mobile devices.
 MACE has been widely used in Xiaomi and proved with industry leading performance and stability.
 
 Framework
@@ -26,7 +26,7 @@ and Caffe.
 MACE Interpreter
 ================
 
-Mace Interpreter mainly parse the NN graph and manage the tensors in the graph.
+Mace Interpreter mainly parses the NN graph and manages the tensors in the graph.
 
 =======
 Runtime

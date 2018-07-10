@@ -185,7 +185,7 @@ The above command will generate dynamic library ``builds/lib/${ABI}/libmace.so``
 
     .. warning::
 
-        1. Please verify that the target_abis param in the above command and your deployment file are the same.
+        Please verify that the target_abis param in the above command and your deployment file are the same.
 
 
 ==================

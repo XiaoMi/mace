@@ -1,5 +1,6 @@
+==============
 Advanced usage
-===============
+==============
 
 This part contains the full usage of MACE.
 
@@ -41,7 +42,7 @@ in one deployment file.
       - Library name.
     * - target_abis
       - The target ABI(s) to build, could be 'host', 'armeabi-v7a' or 'arm64-v8a'.
-        If more than one ABIs will be used, seperate them by comas.
+        If more than one ABIs will be used, separate them by commas.
     * - target_socs
       - [optional] Build for specific SoCs.
     * - model_graph_format
@@ -49,12 +50,12 @@ in one deployment file.
     * - model_data_format
       - model data format, could be 'file' or 'code'. 'file' for converting model weight to data file(.data) and 'code' for converting model weight to c++ code.
     * - model_name
-      - model name, should be unique if there are more than one models.
+      - model name should be unique if there are more than one models.
         **LIMIT: if build_type is code, model_name will be used in c++ code so that model_name must comply with c++ name specification.**
     * - platform
       - The source framework, tensorflow or caffe.
     * - model_file_path
-      - The path of your model file, can be local path or remote url.
+      - The path of your model file which can be local path or remote URL.
     * - model_sha256_checksum
       - The SHA256 checksum of the model file.
     * - weight_file_path
@@ -108,7 +109,7 @@ in one deployment file.
 Advanced Usage
 ==============
 
-There are two common advanced use cases: 1. convert model to CPP code. 2. tuning for specific SOC if use GPU.
+There are two common advanced use cases: 1. convert a model to CPP code. 2. tuning for specific SOC if use GPU.
 
 * **Convert model(s) to CPP code**
 
@@ -120,14 +121,14 @@ There are two common advanced use cases: 1. convert model to CPP code. 2. tuning
 
         If you want to protect your model, you can convert model to CPP code. there are also two cases:
 
-        * convert model graph to code and model weight to file with blow model configuration.
+        * convert model graph to code and model weight to file with below model configuration.
 
         .. code:: sh
 
             model_graph_format: code
             model_data_format: file
 
-        * convert both model graph and model weight to code with blow model configuration.
+        * convert both model graph and model weight to code with below model configuration.
 
         .. code:: sh
 
@@ -145,7 +146,7 @@ There are two common advanced use cases: 1. convert model to CPP code. 2. tuning
             python tools/converter.py convert --config=/path/to/model_deployment_file.yml
 
         The command will generate **${library_name}.a** in **builds/${library_name}/model** directory and
-        ** *.h ** in **builds/${library_name}/include** like blow dir-tree.
+        ** *.h ** in **builds/${library_name}/include** like below dir-tree.
 
         .. code::
 
@@ -230,7 +231,7 @@ There are two common advanced use cases: 1. convert model to CPP code. 2. tuning
 
             python tools/converter.py run --config=/path/to/model_deployment_file.yml --validate
 
-        The command will generate two files in `builds/${library_name}/opencl`, like blow.
+        The command will generate two files in `builds/${library_name}/opencl`, like below.
 
         .. code::
 
@@ -252,8 +253,8 @@ There are two common advanced use cases: 1. convert model to CPP code. 2. tuning
           for the SOC.
 
     * **4. Deployment**
-        * Change the names of files generated above for not collision and push them to **your own device' directory**.
-        * Usage like the previous procedure, blow list the key steps different.
+        * Change the names of files generated above for not collision and push them to **your own device's directory**.
+        * Use like the previous procedure, below lists the key steps differently.
 
         .. code:: cpp
 

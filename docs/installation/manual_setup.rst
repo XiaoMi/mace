@@ -65,4 +65,4 @@ Install Optional Dependencies
 
 .. code:: sh
 
-    pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.8.0
+    pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.6.0
