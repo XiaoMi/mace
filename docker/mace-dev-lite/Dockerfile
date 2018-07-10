@@ -63,6 +63,21 @@ RUN mkdir /tmp/bazel && \
     cd / && \
     rm -rf /tmp/bazel
 
+# Install SDK
+ENV ANDROID_SDK_VERSION 4333796
+ENV ANDROID_BUILD_TOOLS_VERSION 26.0.2
+ENV ANDROID_SDK_FILENAME sdk-tools-linux-${ANDROID_SDK_VERSION}.zip
+ENV ANDROID_SDK_URL https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME}
+ENV ANDROID_API_LEVELS android-26
+ENV ANDROID_HOME /opt/sdk
+ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
+RUN mkdir -p /opt/sdk && \
+    cd /opt && \
+    wget -q ${ANDROID_SDK_URL} && \
+    unzip ${ANDROID_SDK_FILENAME} -d ${ANDROID_HOME} && \
+    rm ${ANDROID_SDK_FILENAME} && \
+    yes | android update sdk --no-ui -a --filter tools,platform-tools,${ANDROID_API_LEVELS},build-tools-${ANDROID_BUILD_TOOLS_VERSION}
+
 # Download NDK
 RUN cd /opt/ && \
     wget -q https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip && \
