@@ -51,7 +51,7 @@ int HexagonControlWrapper::GetVersion() {
 
 bool HexagonControlWrapper::Config() {
   LOG(INFO) << "Hexagon config";
-  if (hexagon_controller_InitHexagonWithMaxAttributes(0, 100) != 0) {
+  if (hexagon_nn_set_powersave_level(0) != 0) {
     return false;
   }
   return hexagon_nn_config() == 0;
@@ -66,7 +66,7 @@ bool HexagonControlWrapper::Init() {
 
 bool HexagonControlWrapper::Finalize() {
   LOG(INFO) << "Hexagon finalize";
-  return hexagon_controller_DeInitHexagon() == 0;
+  return hexagon_nn_set_powersave_level(1) == 0;
 }
 
 bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
@@ -269,11 +269,6 @@ void HexagonControlWrapper::SetDebugLevel(int level) {
   LOG(INFO) << "Set debug level: " << level;
   MACE_CHECK(hexagon_nn_set_debug_level(nn_id_, level) == 0,
              "set debug level error");
-}
-
-void HexagonControlWrapper::SetGraphMode(int mode) {
-  LOG(INFO) << "Set dsp mode: " << mode;
-  MACE_CHECK(hexagon_nn_set_graph_mode(nn_id_, mode) == 0, "set mode error");
 }
 
 void HexagonControlWrapper::GetPerfInfo() {

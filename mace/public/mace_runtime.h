@@ -125,7 +125,8 @@ MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
 // affinity to offline cores may run very slow or unexpectedly. In such cases,
 // please use SetOpenMPThreadPolicy with default policy instead.
 __attribute__((visibility("default")))
-void SetOpenMPThreadAffinity(int num_threads, const std::vector<int> &cpu_ids);
+MaceStatus SetOpenMPThreadAffinity(int num_threads,
+                                   const std::vector<int> &cpu_ids);
 
 // Get ARM big.LITTLE configuration.
 //
