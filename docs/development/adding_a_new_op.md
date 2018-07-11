@@ -96,6 +96,10 @@ Add test and benchmark
 It's strongly recommended to add unit tests and micro benchmarks for your
 new Op. If you wish to contribute back, it's required.
 
+Add Op in model converter
+-------------------------
+You need to add this new Op in the model converter.
+
 Document the new Op
 ---------------------
 Finally, add an entry in operator table in the document.

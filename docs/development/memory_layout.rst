@@ -1,14 +1,12 @@
 Memory layout
-===========================
+==============
 
 CPU runtime memory layout
--------------------------
+--------------------------
 The CPU tensor buffer is organized in the following order:
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Buffer
@@ -22,7 +20,7 @@ The CPU tensor buffer is organized in the following order:
       - W
 
 GPU runtime memory layout
------------------------------
+--------------------------
 GPU runtime implementation base on OpenCL, which uses 2D image with CL_RGBA
 channel order as the tensor storage. This requires OpenCL 1.2 and above.
 
@@ -34,14 +32,12 @@ The following tables describe the mapping from different type of tensors to
 2D RGBA Image.
 
 Input/Output Tensor
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 The Input/Output Tensor is stored in NHWC format:
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Buffer
@@ -64,9 +60,7 @@ Each Pixel of **Image** contains 4 elements. The below table list the
 coordination relation between **Image** and **Buffer**.
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Pixel coordinate relationship
@@ -82,12 +76,10 @@ coordination relation between **Image** and **Buffer**.
       - k=[0, 4)
 
 Filter Tensor
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor
       - Buffer
@@ -106,9 +98,7 @@ Each Pixel of **Image** contains 4 elements. The below table list the
 coordination relation between **Image** and **Buffer**.
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Pixel coordinate relationship
@@ -121,12 +111,10 @@ coordination relation between **Image** and **Buffer**.
       - only support multiplier == 1, k=[0, 4)
 
 1-D Argument Tensor
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Buffer
@@ -141,9 +129,7 @@ Each Pixel of **Image** contains 4 elements. The below table list the
 coordination relation between **Image** and **Buffer**.
 
 .. list-table::
-    :widths: auto
     :header-rows: 1
-    :align: left
 
     * - Tensor type
       - Pixel coordinate relationship
