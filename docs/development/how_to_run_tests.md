@@ -5,8 +5,7 @@ To run tests, you need to first cross compile the code, push the binary
 into the device and then execute the binary. To automate this process,
 MACE provides `tools/bazel_adb_run.py` tool.
 
-You need to make sure your device is connected to you dev machine before
-running tests.
+You need to make sure your device has been connected to your dev pc before running tests.
 
 Run unit tests
 ---------------

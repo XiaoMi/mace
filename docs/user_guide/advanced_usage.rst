@@ -89,7 +89,7 @@ in one deployment file.
     * - obfuscate
       - [optional] Whether to obfuscate the model operator name, default to 0.
     * - winograd
-      - [optional] Whether to enable Winograd convolution, **will increase memory consumption**.
+      - [optional] Which type winograd to use, could be [0, 2, 4]. 0 for disable winograd, 2 and 4 for enable winograd, 4 may be faster than 2 but may take more memory.
 
 
 .. note::
@@ -117,7 +117,7 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
 
          If you want to use this case, you can just use static mace library.
 
-    * **1. Change the model configuration file(.yml)**
+    * **1. Change the model deployment file(.yml)**
 
         If you want to protect your model, you can convert model to CPP code. there are also two cases:
 
@@ -137,7 +137,7 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
 
         .. note::
 
-             Another model protection method is using ``obfuscate`` to obfuscate the model operator name.
+             Another model protection method is using ``obfuscate`` to obfuscate names of model's operators.
 
     * **2. Convert model(s) to code**
 
@@ -146,19 +146,22 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
             python tools/converter.py convert --config=/path/to/model_deployment_file.yml
 
         The command will generate **${library_name}.a** in **builds/${library_name}/model** directory and
-        ** *.h ** in **builds/${library_name}/include** like below dir-tree.
+        ** *.h ** in **builds/${library_name}/include** like the following dir-tree.
 
         .. code::
 
-              builds
-                ├── include
-                │   └── mace
-                │       └── public
-                │           ├── mace_engine_factory.h
-                │           └── mobilenet_v1.h
-                └── model
-                    ├── mobilenet-v1.a
-                    └── mobilenet_v1.data
+             # model_graph_format: code
+             # model_data_format: file
+
+             builds
+               ├── include
+               │   └── mace
+               │       └── public
+               │           ├── mace_engine_factory.h
+               │           └── mobilenet_v1.h
+               └── model
+                   ├── mobilenet-v1.a
+                   └── mobilenet_v1.data
 
 
     * **3. Deployment**
@@ -196,12 +199,12 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
 
 * **Tuning for specific SOC's GPU**
 
-    If you want to use GPU of a specific device, you could specify ``target_socs`` and
-    tuning for the specific SOC. It may get 1~10% performance improvement.
+    If you want to use the GPU of a specific device, you can just specify the ``target_socs`` in your YAML file and
+    then tune the MACE lib for it, which may get 1~10% performance improvement.
 
-    * **1. Change the model configuration file(.yml)**
+    * **1. Change the model deployment file(.yml)**
 
-        Specific ``target_socs`` in your model configuration file(.yml):
+        Specify ``target_socs`` in your model deployment file(.yml):
 
         .. code:: sh
 
@@ -231,7 +234,7 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
 
             python tools/converter.py run --config=/path/to/model_deployment_file.yml --validate
 
-        The command will generate two files in `builds/${library_name}/opencl`, like below.
+        The command will generate two files in `builds/${library_name}/opencl`, like the following dir-tree.
 
         .. code::
 
@@ -285,7 +288,7 @@ Useful Commands
     # original model and framework, measured with cosine distance for similarity.
     python tools/converter.py run --config=/path/to/model_deployment_file.yml --validate
 
-    # Check the memory usage of the model(**Just keep only one model in configuration file**)
+    # Check the memory usage of the model(**Just keep only one model in deployment file**)
     python tools/converter.py run --config=/path/to/model_deployment_file.yml --round=10000 &
     sleep 5
     adb shell dumpsys meminfo | grep mace_run
@@ -294,9 +297,9 @@ Useful Commands
 
 .. warning::
 
-    ``run`` rely on ``convert`` command, you should ``run`` after ``convert``.
+    ``run`` rely on ``convert`` command, you should ``convert`` before ``run``.
 
-* **benchmark and profiling model**
+* **benchmark and profile model**
 
 .. code:: sh
 

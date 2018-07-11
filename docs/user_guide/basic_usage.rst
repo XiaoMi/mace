@@ -63,6 +63,9 @@ Here we use the mobilenet-v2 model as an example.
 
     .. code:: sh
 
+        # Run example
+        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --example
+
     	# Test model run time
         python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --round=100
 
@@ -80,11 +83,11 @@ This part will show you how to use your pre-trained model in MACE.
 1. Prepare your model
 ======================
 
-Mace now supports models from Tensorflow and Caffe (more frameworks will be supported).
+Mace now supports models from TensorFlow and Caffe (more frameworks will be supported).
 
 -  TensorFlow
 
-   Prepare your pre-trained Tensorflow model.pb file.
+   Prepare your pre-trained TensorFlow model.pb file.
 
    Use `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
    to optimize your model for inference.
@@ -135,10 +138,10 @@ When converting a model or building a library, MACE needs to read a YAML file wh
 A model deployment file contains all the information of your model(s) and building options. There are several example
 deployment files in *MACE Model Zoo* project.
 
-The following shows two basic usage of deployment files for Tensorflow and Caffe models.
+The following shows two basic usage of deployment files for TensorFlow and Caffe models.
 Modify one of them and use it for your own case.
 
--  Tensorflow
+-  TensorFlow
 
    .. literalinclude:: models/demo_app_models_tf.yml
       :language: yaml

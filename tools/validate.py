@@ -191,7 +191,7 @@ def parse_args():
     """Parses command line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--platform", type=str, default="", help="Tensorflow or Caffe.")
+        "--platform", type=str, default="", help="TensorFlow or Caffe.")
     parser.add_argument(
         "--model_file",
         type=str,

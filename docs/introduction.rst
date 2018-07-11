@@ -2,7 +2,7 @@ Introduction
 ============
 
 Mobile AI Compute Engine (MACE) is a deep learning inference framework optimized for
-mobile heterogeneous computing platforms. MACE cover common mobile computing devices(CPU, GPU and DSP),
+mobile heterogeneous computing platforms. MACE covers common mobile computing devices (CPU, GPU and DSP),
 and supplies tools and document to help users to deploy neural network model to mobile devices.
 MACE has been widely used in Xiaomi and proved with industry leading performance and stability.
 
@@ -34,8 +34,8 @@ Runtime
 
 CPU/GPU/DSP runtime correspond to the Ops for different devices.
 
-Work Flow
----------
+Workflow
+--------
 The following figure shows the basic work flow of MACE.
 
 .. image:: mace-work-flow.png
@@ -56,7 +56,7 @@ Build MACE dynamic or static libraries.
 ==================
 3. Convert model
 ==================
-Convert Tensorflow or Caffe model to MACE model.
+Convert TensorFlow or Caffe model to MACE model.
 
 ===========
 4.1. Deploy
@@ -132,7 +132,7 @@ CPU/GPU/DSP Runtime对应于各个计算设备的算子实现。
 ==================
 3. 转换模型
 ==================
-将Tensorflow 或者 Caffe的模型转为MACE的模型.
+将TensorFlow 或者 Caffe的模型转为MACE的模型.
 
 ==================================
 4.1. 部署
