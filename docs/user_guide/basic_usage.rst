@@ -144,12 +144,12 @@ Modify one of them and use it for your own case.
 
 -  TensorFlow
 
-   .. literalinclude:: models/demo_app_models_tf.yml
+   .. literalinclude:: models/demo_models_tf.yml
       :language: yaml
 
 -  Caffe
 
-   .. literalinclude:: models/demo_app_models_caffe.yml
+   .. literalinclude:: models/demo_models_caffe.yml
       :language: yaml
 
 More details about model deployment file are in :doc:`advanced_usage`.

@@ -14,18 +14,12 @@ cmake_minimum_required(VERSION 3.4.1)
 
 include_directories(${CMAKE_SOURCE_DIR}/)
 include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp/include)
-file(GLOB static_file ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/*.a)
-
-MESSAGE(STATUS "FILE URL = ${CMAKE_SOURCE_DIR}")
-MESSAGE(STATUS "FILE URL = ${static_file}")
-
-foreach(fileStr ${static_file})
-   set(tmpstr ${fileStr})
-   MESSAGE(STATUS "FILE URL = ${tmpstr}")
-endforeach()
-
-add_library (mace_mobile_lib STATIC IMPORTED)
-set_target_properties(mace_mobile_lib PROPERTIES IMPORTED_LOCATION ${tmpstr})
+set(mace_file ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/libmace.a)
+set(mobilenet_file ${CMAKE_SOURCE_DIR}/src/main/cpp/model/mobilenet.a)
+add_library (mace_lib STATIC IMPORTED)
+set_target_properties(mace_lib PROPERTIES IMPORTED_LOCATION ${mace_file})
+add_library (mobilenet_lib STATIC IMPORTED)
+set_target_properties(mobilenet_lib PROPERTIES IMPORTED_LOCATION ${mobilenet_file})
 
 add_library( # Sets the name of the library.
              mace_mobile_jni
@@ -55,7 +49,8 @@ find_library( # Sets the name of the path variable.
 
 target_link_libraries( # Specifies the target library.
                        mace_mobile_jni
-                       mace_mobile_lib
+                       mace_lib
+                       mobilenet_lib
                        # Links the target library to the log library
                        # included in the NDK.
                        ${log-lib} )
