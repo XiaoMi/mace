@@ -61,8 +61,14 @@ Install extra tools
         filelock
 
 Install TensorFlow (Optional)
------------------------------
+------------------------------
 
 .. code:: sh
 
     pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com tensorflow==1.6.0
+
+
+Install Caffe (Optional)
+-------------------------
+
+Please follow the installation instruction of `Caffe <http://caffe.berkeleyvision.org/installation.html>`__.
