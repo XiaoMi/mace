@@ -8,16 +8,6 @@ INCLUDE_DIR=builds/include/mace/public
 mkdir -p $LIB_DIR
 mkdir -p $INCLUDE_DIR
 
-# generate version code
-rm -rf mace/codegen/version
-mkdir -p mace/codegen/version
-bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc
-
-# generate tuning code
-rm -rf mace/codegen/tuning
-mkdir -p mace/codegen/tuning
-python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc
-
 # copy include headers
 cp mace/public/*.h $INCLUDE_DIR/
 
@@ -57,7 +47,7 @@ bazel build --config android --config optimization mace:libmace_static --define 
 cp bazel-genfiles/mace/libmace.a $LIB_DIR/arm64-v8a/
 
 echo "build static lib for linux-x86-64"
-bazel build mace:libmace --config optimization --define openmp=true
+bazel build mace:libmace_static --config optimization --define openmp=true
 cp bazel-genfiles/mace/libmace.a $LIB_DIR/linux-x86-64/
 
 echo "LIB PATH: $LIB_DIR"
