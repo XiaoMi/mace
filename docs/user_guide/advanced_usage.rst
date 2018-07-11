@@ -1,19 +1,19 @@
-==============
+===============
 Advanced usage
-==============
+===============
 
 This part contains the full usage of MACE.
 
-=========
+---------
 Overview
-=========
+---------
 
 As mentioned in the previous part, a model deployment file defines a case of model deployment.
 The whole building process is loading a deployment file, converting models, building MACE and packing generated files.
 
-================
+----------------
 Deployment file
-================
+----------------
 
 
 One deployment file will generate one library normally, but if more than one ABIs are specified,
@@ -24,7 +24,7 @@ in one deployment file.
 
 * **Example**
 
-    Here is an example deployment file used by an Android demo application.
+    Here is an example deployment file with two models.
 
     .. literalinclude:: models/demo_app_models.yml
         :language: yaml
@@ -105,9 +105,9 @@ in one deployment file.
         sha256sum /path/to/your/file
 
 
-==============
+---------------
 Advanced Usage
-==============
+---------------
 
 There are two common advanced use cases: 1. convert a model to CPP code. 2. tuning for specific SOC if use GPU.
 
@@ -274,9 +274,9 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
             // ... Same with the code in basic usage.
 
 
-===============
+----------------
 Useful Commands
-===============
+----------------
 * **run the model**
 
 .. code:: sh
