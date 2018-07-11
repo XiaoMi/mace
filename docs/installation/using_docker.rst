@@ -1,12 +1,12 @@
 Using docker
 =============
 
-Pull or Build docker image
+Pull or build docker image
 ---------------------------
 
-MACE provides docker images with necessary dependencies installed and also Dockerfiles for images building,
+MACE provides docker images with dependencies installed and also Dockerfiles for images building,
 you can pull the existing ones directly or build them from the Dockerfiles.
-In most cases, the ``lite edition`` image can satify developer's basic needs.
+In most cases, the ``lite edition`` image can satisfy developer's basic needs.
 
 .. note::
     It's highly recommended to pull built images.

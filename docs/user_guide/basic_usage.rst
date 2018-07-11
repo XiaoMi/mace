@@ -7,13 +7,14 @@ Build and run an example model
 
 At first, make sure the environment has been set up correctly already (refer to :doc:`../installation/env_requirement`).
 
-The followings are instructions about  how to quickly build and run a provided model in *MACE Model Zoo*.
+The followings are instructions about how to quickly build and run a provided model in
+`MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__.
 
 Here we use the mobilenet-v2 model as an example.
 
 **Commands**
 
-    1. Pull *MACE* project.
+    1. Pull `MACE <https://github.com/XiaoMi/mace>`__ project.
 
     .. code:: sh
 
@@ -29,14 +30,14 @@ Here we use the mobilenet-v2 model as an example.
         It's highly recommanded to use a release version instead of master branch.
 
 
-    2. Pull *MACE Model Zoo* project.
+    2. Pull `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__ project.
 
     .. code:: sh
 
         git clone https://github.com/XiaoMi/mace-models.git
 
 
-    3. Build a general MACE library.
+    3. Build a generic MACE library.
 
     .. code:: sh
 
@@ -46,7 +47,7 @@ Here we use the mobilenet-v2 model as an example.
         bash tools/build-standalone-lib.sh
 
 
-    4. Convert the model to MACE format model.
+    4. Convert the pre-trained mobilenet-v2 model to MACE format model.
 
     .. code:: sh
 
@@ -57,7 +58,7 @@ Here we use the mobilenet-v2 model as an example.
 
     5. Run the model.
 
-    .. warning::
+    .. note::
 
         If you want to run on device/phone, please plug in at least one device/phone.
 
@@ -77,13 +78,13 @@ Here we use the mobilenet-v2 model as an example.
 Build your own model
 ---------------------
 
-This part will show you how to use your pre-trained model in MACE.
+This part will show you how to use your own pre-trained model in MACE.
 
 ======================
 1. Prepare your model
 ======================
 
-Mace now supports models from TensorFlow and Caffe (more frameworks will be supported).
+MACE now supports models from TensorFlow and Caffe (more frameworks will be supported).
 
 -  TensorFlow
 
