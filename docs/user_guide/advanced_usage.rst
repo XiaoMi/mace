@@ -1,19 +1,17 @@
-===============
 Advanced usage
 ===============
 
 This part contains the full usage of MACE.
 
----------
 Overview
 ---------
 
 As mentioned in the previous part, a model deployment file defines a case of model deployment.
-The whole building process is loading a deployment file, converting models, building MACE and packing generated files.
+The building process includes parsing model deployment file, converting models,
+building MACE core library and packing generated model libraries.
 
-----------------
 Deployment file
-----------------
+---------------
 
 
 One deployment file will generate one library normally, but if more than one ABIs are specified,
@@ -24,7 +22,8 @@ in one deployment file.
 
 * **Example**
 
-    Here is an example deployment file with two models.
+    Here is an example deployment file with two models used by
+    `MACE Android demo application <https://github.com/XiaoMi/mace/blob/master/mace/examples/android>`__.
 
     .. literalinclude:: models/demo_app_models.yml
         :language: yaml
@@ -84,8 +83,6 @@ in one deployment file.
       - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU, default is fp16_fp32, [fp32] for CPU and [uint8] for DSP.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default is 0.
-    * - nnlib_graph_mode
-      - [optional] Control the DSP precision and performance, default to 0 usually works for most cases.
     * - obfuscate
       - [optional] Whether to obfuscate the model operator name, default to 0.
     * - winograd
@@ -105,13 +102,14 @@ in one deployment file.
         sha256sum /path/to/your/file
 
 
----------------
-Advanced Usage
----------------
+Advanced usage
+--------------
 
-There are two common advanced use cases: 1. convert a model to CPP code. 2. tuning for specific SOC if use GPU.
+There are two common advanced use cases:
+  - converting model to C++ code.
+  - tuning GPU kernels for a specific SoC.
 
-* **Convert model(s) to CPP code**
+* **Convert model(s) to C++ code**
 
     .. warning::
 
@@ -119,7 +117,7 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
 
     * **1. Change the model deployment file(.yml)**
 
-        If you want to protect your model, you can convert model to CPP code. there are also two cases:
+        If you want to protect your model, you can convert model to C++ code. there are also two cases:
 
         * convert model graph to code and model weight to file with below model configuration.
 
@@ -197,10 +195,10 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
             // ... Same with the code in basic usage
 
 
-* **Tuning for specific SOC's GPU**
+* **Tuning for specific SoC's GPU**
 
     If you want to use the GPU of a specific device, you can just specify the ``target_socs`` in your YAML file and
-    then tune the MACE lib for it, which may get 1~10% performance improvement.
+    then tune the MACE lib for it (OpenCL kernels), which may get 1~10% performance improvement.
 
     * **1. Change the model deployment file(.yml)**
 
@@ -253,7 +251,7 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
           used for your models, which could accelerate the initialization stage.
           Details please refer to `OpenCL Specification <https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clCreateProgramWithBinary.html>`__.
         * **mobilenet-v2-tuned_opencl_parameter.MI6.msm8998.bin** stands for the tuned OpenCL parameters
-          for the SOC.
+          for the SoC.
 
     * **4. Deployment**
         * Change the names of files generated above for not collision and push them to **your own device's directory**.
@@ -274,9 +272,8 @@ There are two common advanced use cases: 1. convert a model to CPP code. 2. tuni
             // ... Same with the code in basic usage.
 
 
-----------------
 Useful Commands
-----------------
+---------------
 * **run the model**
 
 .. code:: sh
