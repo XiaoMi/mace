@@ -15,6 +15,8 @@
 #include <iostream>
 
 #include "gflags/gflags.h"
+#include "mace/core/runtime/cpu/cpu_runtime.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
@@ -34,13 +36,13 @@ int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // config runtime
-  mace::MaceStatus status = mace::SetOpenMPThreadPolicy(
+  mace::MaceStatus status = mace::SetOpenMPThreadsAndAffinityPolicy(
       FLAGS_omp_num_threads,
       static_cast<mace::CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
   if (status != mace::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
   }
-  mace::SetGPUHints(
+  mace::OpenCLRuntime::Configure(
       static_cast<mace::GPUPerfHint>(FLAGS_gpu_perf_hint),
       static_cast<mace::GPUPriorityHint>(FLAGS_gpu_priority_hint));
 
