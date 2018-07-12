@@ -44,9 +44,10 @@ targets:
     architectures with limited performance.
 
 ## Getting Started
-* [Introduction](https://mace.readthedocs.io/en/latest/getting_started/introduction.html)
-* [Create a model deployment file](https://mace.readthedocs.io/en/latest/getting_started/create_a_model_deployment.html)
-* [How to build](https://mace.readthedocs.io/en/latest/getting_started/how_to_build.html)
+* [Introduction](https://mace.readthedocs.io/en/latest/introduction.html)
+* [Installation](https://mace.readthedocs.io/en/latest/installation/env_requirement.html)
+* [Basic Usage](https://mace.readthedocs.io/en/latest/user_guide/basic_usage.html)
+* [Advanced Usage](https://mace.readthedocs.io/en/latest/user_guide/advanced_usage.html)
 
 ## Performance
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) contains

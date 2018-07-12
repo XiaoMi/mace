@@ -543,23 +543,24 @@ def clear_build_dirs(library_name):
 
 
 def check_model_converted(library_name, model_name,
-                          model_graph_format, model_data_format):
+                          model_graph_format, model_data_format,
+                          abi):
     model_output_dir = \
         '%s/%s/%s' % (BUILD_OUTPUT_DIR, library_name, MODEL_OUTPUT_DIR_NAME)
     if model_graph_format == ModelFormat.file:
         mace_check(os.path.exists("%s/%s.pb" % (model_output_dir, model_name)),
                    ModuleName.RUN,
-                   "You shuold convert model first.")
+                   "You should convert model first.")
     else:
-        mace_check(os.path.exists("%s/%s.a" %
-                                  (model_output_dir, library_name)),
+        model_lib_path = get_model_lib_output_path(library_name, abi)
+        mace_check(os.path.exists(model_lib_path),
                    ModuleName.RUN,
-                   "You shuold convert model first.")
+                   "You should convert model first.")
     if model_data_format == ModelFormat.file:
         mace_check(os.path.exists("%s/%s.data" %
                                   (model_output_dir, model_name)),
                    ModuleName.RUN,
-                   "You shuold convert model first.")
+                   "You should convert model first.")
 
 
 ################################
@@ -716,10 +717,10 @@ def convert_model(configs):
             StringFormatter.block("Model %s converted" % model_name))
 
 
-def get_model_lib_output_path(library_name):
-    library_out_dir = os.path.join(BUILD_OUTPUT_DIR, library_name,
-                                   MODEL_OUTPUT_DIR_NAME)
-    lib_output_path = "%s/%s.a" % (library_out_dir, library_name)
+def get_model_lib_output_path(library_name, abi):
+    lib_output_path = os.path.join(BUILD_OUTPUT_DIR, library_name,
+                                   MODEL_OUTPUT_DIR_NAME, abi,
+                                   "%s.a" % library_name)
     return lib_output_path
 
 
@@ -728,13 +729,13 @@ def build_model_lib(configs, address_sanitizer):
 
     # create model library dir
     library_name = configs[YAMLKeyword.library_name]
-    model_lib_output_path = get_model_lib_output_path(library_name)
-    library_out_dir = os.path.dirname(model_lib_output_path)
-    if not os.path.exists(library_out_dir):
-        os.makedirs(library_out_dir)
-
     for target_abi in configs[YAMLKeyword.target_abis]:
         hexagon_mode = get_hexagon_mode(configs)
+        model_lib_output_path = get_model_lib_output_path(library_name,
+                                                          target_abi)
+        library_out_dir = os.path.dirname(model_lib_output_path)
+        if not os.path.exists(library_out_dir):
+            os.makedirs(library_out_dir)
 
         sh_commands.bazel_build(
             MODEL_LIB_TARGET,
@@ -841,7 +842,7 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
         mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                    ModuleName.RUN,
-                   "You shuold convert model first.")
+                   "You should convert model first.")
         build_arg = "--per_file_copt=mace/tools/validation/mace_run.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
     sh_commands.bazel_build(
@@ -887,8 +888,9 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
         if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
             mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                        ModuleName.RUN,
-                       "You shuold convert model first.")
-            model_lib_path = get_model_lib_output_path(library_name)
+                       "You should convert model first.")
+            model_lib_path = get_model_lib_output_path(library_name,
+                                                       target_abi)
             sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
             build_arg = "--per_file_copt=mace/examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
@@ -911,12 +913,6 @@ def tuning(library_name, model_name, model_config,
            target_abi, target_soc, serial_num,
            mace_lib_type):
     print('* Tuning, it may take some time...')
-
-    # clear opencl output dir
-    opencl_output_dir = os.path.join(
-        BUILD_OUTPUT_DIR, library_name, OUTPUT_OPENCL_BINARY_DIR_NAME)
-    if os.path.exists(opencl_output_dir):
-        sh.rm('-rf', opencl_output_dir)
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     mace_run_name = MACE_RUN_STATIC_NAME
@@ -994,16 +990,7 @@ def run_specific_target(flags, configs, target_abi,
     mace_lib_type = flags.mace_lib_type
     embed_model_data = \
         configs[YAMLKeyword.model_data_format] == ModelFormat.code
-    opencl_output_bin_path = ""
-    opencl_parameter_path = ""
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
-    if configs[YAMLKeyword.target_socs] and target_abi != ABIType.host:
-        opencl_output_bin_path = get_opencl_binary_output_path(
-            library_name, target_abi, target_soc, serial_num
-        )
-        opencl_parameter_path = get_opencl_parameter_output_path(
-            library_name, target_abi, target_soc, serial_num
-        )
 
     # get target name for run
     if flags.example:
@@ -1023,7 +1010,8 @@ def run_specific_target(flags, configs, target_abi,
     for model_name in configs[YAMLKeyword.models]:
         check_model_converted(library_name, model_name,
                               configs[YAMLKeyword.model_graph_format],
-                              configs[YAMLKeyword.model_data_format])
+                              configs[YAMLKeyword.model_data_format],
+                              target_abi)
         if target_abi == ABIType.host:
             device_name = ABIType.host
         else:
@@ -1049,10 +1037,14 @@ def run_specific_target(flags, configs, target_abi,
                 get_build_model_dirs(library_name, model_name, target_abi,
                                      target_soc, serial_num,
                                      model_config[YAMLKeyword.model_file_path])
+        # clear temp model output dir
         if os.path.exists(model_output_dir):
             sh.rm("-rf", model_output_dir)
         os.makedirs(model_output_dir)
 
+        is_tuned = False
+        model_opencl_output_bin_path = ""
+        model_opencl_parameter_path = ""
         # tuning for specified soc
         if not flags.address_sanitizer \
                 and not flags.example \
@@ -1067,6 +1059,23 @@ def run_specific_target(flags, configs, target_abi,
                    target_abi, target_soc, serial_num,
                    mace_lib_type)
             model_output_dirs.append(model_output_dir)
+            model_opencl_output_bin_path =\
+                "%s/%s/%s" % (model_output_dir,
+                              BUILD_TMP_OPENCL_BIN_DIR,
+                              CL_COMPILED_BINARY_FILE_NAME)
+            model_opencl_parameter_path = \
+                "%s/%s/%s" % (model_output_dir,
+                              BUILD_TMP_OPENCL_BIN_DIR,
+                              CL_TUNED_PARAMETER_FILE_NAME)
+            sh_commands.clear_phone_data_dir(serial_num, PHONE_DATA_DIR)
+            is_tuned = True
+        elif target_abi != ABIType.host and target_soc:
+            model_opencl_output_bin_path = get_opencl_binary_output_path(
+                library_name, target_abi, target_soc, serial_num
+            )
+            model_opencl_parameter_path = get_opencl_parameter_output_path(
+                library_name, target_abi, target_soc, serial_num
+            )
 
         # generate input data
         sh_commands.gen_random_input(
@@ -1114,8 +1123,8 @@ def run_specific_target(flags, configs, target_abi,
                 gpu_priority_hint=flags.gpu_priority_hint,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
-                opencl_binary_file=opencl_output_bin_path,
-                opencl_parameter_file=opencl_parameter_path,
+                opencl_binary_file=model_opencl_output_bin_path,
+                opencl_parameter_file=model_opencl_parameter_path,
                 libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
                 link_dynamic=link_dynamic,
             )
@@ -1142,11 +1151,7 @@ def run_specific_target(flags, configs, target_abi,
                     phone_data_dir=PHONE_DATA_DIR,
                     caffe_env=flags.caffe_env)
             if flags.report and flags.round > 0:
-                opencl_parameter_bin_path = get_opencl_parameter_output_path(
-                    library_name, target_abi, target_soc, serial_num
-                )
-                tuned = device_type == DeviceType.GPU\
-                    and os.path.exists(opencl_parameter_bin_path)
+                tuned = is_tuned and device_type == DeviceType.GPU
                 report_run_statistics(
                     run_output, target_abi, serial_num,
                     model_name, device_type, flags.report_dir,
@@ -1159,6 +1164,12 @@ def run_specific_target(flags, configs, target_abi,
         opencl_parameter_bin_path = get_opencl_parameter_output_path(
             library_name, target_abi, target_soc, serial_num
         )
+        # clear opencl output dir
+        if os.path.exists(opencl_output_bin_path):
+            sh.rm('-rf', opencl_output_bin_path)
+        if os.path.exists(opencl_parameter_bin_path):
+            sh.rm('-rf', opencl_parameter_bin_path)
+
         # merge all models' OpenCL binaries together
         sh_commands.merge_opencl_binaries(
             model_output_dirs, CL_COMPILED_BINARY_FILE_NAME,
@@ -1228,7 +1239,7 @@ def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
         mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                    ModuleName.BENCHMARK,
-                   "You shuold convert model first.")
+                   "You should convert model first.")
         build_arg = "--per_file_copt=mace/benchmark/benchmark_model.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
 
     sh_commands.bazel_build(benchmark_target,
@@ -1271,7 +1282,8 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
     for model_name in configs[YAMLKeyword.models]:
         check_model_converted(library_name, model_name,
                               configs[YAMLKeyword.model_graph_format],
-                              configs[YAMLKeyword.model_data_format])
+                              configs[YAMLKeyword.model_data_format],
+                              target_abi)
         if target_abi == ABIType.host:
             device_name = ABIType.host
         else:
