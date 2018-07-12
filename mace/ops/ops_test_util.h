@@ -29,6 +29,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/ops/ops_register.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
@@ -110,7 +111,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistryBase()) {}
+  OpsTestNet() : op_registry_(new OperatorRegistry()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
