@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_LocalResponseNorm(OperatorRegistry *op_registry) {
+void Register_LocalResponseNorm(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("LocalResponseNorm")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

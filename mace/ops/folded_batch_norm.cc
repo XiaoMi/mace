@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_FoldedBatchNorm(OperatorRegistry *op_registry) {
+void Register_FoldedBatchNorm(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("FoldedBatchNorm")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

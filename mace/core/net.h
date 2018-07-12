@@ -30,7 +30,7 @@ class Workspace;
 
 class NetBase {
  public:
-  NetBase(const std::shared_ptr<const OperatorRegistry> op_registry,
+  NetBase(const std::shared_ptr<const OperatorRegistryBase> op_registry,
           const std::shared_ptr<const NetDef> net_def,
           Workspace *ws,
           DeviceType type);
@@ -42,14 +42,14 @@ class NetBase {
 
  protected:
   std::string name_;
-  const std::shared_ptr<const OperatorRegistry> op_registry_;
+  const std::shared_ptr<const OperatorRegistryBase> op_registry_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(NetBase);
 };
 
 class SerialNet : public NetBase {
  public:
-  SerialNet(const std::shared_ptr<const OperatorRegistry> op_registry,
+  SerialNet(const std::shared_ptr<const OperatorRegistryBase> op_registry,
             const std::shared_ptr<const NetDef> net_def,
             Workspace *ws,
             DeviceType type,
@@ -65,13 +65,13 @@ class SerialNet : public NetBase {
 };
 
 std::unique_ptr<NetBase> CreateNet(
-    const std::shared_ptr<const OperatorRegistry> op_registry,
+    const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const NetDef &net_def,
     Workspace *ws,
     DeviceType type,
     const NetMode mode = NetMode::NORMAL);
 std::unique_ptr<NetBase> CreateNet(
-    const std::shared_ptr<const OperatorRegistry> op_registry,
+    const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const std::shared_ptr<const NetDef> net_def,
     Workspace *ws,
     DeviceType type,

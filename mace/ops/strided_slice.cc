@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_StridedSlice(OperatorRegistry *op_registry) {
+void Register_StridedSlice(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("StridedSlice")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Pad(OperatorRegistry *op_registry) {
+void Register_Pad(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pad")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -50,7 +50,9 @@ const std::string OpKeyBuilder::Build() {
   return ss.str();
 }
 
-std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
+OperatorRegistryBase::~OperatorRegistryBase() {}
+
+std::unique_ptr<OperatorBase> OperatorRegistryBase::CreateOperator(
     const OperatorDef &operator_def,
     Workspace *ws,
     DeviceType type,
@@ -70,104 +72,6 @@ std::unique_ptr<OperatorBase> OperatorRegistry::CreateOperator(
   } else {
     return nullptr;
   }
-}
-
-namespace ops {
-// Keep in lexicographical order
-extern void Register_Activation(OperatorRegistry *op_registry);
-extern void Register_AddN(OperatorRegistry *op_registry);
-extern void Register_ArgMax(OperatorRegistry *op_registry);
-extern void Register_BatchNorm(OperatorRegistry *op_registry);
-extern void Register_BatchToSpaceND(OperatorRegistry *op_registry);
-extern void Register_BiasAdd(OperatorRegistry *op_registry);
-extern void Register_Cast(OperatorRegistry *op_registry);
-extern void Register_ChannelShuffle(OperatorRegistry *op_registry);
-extern void Register_Concat(OperatorRegistry *op_registry);
-extern void Register_Conv2D(OperatorRegistry *op_registry);
-extern void Register_Deconv2D(OperatorRegistry *op_registry);
-extern void Register_DepthToSpace(OperatorRegistry *op_registry);
-extern void Register_DepthwiseConv2d(OperatorRegistry *op_registry);
-extern void Register_Dequantize(OperatorRegistry *op_registry);
-extern void Register_Eltwise(OperatorRegistry *op_registry);
-extern void Register_FoldedBatchNorm(OperatorRegistry *op_registry);
-extern void Register_FullyConnected(OperatorRegistry *op_registry);
-extern void Register_Gather(OperatorRegistry *op_registry);
-extern void Register_Identity(OperatorRegistry *op_registry);
-extern void Register_LocalResponseNorm(OperatorRegistry *op_registry);
-extern void Register_MatMul(OperatorRegistry *op_registry);
-extern void Register_Pad(OperatorRegistry *op_registry);
-extern void Register_Pooling(OperatorRegistry *op_registry);
-extern void Register_Proposal(OperatorRegistry *op_registry);
-extern void Register_Quantize(OperatorRegistry *op_registry);
-extern void Register_ReduceMean(OperatorRegistry *op_registry);
-extern void Register_Requantize(OperatorRegistry *op_registry);
-extern void Register_Reshape(OperatorRegistry *op_registry);
-extern void Register_ResizeBilinear(OperatorRegistry *op_registry);
-extern void Register_Shape(OperatorRegistry *op_registry);
-extern void Register_Slice(OperatorRegistry *op_registry);
-extern void Register_Softmax(OperatorRegistry *op_registry);
-extern void Register_Stack(OperatorRegistry *op_registry);
-extern void Register_StridedSlice(OperatorRegistry *op_registry);
-extern void Register_SpaceToBatchND(OperatorRegistry *op_registry);
-extern void Register_SpaceToDepth(OperatorRegistry *op_registry);
-extern void Register_Squeeze(OperatorRegistry *op_registry);
-extern void Register_Transpose(OperatorRegistry *op_registry);
-extern void Register_WinogradInverseTransform(OperatorRegistry *op_registry);
-extern void Register_WinogradTransform(OperatorRegistry *op_registry);
-
-#ifdef MACE_ENABLE_OPENCL
-extern void Register_BufferToImage(OperatorRegistry *op_registry);
-extern void Register_ImageToBuffer(OperatorRegistry *op_registry);
-#endif  // MACE_ENABLE_OPENCL
-}  // namespace ops
-
-OperatorRegistry::OperatorRegistry() {
-  // Keep in lexicographical order
-  ops::Register_Activation(this);
-  ops::Register_AddN(this);
-  ops::Register_ArgMax(this);
-  ops::Register_BatchNorm(this);
-  ops::Register_BatchToSpaceND(this);
-  ops::Register_BiasAdd(this);
-  ops::Register_Cast(this);
-  ops::Register_ChannelShuffle(this);
-  ops::Register_Concat(this);
-  ops::Register_Conv2D(this);
-  ops::Register_Deconv2D(this);
-  ops::Register_DepthToSpace(this);
-  ops::Register_DepthwiseConv2d(this);
-  ops::Register_Dequantize(this);
-  ops::Register_Eltwise(this);
-  ops::Register_FoldedBatchNorm(this);
-  ops::Register_FullyConnected(this);
-  ops::Register_Gather(this);
-  ops::Register_Identity(this);
-  ops::Register_LocalResponseNorm(this);
-  ops::Register_MatMul(this);
-  ops::Register_Pad(this);
-  ops::Register_Pooling(this);
-  ops::Register_Proposal(this);
-  ops::Register_Quantize(this);
-  ops::Register_ReduceMean(this);
-  ops::Register_Requantize(this);
-  ops::Register_Reshape(this);
-  ops::Register_ResizeBilinear(this);
-  ops::Register_Shape(this);
-  ops::Register_Slice(this);
-  ops::Register_Softmax(this);
-  ops::Register_Stack(this);
-  ops::Register_StridedSlice(this);
-  ops::Register_SpaceToBatchND(this);
-  ops::Register_SpaceToDepth(this);
-  ops::Register_Squeeze(this);
-  ops::Register_Transpose(this);
-  ops::Register_WinogradInverseTransform(this);
-  ops::Register_WinogradTransform(this);
-
-#ifdef MACE_ENABLE_OPENCL
-  ops::Register_BufferToImage(this);
-  ops::Register_ImageToBuffer(this);
-#endif  // MACE_ENABLE_OPENCL
 }
 
 }  // namespace mace

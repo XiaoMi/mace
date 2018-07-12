@@ -110,7 +110,7 @@ class OpDefBuilder {
 
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistry()) {}
+  OpsTestNet() : op_registry_(new OperatorRegistryBase()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -397,7 +397,7 @@ class OpsTestNet {
   }
 
  public:
-  std::shared_ptr<OperatorRegistry> op_registry_;
+  std::shared_ptr<OperatorRegistryBase> op_registry_;
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;

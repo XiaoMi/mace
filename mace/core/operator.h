@@ -163,12 +163,12 @@ OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
   return this->TypeConstraint(attr_name, DataTypeToEnum<T>::value);
 }
 
-class OperatorRegistry {
+class OperatorRegistryBase {
  public:
   typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *>
       RegistryType;
-  OperatorRegistry();
-  ~OperatorRegistry() = default;
+  OperatorRegistryBase() = default;
+  virtual ~OperatorRegistryBase();
   RegistryType *registry() { return &registry_; }
   std::unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
                                                Workspace *ws,
@@ -177,7 +177,7 @@ class OperatorRegistry {
 
  private:
   RegistryType registry_;
-  MACE_DISABLE_COPY_AND_ASSIGN(OperatorRegistry);
+  MACE_DISABLE_COPY_AND_ASSIGN(OperatorRegistryBase);
 };
 
 MACE_DECLARE_REGISTRY(OpRegistry,

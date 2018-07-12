@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Cast(OperatorRegistry *op_registry) {
+void Register_Cast(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Cast")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_BatchToSpaceND(OperatorRegistry *op_registry) {
+void Register_BatchToSpaceND(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BatchToSpaceND")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

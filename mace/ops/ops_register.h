@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/gather.h"
+#ifndef MACE_OPS_OPS_REGISTER_H_
+#define MACE_OPS_OPS_REGISTER_H_
+
+#include "mace/core/operator.h"
 
 namespace mace {
-namespace ops {
 
-void Register_Gather(OperatorRegistryBase *op_registry) {
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Gather")
-                                          .Device(DeviceType::CPU)
-                                          .TypeConstraint<float>("T")
-                                          .Build(),
-                         GatherOp<DeviceType::CPU, float>);
-}
+class OperatorRegistry : public OperatorRegistryBase {
+ public:
+  OperatorRegistry();
+  ~OperatorRegistry() = default;
+};
 
-}  // namespace ops
 }  // namespace mace
+
+#endif  // MACE_OPS_OPS_REGISTER_H_

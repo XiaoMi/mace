@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_ReduceMean(OperatorRegistry *op_registry) {
+void Register_ReduceMean(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("ReduceMean")
                                      .Device(DeviceType::CPU)
                                      .TypeConstraint<float>("T")

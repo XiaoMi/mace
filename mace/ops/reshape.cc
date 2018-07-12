@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Reshape(OperatorRegistry *op_registry) {
+void Register_Reshape(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Reshape")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

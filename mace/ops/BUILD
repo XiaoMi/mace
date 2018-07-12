@@ -58,7 +58,6 @@ cc_library(
     deps = [
         "//mace/kernels",
     ],
-    alwayslink = 1,
 )
 
 cc_test(

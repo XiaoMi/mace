@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Concat(OperatorRegistry *op_registry) {
+void Register_Concat(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Concat")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_AddN(OperatorRegistry *op_registry) {
+void Register_AddN(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("AddN")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")
