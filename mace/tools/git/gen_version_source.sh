@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MACE_SOURCE_DIR=$(dirname $0)
+MACE_SOURCE_DIR=$(dirname $(dirname $(dirname $(dirname $0))))
 
 OUTPUT_FILENAME=$1
 if [[ -z "${OUTPUT_FILENAME}}" ]]; then
@@ -28,15 +28,15 @@ fi
 
 mkdir -p $OUTPUT_DIR
 
-pushd $MACE_SOURCE_DIR
-
 DATE_STR=$(date +%Y%m%d)
-GIT_VERSION=$(git describe --long --tags)
+GIT_VERSION=$(git --git-dir=${MACE_SOURCE_DIR}/.git --work-tree=${MACE_SOURCE_DIR} describe --long --tags)
 if [[ $? != 0 ]]; then
   GIT_VERSION=unknown-${DATE_STR}
 else
   GIT_VERSION=${GIT_VERSION}-${DATE_STR}
 fi
+
+echo $GIT_VERSION
 
 cat <<EOF > ${OUTPUT_FILENAME}
 // Copyright 2018 Xiaomi, Inc.  All rights reserved.
@@ -61,4 +61,3 @@ const char *MaceVersion() { return "MACEVER-${GIT_VERSION}" + 8; }
 }  // namespace mace
 EOF
 
-popd
