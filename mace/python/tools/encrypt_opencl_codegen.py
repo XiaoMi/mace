@@ -87,6 +87,8 @@ def encrypt_opencl_codegen(cl_kernel_dir, output_path):
     with open(output_path, "w") as w_file:
         w_file.write(cpp_cl_encrypted_kernel)
 
+    print('Generate OpenCL kernel done.')
+
 
 def parse_args():
     """Parses command line arguments."""

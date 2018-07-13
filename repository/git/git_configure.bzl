@@ -9,6 +9,9 @@ def _git_version_conf_impl(repository_ctx):
 
   generated_files_path = repository_ctx.path("gen")
 
+  unused_var = repository_ctx.path(Label("//:.git/HEAD"))
+  unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
+
   repository_ctx.execute([
       'bash', '%s/mace/tools/git/gen_version_source.sh' % mace_root_path
       , '%s/version' % generated_files_path
@@ -17,5 +20,4 @@ def _git_version_conf_impl(repository_ctx):
 
 git_version_repository = repository_rule(
     implementation = _git_version_conf_impl,
-    local=True,
 )
