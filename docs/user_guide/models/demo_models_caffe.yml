@@ -1,0 +1,41 @@
+# The name of library
+library_name: squeezenet-v10
+target_abis: [arm64-v8a]
+model_graph_format: file
+model_data_format: file
+models:
+  squeezenet-v10: # model tag, which will be used in model loading and must be specific.
+    platform: caffe
+    # support local path, http:// and https://
+    model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/squeezenet/squeezenet-v1.0.prototxt
+    weight_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/squeezenet/squeezenet-v1.0.caffemodel
+    # sha256_checksum of your model's graph and data files.
+    # get the sha256_checksum: sha256sum path/to/your/file
+    model_sha256_checksum: db680cf18bb0387ded9c8e9401b1bbcf5dc09bf704ef1e3d3dbd1937e772cae0
+    weight_sha256_checksum: 9ff8035aada1f9ffa880b35252680d971434b141ec9fbacbe88309f0f9a675ce
+    # define your model's interface
+    # if there multiple inputs or outputs, write like blow:
+    # subgraphs:
+    # - input_tensors:
+    #     - input0
+    #     - input1
+    #   input_shapes:
+    #     - 1,224,224,3
+    #     - 1,224,224,3
+    #    output_tensors:
+    #      - output0
+    #      - output1
+    #    output_shapes:
+    #      - 1,1001
+    #      - 1,1001
+    subgraphs:
+      - input_tensors:
+          - data
+        input_shapes:
+          - 1,227,227,3
+        output_tensors:
+          - prob
+        output_shapes:
+          - 1,1,1,1000
+    runtime: cpu+gpu
+    winograd: 0

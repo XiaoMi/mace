@@ -780,7 +780,7 @@ def tuning_run(abi,
 
         print("Running finished!\n")
 
-        return stdout
+    return stdout
 
 
 def validate_model(abi,

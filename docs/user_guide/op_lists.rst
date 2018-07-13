@@ -3,7 +3,6 @@ Operator lists
 
 .. Please keep in chronological order when editing
 .. csv-table::
-    :widths: auto
     :header: "Operator","Supported","Remark"
 
     "AVERAGE_POOL_2D","Y",""
@@ -27,17 +26,17 @@ Operator lists
     "LOCAL_RESPONSE_NORMALIZATION","Y",""
     "LOGISTIC","Y",""
     "LSTM","",""
-    "MATMUL","Y",""
+    "MATMUL","Y","Only CPU is supported"
     "MAX_POOL_2D","Y",""
     "PAD","Y",""
     "PSROI_ALIGN","Y",""
     "PRELU","Y","Only caffe model is supported"
-    "REDUCE_MEAN","Y","Only tensorflow model is supported"
+    "REDUCE_MEAN","Y","Only tensorflow model is supported. For GPU only H + W axis reduce is supported"
     "RELU","Y",""
     "RELU1","Y",""
     "RELU6","Y",""
     "RELUX","Y",""
-    "RESHAPE","Y","Limited support: only internal use of reshape in composed operations is supported"
+    "RESHAPE","Y","Limited support: GPU is full supported, for CPU only supports softmax-like usage"
     "RESIZE_BILINEAR","Y",""
     "RNN","",""
     "RPN_PROPOSAL_LAYER","Y",""

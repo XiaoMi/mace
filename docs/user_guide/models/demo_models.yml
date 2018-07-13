@@ -1,0 +1,49 @@
+# The name of library
+library_name: mobile_squeeze
+# host, armeabi-v7a or arm64-v8a
+target_abis: [arm64-v8a]
+# The build mode for model(s).
+# 'code' for transferring model(s) into cpp code, 'file' for keeping model(s) in protobuf file(s) (.pb).
+model_graph_format: code
+# 'code' for transferring model data(s) into cpp code, 'file' for keeping model data(s) in file(s) (.data).
+model_data_format: code
+# One yaml config file can contain multi models' deployment info.
+models:
+  mobilenet_v1:
+      platform: tensorflow
+      model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/mobilenet-v1/mobilenet-v1-1.0.pb
+      model_sha256_checksum: 71b10f540ece33c49a7b51f5d4095fc9bd78ce46ebf0300487b2ee23d71294e6
+      subgraphs:
+        - input_tensors:
+            - input
+          input_shapes:
+            - 1,224,224,3
+          output_tensors:
+            - MobilenetV1/Predictions/Reshape_1
+          output_shapes:
+            - 1,1001
+          validation_inputs_data:
+            - https://cnbj1.fds.api.xiaomi.com/mace/inputs/dog.npy
+      runtime: cpu+gpu
+      limit_opencl_kernel_time: 0
+      obfuscate: 0
+      winograd: 0
+  squeezenet_v11:
+      platform: caffe
+      model_file_path: http://cnbj1-inner-fds.api.xiaomi.net/mace/mace-models/squeezenet/SqueezeNet_v1.1/model.prototxt
+      weight_file_path: http://cnbj1-inner-fds.api.xiaomi.net/mace/mace-models/squeezenet/SqueezeNet_v1.1/weight.caffemodel
+      model_sha256_checksum: 625c952063da1569e22d2f499dc454952244d42cd8feca61f05502566e70ae1c
+      weight_sha256_checksum: 72b912ace512e8621f8ff168a7d72af55910d3c7c9445af8dfbff4c2ee960142
+      subgraphs:
+        - input_tensors:
+            - data
+          input_shapes:
+            - 1,227,227,3
+          output_tensors:
+            - prob
+          output_shapes:
+            - 1,1,1,1000
+      runtime: cpu+gpu
+      limit_opencl_kernel_time: 0
+      obfuscate: 0
+      winograd: 0
