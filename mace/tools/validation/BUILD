@@ -1,5 +1,5 @@
 # Examples
-load("//mace:mace.bzl", "if_openmp_enabled", "if_android")
+load("//mace:mace.bzl", "if_openmp_enabled", "if_android", "if_opencl_enabled")
 
 cc_binary(
     name = "mace_run_static",
@@ -7,7 +7,7 @@ cc_binary(
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_android([
+    ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = if_openmp_enabled(["-fopenmp"]),
@@ -26,7 +26,7 @@ cc_binary(
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_android([
+    ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
@@ -34,7 +34,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace:libmace",
+        "//mace/libmace:libmace_dynamic",
         "//mace/utils:utils",
     ],
 )

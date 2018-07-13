@@ -282,6 +282,7 @@ def bazel_build(target,
                 hexagon_mode=False,
                 enable_openmp=True,
                 enable_neon=True,
+                enable_opencl=True,
                 address_sanitizer=False,
                 extra_args=""):
     print("* Build %s with ABI %s" % (target, abi))
@@ -303,6 +304,8 @@ def bazel_build(target,
             "neon=%s" % str(enable_neon).lower(),
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
+            "--define",
+            "opencl=%s" % str(enable_opencl).lower(),
             "--define",
             "hexagon=%s" % str(hexagon_mode).lower())
     if address_sanitizer:

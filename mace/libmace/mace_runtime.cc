@@ -12,12 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/file_storage.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
+
 namespace mace {
+
+class FileStorageFactory::Impl {
+ public:
+  explicit Impl(const std::string &path);
+
+  std::unique_ptr<KVStorage> CreateStorage(const std::string &name);
+
+ private:
+  std::string path_;
+};
+
+FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
+std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
+    const std::string &name) {
+  return std::move(std::unique_ptr<KVStorage>(
+      new FileStorage(path_ + "/" + name)));
+}
+
+FileStorageFactory::FileStorageFactory(const std::string &path):
+    impl_(new FileStorageFactory::Impl(path)) {}
+
+FileStorageFactory::~FileStorageFactory() = default;
+
+std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
+    const std::string &name) {
+  return impl_->CreateStorage(name);
+}
 
 extern std::shared_ptr<KVStorageFactory> kStorageFactory;
 
@@ -26,6 +57,7 @@ void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
   kStorageFactory = storage_factory;
 }
 
+#ifdef MACE_ENABLE_OPENCL
 // Set OpenCL Compiled Binary paths, just call once. (Not thread-safe)
 void SetOpenCLBinaryPaths(const std::vector<std::string> &paths) {
   OpenCLRuntime::ConfigureOpenCLBinaryPath(paths);
@@ -42,6 +74,7 @@ void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
           << ", gpu_priority_hint: " << gpu_priority_hint;
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
 }
+#endif  // MACE_ENABLE_OPENCL
 
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy) {

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/file_storage.h"
-
 #include <fcntl.h>
 #include <limits.h>
 #include <sys/mman.h>
@@ -25,36 +23,12 @@
 #include <memory>
 #include <utility>
 
+#include "mace/core/file_storage.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
 
-class FileStorageFactory::Impl {
- public:
-  explicit Impl(const std::string &path);
-
-  std::unique_ptr<KVStorage> CreateStorage(const std::string &name);
-
- private:
-  std::string path_;
-};
-
-FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
-std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
-    const std::string &name) {
-  return std::move(std::unique_ptr<KVStorage>(
-      new FileStorage(path_ + "/" + name)));
-}
-
-FileStorageFactory::FileStorageFactory(const std::string &path):
-    impl_(new FileStorageFactory::Impl(path)) {}
-
-FileStorageFactory::~FileStorageFactory() = default;
-
-std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
-    const std::string &name) {
-  return impl_->CreateStorage(name);
-}
+std::shared_ptr<KVStorageFactory> kStorageFactory = nullptr;
 
 FileStorage::FileStorage(const std::string &file_path):
     data_changed_(false), file_path_(file_path) {}

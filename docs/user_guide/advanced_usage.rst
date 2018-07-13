@@ -351,3 +351,24 @@ Use ``-h`` to get detailed help.
     python tools/converter.py build -h
     python tools/converter.py run -h
     python tools/converter.py benchmark -h
+
+Reduce Library Size
+-------------------
+* **dynamic library**
+
+    The generated dynamic library by script ``tools/build-standalone-lib.sh`` is about ``1.6M`` for
+    ``armeabi-v7a`` and ``2.1M`` for ``arm64-v8a``. It can be reduced by modifying some build options.
+
+    - If the models don't need to run on device ``dsp``, the build option ``--define hexagon=true`` for
+      ``armeabi-v7a`` can be set to ``false``. And the library will be decreased about ``100KB``.
+
+    - Futher more, if only ``cpu`` device needed, set ``--define opencl=true`` to ``false``. This way
+      will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
+
+* **static library**
+
+    - The methods in dynamic library can be useful for static library too. In additional, the static
+      library may also contain model graph and model datas if the configs ``model_graph_format`` and
+      ``model_data_format`` in deployment file are set to ``code``.
+
+    - It is recommended to use ``version script`` for ultimate binary. The effect is remarkable.
