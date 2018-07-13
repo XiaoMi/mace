@@ -3,6 +3,7 @@ stages:
   - pycodestyle
   - docs
   - platform_compatible_tests
+  - build_libraries
   - ndk_versions_compatible_tests
   - ops_test
   - api_test
@@ -71,6 +72,11 @@ platform_compatible_tests:
   stage: platform_compatible_tests
   script:
     - bazel build mace/core:core
+
+build_libraries:
+  stage: build_libraries
+  script:
+    - bash tools/build-standalone-lib.sh
 
 ndk_versions_compatible_tests:
   stage: ndk_versions_compatible_tests

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import falcon_cli
-import filelock
 import glob
 import logging
 import numpy as np
@@ -69,10 +68,12 @@ def device_lock_path(serialno):
 
 
 def device_lock(serialno, timeout=3600):
+    import filelock
     return filelock.FileLock(device_lock_path(serialno), timeout=timeout)
 
 
 def is_device_locked(serialno):
+    import filelock
     try:
         with device_lock(serialno, timeout=0.000001):
             return False

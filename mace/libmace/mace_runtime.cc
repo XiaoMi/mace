@@ -34,6 +34,7 @@ class FileStorageFactory::Impl {
 };
 
 FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
+
 std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
     const std::string &name) {
   return std::move(std::unique_ptr<KVStorage>(
@@ -57,10 +58,13 @@ void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
   kStorageFactory = storage_factory;
 }
 
-#ifdef MACE_ENABLE_OPENCL
 // Set OpenCL Compiled Binary paths, just call once. (Not thread-safe)
 void SetOpenCLBinaryPaths(const std::vector<std::string> &paths) {
+#ifdef MACE_ENABLE_OPENCL
   OpenCLRuntime::ConfigureOpenCLBinaryPath(paths);
+#else
+  MACE_UNUSED(paths);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 extern std::string kOpenCLParameterPath;
@@ -70,11 +74,15 @@ void SetOpenCLParameterPath(const std::string &path) {
 }
 
 void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
+#ifdef MACE_ENABLE_OPENCL
   VLOG(1) << "Set GPU configurations, gpu_perf_hint: " << gpu_perf_hint
           << ", gpu_priority_hint: " << gpu_priority_hint;
   OpenCLRuntime::Configure(gpu_perf_hint, gpu_priority_hint);
-}
+#else
+  MACE_UNUSED(gpu_perf_hint);
+  MACE_UNUSED(gpu_priority_hint);
 #endif  // MACE_ENABLE_OPENCL
+}
 
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy) {

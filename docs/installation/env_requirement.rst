@@ -30,6 +30,9 @@ Required dependencies
     * - sh
       - pip install -I sh==1.12.14
       - 1.12.14
+    * - Numpy
+      - pip install -I numpy==1.14.0
+      - Required by model validation
 
 Optional dependencies
 ---------------------
@@ -52,15 +55,12 @@ Optional dependencies
     * - Docker
       - `docker installation guide <https://docs.docker.com/install/linux/docker-ce/ubuntu/#set-up-the-repository>`__
       - Required by docker mode for Caffe model
-    * - Numpy
-      - pip install -I numpy==1.14.0
-      - Required by model validation
     * - Scipy
       - pip install -I scipy==1.0.0
       - Required by model validation
     * - FileLock
       - pip install -I filelock==3.0.0
-      - Required by Android run
+      - Required by run on Android
 
 .. note::
 

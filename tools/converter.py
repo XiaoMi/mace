@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import filelock
 import glob
 import hashlib
 import os
