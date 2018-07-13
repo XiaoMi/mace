@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_WinogradTransform(OperatorRegistry *op_registry) {
+void Register_WinogradTransform(OperatorRegistryBase *op_registry) {
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("WinogradTransform")
                                           .Device(DeviceType::GPU)

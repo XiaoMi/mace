@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_SpaceToDepth(OperatorRegistry *op_registry) {
+void Register_SpaceToDepth(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("SpaceToDepth")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

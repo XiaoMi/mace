@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Gather(OperatorRegistry *op_registry) {
+void Register_Gather(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Gather")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -51,7 +51,7 @@ TEST(CoreTest, INIT_MODE) {
   for (auto &op_def : op_defs) {
     net_def.add_op()->CopyFrom(op_def);
   }
-  std::shared_ptr<OperatorRegistry> op_registry(new OperatorRegistry());
+  std::shared_ptr<OperatorRegistryBase> op_registry(new OperatorRegistry());
   auto net =
       CreateNet(op_registry, net_def, &ws, DeviceType::GPU, NetMode::INIT);
   net->Run();

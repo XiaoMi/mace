@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Conv2D(OperatorRegistry *op_registry) {
+void Register_Conv2D(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Conv2D")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

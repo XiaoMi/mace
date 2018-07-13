@@ -24,8 +24,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/ops:test",
-        "//mace/kernels:kernels",
-        "//mace/ops:ops",
+        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )
@@ -45,8 +44,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/ops:test",
-        "//mace/kernels:kernels",
-        "//mace/ops:ops",
+        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )
@@ -66,8 +64,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//mace/ops:test",
-        "//mace/kernels:kernels",
-        "//mace/ops:ops",
+        "//mace/libmace:libmace",
         "@gtest//:gtest_main",
     ],
 )

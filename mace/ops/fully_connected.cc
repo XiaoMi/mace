@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_FullyConnected(OperatorRegistry *op_registry) {
+void Register_FullyConnected(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("FullyConnected")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

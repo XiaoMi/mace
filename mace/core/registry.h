@@ -78,7 +78,6 @@ class Registerer {
 #endif
 
 #define MACE_DECLARE_TYPED_REGISTRY(RegistryName, SrcType, ObjectType, ...) \
-  Registry<SrcType, ObjectType, ##__VA_ARGS__> *RegistryName();             \
   typedef Registerer<SrcType, ObjectType, ##__VA_ARGS__>                    \
       Registerer##RegistryName;
 

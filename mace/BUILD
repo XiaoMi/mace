@@ -63,7 +63,7 @@ cc_binary(
     linkstatic = 0,
     deps = [
         ":mace_version_script.lds",
-        "//mace/ops",
+        "//mace/libmace",
     ],
 )
 
@@ -81,6 +81,7 @@ genrule(
         "//mace/core",
         "//mace/kernels",
         "//mace/ops",
+        "//mace/libmace",
         "//mace/utils",
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
@@ -93,6 +94,7 @@ genrule(
           "$(locations //mace/core:core) " +
           "$(locations //mace/kernels:kernels) " +
           "$(locations //mace/ops:ops) " +
+          "$(locations //mace/libmace:libmace) " +
           "$(locations //mace/utils:utils) " +
           "$(locations //mace/proto:mace_cc) " +
           "$(locations @com_google_protobuf//:protobuf_lite) " +

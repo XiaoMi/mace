@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_BiasAdd(OperatorRegistry *op_registry) {
+void Register_BiasAdd(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BiasAdd")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_ImageToBuffer(OperatorRegistry *op_registry) {
+void Register_ImageToBuffer(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("ImageToBuffer")
                                           .Device(DeviceType::GPU)
                                           .TypeConstraint<float>("T")

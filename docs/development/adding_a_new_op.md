@@ -58,7 +58,7 @@ Define the Ops registering function in `mace/ops/my_custom_op.cc`.
 namespace mace {
 namespace ops {
 
-void Register_My_Custom_Op(OperatorRegistry *op_registry) {
+void Register_My_Custom_Op(OperatorRegistryBase *op_registry) {
   REGISTER_OPERATOR(op_registry, OpKeyBuilder("my_custom_op")
                                      .Device(DeviceType::CPU)
                                      .TypeConstraint<float>("T")

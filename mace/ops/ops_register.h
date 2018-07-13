@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/public/mace_runtime.h"
-#include "mace/utils/logging.h"
+#ifndef MACE_OPS_OPS_REGISTER_H_
+#define MACE_OPS_OPS_REGISTER_H_
+
+#include "mace/core/operator.h"
 
 namespace mace {
 
-std::shared_ptr<KVStorageFactory> kStorageFactory = nullptr;
+class OperatorRegistry : public OperatorRegistryBase {
+ public:
+  OperatorRegistry();
+  ~OperatorRegistry() = default;
+};
 
-void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory) {
-  VLOG(1) << "Set internal KV Storage Engine";
-  kStorageFactory = storage_factory;
-}
+}  // namespace mace
 
-std::string kOpenCLParameterPath;  // NOLINT(runtime/string)
-
-void SetOpenCLParameterPath(const std::string &path) {
-  kOpenCLParameterPath = path;
-}
-
-};  // namespace mace
+#endif  // MACE_OPS_OPS_REGISTER_H_

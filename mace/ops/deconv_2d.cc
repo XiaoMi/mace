@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Deconv2D(OperatorRegistry *op_registry) {
+void Register_Deconv2D(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Deconv2D")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

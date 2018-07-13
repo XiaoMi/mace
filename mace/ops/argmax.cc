@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_ArgMax(OperatorRegistry *op_registry) {
+void Register_ArgMax(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("ArgMax")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_ChannelShuffle(OperatorRegistry *op_registry) {
+void Register_ChannelShuffle(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("ChannelShuffle")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

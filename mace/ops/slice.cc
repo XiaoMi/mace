@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-void Register_Slice(OperatorRegistry *op_registry) {
+void Register_Slice(OperatorRegistryBase *op_registry) {
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")

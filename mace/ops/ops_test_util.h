@@ -29,6 +29,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/ops/ops_register.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
@@ -397,7 +398,7 @@ class OpsTestNet {
   }
 
  public:
-  std::shared_ptr<OperatorRegistry> op_registry_;
+  std::shared_ptr<OperatorRegistryBase> op_registry_;
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;

@@ -206,22 +206,5 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
   return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
 }
 
-MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
-                                 CPUAffinityPolicy policy) {
-  VLOG(1) << "Set OpenMP threads number hint: " << num_threads_hint
-          << ", affinity policy: " << policy;
-  return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint, policy);
-}
-
-MaceStatus SetOpenMPThreadAffinity(int num_threads,
-                                   const std::vector<int> &cpu_ids) {
-  return SetOpenMPThreadsAndAffinityCPUs(num_threads, cpu_ids);
-}
-
-MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
-                               std::vector<int> *little_core_ids) {
-  return GetCPUBigLittleCoreIDs(big_core_ids, little_core_ids);
-}
-
 }  // namespace mace
 

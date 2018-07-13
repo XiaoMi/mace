@@ -21,7 +21,7 @@
 #include <memory>
 
 #include "mace/core/net.h"
-#include "mace/core/types.h"
+#include "mace/ops/ops_register.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -138,7 +138,7 @@ class MaceEngine::Impl {
  private:
   const unsigned char *model_data_;
   size_t model_data_size_;
-  std::shared_ptr<OperatorRegistry> op_registry_;
+  std::shared_ptr<OperatorRegistryBase> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
