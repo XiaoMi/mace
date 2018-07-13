@@ -160,6 +160,17 @@ There are two common advanced use cases:
                    ├── mobilenet-v1.a
                    └── mobilenet_v1.data
 
+             # model_graph_format: code
+             # model_data_format: code
+
+             builds
+               ├── include
+               │   └── mace
+               │       └── public
+               │           ├── mace_engine_factory.h
+               │           └── mobilenet_v1.h
+               └── model
+                   └── mobilenet-v1.a
 
     * **3. Deployment**
         * Link `libmace.a` and `${library_name}.a` to your target.
@@ -182,7 +193,7 @@ There are two common advanced use cases:
             // Create Engine from compiled code
             create_engine_status =
                 CreateMaceEngineFromCode(model_name.c_str(),
-                                         nullptr,
+                                         model_data_file, // empty string if model_data_format is code
                                          input_names,
                                          output_names,
                                          device_type,
