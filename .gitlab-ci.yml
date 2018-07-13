@@ -8,6 +8,7 @@ stages:
   - ops_test
   - api_test
   - python_tools_tests
+  - build_android_demo
   - ops_benchmark
   - extra_tests
 
@@ -111,3 +112,8 @@ python_tools_tests:
       python tools/converter.py run --config=${CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
     - rm -rf mace-models
+
+build_android_demo:
+  stage: build_android_demo
+  script:
+    - pushd mace/examples/android/ && bash build.sh build && popd

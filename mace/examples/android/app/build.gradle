@@ -10,6 +10,10 @@ android {
         versionName "1.0"
     }
 
+    lintOptions {
+        abortOnError false
+    }
+
     signingConfigs {
         release {
             storeFile file("mace_demo.jks")

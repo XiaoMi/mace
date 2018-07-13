@@ -14,12 +14,12 @@ cmake_minimum_required(VERSION 3.4.1)
 
 include_directories(${CMAKE_SOURCE_DIR}/)
 include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp/include)
-set(mace_file ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/libmace.a)
-set(mobilenet_file ${CMAKE_SOURCE_DIR}/src/main/cpp/model/mobilenet.a)
+set(mace_lib ${CMAKE_SOURCE_DIR}/src/main/cpp/lib/arm64-v8a/libmace.a)
+set(mobilenet_lib ${CMAKE_SOURCE_DIR}/src/main/cpp/model/arm64-v8a/mobilenet.a)
 add_library (mace_lib STATIC IMPORTED)
-set_target_properties(mace_lib PROPERTIES IMPORTED_LOCATION ${mace_file})
+set_target_properties(mace_lib PROPERTIES IMPORTED_LOCATION ${mace_lib})
 add_library (mobilenet_lib STATIC IMPORTED)
-set_target_properties(mobilenet_lib PROPERTIES IMPORTED_LOCATION ${mobilenet_file})
+set_target_properties(mobilenet_lib PROPERTIES IMPORTED_LOCATION ${mobilenet_lib})
 
 add_library( # Sets the name of the library.
              mace_mobile_jni
