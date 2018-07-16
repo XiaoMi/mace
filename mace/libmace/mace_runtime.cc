@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/macros.h"
 #include "mace/core/file_storage.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/public/mace_runtime.h"
@@ -70,7 +71,11 @@ void SetOpenCLBinaryPaths(const std::vector<std::string> &paths) {
 extern std::string kOpenCLParameterPath;
 
 void SetOpenCLParameterPath(const std::string &path) {
+#ifdef MACE_ENABLE_OPENCL
   kOpenCLParameterPath = path;
+#else
+  MACE_UNUSED(path);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
