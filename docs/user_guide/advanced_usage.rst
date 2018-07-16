@@ -370,10 +370,10 @@ Reduce Library Size
     The generated dynamic library by script ``tools/build-standalone-lib.sh`` is about ``1.6M`` for
     ``armeabi-v7a`` and ``2.1M`` for ``arm64-v8a``. It can be reduced by modifying some build options.
 
-    - If the models don't need to run on device ``dsp``, the build option ``--define hexagon=true`` for
-      ``armeabi-v7a`` can be set to ``false``. And the library will be decreased about ``100KB``.
+    - If the models don't need to run on device ``dsp``, change the build option ``--define hexagon=true``
+      to ``false``. And the library will be decreased about ``100KB``.
 
-    - Futher more, if only ``cpu`` device needed, set ``--define opencl=true`` to ``false``. This way
+    - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
       will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
 
 * **static library**
