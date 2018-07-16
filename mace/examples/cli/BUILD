@@ -1,5 +1,11 @@
 # Examples
-load("//mace:mace.bzl", "if_openmp_enabled", "if_android", "if_hexagon_enabled")
+load(
+    "//mace:mace.bzl",
+    "if_openmp_enabled",
+    "if_android",
+    "if_hexagon_enabled",
+    "if_opencl_enabled",
+)
 
 cc_binary(
     name = "example_static",
@@ -7,7 +13,7 @@ cc_binary(
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_android([
+    ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [
@@ -36,7 +42,7 @@ cc_binary(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_android([
+    ] + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
     linkopts = [

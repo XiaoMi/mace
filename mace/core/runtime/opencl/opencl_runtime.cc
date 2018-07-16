@@ -33,8 +33,6 @@
 
 namespace mace {
 
-std::shared_ptr<KVStorageFactory> kStorageFactory = nullptr;
-
 std::string kOpenCLParameterPath;  // NOLINT(runtime/string)
 
 extern const std::map<std::string, std::vector<unsigned char>>

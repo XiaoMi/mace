@@ -60,10 +60,10 @@ CODEGEN_BASE_DIR = 'mace/codegen'
 MODEL_CODEGEN_DIR = CODEGEN_BASE_DIR + '/models'
 ENGINE_CODEGEN_DIR = CODEGEN_BASE_DIR + '/engine'
 LIB_CODEGEN_DIR = CODEGEN_BASE_DIR + '/lib'
-LIBMACE_SO_TARGET = "//mace:libmace.so"
-LIBMACE_STATIC_TARGET = "//mace:libmace_static"
-LIBMACE_STATIC_PATH = "bazel-genfiles/mace/libmace.a"
-LIBMACE_DYNAMIC_PATH = "bazel-bin/mace/libmace.so"
+LIBMACE_SO_TARGET = "//mace/libmace:libmace.so"
+LIBMACE_STATIC_TARGET = "//mace/libmace:libmace_static"
+LIBMACE_STATIC_PATH = "bazel-genfiles/mace/libmace/libmace.a"
+LIBMACE_DYNAMIC_PATH = "bazel-bin/mace/libmace/libmace.so"
 MODEL_LIB_TARGET = "//mace/codegen:generated_models"
 MODEL_LIB_PATH = "bazel-bin/mace/codegen/libgenerated_models.a"
 MACE_RUN_STATIC_NAME = "mace_run_static"
@@ -243,6 +243,19 @@ def get_hexagon_mode(configs):
         runtime_list.append(model_runtime.lower())
 
     if RuntimeType.dsp in runtime_list:
+        return True
+    return False
+
+
+def get_opencl_mode(configs):
+    runtime_list = []
+    for model_name in configs[YAMLKeyword.models]:
+        model_runtime =\
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.runtime, "")
+        runtime_list.append(model_runtime.lower())
+
+    if RuntimeType.gpu in runtime_list or RuntimeType.cpu_gpu in runtime_list:
         return True
     return False
 
@@ -740,6 +753,7 @@ def build_model_lib(configs, address_sanitizer):
             MODEL_LIB_TARGET,
             abi=target_abi,
             hexagon_mode=hexagon_mode,
+            enable_opencl=get_opencl_mode(configs),
             address_sanitizer=address_sanitizer
         )
 
@@ -849,6 +863,7 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
         abi=target_abi,
         hexagon_mode=hexagon_mode,
         enable_openmp=enable_openmp,
+        enable_opencl=get_opencl_mode(configs),
         address_sanitizer=address_sanitizer,
         extra_args=build_arg
     )
@@ -872,6 +887,7 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
     sh_commands.bazel_build(libmace_target,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
+                            enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode)
 
     if os.path.exists(LIB_CODEGEN_DIR):
@@ -898,6 +914,7 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
     sh_commands.bazel_build(example_target,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
+                            enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode,
                             extra_args=build_arg)
 
@@ -1244,6 +1261,7 @@ def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
     sh_commands.bazel_build(benchmark_target,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
+                            enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode,
                             extra_args=build_arg)
     # clear tmp binary dir

@@ -5,6 +5,7 @@ load(
     "if_hexagon_enabled",
     "if_openmp_enabled",
     "if_android",
+    "if_opencl_enabled",
 )
 
 licenses(["notice"])  # Apache 2.0
@@ -28,7 +29,7 @@ cc_binary(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_android(["-DMACE_ENABLE_OPENCL"]),
+    ] + if_opencl_enabled(["-DMACE_ENABLE_OPENCL"]),
     linkopts = if_openmp_enabled(["-fopenmp"]),
     linkstatic = 1,
     deps = [
@@ -56,7 +57,7 @@ cc_binary(
         ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace:libmace",
+        "//mace/libmace:libmace_dynamic",
     ],
 )
 

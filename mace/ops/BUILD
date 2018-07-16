@@ -7,7 +7,15 @@ package(
 
 licenses(["notice"])  # Apache 2.0
 
-load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled", "if_android_armv7", "if_hexagon_enabled")
+load(
+    "//mace:mace.bzl",
+    "if_android",
+    "if_neon_enabled",
+    "if_openmp_enabled",
+    "if_android_armv7",
+    "if_hexagon_enabled",
+    "if_opencl_enabled",
+)
 
 cc_library(
     name = "test",
@@ -31,7 +39,7 @@ cc_library(
             "buffer_to_image.cc",
             "image_to_buffer.cc",
         ],
-    ) + if_android(
+    ) + if_opencl_enabled(
         [
             "buffer_to_image.cc",
             "image_to_buffer.cc",
@@ -50,7 +58,7 @@ cc_library(
         "-mfpu=neon",
     ]) + if_android_armv7([
         "-mfloat-abi=softfp",
-    ]) + if_android([
+    ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
@@ -75,7 +83,7 @@ cc_test(
         "-mfpu=neon",
     ]) + if_android_armv7([
         "-mfloat-abi=softfp",
-    ]) + if_android([
+    ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
@@ -102,7 +110,7 @@ cc_test(
         "-mfpu=neon",
     ]) + if_android_armv7([
         "-mfloat-abi=softfp",
-    ]) + if_android([
+    ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",

@@ -13,14 +13,44 @@
 // limitations under the License.
 
 #include "mace/core/macros.h"
+#include "mace/core/file_storage.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#endif  // MACE_ENABLE_OPENCL
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 
+#ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/opencl_runtime.h"
+#endif  // MACE_ENABLE_OPENCL
+
 namespace mace {
+
+class FileStorageFactory::Impl {
+ public:
+  explicit Impl(const std::string &path);
+
+  std::unique_ptr<KVStorage> CreateStorage(const std::string &name);
+
+ private:
+  std::string path_;
+};
+
+FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
+
+std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
+    const std::string &name) {
+  return std::move(std::unique_ptr<KVStorage>(
+      new FileStorage(path_ + "/" + name)));
+}
+
+FileStorageFactory::FileStorageFactory(const std::string &path):
+    impl_(new FileStorageFactory::Impl(path)) {}
+
+FileStorageFactory::~FileStorageFactory() = default;
+
+std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
+    const std::string &name) {
+  return impl_->CreateStorage(name);
+}
 
 extern std::shared_ptr<KVStorageFactory> kStorageFactory;
 
@@ -41,7 +71,11 @@ void SetOpenCLBinaryPaths(const std::vector<std::string> &paths) {
 extern std::string kOpenCLParameterPath;
 
 void SetOpenCLParameterPath(const std::string &path) {
+#ifdef MACE_ENABLE_OPENCL
   kOpenCLParameterPath = path;
+#else
+  MACE_UNUSED(path);
+#endif  // MACE_ENABLE_OPENCL
 }
 
 void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
