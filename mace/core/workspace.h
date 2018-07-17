@@ -53,6 +53,8 @@ class Workspace {
 
   ScratchBuffer *GetScratchBuffer(DeviceType device_type);
 
+  void RemoveUnusedBuffer();
+
  private:
   MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,
                                       DeviceType device_type);

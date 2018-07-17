@@ -180,6 +180,9 @@ MaceStatus BufferToImageFunctor<DeviceType::GPU, T>::operator()(
     };
   }
 
+  // Mark the buffer unused.
+  const_cast<Tensor *>(buffer)->MarkUnused();
+
   return MACE_SUCCESS;
 }
 

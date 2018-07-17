@@ -222,6 +222,9 @@ MaceStatus MaceEngine::Impl::Init(
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif
+  if (device_type_ == DeviceType::GPU) {
+    ws_->RemoveUnusedBuffer();
+  }
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -240,7 +243,7 @@ MaceStatus MaceEngine::Impl::Init(
   }
   model_data_ = LoadModelData(model_data_file, model_data_size_);
 
-  Init(net_def, input_nodes, output_nodes, model_data_);
+  MACE_RETURN_IF_ERROR(Init(net_def, input_nodes, output_nodes, model_data_));
 
   if (device_type_ == DeviceType::GPU || device_type_ == DeviceType::HEXAGON) {
     UnloadModelData(model_data_, model_data_size_);

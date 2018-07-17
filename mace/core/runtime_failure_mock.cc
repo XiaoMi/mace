@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdlib>
+#include <random>
 #include <string>
 
 #include "mace/core/runtime_failure_mock.h"
@@ -35,10 +35,12 @@ inline float GetRuntimeFailureRatioFromEnv() {
 }  // namespace
 
 bool ShouldMockRuntimeFailure() {
-  static unsigned int seed = time(NULL);
   static float mock_runtime_failure_ratio = GetRuntimeFailureRatioFromEnv();
   if (mock_runtime_failure_ratio > 1e-6) {
-    float random_ratio = rand_r(&seed) / static_cast<float>(RAND_MAX);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(0.0, 1.0);
+    float random_ratio = dis(gen);
     if (random_ratio < mock_runtime_failure_ratio) {
       VLOG(0) << "Mock runtime failure.";
       return true;
