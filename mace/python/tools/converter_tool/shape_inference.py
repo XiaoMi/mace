@@ -32,6 +32,7 @@ class ShapeInference(object):
     def __init__(self, net, input_nodes):
         self._op_shape_inference = {
             MaceOp.Conv2D.name: self.infer_shape_conv_pool_shape,
+            MaceOp.Deconv2D.name: self.infer_shape_deconv,
             MaceOp.DepthwiseConv2d.name: self.infer_shape_conv_pool_shape,
             MaceOp.Eltwise.name: self.infer_shape_general,
             MaceOp.FoldedBatchNorm.name: self.infer_shape_general,
@@ -42,6 +43,7 @@ class ShapeInference(object):
             MaceOp.Slice.name: self.infer_shape_slice,
             MaceOp.Softmax.name: self.infer_shape_general,
             MaceOp.FullyConnected.name: self.infer_shape_fully_connected,
+            MaceOp.Crop.name: self.infer_shape_crop,
         }
 
         self._net = net
@@ -139,6 +141,44 @@ class ShapeInference(object):
 
         self.add_output_shape(op, [output_shape])
 
+    def infer_shape_deconv(self, op):
+        input_shape = self._output_shape_cache[op.input[0]]
+        output_shape = np.zeros_like(input_shape)
+        filter_shape = self._output_shape_cache[op.input[1]]
+
+        paddings = ConverterUtil.get_arg(op,
+                                         MaceKeyword.mace_padding_values_str).ints  # noqa
+        strides = ConverterUtil.get_arg(op, MaceKeyword.mace_strides_str).ints
+        dilations_arg = ConverterUtil.get_arg(op,
+                                              MaceKeyword.mace_dilations_str)
+        if dilations_arg is not None:
+            dilations = dilations_arg.ints
+        else:
+            dilations = [1, 1]
+        round_func = math.floor
+
+        output_shape[0] = input_shape[0]
+        if ConverterUtil.data_format(op) == DataFormat.NCHW \
+                and ConverterUtil.filter_format(self._net) == FilterFormat.OIHW:  # noqa
+            # filter format: IOHW
+            output_shape[1] = filter_shape[1]
+            output_shape[2] = int(
+                round_func((input_shape[2] - 1) * strides[0] +
+                           (filter_shape[2] - 1) * (dilations[0] - 1) +
+                           filter_shape[2] - paddings[0]))
+            output_shape[3] = int(
+                round_func((input_shape[3] - 1) * strides[1] +
+                           (filter_shape[3] - 1) * (dilations[1] - 1) +
+                           filter_shape[3] - paddings[1]))
+        else:
+            mace_check(False,
+                       "Mace can only infer shape for"
+                       " NCHW input and OIHW filter")
+        print ("deconv layer %s (%s) input:%s filter:%s output:%s" %
+               (op.name, op.type, input_shape, filter_shape, output_shape))
+
+        self.add_output_shape(op, [output_shape])
+
     def infer_shape_concat(self, op):
         output_shape = self._output_shape_cache[op.input[0]]
         axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
@@ -165,4 +205,9 @@ class ShapeInference(object):
         else:
             mace_check(False, "format %s is not supported"
                        % ConverterUtil.data_format(op))
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_crop(self, op):
+        mace_check(len(op.input) == 2, "crop layer needs two inputs")
+        output_shape = self._output_shape_cache[op.input[1]]
         self.add_output_shape(op, [output_shape])

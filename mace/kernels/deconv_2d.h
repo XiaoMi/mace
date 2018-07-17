@@ -95,13 +95,15 @@ struct Deconv2dFunctorBase {
                       const std::vector<int> &paddings,
                       const std::vector<index_t> &output_shape,
                       const ActivationType activation,
-                      const float relux_max_limit)
+                      const float relux_max_limit,
+                      const bool from_caffe)
       : strides_(strides),
         padding_type_(padding_type),
         paddings_(paddings),
         output_shape_(output_shape),
         activation_(activation),
-        relux_max_limit_(relux_max_limit) {}
+        relux_max_limit_(relux_max_limit),
+        from_caffe_(from_caffe) {}
 
   static void CalcDeconvOutputSize(
       const index_t *input_shape,   // NHWC
@@ -121,16 +123,13 @@ struct Deconv2dFunctorBase {
     const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
     const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
 
-    const index_t extended_input_height =
-        (in_height - 1) * strides[0] + 1 + padding_size[0];
-    const index_t extended_input_width =
-        (in_width - 1) * strides[1] + 1 + padding_size[1];
-
     const index_t filter_h = filter_shape[2];
     const index_t filter_w = filter_shape[3];
 
-    index_t out_height = extended_input_height - filter_h + 1;
-    index_t out_width = extended_input_width - filter_w + 1;
+    index_t out_height =
+        (in_height - 1) * strides[0] + filter_h -padding_size[0];
+    index_t out_width =
+        (in_width - 1) * strides[1] + filter_w -padding_size[1];
 
     output_shape[0] = input_shape[0];
     if (isNCHW) {
@@ -209,6 +208,7 @@ struct Deconv2dFunctorBase {
   std::vector<index_t> output_shape_;
   const ActivationType activation_;
   const float relux_max_limit_;
+  const bool from_caffe_;
 };
 
 template <DeviceType D, typename T>
@@ -218,13 +218,15 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit)
+                  const float relux_max_limit,
+                  const bool from_caffe)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
                             output_shape,
                             activation,
-                            relux_max_limit) {}
+                            relux_max_limit,
+                            from_caffe) {}
 
   MaceStatus operator()(const Tensor *input,   // NCHW
                   const Tensor *filter,  // OIHW
@@ -236,8 +238,8 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-    std::vector<index_t> output_shape(4);
-    if (output_shape_.size() == 4) {
+    if (!from_caffe_) {  // tensorflow
+      std::vector<index_t> output_shape(4);
       output_shape[0] = output_shape_[0];
       output_shape[1] = output_shape_[3];
       output_shape[2] = output_shape_[1];
@@ -251,7 +253,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
           output_shape.data(),
           paddings_.data(), true);
       MACE_RETURN_IF_ERROR(output->Resize(output_shape));
-    } else {
+    } else {  // caffe
       output_shape_.clear();
       output_shape_ = std::vector<index_t>(4, 0);
       CalcDeconvOutputSize(input->shape().data(),
@@ -268,7 +270,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     const index_t kernel_hw[2] = {kernel_h, kernel_w};
 
     MACE_CHECK(filter->dim(0) == out_shape[1], filter->dim(0), " != ",
-               output_shape[1]);
+               out_shape[1]);
     MACE_CHECK(filter->dim(1) == in_shape[1], filter->dim(1), " != ",
                in_shape[1]);
     MACE_CHECK(in_shape[0] == out_shape[0], "Input/Output batch size mismatch");
@@ -311,13 +313,15 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit)
+                  const float relux_max_limit,
+                  const bool from_caffe)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
                             output_shape,
                             activation,
-                            relux_max_limit) {}
+                            relux_max_limit,
+                            from_caffe) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,

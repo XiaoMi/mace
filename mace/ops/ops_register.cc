@@ -28,6 +28,7 @@ extern void Register_Cast(OperatorRegistryBase *op_registry);
 extern void Register_ChannelShuffle(OperatorRegistryBase *op_registry);
 extern void Register_Concat(OperatorRegistryBase *op_registry);
 extern void Register_Conv2D(OperatorRegistryBase *op_registry);
+extern void Register_Crop(OperatorRegistryBase *op_registry);
 extern void Register_Deconv2D(OperatorRegistryBase *op_registry);
 extern void Register_DepthToSpace(OperatorRegistryBase *op_registry);
 extern void Register_DepthwiseConv2d(OperatorRegistryBase *op_registry);
@@ -78,6 +79,7 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
   ops::Register_ChannelShuffle(this);
   ops::Register_Concat(this);
   ops::Register_Conv2D(this);
+  ops::Register_Crop(this);
   ops::Register_Deconv2D(this);
   ops::Register_DepthToSpace(this);
   ops::Register_DepthwiseConv2d(this);

@@ -34,7 +34,8 @@ class Deconv2dOp : public ConvPool2dOpBase<D, T> {
                  this->paddings_,
                  OperatorBase::GetRepeatedArgs<index_t>("output_shape"),
                  kernels::ActivationType::NOOP,
-                 0.0f) {}
+                 0.0f,
+                 OperatorBase::GetOptionalArg<bool>("from_caffe", false)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

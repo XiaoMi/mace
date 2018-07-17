@@ -889,10 +889,7 @@ class Transformer(base_converter.ConverterInterface):
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
                         filter.dims)
-                    if op.type == MaceOp.Deconv2D.name:
-                        filter_data = filter_data.transpose(2, 3, 0, 1)
-                    else:
-                        filter_data = filter_data.transpose(3, 2, 0, 1)
+                    filter_data = filter_data.transpose(3, 2, 0, 1)
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                 if (op.type == MaceOp.MatMul.name and
@@ -905,6 +902,14 @@ class Transformer(base_converter.ConverterInterface):
                     filter.dims[:] = filter_data.shape
 
             self.set_filter_format(FilterFormat.OIHW)
+        for op in net.op:
+            if op.type == MaceOp.Deconv2D.name:
+                filter = self._consts[op.input[1]]
+                filter_data = np.array(filter.float_data).reshape(
+                    filter.dims)
+                filter_data = filter_data.transpose(1, 0, 2, 3)
+                filter.float_data[:] = filter_data.flat
+                filter.dims[:] = filter_data.shape
 
         return False
 

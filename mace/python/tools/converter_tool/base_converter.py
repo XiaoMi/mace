@@ -80,6 +80,7 @@ MaceSupportedOps = [
     'ChannelShuffle',
     'Concat',
     'Conv2D',
+    'Crop',
     'Deconv2D',
     'DepthToSpace',
     'DepthwiseConv2d',
@@ -160,6 +161,8 @@ class MaceKeyword(object):
     mace_transpose_a_str = 'transpose_a'
     mace_transpose_b_str = 'transpose_b'
     mace_op_data_type_str = 'T'
+    mace_offset_str = 'offset'
+    mace_from_caffe_str = 'from_caffe'
 
 
 class TransformerRule(Enum):

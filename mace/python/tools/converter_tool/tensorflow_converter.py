@@ -372,15 +372,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 dilation_val = [1, 1]
             dilation_arg.ints.extend(dilation_val)
         else:
-            del op.input[1:]
             output_shape_arg = op.arg.add()
             output_shape_arg.name = MaceKeyword.mace_output_shape_str
-            output_shape_value = tf_op.inputs[0].eval().astype(np.int32).flat
-            output_shape_arg.ints.extend(output_shape_value)
-            self._skip_tensor.add(tf_op.inputs[0].name)
-            del op.input[0]
             if len(tf_op.inputs) >= 3:
+                del op.input[1:]
+                output_shape_value =\
+                    tf_op.inputs[0].eval().astype(np.int32).flat
+                output_shape_arg.ints.extend(output_shape_value)
+                self._skip_tensor.add(tf_op.inputs[0].name)
+                del op.input[0]
                 op.input.extend([tf_op.inputs[2].name, tf_op.inputs[1].name])
+            else:
+                output_shape_value = tf_op.get_attr(tf_strides_str)
+                output_shape_arg.ints.extend(output_shape_value)
 
     def convert_elementwise(self, tf_op):
         op = self.convert_general_op(tf_op)
