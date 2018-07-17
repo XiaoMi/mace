@@ -66,6 +66,7 @@ class KVStorageFactory {
 class __attribute__((visibility("default"))) FileStorageFactory
     : public KVStorageFactory {
  public:
+  // You have to make sure your APP have read and write permission of the path.
   explicit FileStorageFactory(const std::string &path);
 
   ~FileStorageFactory();
@@ -77,7 +78,10 @@ class __attribute__((visibility("default"))) FileStorageFactory
   std::unique_ptr<Impl> impl_;
 };
 
-// Set KV store factory used as OpenCL cache. (Call Once)
+// Set Key-Value store factory. (Call Once)
+// Now KVStorage is used to store the built OpenCL binaries to file,
+// which could speed up the GPU initialization and first run.
+// If do not call this API, the initialization maybe slow for GPU.
 __attribute__((visibility("default")))
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 

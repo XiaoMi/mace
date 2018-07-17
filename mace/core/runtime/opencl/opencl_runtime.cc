@@ -675,6 +675,12 @@ uint64_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
   return size;
 }
 
+uint64_t OpenCLRuntime::GetDeviceMaxMemAllocSize() {
+  uint64_t size = 0;
+  device_->getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+  return size;
+}
+
 uint64_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
   kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE, &size);

@@ -85,6 +85,7 @@ class OpenCLRuntime {
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
+  uint64_t GetDeviceMaxMemAllocSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   bool IsNonUniformWorkgroupsSupported() const;

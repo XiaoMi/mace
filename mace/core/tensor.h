@@ -105,18 +105,21 @@ class Tensor {
         dtype_(type),
         buffer_(nullptr),
         is_buffer_owner_(true),
+        unused_(false),
         name_("") {}
 
   Tensor(BufferBase *buffer, DataType dtype)
     : dtype_(dtype),
       buffer_(buffer),
       is_buffer_owner_(false),
+      unused_(false),
       name_("") {}
 
   Tensor(const BufferSlice &buffer_slice, DataType dtype)
       : dtype_(dtype),
         buffer_slice_(buffer_slice),
         is_buffer_owner_(false),
+        unused_(false),
         name_("") {
     buffer_ = &buffer_slice_;
   }
@@ -132,6 +135,8 @@ class Tensor {
   inline DataType dtype() const { return dtype_; }
 
   inline void SetDtype(DataType dtype) { dtype_ = dtype; }
+
+  inline bool unused() const { return unused_; }
 
   inline const std::vector<index_t> &shape() const { return shape_; }
 
@@ -193,6 +198,10 @@ class Tensor {
   inline T *mutable_data() {
     MACE_CHECK_NOTNULL(buffer_);
     return static_cast<T *>(buffer_->raw_mutable_data());
+  }
+
+  inline void MarkUnused() {
+    unused_ = true;
   }
 
   inline void Clear() {
@@ -362,6 +371,7 @@ class Tensor {
   BufferBase *buffer_;
   BufferSlice buffer_slice_;
   bool is_buffer_owner_;
+  bool unused_;
   std::string name_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Tensor);
