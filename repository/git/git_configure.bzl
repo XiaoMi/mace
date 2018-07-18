@@ -9,8 +9,12 @@ def _git_version_conf_impl(repository_ctx):
 
   generated_files_path = repository_ctx.path("gen")
 
-  unused_var = repository_ctx.path(Label("//:.git/HEAD"))
-  unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
+  ret = repository_ctx.execute(
+      ["test", "-f", "%s/.git/logs/HEAD" % mace_root_path])
+
+  if ret.return_code == 0:
+    unused_var = repository_ctx.path(Label("//:.git/HEAD"))
+    unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
 
   repository_ctx.execute([
       'bash', '%s/mace/tools/git/gen_version_source.sh' % mace_root_path

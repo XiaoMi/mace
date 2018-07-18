@@ -5,8 +5,15 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
       "BUILD",
       Label("//repository/opencl-kernel:BUILD.tpl"))
 
-  unused_var = repository_ctx.path(Label("//:.git/HEAD"))
-  unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
+  mace_root_path = str(repository_ctx.path(Label("@mace//:BUILD")))[:-len("BUILD")]
+
+  ret = repository_ctx.execute(
+      ["test", "-f", "%s/.git/logs/HEAD" % mace_root_path])
+
+  if ret.return_code == 0:
+    unused_var = repository_ctx.path(Label("//:.git/HEAD"))
+    unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
+
   unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/activation.cl"))
   unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/addn.cl"))
   unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/batch_norm.cl"))
@@ -33,7 +40,6 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
   unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/space_to_batch.cl"))
   unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/winograd_transform.cl"))
 
-  mace_root_path = str(repository_ctx.path(Label("@mace//:BUILD")))[:-len("BUILD")]
 
   generated_files_path = repository_ctx.path("gen")
 
