@@ -1,6 +1,6 @@
 The documents are based on Sphinx, run the following commands to build the documents:
 
-pip install sphinx sphinx-autobuild
+pip install sphinx sphinx-autobuild sphinx-rtd-theme
 pip install recommonmark
 make html
 
