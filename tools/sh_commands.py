@@ -928,6 +928,7 @@ def packaging_lib(libmace_output_dir, project_name):
             glob.glob("%s/*" % project_dir),
             _fg=True)
     print("Packaging Done!\n")
+    return tar_package_path
 
 
 ################################
