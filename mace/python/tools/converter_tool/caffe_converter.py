@@ -355,7 +355,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(caffe_op)
         param = caffe_op.layer.convolution_param
         is_depthwise = False
-        if param.HasField(caffe_group_str):
+        if param.HasField(caffe_group_str) and param.group > 1:
             filter_data = caffe_op.blobs[0]
             mace_check(param.group == filter_data.shape[0] and
                        filter_data.shape[1] == 1,
@@ -403,7 +403,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(caffe_op)
         param = caffe_op.layer.convolution_param
         is_depthwise = False
-        if param.HasField(caffe_group_str):
+        if param.HasField(caffe_group_str) and param.group > 1:
             filter_data = caffe_op.blobs[0]
             mace_check(param.group == filter_data.shape[0] and
                        filter_data.shape[1] == 1,
