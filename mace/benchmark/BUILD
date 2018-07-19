@@ -51,8 +51,16 @@ cc_binary(
         "-Wextra",
         "-Wno-missing-field-initializers",
     ] + if_android(["-DMACE_ENABLE_OPENCL"]),
-    linkopts = ["-lm", "-pie", "-fPIE"] + if_openmp_enabled(["-fopenmp"]),
-    linkstatic = 0,
+    linkopts = [
+        "-lm",
+    ] + if_openmp_enabled([
+        "-fopenmp"
+    ]) + if_android([
+        "-ldl",
+        "-pie",
+        "-llog",
+    ]),
+    linkstatic = 1,
     deps = [
         ":statistics",
         "//external:gflags_nothreads",

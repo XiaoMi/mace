@@ -54,7 +54,7 @@ cc_binary(
         "-pie",
         "-llog",
     ]),
-    linkstatic = 0,
+    linkstatic = 1,
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",

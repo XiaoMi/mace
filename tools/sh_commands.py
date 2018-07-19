@@ -269,12 +269,6 @@ def find_asan_rt_library(abi, asan_rt_path=''):
     return "%s/%s" % (asan_rt_path, asan_rt_library_names(abi))
 
 
-def find_gnustl_shared_path(abi):
-    return \
-        "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so" % \
-        (os.environ["ANDROID_NDK_HOME"], abi)
-
-
 ################################
 # bazel commands
 ################################
@@ -640,9 +634,12 @@ def tuning_run(abi,
     if model_graph_format == ModelFormat.file:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
     if abi == "host":
+        libmace_dynamic_lib_path = \
+            os.path.dirname(libmace_dynamic_library_path)
         p = subprocess.Popen(
             [
                 "env",
+                "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
                 "%s/%s" % (target_dir, target_name),
@@ -704,9 +701,6 @@ def tuning_run(abi,
 
         if link_dynamic:
             adb_push(libmace_dynamic_library_path, phone_data_dir,
-                     serialno)
-            adb_push(find_gnustl_shared_path(abi),
-                     phone_data_dir,
                      serialno)
 
         adb_push("%s/%s" % (target_dir, target_name), phone_data_dir,
@@ -1017,9 +1011,6 @@ def benchmark_model(abi,
 
         if link_dynamic:
             adb_push(libmace_dynamic_library_path, phone_data_dir,
-                     serialno)
-            adb_push(find_gnustl_shared_path(abi),
-                     phone_data_dir,
                      serialno)
         adb_push("%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
                  phone_data_dir,
