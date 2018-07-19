@@ -51,7 +51,7 @@ cc_binary(
         "mace_version_script.lds",
     ],
     linkshared = 1,
-    linkstatic = 0,
+    linkstatic = 1,
     deps = [
         ":mace_version_script.lds",
         "//mace/libmace",
