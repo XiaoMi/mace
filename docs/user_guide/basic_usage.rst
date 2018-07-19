@@ -47,6 +47,13 @@ Here we use the mobilenet-v2 model as an example.
         bash tools/build-standalone-lib.sh
 
 
+    .. note::
+
+        - Libraries in ``builds/lib/armeabi-v7a/cpu_gpu/`` means it can run on ``cpu`` or ``gpu`` devices.
+
+        - The results in ``builds/lib/armeabi-v7a/cpu_gpu_dsp/`` need HVX supported.
+
+
     4. Convert the pre-trained mobilenet-v2 model to MACE format model.
 
     .. code:: sh
