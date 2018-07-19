@@ -92,7 +92,8 @@ genrule(
           "$@ " +
           "$$tmp_mri_file);" +
           "$(AR) -M <$$tmp_mri_file;" +
-          "rm -rf $$tmp_mri_file;",
+          "rm -rf $$tmp_mri_file;" +
+          "$(STRIP) -x $@;",
     tools = ["//mace/python/tools:archive_static_lib"],
     visibility = ["//visibility:public"],
 )
