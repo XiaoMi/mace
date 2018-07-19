@@ -1196,6 +1196,16 @@ def run_specific_target(flags, configs, target_abi,
             opencl_parameter_bin_path)
 
 
+def print_package_summary(package_path):
+    title = "Library"
+    header = ["key", "value"]
+    data = list()
+    data.append(["MACE Model package Path",
+                 package_path])
+
+    MaceLogger.summary(StringFormatter.table(header, data, title))
+
+
 def run_mace(flags):
     configs = format_model_config(flags)
     if flags.mace_lib_type == MACELibType.dynamic and \
@@ -1236,6 +1246,11 @@ def run_mace(flags):
                     with sh_commands.device_lock(serial_num):
                         run_specific_target(flags, configs, target_abi,
                                             target_soc, serial_num)
+
+    # package the output files
+    package_path = sh_commands.packaging_lib(BUILD_OUTPUT_DIR,
+                                             configs[YAMLKeyword.library_name])
+    print_package_summary(package_path)
 
 
 ################################
