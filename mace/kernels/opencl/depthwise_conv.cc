@@ -38,7 +38,7 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
                                   kwg_size / lws[1]);
     }
   }
-  lws[0] = std::max<uint32_t>(lws[0], 1);
+  lws[0] = std::max<uint32_t>(std::min<uint32_t>(lws[0], kwg_size / lws[1]), 1);
   const uint32_t lws_size = lws[0] * lws[1];
   lws[2] = std::min<uint32_t>((cache_size / kernel_cache_size / lws_size) * 4,
                               gws[2]);
