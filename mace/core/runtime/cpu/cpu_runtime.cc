@@ -36,7 +36,6 @@ namespace mace {
 
 namespace {
 
-#ifndef MACE_ENABLE_OPENMP
 int GetCPUCount() {
   char path[32];
   int cpu_count = 0;
@@ -54,7 +53,6 @@ int GetCPUCount() {
     cpu_count++;
   }
 }
-#endif
 
 int GetCPUMaxFreq(int cpu_id) {
   char path[64];
@@ -98,11 +96,7 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                   std::vector<int> *little_core_ids) {
   MACE_CHECK_NOTNULL(big_core_ids);
   MACE_CHECK_NOTNULL(little_core_ids);
-#ifdef MACE_ENABLE_OPENMP
-  int cpu_count = omp_get_num_procs();
-#else
   int cpu_count = GetCPUCount();
-#endif
   std::vector<int> cpu_max_freq(cpu_count);
 
   // set cpu max frequency
