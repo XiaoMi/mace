@@ -382,4 +382,4 @@ Reduce Library Size
       library may also contain model graph and model datas if the configs ``model_graph_format`` and
       ``model_data_format`` in deployment file are set to ``code``.
 
-    - It is recommended to use ``version script`` for ultimate binary. The effect is remarkable.
+    - It is recommended to use ``version script`` and ``strip`` feature when linking mace static library. The effect is remarkable.

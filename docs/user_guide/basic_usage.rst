@@ -192,7 +192,7 @@ Use bazel to build MACE source code into a library.
         # output lib path: builds/lib
         bash tools/build-standalone-lib.sh
 
-The above command will generate dynamic library ``builds/lib/${ABI}/libmace.so`` and static library ``builds/lib/${ABI}/libmace.a``.
+The above command will generate dynamic library ``builds/lib/${ABI}/${DEVICES}/libmace.so`` and static library ``builds/lib/${ABI}/${DEVICES}/libmace.a``.
 
     .. warning::
 
@@ -242,6 +242,12 @@ header files.
 
 ``${library_name}`` is the name you defined in the first line of your deployment YAML file.
 
+.. note::
+
+    When linking generated ``libmace.a`` into shared library,
+    `version script <ftp://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_node/ld_25.html>`__
+    is helpful for reducing a specified set of symbols to local scope.
+
 -  The generated ``static`` library files are organized as follows,
 
 .. code::
@@ -254,12 +260,17 @@ header files.
     │           └── mace_runtime.h
     ├── lib
     │   ├── arm64-v8a
-    │   │   ├── libmace.a
-    │   │   └── libmace.so
+    │   │   └── cpu_gpu
+    │   │       ├── libmace.a
+    │   │       └── libmace.so
     │   ├── armeabi-v7a
-    │   │   ├── libhexagon_controller.so
-    │   │   ├── libmace.a
-    │   │   └── libmace.so
+    │   │   ├── cpu_gpu
+    │   │   │   ├── libmace.a
+    │   │   │   └── libmace.so
+    │   │   └── cpu_gpu_dsp
+    │   │       ├── libhexagon_controller.so
+    │   │       ├── libmace.a
+    │   │       └── libmace.so
     │   └── linux-x86-64
     │       ├── libmace.a
     │       └── libmace.so
