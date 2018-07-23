@@ -40,17 +40,19 @@ class Deconv2dOp : public ConvPool2dOpBase<D, T> {
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     const Tensor *filter = this->Input(FILTER);
-    const Tensor *bias = this->InputSize() >= 3 ? this->Input(BIAS) : nullptr;
+    const Tensor *output_shape =
+        this->InputSize() >= 3 ? this->Input(OUTPUT_SHAPE) : nullptr;
+    const Tensor *bias = this->InputSize() >= 4 ? this->Input(BIAS) : nullptr;
     Tensor *output = this->Output(OUTPUT);
 
-    return functor_(input, filter, bias, output, future);
+    return functor_(input, filter, bias, output_shape, output, future);
   }
 
  private:
   kernels::Deconv2dFunctor<D, T> functor_;
 
  protected:
-  MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
+  MACE_OP_INPUT_TAGS(INPUT, FILTER, OUTPUT_SHAPE,  BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 

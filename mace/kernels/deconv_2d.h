@@ -231,6 +231,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
   MaceStatus operator()(const Tensor *input,   // NCHW
                   const Tensor *filter,  // OIHW
                   const Tensor *bias,
+                  const Tensor *output_shape_tensor,
                   Tensor *output,
                   StatsFuture *future) {
     MACE_UNUSED(future);
@@ -240,10 +241,20 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
 
     if (!from_caffe_) {  // tensorflow
       std::vector<index_t> output_shape(4);
-      output_shape[0] = output_shape_[0];
-      output_shape[1] = output_shape_[3];
-      output_shape[2] = output_shape_[1];
-      output_shape[3] = output_shape_[2];
+      if (output_shape_.size() == 4) {
+        output_shape[0] = output_shape_[0];
+        output_shape[1] = output_shape_[3];
+        output_shape[2] = output_shape_[1];
+        output_shape[3] = output_shape_[2];
+      } else {
+        MACE_CHECK_NOTNULL(output_shape_tensor);
+        MACE_CHECK(output_shape_tensor->size() == 4);
+        Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
+        auto output_shape_data =
+            output_shape_tensor->data<int32_t>();
+        output_shape =
+            std::vector<index_t>(output_shape_data, output_shape_data + 4);
+      }
       paddings_.clear();
       paddings_ = std::vector<int>(2, 0);
       CalcDeconvPaddingAndInputSize(
@@ -326,6 +337,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
   MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
                   const Tensor *bias,
+                  const Tensor *output_shape_tensor,
                   Tensor *output,
                   StatsFuture *future);
 
