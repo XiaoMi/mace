@@ -78,11 +78,10 @@ new_http_archive(
 
 http_archive(
     name = "gemmlowp",
-    sha256 = "b87faa7294dfcc5d678f22a59d2c01ca94ea1e2a3b488c38a95a67889ed0a658",
-    strip_prefix = "gemmlowp-38ebac7b059e84692f53e5938f97a9943c120d98",
+    sha256 = "5941b50afb7f43f96a2afaa101e024b5a1c6b0b4e4f110688fefa083bbdd652d",
+    strip_prefix = "gemmlowp-master-3559cf6e2a21a15b5bd8133bb632da6050aa8b8d",
     urls = [
-        "http://cnbj1.fds.api.xiaomi.com/mace/third-party/gemmlowp/38ebac7b059e84692f53e5938f97a9943c120d98.zip",
-        "https://github.com/google/gemmlowp/archive/38ebac7b059e84692f53e5938f97a9943c120d98.zip",
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/gemmlowp/gemmlowp-master-3559cf6e2a21a15b5bd8133bb632da6050aa8b8d.zip",
     ],
 )
 
