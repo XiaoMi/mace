@@ -1,47 +1,61 @@
 language: cpp
-os: linux
-dist: xenial
-sudo: required
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      sudo: required
+    - os: osx
+      osx_image: xcode7.2
+      sudo: required
 
 before_install:
-  - sudo pip install pycodestyle
+  - echo "Start to test on $TRAVIS_OS_NAME";
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PIP=pip2; else export PIP=pip; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export OS=darwin; else export OS=linux; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PYTHONPATH="/usr/local/lib/python2.7/site-packages:$PYTHONPATH"; fi
+  - sudo $PIP install pycodestyle
   - export BAZEL_VERSION=0.13.1
-  - wget https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
+  - wget https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-$OS-x86_64.sh
   - chmod +x bazel-*.sh
-  - sudo ./bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
-  - rm -f bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
+  - sudo ./bazel-$BAZEL_VERSION-installer-$OS-x86_64.sh
+  - rm -f bazel-$BAZEL_VERSION-installer-$OS-x86_64.sh
   - pushd /opt/
-  - sudo wget -q https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip
-  - sudo unzip -q android-ndk-r15c-linux-x86_64.zip
-  - sudo rm -f android-ndk-r15c-linux-x86_64.zip
+  - sudo wget -q https://dl.google.com/android/repository/android-ndk-r15c-$OS-x86_64.zip
+  - sudo unzip -q android-ndk-r15c-$OS-x86_64.zip
+  - sudo rm -f android-ndk-r15c-$OS-x86_64.zip
   - export ANDROID_NDK_VERSION=r15c
   - export ANDROID_NDK=/opt/android-ndk-${ANDROID_NDK_VERSION}
   - export ANDROID_NDK_HOME=${ANDROID_NDK}
   - export PATH=${PATH}:${ANDROID_NDK_HOME}
   - popd
-  - sudo apt-get update
-  - sudo apt-get install -y --no-install-recommends android-tools-adb
-  - sudo pip install setuptools
-  - sudo pip install -I tensorflow==1.8.0 "numpy>=1.14.0" scipy jinja2 pyyaml sh==1.12.14 pycodestyle==2.4.0 filelock
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew cask install android-platform-tools; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; sudo apt-get install -y --no-install-recommends android-tools-adb; fi
+  - sudo $PIP install setuptools
+  - sudo $PIP install -I "tensorflow==1.8.0" "numpy>=1.14.0" "sh==1.12.14" "pycodestyle==2.4.0" filelock scipy jinja2 pyyaml 
 
 script:
   - >
     echo "MACE_TEST 0: Check cpp code style";
     curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py || exit 1;
     echo "MACE_TEST 1: Check python code style";
-    pycodestyle $(find -name "*.py") || exit 1;
-    echo "MACE_TEST 2: Platform compatible test";
-    mkdir -p mace/codegen/version && bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc || exit 1;
-    mkdir -p mace/codegen/tuning && python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc || exit 1;
-    bazel build mace/core:core || exit 1;
-    echo "MACE_TEST 3: Ops test";
+    pycodestyle $(find . -name "*.py") || exit 1;
+    echo "MACE_TEST 2: Ops test";
     python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a --enable_neon=false || exit 1;
-    echo "MACE_TEST 4: Api test";
-    python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    echo "MACE_TEST 5: Ops benchmark";
+    if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
+      python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a --enable_neon=false || exit 1;
+    fi;
+    echo "MACE_TEST 3: Ops benchmark";
     python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    echo "MACE_TEST 6: Extra test";
-    python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+    
+    if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
+      echo "MACE_TEST 4: Platform compatible test";
+      mkdir -p mace/codegen/version && bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc || exit 1;
+      mkdir -p mace/codegen/tuning && python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc || exit 1;
+      bazel build mace/core:core || exit 1;
+      echo "MACE_TEST 5: Api test";
+      python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+      python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+      echo "MACE_TEST 6: Extra test";
+      python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+      python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+    fi;
