@@ -14,16 +14,80 @@
 
 
 from mace.proto import mace_pb2
-import tensorflow as tf
-from tensorflow import gfile
-from operator import mul
-from dsp_ops import DspOps
+from mace.python.tools.converter_tool import base_converter
 from mace.python.tools import graph_util
+from mace.python.tools.convert_util import mace_check
 
-# converter --input ../libcv/quantized_model.pb \
-#           --output quantized_model_dsp.pb \
-#           --runtime dsp --input_node input_node \
-#           --output_node output_node
+import tensorflow as tf
+from tensorflow.core.framework import tensor_shape_pb2
+from operator import mul
+import numpy as np
+
+
+class DspOps(object):
+    def __init__(self):
+        self.dsp_ops = {
+            'INPUT': 'INPUT"',
+            'OUTPUT': 'OUTPUT',
+            'NoOp': 'Nop',
+            'FLATTEN': 'Flatten',
+            'Identity': 'Nop',
+            'Placeholder': 'INPUT',
+            'Const': 'Const',
+            'QuantizedConv2D': 'QuantizedConv2d_8x8to32',
+            'QuantizedMatMul': 'QuantizedMatMul_8x8to32',
+            'QuantizeDownAndShrinkRange': 'QuantizeDownAndShrinkRange_32to8',
+            'QuantizedRelu': 'QuantizedRelu_8',
+            'QuantizedReluX': 'QuantizedReluX_8',
+            'QuantizedMaxPool': 'QuantizedMaxPool_8',
+            'QuantizedAvgPool': 'QuantizedAvgPool_8',
+            'QuantizedConcat': 'QuantizedConcat_8',
+            'QuantizedBiasAdd': 'QuantizedBiasAdd_8p8to32',
+            'QuantizedResizeBilinear': 'QuantizedResizeBilinear_8',
+            'QuantizedSpaceToBatchND': 'QuantizedSpaceToBatchND_8',
+            'QuantizedBatchToSpaceND': 'QuantizedBatchToSpaceND_8',
+            'QuantizedSoftmax': 'QuantizedSoftmax_8',
+            'QuantizedTanh': 'QuantizedTanh_8',
+            'Min': 'Min_f',
+            'Max': 'Max_f',
+            'QuantizeV2': 'Quantize',
+            'Dequantize': 'Dequantize',
+            'Softmax': 'Softmax_f',
+            'Reshape': 'Reshape',
+            'QuantizedReshape': 'QuantizedReshape',
+            'Sigmoid': 'Sigmoid_f',
+            'Slice': 'Slice_f',
+            'Add': 'Add_f',
+            'Mul': 'Mul_f',
+            'Requantize': 'Requantize_32to8',
+            'RequantizationRange': 'RequantizationRange_32',
+            'Sub': 'Sub_f',
+            'Pack': 'Pack_int32',
+            'StridedSlice': 'StridedSlice_f',
+            'ExpandDims': 'ExpandDims_f',
+            'QuantizedMul': 'QuantizedMul_8x8to32',
+            'QuantizedAdd': 'QuantizedAdd_8p8to32',
+            'Pad': 'Pad_f',
+            'SpaceToBatchND': 'SpaceToBatchND_f',
+            'BatchToSpaceND': 'BatchToSpaceND_f',
+            'ResizeBilinear': 'ResizeBilinear_f',
+            'ConcatV2': 'ConcatV2_f',
+            'Conv2DBackpropInput': 'Deconv_f',
+            'Tanh': 'Tanh_f',
+            'Split': 'Split_f',
+            'Transpose': 'Transpose_f',
+            'Concat': 'Concat_f',
+            'AddN': 'AddN_f',
+        }
+
+    def has_op(self, tf_op):
+        return tf_op in self.dsp_ops
+
+    def map_nn_op(self, tf_op):
+        if tf_op not in self.dsp_ops:
+            raise Exception('Could not map nn op for: ', tf_op)
+        return self.dsp_ops[tf_op]
+
 
 TF_DTYPE_2_MACE_DTYPE_MAP = {
     tf.float32: mace_pb2.DT_FLOAT,
@@ -101,7 +165,6 @@ def get_input_tensor(op, index):
 
 
 def add_shape_const_node(net_def, op, values, name):
-    print('Add const node: ', op.name + '/' + name)
     tensor = net_def.tensors.add()
     node_name = op.name + '/' + name
     tensor.name = node_name + ':0'
@@ -128,7 +191,7 @@ def convert_op_outputs(mace_op_def, tf_op):
     mace_op_def.output_shape.extend(output_shapes)
 
 
-def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
+def convert_ops(unresolved_ops, resolved_ops, net_def, dsp_ops):
     first_op = unresolved_ops[0]
     print('Op: ', first_op.name, first_op.type, first_op.outputs[0].shape)
 
@@ -152,7 +215,8 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
                 first_op.outputs[0].dtype == tf.quint8 or \
                 first_op.outputs[0].dtype == tf.quint16:
             tensor.int32_data.extend(tf_tensor.astype(int).flat)
-
+    elif first_op.type == 'Shape':
+        resolved_ops.add(first_op.name)
     else:
         op_def = net_def.op.add()
         op_def.name = first_op.name
@@ -162,7 +226,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
         if len(first_op.outputs) > 0 and first_op.type == 'Dequantize' \
             and len(first_op.outputs[0].consumers()) > 0 \
             and (first_op.outputs[0].consumers()[0].type == 'SpaceToBatchND' or
-                 first_op.outputs[0].consumers()[0].type == 'BatchToSpaceND'):
+                         first_op.outputs[0].consumers()[0].type == 'BatchToSpaceND'):  # noqa
             input_tensor = first_op.inputs[0]
             min_tensor = first_op.inputs[1]
             max_tensor = first_op.inputs[2]
@@ -183,14 +247,12 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
             op_def.input.extend([t.name for t in s2b_op.inputs[1:]])
             op_def.input.extend([min_tensor.name, max_tensor.name])
             convert_op_outputs(op_def, quantize_op)
-        elif len(first_op.outputs) > 0 and \
-            first_op.type == 'QuantizedReshape' and \
-            len(first_op.outputs[0].consumers()) > 0 and \
-            first_op.outputs[0].consumers()[0].type == 'Dequantize' and \
-            len(first_op.outputs[0].consumers()[0].outputs[0].consumers()) \
-            > 0 and \
-            first_op.outputs[0].consumers()[0].outputs[0].consumers()[0].type \
-                == 'Softmax':
+        elif (len(first_op.outputs) > 0 and
+                first_op.type == 'QuantizedReshape' and
+                len(first_op.outputs[0].consumers()) > 0 and
+                first_op.outputs[0].consumers()[0].type == 'Dequantize' and
+                len(first_op.outputs[0].consumers()[0].outputs[0].consumers()) > 0 and  # noqa
+                first_op.outputs[0].consumers()[0].outputs[0].consumers()[0].type == 'Softmax'):  # noqa
             input_tensor = first_op.inputs[0]
             min_tensor = first_op.inputs[2]
             max_tensor = first_op.inputs[3]
@@ -216,17 +278,17 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
                 [input_tensor.name, min_tensor.name, max_tensor.name])
             convert_op_outputs(op_def, quantize_reshape_op)
         # remove Squeeze
-        elif len(first_op.outputs) > 0 and \
-            first_op.type == 'Requantize' and \
-            len(first_op.outputs[0].consumers()) > 0 and \
-            first_op.outputs[0].consumers()[0].type == 'Dequantize' and \
-            len(first_op.outputs[0].consumers()[0].outputs[0].consumers()) \
-            > 0 and \
-            first_op.outputs[0].consumers()[0].outputs[0].consumers()[0].type \
-                == 'Squeeze':
+        elif (len(first_op.outputs) > 0 and
+                first_op.type == 'Requantize' and
+                len(first_op.outputs[0].consumers()) > 0 and
+                first_op.outputs[0].consumers()[0].type == 'Dequantize' and
+                len(first_op.outputs[0].consumers()[0].outputs[0].consumers()) > 0 and  # noqa
+                first_op.outputs[0].consumers()[0].outputs[0].consumers()[0].type == 'Squeeze'):  # noqa
             dequantize_op = first_op.outputs[0].consumers()[0]
             squeeze_op = dequantize_op.outputs[0].consumers()[0]
             reshape_op = squeeze_op.outputs[0].consumers()[0]
+            if reshape_op.type == 'Shape':
+                reshape_op = squeeze_op.outputs[0].consumers()[1]
             min_op = reshape_op.outputs[0].consumers()[0]
             max_op = reshape_op.outputs[0].consumers()[1]
             quantize_op = min_op.outputs[0].consumers()[0]
@@ -249,7 +311,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
                 if next_op and len(next_op.outputs) > 0 and \
                 next_op.type == 'QuantizedReshape' and \
                 len(next_op.outputs[0].consumers()) > 0 else None
-            softmax_op = dequantize_op.outputs[0].consumers()[0]\
+            softmax_op = dequantize_op.outputs[0].consumers()[0] \
                 if dequantize_op and len(dequantize_op.outputs) > 0 and \
                 dequantize_op.type == 'Dequantize' and \
                 len(dequantize_op.outputs[0].consumers()) > 0 else None
@@ -280,7 +342,7 @@ def convert_ops(unresolved_ops, resolved_ops, net_def, output_node, dsp_ops):
                 convert_op_outputs(softmax_op_def, quantize_reshape_op)
 
         elif len(first_op.outputs) > 0 and first_op.type == 'Dequantize' and \
-            len(first_op.outputs[0].consumers()) > 0 and \
+                len(first_op.outputs[0].consumers()) > 0 and \
                 first_op.outputs[0].consumers()[0].type == 'Tanh':
             input_tensor = first_op.inputs[0]
             min_tensor = first_op.inputs[1]
@@ -446,12 +508,10 @@ def reverse_batch_to_space_and_biasadd(net_def):
                             new_follow_op.CopyFrom(follow_op)
                             for i in xrange(len(follow_op.input)):
                                 for k in xrange(3):
-                                    if new_follow_op.input[
-                                            i] == get_tensor_name_from_op(
-                                                biasadd_requantize_op.name, k):
-                                        new_follow_op.input[
-                                            i] = get_tensor_name_from_op(
-                                                b2s_op.name, k)
+                                    if new_follow_op.input[i] == get_tensor_name_from_op(  # noqa
+                                        biasadd_requantize_op.name, k):
+                                        new_follow_op.input[i] = get_tensor_name_from_op(  # noqa
+                                            b2s_op.name, k)
                             new_ops.append(new_follow_op)
                             skip_ops.add(follow_op.name)
                             visited_ops.add(follow_op.name)
@@ -518,7 +578,7 @@ def add_input_output_info(net_def, input_node, output_node, graph, dtype):
     return net_def
 
 
-def fuse_quantize(net_def, input_node, output_node):
+def fuse_quantize(net_def):
     tensor_map = {}
     for tensor in net_def.tensors:
         tensor_map[tensor.name] = tensor
@@ -567,51 +627,71 @@ def fuse_quantize(net_def, input_node, output_node):
     return new_net_def
 
 
-def convert_to_mace_pb(model_file, input_node, output_node, dsp_mode):
-    """
-    nnlib does not have batch norm, so use tensorflow optimizer to fold
-     batch norm with convolution. The fold optimization reorders ops, so
-     we sort ops first by topology.
-  """
-    input_graph_def = tf.GraphDef()
-    with gfile.Open(model_file, "rb") as f:
-        data = f.read()
-        input_graph_def.ParseFromString(data)
+class TensorflowDspConverter(base_converter.ConverterInterface):
+    def __init__(self, option, src_model_file):
+        self._option = option
+        self._mace_net_def = mace_pb2.NetDef()
 
-    input_graph_def = graph_util.sort_tf_graph(input_graph_def)
-    net_def = mace_pb2.NetDef()
+        # import tensorflow graph
+        tf_graph_def = tf.GraphDef()
+        with tf.gfile.Open(src_model_file, 'rb') as f:
+            tf_graph_def.ParseFromString(f.read())
 
-    with tf.Session() as session:
-        with session.graph.as_default() as graph:
-            tf.import_graph_def(input_graph_def, name="")
-            ops = graph.get_operations()
-            dsp_ops = DspOps()
-            resolved_ops = set()
-            # convert const node
-            unresolved_ops = [op for op in ops if op.type == 'Const']
+        self._placeholders = {}
+        self.add_shape_info(tf_graph_def)
+
+        with tf.Session() as session:
+            with session.graph.as_default() as graph:
+                tf.import_graph_def(tf_graph_def, name='')
+                self._tf_graph = graph
+
+    def run(self):
+        ops = self._tf_graph.get_operations()
+        dsp_ops = DspOps()
+        resolved_ops = set()
+
+        mace_check(len(self._option.input_nodes) == 1
+                   and len(self._option.output_nodes) == 1,
+                   'dsp only support single input and output')
+        input_node = self._option.input_nodes.values()[0].name
+        output_node = self._option.output_nodes.values()[0].name
+
+        # convert const node
+        unresolved_ops = [op for op in ops if op.type == 'Const']
+        with tf.Session() as session:
             while len(unresolved_ops) > 0:
-                convert_ops(unresolved_ops, resolved_ops, net_def, output_node,
+                convert_ops(unresolved_ops, resolved_ops, self._mace_net_def,
                             dsp_ops)
 
             # convert op node
             unresolved_ops = [op for op in ops if op.type != 'Const']
             while len(unresolved_ops) > 0:
-                convert_ops(unresolved_ops, resolved_ops, net_def, output_node,
+                convert_ops(unresolved_ops, resolved_ops, self._mace_net_def,
                             dsp_ops)
 
-            add_output_node(net_def, output_node)
-            net_def = reverse_batch_to_space_and_biasadd(net_def)
-            net_def = fuse_quantize(net_def, input_node, output_node)
+            add_output_node(self._mace_net_def, output_node)
+            net_def = reverse_batch_to_space_and_biasadd(self._mace_net_def)
+            net_def = fuse_quantize(net_def)
 
             sorted_net_def = graph_util.sort_mace_graph(net_def, '__output__')
             net_def_with_node_id = add_node_id(sorted_net_def)
 
             dtype = mace_pb2.DT_FLOAT
             final_net_def = add_input_output_info(
-                net_def_with_node_id, input_node, output_node, graph, dtype)
+                net_def_with_node_id, input_node, output_node,
+                self._tf_graph, dtype)
 
-            arg = final_net_def.arg.add()
-            arg.name = 'dsp_mode'
-            arg.i = dsp_mode
+        return final_net_def
 
-    return final_net_def
+    def add_shape_info(self, tf_graph_def):
+        for node in tf_graph_def.node:
+            for input_node in self._option.input_nodes.values():
+                if node.name == input_node.name or \
+                            node.name + ':0' == input_node.name:
+                    del node.attr['shape'].shape.dim[:]
+                    node.attr['shape'].shape.dim.extend([
+                        tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in
+                        input_node.shape
+                    ])
+                    self._placeholders[node.name + ':0'] = \
+                        np.zeros(shape=input_node.shape, dtype=float)

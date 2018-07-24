@@ -96,39 +96,38 @@ def main(unused_args):
         print ("runtime %s is not supported." % FLAGS.runtime)
         sys.exit(-1)
 
-    if FLAGS.runtime == 'dsp':
-        if FLAGS.platform == 'tensorflow':
-            from mace.python.tools import tf_dsp_converter_lib
-            output_graph_def = tf_dsp_converter_lib.convert_to_mace_pb(
-                FLAGS.model_file, FLAGS.input_node, FLAGS.output_node,
-                FLAGS.dsp_mode)
-        else:
-            print("%s does not support dsp runtime yet." % FLAGS.platform)
-            sys.exit(-1)
+    if FLAGS.graph_optimize_options:
+        option = cvt.ConverterOption(
+            FLAGS.graph_optimize_options.split(','))
     else:
-        if FLAGS.graph_optimize_options:
-            option = cvt.ConverterOption(
-                FLAGS.graph_optimize_options.split(','))
-        else:
-            option = cvt.ConverterOption()
-        option.winograd = FLAGS.winograd
+        option = cvt.ConverterOption()
+    option.winograd = FLAGS.winograd
 
-        input_node_names = FLAGS.input_node.split(',')
-        input_node_shapes = FLAGS.input_shape.split(':')
-        if len(input_node_names) != len(input_node_shapes):
-            raise Exception('input node count and shape count do not match.')
-        for i in xrange(len(input_node_names)):
-            input_node = cvt.NodeInfo()
-            input_node.name = input_node_names[i]
-            input_node.shape = parse_int_array_from_str(input_node_shapes[i])
-            option.add_input_node(input_node)
+    input_node_names = FLAGS.input_node.split(',')
+    input_node_shapes = FLAGS.input_shape.split(':')
+    if len(input_node_names) != len(input_node_shapes):
+        raise Exception('input node count and shape count do not match.')
+    for i in xrange(len(input_node_names)):
+        input_node = cvt.NodeInfo()
+        input_node.name = input_node_names[i]
+        input_node.shape = parse_int_array_from_str(input_node_shapes[i])
+        option.add_input_node(input_node)
 
-        output_node_names = FLAGS.output_node.split(',')
-        for i in xrange(len(output_node_names)):
-            output_node = cvt.NodeInfo()
-            output_node.name = output_node_names[i]
-            option.add_output_node(output_node)
+    output_node_names = FLAGS.output_node.split(',')
+    for i in xrange(len(output_node_names)):
+        output_node = cvt.NodeInfo()
+        output_node.name = output_node_names[i]
+        option.add_output_node(output_node)
 
+    print("Transform model to one that can better run on device")
+    if FLAGS.runtime == 'dsp':
+        mace_check(FLAGS.platform == 'tensorflow',
+                   'DSP only supports tensorflow')
+        from mace.python.tools.converter_tool import tf_dsp_converter
+        converter = tf_dsp_converter.TensorflowDspConverter(
+            option, FLAGS.model_file)
+        output_graph_def = converter.run()
+    else:
         if FLAGS.platform == 'tensorflow':
             from mace.python.tools.converter_tool import tensorflow_converter
             converter = tensorflow_converter.TensorflowConverter(
@@ -144,7 +143,6 @@ def main(unused_args):
 
         output_graph_def = converter.run()
 
-        print("Transform model to one that can better run on device")
         if FLAGS.runtime == 'cpu+gpu':
             cpu_graph_def = copy.deepcopy(output_graph_def)
 

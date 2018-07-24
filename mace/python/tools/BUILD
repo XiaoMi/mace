@@ -3,7 +3,7 @@ py_library(
     srcs = [
         "convert_util.py",
         "graph_util.py",
-        "tf_dsp_converter_lib.py",
+        "converter_tool/tf_dsp_converter.py",
         "converter_tool/base_converter.py",
         "converter_tool/shape_inference.py",
         "converter_tool/tensorflow_converter.py",
