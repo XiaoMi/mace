@@ -980,8 +980,10 @@ class Transformer(base_converter.ConverterInterface):
             if op.type == MaceOp.Conv2D.name \
                     or op.type == MaceOp.Deconv2D.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.CONV2D_FILTER)
-                if len(op.input) >= 3:
+                if len(op.input) >= 3 and op.type == MaceOp.Conv2D.name:
                     self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                elif len(op.input) >= 4 and op.type == MaceOp.Deconv2D.name:
+                    self.buffer_to_image(op, 3, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.DepthwiseConv2d.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.DW_CONV2D_FILTER)
                 if len(op.input) >= 3:

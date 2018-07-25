@@ -151,6 +151,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Div.name: self.convert_elementwise,
             TFOpType.Min.name: self.convert_elementwise,
             TFOpType.Max.name: self.convert_elementwise,
+            TFOpType.Maximum.name: self.convert_elementwise,
             TFOpType.Neg.name: self.convert_elementwise,
             TFOpType.Abs.name: self.convert_elementwise,
             TFOpType.Pow.name: self.convert_elementwise,
@@ -372,19 +373,21 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 dilation_val = [1, 1]
             dilation_arg.ints.extend(dilation_val)
         else:
+            mace_check(len(tf_op.inputs) >= 3,
+                       "deconv should have (>=) 3 inputs.")
             output_shape_arg = op.arg.add()
             output_shape_arg.name = MaceKeyword.mace_output_shape_str
-            if len(tf_op.inputs) >= 3:
-                del op.input[1:]
-                output_shape_value =\
+            if tf_op.inputs[0].op.type == TFOpType.Const.name:
+                output_shape_value = \
                     tf_op.inputs[0].eval().astype(np.int32).flat
                 output_shape_arg.ints.extend(output_shape_value)
-                self._skip_tensor.add(tf_op.inputs[0].name)
-                del op.input[0]
-                op.input.extend([tf_op.inputs[2].name, tf_op.inputs[1].name])
             else:
-                output_shape_value = tf_op.get_attr(tf_strides_str)
+                output_shape_value = {}
                 output_shape_arg.ints.extend(output_shape_value)
+            del op.input[:]
+            op.input.extend([tf_op.inputs[2].name,
+                             tf_op.inputs[1].name,
+                             tf_op.inputs[0].name])
 
     def convert_elementwise(self, tf_op):
         op = self.convert_general_op(tf_op)

@@ -24,6 +24,7 @@ class MemoryOptimizer(object):
         self.op_mem = {}  # op_name->mem_id
         self.mem_block = {}  # mem_id->[size] or mem_id->[x, y]
         self.total_mem_count = 0
+        self.total_cpu_mem_count = 0
         self.input_ref_counter = {}
         self.mem_ref_counter = {}
 
@@ -184,6 +185,15 @@ class GPUMemoryOptimizer(MemoryOptimizer):
             for arg in op.arg:
                 if arg.name == 'mode' and arg.i == 0:
                     return False
+        elif op.type == 'Shape':
+            for i in range(len(op.output)):
+                mem_id = self.total_cpu_mem_count
+                self.total_cpu_mem_count += 1
+                op_mem_block = self.get_op_mem_block(
+                    op.type,
+                    op.output_shape[i].dims)
+                self.mem_block[mem_id] = op_mem_block
+            return False
         return op.type != 'ImageToBuffer'
 
     def get_op_mem_block(self, op_type, output_shape):
@@ -191,13 +201,18 @@ class GPUMemoryOptimizer(MemoryOptimizer):
         if op_type == 'WinogradTransform' or op_type == 'MatMul':
             mem_block[0] = output_shape[2]
             mem_block[1] = output_shape[0] * int((output_shape[1] + 3) / 4)
+        elif op_type == 'Shape':
+            mem_block[0] = output_shape[0]
+            mem_block[1] = 1
         else:
             if len(output_shape) == 2:  # only support fc/softmax
                 mem_block[0] = int((output_shape[1] + 3) / 4)
                 mem_block[1] = output_shape[0]
-            else:
+            elif len(output_shape) == 4:
                 mem_block[0] = output_shape[2] * int((output_shape[3] + 3) / 4)
                 mem_block[1] = output_shape[0] * output_shape[1]
+            else:
+                raise Exception('output shape dim size is not 2 or 4.')
         return mem_block
 
     def mem_size(self, memory_block):
