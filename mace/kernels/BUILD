@@ -70,6 +70,7 @@ cc_library(
     deps = [
         "//mace/core",
         "//mace/utils",
+        "@gemmlowp",
     ],
 )
 
@@ -104,7 +105,7 @@ cc_test(
     deps = [
         ":kernels",
         "//mace/ops",
-        "@gtest//:gtest",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
 )
@@ -133,8 +134,9 @@ cc_test(
     linkstatic = 1,
     deps = [
         ":kernels",
-        "//mace/ops",
         "//mace/core:test_benchmark_main",
+        "//mace/ops",
         "//third_party/eigen3",
+        "@gemmlowp",
     ],
 )
