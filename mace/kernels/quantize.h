@@ -28,31 +28,47 @@ namespace kernels {
 template<typename T>
 inline void AdjustRange(const float in_min_data,
                         const float in_max_data,
-                        float *out_min_data,
-                        float *out_max_data) {
+                        const bool non_zero,
+                        float *scale,
+                        int32_t *zero_point) {
   // re-range to make range include zero float and
   // make zero float as integer u8
-  const float quantized_max = std::numeric_limits<uint8_t>::max();
-  float out_min = fminf(0.f, in_min_data);
-  float out_max = fmaxf(0.f, in_max_data);
-  if (out_min < 0.f) {
-    float stepsize = (in_max_data - in_min_data) / quantized_max;
-    float quantized_zero = -in_min_data / stepsize;
-    float quantized_zero_near_int = roundf(quantized_zero);
-    if (fabs(quantized_zero - quantized_zero_near_int) > 1e-6) {
-      if (quantized_zero < quantized_zero_near_int) {
+  const T quantized_min = std::numeric_limits<T>::lowest();
+  const T quantized_max = std::numeric_limits<T>::max();
+  if (quantized_min < 0) {
+    MACE_ASSERT(!non_zero, "Cannot nudge to non_zero quantize value.");
+  }
+
+  float out_max = std::max(0.f, in_max_data);
+  float out_min = std::min(0.f, in_min_data);
+  // make in_min_data quantize as greater than 1
+  if (non_zero) {
+    out_min = std::min(out_min,
+                       in_min_data - (out_max - in_min_data)
+                           / (quantized_max - quantized_min - 1));
+  }
+
+  *scale = (out_max - out_min) / (quantized_max - quantized_min);
+  const float kEps = 1e-6;
+  if (out_min < -kEps && out_max > kEps) {
+    float quantized_zero = -out_min / *scale;
+    int32_t
+        quantized_zero_near_int = static_cast<int32_t>(roundf(quantized_zero));
+    *zero_point = quantized_zero_near_int;
+    if (fabs(quantized_zero - quantized_zero_near_int) > kEps) {
+      if (quantized_zero < quantized_zero_near_int || non_zero) {
         // keep out_max fixed, and move out_min
-        stepsize = out_max / (quantized_max - quantized_zero_near_int);
-        out_min = out_max - quantized_max * stepsize;
+        *scale = out_max / (quantized_max - quantized_zero_near_int);
       } else {
         // keep out_min fixed, and move out_max
-        stepsize = -out_min / quantized_zero_near_int;
-        out_max = out_min + quantized_max * stepsize;
+        *scale = -out_min / quantized_zero_near_int;
       }
     }
+  } else if (out_min > -kEps) {
+    *zero_point = quantized_min;
+  } else {
+    *zero_point = quantized_max;
   }
-  *out_min_data = out_min;
-  *out_max_data = out_max;
 }
 
 template<typename T>
@@ -67,6 +83,50 @@ inline T Saturate(float value) {
   }
 }
 
+inline void FindMinMax(const float *input,
+                       const index_t size,
+                       float *min_val, float *max_val) {
+  float max_v = std::numeric_limits<float>::lowest();
+  float min_v = std::numeric_limits<float>::max();
+  for (index_t i = 0; i < size; ++i) {
+    max_v = std::max(max_v, input[i]);
+    min_v = std::min(min_v, input[i]);
+  }
+  *min_val = min_v;
+  *max_val = max_v;
+}
+
+template<typename T>
+inline void Quantize(const float *input,
+                     const index_t size,
+                     bool non_zero,
+                     T *output,
+                     float *scale,
+                     int32_t *zero_point) {
+  float in_min_data;
+  float in_max_data;
+  FindMinMax(input, size, &in_min_data, &in_max_data);
+
+  AdjustRange<T>(in_min_data, in_max_data, non_zero,
+                 scale, zero_point);
+
+  float recip_scale = 1 / *scale;
+  for (int i = 0; i < size; ++i) {
+    output[i] = Saturate<T>(roundf(*zero_point + recip_scale * input[i]));
+  }
+}
+
+template<typename T>
+inline void Dequantize(const T *input,
+                       const index_t size,
+                       const float scale,
+                       const int32_t zero_point,
+                       float *output) {
+  for (int i = 0; i < size; ++i) {
+    output[i] = scale * (input[i] - zero_point);
+  }
+}
+
 template<DeviceType D, typename T>
 struct QuantizeFunctor;
 
@@ -75,26 +135,24 @@ struct QuantizeFunctor<CPU, uint8_t> {
   QuantizeFunctor() {}
 
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *in_min,
-                  const Tensor *in_max,
-                  Tensor *output,
-                  Tensor *out_min,
-                  Tensor *out_max,
-                  StatsFuture *future) {
+                        const bool non_zero,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
     const float *input_data = input->data<float>();
-    const float in_min_data = in_min->data<float>()[0];
-    const float in_max_data = in_max->data<float>()[0];
     uint8_t *output_data = output->mutable_data<uint8_t>();
-    float *out_min_data = out_min->mutable_data<float>();
-    float *out_max_data = out_max->mutable_data<float>();
-
-    AdjustRange<uint8_t>(in_min_data, in_max_data, out_min_data, out_max_data);
-    float recip_stepsize = 255.f / (out_max_data[0] - out_min_data[0]);
-    for (int i = 0; i < input->size(); ++i) {
-      output_data[i] = Saturate<uint8_t>(roundf(
-        (input_data[i] - in_min_data) * recip_stepsize));
-    }
+    float scale;
+    int32_t zero_point;
+    Quantize(input_data,
+             input->size(),
+             non_zero,
+             output_data,
+             &scale,
+             &zero_point);
+    output->SetScale(scale);
+    output->SetZeroPoint(zero_point);
 
     return MACE_SUCCESS;
   }
@@ -108,91 +166,18 @@ struct DequantizeFunctor<CPU, uint8_t> {
   DequantizeFunctor() {}
 
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *in_min,
-                  const Tensor *in_max,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard output_guard(output);
     const uint8_t *input_data = input->data<uint8_t>();
-    const float in_min_data = in_min->data<float>()[0];
-    const float in_max_data = in_max->data<float>()[0];
     float *output_data = output->mutable_data<float>();
-
-    float stepsize = (in_max_data - in_min_data) / 255.0;
-    for (int i = 0; i < input->size(); ++i) {
-      output_data[i] = in_min_data + stepsize * input_data[i];
-    }
-
-    return MACE_SUCCESS;
-  }
-};
-
-template<DeviceType D, typename T>
-struct RequantizeFunctor;
-
-template<>
-struct RequantizeFunctor<CPU, uint8_t> {
-  RequantizeFunctor() {}
-
-  MaceStatus operator()(const Tensor *input,
-                  const Tensor *in_min,
-                  const Tensor *in_max,
-                  const Tensor *rerange_min,
-                  const Tensor *rerange_max,
-                  Tensor *output,
-                  Tensor *out_min,
-                  Tensor *out_max,
-                  StatsFuture *future) {
-    MACE_UNUSED(future);
-    const int *input_data = input->data<int>();
-    const float in_min_data = in_min->data<float>()[0];
-    const float in_max_data = in_max->data<float>()[0];
-
-    float rerange_min_data;
-    float rerange_max_data;
-    int min_val = std::numeric_limits<int>::max();
-    int max_val = std::numeric_limits<int>::lowest();
-    double
-      si = (in_max_data - in_min_data) / std::numeric_limits<uint32_t>::max();
-    if (rerange_min == nullptr && rerange_max == nullptr) {
-      for (int i = 0; i < input->size(); ++i) {
-        min_val = std::min(min_val, input_data[i]);
-        max_val = std::max(max_val, input_data[i]);
-      }
-      rerange_min_data = min_val * si;
-      rerange_max_data = max_val * si;
-    } else {
-      rerange_min_data = rerange_min->data<float>()[0];
-      rerange_max_data = rerange_max->data<float>()[0];
-    }
-
-    uint8_t *output_data = output->mutable_data<uint8_t>();
-    float *out_min_data = out_min->mutable_data<float>();
-    float *out_max_data = out_max->mutable_data<float>();
-
-    AdjustRange<uint8_t>(rerange_min_data,
-                         rerange_max_data,
-                         out_min_data,
-                         out_max_data);
-    /**
-     * f = qi * si = min_o + qo * so
-     * => qo = (qi * si - min_o) / so
-     *       = qi * (si/so) - min_o / so
-     *       = qi * (si / so) + zo
-     *
-     *    zo = -min_o / so
-     *
-     */
-    float so =
-      (out_max_data[0] - out_min_data[0]) / std::numeric_limits<uint8_t>::max();
-    double step_ratio = si / so;
-    float quantized_out_zero = -out_min_data[0] / so;
-
-    for (int i = 0; i < output->size(); ++i) {
-      output_data[i] =
-        Saturate<uint8_t>(roundf(
-          quantized_out_zero + input_data[i] * step_ratio));
-    }
+    Dequantize(input_data,
+               input->size(),
+               input->scale(),
+               input->zero_point(),
+               output_data);
 
     return MACE_SUCCESS;
   }
