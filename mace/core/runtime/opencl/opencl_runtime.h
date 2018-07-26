@@ -136,7 +136,6 @@ class OpenCLRuntime {
   std::string platform_info_;
   OpenCLVersion opencl_version_;
   std::string precompiled_binary_platform_info_;
-  std::string cached_binary_platform_info_;
   bool out_of_range_check_;
   uint64_t device_gloabl_mem_cache_size_;
   uint32_t device_compute_units_;

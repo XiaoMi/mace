@@ -393,6 +393,7 @@ OpenCLRuntime::OpenCLRuntime():
   MACE_CHECK_CL_SUCCESS(err);
 
   extern std::shared_ptr<KVStorageFactory> kStorageFactory;
+  std::string cached_binary_platform_info;
   if (kStorageFactory != nullptr) {
     cache_storage_ =
         kStorageFactory->CreateStorage(kPrecompiledProgramFileName);
@@ -405,13 +406,16 @@ OpenCLRuntime::OpenCLRuntime():
     auto platform_info_array =
         this->cache_storage_->Find(kOpenCLPlatformInfoKey);
     if (platform_info_array != nullptr) {
-      cached_binary_platform_info_ =
+      cached_binary_platform_info =
           std::string(platform_info_array->begin(),
                       platform_info_array->end());
+      if (cached_binary_platform_info != platform_info_) {
+        cache_storage_->Clear();
+      }
     }
   }
 
-  if (cached_binary_platform_info_ != platform_info_) {
+  if (cached_binary_platform_info != platform_info_) {
     if (OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
       LOG(WARNING) << "There is no precompiled OpenCL binary in"
           " all OpenCL binary paths";
@@ -476,11 +480,6 @@ bool OpenCLRuntime::BuildProgramFromCache(
     cl::Program *program) {
   // Find from binary
   if (this->cache_storage_ == nullptr) return false;
-  if (cached_binary_platform_info_ != platform_info_) {
-    VLOG(3) << "cached OpenCL binary version is not same"
-        " with current version";
-    return false;
-  }
   auto content = this->cache_storage_->Find(built_program_key);
   if (content == nullptr) {
     return false;

@@ -121,13 +121,20 @@ int FileStorage::Load() {
   return 0;
 }
 
+void FileStorage::Clear() {
+  utils::WriteLock lock(&data_mutex_);
+  data_.clear();
+  data_changed_ = true;
+}
+
 bool FileStorage::Insert(const std::string &key,
                          const std::vector<unsigned char> &value) {
   utils::WriteLock lock(&data_mutex_);
   auto res = data_.emplace(key, value);
-  if (res.second) {
-    data_changed_ = true;
+  if (!res.second) {
+    data_[key] = value;
   }
+  data_changed_ = true;
   return true;
 }
 
