@@ -24,7 +24,6 @@
 
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
-#include "mace/core/runtime/opencl/opencl_wrapper.h"
 #include "mace/public/mace_runtime.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"

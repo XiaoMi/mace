@@ -308,8 +308,6 @@ OpenCLRuntime::OpenCLRuntime():
     precompiled_binary_storage_(nullptr),
     cache_storage_(nullptr),
     is_profiling_enabled_(false) {
-  LoadOpenCLLibrary();
-
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
   if (all_platforms.size() == 0) {
@@ -456,7 +454,6 @@ OpenCLRuntime::~OpenCLRuntime() {
   command_queue_.reset();
   context_.reset();
   device_.reset();
-  UnloadOpenCLLibrary();
 }
 
 cl::Context &OpenCLRuntime::context() { return *context_; }
