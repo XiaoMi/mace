@@ -18,6 +18,17 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/gemm.h"
 
+/**
+ * Gemm does fast matrix multiplications with batch.
+ * It is optimized for arm64-v8 and armeabi-v7a using neon.
+ *
+ * We adopt two-level tiling to make better use of l1 cache and register.
+ * For register tiling, function like GemmXYZ computes gemm for
+ * matrix[X, Y] * matrix[Y, Z] with all data being able to fit in register.
+ * For cache tiling, we try to compute one block of multiplication with
+ * two input matrices and one output matrix fit in l1 cache.
+ */
+
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
