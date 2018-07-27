@@ -14,6 +14,7 @@
 [Roadmap](ROADMAP.md) |
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
 [Demo](mace/examples/android) |
+[Join Us](JOBS.md) |
 [中文](README_zh.md)
 
 **Mobile AI Compute Engine** (or **MACE** for short) is a deep learning inference framework optimized for
@@ -86,3 +87,6 @@ the following projects during the development:
 
 Finally, we also thank the Qualcomm, Pinecone and MediaTek engineering teams for
 their help.
+
+## Join Us
+[We are hiring](JOBS.md).
