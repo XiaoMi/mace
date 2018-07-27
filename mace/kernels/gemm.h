@@ -21,9 +21,15 @@
 
 #include "mace/core/types.h"
 
+// Gemm function does fast matrix-matrix multiplications with batch.
+// Gemv function does fast matrix-vector multiplications with batch.
+
 namespace mace {
 namespace kernels {
 
+// Gemm calculates A[batch, height, K] dot B[batch, K, width] within each batch,
+// and output to C[batch, height, width].
+// height, K, width correspond to matrix dimension size after transpose (if any)
 void Gemm(const float *A,
           const float *B,
           const index_t batch,
@@ -44,6 +50,8 @@ void GemmRef(const float *A,
              const bool transpose_a = false,
              const bool transpose_b = false);
 
+// Gemm calculates M[height, width] dot V[batch, height] within each batch of V,
+// and output to out[batch, width].
 void Gemv(const float *m_ptr,
           const float *v_ptr,
           const index_t batch,
