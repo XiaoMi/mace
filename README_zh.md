@@ -44,6 +44,8 @@
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models)
 包含若干常用模型，并且会对一组手机进行每日构建。最新的性能评测结果可以从项目的[持续集成页面获取](https://gitlab.com/llhe/mace-models/pipelines)
 (选择最新的成功的Pipeline，点击*release*可以看到最新的评测结果)。
+同时，可以参考[MobileAIBench](https://github.com/XiaoMi/mobile-ai-bench)项目
+获取MACE与其他框架的对比结果。
 
 ## 交流与反馈
 * 欢迎通过Github Issues提交问题报告与建议

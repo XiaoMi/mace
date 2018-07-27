@@ -54,6 +54,8 @@ targets:
 several common neural networks and models which will be built daily against a list of mobile
 phones. The benchmark results can be found in [the CI result page](https://gitlab.com/llhe/mace-models/pipelines)
 (choose the latest passed pipeline, click *release* step and you will see the benchmark results).
+To get the comparison results with other frameworks, you can take a look at
+[MobileAIBench](https://github.com/XiaoMi/mobile-ai-bench) project.
 
 ## Communication
 * GitHub issues: bug reports, usage issues, feature requests
