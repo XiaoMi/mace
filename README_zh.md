@@ -12,6 +12,7 @@
 [路线图](ROADMAP.md) |
 [MACE Model Zoo](https://github.com/XiaoMi/mace-models) |
 [Demo](mace/examples/android) |
+[加入我们](JOBS.md) |
 [English](README.md)
 
 **Mobile AI Compute Engine (MACE)** 是一个专为移动端异构计算平台优化的神经网络计算框架。
@@ -53,4 +54,7 @@
 * Slack: [mace-users.slack.com](https://join.slack.com/t/mace-users/shared_invite/enQtMzkzNjM3MzMxODYwLTAyZTAzMzQyNjc0ZGI5YjU3MjI1N2Q2OWI1ODgwZjAwOWVlNzFlMjFmMTgwYzhjNzU4MDMwZWQ1MjhiM2Y4OTE)
 
 ## License
-[Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE)
+
+## 加入我们
+[欢迎加入我们](JOBS.md)。
