@@ -219,7 +219,10 @@ bool RunModel(const std::vector<std::string> &input_names,
 #endif
 
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {
-    std::cerr << "Create engine error, please check the arguments" << std::endl;
+    std::cerr << "Create engine error, please check the arguments first, "
+              << "if correct, the device may not run the model, "
+              << "please fall back to other strategy."
+              << std::endl;
     exit(1);
   }
 

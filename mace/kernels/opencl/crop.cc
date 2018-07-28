@@ -24,12 +24,18 @@ namespace kernels {
 namespace {
 std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
-  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-  lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
-  const uint32_t lws_size = lws[0] * lws[1];
-  lws[2] = std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size), 1);
+  if (kwg_size == 0) {
+    lws[0] = lws[1] = lws[2] = 1;
+  } else {
+    uint64_t
+        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+    uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
+    lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+    lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
+    const uint32_t lws_size = lws[0] * lws[1];
+    lws[2] =
+        std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size), 1);
+  }
   return lws;
 }
 
@@ -147,7 +153,8 @@ MaceStatus CropFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("crop", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("crop", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -181,7 +188,8 @@ MaceStatus CropFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat("crop_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

@@ -88,7 +88,8 @@ MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
 
-    kernel_ = runtime->BuildKernel("batch_norm", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("batch_norm", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -122,7 +123,8 @@ MaceStatus BatchNormFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel", activation_, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3), folded_constant_);
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

@@ -79,77 +79,102 @@ class __attribute__((visibility("default"))) FileStorageFactory
   std::unique_ptr<Impl> impl_;
 };
 
-// Set Key-Value store factory. (Call Once)
-// Now KVStorage is used to store the built OpenCL binaries to file,
-// which could speed up the GPU initialization and first run.
-// If do not call this API, the initialization maybe slow for GPU.
+/// \brief Set internal storage factory to store internal data. (Call once)
+///
+/// Now the path is used to store the built OpenCL binaries to file,
+/// which could speed up the GPU initialization and first run.
+/// If do not call this API, the initialization maybe slow for GPU.
+///
+/// \param path  Make sure your program have Read/Write permission of the path
+/// \return
 __attribute__((visibility("default")))
 void SetKVStorageFactory(std::shared_ptr<KVStorageFactory> storage_factory);
 
-// Just call once. (Not thread-safe)
-// Set paths of Generated OpenCL Compiled Kernel Binary file (not libOpenCL.so)
-// if you use gpu of specific soc.
-// Using OpenCL binary will speed up the initialization.
-// OpenCL binary is corresponding to the OpenCL Driver version,
-// you should update the binary when OpenCL Driver changed.
+/// \brief Set paths of Generated OpenCL Compiled Kernel Binary file (not libOpenCL.so)  // NOLINT(whitespace/line_length)
+///
+/// Just call once. (Not thread-safe)
+/// if you use gpu of specific soc, Using OpenCL binary will speed up the initialization.  // NOLINT(whitespace/line_length)
+/// OpenCL binary is corresponding to the OpenCL Driver version,
+/// you should update the binary when OpenCL Driver changed.
+///
+/// \param paths MACE will use first file found in all paths
+/// \return
 __attribute__((visibility("default")))
 void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
 
-// Just call once. (Not thread-safe)
-// Set the path of Generated OpenCL parameter file
-// if you use gpu for specific soc.
-// The parameters is the local work group size tuned for specific SOC, which
-// may be faster than the general parameters.
+/// \brief Set the path of Generated OpenCL parameter file
+///
+/// Just call once. (Not thread-safe)
+/// If you use gpu for specific soc, The parameters is the local work group
+/// size tuned for specific SOC, which may be faster than the
+/// general parameters.
+///
+/// \param path Make sure your program have Read/Write permission of the path
+/// \return
 __attribute__((visibility("default")))
 void SetOpenCLParameterPath(const std::string &path);
 
-// Set GPU hints, currently only supports Adreno GPU.
-//
-// Caution: this function may hurt performance if improper parameters provided.
+/// \brief Set GPU hints, currently only supports Adreno GPU.
+///
+/// Caution: this function may hurt performance
+/// if improper parameters provided.
+///
+/// \param perf_hint  performance hint
+/// \param priority_hint  priority hint
+/// \return
 __attribute__((visibility("default")))
 void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 
-// Set OpenMP threads number and affinity policy.
-//
-// Caution: this function may hurt performance if improper parameters provided.
-//
-// num_threads_hint is only a hint. When num_threads_hint is zero or negative,
-// the function will set the threads number equaling to the number of
-// big (AFFINITY_BIG_ONLY), little (AFFINITY_LITTLE_ONLY) or all
-// (AFFINITY_NONE) cores according to the policy. The threads number will
-// also be truncated to the corresponding cores number when num_threads_hint
-// is larger than it.
-//
-// The OpenMP threads will be bind to (via sched_setaffinity) big cores
-// (AFFINITY_BIG_ONLY) and little cores (AFFINITY_LITTLE_ONLY).
-//
-// If successful, it returns MACE_SUCCESS and error if it can't reliabley
-// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
-// suggested to use AFFINITY_NONE to use all cores.
+/// \brief Set OpenMP threads number and affinity policy.
+///
+/// Caution: this function may hurt performance if improper parameters provided.
+/// When num_threads_hint is zero or negative,
+/// the function will set the threads number equaling to the number of
+/// big (AFFINITY_BIG_ONLY), little (AFFINITY_LITTLE_ONLY) or all
+/// (AFFINITY_NONE) cores according to the policy. The threads number will
+/// also be truncated to the corresponding cores number when num_threads_hint
+/// is larger than it.
+/// The OpenMP threads will be bind to (via sched_setaffinity) big cores
+/// (AFFINITY_BIG_ONLY) and little cores (AFFINITY_LITTLE_ONLY).
+///
+/// \param num_threads_hint it is only a hint.
+/// \param policy one of CPUAffinityPolicy
+/// \param status MACE_SUCCESS for successful, or it can't reliabley
+/// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
+/// suggested to use AFFINITY_NONE to use all cores.
+/// \return
 __attribute__((visibility("default")))
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy);
 
-// Set OpenMP threads number and processor affinity.
-//
-// Caution: this function may hurt performance if improper parameters provided.
-//
-// This function may not work well on some chips (e.g. MTK). Setting thread
-// affinity to offline cores may run very slow or unexpectedly. In such cases,
-// please use SetOpenMPThreadPolicy with default policy instead.
+/// \brief Set OpenMP threads number and processor affinity.
+///
+/// Caution: this function may hurt performance
+/// if improper parameters provided.
+/// This function may not work well on some chips (e.g. MTK). Setting thread
+/// affinity to offline cores may run very slow or unexpectedly.
+/// In such cases, please use SetOpenMPThreadPolicy with default policy
+/// instead.
+///
+/// \param num_threads
+/// \param cpu_ids
+/// \param status
+/// \return
 __attribute__((visibility("default")))
 MaceStatus SetOpenMPThreadAffinity(int num_threads,
                                    const std::vector<int> &cpu_ids);
 
-// Get ARM big.LITTLE configuration.
-//
-// This function will detect the max frequencies of all CPU cores, and assume
-// the cores with largest max frequencies as big cores, and all the remaining
-// cores as little. If all cpu core's max frequencies equals, big_core_ids and
-// little_core_ids will both be filled with all cpu core ids.
-//
-// If successful, it returns MACE_SUCCESS and error if it can't reliabley
-// detect the frequency of big-LITTLE cores (e.g. MTK).
+/// \brief Get ARM big.LITTLE configuration.
+///
+/// This function will detect the max frequencies of all CPU cores, and assume
+/// the cores with largest max frequencies as big cores, and all the remaining
+/// cores as little. If all cpu core's max frequencies equals, big_core_ids and
+/// little_core_ids will both be filled with all cpu core ids.
+///
+/// \param [out] big_core_ids
+/// \param [out] little_core_ids
+/// \return If successful, it returns MACE_SUCCESS and error if it can't
+///         reliabley detect the frequency of big-LITTLE cores (e.g. MTK).
 __attribute__((visibility("default")))
 MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                std::vector<int> *little_core_ids);

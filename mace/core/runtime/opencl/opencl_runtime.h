@@ -42,13 +42,23 @@ enum OpenCLVersion {
   CL_VER_1_1,
   CL_VER_1_2,
   CL_VER_2_0,
+  CL_VER_UNKNOWN,
 };
 
 
 const std::string OpenCLErrorToString(cl_int error);
 
-#define MACE_CHECK_CL_SUCCESS(error) \
-  MACE_CHECK(error == CL_SUCCESS) << "error: " << OpenCLErrorToString(error)
+#define MACE_CL_RET_ERROR(error)                            \
+  if (error != CL_SUCCESS) {                                \
+    LOG(ERROR) << "error: " << OpenCLErrorToString(error);  \
+    return error;                                           \
+  }
+
+#define MACE_CL_RET_STATUS(error)                           \
+  if (error != CL_SUCCESS) {                                \
+    LOG(ERROR) << "error: " << OpenCLErrorToString(error);  \
+    return MaceStatus::MACE_OUT_OF_RESOURCES;               \
+  }
 
 class OpenCLProfilingTimer : public Timer {
  public:
@@ -81,19 +91,23 @@ class OpenCLRuntime {
   const std::string platform_info() const;
   uint64_t device_global_mem_cache_size() const;
   uint32_t device_compute_units() const;
+  bool is_opencl_avaliable();
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
   uint64_t GetDeviceMaxMemAllocSize();
+  bool IsImageSupport();
+  std::vector<uint64_t> GetMaxImage2DSize();
   uint64_t GetKernelMaxWorkGroupSize(const cl::Kernel &kernel);
   uint64_t GetKernelWaveSize(const cl::Kernel &kernel);
   bool IsNonUniformWorkgroupsSupported() const;
   bool IsOutOfRangeCheckEnabled() const;
   bool is_profiling_enabled() const;
 
-  cl::Kernel BuildKernel(const std::string &program_name,
+  MaceStatus BuildKernel(const std::string &program_name,
                          const std::string &kernel_name,
-                         const std::set<std::string> &build_options);
+                         const std::set<std::string> &build_options,
+                         cl::Kernel *kernel);
 
   void SaveBuiltCLProgram();
 
@@ -103,7 +117,7 @@ class OpenCLRuntime {
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
 
-  void BuildProgram(const std::string &program_file_name,
+  bool BuildProgram(const std::string &program_file_name,
                     const std::string &binary_file_name,
                     const std::string &build_options,
                     cl::Program *program);
@@ -115,7 +129,7 @@ class OpenCLRuntime {
       const std::string &built_program_key,
       const std::string &build_options_str,
       cl::Program *program);
-  void BuildProgramFromSource(
+  bool BuildProgramFromSource(
       const std::string &program_name,
       const std::string &built_program_key,
       const std::string &build_options_str,
@@ -125,6 +139,7 @@ class OpenCLRuntime {
  private:
   std::unique_ptr<KVStorage> precompiled_binary_storage_;
   std::unique_ptr<KVStorage> cache_storage_;
+  bool is_opencl_avaliable_;
   bool is_profiling_enabled_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.

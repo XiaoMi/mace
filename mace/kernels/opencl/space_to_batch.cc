@@ -77,8 +77,10 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("space_to_batch", obfuscated_kernel_name,
-                                   built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("space_to_batch",
+                                              obfuscated_kernel_name,
+                                              built_options,
+                                              &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -118,7 +120,8 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

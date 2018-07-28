@@ -28,21 +28,12 @@ from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import TransformerRule
+from mace.python.tools.convert_util import calculate_image_shape
 from mace.python.tools.convert_util import mace_check
+from mace.python.tools.convert_util import OpenCLBufferType
+
 
 OPENCL_IMAGE_MAX_SIZE = 16384
-
-
-class OpenCLBufferType(enum.Enum):
-    CONV2D_FILTER = 0
-    IN_OUT_CHANNEL = 1
-    ARGUMENT = 2
-    IN_OUT_HEIGHT = 3
-    IN_OUT_WIDTH = 4
-    WINOGRAD_FILTER = 5
-    DW_CONV2D_FILTER = 6
-    WEIGHT_HEIGHT = 7
-    WEIGHT_WIDTH = 8
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -101,6 +92,7 @@ class Transformer(base_converter.ConverterInterface):
         self._producer = {}
         self._target_data_format = DataFormat.NHWC
         self._input_output_added = False
+        self._opencl_max_image_size = [0, 0]
 
         if self._option.device == DeviceType.CPU.value:
             self._target_data_format = DataFormat.NCHW
@@ -972,14 +964,25 @@ class Transformer(base_converter.ConverterInterface):
         arg.name = MaceKeyword.mace_mode
         arg.i = 0
 
+        tensor_shape = list(self._consts[input_name].dims)
         if input_type == OpenCLBufferType.WINOGRAD_FILTER:
             blk_sqr = op.output_shape[0].dims[0]
             wino_blk = int(np.sqrt(blk_sqr)) - 2
             wino_arg = op_def.arg.add()
             wino_arg.name = MaceKeyword.mace_wino_block_size
             wino_arg.i = wino_blk
+            img_shape = calculate_image_shape(input_type, tensor_shape,
+                                              wino_blk)
+        else:
+            img_shape = calculate_image_shape(input_type, tensor_shape)
 
         op.input[input_idx] = output_name
+
+        # update OpenCL max image size
+        self._opencl_max_image_size[0] = max(self._opencl_max_image_size[0],
+                                             img_shape[0])
+        self._opencl_max_image_size[1] = max(self._opencl_max_image_size[1],
+                                             img_shape[1])
 
     def transform_buffer_image(self):
         if self._option.device != DeviceType.GPU.value:
@@ -1029,6 +1032,11 @@ class Transformer(base_converter.ConverterInterface):
                 if ConverterUtil.get_arg(op,
                                          MaceKeyword.mace_activation_type_str).s == ActivationType.PRELU.name:  # noqa
                     self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+
+        # Add OpenCL max image size
+        arg = net.arg.add()
+        arg.name = MaceKeyword.mace_opencl_max_image_size
+        arg.ints.extend(self._opencl_max_image_size)
 
         for input_node in self._option.input_nodes.values():
             new_input_name = MaceKeyword.mace_input_node_name \

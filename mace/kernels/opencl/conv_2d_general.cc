@@ -30,30 +30,35 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws,
                               const uint32_t kernel_size,
                               const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
-  const uint32_t base =
-      std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
-  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-  lws[0] = gws[0] / 4;
-  if (lws[0] == 0) {
-    lws[0] = gws[0];
-  }
-  lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
-  const uint32_t lws_size = lws[0] * lws[1];
-  lws[2] = std::min<uint32_t>((cache_size / kernel_cache_size / kernel_size /
-                               lws_size / compute_units) *
-                                  8,
-                              gws[2]);
-  if (lws[2] == 0) {
-    if (gws[2] < lws_limit) {
-      lws[2] = gws[2];
-    } else {
-      lws[2] = base;
+  if (kwg_size == 0) {
+    lws[0] = lws[1] = lws[2] = 1;
+  } else {
+    uint64_t
+        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+    uint32_t compute_units = OpenCLRuntime::Global()->device_compute_units();
+    const uint32_t base =
+        std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
+    lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+    lws[0] = gws[0] / 4;
+    if (lws[0] == 0) {
+      lws[0] = gws[0];
     }
+    lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
+    const uint32_t lws_size = lws[0] * lws[1];
+    lws[2] = std::min<uint32_t>((cache_size / kernel_cache_size / kernel_size /
+                                    lws_size / compute_units) *
+                                    8,
+                                gws[2]);
+    if (lws[2] == 0) {
+      if (gws[2] < lws_limit) {
+        lws[2] = gws[2];
+      } else {
+        lws[2] = base;
+      }
+    }
+    lws[2] = std::max<uint32_t>(std::min<uint32_t>(lws[2], kwg_size / lws_size),
+                                1);
   }
-  lws[2] = std::max<uint32_t>(std::min<uint32_t>(lws[2], kwg_size / lws_size),
-                              1);
   return lws;
 }
 
@@ -124,7 +129,8 @@ extern MaceStatus Conv2dOpencl(cl::Kernel *kernel,
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    *kernel = runtime->BuildKernel("conv_2d", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("conv_2d", kernel_name,
+                                              built_options, kernel));
 
     *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
@@ -173,7 +179,8 @@ extern MaceStatus Conv2dOpencl(cl::Kernel *kernel,
              output->dim(2), output->dim(3), filter->dim(2), filter->dim(3));
   std::vector<uint32_t> lws =
       LocalWS(gws, filter->dim(2) * filter->dim(3), *kwg_size);
-  TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);

@@ -171,6 +171,13 @@ def main(unused_args):
             output_graph_def.op.extend(cpu_graph_def.op)
             output_graph_def.mem_arena.mem_block.extend(
                 cpu_graph_def.mem_arena.mem_block)
+            output_graph_arg_names = set()
+            for arg in output_graph_def.arg:
+                output_graph_arg_names.add(arg.name)
+
+            for arg in cpu_graph_def.arg:
+                if arg.name not in output_graph_arg_names:
+                    output_graph_def.arg.extend(arg)
             print "Merge done"
         else:
             option.device = device_type_map[FLAGS.runtime]

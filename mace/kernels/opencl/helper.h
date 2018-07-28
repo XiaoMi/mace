@@ -65,17 +65,17 @@ std::string DtToCLDt(const DataType dt);
 
 std::string DtToUpstreamCLDt(const DataType dt);
 
-void TuningOrRun3DKernel(const cl::Kernel &kernel,
-                         const std::string tuning_key,
-                         const uint32_t *gws,
-                         const std::vector<uint32_t> &lws,
-                         StatsFuture *future);
+MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
+                               const std::string tuning_key,
+                               const uint32_t *gws,
+                               const std::vector<uint32_t> &lws,
+                               StatsFuture *future);
 
-void TuningOrRun2DKernel(const cl::Kernel &kernel,
-                         const std::string tuning_key,
-                         const uint32_t *gws,
-                         const std::vector<uint32_t> &lws,
-                         StatsFuture *future);
+MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
+                               const std::string tuning_key,
+                               const uint32_t *gws,
+                               const std::vector<uint32_t> &lws,
+                               StatsFuture *future);
 
 inline void SetFuture(StatsFuture *future, const cl::Event &event) {
   if (future != nullptr) {

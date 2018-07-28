@@ -61,7 +61,10 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("slice", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("slice",
+                                              kernel_name,
+                                              built_options,
+                                              &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -107,7 +110,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
           cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
-    MACE_CHECK_CL_SUCCESS(error);
+    MACE_CL_RET_STATUS(error);
     if (runtime->IsOutOfRangeCheckEnabled()) {
       kernel_error_->Map(nullptr);
       char *kerror_code = kernel_error_->mutable_data<char>();

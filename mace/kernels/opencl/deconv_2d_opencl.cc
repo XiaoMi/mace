@@ -95,7 +95,8 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    *kernel = runtime->BuildKernel("deconv_2d", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("deconv_2d", kernel_name,
+                                              built_options, kernel));
 
     *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
@@ -148,7 +149,8 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
   std::string tuning_key =
       Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);

@@ -64,8 +64,14 @@ bool BufferToImageOpImpl(Tensor *buffer,
     kernel_error->UnMap();
   }
 
-  auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
-                                         obfuscated_kernel_name, built_options);
+  cl::Kernel b2f_kernel;
+
+  cl_int error = runtime->BuildKernel("buffer_to_image",
+                                      obfuscated_kernel_name,
+                                      built_options, &b2f_kernel);
+  if (error != CL_SUCCESS) {
+    return false;
+  }
 
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -92,7 +98,6 @@ bool BufferToImageOpImpl(Tensor *buffer,
   const std::vector<uint32_t> lws = {16, kwg_size / 16};
 
   cl::Event event;
-  cl_int error;
   if (runtime->IsNonUniformWorkgroupsSupported()) {
     error = runtime->command_queue().enqueueNDRangeKernel(
         b2f_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
@@ -107,7 +112,9 @@ bool BufferToImageOpImpl(Tensor *buffer,
         b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
-  MACE_CHECK_CL_SUCCESS(error);
+  if (error != CL_SUCCESS) {
+    return false;
+  }
 
   runtime->command_queue().finish();
   bool is_out_of_range = false;

@@ -68,7 +68,8 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("pad", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("pad", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -104,7 +105,8 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
   std::string tuning_key = Concat("pad", output->dim(0), output->dim(1),
                                   output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

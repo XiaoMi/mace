@@ -163,6 +163,7 @@ class MaceKeyword(object):
     mace_op_data_type_str = 'T'
     mace_offset_str = 'offset'
     mace_from_caffe_str = 'from_caffe'
+    mace_opencl_max_image_size = "opencl_max_image_size"
 
 
 class TransformerRule(Enum):

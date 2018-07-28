@@ -307,11 +307,15 @@ void OpenCLRuntime::ConfigureOpenCLBinaryPath(
 OpenCLRuntime::OpenCLRuntime():
     precompiled_binary_storage_(nullptr),
     cache_storage_(nullptr),
-    is_profiling_enabled_(false) {
+    is_opencl_avaliable_(false),
+    is_profiling_enabled_(false),
+    opencl_version_(CL_VER_UNKNOWN),
+    gpu_type_(UNKNOWN) {
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
   if (all_platforms.size() == 0) {
-    LOG(FATAL) << "No OpenCL platforms found";
+    LOG(ERROR) << "No OpenCL platforms found";
+    return;
   }
   cl::Platform default_platform = all_platforms[0];
   std::stringstream ss;
@@ -325,7 +329,8 @@ OpenCLRuntime::OpenCLRuntime():
   std::vector<cl::Device> all_devices;
   default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
   if (all_devices.size() == 0) {
-    LOG(FATAL) << "No OpenCL devices found";
+    LOG(ERROR) << "No OpenCL devices found";
+    return;
   }
 
   bool gpu_detected = false;
@@ -340,13 +345,17 @@ OpenCLRuntime::OpenCLRuntime():
 
       const std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
       opencl_version_ = ParseDeviceVersion(device_version);
+      if (opencl_version_ == OpenCLVersion::CL_VER_UNKNOWN) {
+        return;
+      }
 
       VLOG(1) << "Using device: " << device_name;
       break;
     }
   }
   if (!gpu_detected) {
-    LOG(FATAL) << "No GPU device found";
+    LOG(ERROR) << "No GPU device found";
+    return;
   }
 
   cl_command_queue_properties properties = 0;
@@ -384,13 +393,19 @@ OpenCLRuntime::OpenCLRuntime():
           new cl::Context({*device_}, nullptr, nullptr, nullptr, &err));
     }
   }
-  MACE_CHECK_CL_SUCCESS(err);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return;
+  }
 
   command_queue_ = std::make_shared<cl::CommandQueue>(*context_,
                                                       *device_,
                                                       properties,
                                                       &err);
-  MACE_CHECK_CL_SUCCESS(err);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return;
+  }
 
   extern std::shared_ptr<KVStorageFactory> kStorageFactory;
   std::string cached_binary_platform_info;
@@ -416,10 +431,7 @@ OpenCLRuntime::OpenCLRuntime():
   }
 
   if (cached_binary_platform_info != platform_info_) {
-    if (OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
-      LOG(WARNING) << "There is no precompiled OpenCL binary in"
-          " all OpenCL binary paths";
-    } else {
+    if (!OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
       precompiled_binary_storage_.reset(
           new FileStorage(OpenCLRuntime::kPrecompiledBinaryPath));
       if (precompiled_binary_storage_->Load() != 0) {
@@ -450,6 +462,8 @@ OpenCLRuntime::OpenCLRuntime():
   } else {
     this->out_of_range_check_ = false;
   }
+
+  is_opencl_avaliable_ = true;
 }
 
 OpenCLRuntime::~OpenCLRuntime() {
@@ -458,6 +472,12 @@ OpenCLRuntime::~OpenCLRuntime() {
   command_queue_.reset();
   context_.reset();
   device_.reset();
+}
+
+bool OpenCLRuntime::is_opencl_avaliable() {
+  static const uint64_t kMinWorkGroupSize = 64;
+  return is_opencl_avaliable_
+      && GetDeviceMaxWorkGroupSize() >= kMinWorkGroupSize;
 }
 
 cl::Context &OpenCLRuntime::context() { return *context_; }
@@ -538,7 +558,7 @@ bool OpenCLRuntime::BuildProgramFromPrecompiledBinary(
   return true;
 }
 
-void OpenCLRuntime::BuildProgramFromSource(
+bool OpenCLRuntime::BuildProgramFromSource(
     const std::string &program_name,
     const std::string &built_program_key,
     const std::string &build_options_str,
@@ -562,7 +582,7 @@ void OpenCLRuntime::BuildProgramFromSource(
       LOG(WARNING) << "Build program "
                    << program_name << " from source failed: "
                    << MakeString(ret);
-      return;
+      return false;
     }
 
     // Keep built program binary
@@ -572,7 +592,10 @@ void OpenCLRuntime::BuildProgramFromSource(
     cl_int err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARY_SIZES,
                                   sizeof(size_t) * device_list_size,
                                   program_binary_sizes.get(), nullptr);
-    MACE_CHECK_CL_SUCCESS(err);
+    if (err != CL_SUCCESS) {
+      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+      return false;
+    }
     std::unique_ptr<std::unique_ptr<unsigned char[]>[]> program_binaries(
         new std::unique_ptr<unsigned char[]>[device_list_size]);
     for (cl_uint i = 0; i < device_list_size; ++i) {
@@ -583,7 +606,10 @@ void OpenCLRuntime::BuildProgramFromSource(
     err = clGetProgramInfo((*program)(), CL_PROGRAM_BINARIES,
                            sizeof(unsigned char *) * device_list_size,
                            program_binaries.get(), nullptr);
-    MACE_CHECK_CL_SUCCESS(err);
+    if (err != CL_SUCCESS) {
+      LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+      return false;
+    }
     std::vector<unsigned char> content(
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()),
         reinterpret_cast<unsigned char const *>(program_binaries[0].get()) +
@@ -600,9 +626,10 @@ void OpenCLRuntime::BuildProgramFromSource(
 
     VLOG(3) << "Program from source: " << built_program_key;
   }
+  return true;
 }
 
-void OpenCLRuntime::BuildProgram(const std::string &program_name,
+bool OpenCLRuntime::BuildProgram(const std::string &program_name,
                                  const std::string &built_program_key,
                                  const std::string &build_options,
                                  cl::Program *program) {
@@ -617,16 +644,18 @@ void OpenCLRuntime::BuildProgram(const std::string &program_name,
     ret = BuildProgramFromPrecompiledBinary(built_program_key,
                                             build_options_str, program);
     if (!ret) {
-      BuildProgramFromSource(program_name, built_program_key,
-                             build_options_str, program);
+      ret = BuildProgramFromSource(program_name, built_program_key,
+                                   build_options_str, program);
     }
   }
+  return ret;
 }
 
-cl::Kernel OpenCLRuntime::BuildKernel(
+MaceStatus OpenCLRuntime::BuildKernel(
     const std::string &program_name,
     const std::string &kernel_name,
-    const std::set<std::string> &build_options) {
+    const std::set<std::string> &build_options,
+    cl::Kernel *kernel) {
   std::string build_options_str;
   for (auto &option : build_options) {
     build_options_str += " " + option;
@@ -639,11 +668,17 @@ cl::Kernel OpenCLRuntime::BuildKernel(
   if (built_program_it != built_program_map_.end()) {
     program = built_program_it->second;
   } else {
-    this->BuildProgram(program_name, built_program_key, build_options_str,
-                       &program);
+    bool ret = this->BuildProgram(program_name, built_program_key,
+                                  build_options_str, &program);
+    if (!ret) {
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
     built_program_map_.emplace(built_program_key, program);
   }
-  return cl::Kernel(program, kernel_name.c_str());
+  cl_int err;
+  *kernel = cl::Kernel(program, kernel_name.c_str(), &err);
+  MACE_CL_RET_STATUS(err);
+  return MaceStatus::MACE_SUCCESS;
 }
 
 void OpenCLRuntime::SaveBuiltCLProgram() {
@@ -667,25 +702,67 @@ void OpenCLRuntime::GetCallStats(const cl::Event &event, CallStats *stats) {
 
 uint64_t OpenCLRuntime::GetDeviceMaxWorkGroupSize() {
   uint64_t size = 0;
-  device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  cl_int err = device_->getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
   return size;
 }
 
 uint64_t OpenCLRuntime::GetDeviceMaxMemAllocSize() {
   uint64_t size = 0;
-  device_->getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+  cl_int err = device_->getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
   return size;
+}
+
+bool OpenCLRuntime::IsImageSupport() {
+  cl_bool res;
+  cl_int err = device_->getInfo(CL_DEVICE_IMAGE_SUPPORT, &res);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return false;
+  }
+  return res == CL_TRUE;
+}
+std::vector<uint64_t> OpenCLRuntime::GetMaxImage2DSize() {
+  size_t max_height, max_width;
+  cl_int err = device_->getInfo(CL_DEVICE_IMAGE2D_MAX_HEIGHT, &max_height);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return {};
+  }
+  err = device_->getInfo(CL_DEVICE_IMAGE2D_MAX_WIDTH, &max_width);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    return {};
+  }
+  return {max_height, max_width};
 }
 
 uint64_t OpenCLRuntime::GetKernelMaxWorkGroupSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
-  kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE, &size);
+  cl_int err = kernel.getWorkGroupInfo(*device_, CL_KERNEL_WORK_GROUP_SIZE,
+                                       &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
   return size;
 }
 
 uint64_t OpenCLRuntime::GetKernelWaveSize(const cl::Kernel &kernel) {
   uint64_t size = 0;
-  kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM, &size);
+  cl_int err = kernel.getWorkGroupInfo(*device_, CL_KERNEL_WAVE_SIZE_QCOM,
+                                       &size);
+  if (err != CL_SUCCESS) {
+    LOG(ERROR) << "error: " << OpenCLErrorToString(err);
+    size = 0;
+  }
   return size;
 }
 
@@ -717,8 +794,8 @@ OpenCLVersion OpenCLRuntime::ParseDeviceVersion(
   } else if (words[1] == "1.0") {
     return OpenCLVersion::CL_VER_1_0;
   } else {
-    LOG(FATAL) << "Do not support OpenCL version: " << words[1];
-    return OpenCLVersion::CL_VER_1_0;
+    LOG(ERROR) << "Do not support OpenCL version: " << words[1];
+    return OpenCLVersion::CL_VER_UNKNOWN;
   }
 }
 
