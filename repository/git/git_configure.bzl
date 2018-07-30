@@ -11,9 +11,12 @@ def _git_version_conf_impl(repository_ctx):
 
   ret = repository_ctx.execute(
       ["test", "-f", "%s/.git/logs/HEAD" % mace_root_path])
-
   if ret.return_code == 0:
     unused_var = repository_ctx.path(Label("//:.git/HEAD"))
+
+  ret = repository_ctx.execute(
+      ["test", "-f", "%s/.git/refs/heads/master" % mace_root_path])
+  if ret.return_code == 0:
     unused_var = repository_ctx.path(Label("//:.git/refs/heads/master"))
 
   repository_ctx.execute([
