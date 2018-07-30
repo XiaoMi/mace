@@ -257,6 +257,10 @@ OpenCLLibrary *OpenCLLibrary::Get() {
 
 OpenCLLibrary::OpenCLLibrary() {
   this->Load();
+  // Do not call dlclose which may unload all OpenCL symbols.
+  // If close the OpenCL library, the static OpenCLRuntime destructor may fail.
+  // If there is no dlclose, the library will be closed when the program exist.
+  // Besides, the library will not be load repeatedly even dlopen many times.
 }
 
 bool OpenCLLibrary::Load() {
@@ -293,13 +297,12 @@ bool OpenCLLibrary::Load() {
   }
 
   if (handle_ == nullptr) {
-    LOG(FATAL) << "Failed to load OpenCL library, "
+    LOG(ERROR) << "Failed to load OpenCL library, "
         "please make sure there exists OpenCL library on your device, "
         "and your APP have right to access the library.";
     return false;
   }
 
-  // Do not dlclose, leave it to system.
   return true;
 }
 
@@ -384,9 +387,12 @@ CL_API_ENTRY cl_int clGetPlatformIDs(cl_uint num_entries,
                                      cl_uint *num_platforms)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetPlatformIDs;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetPlatformIDs");
-  return func(num_entries, platforms, num_platforms);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetPlatformIDs");
+    return func(num_entries, platforms, num_platforms);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetPlatformInfo(cl_platform_id platform,
@@ -396,10 +402,13 @@ CL_API_ENTRY cl_int clGetPlatformInfo(cl_platform_id platform,
                                       size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetPlatformInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetPlatformInfo");
-  return func(platform, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetPlatformInfo");
+    return func(platform, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Device APIs
@@ -410,9 +419,12 @@ CL_API_ENTRY cl_int clGetDeviceIDs(cl_platform_id platform,
                                    cl_uint *num_devices)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetDeviceIDs;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetDeviceIDs");
-  return func(platform, device_type, num_entries, devices, num_devices);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetDeviceIDs");
+    return func(platform, device_type, num_entries, devices, num_devices);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetDeviceInfo(cl_device_id device,
@@ -422,26 +434,35 @@ CL_API_ENTRY cl_int clGetDeviceInfo(cl_device_id device,
                                     size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetDeviceInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetDeviceInfo");
-  return func(device, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetDeviceInfo");
+    return func(device, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainDevice(cl_device_id device)
     CL_API_SUFFIX__VERSION_1_2 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainDevice;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainDevice");
-  return func(device);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainDevice");
+    return func(device);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseDevice(cl_device_id device)
     CL_API_SUFFIX__VERSION_1_2 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseDevice;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseDevice");
-  return func(device);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseDevice");
+    return func(device);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Context APIs
@@ -453,10 +474,14 @@ CL_API_ENTRY cl_context clCreateContext(
     void *user_data,
     cl_int *errcode_ret) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateContext;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateContext");
-  return func(properties, num_devices, devices, pfn_notify, user_data,
-              errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateContext");
+    return func(properties, num_devices, devices, pfn_notify, user_data,
+                errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_context clCreateContextFromType(
@@ -466,25 +491,35 @@ CL_API_ENTRY cl_context clCreateContextFromType(
     void *user_data,
     cl_int *errcode_ret) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateContextFromType;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateContextFromType");
-  return func(properties, device_type, pfn_notify, user_data, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateContextFromType");
+    return func(properties, device_type, pfn_notify, user_data, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainContext(cl_context context)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainContext;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainContext");
-  return func(context);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainContext");
+    return func(context);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseContext(cl_context context)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseContext;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseContext");
-  return func(context);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseContext");
+    return func(context);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetContextInfo(cl_context context,
@@ -494,10 +529,13 @@ CL_API_ENTRY cl_int clGetContextInfo(cl_context context,
                                      size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetContextInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetContextInfo");
-  return func(context, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetContextInfo");
+    return func(context, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Program Object APIs
@@ -508,9 +546,13 @@ CL_API_ENTRY cl_program clCreateProgramWithSource(cl_context context,
                                                   cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateProgramWithSource;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateProgramWithSource");
-  return func(context, count, strings, lengths, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateProgramWithSource");
+    return func(context, count, strings, lengths, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_program
@@ -522,10 +564,14 @@ clCreateProgramWithBinary(cl_context context,
                           cl_int *binary_status,
                           cl_int *errcode_ret) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateProgramWithBinary;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateProgramWithBinary");
-  return func(context, num_devices, device_list, lengths, binaries,
-              binary_status, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateProgramWithBinary");
+    return func(context, num_devices, device_list, lengths, binaries,
+                binary_status, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clGetProgramInfo(cl_program program,
@@ -535,10 +581,13 @@ CL_API_ENTRY cl_int clGetProgramInfo(cl_program program,
                                      size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetProgramInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetProgramInfo");
-  return func(program, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetProgramInfo");
+    return func(program, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetProgramBuildInfo(cl_program program,
@@ -549,26 +598,35 @@ CL_API_ENTRY cl_int clGetProgramBuildInfo(cl_program program,
                                           size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetProgramBuildInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetProgramBuildInfo");
-  return func(program, device, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetProgramBuildInfo");
+    return func(program, device, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainProgram(cl_program program)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainProgram;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainProgram");
-  return func(program);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainProgram");
+    return func(program);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseProgram(cl_program program)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseProgram;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseProgram");
-  return func(program);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseProgram");
+    return func(program);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clBuildProgram(
@@ -579,10 +637,13 @@ CL_API_ENTRY cl_int clBuildProgram(
     void(CL_CALLBACK *pfn_notify)(cl_program program, void *user_data),
     void *user_data) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clBuildProgram;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clBuildProgram");
-  return func(program, num_devices, device_list, options, pfn_notify,
-              user_data);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clBuildProgram");
+    return func(program, num_devices, device_list, options, pfn_notify,
+                user_data);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Kernel Object APIs
@@ -591,25 +652,35 @@ CL_API_ENTRY cl_kernel clCreateKernel(cl_program program,
                                       cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateKernel;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateKernel");
-  return func(program, kernel_name, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateKernel");
+    return func(program, kernel_name, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainKernel(cl_kernel kernel)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainKernel;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainKernel");
-  return func(kernel);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainKernel");
+    return func(kernel);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseKernel(cl_kernel kernel)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseKernel;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseKernel");
-  return func(kernel);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseKernel");
+    return func(kernel);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clSetKernelArg(cl_kernel kernel,
@@ -618,9 +689,12 @@ CL_API_ENTRY cl_int clSetKernelArg(cl_kernel kernel,
                                    const void *arg_value)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clSetKernelArg;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clSetKernelArg");
-  return func(kernel, arg_index, arg_size, arg_value);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clSetKernelArg");
+    return func(kernel, arg_index, arg_size, arg_value);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Memory Object APIs
@@ -631,9 +705,13 @@ CL_API_ENTRY cl_mem clCreateBuffer(cl_context context,
                                    cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateBuffer;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateBuffer");
-  return func(context, flags, size, host_ptr, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateBuffer");
+    return func(context, flags, size, host_ptr, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_mem clCreateImage(cl_context context,
@@ -644,25 +722,40 @@ CL_API_ENTRY cl_mem clCreateImage(cl_context context,
                                   cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_2 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateImage;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateImage");
-  return func(context, flags, image_format, image_desc, host_ptr, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateImage");
+    return func(context,
+                flags,
+                image_format,
+                image_desc,
+                host_ptr,
+                errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainMemObject(cl_mem memobj)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainMemObject;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainMemObject");
-  return func(memobj);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainMemObject");
+    return func(memobj);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseMemObject(cl_mem memobj)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseMemObject;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseMemObject");
-  return func(memobj);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseMemObject");
+    return func(memobj);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetImageInfo(cl_mem image,
@@ -672,10 +765,13 @@ CL_API_ENTRY cl_int clGetImageInfo(cl_mem image,
                                    size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetImageInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetImageInfo");
-  return func(image, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetImageInfo");
+    return func(image, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Command Queue APIs
@@ -686,25 +782,35 @@ CL_API_ENTRY cl_command_queue clCreateCommandQueueWithProperties(
     cl_int *errcode_ret) CL_API_SUFFIX__VERSION_2_0 {
   auto func =
       mace::runtime::OpenCLLibrary::Get()->clCreateCommandQueueWithProperties;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateCommandQueueWithProperties");
-  return func(context, device, properties, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateCommandQueueWithProperties");
+    return func(context, device, properties, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainCommandQueue(cl_command_queue command_queue)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainCommandQueue;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainCommandQueue");
-  return func(command_queue);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainCommandQueue");
+    return func(command_queue);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseCommandQueue(cl_command_queue command_queue)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseCommandQueue;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseCommandQueue");
-  return func(command_queue);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseCommandQueue");
+    return func(command_queue);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Enqueued Commands APIs
@@ -719,10 +825,13 @@ CL_API_ENTRY cl_int clEnqueueReadBuffer(cl_command_queue command_queue,
                                         cl_event *event)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueReadBuffer;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueReadBuffer");
-  return func(command_queue, buffer, blocking_read, offset, size, ptr,
-              num_events_in_wait_list, event_wait_list, event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueReadBuffer");
+    return func(command_queue, buffer, blocking_read, offset, size, ptr,
+                num_events_in_wait_list, event_wait_list, event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clEnqueueWriteBuffer(cl_command_queue command_queue,
@@ -736,10 +845,13 @@ CL_API_ENTRY cl_int clEnqueueWriteBuffer(cl_command_queue command_queue,
                                          cl_event *event)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueWriteBuffer;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueWriteBuffer");
-  return func(command_queue, buffer, blocking_write, offset, size, ptr,
-              num_events_in_wait_list, event_wait_list, event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueWriteBuffer");
+    return func(command_queue, buffer, blocking_write, offset, size, ptr,
+                num_events_in_wait_list, event_wait_list, event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY void *clEnqueueMapBuffer(cl_command_queue command_queue,
@@ -754,10 +866,14 @@ CL_API_ENTRY void *clEnqueueMapBuffer(cl_command_queue command_queue,
                                       cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueMapBuffer;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueMapBuffer");
-  return func(command_queue, buffer, blocking_map, map_flags, offset, size,
-              num_events_in_wait_list, event_wait_list, event, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueMapBuffer");
+    return func(command_queue, buffer, blocking_map, map_flags, offset, size,
+                num_events_in_wait_list, event_wait_list, event, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY void *clEnqueueMapImage(cl_command_queue command_queue,
@@ -774,11 +890,15 @@ CL_API_ENTRY void *clEnqueueMapImage(cl_command_queue command_queue,
                                      cl_int *errcode_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueMapImage;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueMapImage");
-  return func(command_queue, image, blocking_map, map_flags, origin, region,
-              image_row_pitch, image_slice_pitch, num_events_in_wait_list,
-              event_wait_list, event, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueMapImage");
+    return func(command_queue, image, blocking_map, map_flags, origin, region,
+                image_row_pitch, image_slice_pitch, num_events_in_wait_list,
+                event_wait_list, event, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 CL_API_ENTRY cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
@@ -789,10 +909,13 @@ CL_API_ENTRY cl_int clEnqueueUnmapMemObject(cl_command_queue command_queue,
                                             cl_event *event)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueUnmapMemObject;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueUnmapMemObject");
-  return func(command_queue, memobj, mapped_ptr, num_events_in_wait_list,
-              event_wait_list, event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueUnmapMemObject");
+    return func(command_queue, memobj, mapped_ptr, num_events_in_wait_list,
+                event_wait_list, event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clGetKernelWorkGroupInfo(
@@ -803,10 +926,13 @@ CL_API_ENTRY cl_int clGetKernelWorkGroupInfo(
     void *param_value,
     size_t *param_value_size_ret) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetKernelWorkGroupInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetKernelWorkGroupInfo");
-  return func(kernel, device, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetKernelWorkGroupInfo");
+    return func(kernel, device, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
@@ -820,34 +946,46 @@ CL_API_ENTRY cl_int clEnqueueNDRangeKernel(cl_command_queue command_queue,
                                            cl_event *event)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clEnqueueNDRangeKernel;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clEnqueueNDRangeKernel");
-  return func(command_queue, kernel, work_dim, global_work_offset,
-              global_work_size, local_work_size, num_events_in_wait_list,
-              event_wait_list, event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clEnqueueNDRangeKernel");
+    return func(command_queue, kernel, work_dim, global_work_offset,
+                global_work_size, local_work_size, num_events_in_wait_list,
+                event_wait_list, event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Event Object APIs
 CL_API_ENTRY cl_int clWaitForEvents(
     cl_uint num_events, const cl_event *event_list) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clWaitForEvents;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clWaitForEvents");
-  return func(num_events, event_list);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clWaitForEvents");
+    return func(num_events, event_list);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clRetainEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clRetainEvent;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clRetainEvent");
-  return func(event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clRetainEvent");
+    return func(event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clReleaseEvent(cl_event event) CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clReleaseEvent;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clReleaseEvent");
-  return func(event);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clReleaseEvent");
+    return func(event);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Event API
@@ -858,10 +996,13 @@ CL_API_ENTRY cl_int clGetEventInfo(cl_event event,
                                    size_t *param_value_size_ret)
 CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetEventInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetEventInfo");
-  return func(event, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetEventInfo");
+    return func(event, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Profiling APIs
@@ -872,27 +1013,36 @@ CL_API_ENTRY cl_int clGetEventProfilingInfo(cl_event event,
                                             size_t *param_value_size_ret)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clGetEventProfilingInfo;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clGetEventProfilingInfo");
-  return func(event, param_name, param_value_size, param_value,
-              param_value_size_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clGetEventProfilingInfo");
+    return func(event, param_name, param_value_size, param_value,
+                param_value_size_ret);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Flush and Finish APIs
 CL_API_ENTRY cl_int clFlush(cl_command_queue command_queue)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clFlush;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clFlush");
-  return func(command_queue);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clFlush");
+    return func(command_queue);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 CL_API_ENTRY cl_int clFinish(cl_command_queue command_queue)
     CL_API_SUFFIX__VERSION_1_0 {
   auto func = mace::runtime::OpenCLLibrary::Get()->clFinish;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clFinish");
-  return func(command_queue);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clFinish");
+    return func(command_queue);
+  } else {
+    return CL_INVALID_PLATFORM;
+  }
 }
 
 // Deprecated OpenCL 1.1 APIs
@@ -906,10 +1056,14 @@ CL_API_ENTRY /* CL_EXT_PREFIX__VERSION_1_1_DEPRECATED */ cl_mem clCreateImage2D(
     void *host_ptr,
     cl_int *errcode_ret) /* CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED */ {
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateImage2D;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateImage2D");
-  return func(context, flags, image_format, image_width, image_height,
-              image_row_pitch, host_ptr, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateImage2D");
+    return func(context, flags, image_format, image_width, image_height,
+                image_row_pitch, host_ptr, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }
 
 // Deprecated OpenCL 2.0 APIs
@@ -920,7 +1074,11 @@ clCreateCommandQueue(cl_context context,
                      cl_int *errcode_ret)
 /* CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED */ {  // NOLINT
   auto func = mace::runtime::OpenCLLibrary::Get()->clCreateCommandQueue;
-  MACE_CHECK_NOTNULL(func);
-  MACE_LATENCY_LOGGER(3, "clCreateCommandQueue");
-  return func(context, device, properties, errcode_ret);
+  if (func != nullptr) {
+    MACE_LATENCY_LOGGER(3, "clCreateCommandQueue");
+    return func(context, device, properties, errcode_ret);
+  } else {
+    if (errcode_ret != nullptr) *errcode_ret = CL_INVALID_PLATFORM;
+    return nullptr;
+  }
 }

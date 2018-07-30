@@ -68,7 +68,8 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
 
-    kernel_ = runtime->BuildKernel("addn", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("addn", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -111,7 +112,8 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
              output_tensor->dim(2), output_tensor->dim(3));
-  TuningOrRun2DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

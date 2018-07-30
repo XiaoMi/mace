@@ -30,6 +30,7 @@ class FileStorage : public KVStorage {
 
  public:
   int Load() override;
+  void Clear() override;
   bool Insert(const std::string &key,
               const std::vector<unsigned char> &value) override;
   const std::vector<unsigned char> *Find(const std::string &key) override;

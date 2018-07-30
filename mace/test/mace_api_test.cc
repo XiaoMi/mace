@@ -245,6 +245,7 @@ std::map<std::string, int> AddMemoryOptimization(
   for (size_t i = 0; i < input_size; ++i) {
     MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
     mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_mem_type(MemoryType::GPU_IMAGE);
     mem_blk_ptr->set_x(in_mem_block_x);
     mem_blk_ptr->set_y(in_mem_block_y);
     res[input_names[i]] = mem_id;
@@ -264,6 +265,7 @@ std::map<std::string, int> AddMemoryOptimization(
   for (size_t i = 0; i < output_size; ++i) {
     MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
     mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_mem_type(MemoryType::GPU_IMAGE);
     mem_blk_ptr->set_x(out_mem_block_x);
     mem_blk_ptr->set_y(out_mem_block_y);
     res[output_names[i]] = mem_id;

@@ -95,8 +95,10 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("depth_to_space", obfuscated_kernel_name,
-                                   built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("depth_to_space",
+                                              obfuscated_kernel_name,
+                                              built_options,
+                                              &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -135,7 +137,8 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
   }
 
   const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

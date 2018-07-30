@@ -97,9 +97,11 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
       kernel_error_->UnMap();
     }
   }
-
-  auto b2f_kernel = runtime->BuildKernel("buffer_to_image",
-                                         obfuscated_kernel_name, built_options);
+  cl::Kernel b2f_kernel;
+  MACE_RETURN_IF_ERROR(runtime->BuildKernel("buffer_to_image",
+                                            obfuscated_kernel_name,
+                                            built_options,
+                                            &b2f_kernel));
 
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
@@ -151,7 +153,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
         b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
-  MACE_CHECK_CL_SUCCESS(error);
+  MACE_CL_RET_STATUS(error);
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);
     char *kerror_code = kernel_error_->mutable_data<char>();

@@ -123,7 +123,10 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
   void *mapped_ptr =
       queue.enqueueMapBuffer(*cl_buffer, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE,
                              offset, nbytes, nullptr, nullptr, &error);
-  MACE_CHECK_CL_SUCCESS(error);
+  if (error != CL_SUCCESS) {
+    LOG(ERROR) << "Map buffer failed, error: " << OpenCLErrorToString(error);
+    mapped_ptr = nullptr;
+  }
   return mapped_ptr;
 }
 
@@ -142,8 +145,10 @@ void *OpenCLAllocator::MapImage(void *buffer,
       *cl_image, CL_TRUE, CL_MAP_READ | CL_MAP_WRITE, origin, region,
       mapped_image_pitch->data(), mapped_image_pitch->data() + 1, nullptr,
       nullptr, &error);
-  MACE_CHECK_CL_SUCCESS(error);
-
+  if (error != CL_SUCCESS) {
+    LOG(ERROR) << "Map Image failed, error: " << OpenCLErrorToString(error);
+    mapped_ptr = nullptr;
+  }
   return mapped_ptr;
 }
 
@@ -152,7 +157,9 @@ void OpenCLAllocator::Unmap(void *buffer, void *mapped_ptr) const {
   auto queue = OpenCLRuntime::Global()->command_queue();
   cl_int error = queue.enqueueUnmapMemObject(*cl_buffer, mapped_ptr,
                                              nullptr, nullptr);
-  MACE_CHECK_CL_SUCCESS(error);
+  if (error != CL_SUCCESS) {
+    LOG(ERROR) << "Unmap buffer failed, error: " << OpenCLErrorToString(error);
+  }
 }
 
 bool OpenCLAllocator::OnHost() const { return false; }

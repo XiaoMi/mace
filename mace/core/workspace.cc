@@ -204,26 +204,28 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   // TODO(liyin): memory block should not have concept of type, but to be
   // consistent with gpu, all memory block use float/half as unit
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
-    if (device_type == DeviceType::GPU) {
-      // TODO(liuqi): refactor based on PB
-      if (mem_block.mem_id() >= 20000) {
-        std::unique_ptr<BufferBase> image_buf(
-            new Image());
-        MACE_RETURN_IF_ERROR(image_buf->Allocate(
-            {mem_block.x(), mem_block.y()}, dtype));
-        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                          std::move(image_buf));
-      }
-    } else {
-      if (mem_block.mem_id() < 20000) {
-        std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(GetDeviceAllocator(device_type)));
-        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-            mem_block.x() * GetEnumTypeSize(dtype)
-            + MACE_EXTRA_BUFFER_PAD_SIZE));
-        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                          std::move(tensor_buf));
-      }
+    if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
+      std::unique_ptr<BufferBase> tensor_buf(
+          new Buffer(GetDeviceAllocator(DeviceType::CPU)));
+      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+          mem_block.x() * GetEnumTypeSize(dtype)
+              + MACE_EXTRA_BUFFER_PAD_SIZE));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(tensor_buf));
+    } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
+      std::unique_ptr<BufferBase> image_buf(
+          new Image());
+      MACE_RETURN_IF_ERROR(image_buf->Allocate(
+          {mem_block.x(), mem_block.y()}, dtype));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(image_buf));
+    } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
+      std::unique_ptr<BufferBase> tensor_buf(
+          new Buffer(GetDeviceAllocator(DeviceType::GPU)));
+      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+          mem_block.x() * GetEnumTypeSize(dtype)));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(tensor_buf));
     }
   }
   VLOG(3) << "Preallocate buffer to tensors";

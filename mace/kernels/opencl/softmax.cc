@@ -25,19 +25,23 @@ namespace kernels {
 namespace {
 
 std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
-  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
   std::vector<uint32_t> lws(4, 0);
-  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-  if (gws[0] < base) {
-    lws[0] = gws[0];
+  if (kwg_size == 0) {
+    lws[0] = lws[1] = lws[2] = 1;
   } else {
-    lws[0] = gws[0] / base;
+    uint64_t
+        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+    uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
+    lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+    if (gws[0] < base) {
+      lws[0] = gws[0];
+    } else {
+      lws[0] = gws[0] / base;
+    }
+    lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
+    lws[2] = std::max<uint32_t>(std::min<uint32_t>(
+        gws[2], kwg_size / (lws[0] * lws[1])), 1);
   }
-  lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
-  lws[2] = std::max<uint32_t>(std::min<uint32_t>(gws[2],
-                                                 kwg_size / (lws[0] * lws[1])),
-                              1);
   return lws;
 }
 
@@ -95,7 +99,8 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ = runtime->BuildKernel("softmax", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("softmax", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -122,7 +127,8 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
   std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

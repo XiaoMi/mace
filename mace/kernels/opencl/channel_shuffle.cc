@@ -62,8 +62,9 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    kernel_ =
-        runtime->BuildKernel("channel_shuffle", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(
+        runtime->BuildKernel("channel_shuffle", kernel_name,
+                             built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -92,7 +93,8 @@ MaceStatus ChannelShuffleFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat("channel_shuffle_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);

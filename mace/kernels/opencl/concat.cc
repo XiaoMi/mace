@@ -24,12 +24,18 @@ namespace kernels {
 namespace {
 std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
-  uint64_t cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
-  uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
-  lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-  lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
-  const uint32_t lws_size = lws[0] * lws[1];
-  lws[2] = std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size), 1);
+  if (kwg_size == 0) {
+    lws[0] = lws[1] = lws[2] = 1;
+  } else {
+    uint64_t
+        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+    uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
+    lws[1] = std::min<uint32_t>(gws[1], kwg_size);
+    lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
+    const uint32_t lws_size = lws[0] * lws[1];
+    lws[2] =
+        std::max<uint32_t>(std::min<uint32_t>(base, kwg_size / lws_size), 1);
+  }
   return lws;
 }
 
@@ -83,7 +89,8 @@ static MaceStatus Concat2(cl::Kernel *kernel,
     if (input0->dim(3) % 4 == 0) {
       built_options.emplace("-DDIVISIBLE_FOUR");
     }
-    *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("concat", kernel_name,
+                                              built_options, kernel));
 
     *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
@@ -114,7 +121,8 @@ static MaceStatus Concat2(cl::Kernel *kernel,
   std::string tuning_key =
       Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  TuningOrRun3DKernel(*kernel, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+                                           gws, lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);
@@ -157,7 +165,8 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
     if (runtime->IsNonUniformWorkgroupsSupported()) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
-    *kernel = runtime->BuildKernel("concat", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("concat", kernel_name,
+                                              built_options, kernel));
     *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
@@ -207,7 +216,7 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
           cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
-    MACE_CHECK_CL_SUCCESS(error);
+    MACE_CL_RET_STATUS(error);
     if (runtime->IsOutOfRangeCheckEnabled()) {
       (*kernel_error)->Map(nullptr);
       char *kerror_code = (*kernel_error)->mutable_data<char>();

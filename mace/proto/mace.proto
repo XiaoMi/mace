@@ -20,6 +20,12 @@ enum DataType {
   DT_INT32 = 4;
 }
 
+enum MemoryType {
+  CPU_BUFFER = 0;
+  GPU_BUFFER = 1;
+  GPU_IMAGE = 2;
+}
+
 message ConstTensor {
   repeated int64 dims = 1;
   optional DataType data_type = 2 [default = DT_FLOAT];
@@ -73,8 +79,9 @@ message OperatorDef {
 // for memory optimization
 message MemoryBlock {
   optional int32 mem_id = 1;
-  optional uint32 x = 2;
-  optional uint32 y = 3;
+  optional MemoryType mem_type = 2;
+  optional uint32 x = 3;
+  optional uint32 y = 4;
 }
 message MemoryArena {
   repeated MemoryBlock mem_block = 1;

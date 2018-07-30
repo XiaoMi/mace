@@ -84,8 +84,8 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
 
-    *kernel =
-        runtime->BuildKernel("fully_connected", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("fully_connected", kernel_name,
+                                              built_options, kernel));
 
     if (runtime->gpu_type() == GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
@@ -160,7 +160,7 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
     MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
     (*kernel_error)->UnMap();
   }
-  MACE_CHECK_CL_SUCCESS(error);
+  MACE_CL_RET_STATUS(error);
 
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
@@ -230,8 +230,9 @@ MaceStatus FCWTXKernel(cl::Kernel *kernel,
       default:
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
-    *kernel =
-        runtime->BuildKernel("fully_connected", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(
+        runtime->BuildKernel("fully_connected", kernel_name,
+                             built_options, kernel));
 
     uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
@@ -272,7 +273,8 @@ MaceStatus FCWTXKernel(cl::Kernel *kernel,
   std::string tuning_key =
       Concat("fc_opencl_kernel", output->dim(0), output->dim(1), output->dim(2),
              output->dim(3));
-  TuningOrRun2DKernel(*kernel, tuning_key, gws->data(), *lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(*kernel, tuning_key,
+                                           gws->data(), *lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     (*kernel_error)->Map(nullptr);

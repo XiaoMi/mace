@@ -61,6 +61,44 @@ void UnloadModelData(const unsigned char *model_data,
   MACE_CHECK(ret == 0, "Failed to unmap model data file, error code: ",
              strerror(errno));
 }
+
+#ifdef MACE_ENABLE_OPENCL
+MaceStatus CheckGPUAvalibility(const NetDef *net_def) {
+  // Check OpenCL avaliable
+  auto runtime = OpenCLRuntime::Global();
+  if (!runtime->is_opencl_avaliable()) {
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
+  // Check whether model max OpenCL image sizes exceed OpenCL limitation.
+  if (net_def == nullptr) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+
+  if (!runtime->IsImageSupport()) {
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
+  auto opencl_max_image_size = runtime->GetMaxImage2DSize();
+  if (opencl_max_image_size.empty()) {
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+
+  const std::vector<int64_t> net_max_image_size =
+      ProtoArgHelper::GetRepeatedArgs<NetDef, int64_t>(
+          *net_def, "opencl_max_image_size", {0, 0});
+
+  if (static_cast<uint64_t>(net_max_image_size[0]) > opencl_max_image_size[0]
+      || static_cast<uint64_t>(net_max_image_size[1])
+          > opencl_max_image_size[1]) {
+    LOG(INFO) << "opencl max image size " << MakeString(opencl_max_image_size)
+              << " vs " << MakeString(net_max_image_size);
+    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  }
+  return MaceStatus::MACE_SUCCESS;
+}
+#endif
+
 }  // namespace
 
 // Mace Tensor
@@ -171,6 +209,12 @@ MaceStatus MaceEngine::Impl::Init(
     const std::vector<std::string> &output_nodes,
     const unsigned char *model_data) {
   LOG(INFO) << "Initializing MaceEngine";
+  // Check avalibility
+#ifdef MACE_ENABLE_OPENCL
+  if (device_type_ == DeviceType::GPU) {
+    MACE_RETURN_IF_ERROR(CheckGPUAvalibility(net_def));
+  }
+#endif
   // Get input and output information.
   for (auto &input_info : net_def->input_info()) {
     input_info_map_[input_info.name()] = input_info;

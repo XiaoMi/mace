@@ -79,7 +79,8 @@ MaceStatus ActivationFunctor<DeviceType::GPU, T>::operator()(
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
-    kernel_ = runtime->BuildKernel("activation", kernel_name, built_options);
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("activation", kernel_name,
+                                              built_options, &kernel_));
 
     kwg_size_ =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
@@ -115,7 +116,8 @@ MaceStatus ActivationFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat(tuning_key_prefix_, output->dim(0), output->dim(1), output->dim(2),
              output->dim(3));
-  TuningOrRun3DKernel(kernel_, tuning_key, gws, lws, future);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key, gws,
+                                           lws, future));
 
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel_error_->Map(nullptr);
