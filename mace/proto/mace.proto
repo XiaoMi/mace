@@ -34,6 +34,8 @@ message ConstTensor {
   optional string name = 5;
   optional int64 offset = 6;
   optional int64 data_size = 7;
+  optional float scale = 8;
+  optional int32 zero_point = 9;
 
   optional uint32 node_id = 100;
 }
@@ -104,12 +106,23 @@ message OutputInfo {
   optional DataType data_type = 5 [default = DT_FLOAT];
 }
 
+message QuantizeActivationInfo {
+  optional string tensor_name = 1;
+  optional float scale = 2;
+  optional int32 zero_point = 3;
+}
+
+message QuantizeInfo {
+  repeated QuantizeActivationInfo activation_info = 1;
+}
+
 message NetDef {
   optional string name = 1;
   repeated OperatorDef op = 2;
   optional string version = 3;
   repeated Argument arg = 4;
   repeated ConstTensor tensors = 5;
+  optional QuantizeInfo quantize_info = 6;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;

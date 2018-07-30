@@ -58,10 +58,11 @@ inline void AdjustRange(const float in_min_data,
     if (fabs(quantized_zero - quantized_zero_near_int) > kEps) {
       if (quantized_zero < quantized_zero_near_int || non_zero) {
         // keep out_max fixed, and move out_min
-        *scale = out_max / (quantized_max - quantized_zero_near_int);
+        *zero_point = static_cast<int32_t>(std::ceil(quantized_zero));
+        *scale = out_max / (quantized_max - *zero_point);
       } else {
         // keep out_min fixed, and move out_max
-        *scale = -out_min / quantized_zero_near_int;
+        *scale = out_min / (quantized_min - *zero_point);
       }
     }
   } else if (out_min > -kEps) {
@@ -97,6 +98,18 @@ inline void FindMinMax(const float *input,
 }
 
 template<typename T>
+inline void QuantizeWithScaleAndZeropoint(const float *input,
+                                          const index_t size,
+                                          float scale,
+                                          int32_t zero_point,
+                                          T *output) {
+  float recip_scale = 1 / scale;
+  for (int i = 0; i < size; ++i) {
+    output[i] = Saturate<T>(roundf(zero_point + recip_scale * input[i]));
+  }
+}
+
+template<typename T>
 inline void Quantize(const float *input,
                      const index_t size,
                      bool non_zero,
@@ -110,10 +123,7 @@ inline void Quantize(const float *input,
   AdjustRange<T>(in_min_data, in_max_data, non_zero,
                  scale, zero_point);
 
-  float recip_scale = 1 / *scale;
-  for (int i = 0; i < size; ++i) {
-    output[i] = Saturate<T>(roundf(*zero_point + recip_scale * input[i]));
-  }
+  QuantizeWithScaleAndZeropoint(input, size, *scale, *zero_point, output);
 }
 
 template<typename T>
@@ -143,16 +153,24 @@ struct QuantizeFunctor<CPU, uint8_t> {
     Tensor::MappingGuard output_guard(output);
     const float *input_data = input->data<float>();
     uint8_t *output_data = output->mutable_data<uint8_t>();
-    float scale;
-    int32_t zero_point;
-    Quantize(input_data,
-             input->size(),
-             non_zero,
-             output_data,
-             &scale,
-             &zero_point);
-    output->SetScale(scale);
-    output->SetZeroPoint(zero_point);
+    if (output->scale() > 0.f) {
+      QuantizeWithScaleAndZeropoint(input_data,
+                                    input->size(),
+                                    output->scale(),
+                                    output->zero_point(),
+                                    output_data);
+    } else {
+      float scale;
+      int32_t zero_point;
+      Quantize(input_data,
+               input->size(),
+               non_zero,
+               output_data,
+               &scale,
+               &zero_point);
+      output->SetScale(scale);
+      output->SetZeroPoint(zero_point);
+    }
 
     return MACE_SUCCESS;
   }

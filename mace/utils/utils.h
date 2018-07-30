@@ -19,6 +19,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 #include <utility>
 #include <vector>
 
@@ -160,6 +161,11 @@ std::vector<std::string> MapKeys(const std::map<std::string, T> &data) {
     keys.push_back(kv.first);
   }
   return keys;
+}
+
+inline bool EnvEnabled(std::string env_name) {
+  char *env = getenv(env_name.c_str());
+  return !(!env || env[0] == 0 || env[0] == '0');
 }
 
 }  // namespace mace

@@ -98,30 +98,6 @@ def obfuscate_name(net_def):
                 op.output[i] = in_out_map[op.output[i]]
 
 
-def normalize_op_name(op_name):
-    idx = op_name.rfind(':')
-    if idx == -1:
-        return op_name
-    else:
-        return op_name[:idx]
-
-
-def rename_tensor(net_def):
-    tensor_map = {}
-    for t in net_def.tensors:
-        if t.name not in tensor_map:
-            tensor_map[t.name] = "_" + normalize_op_name(t.name).replace("/",
-                                                                         "_")
-            t.name = tensor_map[t.name]
-    for op in net_def.op:
-        for i in range(len(op.input)):
-            if op.input[i] in tensor_map:
-                op.input[i] = tensor_map[op.input[i]]
-        for i in range(len(op.output)):
-            if op.output[i] in tensor_map:
-                op.output[i] = tensor_map[op.output[i]]
-
-
 def stringfy(value):
     return ', '.join('"{0}"'.format(w) for w in value)
 
@@ -301,8 +277,6 @@ def save_model(net_def, model_checksum, weight_checksum, template_dir,
                winograd_conv, data_type, model_graph_format):
     if obfuscate:
         obfuscate_name(net_def)
-    else:
-        rename_tensor(net_def)
 
     output_dir = output_dir + '/'
     # update tensor type

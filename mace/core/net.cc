@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <utility>
+#include <algorithm>
+#include <limits>
 
 #include "mace/core/macros.h"
 #include "mace/core/net.h"
@@ -125,6 +127,24 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
 
     VLOG(3) << "Operator " << op->debug_def().name()
             << " has shape: " << MakeString(op->Output(0)->shape());
+
+    if (EnvEnabled("MACE_LOG_TENSOR_RANGE") && device_type_ == CPU) {
+      for (int i = 0; i < op->OutputSize(); ++i) {
+        int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));
+        if (data_type == static_cast<int>(DT_FLOAT)) {
+          float max_v = std::numeric_limits<float>::lowest();
+          float min_v = std::numeric_limits<float>::max();
+          Tensor::MappingGuard guard(op->Output(i));
+          const float *output_data = op->Output(i)->data<float>();
+          for (index_t j = 0; j < op->Output(i)->size(); ++j) {
+            max_v = std::max(max_v, output_data[j]);
+            min_v = std::min(min_v, output_data[j]);
+          }
+          LOG(INFO) << "Tensor range @@" << op->debug_def().output(i)
+                    << "@@" << min_v << "," << max_v;
+        }
+      }
+    }
   }
 
   return MACE_SUCCESS;

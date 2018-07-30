@@ -217,6 +217,10 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
     const index_t input_shape[4] =
         {batch, input_channels, input_height, input_width};
 
+    // make host compiler happy
+    MACE_UNUSED(pad_hw);
+    MACE_UNUSED(input_shape);
+
     if (filter_h == 3 && filter_w == 3 && stride_h == 1 && stride_w == 1
       && dilation_h == 1 && dilation_w == 1) {
       conv_func = [=](const float *input, float *output) {
