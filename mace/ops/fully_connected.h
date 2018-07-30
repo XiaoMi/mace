@@ -42,17 +42,23 @@ class FullyConnectedOp : public Operator<D, T> {
     if (D == DeviceType::CPU) {
       MACE_CHECK(
           input->dim(1) == weight->dim(1) && input->dim(2) == weight->dim(2) &&
-              input->dim(3) == weight->dim(3) && weight->dim(0) == bias->dim(0),
+              input->dim(3) == weight->dim(3),
           "The shape of Input: ", MakeString(input->shape()),
-          "The shape of Weight: ", MakeString(weight->shape()), " and Bias ",
-          bias->dim(0), " don't match.");
+          "The shape of Weight: ", MakeString(weight->shape()),
+          " don't match.");
     } else {
       MACE_CHECK(
           input->dim(1) == weight->dim(2) && input->dim(2) == weight->dim(3) &&
-              input->dim(3) == weight->dim(1) && weight->dim(0) == bias->dim(0),
+              input->dim(3) == weight->dim(1),
           "The shape of Input: ", MakeString(input->shape()),
-          "The shape of Weight: ", MakeString(weight->shape()), " and Bias ",
-          bias->dim(0), " don't match.");
+          "The shape of Weight: ", MakeString(weight->shape()),
+          " don't match.");
+    }
+    if (bias) {
+      MACE_CHECK(weight->dim(0) == bias->dim(0),
+                 "The shape of Weight: ", MakeString(weight->shape()),
+                 " and shape of Bias: ", bias->dim(0),
+                 " don't match.");
     }
 
     return functor_(input, weight, bias, output, future);
