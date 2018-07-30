@@ -64,17 +64,20 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
 
     Tensor::MappingGuard guard_input(input);
     Tensor::MappingGuard guard_weight(weight);
-    Tensor::MappingGuard guard_bias(bias);
     Tensor::MappingGuard guard_output(output);
     const float *input_ptr = input->data<float>();
     const float *weight_ptr = weight->data<float>();
-    const float *bias_ptr = bias == nullptr ? nullptr : bias->data<float>();
     float *output_ptr = output->mutable_data<float>();
 
     Gemv(weight_ptr, input_ptr, N, input_size, output_size, output_ptr);
-    for (int i = 0; i < N; ++i) {
-      for (int j = 0; j < output_size; ++j) {
-        output_ptr[j + i * output_size] += bias_ptr[j];
+
+    if (bias) {
+      Tensor::MappingGuard guard_bias(bias);
+      const float *bias_ptr = bias == nullptr ? nullptr : bias->data<float>();
+      for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < output_size; ++j) {
+          output_ptr[j + i * output_size] += bias_ptr[j];
+        }
       }
     }
 
