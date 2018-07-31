@@ -18,6 +18,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <sstream>
 #include <vector>

@@ -16,6 +16,7 @@
 #define MACE_BENCHMARK_STATISTICS_H_
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <limits>
 #include <map>
