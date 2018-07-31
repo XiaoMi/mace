@@ -17,8 +17,20 @@ import operator
 from mace.proto import mace_pb2
 
 from mace.python.tools.converter_tool import base_converter as cvt
+from mace.python.tools.converter_tool.base_converter import DeviceType
 from mace.python.tools.convert_util import calculate_image_shape
 from mace.python.tools.convert_util import OpenCLBufferType
+
+
+def MemoryTypeToStr(mem_type):
+    if mem_type == mace_pb2.CPU_BUFFER:
+        return 'CPU_BUFFER'
+    elif mem_type == mace_pb2.GPU_BUFFER:
+        return 'GPU_BUFFER'
+    elif mem_type == mace_pb2.GPU_IMAGE:
+        return 'GPU_IMAGE'
+    else:
+        return 'UNKNOWN'
 
 
 class MemoryBlock(object):
@@ -88,6 +100,7 @@ class MemoryOptimizer(object):
             arena = self.net_def.mem_arena
             block = arena.mem_block.add()
             block.mem_id = mem
+            block.device_type = DeviceType.CPU.value
             block.mem_type = self.mem_block[mem].mem_type
             block.x = self.mem_block[mem].block[0]
             block.y = 1
@@ -103,7 +116,8 @@ class MemoryOptimizer(object):
     def get_total_optimized_mem_size(self):
         optimized_mem_size = 0
         for mem in self.mem_block:
-            print mem, self.mem_block[mem].mem_type, self.mem_block[mem].block
+            print mem, MemoryTypeToStr(self.mem_block[mem].mem_type), \
+                self.mem_block[mem].block
             optimized_mem_size += self.mem_size(self.mem_block[mem])
         return optimized_mem_size
 
@@ -165,7 +179,7 @@ class MemoryOptimizer(object):
                             self.idle_mem.remove(mem_id)
 
                     if mem_id == -1:
-                        mem_id = self.mem_id_base() + self.total_mem_count
+                        mem_id = self.total_mem_count
                         self.total_mem_count += 1
                         self.mem_block[mem_id] = op_mem_block
 
@@ -197,9 +211,6 @@ class MemoryOptimizer(object):
         print("origin mem: %d, optimized mem: %d" % (
               self.get_total_origin_mem_size(),
               self.get_total_optimized_mem_size()))
-
-    def mem_id_base(self):
-        return 0
 
 
 class GPUMemoryOptimizer(MemoryOptimizer):
@@ -256,6 +267,7 @@ class GPUMemoryOptimizer(MemoryOptimizer):
             arena = self.net_def.mem_arena
             block = arena.mem_block.add()
             block.mem_id = mem
+            block.device_type = DeviceType.GPU.value
             block.mem_type = self.mem_block[mem].mem_type
             block.x = self.mem_block[mem].block[0]
             block.y = self.mem_block[mem].block[1]
@@ -278,9 +290,6 @@ class GPUMemoryOptimizer(MemoryOptimizer):
 
         net_ocl_max_img_size_arg.ints[:] = [max_image_size_x,
                                             max_image_size_y]
-
-    def mem_id_base(self):
-        return 20000
 
 
 def optimize_gpu_memory(net_def):
