@@ -41,7 +41,7 @@ SerialNet::SerialNet(
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
-    // TODO(liuqi): refactor based on PB
+    // TODO(liuqi): refactor to add device_type to OperatorDef
     const int op_device =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             operator_def, "device", static_cast<int>(device_type_));

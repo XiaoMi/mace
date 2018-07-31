@@ -79,9 +79,10 @@ message OperatorDef {
 // for memory optimization
 message MemoryBlock {
   optional int32 mem_id = 1;
-  optional MemoryType mem_type = 2;
-  optional uint32 x = 3;
-  optional uint32 y = 4;
+  optional int32 device_type = 2;
+  optional MemoryType mem_type = 3;
+  optional uint32 x = 4;
+  optional uint32 y = 5;
 }
 message MemoryArena {
   repeated MemoryBlock mem_block = 1;

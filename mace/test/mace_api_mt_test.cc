@@ -224,8 +224,7 @@ std::map<std::string, int> AddMemoryOptimization(
     const std::vector<std::vector<int64_t>> &output_shapes,
     NetDef *net_def) {
   std::map<std::string, int> res;
-  // TODO(liuqi) refactor based on PB
-  int mem_id = 20000;
+  int mem_id = 0;
   size_t input_shape_size = input_shapes.size();
   uint32_t in_mem_block_x = 0;
   uint32_t in_mem_block_y = 0;
@@ -244,6 +243,7 @@ std::map<std::string, int> AddMemoryOptimization(
   for (size_t i = 0; i < input_size; ++i) {
     MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
     mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_device_type(DeviceType::GPU);
     mem_blk_ptr->set_mem_type(MemoryType::GPU_IMAGE);
     mem_blk_ptr->set_x(in_mem_block_x);
     mem_blk_ptr->set_y(in_mem_block_y);
@@ -264,6 +264,7 @@ std::map<std::string, int> AddMemoryOptimization(
   for (size_t i = 0; i < output_size; ++i) {
     MemoryBlock *mem_blk_ptr = mem_arena_ptr->add_mem_block();
     mem_blk_ptr->set_mem_id(mem_id);
+    mem_blk_ptr->set_device_type(DeviceType::GPU);
     mem_blk_ptr->set_mem_type(MemoryType::GPU_IMAGE);
     mem_blk_ptr->set_x(out_mem_block_x);
     mem_blk_ptr->set_y(out_mem_block_y);

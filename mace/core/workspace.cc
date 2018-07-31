@@ -185,7 +185,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   // As DSP may have different data output type for each op,
   // we stick to the same concept.
   for (auto &op : net_def.op()) {
-    // TODO(liuqi): refactor based on PB
+    // TODO(liuqi): refactor to add device_type to OperatorDef
     const int op_device =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));
@@ -204,33 +204,38 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
   // TODO(liyin): memory block should not have concept of type, but to be
   // consistent with gpu, all memory block use float/half as unit
   for (auto &mem_block : net_def.mem_arena().mem_block()) {
-    if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
-      std::unique_ptr<BufferBase> tensor_buf(
-          new Buffer(GetDeviceAllocator(DeviceType::CPU)));
-      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-          mem_block.x() * GetEnumTypeSize(dtype)
-              + MACE_EXTRA_BUFFER_PAD_SIZE));
-      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                        std::move(tensor_buf));
-    } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
-      std::unique_ptr<BufferBase> image_buf(
-          new Image());
-      MACE_RETURN_IF_ERROR(image_buf->Allocate(
-          {mem_block.x(), mem_block.y()}, dtype));
-      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                        std::move(image_buf));
-    } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
-      std::unique_ptr<BufferBase> tensor_buf(
-          new Buffer(GetDeviceAllocator(DeviceType::GPU)));
-      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-          mem_block.x() * GetEnumTypeSize(dtype)));
-      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                        std::move(tensor_buf));
+    if (mem_block.device_type() == device_type) {
+      VLOG(3) << "Preallocate memory block. id: " << mem_block.mem_id()
+              << ", device type: " << mem_block.device_type()
+              << ", memory type: " << mem_block.mem_type();
+      if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
+        std::unique_ptr<BufferBase> tensor_buf(
+            new Buffer(GetDeviceAllocator(DeviceType::CPU)));
+        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+            mem_block.x() * GetEnumTypeSize(dtype)
+                + MACE_EXTRA_BUFFER_PAD_SIZE));
+        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                          std::move(tensor_buf));
+      } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
+        std::unique_ptr<BufferBase> image_buf(
+            new Image());
+        MACE_RETURN_IF_ERROR(image_buf->Allocate(
+            {mem_block.x(), mem_block.y()}, dtype));
+        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                          std::move(image_buf));
+      } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
+        std::unique_ptr<BufferBase> tensor_buf(
+            new Buffer(GetDeviceAllocator(DeviceType::GPU)));
+        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+            mem_block.x() * GetEnumTypeSize(dtype)));
+        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                          std::move(tensor_buf));
+      }
     }
   }
   VLOG(3) << "Preallocate buffer to tensors";
   for (auto &op : net_def.op()) {
-    // TODO(liuqi): refactor based on PB
+    // TODO(liuqi): refactor to add device_type to OperatorDef
     const int op_device =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             op, "device", static_cast<int>(device_type));

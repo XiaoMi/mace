@@ -129,6 +129,7 @@ void CreateMemoryArena(mace::MemoryArena *mem_arena) {
 
   mace::MemoryBlock* mem_block{{i}} = mem_arena->add_mem_block();
   mem_block{{i}}->set_mem_id({{net.mem_arena.mem_block[i].mem_id}});
+  mem_block{{i}}->set_device_type(static_cast<DeviceType>({{net.mem_arena.mem_block[i].device_type}}));
   mem_block{{i}}->set_mem_type(static_cast<MemoryType>({{net.mem_arena.mem_block[i].mem_type}}));
   mem_block{{i}}->set_x({{net.mem_arena.mem_block[i].x}});
   mem_block{{i}}->set_y({{net.mem_arena.mem_block[i].y}});
