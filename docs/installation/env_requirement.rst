@@ -45,7 +45,7 @@ Optional dependencies
       - Remark
     * - Android NDK
       - `NDK installation guide <https://developer.android.com/ndk/guides/setup#install>`__
-      - Required by Android build, r15b, r15c, r16b
+      - Required by Android build, r15b, r15c, r16b, r17b
     * - ADB
       - apt-get install android-tools-adb
       - Required by Android run, >= 1.0.32
@@ -64,4 +64,5 @@ Optional dependencies
 
 .. note::
 
-    For Android build, `ANDROID_NDK_HOME` must be confifigured by using ``export ANDROID_NDK_HOME=/path/to/ndk``
+    - For Android build, `ANDROID_NDK_HOME` must be confifigured by using ``export ANDROID_NDK_HOME=/path/to/ndk``
+    - It will link ``libc++`` instead of ``libgnustl`` if NDK version not less than ``17``
