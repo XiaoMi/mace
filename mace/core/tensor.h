@@ -217,7 +217,11 @@ class Tensor {
 
   inline void Reshape(const std::vector<index_t> &shape) {
     shape_ = shape;
-    MACE_CHECK(raw_size() <= buffer_->size());
+    if (has_opencl_image()) {
+      MACE_CHECK(raw_size() <= 4 * buffer_->size());
+    } else {
+      MACE_CHECK(raw_size() <= buffer_->size());
+    }
   }
 
   inline MaceStatus Resize(const std::vector<index_t> &shape) {
