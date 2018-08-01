@@ -50,11 +50,11 @@ The Input/Output Tensor is stored in NHWC format:
     * - Height-Major Input/Output
       - NHWC
       - [W * C, N * (H+3)/4]
-      - Winograd Convolution format
+      - WinogradTransform and MatMul output format
     * - Width-Major Input/Output
       - NHWC
       - [(W+3)/4 * C, N * H]
-      - Winograd Convolution format
+      - Unused now
 
 Each Pixel of **Image** contains 4 elements. The below table list the
 coordination relation between **Image** and **Buffer**.
