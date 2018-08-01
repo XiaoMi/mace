@@ -65,4 +65,4 @@ Optional dependencies
 .. note::
 
     - For Android build, `ANDROID_NDK_HOME` must be confifigured by using ``export ANDROID_NDK_HOME=/path/to/ndk``
-    - It will link ``libc++`` instead of ``libgnustl`` if NDK version not less than ``17``
+    - It will link ``libc++`` instead of ``libgnustl`` if ``NDK version >= r17b`` and ``bazel version >= 0.13.0``
