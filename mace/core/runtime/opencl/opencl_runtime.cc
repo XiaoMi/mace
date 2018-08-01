@@ -321,7 +321,8 @@ OpenCLRuntime::OpenCLRuntime():
   std::stringstream ss;
   ss << default_platform.getInfo<CL_PLATFORM_NAME>()
      << ", " << default_platform.getInfo<CL_PLATFORM_PROFILE>() << ", "
-     << default_platform.getInfo<CL_PLATFORM_VERSION>();
+     << default_platform.getInfo<CL_PLATFORM_VERSION>() << ", "
+     << MaceVersion();
   platform_info_ = ss.str();
   VLOG(1) << "Using platform: " << platform_info_;
 
