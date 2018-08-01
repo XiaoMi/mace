@@ -57,6 +57,7 @@ class KVStorage {
   virtual const std::vector<unsigned char> *Find(const std::string &key) = 0;
   // return: 0 for success, -1 for error
   virtual int Flush() = 0;
+  virtual ~KVStorage() {}
 };
 
 class KVStorageFactory {
