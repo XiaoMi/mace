@@ -16,10 +16,8 @@ __kernel void channel_shuffle(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
   const int group_blks = groups / 4;
   const int groups_blks_width = group_blks * width;

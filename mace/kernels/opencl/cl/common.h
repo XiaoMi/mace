@@ -38,23 +38,14 @@
   CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)   \
   CMD_TYPE(write_image, CMD_DATA_TYPE)(image, coord, value);
 
-#ifndef NON_UNIFORM_WORK_GROUP
-
 #define GLOBAL_WORK_GROUP_SIZE_DIM2 \
     __private const int global_size_dim0,       \
     __private const int global_size_dim1,
+
 #define GLOBAL_WORK_GROUP_SIZE_DIM3 \
     __private const int global_size_dim0,       \
     __private const int global_size_dim1,       \
     __private const int global_size_dim2,
-
-#else
-
-#define GLOBAL_WORK_GROUP_SIZE_DIM2
-#define GLOBAL_WORK_GROUP_SIZE_DIM3
-
-#endif
-
 
 #ifdef OUT_OF_RANGE_CHECK
 

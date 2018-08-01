@@ -446,10 +446,8 @@ __kernel void weight_height_buffer_to_image(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int inner_size = global_size_dim0;
-#else
-  const int inner_size = get_global_size(0);
 #endif
+  const int inner_size = global_size_dim0;
 
   const int out_chan_idx = h << 2;
   const int in_chan_idx = w % in_channels;
@@ -492,10 +490,8 @@ __kernel void weight_height_image_to_buffer(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int inner_size = global_size_dim0;
-#else
-  const int inner_size = get_global_size(0);
 #endif
+  const int inner_size = global_size_dim0;
 
   const int out_chan_idx = h << 2;
   const int in_chan_idx = w % in_channels;
@@ -536,10 +532,8 @@ __kernel void weight_width_buffer_to_image(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int out_channels = global_size_dim1;
-#else
-  const int out_channels = get_global_size(1);
 #endif
+  const int out_channels = global_size_dim1;
   const int in_chan_blks = (in_channels + 3) >> 2;
   const int hw_size = height * width;
   const int inner_size = in_channels * hw_size;
@@ -585,10 +579,8 @@ __kernel void weight_width_image_to_buffer(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int out_channels = global_size_dim1;
-#else
-  const int out_channels = get_global_size(1);
 #endif
+  const int out_channels = global_size_dim1;
   const int in_chan_blks = (in_channels + 3) >> 2;
   const int hw_size = height * width;
   const int inner_size = in_channels * hw_size;
@@ -632,10 +624,8 @@ __kernel void winograd_filter_buffer_to_image_2x2(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int out_channels = global_size_dim1;
-#else
-  const int out_channels = get_global_size(1);
 #endif
+  const int out_channels = global_size_dim1;
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
@@ -782,10 +772,8 @@ __kernel void winograd_filter_buffer_to_image_6x6(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int out_channels = global_size_dim1;
-#else
-  const int out_channels = get_global_size(1);
 #endif
+  const int out_channels = global_size_dim1;
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
@@ -960,10 +948,8 @@ __kernel void winograd_filter_buffer_to_image_4x4(KERNEL_ERROR_PARAMS
   if (w >= global_size_dim0 || h >= global_size_dim1) {
     return;
   }
-  const int out_channels = global_size_dim1;
-#else
-  const int out_channels = get_global_size(1);
 #endif
+  const int out_channels = global_size_dim1;
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;

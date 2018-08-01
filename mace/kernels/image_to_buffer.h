@@ -16,19 +16,18 @@
 #define MACE_KERNELS_IMAGE_TO_BUFFER_H_
 
 #include <memory>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-#include "mace/kernels/opencl/helper.h"
+#include "mace/kernels/opencl/common.h"
 
 namespace mace {
 namespace kernels {
 
 struct ImageToBufferFunctorBase {
   explicit ImageToBufferFunctorBase(const int wino_blk_size)
-    : kernel_error_(nullptr),
-      wino_blk_size_(wino_blk_size) {}
-  std::unique_ptr<BufferBase> kernel_error_;
+    : wino_blk_size_(wino_blk_size) {}
   const int wino_blk_size_;
 };
 
@@ -37,9 +36,9 @@ struct ImageToBufferFunctor : ImageToBufferFunctorBase {
   explicit ImageToBufferFunctor(const int wino_blk_size)
     : ImageToBufferFunctorBase(wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
-                  const BufferType type,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        const BufferType type,
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(input);
     MACE_UNUSED(type);
     MACE_UNUSED(output);
@@ -54,9 +53,13 @@ struct ImageToBufferFunctor<DeviceType::GPU, T> : ImageToBufferFunctorBase {
   explicit ImageToBufferFunctor(const int wino_blk_size)
     : ImageToBufferFunctorBase(wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
-                  const BufferType type,
-                  Tensor *output,
-                  StatsFuture *future);
+                        const BufferType type,
+                        Tensor *output,
+                        StatsFuture *future);
+
+  cl::Kernel kernel_;
+  std::unique_ptr<BufferBase> kernel_error_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namespace kernels

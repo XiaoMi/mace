@@ -28,7 +28,7 @@
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/kernels/opencl/helper.h"
+#include "mace/kernels/opencl/common.h"
 #include "mace/ops/ops_register.h"
 #include "mace/utils/utils.h"
 

@@ -40,9 +40,8 @@ bool BufferToImageOpImpl(Tensor *buffer,
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
-  if (runtime->IsNonUniformWorkgroupsSupported()) {
-    built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
-  }
+  OUT_OF_RANGE_CONFIG(kernel_error);
+  NON_UNIFORM_WG_CONFIG;
   if (buffer->dtype() == image->dtype()) {
     built_options.emplace("-DDATA_TYPE=" +
                           DtToCLDt(DataTypeToEnum<float>::value));
@@ -50,57 +49,46 @@ bool BufferToImageOpImpl(Tensor *buffer,
                           DtToCLCMDDt(DataTypeToEnum<float>::value));
   } else {
     built_options.emplace("-DDATA_TYPE=" +
-                          DtToUpstreamCLDt(DataTypeToEnum<float>::value));
-    built_options.emplace("-DCMD_DATA_TYPE=" +
-                          DtToUpstreamCLCMDDt(DataTypeToEnum<float>::value));
-  }
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    built_options.emplace("-DOUT_OF_RANGE_CHECK");
-    kernel_error = std::move(std::unique_ptr<Buffer>(
-        new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-    MACE_RETURN_IF_ERROR(kernel_error->Allocate(1));
-    kernel_error->Map(nullptr);
-    *(kernel_error->mutable_data<char>()) = 0;
-    kernel_error->UnMap();
+                          DtToUpCompatibleCLDt(DataTypeToEnum<float>::value));
+    built_options.emplace(
+        "-DCMD_DATA_TYPE=" +
+            DtToUpCompatibleCLCMDDt(DataTypeToEnum<float>::value));
   }
 
-  cl::Kernel b2f_kernel;
-
+  cl::Kernel kernel;
   cl_int error = runtime->BuildKernel("buffer_to_image",
                                       obfuscated_kernel_name,
-                                      built_options, &b2f_kernel);
+                                      built_options,
+                                      &kernel);
   if (error != CL_SUCCESS) {
     return false;
   }
 
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
-    b2f_kernel.setArg(idx++,
-                      *(static_cast<cl::Buffer *>(kernel_error->buffer())));
+    kernel.setArg(idx++,
+                  *(static_cast<cl::Buffer *>(kernel_error->buffer())));
   }
-  if (!runtime->IsNonUniformWorkgroupsSupported()) {
-    b2f_kernel.setArg(idx++, gws[0]);
-    b2f_kernel.setArg(idx++, gws[1]);
-  }
-  b2f_kernel.setArg(idx++, *(buffer->opencl_buffer()));
+  SET_2D_GWS_ARGS(kernel);
+  kernel.setArg(idx++, *(buffer->opencl_buffer()));
   MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0,
              "buffer offset not aligned");
-  b2f_kernel.setArg(idx++,
+  kernel.setArg(idx++,
                     static_cast<uint32_t>(buffer->buffer_offset() /
                                           GetEnumTypeSize(buffer->dtype())));
-  b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-  b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-  b2f_kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
-  b2f_kernel.setArg(idx++, *(image->opencl_image()));
+  kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
+  kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
+  kernel.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+  kernel.setArg(idx++, *(image->opencl_image()));
 
   const uint32_t kwg_size =
-      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(b2f_kernel));
+      static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
   const std::vector<uint32_t> lws = {16, kwg_size / 16};
 
   cl::Event event;
   if (runtime->IsNonUniformWorkgroupsSupported()) {
     error = runtime->command_queue().enqueueNDRangeKernel(
-        b2f_kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
+        kernel, cl::NullRange, cl::NDRange(gws[0], gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   } else {
     std::vector<uint32_t> roundup_gws(lws.size());
@@ -109,7 +97,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
     }
 
     error = runtime->command_queue().enqueueNDRangeKernel(
-        b2f_kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
+        kernel, cl::NullRange, cl::NDRange(roundup_gws[0], roundup_gws[1]),
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
   if (error != CL_SUCCESS) {

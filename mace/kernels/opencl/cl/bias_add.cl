@@ -14,10 +14,8 @@ __kernel void bias_add(KERNEL_ERROR_PARAMS
       || hb >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
   const int pos = mad24(ch_blk, width, w);
   DATA_TYPE4 in = READ_IMAGET(input, SAMPLER, (int2)(pos, hb));

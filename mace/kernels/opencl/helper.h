@@ -15,7 +15,9 @@
 #ifndef MACE_KERNELS_OPENCL_HELPER_H_
 #define MACE_KERNELS_OPENCL_HELPER_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -23,26 +25,71 @@
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/types.h"
+#include "mace/kernels/opencl/common.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
 
-const float kMaxKernelExeTime = 1000.0;  // microseconds
+#define OUT_OF_RANGE_CONFIG(kernel_error)                   \
+  if (runtime->IsOutOfRangeCheckEnabled()) {                \
+    built_options.emplace("-DOUT_OF_RANGE_CHECK");          \
+    (kernel_error) = std::move(std::unique_ptr<Buffer>(     \
+        new Buffer(GetDeviceAllocator(DeviceType::GPU))));  \
+    MACE_RETURN_IF_ERROR((kernel_error)->Allocate(1));      \
+    (kernel_error)->Map(nullptr);                           \
+    *((kernel_error)->mutable_data<char>()) = 0;            \
+    (kernel_error)->UnMap();                                \
+  }
 
+#define OUT_OF_RANGE_SET_ARG                                \
+  if (runtime->IsOutOfRangeCheckEnabled()) {                \
+    kernel_.setArg(idx++,                                   \
+    *(static_cast<cl::Buffer *>(kernel_error_->buffer()))); \
+  }
+
+#define OUT_OF_RANGE_SET_ARG_PTR                              \
+  if (runtime->IsOutOfRangeCheckEnabled()) {                  \
+    kernel->setArg(idx++,                                     \
+    *(static_cast<cl::Buffer *>((*kernel_error)->buffer()))); \
+  }
+
+#define OUT_OF_RANGE_VALIDATION(kernel_error)                              \
+  if (runtime->IsOutOfRangeCheckEnabled()) {                               \
+    (kernel_error)->Map(nullptr);                                          \
+    char *kerror_code = (kernel_error)->mutable_data<char>();              \
+    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;\
+    (kernel_error)->UnMap();                                               \
+  }
+
+#define NON_UNIFORM_WG_CONFIG                           \
+  if (runtime->IsNonUniformWorkgroupsSupported()) {     \
+    built_options.emplace("-DNON_UNIFORM_WORK_GROUP");  \
+  }
+
+#define SET_3D_GWS_ARGS(kernel) \
+  kernel.setArg(idx++, gws[0]); \
+  kernel.setArg(idx++, gws[1]); \
+  kernel.setArg(idx++, gws[2]);
+
+#define SET_2D_GWS_ARGS(kernel) \
+  kernel.setArg(idx++, gws[0]); \
+  kernel.setArg(idx++, gws[1]);
+
+#define SET_3D_GWS_ARGS_PTR(kernel, gws)  \
+  kernel->setArg(idx++, (gws)[0]);        \
+  kernel->setArg(idx++, (gws)[1]);        \
+  kernel->setArg(idx++, (gws)[2]);
+
+#define SET_2D_GWS_ARGS_PTR(kernel, gws)  \
+  kernel->setArg(idx++, (gws)[0]);        \
+  kernel->setArg(idx++, (gws)[1]);
+
+// Max execution time of OpenCL kernel for tuning to prevent UI stuck.
+const float kMaxKernelExecTime = 1000.0;  // microseconds
+
+// Base GPU cache size used for computing local work group size.
 const int32_t kBaseGPUMemCacheSize = 16384;
-
-enum BufferType {
-  CONV2D_FILTER = 0,
-  IN_OUT_CHANNEL = 1,
-  ARGUMENT = 2,
-  IN_OUT_HEIGHT = 3,
-  IN_OUT_WIDTH = 4,
-  WINOGRAD_FILTER = 5,
-  DW_CONV2D_FILTER = 6,
-  WEIGHT_HEIGHT = 7,
-  WEIGHT_WIDTH = 8,
-};
 
 void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
                      const BufferType type,
@@ -53,41 +100,35 @@ std::vector<index_t> FormatBufferShape(
     const std::vector<index_t> &buffer_shape,
     const BufferType type);
 
-std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
-                                      const BufferType type,
-                                      const int wino_blk_size = 2);
-
+// CPU data type to OpenCL command data type
 std::string DtToCLCMDDt(const DataType dt);
 
-std::string DtToUpstreamCLCMDDt(const DataType dt);
+// CPU data type to upward compatible OpenCL command data type
+// e.g. half -> float
+std::string DtToUpCompatibleCLCMDDt(const DataType dt);
 
+// CPU data type to OpenCL data type
 std::string DtToCLDt(const DataType dt);
 
-std::string DtToUpstreamCLDt(const DataType dt);
+// CPU data type to upward compatible OpenCL data type
+// e.g. half -> float
+std::string DtToUpCompatibleCLDt(const DataType dt);
 
+// Tuning or Run OpenCL kernel with 3D work group size
 MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
                                StatsFuture *future);
 
+// Tuning or Run OpenCL kernel with 2D work group size
 MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
                                StatsFuture *future);
 
-inline void SetFuture(StatsFuture *future, const cl::Event &event) {
-  if (future != nullptr) {
-    future->wait_fn = [event](CallStats *stats) {
-      event.wait();
-      if (stats != nullptr) {
-        OpenCLRuntime::Global()->GetCallStats(event, stats);
-      }
-    };
-  }
-}
-
+// Check whether limit OpenCL kernel time flag open.
 inline bool LimitKernelTime() {
   const char *flag = getenv("MACE_LIMIT_OPENCL_KERNEL_TIME");
   return flag != nullptr && strlen(flag) == 1 && flag[0] == '1';

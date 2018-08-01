@@ -20,10 +20,8 @@ __kernel void winograd_transform_2x2(KERNEL_ERROR_PARAMS
   if (out_width_idx >= global_size_dim0 || chan_blk_idx >= global_size_dim1) {
     return;
   }
-  const int chan_blk_size = global_size_dim1;
-#else
-  const int chan_blk_size = get_global_size(1);
 #endif
+  const int chan_blk_size = global_size_dim1;
 
   const int batch_idx = out_width_idx * round_hw_r;
   const int t_idx = mad24(batch_idx, -round_hw, out_width_idx);
@@ -141,10 +139,8 @@ __kernel void winograd_inverse_transform_2x2(KERNEL_ERROR_PARAMS
   if (width_idx >= global_size_dim0 || height_idx >= global_size_dim1) {
     return;
   }
-  const int out_channel = global_size_dim1;
-#else
-  const int out_channel = get_global_size(1);
 #endif
+  const int out_channel = global_size_dim1;
 
   int width = width_idx;
   int height = height_idx;
@@ -255,10 +251,8 @@ __kernel void winograd_transform_4x4(KERNEL_ERROR_PARAMS
   if (out_width_idx >= global_size_dim0 || chan_blk_idx >= global_size_dim1) {
     return;
   }
-  const int chan_blk_size = global_size_dim1;
-#else
-  const int chan_blk_size = get_global_size(1);
 #endif
+  const int chan_blk_size = global_size_dim1;
 
   const int batch_idx = out_width_idx * round_hw_r;
   const int t_idx = mad24(batch_idx, -round_hw, out_width_idx);
@@ -417,10 +411,8 @@ __kernel void winograd_inverse_transform_4x4(KERNEL_ERROR_PARAMS
   if (width_idx >= global_size_dim0 || height_idx >= global_size_dim1) {
     return;
   }
-  const int out_channel = global_size_dim1;
-#else
-  const int out_channel = get_global_size(1);
 #endif
+  const int out_channel = global_size_dim1;
 
   const int batch = width_idx * round_hw_r;
   int h = mad24(batch, -round_hw, width_idx);

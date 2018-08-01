@@ -80,7 +80,7 @@ __kernel void fully_connected_width(KERNEL_ERROR_PARAMS
                                     __private const float relux_max_limit) {
   const int inter_out_idx = get_global_id(0);
   const int width_blk_idx = get_global_id(1);
-  const int width_blk_count = get_global_size(1);
+  const int width_blk_count = global_size_dim1;
   const int batch_out_blk_idx = get_global_id(2);
 
   const int batch_idx = batch_out_blk_idx / out_blks;

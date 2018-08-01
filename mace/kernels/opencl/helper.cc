@@ -180,22 +180,6 @@ std::vector<index_t> FormatBufferShape(
   }
 }
 
-std::vector<index_t> CalWinogradShape(const std::vector<index_t> &shape,
-                                      const BufferType type,
-                                      const int wino_blk_size) {
-  if (type == WINOGRAD_FILTER) {
-    return {(wino_blk_size + 2) * (wino_blk_size + 2), shape[0], shape[1]};
-  } else if (type == IN_OUT_HEIGHT) {
-    index_t out_width =
-        shape[0] * ((shape[1] + wino_blk_size - 1) / wino_blk_size) *
-            ((shape[2] + wino_blk_size - 1) / wino_blk_size);
-    return {(wino_blk_size + 2) * (wino_blk_size + 2), shape[3], out_width};
-  } else {
-    LOG(FATAL) << "Mace not supported yet.";
-    return std::vector<index_t>();
-  }
-}
-
 std::string DtToCLDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
@@ -220,7 +204,7 @@ std::string DtToCLCMDDt(const DataType dt) {
   }
 }
 
-std::string DtToUpstreamCLDt(const DataType dt) {
+std::string DtToUpCompatibleCLDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
     case DT_HALF:
@@ -231,7 +215,7 @@ std::string DtToUpstreamCLDt(const DataType dt) {
   }
 }
 
-std::string DtToUpstreamCLCMDDt(const DataType dt) {
+std::string DtToUpCompatibleCLCMDDt(const DataType dt) {
   switch (dt) {
     case DT_FLOAT:
     case DT_HALF:
@@ -357,7 +341,8 @@ MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
         double elapse_time = timer->AccumulatedMicros();
         timer->ClearTiming();
         uint32_t num_blocks = std::min(
-            static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[2]);
+            static_cast<uint32_t>(elapse_time / kMaxKernelExecTime) + 1,
+            gws[2]);
         uint32_t block_size = gws[2] / num_blocks;
         if (!runtime->IsNonUniformWorkgroupsSupported()) {
           block_size = RoundUp(block_size, params[2]);
@@ -465,7 +450,8 @@ MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
         double elapse_time = timer->AccumulatedMicros();
         timer->ClearTiming();
         uint32_t num_blocks = std::min(
-            static_cast<uint32_t>(elapse_time / kMaxKernelExeTime) + 1, gws[1]);
+            static_cast<uint32_t>(elapse_time / kMaxKernelExecTime) + 1,
+            gws[1]);
         uint32_t block_size = gws[1] / num_blocks;
         if (!runtime->IsNonUniformWorkgroupsSupported()) {
           block_size = RoundUp(block_size, params[1]);

@@ -84,22 +84,12 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
+    OUT_OF_RANGE_CONFIG(*kernel_error);
+    NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d_3x3");
     built_options.emplace("-Dconv_2d_3x3=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      built_options.emplace("-DOUT_OF_RANGE_CHECK");
-      *kernel_error = std::move(std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      MACE_RETURN_IF_ERROR((*kernel_error)->Allocate(1));
-      (*kernel_error)->Map(nullptr);
-      *((*kernel_error)->mutable_data<char>()) = 0;
-      (*kernel_error)->UnMap();
-    }
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
-    }
+    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
     switch (activation) {
       case NOOP:
@@ -131,17 +121,11 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
 
+  // Support different input size
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      kernel->setArg(idx++,
-                     *(static_cast<cl::Buffer *>((*kernel_error)->buffer())));
-    }
-    if (!runtime->IsNonUniformWorkgroupsSupported()) {
-      kernel->setArg(idx++, gws[0]);
-      kernel->setArg(idx++, gws[1]);
-      kernel->setArg(idx++, gws[2]);
-    }
+    OUT_OF_RANGE_SET_ARG_PTR;
+    SET_3D_GWS_ARGS_PTR(kernel, gws);
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -169,14 +153,7 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
                                            gws, lws, future));
-
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    (*kernel_error)->Map(nullptr);
-    char *kerror_code = (*kernel_error)->mutable_data<char>();
-    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
-    (*kernel_error)->UnMap();
-  }
-
+  OUT_OF_RANGE_VALIDATION(*kernel_error);
   return MACE_SUCCESS;
 }
 

@@ -23,11 +23,8 @@ __kernel void pad(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
-
+  const int width = global_size_dim1;
 
   DATA_TYPE4 data = constant_value;
   if ((height_padding <= height_idx && height_idx < input_padded_height) &&

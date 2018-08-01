@@ -19,12 +19,9 @@ __kernel void resize_bilinear_nocache(KERNEL_ERROR_PARAMS
       || hb >= global_size_dim2) {
     return;
   }
+#endif
   const int ch_blks = global_size_dim0;
   const int out_width = global_size_dim1;
-#else
-  const int ch_blks = get_global_size(0);
-  const int out_width = get_global_size(1);
-#endif
 
   const int b = hb / out_height;
   const int h = hb % out_height;

@@ -74,11 +74,13 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
   auto runtime = OpenCLRuntime::Global();
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
+    OUT_OF_RANGE_CONFIG(kernel_error_);
+    NON_UNIFORM_WG_CONFIG;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("eltwise");
     built_options.emplace("-Deltwise=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
+    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
     built_options.emplace(MakeString("-DELTWISE_TYPE=", type_));
     if (input1 == nullptr) {
       built_options.emplace("-DINPUT_TYPE=1");
@@ -90,19 +92,6 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
       if (swapped) built_options.emplace("-DSWAPPED");
     }
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");
-
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      built_options.emplace("-DOUT_OF_RANGE_CHECK");
-      kernel_error_ = std::move(std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
-      kernel_error_->Map(nullptr);
-      *(kernel_error_->mutable_data<char>()) = 0;
-      kernel_error_->UnMap();
-    }
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
-    }
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("eltwise", kernel_name,
                                               built_options, &kernel_));
 
@@ -111,15 +100,8 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
   }
   if (!IsVecEqual(input_shape_, input0->shape())) {
     uint32_t idx = 0;
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      kernel_.setArg(idx++,
-                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
-    }
-    if (!runtime->IsNonUniformWorkgroupsSupported()) {
-      kernel_.setArg(idx++, gws[0]);
-      kernel_.setArg(idx++, gws[1]);
-      kernel_.setArg(idx++, gws[2]);
-    }
+    OUT_OF_RANGE_SET_ARG;
+    SET_3D_GWS_ARGS(kernel_);
     kernel_.setArg(idx++, *(input0->opencl_image()));
     if (input1 == nullptr) {
       kernel_.setArg(idx++, value_);
@@ -144,13 +126,7 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
                                            gws, lws, future));
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    kernel_error_->Map(nullptr);
-    char *kerror_code = kernel_error_->mutable_data<char>();
-    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
-    kernel_error_->UnMap();
-  }
-
+  OUT_OF_RANGE_VALIDATION(kernel_error_);
   return MACE_SUCCESS;
 }
 

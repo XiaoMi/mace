@@ -14,10 +14,8 @@ __kernel void slice(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
   DATA_TYPE4 data = READ_IMAGET(input, SAMPLER,
                                 (int2)(mad24(chan_blk_idx + chan_blk_offset,

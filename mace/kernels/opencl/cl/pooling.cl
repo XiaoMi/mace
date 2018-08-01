@@ -36,10 +36,8 @@ __kernel void pooling(KERNEL_ERROR_PARAMS
       || out_hb_idx >= global_size_dim2) {
     return;
   }
-  const int out_width = global_size_dim1;
-#else
-  const int out_width = get_global_size(1);
 #endif
+  const int out_width = global_size_dim1;
 
   const int batch_idx = mul24((out_hb_idx / out_height), in_height);
   const int in_height_start = mul24((out_hb_idx % out_height), stride) - pad_top;

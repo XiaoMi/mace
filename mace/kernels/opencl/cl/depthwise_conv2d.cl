@@ -30,10 +30,8 @@ __kernel void depthwise_conv2d(KERNEL_ERROR_PARAMS
       || out_hb >= global_size_dim2) {
     return;
   }
-  const short out_w_blks = global_size_dim1;
-#else
-  const short out_w_blks = get_global_size(1);
 #endif
+  const short out_w_blks = global_size_dim1;
 
   const short rounded_in_ch = in_ch_blks << 2;
   const short in_ch_blk = out_ch_blk; // multiplier = 1

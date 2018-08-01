@@ -37,10 +37,8 @@ __kernel void concat_channel(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
   const int input0_chan_blk = (input0_chan + 3) >> 2;
 
@@ -100,10 +98,8 @@ __kernel void concat_channel_multi(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
   DATA_TYPE4 data = 0;
   data = READ_IMAGET(input,

@@ -30,10 +30,8 @@ __kernel void conv_2d(KERNEL_ERROR_PARAMS
       || out_hb >= global_size_dim2) {
     return;
   }
-  const int out_w_blks = global_size_dim1;
-#else
-  const int out_w_blks = get_global_size(1);
 #endif
+  const int out_w_blks = global_size_dim1;
 
 #ifdef BIAS
   DATA_TYPE4 out0 =

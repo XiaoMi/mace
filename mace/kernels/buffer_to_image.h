@@ -16,19 +16,18 @@
 #define MACE_KERNELS_BUFFER_TO_IMAGE_H_
 
 #include <memory>
+#include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-#include "mace/kernels/opencl/helper.h"
+#include "mace/kernels/opencl/common.h"
 
 namespace mace {
 namespace kernels {
 
 struct BufferToImageFunctorBase {
   explicit BufferToImageFunctorBase(const int wino_blk_size)
-    : kernel_error_(nullptr),
-      wino_blk_size_(wino_blk_size) {}
-  std::unique_ptr<BufferBase> kernel_error_;
+    : wino_blk_size_(wino_blk_size) {}
   const int wino_blk_size_;
 };
 
@@ -57,6 +56,10 @@ struct BufferToImageFunctor<DeviceType::GPU, T> : BufferToImageFunctorBase {
                   const BufferType type,
                   Tensor *output,
                   StatsFuture *future);
+
+  cl::Kernel kernel_;
+  std::unique_ptr<BufferBase> kernel_error_;
+  std::vector<index_t> input_shape_;
 };
 
 }  // namespace kernels

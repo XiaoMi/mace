@@ -59,6 +59,8 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   if (kernel_.get() == nullptr) {
     const DataType dt = DataTypeToEnum<T>::value;
     std::set<std::string> built_options;
+    OUT_OF_RANGE_CONFIG(kernel_error_);
+    NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pooling");
     built_options.emplace("-Dpooling=" + kernel_name);
 
@@ -67,23 +69,11 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
       built_options.emplace("-DCMD_DATA_TYPE=" + DtToCLCMDDt(dt));
       built_options.emplace(dt == DT_HALF ? "-DFP16" : "");
     } else {
-      built_options.emplace("-DDATA_TYPE=" + DtToUpstreamCLDt(dt));
-      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpstreamCLCMDDt(dt));
+      built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
+      built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
     }
     if (pooling_type_ == AVG) {
       built_options.emplace("-DPOOL_AVG");
-    }
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      built_options.emplace("-DOUT_OF_RANGE_CHECK");
-      kernel_error_ = std::move(std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
-      kernel_error_->Map(nullptr);
-      *(kernel_error_->mutable_data<char>()) = 0;
-      kernel_error_->UnMap();
-    }
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
     }
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("pooling",
                                               kernel_name,
@@ -130,15 +120,8 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     };
 
     uint32_t idx = 0;
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      kernel_.setArg(idx++,
-                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
-    }
-    if (!runtime->IsNonUniformWorkgroupsSupported()) {
-      kernel_.setArg(idx++, gws[0]);
-      kernel_.setArg(idx++, gws[1]);
-      kernel_.setArg(idx++, gws[2]);
-    }
+    OUT_OF_RANGE_SET_ARG;
+    SET_3D_GWS_ARGS(kernel_);
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
@@ -171,13 +154,7 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
                                            gws.data(), lws, future));
 
-  if (runtime->IsOutOfRangeCheckEnabled()) {
-    kernel_error_->Map(nullptr);
-    char *kerror_code = kernel_error_->mutable_data<char>();
-    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
-    kernel_error_->UnMap();
-  }
-
+  OUT_OF_RANGE_VALIDATION(kernel_error_);
   return MACE_SUCCESS;
 }
 

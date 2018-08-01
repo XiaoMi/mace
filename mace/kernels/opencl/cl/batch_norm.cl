@@ -21,10 +21,8 @@ __kernel void batch_norm(KERNEL_ERROR_PARAMS
       || hb >= global_size_dim2) {
     return;
   }
-  const int width = global_size_dim1;
-#else
-  const int width = get_global_size(1);
 #endif
+  const int width = global_size_dim1;
 
 #ifdef FOLDED_CONSTANT
   DATA_TYPE4 bn_scale = READ_IMAGET(scale, SAMPLER, (int2)(ch_blk, 0));

@@ -15,12 +15,9 @@ __kernel void softmax(KERNEL_ERROR_PARAMS
       || hb_idx >= global_size_dim2) {
     return;
   }
+#endif
   const int chan_blks = global_size_dim0 - 1;
   const int width = global_size_dim1;
-#else
-  const int chan_blks = get_global_size(0) - 1;
-  const int width = get_global_size(1);
-#endif
 
   int pos = width_idx;
   DATA_TYPE max_value = -FLT_MAX;

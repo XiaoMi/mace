@@ -44,23 +44,13 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
+    OUT_OF_RANGE_CONFIG(kernel_error_);
+    NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
     built_options.emplace("-Dslice=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      built_options.emplace("-DOUT_OF_RANGE_CHECK");
-      kernel_error_ = std::move(std::unique_ptr<Buffer>(
-          new Buffer(GetDeviceAllocator(DeviceType::GPU))));
-      MACE_RETURN_IF_ERROR(kernel_error_->Allocate(1));
-      kernel_error_->Map(nullptr);
-      *(kernel_error_->mutable_data<char>()) = 0;
-      kernel_error_->UnMap();
-    }
-    if (runtime->IsNonUniformWorkgroupsSupported()) {
-      built_options.emplace("-DNON_UNIFORM_WORK_GROUP");
-    }
     MACE_RETURN_IF_ERROR(runtime->BuildKernel("slice",
                                               kernel_name,
                                               built_options,
@@ -81,15 +71,8 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   CallStats call_stats{INT64_MAX, 0};
   for (size_t i = 0; i < outputs_count; ++i) {
     uint32_t idx = 0;
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      kernel_.setArg(idx++,
-                     *(static_cast<cl::Buffer *>(kernel_error_->buffer())));
-    }
-    if (!runtime->IsNonUniformWorkgroupsSupported()) {
-      kernel_.setArg(idx++, gws[0]);
-      kernel_.setArg(idx++, gws[1]);
-      kernel_.setArg(idx++, gws[2]);
-    }
+    OUT_OF_RANGE_SET_ARG;
+    SET_3D_GWS_ARGS(kernel_);
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blk * i));
     kernel_.setArg(idx++, *(output_list[i]->opencl_image()));
@@ -111,12 +94,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
           cl::NDRange(lws[0], lws[1], lws[2]), nullptr, &event);
     }
     MACE_CL_RET_STATUS(error);
-    if (runtime->IsOutOfRangeCheckEnabled()) {
-      kernel_error_->Map(nullptr);
-      char *kerror_code = kernel_error_->mutable_data<char>();
-      MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;
-      kernel_error_->UnMap();
-    }
+    OUT_OF_RANGE_VALIDATION(kernel_error_);
     if (future != nullptr && runtime->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
