@@ -82,7 +82,7 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
   kernel_.setArg(idx++, static_cast<int>(height_blocks));
   kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(K)));
 
-  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 1};
+  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
                                            gws, lws, future));
