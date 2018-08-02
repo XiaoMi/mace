@@ -6,6 +6,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
       Label("//repository/opencl-kernel:BUILD.tpl"))
 
   mace_root_path = str(repository_ctx.path(Label("@mace//:BUILD")))[:-len("BUILD")]
+  generated_files_path = repository_ctx.path("gen")
 
   ret = repository_ctx.execute(
       ["test", "-f", "%s/.git/logs/HEAD" % mace_root_path])
@@ -45,8 +46,6 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/softmax.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/space_to_batch.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/winograd_transform.cl"))
-
-  generated_files_path = repository_ctx.path("gen")
 
   python_bin_path = repository_ctx.which("python")
 
