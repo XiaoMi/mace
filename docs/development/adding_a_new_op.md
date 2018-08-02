@@ -82,7 +82,37 @@ void Register_My_Custom_Op(OperatorRegistryBase *op_registry) {
 }  // namespace mace
 
 ```
-And then register the new Op in `mace/core/operator.cc`.
+And then register the new Op in `mace/ops/ops_register.cc`.
+```
+#include "mace/ops/ops_register.h"
+
+namespace mace {
+
+namespace ops {
+// Keep in lexicographical order
+
+...
+
+extern void Register_My_Custom_Op(OperatorRegistryBase *op_registry);
+
+...
+
+}  // namespace ops
+
+
+OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
+  // Keep in lexicographical order
+
+  ...
+
+  ops::Register_My_Custom_Op(this);
+
+  ...
+
+}
+
+}  // namespace mace
+```
 
 Implement the Op kernel code
 ----------------------------
