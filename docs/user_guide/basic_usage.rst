@@ -119,6 +119,7 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
                flatten_atrous_conv
                fold_batch_norms
                fold_old_batch_norms
+               remove_control_dependencies
                strip_unused_nodes
                sort_by_execution_order'
 
@@ -141,6 +142,7 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
                backport_concatv2
                quantize_weights(minimum_size=2)
                quantize_nodes
+               remove_control_dependencies
                strip_unused_nodes
                sort_by_execution_order'
 
