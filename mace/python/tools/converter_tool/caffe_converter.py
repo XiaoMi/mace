@@ -247,7 +247,7 @@ class CaffeConverter(base_converter.ConverterInterface):
 
         # if user set op name as output node, replace it with op name
         for op in self._mace_net_def.op:
-            if op.name in self._option.output_nodes:
+            if op.name in self._option.output_nodes and op.name not in visited:
                 if len(op.output) > 0:
                     self.replace_input_name(
                         consumers.get(op.output[0], []),
