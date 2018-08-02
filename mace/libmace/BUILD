@@ -15,6 +15,7 @@ load(
     "if_android_armv7",
     "if_hexagon_enabled",
     "if_opencl_enabled",
+    "if_opencl_enabled_str",
 )
 
 cc_library(
@@ -67,7 +68,6 @@ cc_library(
 genrule(
     name = "libmace_static",
     srcs = [
-        "//mace/codegen:generated_opencl",
         "//mace/codegen:generated_version",
         "//mace/core",
         "//mace/kernels",
@@ -76,11 +76,12 @@ genrule(
         "//mace/utils",
         "//mace/proto:mace_cc",
         "@com_google_protobuf//:protobuf_lite",
-    ],
+    ] + if_opencl_enabled([
+        "//mace/codegen:generated_opencl",
+    ]),
     outs = ["libmace.a"],
     cmd = "tmp_mri_file=$$(mktemp mace-static-lib-mri.XXXXXXXXXX);" +
           "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
-          "$(locations //mace/codegen:generated_opencl) " +
           "$(locations //mace/codegen:generated_version) " +
           "$(locations //mace/core:core) " +
           "$(locations //mace/kernels:kernels) " +
@@ -89,6 +90,7 @@ genrule(
           "$(locations //mace/utils:utils) " +
           "$(locations //mace/proto:mace_cc) " +
           "$(locations @com_google_protobuf//:protobuf_lite) " +
+          if_opencl_enabled_str("$(locations //mace/codegen:generated_opencl) ") +
           "$@ " +
           "$$tmp_mri_file);" +
           "$(AR) -M <$$tmp_mri_file;" +

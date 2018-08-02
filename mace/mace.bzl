@@ -54,6 +54,12 @@ def if_opencl_enabled(a):
       "//conditions:default": [],
   })
 
+def if_opencl_enabled_str(a):
+  return select({
+      "//mace:opencl_enabled": a,
+      "//conditions:default": "",
+  })
+
 def mace_version_genrule():
   native.genrule(
       name = "mace_version_gen",
