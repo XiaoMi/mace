@@ -20,20 +20,43 @@
 namespace mace {
 namespace kernels {
 
-void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
-                                  const index_t *filter_shape,  // OIHW
-                                  const int *dilations,
-                                  const int *strides,
-                                  Padding padding,
-                                  index_t *output_shape,
-                                  int *padding_size) {
+void CalcPaddingAndOutputSize(const index_t *input_shape,
+                              const DataFormat input_format,
+                              const index_t *filter_shape,
+                              const DataFormat filter_format,
+                              const int *dilations,
+                              const int *strides,
+                              Padding padding,
+                              index_t *output_shape,
+                              int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-                 (dilations[1] == 1 || strides[1] == 1),
+      (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
+
+  index_t input_height = 0, input_width = 0;
+  index_t kernel_height = 0, kernel_width = 0;
+  if (input_format == NCHW) {
+    input_height = input_shape[2];
+    input_width = input_shape[3];
+  } else if (input_format == NHWC) {
+    input_height = input_shape[1];
+    input_width = input_shape[2];
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+  if (filter_format == OIHW) {
+    kernel_height = filter_shape[2];
+    kernel_width = filter_shape[3];
+  } else if (filter_format == OHWI) {
+    kernel_height = filter_shape[1];
+    kernel_width = filter_shape[2];
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
   /*
   * Convlution/pooling arithmetic:
   * o = (i + 2 * p - k - (k - 1) * (d - 1)) / s + 1
@@ -42,27 +65,23 @@ void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   */
   padding_size[0] = 0;
   padding_size[1] = 0;
-
   index_t output_height = 0, output_width = 0;
-  index_t kernel_height = filter_shape[2];
-  index_t kernel_width = filter_shape[3];
   index_t output_channels = filter_shape[0];
-
   index_t k_extent_height = (kernel_height - 1) * dilations[0] + 1;
   index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
 
   switch (padding) {
     case VALID:
-      output_height = (input_shape[2] - k_extent_height) / strides[0] + 1;
-      output_width = (input_shape[3] - k_extent_width) / strides[1] + 1;
+      output_height = (input_height - k_extent_height) / strides[0] + 1;
+      output_width = (input_width - k_extent_width) / strides[1] + 1;
       break;
     case SAME:
-      output_height = (input_shape[2] - 1) / strides[0] + 1;
-      output_width = (input_shape[3] - 1) / strides[1] + 1;
+      output_height = (input_height - 1) / strides[0] + 1;
+      output_width = (input_width - 1) / strides[1] + 1;
       break;
     case FULL:
-      output_height = (input_shape[2] + k_extent_height - 2) / strides[0] + 1;
-      output_width = (input_shape[3] + k_extent_width - 2) / strides[1] + 1;
+      output_height = (input_height + k_extent_height - 2) / strides[0] + 1;
+      output_width = (input_width + k_extent_width - 2) / strides[1] + 1;
       break;
     default:
       MACE_CHECK(false, "Unsupported padding type: ", padding);
@@ -74,14 +93,33 @@ void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
   // based on the model accuracy.
 
   padding_size[0] = std::max<int>(
-      0, (output_height - 1) * strides[0] + k_extent_height - input_shape[2]);
+      0, (output_height - 1) * strides[0] + k_extent_height - input_height);
   padding_size[1] = std::max<int>(
-      0, (output_width - 1) * strides[1] + k_extent_width - input_shape[3]);
+      0, (output_width - 1) * strides[1] + k_extent_width - input_width);
 
   output_shape[0] = input_shape[0];
-  output_shape[1] = output_channels;
-  output_shape[2] = output_height;
-  output_shape[3] = output_width;
+  if (input_format == NCHW) {
+    output_shape[1] = output_channels;
+    output_shape[2] = output_height;
+    output_shape[3] = output_width;
+  } else if (input_format == NHWC) {
+    output_shape[1] = output_height;
+    output_shape[2] = output_width;
+    output_shape[3] = output_channels;
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+}
+
+void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,   // NCHW
+                                  const index_t *filter_shape,  // OIHW
+                                  const int *dilations,
+                                  const int *strides,
+                                  Padding padding,
+                                  index_t *output_shape,
+                                  int *padding_size) {
+  CalcPaddingAndOutputSize(input_shape, NCHW, filter_shape, OIHW, dilations,
+                           strides, padding, output_shape, padding_size);
 }
 
 void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
@@ -91,67 +129,14 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,   // NHWC
                                   Padding padding,
                                   index_t *output_shape,
                                   int *padding_size) {
-  MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
-             "Invalid dilations, must >= 1");
-  MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-                 (dilations[1] == 1 || strides[1] == 1),
-             "If dilations > 1, strides should be 1");
-  MACE_CHECK_NOTNULL(output_shape);
-  MACE_CHECK_NOTNULL(padding_size);
-  /*
-  * Convlution/pooling arithmetic:
-  * o = (i + 2 * p - k - (k - 1) * (d - 1)) / s + 1
-  * For details, see https://arxiv.org/pdf/1603.07285.pdf or
-  * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
-  */
-  padding_size[0] = 0;
-  padding_size[1] = 0;
-
-  index_t output_height = 0, output_width = 0;
-  index_t output_channels = filter_shape[0];
-  index_t kernel_height = filter_shape[2];
-  index_t kernel_width = filter_shape[3];
-
-  index_t k_extent_height = (kernel_height - 1) * dilations[0] + 1;
-  index_t k_extent_width = (kernel_width - 1) * dilations[1] + 1;
-
-  switch (padding) {
-    case VALID:
-      output_height = (input_shape[1] - k_extent_height) / strides[0] + 1;
-      output_width = (input_shape[2] - k_extent_width) / strides[1] + 1;
-      break;
-    case SAME:
-      output_height = (input_shape[1] - 1) / strides[0] + 1;
-      output_width = (input_shape[2] - 1) / strides[1] + 1;
-      break;
-    case FULL:
-      output_height = (input_shape[1] + k_extent_height - 2) / strides[0] + 1;
-      output_width = (input_shape[2] + k_extent_width - 2) / strides[1] + 1;
-      break;
-    default:
-      MACE_CHECK(false, "Unsupported padding type: ", padding);
-  }
-
-  // Note: TensorFlow may padded one more on the right/bottom side
-  // TODO(liuqi): may be it's better to also truncate the left/top to
-  // utilize the more centered features. We need to benchmark
-  // based on the model accuracy.
-
-  padding_size[0] = std::max<int>(
-      0, (output_height - 1) * strides[0] + k_extent_height - input_shape[1]);
-  padding_size[1] = std::max<int>(
-      0, (output_width - 1) * strides[1] + k_extent_width - input_shape[2]);
-
-  output_shape[0] = input_shape[0];
-  output_shape[1] = output_height;
-  output_shape[2] = output_width;
-  output_shape[3] = output_channels;
+  CalcPaddingAndOutputSize(input_shape, NHWC, filter_shape, OIHW, dilations,
+                           strides, padding, output_shape, padding_size);
 }
 
-
-
-void CalcOutputSize(const index_t *input_shape,   // NHWC
-                    const index_t *filter_shape,  // OIHW
+void CalcOutputSize(const index_t *input_shape,
+                    const DataFormat input_format,
+                    const index_t *filter_shape,
+                    const DataFormat filter_format,
                     const int *padding_size,
                     const int *dilations,
                     const int *strides,
@@ -160,36 +145,79 @@ void CalcOutputSize(const index_t *input_shape,   // NHWC
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
              "Invalid dilations, must >= 1");
   MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-                 (dilations[1] == 1 || strides[1] == 1),
+      (dilations[1] == 1 || strides[1] == 1),
              "If dilations > 1, strides should be 1");
   MACE_CHECK_NOTNULL(output_shape);
   MACE_CHECK_NOTNULL(padding_size);
 
-  output_shape[0] = input_shape[0];
-  if (round_type == FLOOR) {
-    output_shape[1] = static_cast<index_t>(
-        std::floor(1.0 * (input_shape[1] + padding_size[0] - filter_shape[2] -
-                          (filter_shape[2] - 1) * (dilations[0] - 1)) /
-                   strides[0]) +
-        1);
-    output_shape[2] = static_cast<index_t>(
-        std::floor(1.0 * (input_shape[2] + padding_size[1] - filter_shape[3] -
-                          (filter_shape[3] - 1) * (dilations[1] - 1)) /
-                   strides[1]) +
-        1);
+  index_t input_height = 0, input_width = 0;
+  index_t kernel_height = 0, kernel_width = 0;
+  if (input_format == NCHW) {
+    input_height = input_shape[2];
+    input_width = input_shape[3];
+  } else if (input_format == NHWC) {
+    input_height = input_shape[1];
+    input_width = input_shape[2];
   } else {
-    output_shape[1] = static_cast<index_t>(
-        std::ceil(1.0 * (input_shape[1] + padding_size[0] - filter_shape[2] -
-                         (filter_shape[2] - 1) * (dilations[0] - 1)) /
-                  strides[0]) +
-        1);
-    output_shape[2] = static_cast<index_t>(
-        std::ceil(1.0 * (input_shape[2] + padding_size[1] - filter_shape[3] -
-                         (filter_shape[3] - 1) * (dilations[1] - 1)) /
-                  strides[1]) +
-        1);
+    MACE_NOT_IMPLEMENTED;
   }
-  output_shape[3] = filter_shape[0];
+  if (filter_format == OIHW) {
+    kernel_height = filter_shape[2];
+    kernel_width = filter_shape[3];
+  } else if (filter_format == OHWI) {
+    kernel_height = filter_shape[1];
+    kernel_width = filter_shape[2];
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+  /*
+  * Convlution/pooling arithmetic:
+  * o = (i + 2 * p - k - (k - 1) * (d - 1)) / s + 1
+  * For details, see https://arxiv.org/pdf/1603.07285.pdf or
+  * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
+  */
+  index_t output_height = 0, output_width = 0;
+  index_t output_channels = filter_shape[0];
+
+  if (round_type == FLOOR) {
+    output_height = static_cast<index_t>(
+        std::floor(1.0 * (input_height + padding_size[0] - kernel_height -
+            (kernel_height - 1) * (dilations[0] - 1)) / strides[0]) + 1);
+    output_width = static_cast<index_t>(
+        std::floor(1.0 * (input_width + padding_size[1] - kernel_width -
+            (kernel_width - 1) * (dilations[1] - 1)) / strides[1]) + 1);
+  } else {
+    output_height = static_cast<index_t>(
+        std::ceil(1.0 * (input_height + padding_size[0] - kernel_height -
+            (kernel_height - 1) * (dilations[0] - 1)) / strides[0]) + 1);
+    output_width = static_cast<index_t>(
+        std::ceil(1.0 * (input_width + padding_size[1] - kernel_width -
+            (kernel_width - 1) * (dilations[1] - 1)) / strides[1]) + 1);
+  }
+
+  output_shape[0] = input_shape[0];
+  if (input_format == NCHW) {
+    output_shape[1] = output_channels;
+    output_shape[2] = output_height;
+    output_shape[3] = output_width;
+  } else if (input_format == NHWC) {
+    output_shape[1] = output_height;
+    output_shape[2] = output_width;
+    output_shape[3] = output_channels;
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+}
+
+void CalcOutputSize(const index_t *input_shape,   // NHWC
+                    const index_t *filter_shape,  // OIHW
+                    const int *padding_size,
+                    const int *dilations,
+                    const int *strides,
+                    const RoundType round_type,
+                    index_t *output_shape) {
+  CalcOutputSize(input_shape, NHWC, filter_shape, OIHW, padding_size, dilations,
+                 strides, round_type, output_shape);
 }
 
 void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW
@@ -199,46 +227,8 @@ void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW
                     const int *strides,
                     const RoundType round_type,
                     index_t *output_shape) {
-  MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,
-             "Invalid dilations, must >= 1");
-  MACE_CHECK((dilations[0] == 1 || strides[0] == 1) &&
-    (dilations[1] == 1 || strides[1] == 1),
-             "If dilations > 1, strides should be 1");
-  MACE_CHECK_NOTNULL(output_shape);
-  MACE_CHECK_NOTNULL(padding_size);
-  /*
-  * Convolution arithmetic:
-  * o = floor((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
-  * Pooling arithmetic:
-  * o = ceil((i + 2 * p - k - (k - 1) * (d - 1)) / s) + 1
-  * For details, see https://arxiv.org/pdf/1603.07285.pdf or
-  * http://deeplearning.net/software/theano/tutorial/conv_arithmetic.html
-  */
-  output_shape[0] = input_shape[0];
-  if (round_type == FLOOR) {
-    output_shape[2] = static_cast<index_t>(
-      std::floor(1.0 * (input_shape[2] + padding_size[0] - filter_shape[2] -
-        (filter_shape[2] - 1) * (dilations[0] - 1)) /
-        strides[0]) +
-        1);
-    output_shape[3] = static_cast<index_t>(
-      std::floor(1.0 * (input_shape[3] + padding_size[1] - filter_shape[3] -
-        (filter_shape[3] - 1) * (dilations[1] - 1)) /
-        strides[1]) +
-        1);
-  } else {
-    output_shape[2] = static_cast<index_t>(
-      std::ceil(1.0 * (input_shape[2] + padding_size[0] - filter_shape[2] -
-        (filter_shape[2] - 1) * (dilations[0] - 1)) /
-        strides[0]) +
-        1);
-    output_shape[3] = static_cast<index_t>(
-      std::ceil(1.0 * (input_shape[3] + padding_size[1] - filter_shape[3] -
-        (filter_shape[3] - 1) * (dilations[1] - 1)) /
-        strides[1]) +
-        1);
-  }
-  output_shape[1] = filter_shape[0];
+  CalcOutputSize(input_shape, NCHW, filter_shape, OIHW, padding_size, dilations,
+                 strides, round_type, output_shape);
 }
 
 void CalPaddingSize(const index_t *input_shape,   // NCHW

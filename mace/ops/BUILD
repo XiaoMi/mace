@@ -25,7 +25,7 @@ cc_library(
     ],
     deps = [
         "//mace/core",
-        "@gtest//:gtest",
+        "@gtest",
     ],
 )
 

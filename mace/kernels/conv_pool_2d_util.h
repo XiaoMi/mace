@@ -32,13 +32,23 @@ enum RoundType {
 
 namespace kernels {
 
-void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,
+void CalcPaddingAndOutputSize(const index_t *input_shape,
+                              const DataFormat input_format,
                               const index_t *filter_shape,
+                              const DataFormat filter_format,
                               const int *dilations,
                               const int *strides,
                               Padding padding,
                               index_t *output_shape,
                               int *padding_size);
+
+void CalcNCHWPaddingAndOutputSize(const index_t *input_shape,
+                                  const index_t *filter_shape,
+                                  const int *dilations,
+                                  const int *strides,
+                                  Padding padding,
+                                  index_t *output_shape,
+                                  int *padding_size);
 
 void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,
                                   const index_t *filter_shape,
@@ -47,6 +57,16 @@ void CalcNHWCPaddingAndOutputSize(const index_t *input_shape,
                                   Padding padding,
                                   index_t *output_shape,
                                   int *padding_size);
+
+void CalcOutputSize(const index_t *input_shape,
+                    const DataFormat input_format,
+                    const index_t *filter_shape,
+                    const DataFormat filter_format,
+                    const int *padding_size,
+                    const int *dilations,
+                    const int *strides,
+                    const RoundType round_type,
+                    index_t *output_shape);
 
 void CalcOutputSize(const index_t *input_shape,   // NHWC
                     const index_t *filter_shape,  // OIHW

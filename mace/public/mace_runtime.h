@@ -180,6 +180,16 @@ __attribute__((visibility("default")))
 MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                std::vector<int> *little_core_ids);
 
+// Set gemmlowp threads number and processor affinity.
+// gemmlowp is used by mace for quantization.
+// Caution: this function may hurt performance if improper parameters provided.
+//
+// This function may not work well on some chips (e.g. MTK). Setting thread
+// affinity to offline cores may run very slow or unexpectedly. In such cases,
+// please use SetGemmlowpThreadPolicy with default policy instead.
+__attribute__((visibility("default")))
+MaceStatus SetGemmlowpThreadPolicy(int num_threads_hint,
+                                   CPUAffinityPolicy policy);
 }  // namespace mace
 
 #endif  // MACE_PUBLIC_MACE_RUNTIME_H_

@@ -99,6 +99,67 @@ void Conv2d(int iters,
     net.Sync();
   }
 }
+
+template <>
+void Conv2d<CPU, uint8_t>(int iters,
+                          int batch,
+                          int channels,
+                          int height,
+                          int width,
+                          int kernel_h,
+                          int kernel_w,
+                          int stride,
+                          int dilation,
+                          Padding padding,
+                          int output_channels) {
+  mace::testing::StopTiming();
+  if (dilation > 1) {
+    LOG(WARNING) << "uint8_t benchmarking dilation = 1 instead.";
+  }
+
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+      "Input", {batch, height, width, channels});
+  Tensor *input = net.GetTensor("Input");
+  input->SetScale(0.00705);
+  input->SetZeroPoint(114);
+  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+      "Filter", {output_channels, kernel_h, kernel_w, channels});
+  Tensor *filter = net.GetTensor("Filter");
+  filter->SetScale(0.0066);
+  filter->SetZeroPoint(113);
+  net.AddRandomInput<DeviceType::CPU, int32_t>("Bias", {output_channels});
+  OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(DeviceType::CPU);
+
+  Tensor *output = net.GetTensor("Output");
+  output->SetScale(0.0107);
+  output->SetZeroPoint(118);
+
+  // Warm-up
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
+    net.Sync();
+  }
+  mace::testing::StartTiming();
+  while (iters--) {
+    net.Run();
+    net.Sync();
+  }
+}
+
 }  // namespace
 
 // In common network, there are usually more than 1 layers, this is used to
@@ -135,7 +196,8 @@ void Conv2d(int iters,
 #define MACE_BM_CONV_2D(N, C, H, W, KH, KW, S, D, P, OC)                 \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, CPU);    \
   MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, float, GPU);    \
-  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU);
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, half, GPU);     \
+  MACE_BM_CONV_2D_MACRO(N, C, H, W, KH, KW, S, D, P, OC, uint8_t, CPU);
 
 
 

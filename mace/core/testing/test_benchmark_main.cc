@@ -38,9 +38,15 @@ int main(int argc, char **argv) {
   // config runtime
   mace::MaceStatus status = mace::SetOpenMPThreadsAndAffinityPolicy(
       FLAGS_omp_num_threads,
-      static_cast<mace::CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
   if (status != mace::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
+  }
+  status = SetGemmlowpThreadPolicy(
+      FLAGS_omp_num_threads,
+      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
+  if (status != mace::MACE_SUCCESS) {
+    LOG(WARNING) << "Set gemmlowp threads or cpu affinity failed.";
   }
   mace::OpenCLRuntime::Configure(
       static_cast<mace::GPUPerfHint>(FLAGS_gpu_perf_hint),
