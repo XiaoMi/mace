@@ -70,6 +70,7 @@ MACE_RUN_STATIC_NAME = "mace_run_static"
 MACE_RUN_DYNAMIC_NAME = "mace_run_dynamic"
 MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
 MACE_RUN_DYNAMIC_TARGET = "//mace/tools/validation:" + MACE_RUN_DYNAMIC_NAME
+QUANTIZE_STAT_TARGET = "//mace/tools/quantization:quantize_stat"
 EXAMPLE_STATIC_NAME = "example_static"
 EXAMPLE_DYNAMIC_NAME = "example_dynamic"
 EXAMPLE_STATIC_TARGET = "//mace/examples/cli:" + EXAMPLE_STATIC_NAME
@@ -185,6 +186,8 @@ class YAMLKeyword(object):
     nnlib_graph_mode = 'nnlib_graph_mode'
     obfuscate = 'obfuscate'
     winograd = 'winograd'
+    quantize = 'quantize'
+    quantize_range_file = 'quantize_range_file'
     validation_inputs_data = 'validation_inputs_data'
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
 
@@ -459,7 +462,8 @@ def format_model_config(flags):
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.nnlib_graph_mode,
                     YAMLKeyword.obfuscate,
-                    YAMLKeyword.winograd]:
+                    YAMLKeyword.winograd,
+                    YAMLKeyword.quantize]:
             value = model_config.get(key, "")
             if value == "":
                 model_config[key] = 0
@@ -705,6 +709,8 @@ def convert_model(configs):
             model_config[YAMLKeyword.nnlib_graph_mode],
             embed_model_data,
             model_config[YAMLKeyword.winograd],
+            model_config[YAMLKeyword.quantize],
+            model_config.get(YAMLKeyword.quantize_range_file, ""),
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.model_graph_format],
             data_type,
@@ -869,6 +875,37 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
     )
     sh_commands.update_mace_run_binary(build_tmp_binary_dir,
                                        mace_lib_type == MACELibType.dynamic)
+
+
+def build_quantize_stat(configs):
+    library_name = configs[YAMLKeyword.library_name]
+
+    build_tmp_binary_dir = get_build_binary_dir(library_name, ABIType.host)
+    if os.path.exists(build_tmp_binary_dir):
+        sh.rm("-rf", build_tmp_binary_dir)
+    os.makedirs(build_tmp_binary_dir)
+
+    quantize_stat_target = QUANTIZE_STAT_TARGET
+    build_arg = ""
+    print (configs[YAMLKeyword.model_graph_format])
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
+                   ModuleName.RUN,
+                   "You should convert model first.")
+        build_arg = "--per_file_copt=mace/tools/quantization/quantize_stat.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+
+    sh_commands.bazel_build(
+        quantize_stat_target,
+        abi=ABIType.host,
+        enable_openmp=True,
+        extra_args=build_arg
+    )
+
+    quantize_stat_filepath = build_tmp_binary_dir + "/quantize_stat"
+    if os.path.exists(quantize_stat_filepath):
+        sh.rm("-rf", quantize_stat_filepath)
+    sh.cp("-f", "bazel-bin/mace/tools/quantization/quantize_stat",
+          build_tmp_binary_dir)
 
 
 def build_example(configs, target_abi, enable_openmp, mace_lib_type):
@@ -1196,6 +1233,59 @@ def run_specific_target(flags, configs, target_abi,
             opencl_parameter_bin_path)
 
 
+def run_quantize_stat(flags, configs):
+    library_name = configs[YAMLKeyword.library_name]
+    build_tmp_binary_dir = get_build_binary_dir(library_name, ABIType.host)
+
+    for model_name in configs[YAMLKeyword.models]:
+        check_model_converted(library_name, model_name,
+                              configs[YAMLKeyword.model_graph_format],
+                              configs[YAMLKeyword.model_data_format],
+                              ABIType.host)
+        MaceLogger.header(
+            StringFormatter.block(
+                "Run model %s on %s" % (model_name, ABIType.host)))
+
+        model_config = configs[YAMLKeyword.models][model_name]
+        subgraphs = model_config[YAMLKeyword.subgraphs]
+
+        _, _, mace_model_dir = \
+            get_build_model_dirs(library_name, model_name, ABIType.host,
+                                 None, None,
+                                 model_config[YAMLKeyword.model_file_path])
+
+        mace_model_path = ""
+        if configs[YAMLKeyword.model_graph_format] == ModelFormat.file:
+            mace_model_path = "%s/%s.pb" % (mace_model_dir, model_name)
+
+        p = subprocess.Popen(
+            [
+                "env",
+                "MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level,
+                "MACE_LOG_TENSOR_RANGE=1",
+                "%s/%s" % (build_tmp_binary_dir, "quantize_stat"),
+                "--model_name=%s" % model_name,
+                "--input_node=%s" % ",".join(
+                    subgraphs[0][YAMLKeyword.input_tensors]),
+                "--output_node=%s" % ",".join(
+                    subgraphs[0][YAMLKeyword.output_tensors]),
+                "--input_shape=%s" % ":".join(
+                    subgraphs[0][YAMLKeyword.input_shapes]),
+                "--output_shape=%s" % ":".join(
+                    subgraphs[0][YAMLKeyword.output_shapes]),
+                "--input_dir=%s" % flags.input_dir,
+                "--model_data_file=%s/%s.data" % (mace_model_dir, model_name),
+                "--omp_num_threads=%s" % flags.omp_num_threads,
+                "--model_file=%s" % mace_model_path,
+            ],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        stdout = err + out
+        print stdout
+        print("Running finished!\n")
+
+
 def print_package_summary(package_path):
     title = "Library"
     header = ["key", "value"]
@@ -1215,6 +1305,11 @@ def run_mace(flags):
                          "you must use file-type MACE model.")
 
     clear_build_dirs(configs[YAMLKeyword.library_name])
+
+    if flags.quantize_stat:
+        build_quantize_stat(configs)
+        run_quantize_stat(flags, configs)
+        return
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
@@ -1582,6 +1677,15 @@ def parse_args():
         "--example",
         action="store_true",
         help="whether to run example.")
+    run.add_argument(
+        "--quantize_stat",
+        action="store_true",
+        help="whether to stat quantization range.")
+    run.add_argument(
+        "--input_dir",
+        type=str,
+        default="",
+        help="quantize stat input dir.")
     benchmark = subparsers.add_parser(
         'benchmark',
         parents=[all_type_parent_parser, run_bm_parent_parser],

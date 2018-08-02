@@ -1,4 +1,12 @@
 py_library(
+    name = "quantization_lib",
+    srcs = [
+        "quantization/quantize_util.py",
+    ],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
     name = "converter_lib",
     srcs = [
         "convert_util.py",
@@ -12,6 +20,7 @@ py_library(
     ],
     srcs_version = "PY2AND3",
     deps = [
+        ":quantization_lib",
         ":memory_optimizer",
         "//mace/proto:mace_py",
         "//third_party/caffe:caffe_py",

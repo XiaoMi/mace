@@ -96,12 +96,12 @@ def main(unused_args):
         print ("runtime %s is not supported." % FLAGS.runtime)
         sys.exit(-1)
 
+    option = cvt.ConverterOption()
     if FLAGS.graph_optimize_options:
-        option = cvt.ConverterOption(
-            FLAGS.graph_optimize_options.split(','))
-    else:
-        option = cvt.ConverterOption()
+        option.transformer_option = FLAGS.graph_optimize_options.split(',')
     option.winograd = FLAGS.winograd
+    option.quantize = FLAGS.quantize
+    option.quantize_range_file = FLAGS.quantize_range_file
 
     input_node_names = FLAGS.input_node.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
@@ -118,6 +118,8 @@ def main(unused_args):
         output_node = cvt.NodeInfo()
         output_node.name = output_node_names[i]
         option.add_output_node(output_node)
+
+    option.build()
 
     print("Transform model to one that can better run on device")
     if FLAGS.runtime == 'dsp':
@@ -297,6 +299,18 @@ def parse_args():
         type=str,
         default="",
         help="graph optimize options")
+    parser.add_argument(
+        "--quantize",
+        type=str2bool,
+        nargs='?',
+        const=False,
+        default=False,
+        help="quantize model")
+    parser.add_argument(
+        "--quantize_range_file",
+        type=str,
+        default="",
+        help="file path of quantize range for each tensor")
     return parser.parse_known_args()
 
 

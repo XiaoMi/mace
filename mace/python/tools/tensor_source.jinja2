@@ -32,6 +32,8 @@ void CreateTensor{{tensor_info.id}}(mace::ConstTensor *const_tensor) {
   {% endfor %}
   const_tensor->set_data_type(static_cast<DataType>({{ tensor_info.data_type }}));
   const_tensor->set_node_id({{ tensor.node_id }});
+  const_tensor->set_scale({{ tensor.scale }});
+  const_tensor->set_zero_point({{ tensor.zero_point }});
 }
 
 }  // namespace {{tag}}

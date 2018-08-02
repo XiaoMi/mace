@@ -31,7 +31,7 @@ from mace.python.tools.converter_tool.base_converter import TransformerRule
 from mace.python.tools.convert_util import calculate_image_shape
 from mace.python.tools.convert_util import mace_check
 from mace.python.tools.convert_util import OpenCLBufferType
-
+from mace.python.tools.quantization import quantize_util
 
 OPENCL_IMAGE_MAX_SIZE = 16384
 
@@ -73,6 +73,12 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
             TransformerRule.TRANSFORM_BUFFER_IMAGE:
                 self.transform_buffer_image,
+            TransformerRule.QUANTIZE_NODES:
+                self.quantize_nodes,
+            TransformerRule.ADD_QUANTIZE_TENSOR_RANGE:
+                self.add_quantize_tensor_range,
+            TransformerRule.QUANTIZE_WEIGHTS:
+                self.quantize_weights,
             TransformerRule.ADD_DEVICE:
                 self.add_device,
             TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE:
@@ -93,6 +99,8 @@ class Transformer(base_converter.ConverterInterface):
         self._target_data_format = DataFormat.NHWC
         self._input_output_added = False
         self._opencl_max_image_size = [0, 0]
+        self._quantize_activation_info = {}
+        self._quantized_tensor = set()
 
         if self._option.device == DeviceType.CPU.value:
             self._target_data_format = DataFormat.NCHW
@@ -854,6 +862,7 @@ class Transformer(base_converter.ConverterInterface):
                 else:
                     op.type = MaceOp.Identity.name
 
+                ConverterUtil.add_data_type_arg(op, mace_pb2.DT_FLOAT)
                 ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
             for output_node in self._option.output_nodes.values():
@@ -877,6 +886,7 @@ class Transformer(base_converter.ConverterInterface):
                     ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
                 else:
                     op.type = MaceOp.Identity.name
+                ConverterUtil.add_data_type_arg(op, mace_pb2.DT_FLOAT)
 
             self._input_output_added = True
 
@@ -963,6 +973,7 @@ class Transformer(base_converter.ConverterInterface):
         arg = op_def.arg.add()
         arg.name = MaceKeyword.mace_mode
         arg.i = 0
+        ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
 
         tensor_shape = list(self._consts[input_name].dims)
         if input_type == OpenCLBufferType.WINOGRAD_FILTER:
@@ -1054,6 +1065,7 @@ class Transformer(base_converter.ConverterInterface):
             arg.name = MaceKeyword.mace_buffer_type
             arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
 
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
         for output_node in self._option.output_nodes.values():
@@ -1072,6 +1084,7 @@ class Transformer(base_converter.ConverterInterface):
             arg.name = MaceKeyword.mace_buffer_type
             arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
 
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
         self._input_output_added = True
@@ -1276,6 +1289,7 @@ class Transformer(base_converter.ConverterInterface):
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(input_node.shape)
 
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
         for output_node in self._option.output_nodes.values():
@@ -1289,6 +1303,8 @@ class Transformer(base_converter.ConverterInterface):
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
+
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
 
     def sort_by_execution(self):
         print("Sort by execution")
@@ -1311,3 +1327,103 @@ class Transformer(base_converter.ConverterInterface):
             print("%s (%s): %s" % (op.name, op.type, [
                 out_shape.dims for out_shape in op.output_shape]))
         return False
+
+    def quantize_nodes(self):
+        print("Add mace quantize and dequantize nodes")
+
+        for op in self._model.op:
+            data_type_arg = ConverterUtil.get_arg(
+                op, MaceKeyword.mace_op_data_type_str)
+            mace_check(data_type_arg, "Data type does not exist for %s(%s)"
+                       % (op.name, op.type))
+            if data_type_arg.i == mace_pb2.DT_FLOAT:
+                data_type_arg.i = mace_pb2.DT_UINT8
+            else:
+                mace_check(False,
+                           "Quantization only support float ops, "
+                           "but get %s(%s)"
+                           % (op.name, op.type))
+
+        for input_node in self._option.input_nodes.values():
+            new_input_name = MaceKeyword.mace_input_node_name \
+                             + '_' + input_node.name
+            op_def = self._model.op.add()
+            op_def.name = self.normalize_op_name(input_node.name)
+            op_def.type = MaceOp.Quantize.name
+            op_def.input.extend([new_input_name])
+            op_def.output.extend([input_node.name])
+            output_shape = op_def.output_shape.add()
+            output_shape.dims.extend(input_node.shape)
+
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+
+        for output_node in self._option.output_nodes.values():
+            output_name = MaceKeyword.mace_output_node_name \
+                          + '_' + output_node.name
+            op_def = self._model.op.add()
+            op_def.name = self.normalize_op_name(output_name)
+            op_def.type = MaceOp.Dequantize.name
+            op_def.input.extend([output_node.name])
+            op_def.output.extend([output_name])
+            output_shape = op_def.output_shape.add()
+            output_shape.dims.extend(
+                self._producer[output_node.name].output_shape[0].dims)
+
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+
+        self._input_output_added = True
+
+    def add_quantize_tensor_range(self):
+        print("Add quantize tensor range")
+        net = self._model
+        range_file = self._option.quantize_range_file
+        with open(range_file) as f:
+            for line in f:
+                tensor_name, minmax = line.split("@@")
+                min_val, max_val = [float(i) for i in
+                                    minmax.strip().split(",")]
+                scale, zero = quantize_util.adjust_range(min_val, max_val,
+                                                         non_zero=False)
+                activation_info = net.quantize_info.activation_info.add()
+                activation_info.tensor_name = tensor_name
+                activation_info.scale = scale
+                activation_info.zero_point = zero
+                self._quantize_activation_info[tensor_name] = activation_info
+
+    def quantize_tensor(self, tensor):
+        """Assume biasadd has been already folded with convolution and fc"""
+        if tensor.data_type == mace_pb2.DT_FLOAT:
+            ops = self._consumers.get(tensor.name, None)
+            if len(ops) == 1 and ops[0].type in [MaceOp.Conv2D.name,
+                                                 MaceOp.Deconv2D.name,
+                                                 MaceOp.DepthwiseConv2d.name,
+                                                 MaceOp.FullyConnected.name] \
+                    and len(ops[0].input) >= 3 \
+                    and ops[0].input[2] == tensor.name:
+                conv_op = ops[0]
+                scale_input = self._quantize_activation_info[
+                    conv_op.input[0]].scale
+                if conv_op.input[1] not in self._quantized_tensor:
+                    self.quantize_tensor(self._consts[conv_op.input[1]])
+                scale_filter = self._consts[conv_op.input[1]].scale
+                scale = scale_input * scale_filter
+
+                quantized_tensor = quantize_util.quantize_with_scale_and_zero(
+                    tensor.float_data, scale, 0)
+                tensor.data_type = mace_pb2.DT_INT32
+            else:
+                quantized_tensor = quantize_util.quantize(tensor.float_data)
+                tensor.data_type = mace_pb2.DT_UINT8
+
+            del tensor.float_data[:]
+            tensor.int32_data.extend(quantized_tensor.data)
+            tensor.scale = quantized_tensor.scale
+            tensor.zero_point = quantized_tensor.zero
+            self._quantized_tensor.update([tensor.name])
+
+    def quantize_weights(self):
+        print("Quantize weights")
+        net = self._model
+        for tensor in net.tensors:
+            self.quantize_tensor(tensor)

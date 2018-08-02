@@ -488,6 +488,10 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     const index_t extra_output_shape[4] =
         {batch, channels, extra_output_height, extra_output_width};
 
+    // make host compiler happy
+    MACE_UNUSED(extra_input_shape);
+    MACE_UNUSED(extra_output_shape);
+
     // decide which convolution function to call
     if (use_winograd) {
       transformed_input.Reshape(transformed_input_shape);
