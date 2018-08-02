@@ -204,8 +204,9 @@ The generated model files will be stored in ``build/${library_name}/model`` fold
 =============================
 4. Build MACE into a library
 =============================
+You could Download the prebuilt MACE Library from `Github MACE release page <https://github.com/XiaoMi/mace/releases>`__.
 
-Use bazel to build MACE source code into a library.
+Or use bazel to build MACE source code into a library.
 
     .. code:: sh
 
@@ -259,8 +260,25 @@ to run and validate your model.
 6. Deploy your model into applications
 =======================================
 
+You could run model on CPU, GPU and DSP (based on the `runtime` in your model deployment file).
+However, there are some differences in different devices.
+
+* **CPU**
+
+    Almost all of mobile SoCs use ARM-based CPU architecture, so your model could run on different SoCs in theory.
+
+* **GPU**
+
+    Although most GPUs use OpenCL standard, but there are some SoCs not fully complying with the standard,
+    or the GPU is too low-level to use. So you should have some fallback strategies when the GPU run failed.
+
+* **DSP**
+
+    MACE only support Qualcomm DSP.
+
 In the converting and building steps, you've got the static/shared library, model files and
 header files.
+
 
 ``${library_name}`` is the name you defined in the first line of your deployment YAML file.
 
@@ -313,12 +331,7 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
     #include "mace/public/mace.h"
     #include "mace/public/mace_runtime.h"
 
-    // 0. Set pre-compiled OpenCL binary program file paths when available
-    if (device_type == DeviceType::GPU) {
-      mace::SetOpenCLBinaryPaths(opencl_binary_paths);
-    }
-
-    // 1. Set compiled OpenCL kernel cache, this is used to reduce the
+    // 0. Set compiled OpenCL kernel cache, this is used to reduce the
     // initialization time since the compiling is too slow. It's suggested
     // to set this even when pre-compiled OpenCL program file is provided
     // because the OpenCL version upgrade may also leads to kernel
@@ -328,14 +341,14 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
         new FileStorageFactory(file_path));
     ConfigKVStorageFactory(storage_factory);
 
-    // 2. Declare the device type (must be same with ``runtime`` in configuration file)
+    // 1. Declare the device type (must be same with ``runtime`` in configuration file)
     DeviceType device_type = DeviceType::GPU;
 
-    // 3. Define the input and output tensor names.
+    // 2. Define the input and output tensor names.
     std::vector<std::string> input_names = {...};
     std::vector<std::string> output_names = {...};
 
-    // 4. Create MaceEngine instance
+    // 3. Create MaceEngine instance
     std::shared_ptr<mace::MaceEngine> engine;
     MaceStatus create_engine_status;
 
@@ -348,10 +361,10 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
                                   device_type,
                                   &engine);
     if (create_engine_status != MaceStatus::MACE_SUCCESS) {
-      // Report error
+      // fall back to other strategy.
     }
 
-    // 5. Create Input and Output tensor buffers
+    // 4. Create Input and Output tensor buffers
     std::map<std::string, mace::MaceTensor> inputs;
     std::map<std::string, mace::MaceTensor> outputs;
     for (size_t i = 0; i < input_count; ++i) {
@@ -376,7 +389,7 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
       outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
     }
 
-    // 6. Run the model
+    // 5. Run the model
     MaceStatus status = engine.Run(inputs, &outputs);
 
 More details are in :doc:`advanced_usage`.
