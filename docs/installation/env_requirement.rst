@@ -33,6 +33,9 @@ Required dependencies
     * - Numpy
       - pip install -I numpy==1.14.0
       - Required by model validation
+    * - six
+      - pip install -I six==1.11.0
+      - Required for Python 2 and 3 compatibility (TODO)
 
 Optional dependencies
 ---------------------

@@ -35,6 +35,7 @@ import common
 #        --output_node output_node \
 #        --input_shape 1,64,64,3 \
 #        --output_shape 1,64,64,2
+#        --validation_threshold 0.995
 
 VALIDATION_MODULE = 'VALIDATION'
 
@@ -47,7 +48,7 @@ def load_data(file):
 
 
 def compare_output(platform, device_type, output_name, mace_out_value,
-                   out_value):
+                   out_value, validation_threshold):
     if mace_out_value.size != 0:
         out_value = out_value.reshape(-1)
         mace_out_value = mace_out_value.reshape(-1)
@@ -56,9 +57,7 @@ def compare_output(platform, device_type, output_name, mace_out_value,
         common.MaceLogger.summary(
             output_name + ' MACE VS ' + platform.upper()
             + ' similarity: ' + str(similarity))
-        if (device_type == "CPU" and similarity > 0.999) or \
-            (device_type == "GPU" and similarity > 0.995) or \
-                (device_type == "HEXAGON" and similarity > 0.930):
+        if similarity > validation_threshold:
             common.MaceLogger.summary(
                 common.StringFormatter.block("Similarity Test Passed"))
         else:
@@ -78,7 +77,8 @@ def normalize_tf_tensor_name(name):
 
 
 def validate_tf_model(platform, device_type, model_file, input_file,
-                      mace_out_file, input_names, input_shapes, output_names):
+                      mace_out_file, input_names, input_shapes,
+                      output_names, validation_threshold):
     import tensorflow as tf
     if not os.path.isfile(model_file):
         common.MaceLogger.error(
@@ -115,12 +115,13 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                         mace_out_file, output_names[i])
                     mace_out_value = load_data(output_file_name)
                     compare_output(platform, device_type, output_names[i],
-                                   mace_out_value, output_values[i])
+                                   mace_out_value, output_values[i],
+                                   validation_threshold)
 
 
 def validate_caffe_model(platform, device_type, model_file, input_file,
                          mace_out_file, weight_file, input_names, input_shapes,
-                         output_names, output_shapes):
+                         output_names, output_shapes, validation_threshold):
     os.environ['GLOG_minloglevel'] = '1'  # suprress Caffe verbose prints
     import caffe
     if not os.path.isfile(model_file):
@@ -162,11 +163,12 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
             mace_out_file, output_names[i])
         mace_out_value = load_data(output_file_name)
         compare_output(platform, device_type, output_names[i], mace_out_value,
-                       value)
+                       value, validation_threshold)
 
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
-             device_type, input_shape, output_shape, input_node, output_node):
+             device_type, input_shape, output_shape, input_node, output_node,
+             validation_threshold):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
@@ -177,14 +179,15 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
     if platform == 'tensorflow':
         validate_tf_model(platform, device_type, model_file, input_file,
                           mace_out_file, input_names, input_shapes,
-                          output_names)
+                          output_names, validation_threshold)
     elif platform == 'caffe':
         output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
                          for shape in output_shape_strs]
         validate_caffe_model(platform, device_type, model_file, input_file,
                              mace_out_file, weight_file, input_names,
-                             input_shapes, output_names, output_shapes)
+                             input_shapes, output_names, output_shapes,
+                             validation_threshold)
 
 
 def parse_args():
@@ -219,6 +222,9 @@ def parse_args():
         "--input_node", type=str, default="input_node", help="input node")
     parser.add_argument(
         "--output_node", type=str, default="output_node", help="output node")
+    parser.add_argument(
+        "--validation_threshold", type=float, default=0.995,
+        help="validation similarity threshold")
 
     return parser.parse_known_args()
 
@@ -234,4 +240,5 @@ if __name__ == '__main__':
              FLAGS.input_shape,
              FLAGS.output_shape,
              FLAGS.input_node,
-             FLAGS.output_node)
+             FLAGS.output_node,
+             FLAGS.validation_threshold)
