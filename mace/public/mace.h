@@ -127,6 +127,19 @@ class __attribute__((visibility("default"))) MaceEngine {
   MaceEngine &operator=(const MaceEngine &) = delete;
 };
 
+/// \brief Create MaceEngine from files (model file + data file)
+///
+/// Create MaceEngine object
+///
+/// \param model_pb[in]: the content of model graph file
+/// \param model_data_file[in]: the path of model data file
+/// \param input_nodes[in]: the array of input nodes' name
+/// \param output_nodes[in]: the array of output nodes' name
+/// \param device_type[in]: one of [CPU, GPU, HEXAGON],
+///        based on the runtime type of your model deployment file.
+/// \param engine[out]: output MaceEngine object
+/// \return MACE_SUCCESS for success, MACE_INVALID_ARGS for wrong arguments,
+///         MACE_OUT_OF_RESOURCES for resources is out of range.
 __attribute__((visibility("default")))
 MaceStatus CreateMaceEngineFromProto(
     const std::vector<unsigned char> &model_pb,

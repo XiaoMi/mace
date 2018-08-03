@@ -113,7 +113,7 @@ DEFINE_string(opencl_parameter_file,
               "tuned OpenCL parameter file path");
 DEFINE_string(model_data_file,
               "",
-              "model data file name, used when EMBED_MODEL_DATA set to 0");
+              "model data file name, used when model_data_format == file");
 DEFINE_string(model_file,
               "",
               "model file name, used when load mace model in pb");
@@ -194,9 +194,11 @@ bool RunModel(const std::vector<std::string> &input_names,
   // Create Engine
   std::shared_ptr<mace::MaceEngine> engine;
   MaceStatus create_engine_status;
-  // Only choose one of the two type based on the `build_type`
+  // Only choose one of the two type based on the `model_graph_format`
   // in model deployment file(.yml).
 #ifdef MODEL_GRAPH_FORMAT_CODE
+  // if model_data_format == code, just pass an empty string("")
+  // to model_data_file parameter.
   create_engine_status =
       CreateMaceEngineFromCode(FLAGS_model_name,
                                FLAGS_model_data_file,
