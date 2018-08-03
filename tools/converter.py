@@ -19,6 +19,7 @@ import os
 import re
 import sh
 import subprocess
+import six
 import sys
 import urllib
 import yaml
@@ -189,6 +190,7 @@ class YAMLKeyword(object):
     quantize = 'quantize'
     quantize_range_file = 'quantize_range_file'
     validation_inputs_data = 'validation_inputs_data'
+    validation_threshold = 'validation_threshold'
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
 
 
@@ -444,6 +446,30 @@ def format_model_config(flags):
                            "'%s' is necessary in subgraph" % key)
                 if not isinstance(value, list):
                     subgraph[key] = [value]
+
+            validation_threshold = subgraph.get(
+                YAMLKeyword.validation_threshold, {})
+            if not isinstance(validation_threshold, dict):
+                raise argparse.ArgumentTypeError(
+                        'similarity threshold must be a dict.')
+
+            threshold_dict = {
+                    DeviceType.CPU: 0.999,
+                    DeviceType.GPU: 0.995,
+                    DeviceType.HEXAGON: 0.930,
+                    }
+            for k, v in six.iteritems(validation_threshold):
+                if k.upper() == 'DSP':
+                    k = DeviceType.HEXAGON
+                if k.upper() not in (DeviceType.CPU,
+                                     DeviceType.GPU,
+                                     DeviceType.HEXAGON):
+                    raise argparse.ArgumentTypeError(
+                            'Unsupported validation threshold runtime: %s' % k)
+                threshold_dict[k.upper()] = v
+
+            subgraph[YAMLKeyword.validation_threshold] = threshold_dict
+
             validation_inputs_data = subgraph.get(
                 YAMLKeyword.validation_inputs_data, [])
             if not isinstance(validation_inputs_data, list):
@@ -1202,7 +1228,8 @@ def run_specific_target(flags, configs, target_abi,
                     output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
                     model_output_dir=model_output_dir,
                     phone_data_dir=PHONE_DATA_DIR,
-                    caffe_env=flags.caffe_env)
+                    caffe_env=flags.caffe_env,
+                    validation_threshold=subgraphs[0][YAMLKeyword.validation_threshold][device_type])  # noqa
             if flags.report and flags.round > 0:
                 tuned = is_tuned and device_type == DeviceType.GPU
                 report_run_statistics(

@@ -76,6 +76,8 @@ in one deployment file.
       - The numerical range of the input tensors' data, default [-1, 1]. It is only for test.
     * - validation_inputs_data
       - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used.
+    * - validation_threshold
+      - [optional] Specify the similarity threshold for validation. A dict with key in 'CPU', 'GPU' and/or 'HEXAGON' and value <= 1.0.
     * - runtime
       - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type

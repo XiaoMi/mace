@@ -799,7 +799,8 @@ def validate_model(abi,
                    phone_data_dir,
                    caffe_env,
                    input_file_name="model_input",
-                   output_file_name="model_out"):
+                   output_file_name="model_out",
+                   validation_threshold=0.9):
     print("* Validate with %s" % platform)
     if abi != "host":
         for output_name in output_nodes:
@@ -816,7 +817,8 @@ def validate_model(abi,
                  "%s/%s" % (model_output_dir, input_file_name),
                  "%s/%s" % (model_output_dir, output_file_name), device_type,
                  ":".join(input_shapes), ":".join(output_shapes),
-                 ",".join(input_nodes), ",".join(output_nodes))
+                 ",".join(input_nodes), ",".join(output_nodes),
+                 validation_threshold)
     elif platform == "caffe":
         image_name = "mace-caffe:latest"
         container_name = "mace_caffe_validator"
@@ -832,7 +834,8 @@ def validate_model(abi,
                      "%s/%s" % (model_output_dir, output_file_name),
                      device_type,
                      ":".join(input_shapes), ":".join(output_shapes),
-                     ",".join(input_nodes), ",".join(output_nodes))
+                     ",".join(input_nodes), ",".join(output_nodes),
+                     validation_threshold)
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
             if not docker_image_id:
@@ -896,6 +899,7 @@ def validate_model(abi,
                 "--output_node=%s" % ",".join(output_nodes),
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
+                "--validation_threshold=%f" % validation_threshold,
                 _fg=True)
 
     print("Validation done!\n")
