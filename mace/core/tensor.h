@@ -96,7 +96,7 @@ inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
 }
 }  // namespace numerical_chars
 
-enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4 };
+enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4, OHWI = 5 };
 
 class Tensor {
  public:

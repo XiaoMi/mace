@@ -116,7 +116,9 @@ class OpsTestNet {
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
-                         const std::vector<T> &data) {
+                         const std::vector<T> &data,
+                         const float scale = 0.0,
+                         const int32_t zero_point = 0) {
     Tensor *input =
         ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
     input->Resize(shape);
@@ -124,6 +126,8 @@ class OpsTestNet {
     T *input_data = input->mutable_data<T>();
     MACE_CHECK(static_cast<size_t>(input->size()) == data.size());
     memcpy(input_data, data.data(), data.size() * sizeof(T));
+    input->SetScale(scale);
+    input->SetZeroPoint(zero_point);
   }
 
   template <DeviceType D, typename T>
@@ -300,6 +304,26 @@ class OpsTestNet {
             output_data[((m * in_channels) + c) * height * width + k] =
                 input_data[k * out_channels * in_channels + c * out_channels +
                            m];
+          }
+        }
+      }
+    } else if (src_format == OHWI && dst_format == OIHW) {
+      index_t out_channels = input_shape[0];
+      index_t height = input_shape[1];
+      index_t width = input_shape[2];
+      index_t in_channels = input_shape[3];
+      output->Resize({out_channels, in_channels, height, width});
+      Tensor::MappingGuard input_guard(input);
+      Tensor::MappingGuard output_guard(output);
+      const T *input_data = input->data<T>();
+      T *output_data = output->mutable_data<T>();
+      for (index_t b = 0; b < out_channels; ++b) {
+        for (index_t c = 0; c < in_channels; ++c) {
+          for (index_t h = 0; h < height; ++h) {
+            for (index_t w = 0; w < width; ++w) {
+              output_data[((b * in_channels + c) * height + h) * width + w] =
+                  input_data[((b * height + h) * width + w) * in_channels + c];
+            }
           }
         }
       }
@@ -630,6 +654,25 @@ void ExpectTensorNear(const Tensor &x,
                       const double rel_err = 1e-5,
                       const double abs_err = 1e-8) {
   Expector<EXP_TYPE, RES_TYPE>::Near(x, y, rel_err, abs_err);
+}
+
+template <typename T>
+void ExpectTensorSimilar(const Tensor &x,
+                         const Tensor &y,
+                         const double abs_err = 1e-5) {
+  AssertSameDims(x, y);
+  Tensor::MappingGuard x_mapper(&x);
+  Tensor::MappingGuard y_mapper(&y);
+  auto x_data = x.data<T>();
+  auto y_data = y.data<T>();
+  double dot_product = 0.0, x_norm = 0.0, y_norm = 0.0;
+  for (index_t i = 0; i < x.size(); i++) {
+    dot_product += x_data[i] * y_data[i];
+    x_norm += x_data[i] * x_data[i];
+    y_norm += y_data[i] * y_data[i];
+  }
+  double similarity = dot_product / (sqrt(x_norm) * sqrt(y_norm));
+  EXPECT_NEAR(1.0, similarity, abs_err);
 }
 
 template <DeviceType D, typename T>

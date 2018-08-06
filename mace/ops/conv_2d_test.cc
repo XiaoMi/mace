@@ -15,6 +15,7 @@
 #include <fstream>
 #include <vector>
 
+#include "mace/kernels/quantize.h"
 #include "mace/ops/conv_2d.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -1067,6 +1068,163 @@ TEST_F(Conv2dOpTest, OPENCLAlignedPad2) {
 
 TEST_F(Conv2dOpTest, OPENCLUnalignedPad4) {
   TestArbitraryPadConvNxN<DeviceType::GPU, float>({107, 113, 5, 7}, {4, 4});
+}
+
+namespace {
+
+void TestQuantSimple3x3() {
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+      "Filter", {1, 3, 3, 2},
+      {102, 150, 123, 135, 1, 216, 137, 47, 53, 75, 145, 130, 171, 62, 255,
+       122, 72, 211}, 0.0226, 127);
+  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+      "Input", {1, 3, 3, 2},
+      {1, 75, 117, 161, 127, 119, 94, 151, 203, 151, 84, 61, 55, 142, 113, 139,
+       3, 255}, 0.0204, 93);
+
+  net.AddInputFromArray<DeviceType::CPU, int32_t>("Bias", {1}, {2});
+  OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(DeviceType::CPU);
+  Tensor *output = net.GetTensor("Output");
+  output->SetScale(0.000711);
+  output->SetZeroPoint(1);
+  // Run
+  net.Run();
+  // Check
+  auto expected = CreateTensor<uint8_t>({1, 1, 1, 1}, {230});
+  ExpectTensorNear<uint8_t>(*expected, *output);
+}
+
+void TestQuant(const index_t batch,
+               const index_t out_channels,
+               const index_t in_channels,
+               const index_t in_height,
+               const index_t in_width,
+               const index_t k_height,
+               const index_t k_width,
+               enum Padding padding_type,
+               const std::vector<int> &strides) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float>("Input", {batch, in_height, in_width,
+                                           in_channels});
+  net.AddRandomInput<CPU, float>("Filter", {out_channels, k_height, k_width,
+                                            in_channels});
+  net.AddRandomInput<CPU, float>("Bias", {out_channels});
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>("Filter", OHWI, "FilterOIHW",
+                                                  OIHW);
+
+  OpDefBuilder("Conv2D", "Conv2dTest")
+      .Input("InputNCHW")
+      .Input("FilterOIHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
+                                                  "Output", NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeFilter")
+      .Input("Filter")
+      .Output("QuantizedFilter")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  Tensor *q_filter = net.GetTensor("QuantizedFilter");
+  Tensor *q_input = net.GetTensor("QuantizedInput");
+  Tensor *bias = net.GetTensor("Bias");
+  auto bias_data = bias->data<float>();
+  std::vector<int32_t> q_bias(bias->size());
+  kernels::QuantizeWithScaleAndZeropoint(
+      bias_data, bias->size(), q_input->scale() * q_filter->scale(), 0,
+      q_bias.data());
+  net.AddInputFromArray<DeviceType::CPU, int32_t>("QuantizedBias",
+                                                  {out_channels}, q_bias);
+  OpDefBuilder("Conv2D", "QuantizeConv2dTest")
+      .Input("QuantizedInput")
+      .Input("QuantizedFilter")
+      .Input("QuantizedBias")
+      .Output("QuantizedOutput")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(Conv2dOpTest, Quant) {
+  TestQuantSimple3x3();
+  TestQuant(1, 128, 64, 32, 32, 1, 1, VALID, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 3, 3, VALID, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 3, 3, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 3, 3, FULL, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 3, 3, SAME, {2, 2});
+  TestQuant(1, 129, 63, 33, 31, 3, 3, SAME, {1, 1});
+  TestQuant(9, 128, 64, 32, 32, 3, 3, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 1, 5, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 5, 5, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 5, 1, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 7, 7, SAME, {1, 1});
+  TestQuant(1, 128, 64, 32, 32, 7, 7, SAME, {2, 2});
+  TestQuant(1, 128, 64, 32, 32, 7, 7, SAME, {3, 3});
 }
 
 }  // namespace test

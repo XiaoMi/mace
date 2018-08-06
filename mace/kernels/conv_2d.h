@@ -20,7 +20,9 @@
 #endif
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 #include "mace/core/future.h"
@@ -29,6 +31,7 @@
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/kernels/arm/conv_2d_neon.h"
 #include "mace/kernels/arm/conv_winograd.h"
+#include "mace/kernels/gemmlowp_util.h"
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -712,6 +715,288 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
   Tensor transformed_filter_;
   bool is_filter_transformed_;
+  ScratchBuffer *scratch_;
+};
+
+template<>
+struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
+  Conv2dFunctor(const int *strides,
+                const Padding &padding_type,
+                const std::vector<int> &paddings,
+                const int *dilations,
+                const ActivationType activation,
+                const float relux_max_limit,
+                const bool is_filter_transformed,
+                ScratchBuffer *scratch)
+      : Conv2dFunctorBase(strides,
+                          padding_type,
+                          paddings,
+                          dilations,
+                          activation,
+                          relux_max_limit),
+        scratch_(scratch) {
+    MACE_UNUSED(is_filter_transformed);
+  }
+
+  template <typename T>
+  inline void Im2col(
+      const T *in_data, const std::vector<index_t> &in_shape,
+      const index_t filter_h, const index_t filter_w, const index_t stride_h,
+      const index_t stride_w, const T zero_point, const int pad_height,
+      const int pad_width, const std::vector<index_t> &out_shape,
+      const index_t depth, T* im2col_data) {
+    const index_t batches = out_shape[0];
+    const index_t out_height = out_shape[1];
+    const index_t out_width = out_shape[2];
+    const index_t column_len = depth;
+    const index_t in_height = in_shape[1];
+    const index_t in_width = in_shape[2];
+    const index_t in_channels = in_shape[3];
+    const index_t input_row_size = in_width * in_channels;
+    const index_t patch_row_size = filter_w * in_channels;
+
+#pragma omp parallel for collapse(3)
+    for (index_t b = 0; b < batches; ++b) {
+      for (index_t h = 0; h < out_height; ++h) {
+        for (index_t w = 0; w < out_width; ++w) {
+          // Reshape a patch of input to column, which is corresponding to
+          // a column of output(:, column).
+          const index_t ih_begin = h * stride_h - (pad_height >> 1);
+          const index_t ih_end = ih_begin + filter_h;
+          const index_t iw_begin = w * stride_w - (pad_width >> 1);
+          const index_t iw_end = iw_begin + filter_w;
+          // gate height and width to separate padding
+          const index_t ih_begin_gated = std::max<index_t>(0, ih_begin);
+          const index_t ih_end_gated = std::min<index_t>(ih_end, in_height);
+          const index_t iw_begin_gated = std::max<index_t>(0, iw_begin);
+          const index_t iw_end_gated = std::min<index_t>(iw_end, in_width);
+          const index_t pad_top = std::max<index_t>(0, -ih_begin);
+          const index_t pad_bottom = ih_end - ih_end_gated;
+          const index_t pad_left = std::max<index_t>(0, -iw_begin);
+          const index_t pad_right = iw_end - iw_end_gated;
+          index_t im2col_column_offset =
+              ((b * out_height + h) * out_width + w) * column_len;
+
+          // fill in padding top
+          if (pad_top > 0) {
+            std::fill_n(im2col_data + im2col_column_offset,
+                        pad_top * patch_row_size, zero_point);
+          }
+
+          const index_t patch_row_size_gated =
+              std::min(filter_w - pad_left,
+                       in_width - iw_begin_gated) * in_channels;
+          MACE_CHECK(patch_row_size_gated ==
+              ((filter_w - (pad_left + pad_right)) * in_channels));
+          const index_t pad_left_size = pad_left * in_channels;
+          const index_t pad_right_size = pad_right * in_channels;
+          index_t im2col_offset = im2col_column_offset +
+              (pad_top * filter_w + pad_left) * in_channels;
+          index_t in_offset =
+              ((b * in_height + ih_begin_gated) * in_width + iw_begin_gated) *
+                  in_channels;
+
+          // fill in effective rows
+          for (index_t ih = ih_begin_gated; ih < ih_end_gated; ++ih) {
+            // fill in padding left
+            if (pad_left > 0) {
+              const index_t left_offset = im2col_offset - pad_left_size;
+              std::fill_n(im2col_data + left_offset, pad_left_size, zero_point);
+            }
+            // copy effective data
+            std::copy_n(in_data + in_offset, patch_row_size_gated,
+                        im2col_data + im2col_offset);
+            // fill in padding right
+            if (pad_right > 0) {
+              const index_t right_offset = im2col_offset + patch_row_size_gated;
+              std::fill_n(im2col_data + right_offset, pad_right_size,
+                          zero_point);
+            }
+            in_offset += input_row_size;
+            im2col_offset += patch_row_size;
+          }
+
+          // fill in padding bottom
+          if (pad_bottom > 0) {
+            const index_t pad_bottom_size = pad_bottom * patch_row_size;
+            const index_t bottom_offset =
+                im2col_column_offset + column_len - pad_bottom_size;
+            std::fill_n(im2col_data + bottom_offset, pad_bottom_size,
+                        zero_point);
+          }
+        }
+      }
+    }
+  }
+
+  inline void GetOutputMultiplierAndShift(
+      const float lhs_scale, const float rhs_scale, const float output_scale,
+      int32_t *quantized_multiplier, int *right_shift) {
+    float real_multiplier = lhs_scale * rhs_scale / output_scale;
+    MACE_CHECK(real_multiplier > 0.f && real_multiplier < 1.f, real_multiplier);
+    int exponent;
+    const double significand = std::frexp(real_multiplier, &exponent);
+    *right_shift = -exponent;
+    int64_t q = static_cast<int64_t>(std::round(significand * (1ll << 31)));
+    MACE_CHECK(q <= (1ll << 31));
+    if (q == (1ll << 31)) {
+      q /= 2;
+      (*right_shift)--;
+    }
+    MACE_CHECK(*right_shift >= 0);
+    MACE_CHECK(q <= std::numeric_limits<int32_t>::max());
+    *quantized_multiplier = static_cast<int32_t>(q);
+  }
+
+  typedef gemmlowp::VectorMap<const int32_t, gemmlowp::VectorShape::Col>
+      ColVectorMap;
+  typedef std::tuple<
+      gemmlowp::OutputStageBiasAddition<ColVectorMap>,
+      gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint,
+      gemmlowp::OutputStageSaturatingCastToUint8> Pipeline;
+  inline Pipeline MakeOutputPipeline(
+      const int32_t* bias_data, const index_t channels, const float lhs_scale,
+      const float rhs_scale, const float output_scale,
+      const int32_t output_zero_point) {
+    ColVectorMap bias_vector(bias_data, channels);
+    gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_addition_stage;
+    bias_addition_stage.bias_vector = bias_vector;
+    int32_t quantized_multiplier;
+    int32_t right_shift;
+    GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
+                                &quantized_multiplier, &right_shift);
+    gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint
+        quantize_down_stage;
+    quantize_down_stage.result_offset_after_shift = output_zero_point;
+    quantize_down_stage.result_fixedpoint_multiplier = quantized_multiplier;
+    quantize_down_stage.result_shift = right_shift;
+
+    gemmlowp::OutputStageSaturatingCastToUint8 saturating_cast_stage;
+    return std::make_tuple(bias_addition_stage, quantize_down_stage,
+                           saturating_cast_stage);
+  }
+
+  MaceStatus operator()(const Tensor *input,   // NHWC
+                        const Tensor *filter,  // OHWI
+                        const Tensor *bias,
+                        Tensor *output,        // NHWC
+                        StatsFuture *future) {
+    MACE_UNUSED(future);
+    MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1,
+               "Quantization convolution does not support dilation > 1 yet.");
+
+    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+
+    std::vector<index_t> output_shape(4);
+    std::vector<int> paddings(2);
+    if (paddings_.empty()) {
+      CalcPaddingAndOutputSize(input->shape().data(),
+                               NHWC,
+                               filter->shape().data(),
+                               OHWI,
+                               dilations_,
+                               strides_,
+                               padding_type_,
+                               output_shape.data(),
+                               paddings.data());
+    } else {
+      paddings = paddings_;
+      CalcOutputSize(input->shape().data(),
+                     NHWC,
+                     filter->shape().data(),
+                     OHWI,
+                     paddings_.data(),
+                     dilations_,
+                     strides_,
+                     RoundType::FLOOR,
+                     output_shape.data());
+    }
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+
+    index_t batch = output->dim(0);
+    index_t height = output->dim(1);
+    index_t width = output->dim(2);
+    index_t channels = output->dim(3);
+    index_t input_batch = input->dim(0);
+    index_t input_channels = input->dim(3);
+    index_t filter_h = filter->dim(1);
+    index_t filter_w = filter->dim(2);
+    index_t stride_h = strides_[0];
+    index_t stride_w = strides_[1];
+    const index_t depth = input_channels * filter_h * filter_w;
+    const index_t columns = batch * height * width;
+
+    MACE_CHECK(filter->dim(0) == channels, filter->dim(0), " != ", channels);
+    MACE_CHECK(filter->dim(3) == input_channels, filter->dim(3), " != ",
+               input_channels);
+    MACE_CHECK(batch == input_batch, "Input/Output batch size mismatch");
+
+    Tensor::MappingGuard input_guard(input);
+    Tensor::MappingGuard filter_guard(filter);
+    Tensor::MappingGuard output_guard(output);
+
+    auto input_data = input->data<uint8_t>();
+    auto filter_data = filter->data<uint8_t>();
+    auto output_data = output->mutable_data<uint8_t>();
+
+    index_t total_scratch_size = 0;
+    index_t zero_bias_size = channels * sizeof(int32_t);
+    total_scratch_size += (bias == nullptr ? zero_bias_size : 0);
+    index_t im2col_size = depth * columns * sizeof(uint8_t);
+    bool im2col_required =
+        filter_h != 1 || filter_w != 1 || stride_h != 1 || stride_w != 1;
+    total_scratch_size += (im2col_required ? im2col_size : 0);
+    scratch_->Rewind();
+    scratch_->GrowSize(total_scratch_size);
+
+    std::unique_ptr<Tensor> zero_bias;
+    const int32_t *bias_data = nullptr;
+    if (bias == nullptr) {
+      zero_bias.reset(new Tensor(scratch_->Scratch(zero_bias_size), DT_INT32));
+      zero_bias->Reshape({channels});
+      zero_bias->Clear();
+      bias_data = zero_bias->data<int32_t>();
+    } else {
+      bias_data = bias->data<int32_t>();
+    }
+
+    std::unique_ptr<Tensor> im2col;
+    auto gemm_input_data = input_data;
+    if (im2col_required) {
+      // prepare im2col
+      im2col.reset(new Tensor(scratch_->Scratch(im2col_size), DT_UINT8));
+      uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
+      Im2col(input_data, input->shape(), filter_h, filter_w, stride_h,
+             stride_w, static_cast<uint8_t>(input->zero_point()),
+             paddings[0], paddings[1], output->shape(), depth, im2col_data);
+      gemm_input_data = im2col_data;
+    }
+
+    const int gemm_filter_rows = static_cast<int>(channels);
+    const int gemm_filter_cols = static_cast<int>(depth);
+    const int gemm_input_rows = static_cast<int>(depth);
+    const int gemm_input_cols = static_cast<int>(columns);
+    const int gemm_output_rows = static_cast<int>(channels);
+    const int gemm_output_cols = static_cast<int>(columns);
+    gemmlowp::MatrixMap<const uint8_t, gemmlowp::MapOrder::RowMajor>
+        filter_matrix(filter_data, gemm_filter_rows, gemm_filter_cols);
+    gemmlowp::MatrixMap<const uint8_t, gemmlowp::MapOrder::ColMajor>
+        input_matrix(gemm_input_data, gemm_input_rows, gemm_input_cols);
+    gemmlowp::MatrixMap<uint8_t, gemmlowp::MapOrder::ColMajor>
+        output_matrix(output_data, gemm_output_rows, gemm_output_cols);
+
+    const auto &output_pipeline = MakeOutputPipeline(
+        bias_data, channels, filter->scale(), input->scale(), output->scale(),
+        output->zero_point());
+
+    using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
+    gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
+        &gemm_context, filter_matrix, input_matrix, &output_matrix,
+        -filter->zero_point(), -input->zero_point(), output_pipeline);
+
+    return MACE_SUCCESS;
+  }
+
   ScratchBuffer *scratch_;
 };
 

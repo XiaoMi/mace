@@ -91,7 +91,7 @@ T &&CheckNotNull(const char *file, int line, const char *exprtext, T &&t) {
 
 #define MACE_CHECK_NOTNULL(val) \
   ::mace::logging::CheckNotNull(__FILE__, __LINE__, \
-                                "'" #val "' Must be non NULL", (val))
+                                "'" #val "' Must not be NULL", (val))
 
 #define MACE_NOT_IMPLEMENTED MACE_CHECK(false, "not implemented")
 
