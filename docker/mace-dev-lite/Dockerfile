@@ -85,8 +85,7 @@ RUN cd /opt/ && \
     rm -f android-ndk-r15c-linux-x86_64.zip
 
 ENV ANDROID_NDK_VERSION r15c
-ENV ANDROID_NDK /opt/android-ndk-${ANDROID_NDK_VERSION}
-ENV ANDROID_NDK_HOME ${ANDROID_NDK}
+ENV ANDROID_NDK_HOME /opt/android-ndk-${ANDROID_NDK_VERSION}
 
 # add to PATH
 ENV PATH ${PATH}:${ANDROID_NDK_HOME}
@@ -104,3 +103,7 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     sh==1.12.14 \
     pycodestyle==2.4.0 \
     filelock
+
+# fix docker in docker error: `error while loading shared libraries: libltdl.so.7`
+# refer to: https://github.com/jenkinsci/docker/issues/506
+RUN apt-get install -y libltdl7

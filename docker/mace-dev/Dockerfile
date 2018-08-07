@@ -44,3 +44,8 @@ RUN cd /opt/ && \
     wget -q https://dl.google.com/android/repository/android-ndk-r16-linux-x86_64.zip && \
     unzip -q android-ndk-r16-linux-x86_64.zip && \
     rm -f android-ndk-r16-linux-x86_64.zip
+## Download other NDK r17b
+RUN cd /opt/ && \
+    wget -q https://dl.google.com/android/repository/android-ndk-r17b-linux-x86_64.zip && \
+    unzip -q android-ndk-r17b-linux-x86_64.zip && \
+    rm -f android-ndk-r17b-linux-x86_64.zip
