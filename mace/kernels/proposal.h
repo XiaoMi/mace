@@ -16,6 +16,7 @@
 #define MACE_KERNELS_PROPOSAL_H_
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "mace/core/future.h"
