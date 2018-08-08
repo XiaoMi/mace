@@ -45,6 +45,8 @@ Create container with the following command
     docker run -it --privileged -d --name mace-dev \
                -v /dev/bus/usb:/dev/bus/usb --net=host \
                -v /local/path:/container/path \
+               -v /usr/bin/docker:/usr/bin/docker \
+               -v /var/run/docker.sock:/var/run/docker.sock \
                registry.cn-hangzhou.aliyuncs.com/xiaomimace/mace-dev-lite
     # Execute an interactive bash shell on the container
     docker exec -it mace-dev /bin/bash
