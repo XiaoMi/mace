@@ -59,7 +59,11 @@ bool HexagonControlWrapper::Config() {
 
 bool HexagonControlWrapper::Init() {
   LOG(INFO) << "Hexagon init";
+#ifdef MACE_USE_NNLIB_OLD
+  nn_id_ = hexagon_nn_init();
+#else
   MACE_CHECK(hexagon_nn_init(&nn_id_) == 0, "hexagon_nn_init failed");
+#endif
   ResetPerfInfo();
   return true;
 }
@@ -141,6 +145,9 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
       }
       outputs.resize(op.output_shape().size());
       for (int i = 0; i < op.output_shape().size(); ++i) {
+#ifdef MACE_USE_NNLIB_OLD
+        outputs[i].max_size = op.out_max_byte_size()[i];
+#else
         outputs[i].rank = op.output_shape()[i].dims().size();
         for (size_t j = 0; j < outputs[i].rank; ++j) {
           outputs[i].max_sizes[j] = op.output_shape()[i].dims()[j];
@@ -154,6 +161,7 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
             static_cast<DataType>(op.output_type()[i]));
         outputs[i].zero_offset = 0;
         outputs[i].stepsize = 0;
+#endif
       }
       cached_inputs.push_back(inputs);
       cached_outputs.push_back(outputs);
