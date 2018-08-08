@@ -68,6 +68,42 @@ void SoftmaxBenchmark(
   }
   net.Sync();
 }
+
+template <>
+void SoftmaxBenchmark<CPU, uint8_t>(
+    int iters, int batch, int channels, int height, int width) {
+  mace::testing::StopTiming();
+
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+      "Input", {batch, height, width, channels});
+
+  OpDefBuilder("Softmax", "SoftmaxBM")
+      .Input("Input")
+      .Output("Output")
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(DeviceType::CPU);
+
+  Tensor *output = net.GetTensor("Output");
+  output->SetScale(0);
+  output->SetZeroPoint(1);
+
+  // Warm-up
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
+  }
+  net.Sync();
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    net.Run();
+  }
+  net.Sync();
+}
 }  // namespace
 
 #define MACE_BM_SOFTMAX_MACRO(N, C, H, W, TYPE, DEVICE)                   \
@@ -82,6 +118,7 @@ void SoftmaxBenchmark(
 
 #define MACE_BM_SOFTMAX(N, C, H, W)                 \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, CPU);    \
+  MACE_BM_SOFTMAX_MACRO(N, C, H, W, uint8_t, CPU);  \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, float, GPU);    \
   MACE_BM_SOFTMAX_MACRO(N, C, H, W, half, GPU);
 

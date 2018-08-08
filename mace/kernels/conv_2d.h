@@ -32,6 +32,7 @@
 #include "mace/kernels/arm/conv_2d_neon.h"
 #include "mace/kernels/arm/conv_winograd.h"
 #include "mace/kernels/gemmlowp_util.h"
+#include "mace/kernels/quantize.h"
 #include "mace/utils/utils.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -826,18 +827,11 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
       int32_t *quantized_multiplier, int *right_shift) {
     float real_multiplier = lhs_scale * rhs_scale / output_scale;
     MACE_CHECK(real_multiplier > 0.f && real_multiplier < 1.f, real_multiplier);
+
     int exponent;
-    const double significand = std::frexp(real_multiplier, &exponent);
+    QuantizeMultiplier(real_multiplier, quantized_multiplier, &exponent);
     *right_shift = -exponent;
-    int64_t q = static_cast<int64_t>(std::round(significand * (1ll << 31)));
-    MACE_CHECK(q <= (1ll << 31));
-    if (q == (1ll << 31)) {
-      q /= 2;
-      (*right_shift)--;
-    }
     MACE_CHECK(*right_shift >= 0);
-    MACE_CHECK(q <= std::numeric_limits<int32_t>::max());
-    *quantized_multiplier = static_cast<int32_t>(q);
   }
 
   typedef gemmlowp::VectorMap<const int32_t, gemmlowp::VectorShape::Col>

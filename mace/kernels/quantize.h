@@ -137,6 +137,24 @@ inline void Dequantize(const T *input,
   }
 }
 
+inline void QuantizeMultiplier(double multiplier,
+                               int32_t* output_multiplier,
+                               int32_t* shift) {
+  if (multiplier == 0.f) {
+    *output_multiplier = 0;
+    *shift = 0;
+    return;
+  }
+  const double q = std::frexp(multiplier, shift);
+  auto qint = static_cast<int64_t>(roundl(q * (1ll << 31)));
+  if (qint == (1ll << 31)) {
+    qint /= 2;
+    ++*shift;
+  }
+  *output_multiplier = static_cast<int32_t>(qint);
+  MACE_CHECK(*output_multiplier <= std::numeric_limits<int32_t>::max());
+}
+
 template<DeviceType D, typename T>
 struct QuantizeFunctor;
 
