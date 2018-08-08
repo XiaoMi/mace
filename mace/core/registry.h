@@ -15,6 +15,7 @@
 #ifndef MACE_CORE_REGISTRY_H_
 #define MACE_CORE_REGISTRY_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT(build/c++11)
