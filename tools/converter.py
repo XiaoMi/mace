@@ -786,7 +786,8 @@ def build_model_lib(configs, address_sanitizer):
             abi=target_abi,
             hexagon_mode=hexagon_mode,
             enable_opencl=get_opencl_mode(configs),
-            address_sanitizer=address_sanitizer
+            address_sanitizer=address_sanitizer,
+            symbol_hidden=True
         )
 
         sh.cp("-f", MODEL_LIB_PATH, model_lib_output_path)
@@ -880,8 +881,10 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
 
+    symbol_hidden = True
     mace_run_target = MACE_RUN_STATIC_TARGET
     if mace_lib_type == MACELibType.dynamic:
+        symbol_hidden = False
         mace_run_target = MACE_RUN_DYNAMIC_TARGET
     build_arg = ""
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
@@ -897,6 +900,7 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
         enable_openmp=enable_openmp,
         enable_opencl=get_opencl_mode(configs),
         address_sanitizer=address_sanitizer,
+        symbol_hidden=symbol_hidden,
         extra_args=build_arg
     )
     sh_commands.update_mace_run_binary(build_tmp_binary_dir,
@@ -924,6 +928,7 @@ def build_quantize_stat(configs):
         quantize_stat_target,
         abi=ABIType.host,
         enable_openmp=True,
+        symbol_hidden=True,
         extra_args=build_arg
     )
 
@@ -943,36 +948,39 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
         sh.rm("-rf", build_tmp_binary_dir)
     os.makedirs(build_tmp_binary_dir)
 
+    symbol_hidden = True
     libmace_target = LIBMACE_STATIC_TARGET
     if mace_lib_type == MACELibType.dynamic:
+        symbol_hidden = False
         libmace_target = LIBMACE_SO_TARGET
 
     sh_commands.bazel_build(libmace_target,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
-                            hexagon_mode=hexagon_mode)
+                            hexagon_mode=hexagon_mode,
+                            symbol_hidden=symbol_hidden)
 
     if os.path.exists(LIB_CODEGEN_DIR):
         sh.rm("-rf", LIB_CODEGEN_DIR)
     sh.mkdir("-p", LIB_CODEGEN_DIR)
 
     build_arg = ""
+    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
+        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
+                   ModuleName.RUN,
+                   "You should convert model first.")
+        model_lib_path = get_model_lib_output_path(library_name,
+                                                   target_abi)
+        sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
+        build_arg = "--per_file_copt=mace/examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
+
     if mace_lib_type == MACELibType.dynamic:
         example_target = EXAMPLE_DYNAMIC_TARGET
         sh.cp("-f", LIBMACE_DYNAMIC_PATH, LIB_CODEGEN_DIR)
     else:
-        sh.cp("-f", LIBMACE_STATIC_PATH, LIB_CODEGEN_DIR)
-        if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-            mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
-                       ModuleName.RUN,
-                       "You should convert model first.")
-            model_lib_path = get_model_lib_output_path(library_name,
-                                                       target_abi)
-            sh.cp("-f", model_lib_path, LIB_CODEGEN_DIR)
-            build_arg = "--per_file_copt=mace/examples/cli/example.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
-
         example_target = EXAMPLE_STATIC_TARGET
+        sh.cp("-f", LIBMACE_STATIC_PATH, LIB_CODEGEN_DIR)
 
     sh_commands.bazel_build(example_target,
                             abi=target_abi,
@@ -1325,11 +1333,6 @@ def print_package_summary(package_path):
 
 def run_mace(flags):
     configs = format_model_config(flags)
-    if flags.mace_lib_type == MACELibType.dynamic and \
-       configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "If you want to link MACE dynamic library, "
-                         "you must use file-type MACE model.")
 
     clear_build_dirs(configs[YAMLKeyword.library_name])
 

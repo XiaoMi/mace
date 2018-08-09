@@ -11,6 +11,9 @@ build --copt=-D_GLIBCXX_USE_C99_MATH_TR1
 build --copt=-DMACE_OBFUSCATE_LITERALS
 build --copt=-DGEMMLOWP_USE_OPENMP
 
+# Usage example: bazel build --config symbol_hidden
+build:symbol_hidden --copt=-fvisibility=hidden
+
 # Usage example: bazel build --config android
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
@@ -23,7 +26,6 @@ build:optimization --linkopt=-Wl,--strip-all
 build:optimization --copt=-ffunction-sections
 build:optimization --copt=-fdata-sections
 build:optimization --linkopt=-Wl,--gc-sections
-build:optimization --copt=-fvisibility=hidden
 
 # Address sanitizer
 build:asan --strip=never

@@ -279,6 +279,7 @@ def bazel_build(target,
                 enable_neon=True,
                 enable_opencl=True,
                 address_sanitizer=False,
+                symbol_hidden=False,
                 extra_args=""):
     print("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
@@ -307,6 +308,8 @@ def bazel_build(target,
         bazel_args += ("--config", "asan")
     else:
         bazel_args += ("--config", "optimization")
+    if symbol_hidden:
+        bazel_args += ("--config", "symbol_hidden")
     if extra_args:
         bazel_args += (extra_args, )
         print bazel_args

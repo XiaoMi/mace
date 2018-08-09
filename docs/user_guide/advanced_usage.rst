@@ -378,6 +378,9 @@ Reduce Library Size
     - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
       will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
 
+    - About ``300KB`` can be reduced when add ``--config symbol_hidden`` building option. It will change
+      the visibility of inner apis of libmace.so and lead to linking error when load model(s) in ``code``.
+
 * **static library**
 
     - The methods in dynamic library can be useful for static library too. In additional, the static
