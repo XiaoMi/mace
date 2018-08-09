@@ -1387,8 +1387,10 @@ def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
 
     link_dynamic = mace_lib_type == MACELibType.dynamic
     if link_dynamic:
+        symbol_hidden = False
         benchmark_target = BM_MODEL_DYNAMIC_TARGET
     else:
+        symbol_hidden = True
         benchmark_target = BM_MODEL_STATIC_TARGET
 
     build_arg = ""
@@ -1403,6 +1405,7 @@ def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode,
+                            symbol_hidden=symbol_hidden,
                             extra_args=build_arg)
     # clear tmp binary dir
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
@@ -1514,11 +1517,6 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
 
 def benchmark_model(flags):
     configs = format_model_config(flags)
-    if flags.mace_lib_type == MACELibType.dynamic and \
-       configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        MaceLogger.error(ModuleName.YAML_CONFIG,
-                         "If you want to link MACE dynamic library, "
-                         "you must use file-type MACE model.")
 
     clear_build_dirs(configs[YAMLKeyword.library_name])
 

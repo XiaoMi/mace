@@ -65,6 +65,7 @@ cc_binary(
         ":statistics",
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
+        "//mace/codegen:generated_models",
         "//mace/libmace:libmace_dynamic",
     ],
 )
