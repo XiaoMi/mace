@@ -51,10 +51,9 @@ int HexagonControlWrapper::GetVersion() {
 
 bool HexagonControlWrapper::Config() {
   LOG(INFO) << "Hexagon config";
-  if (hexagon_nn_set_powersave_level(0) != 0) {
-    return false;
-  }
-  return hexagon_nn_config() == 0;
+  MACE_CHECK(hexagon_nn_set_powersave_level(0) == 0, "hexagon power error");
+  MACE_CHECK(hexagon_nn_config() == 0, "hexagon config error");
+  return true;
 }
 
 bool HexagonControlWrapper::Init() {
@@ -80,7 +79,10 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
   int64_t t0 = NowMicros();
 
   // const node
-  std::thread const_thread([&]() {
+#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
+  std::thread const_thread([&]()
+#endif
+  {
     std::vector<hexagon_nn_const_node> const_node_list;
     for (const ConstTensor &const_tensor : net_def.tensors()) {
       std::vector<int> tensor_shape(const_tensor.dims().begin(),
@@ -124,10 +126,16 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
           "append const node error");
     }
     const_node_list.clear();
-  });
+  }
+#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
+  );  // NOLINT
+#endif
 
   // op node
-  std::thread op_thread([&]() {
+#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
+  std::thread op_thread([&]()
+#endif
+  {
     OpMap op_map;
     op_map.Init();
     std::vector<hexagon_nn_op_node> op_node_list;
@@ -197,10 +205,12 @@ bool HexagonControlWrapper::SetupGraph(const NetDef &net_def,
     op_node_list.clear();
     cached_inputs.clear();
     cached_outputs.clear();
-  });
-
+  }
+#if defined(MACE_USE_NNLIB_CAF) || defined(MACE_USE_NNLIB_OLD)
+  );  // NOLINT
   const_thread.join();
   op_thread.join();
+#endif
 
   // input info
   num_inputs_ = 0;
