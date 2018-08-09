@@ -15,7 +15,6 @@
 #ifndef MACE_KERNELS_GEMMLOWP_UTIL_H_
 #define MACE_KERNELS_GEMMLOWP_UTIL_H_
 
-#include <iostream>
 #include "public/gemmlowp.h"
 
 namespace mace {

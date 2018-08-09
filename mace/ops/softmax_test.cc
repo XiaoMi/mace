@@ -155,6 +155,56 @@ TEST_F(SoftmaxOpTest, OPENCLAlignedRank2) {
   Complex<DeviceType::GPU>({3, 1001});
 }
 
+namespace {
+
+void TestQuantizedSoftmax(const std::vector<index_t> &input_shape) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float>("Input", input_shape, false, true);
+
+  OpDefBuilder("Softmax", "SoftmaxTest")
+      .Input("Input")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+  OpDefBuilder("Softmax", "SoftmaxQuantizeTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(1.0f / 255);
+  q_output->SetZeroPoint(0);
+  net.Run();
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.1);
+}
+
+}  // namespace
+
+TEST_F(SoftmaxOpTest, QuantizeTest) {
+  TestQuantizedSoftmax({5, 10});
+  TestQuantizedSoftmax({50, 100});
+  TestQuantizedSoftmax({1, 31});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
