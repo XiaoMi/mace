@@ -44,13 +44,7 @@ cc_library(
 
 cc_library(
   name = "generated_libmace",
-  srcs = glob(["lib/*.so"]),
-  visibility = ["//visibility:public"],
-)
-
-cc_library(
-  name = "generated_libmace_static",
-  srcs = glob(["lib/*.a"]),
+  srcs = glob(["lib/*"]),
   linkstatic = 1,
   visibility = ["//visibility:public"],
 )

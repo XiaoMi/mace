@@ -112,10 +112,6 @@ There are two common advanced use cases:
 
 * **Convert model(s) to C++ code**
 
-    .. warning::
-
-         If you want to use this case, you can just use static mace library.
-
     * **1. Change the model deployment file(.yml)**
 
         If you want to protect your model, you can convert model to C++ code. there are also two cases:
@@ -377,6 +373,10 @@ Reduce Library Size
 
     - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
       will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
+
+    - About ``300KB`` can be reduced when add ``--config symbol_hidden`` building option. It will change
+      the visibility of inner apis in libmace.so and lead to linking error when load model(s) in ``code``
+      but no effection for ``file`` mode.
 
 * **static library**
 

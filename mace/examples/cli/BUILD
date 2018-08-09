@@ -29,7 +29,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/codegen:generated_libmace_static",
+        "//mace/codegen:generated_libmace",
     ] + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),

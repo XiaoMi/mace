@@ -44,16 +44,16 @@ fi
 
 # build static libraries
 echo "build static lib for armeabi-v7a + cpu_gpu_dsp"
-bazel build --config android --config optimization mace/libmace:libmace_static --define neon=true --define openmp=true --define opencl=true --define hexagon=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define openmp=true --define opencl=true --define hexagon=true --cpu=armeabi-v7a
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 cp third_party/nnlib/*so $LIB_DIR/armeabi-v7a/cpu_gpu_dsp/
 
 echo "build static lib for armeabi-v7a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_static --define neon=true --define openmp=true --define opencl=true --cpu=armeabi-v7a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define openmp=true --define opencl=true --cpu=armeabi-v7a
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/armeabi-v7a/cpu_gpu/
 
 echo "build static lib for arm64-v8a + cpu_gpu"
-bazel build --config android --config optimization mace/libmace:libmace_static --define neon=true --define openmp=true --define opencl=true --cpu=arm64-v8a
+bazel build --config android --config optimization mace/libmace:libmace_static --config symbol_hidden --define neon=true --define openmp=true --define opencl=true --cpu=arm64-v8a
 cp bazel-genfiles/mace/libmace/libmace.a $LIB_DIR/arm64-v8a/cpu_gpu/
 
 if [[ "$OSTYPE" != "darwin"* ]];then
