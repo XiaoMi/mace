@@ -50,7 +50,9 @@ cc_binary(
         "-Wl,-soname,libmace.so",
         "-Wl,--version-script",
         "mace_version_script.lds",
-    ],
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]),
     linkshared = 1,
     linkstatic = 1,
     deps = [

@@ -47,9 +47,7 @@ cc_binary(
     ]),
     linkopts = [
         "-lm",
-    ] + if_openmp_enabled([
-        "-fopenmp"
-    ]) + if_android([
+    ] + if_android([
         "-ldl",
         "-pie",
         "-llog",
