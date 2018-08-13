@@ -979,6 +979,7 @@ def benchmark_model(abi,
         p = subprocess.Popen(
             [
                 "env",
+                "LD_LIBRARY_PATH=%s" % os.path.dirname(libmace_dynamic_library_path),
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
                 "--model_name=%s" % model_tag,
