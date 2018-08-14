@@ -976,10 +976,12 @@ def benchmark_model(abi,
     if model_graph_format == ModelFormat.file:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
     if abi == "host":
+        libmace_dynamic_lib_dir_path = \
+            os.path.dirname(libmace_dynamic_library_path)
         p = subprocess.Popen(
             [
                 "env",
-                "LD_LIBRARY_PATH=%s" % os.path.dirname(libmace_dynamic_library_path),
+                "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_dir_path,
                 "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
                 "%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
                 "--model_name=%s" % model_tag,
