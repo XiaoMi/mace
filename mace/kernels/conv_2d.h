@@ -260,11 +260,11 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     }  // b
   }
 
-  MaceStatus operator()(const Tensor *input,
-                  const Tensor *filter,
-                  const Tensor *bias,
-                  Tensor *output,
-                  StatsFuture *future) {
+  MaceStatus operator()(const Tensor *input,   // NCHW
+                        const Tensor *filter,  // OIHW
+                        const Tensor *bias,
+                        Tensor *output,        // NCHW
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
@@ -820,18 +820,6 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
         }
       }
     }
-  }
-
-  inline void GetOutputMultiplierAndShift(
-      const float lhs_scale, const float rhs_scale, const float output_scale,
-      int32_t *quantized_multiplier, int *right_shift) {
-    float real_multiplier = lhs_scale * rhs_scale / output_scale;
-    MACE_CHECK(real_multiplier > 0.f && real_multiplier < 1.f, real_multiplier);
-
-    int exponent;
-    QuantizeMultiplier(real_multiplier, quantized_multiplier, &exponent);
-    *right_shift = -exponent;
-    MACE_CHECK(*right_shift >= 0);
   }
 
   typedef gemmlowp::VectorMap<const int32_t, gemmlowp::VectorShape::Col>

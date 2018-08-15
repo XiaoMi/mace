@@ -122,14 +122,10 @@ void Conv2d<CPU, uint8_t>(int iters,
   // Add input data
   net.AddRandomInput<DeviceType::CPU, uint8_t>(
       "Input", {batch, height, width, channels});
-  Tensor *input = net.GetTensor("Input");
-  input->SetScale(0.00705);
-  input->SetZeroPoint(114);
+  net.GetTensor("Input")->SetScale(0.1);
   net.AddRandomInput<DeviceType::CPU, uint8_t>(
       "Filter", {output_channels, kernel_h, kernel_w, channels});
-  Tensor *filter = net.GetTensor("Filter");
-  filter->SetScale(0.0066);
-  filter->SetZeroPoint(113);
+  net.GetTensor("Filter")->SetScale(0.1);
   net.AddRandomInput<DeviceType::CPU, int32_t>("Bias", {output_channels});
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
@@ -144,9 +140,7 @@ void Conv2d<CPU, uint8_t>(int iters,
 
   net.Setup(DeviceType::CPU);
 
-  Tensor *output = net.GetTensor("Output");
-  output->SetScale(0.0107);
-  output->SetZeroPoint(118);
+  net.GetTensor("Output")->SetScale(0.1);
 
   // Warm-up
   for (int i = 0; i < 2; ++i) {

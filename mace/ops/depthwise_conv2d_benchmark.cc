@@ -41,17 +41,32 @@ void DepthwiseConv2d(int iters,
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input",
-                                 {batch, input_channels, height, width});
+    if (DataTypeToEnum<T>::value != DT_UINT8) {
+      net.AddRandomInput<D, float>(
+          "Input", {batch, input_channels, height, width});
+    } else {
+      net.AddRandomInput<DeviceType::CPU, uint8_t>(
+          "Input", {batch, height, width, input_channels});
+      net.GetTensor("Input")->SetScale(0.1);
+    }
+
   } else if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, float>("Input",
-                                 {batch, height, width, input_channels});
+    net.AddRandomInput<D, float>(
+        "Input", {batch, height, width, input_channels});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddRandomInput<D, float>(
-      "Filter", {multiplier, input_channels, kernel_h, kernel_w});
-  net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+  if (DataTypeToEnum<T>::value != DT_UINT8) {
+    net.AddRandomInput<D, float>(
+        "Filter", {multiplier, input_channels, kernel_h, kernel_w});
+    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+  } else {
+    net.AddRandomInput<DeviceType::CPU, uint8_t>(
+        "Filter", {kernel_h, kernel_w, input_channels, multiplier});
+    net.GetTensor("Filter")->SetScale(0.1);
+    net.AddRandomInput<DeviceType::CPU, int32_t>(
+        "Bias", {input_channels * multiplier});
+  }
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
@@ -86,6 +101,10 @@ void DepthwiseConv2d(int iters,
   }
 
   net.Setup(D);
+
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("Output")->SetScale(0.1);
+  }
 
   // Warm-up
   for (int i = 0; i < 2; ++i) {
@@ -132,7 +151,8 @@ void DepthwiseConv2d(int iters,
 #define MACE_BM_DEPTHWISE_CONV_2D(N, C, H, W, KH, KW, S, P, M)                 \
   MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, CPU);    \
   MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, float, GPU);    \
-  MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, GPU);
+  MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, half, GPU);     \
+  MACE_BM_DEPTHWISE_CONV_2D_MACRO(N, C, H, W, KH, KW, S, P, M, uint8_t, CPU);
 
 MACE_BM_DEPTHWISE_CONV_2D(1, 32, 112, 112, 3, 3, 1, SAME, 1);
 MACE_BM_DEPTHWISE_CONV_2D(1, 32, 56, 56, 3, 3, 2, VALID, 1);
@@ -156,7 +176,14 @@ MACE_BM_DEPTHWISE_CONV_2D(1, 3, 512, 512, 3, 3, 2, SAME, 1);
 MACE_BM_DEPTHWISE_CONV_2D(1, 3, 112, 112, 3, 3, 2, VALID, 1);
 MACE_BM_DEPTHWISE_CONV_2D(1, 3, 224, 224, 3, 3, 2, SAME, 1);
 MACE_BM_DEPTHWISE_CONV_2D(1, 8, 224, 224, 3, 3, 2, SAME, 1);
-
+MACE_BM_DEPTHWISE_CONV_2D(1, 128, 56, 56, 3, 3, 1, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 128, 56, 56, 3, 3, 2, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 256, 28, 28, 3, 3, 1, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 256, 28, 28, 3, 3, 2, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 512, 14, 14, 3, 3, 1, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 512, 14, 14, 3, 3, 2, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 1024, 7, 7, 3, 3, 1, SAME, 1);
+MACE_BM_DEPTHWISE_CONV_2D(1, 1024, 7, 7, 3, 3, 2, SAME, 1);
 
 }  // namespace test
 }  // namespace ops

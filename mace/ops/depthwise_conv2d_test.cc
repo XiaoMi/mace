@@ -351,6 +351,164 @@ TEST_F(DepthwiseConv2dOpTest, OpenCLUnalignedNxNS12Half) {
   TestNxNS12<half>(107, 113);
 }
 
+namespace {
+
+void QuantSimpleValidTest() {
+  testing::internal::LogToStderr();
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<CPU, uint8_t>(
+      "Input", {1, 3, 3, 2},
+      {31, 98, 1, 54, 197, 172, 70, 146, 255, 71, 24, 182, 28, 78, 85, 96, 180,
+       59}, 0.00735299, 86);
+  net.AddInputFromArray<CPU, uint8_t>(
+      "Filter", {3, 3, 2, 1},
+      {212, 239, 110, 170, 216, 91, 162, 161, 255, 2, 10, 120, 183, 101, 100,
+       33, 137, 51}, 0.0137587, 120);
+  net.AddInputFromArray<CPU, int32_t>("Bias", {2}, {2, 2});
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {1, 1})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(CPU);
+  Tensor *output = net.GetTensor("Output");
+  output->SetScale(0.013241);
+  output->SetZeroPoint(0);
+  // Run
+  net.Run();
+
+  // Check
+  auto expected = CreateTensor<uint8_t>({1, 1, 1, 2}, {255, 21});
+
+  ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"));
+}
+
+void TestQuant(const index_t batch,
+               const index_t multiplier,
+               const index_t in_channels,
+               const index_t in_height,
+               const index_t in_width,
+               const index_t k_height,
+               const index_t k_width,
+               enum Padding padding_type,
+               const std::vector<int> &strides) {
+  OpsTestNet net;
+  const index_t out_channels = multiplier * in_channels;
+  net.AddRandomInput<CPU, float>(
+      "Input", {batch, in_height, in_width, in_channels}, false);
+  net.AddRandomInput<CPU, float>(
+      "Filter", {k_height, k_width, in_channels, multiplier}, false);
+  net.AddRandomInput<CPU, float>("Bias", {out_channels});
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", NHWC, "InputNCHW", NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Filter", HWIO, "FilterOIHW", OIHW);
+
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
+      .Input("InputNCHW")
+      .Input("FilterOIHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_FLOAT))
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", NCHW, "Output", NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeFilter")
+      .Input("Filter")
+      .Output("QuantizedFilter")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  Tensor *q_filter = net.GetTensor("QuantizedFilter");
+  Tensor *q_input = net.GetTensor("QuantizedInput");
+  Tensor *bias = net.GetTensor("Bias");
+  auto bias_data = bias->data<float>();
+  std::vector<int32_t> q_bias(bias->size());
+  kernels::QuantizeWithScaleAndZeropoint(
+      bias_data, bias->size(), q_input->scale() * q_filter->scale(), 0,
+      q_bias.data());
+  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+      "QuantizedBias", {out_channels}, q_bias);
+  OpDefBuilder("DepthwiseConv2d", "QuantizedDepthwiseConv2DTest")
+      .Input("QuantizedInput")
+      .Input("QuantizedFilter")
+      .Input("QuantizedBias")
+      .Output("QuantizedOutput")
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(DepthwiseConv2dOpTest, Quant) {
+  QuantSimpleValidTest();
+  TestQuant(1, 1, 2, 3, 3, 3, 3, VALID, {1, 1});
+  TestQuant(1, 1, 2, 3, 3, 3, 3, SAME, {1, 1});
+  TestQuant(1, 1, 2, 3, 3, 3, 3, FULL, {1, 1});
+  TestQuant(1, 2, 2, 3, 3, 3, 3, SAME, {1, 1});
+  TestQuant(1, 2, 2, 3, 3, 3, 3, SAME, {2, 2});
+  TestQuant(1, 1, 512, 14, 14, 3, 3, SAME, {1, 1});
+  TestQuant(1, 1, 512, 14, 13, 5, 5, SAME, {2, 2});
+  TestQuant(1, 1, 256, 28, 28, 3, 3, SAME, {1, 1});
+  TestQuant(1, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
+  TestQuant(3, 1, 128, 56, 56, 3, 3, SAME, {2, 2});
+}
+
 }  // namespace test
 }  // namespace ops
 }  // namespace mace

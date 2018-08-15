@@ -73,6 +73,7 @@ cc_library(
         "//mace/core",
         "//mace/utils",
         "@gemmlowp",
+        "@tflite",
     ],
 )
 
