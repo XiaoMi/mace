@@ -33,6 +33,7 @@ class FilterFormat(Enum):
     HWIO = 0
     OIHW = 1
     HWOI = 2
+    OHWI = 3
 
 
 class PaddingMode(Enum):
@@ -325,50 +326,41 @@ class ConverterOption(object):
             self._transformer_option = [TransformerRule[transformer]
                                         for transformer in self._transformer_option]  # noqa
         else:
-            if not self._quantize:
-                self._transformer_option = [
-                    TransformerRule.REMOVE_IDENTITY_OP,
-                    TransformerRule.TRANSFORM_GLOBAL_POOLING,
-                    TransformerRule.FOLD_RESHAPE,
-                    TransformerRule.TRANSFORM_MATMUL_TO_FC,
-                    TransformerRule.FOLD_BATCHNORM,
-                    TransformerRule.FOLD_CONV_AND_BN,
-                    TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
-                    TransformerRule.TRANSFORM_GPU_WINOGRAD,
-                    TransformerRule.TRANSFORM_ADD_TO_BIASADD,
-                    TransformerRule.FOLD_BIASADD,
-                    TransformerRule.FLATTEN_ATROUS_CONV,
-                    TransformerRule.FOLD_ACTIVATION,
-                    TransformerRule.TRANSPOSE_FILTERS,
-                    TransformerRule.TRANSPOSE_DATA_FORMAT,
-                    TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-                    TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
-                    TransformerRule.RESHAPE_FC_WEIGHT,
-                    TransformerRule.TRANSFORM_BUFFER_IMAGE,
-                    TransformerRule.ADD_DEVICE,
-                    TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
-                    TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
-                    TransformerRule.SORT_BY_EXECUTION,
-                ]
-            else:
-                self._transformer_option = [
-                    TransformerRule.REMOVE_IDENTITY_OP,
-                    TransformerRule.TRANSFORM_GLOBAL_POOLING,
-                    TransformerRule.FOLD_RESHAPE,
-                    TransformerRule.TRANSFORM_MATMUL_TO_FC,
-                    TransformerRule.FOLD_BATCHNORM,
-                    TransformerRule.FOLD_CONV_AND_BN,
-                    TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
-                    TransformerRule.TRANSFORM_GPU_WINOGRAD,
-                    TransformerRule.TRANSFORM_ADD_TO_BIASADD,
-                    TransformerRule.FOLD_BIASADD,
-                    TransformerRule.FLATTEN_ATROUS_CONV,
-                    TransformerRule.FOLD_ACTIVATION,
-                    TransformerRule.ADD_IN_OUT_TENSOR_INFO,
+            self._transformer_option = [
+                # Model structure related transformation
+                TransformerRule.REMOVE_IDENTITY_OP,
+                TransformerRule.TRANSFORM_GLOBAL_POOLING,
+                TransformerRule.FOLD_RESHAPE,
+                TransformerRule.TRANSFORM_MATMUL_TO_FC,
+                TransformerRule.FOLD_BATCHNORM,
+                TransformerRule.FOLD_CONV_AND_BN,
+                TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
+                TransformerRule.TRANSFORM_GPU_WINOGRAD,
+                TransformerRule.TRANSFORM_ADD_TO_BIASADD,
+                TransformerRule.FOLD_BIASADD,
+                TransformerRule.FLATTEN_ATROUS_CONV,
+                TransformerRule.FOLD_ACTIVATION,
+                TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
+                TransformerRule.RESHAPE_FC_WEIGHT,
+                # Model data format related transformation
+                TransformerRule.TRANSPOSE_FILTERS,
+                TransformerRule.TRANSPOSE_DATA_FORMAT,
+                # Mace model structure related transformation
+                TransformerRule.ADD_IN_OUT_TENSOR_INFO,
+                # Device related transformation
+                TransformerRule.TRANSFORM_BUFFER_IMAGE,
+                TransformerRule.ADD_DEVICE,
+                # Data type related transformation
+                TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
+                # Transform finalization
+                TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
+                TransformerRule.SORT_BY_EXECUTION,
+            ]
+            if self._quantize:
+                self._transformer_option = self._transformer_option[:-1] + [
                     TransformerRule.QUANTIZE_NODES,
                     TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                     TransformerRule.QUANTIZE_WEIGHTS,
-                    TransformerRule.ADD_DEVICE,
                     TransformerRule.SORT_BY_EXECUTION,
                 ]
 
