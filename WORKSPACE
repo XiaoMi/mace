@@ -85,6 +85,15 @@ http_archive(
     ],
 )
 
+http_archive(
+    name = "tflite",
+    sha256 = "c886d46ad8c91fcafed2d910ad9e7bc5aeb29856c387bdf9b6b4903cc16e6e60",
+    strip_prefix = "tensorflow-mace-ffc8cc7e8c9d1894753509e88b17e251bc6255e3",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/tflite/tensorflow-mace-ffc8cc7e8c9d1894753509e88b17e251bc6255e3.zip",
+    ],
+)
+
 new_http_archive(
     name = "six_archive",
     build_file = "third_party/six/six.BUILD",

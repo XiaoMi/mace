@@ -155,6 +155,18 @@ inline void QuantizeMultiplier(double multiplier,
   MACE_CHECK(*output_multiplier <= std::numeric_limits<int32_t>::max());
 }
 
+inline void GetOutputMultiplierAndShift(
+    const float lhs_scale, const float rhs_scale, const float output_scale,
+    int32_t *quantized_multiplier, int *right_shift) {
+  float real_multiplier = lhs_scale * rhs_scale / output_scale;
+  MACE_CHECK(real_multiplier > 0.f && real_multiplier < 1.f, real_multiplier);
+
+  int exponent;
+  QuantizeMultiplier(real_multiplier, quantized_multiplier, &exponent);
+  *right_shift = -exponent;
+  MACE_CHECK(*right_shift >= 0);
+}
+
 template<DeviceType D, typename T>
 struct QuantizeFunctor;
 
