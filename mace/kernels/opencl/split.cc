@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/slice.h"
+#include "mace/kernels/split.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/tuner.h"
@@ -21,7 +21,7 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus SplitFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input,
     const std::vector<Tensor *> &output_list,
     StatsFuture *future) {
@@ -29,7 +29,7 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
   MACE_CHECK(output_channels % 4 == 0)
-      << "output channels of slice op must be divisible by 4";
+      << "output channels of split op must be divisible by 4";
   std::vector<index_t> output_shape(
       {input->dim(0), input->dim(1), input->dim(2), output_channels});
 
@@ -46,12 +46,12 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
     std::set<std::string> built_options;
     OUT_OF_RANGE_CONFIG(kernel_error_);
     NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("slice");
-    built_options.emplace("-Dslice=" + kernel_name);
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("split");
+    built_options.emplace("-Dsplit=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("slice",
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("split",
                                               kernel_name,
                                               built_options,
                                               &kernel_));
@@ -116,8 +116,8 @@ MaceStatus SliceFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template struct SliceFunctor<DeviceType::GPU, float>;
-template struct SliceFunctor<DeviceType::GPU, half>;
+template struct SplitFunctor<DeviceType::GPU, float>;
+template struct SplitFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace

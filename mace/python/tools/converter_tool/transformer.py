@@ -812,6 +812,7 @@ class Transformer(base_converter.ConverterInterface):
                                        "only support concat at "
                                        "channel dimension")
                             arg.i = 3
+
                         producer = self._producer[op.input[0]]
                         input_shape = producer.output_shape[0].dims
                         if producer.type == MaceOp.FullyConnected.name and \

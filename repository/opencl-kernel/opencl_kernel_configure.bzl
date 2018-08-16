@@ -42,7 +42,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/pooling.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/reduce_mean.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/resize_bilinear.cl"))
-    unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/slice.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/split.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/softmax.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/space_to_batch.cl"))
     unused_var = repository_ctx.path(Label("//:mace/kernels/opencl/cl/winograd_transform.cl"))
