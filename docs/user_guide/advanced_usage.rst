@@ -82,6 +82,8 @@ in one deployment file.
       - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type
       - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU, default is fp16_fp32, [fp32] for CPU and [uint8] for DSP.
+    * - input_data_types
+      - [optional] The input data type for specific op(eg. gather), which can be [int32, float32], default to float32.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default is 0.
     * - obfuscate

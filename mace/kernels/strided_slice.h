@@ -194,7 +194,8 @@ struct StridedSliceFunctor {
                  strides_data[2] > 0 ? k < real_end_indices[2]
                                      : k > real_end_indices[2];
                  k += strides_data[2]) {
-              *output_data++ = input_data[(i * input->dim(1) + j) * input->dim(2) + k];
+              *output_data++ =
+                input_data[(i * input->dim(1) + j) * input->dim(2) + k];
             }
           }
         }

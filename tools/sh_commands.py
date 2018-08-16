@@ -536,6 +536,7 @@ def gen_random_input(model_output_dir,
                      input_shapes,
                      input_files,
                      input_ranges,
+                     input_data_types,
                      input_file_name="model_input"):
     for input_name in input_nodes:
         formatted_name = common.formatted_file_name(
@@ -545,10 +546,12 @@ def gen_random_input(model_output_dir,
     input_nodes_str = ",".join(input_nodes)
     input_shapes_str = ":".join(input_shapes)
     input_ranges_str = ":".join(input_ranges)
+    input_data_types_str = ",".join(input_data_types)
     generate_input_data("%s/%s" % (model_output_dir, input_file_name),
                         input_nodes_str,
                         input_shapes_str,
-                        input_ranges_str)
+                        input_ranges_str,
+                        input_data_types_str)
 
     input_file_list = []
     if isinstance(input_files, list):
@@ -800,6 +803,7 @@ def validate_model(abi,
                    output_shapes,
                    model_output_dir,
                    phone_data_dir,
+                   input_data_types,
                    caffe_env,
                    input_file_name="model_input",
                    output_file_name="model_out",
@@ -821,7 +825,7 @@ def validate_model(abi,
                  "%s/%s" % (model_output_dir, output_file_name), device_type,
                  ":".join(input_shapes), ":".join(output_shapes),
                  ",".join(input_nodes), ",".join(output_nodes),
-                 validation_threshold)
+                 validation_threshold, ",".join(input_data_types))
     elif platform == "caffe":
         image_name = "mace-caffe:latest"
         container_name = "mace_caffe_validator"
