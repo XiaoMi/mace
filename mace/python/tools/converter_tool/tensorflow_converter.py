@@ -464,10 +464,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Fill.name
 
-        value_arg = op.arg.add()
-        value_arg.name = MaceKeyword.mace_value_str
-        value_arg.f = tf_op.inputs[1].eval()
-
     def convert_fused_batchnorm(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.FoldedBatchNorm.name

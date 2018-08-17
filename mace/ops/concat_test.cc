@@ -55,10 +55,10 @@ TEST_F(ConcatOpTest, CPUSimpleHorizon) {
 
   const float *output_ptr = output->data<float>();
   for (auto f : input0) {
-    ASSERT_EQ(f, *output_ptr++);
+    EXPECT_EQ(f, *output_ptr++);
   }
   for (auto f : input1) {
-    ASSERT_EQ(f, *output_ptr++);
+    EXPECT_EQ(f, *output_ptr++);
   }
 }
 
@@ -93,10 +93,10 @@ TEST_F(ConcatOpTest, CPUSimpleVertical) {
   const float *output_ptr = output->data<float>();
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 4; ++j) {
-      ASSERT_EQ(input0[i * 4 + j], *output_ptr++);
+      EXPECT_EQ(input0[i * 4 + j], *output_ptr++);
     }
     for (int j = 0; j < 4; ++j) {
-      ASSERT_EQ(input1[i * 4 + j], *output_ptr++);
+      EXPECT_EQ(input1[i * 4 + j], *output_ptr++);
     }
   }
 }

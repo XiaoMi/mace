@@ -342,7 +342,7 @@ void MaceRunFunc(const int in_out_size) {
   MaceEngine engine(device);
   MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
       reinterpret_cast<unsigned char *>(data.data()));
-  ASSERT_EQ(status, MaceStatus::MACE_SUCCESS);
+  EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;

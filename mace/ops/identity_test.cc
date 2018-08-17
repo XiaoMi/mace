@@ -46,7 +46,7 @@ void TestIdentity(const std::vector<index_t> &shape) {
   const float *output_ptr = output->data<float>();
   const int size = output->size();
   for (int i = 0; i < size; ++i) {
-    ASSERT_EQ(input_ptr[i], output_ptr[i]);
+    EXPECT_EQ(input_ptr[i], output_ptr[i]);
   }
 }
 }  // namespace

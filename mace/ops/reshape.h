@@ -42,12 +42,12 @@ class ReshapeOp : public Operator<D, T> {
 
     for (int i = 0; i < num_dims; ++i) {
       if (shape_data[i] == -1) {
-        MACE_CHECK(unknown_idx == -1) << "Only one input size may be -1";
+        MACE_CHECK(unknown_idx == -1, "Only one input size may be -1");
         unknown_idx = i;
         out_shape.push_back(1);
       } else {
-        MACE_CHECK(shape_data[i] >= 0) << "Shape must be non-negative: "
-                                   << shape_data[i];
+        MACE_CHECK(shape_data[i] >= 0, "Shape must be non-negative: ",
+                   shape_data[i]);
         out_shape.push_back(shape_data[i]);
         product *= shape_data[i];
       }

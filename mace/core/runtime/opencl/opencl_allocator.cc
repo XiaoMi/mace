@@ -70,7 +70,7 @@ MaceStatus OpenCLAllocator::New(size_t nbytes, void **result) const {
 MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
                                      const DataType dt,
                                      void **result) const {
-  MACE_CHECK(image_shape.size() == 2) << "Image shape's size must equal 2";
+  MACE_CHECK(image_shape.size() == 2, "Image shape's size must equal 2");
   VLOG(3) << "Allocate OpenCL image: " << image_shape[0] << ", "
           << image_shape[1];
 
@@ -134,7 +134,7 @@ void *OpenCLAllocator::Map(void *buffer, size_t offset, size_t nbytes) const {
 void *OpenCLAllocator::MapImage(void *buffer,
                                 const std::vector<size_t> &image_shape,
                                 std::vector<size_t> *mapped_image_pitch) const {
-  MACE_CHECK(image_shape.size() == 2) << "Just support map 2d image";
+  MACE_CHECK(image_shape.size() == 2, "Just support map 2d image");
   auto cl_image = static_cast<cl::Image2D *>(buffer);
   std::array<size_t, 3> origin = {0, 0, 0};
   std::array<size_t, 3> region = {image_shape[0], image_shape[1], 1};

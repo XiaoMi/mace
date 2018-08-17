@@ -28,7 +28,7 @@ void TestFill(const std::vector<int32_t> &shape,
   OpsTestNet net;
   OpDefBuilder("Fill", "FillTest")
       .Input("Shape")
-      .AddFloatArg("value", static_cast<float>(value))
+      .Input("Value")
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
@@ -38,19 +38,21 @@ void TestFill(const std::vector<int32_t> &shape,
       {static_cast<index_t>(shape.size())},
       shape);
 
+  net.AddInputFromArray<DeviceType::CPU, float>("Value", {}, {value});
+
   // Run
   net.RunOp();
 
   auto output = net.GetTensor("Output");
 
   for (index_t i = 0; i < output->dim_size(); ++i) {
-    ASSERT_EQ(output->dim(i), shape[i]);
+    EXPECT_EQ(output->dim(i), shape[i]);
   }
 
   const float *output_ptr = output->data<float>();
   const index_t size = output->size();
   for (index_t i = 0; i < size; ++i) {
-    ASSERT_EQ(output_ptr[i], value);
+    EXPECT_EQ(output_ptr[i], value);
   }
 }
 }  // namespace

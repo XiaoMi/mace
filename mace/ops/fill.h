@@ -28,18 +28,19 @@ class FillOp : public Operator<D, T> {
  public:
   FillOp(const OperatorDef &operator_def, Workspace *ws)
       : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetOptionalArg<float>("value", 0.0f)) {}
+        functor_() {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *shape = this->Input(SHAPE);
+    const Tensor *value = this->Input(VALUE);
     Tensor *output = this->Output(OUTPUT);
-    return functor_(shape, output, future);
+    return functor_(shape, value, output, future);
   }
 
  private:
   kernels::FillFunctor<D, T> functor_;
 
-  MACE_OP_INPUT_TAGS(SHAPE);
+  MACE_OP_INPUT_TAGS(SHAPE, VALUE);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
