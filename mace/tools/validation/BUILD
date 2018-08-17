@@ -15,7 +15,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/codegen:generated_models",
+        "//mace/codegen:libmodels",
         "//mace/libmace",
     ],
 )
@@ -42,7 +42,7 @@ cc_binary(
     deps = [
         "//external:gflags_nothreads",
         "//mace/codegen:generated_mace_engine_factory",
-        "//mace/codegen:generated_models",
+        "//mace/codegen:libmodels",
         "//mace/libmace:libmace_dynamic",
     ],
 )
