@@ -23,7 +23,7 @@ namespace ops {
 namespace test {
 
 namespace {
-template<DeviceType D>
+template <DeviceType D, typename T>
 void Pooling(int iters,
              int batch,
              int channels,
@@ -39,8 +39,13 @@ void Pooling(int iters,
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input",
-                                 {batch, channels, height, width});
+    if (DataTypeToEnum<T>::value != DT_UINT8) {
+      net.AddRandomInput<D, float>(
+          "Input", {batch, channels, height, width});
+    } else {
+      net.AddRandomInput<DeviceType::CPU, uint8_t>(
+          "Input", {batch, height, width, channels});
+    }
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, height, width, channels});
@@ -57,6 +62,7 @@ void Pooling(int iters,
       .AddIntsArg("strides", {stride, stride})
       .AddIntArg("padding", padding)
       .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -87,24 +93,25 @@ void Pooling(int iters,
 }
 }  // namespace
 
-#define MACE_BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, DEVICE)          \
+#define MACE_BM_POOLING_MACRO(N, C, H, W, KE, STRIDE, PA, PO, TYPE, DEVICE)    \
   static void                                                                  \
       MACE_BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
-        ##DEVICE(                                                              \
+        ##TYPE##_##DEVICE(                                                     \
           int iters) {                                                         \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W;           \
     mace::testing::MaccProcessed(tot);                                         \
-    mace::testing::BytesProcessed(tot *(sizeof(float)));                       \
-    Pooling<DEVICE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,                \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+    Pooling<DEVICE, TYPE>(iters, N, C, H, W, KE, STRIDE, Padding::PA,          \
                     PoolingType::PO);                                          \
   }                                                                            \
   MACE_BENCHMARK(                                                              \
       MACE_BM_POOLING_##N##_##C##_##H##_##W##_K##KE##S##STRIDE##_##PA##_##PO##_\
-        ##DEVICE)
+        ##TYPE##_##DEVICE)
 
 #define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
-  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, GPU); \
-  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, CPU);
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, GPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, uint8_t, CPU);
 
 
 MACE_BM_POOLING(1, 3, 129, 129, 2, 2, SAME, MAX);
@@ -112,6 +119,7 @@ MACE_BM_POOLING(1, 3, 257, 257, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 3, 513, 513, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 3, 1025, 1025, 2, 2, SAME, MAX);
 MACE_BM_POOLING(1, 32, 480, 640, 480, 640, VALID, AVG);
+MACE_BM_POOLING(1, 1024, 7, 7, 7, 1, VALID, AVG);
 
 }  // namespace test
 }  // namespace ops

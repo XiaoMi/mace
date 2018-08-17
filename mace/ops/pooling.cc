@@ -23,6 +23,11 @@ void Register_Pooling(OperatorRegistryBase *op_registry) {
                                           .TypeConstraint<float>("T")
                                           .Build(),
                          PoolingOp<DeviceType::CPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<uint8_t>("T")
+                                          .Build(),
+                         PoolingOp<DeviceType::CPU, uint8_t>);
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Pooling")
