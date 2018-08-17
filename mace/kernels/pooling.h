@@ -373,10 +373,10 @@ struct PoolingFunctor<DeviceType::CPU, uint8_t>: PoolingFunctorBase {
     MACE_UNUSED(future);
     MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1,
                "Quantized pooling does not support dilation > 1 yet.");
-    MACE_CHECK(input_tensor->scale() == output_tensor->scale(),
-               "Quantized pooling's input and output scale are not equal.");
-    MACE_CHECK(input_tensor->zero_point() == output_tensor->zero_point(),
-               "Quantized pooling's input and output zero_point are not equal");
+    // Use the same scale and zero point with input and output.
+    output_tensor->SetScale(input_tensor->scale());
+    output_tensor->SetZeroPoint(input_tensor->zero_point());
+
     std::vector<index_t> output_shape(4);
     std::vector<index_t> filter_shape = {
         input_tensor->dim(3), kernels_[0], kernels_[1], input_tensor->dim(3)};

@@ -603,12 +603,7 @@ void TestQuant(const index_t batch,
       .AddIntArg("pooling_type", pooling)
       .AddIntArg("T", DT_UINT8)
       .Finalize(net.NewOperatorDef());
-  net.Setup(DeviceType::CPU);
-  Tensor *q_input = net.GetTensor("QuantizedInput");
-  Tensor *q_output = net.GetTensor("QuantizedOutput");
-  q_output->SetScale(q_input->scale());
-  q_output->SetZeroPoint(q_input->zero_point());
-  net.Run();
+  net.RunOp();
 
   OpDefBuilder("Dequantize", "DeQuantizeTest")
       .Input("QuantizedOutput")

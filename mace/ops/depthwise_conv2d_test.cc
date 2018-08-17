@@ -497,11 +497,11 @@ void TestQuant(const index_t batch,
 
 TEST_F(DepthwiseConv2dOpTest, Quant) {
   QuantSimpleValidTest();
-  TestQuant(1, 1, 2, 3, 3, 3, 3, VALID, {1, 1});
-  TestQuant(1, 1, 2, 3, 3, 3, 3, SAME, {1, 1});
-  TestQuant(1, 1, 2, 3, 3, 3, 3, FULL, {1, 1});
-  TestQuant(1, 2, 2, 3, 3, 3, 3, SAME, {1, 1});
-  TestQuant(1, 2, 2, 3, 3, 3, 3, SAME, {2, 2});
+  TestQuant(1, 1, 1024, 7, 7, 3, 3, VALID, {1, 1});
+  TestQuant(1, 1, 1024, 7, 7, 3, 3, SAME, {1, 1});
+  TestQuant(1, 1, 1024, 7, 7, 3, 3, FULL, {1, 1});
+  TestQuant(1, 2, 1024, 7, 7, 3, 3, SAME, {1, 1});
+  TestQuant(1, 2, 1024, 7, 7, 3, 3, SAME, {2, 2});
   TestQuant(1, 1, 512, 14, 14, 3, 3, SAME, {1, 1});
   TestQuant(1, 1, 512, 14, 13, 5, 5, SAME, {2, 2});
   TestQuant(1, 1, 256, 28, 28, 3, 3, SAME, {1, 1});
