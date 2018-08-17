@@ -64,6 +64,7 @@ cc_library(
         "//mace/codegen:generated_version",
         "//mace/proto:mace_cc",
         "//mace/utils",
+        "@gemmlowp",
     ] + if_opencl_enabled([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
@@ -71,6 +72,26 @@ cc_library(
     ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),
+)
+
+cc_test(
+    name = "core_test",
+    srcs = glob(["*_test.cc"]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
+    linkopts = ["-ldl"] + if_android([
+        "-pie",
+        "-lm",
+    ]),
+    deps = [
+        ":core",
+        "//mace/utils",
+        "@gtest",
+        "@gtest//:gtest_main",
+    ],
 )
 
 cc_library(

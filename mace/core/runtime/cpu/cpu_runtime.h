@@ -15,6 +15,7 @@
 #ifndef MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
 #define MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
 
+#include <sched.h>
 #include <vector>
 
 #include "mace/public/mace.h"
@@ -30,6 +31,8 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 
 MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
                                              CPUAffinityPolicy policy);
+
+MaceStatus SetThreadAffinity(cpu_set_t mask);
 
 }  // namespace mace
 
