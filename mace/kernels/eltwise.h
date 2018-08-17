@@ -805,13 +805,19 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
 struct EltwiseFunctorBase {
   EltwiseFunctorBase(const EltwiseType type,
                      const std::vector<float> &coeff,
-                     const float value,
+                     const float scalar_input,
+                     const int32_t scalar_input_index,
                      const DataFormat data_format)
-      : type_(type), coeff_(coeff), value_(value), data_format_(data_format) {}
+      : type_(type),
+        coeff_(coeff),
+        scalar_input_(scalar_input),
+        scalar_input_index_(scalar_input_index),
+        data_format_(data_format) {}
 
   EltwiseType type_;
   std::vector<float> coeff_;
-  float value_;
+  float scalar_input_;
+  int32_t scalar_input_index_;
   DataFormat data_format_;
 };
 
@@ -819,9 +825,14 @@ template <DeviceType D, typename T>
 struct EltwiseFunctor : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
                  const std::vector<float> &coeff,
-                 const float value,  // keep it float as it comes from arg
+                 const float scalar_input,  // float as it comes from arg
+                 const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(type, coeff, value, data_format) {}
+      : EltwiseFunctorBase(type,
+                           coeff,
+                           scalar_input,
+                           scalar_input_index,
+                           data_format) {}
 
   template <typename DstType>
   MaceStatus DoEltwise(const Tensor *input0,
@@ -831,6 +842,9 @@ struct EltwiseFunctor : EltwiseFunctorBase {
     if (input0->size() < input1->size()) {
       std::swap(input0, input1);
       swapped = true;
+    }
+    if (scalar_input_index_ == 0) {
+      swapped = !swapped;
     }
 
     // check if we can broadcast tensor
@@ -924,7 +938,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
       scalar_tensor_.Resize({});
       Tensor::MappingGuard guard(&scalar_tensor_);
       auto scalar_data = scalar_tensor_.mutable_data<T>();
-      scalar_data[0] = static_cast<T>(value_);
+      scalar_data[0] = static_cast<T>(scalar_input_);
       input1 = &scalar_tensor_;
     }
 
@@ -944,9 +958,14 @@ template <typename T>
 struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
   EltwiseFunctor(const EltwiseType type,
                  const std::vector<float> &coeff,
-                 const float value,
+                 const float scalar_input,
+                 const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(type, coeff, value, data_format) {}
+      : EltwiseFunctorBase(type,
+                           coeff,
+                           scalar_input,
+                           scalar_input_index,
+                           data_format) {}
 
   MaceStatus operator()(const Tensor *input0,
                         const Tensor *input1,

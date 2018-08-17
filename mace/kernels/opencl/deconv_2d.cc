@@ -152,7 +152,6 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
   MACE_CHECK_NOTNULL(input);
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
-
   if (!from_caffe_) {
     if (output_shape_.size() != 4) {
       MACE_CHECK_NOTNULL(output_shape_tensor);
@@ -174,7 +173,6 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
     CalcDeconvOutputSize(input->shape().data(), filter->shape().data(),
                          strides_, output_shape_.data(), paddings_.data());
   }
-
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape_, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);

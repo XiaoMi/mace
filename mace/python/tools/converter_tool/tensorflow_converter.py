@@ -401,13 +401,24 @@ class TensorflowConverter(base_converter.ConverterInterface):
         type_arg.name = MaceKeyword.mace_element_type_str
         type_arg.i = self.eltwise_type[tf_op.type].value
 
+        def check_is_scalar(tf_op):
+            if len(tf_op.inputs) == 1:
+                return len(tf_op.inputs[0].shape) == 0
+            elif len(tf_op.inputs) == 2:
+                return len(tf_op.inputs[0].shape) == 0 and\
+                       len(tf_op.inputs[1].shape) == 0
+
+        if check_is_scalar(tf_op):
+            op.type = MaceOp.ScalarMath.name
+        else:
+            op.type = MaceOp.Eltwise.name
         if tf_op.type == TFOpType.Square:
             value_arg = op.arg.add()
-            value_arg.name = MaceKeyword.mace_value_str
+            value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = 2.0
         elif tf_op.type == TFOpType.Rsqrt:
             value_arg = op.arg.add()
-            value_arg.name = MaceKeyword.mace_value_str
+            value_arg.name = MaceKeyword.mace_scalar_input_str
             value_arg.f = -0.5
 
         if type_arg.i != EltwiseType.NEG.value \
@@ -418,19 +429,31 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         EltwiseType.SUM, EltwiseType.PROD,
                         EltwiseType.MAX, EltwiseType.MIN]
 
-                if len(tf_op.inputs) > 1 and len(tf_op.inputs[1].shape) == 0:
+                if len(tf_op.inputs) > 1 and\
+                        len(tf_op.inputs[1].shape) == 0 and\
+                        tf_op.inputs[1].op.type == TFOpType.Const.name:
                     scalar = tf_op.inputs[1].eval().astype(np.float32)
                     value_arg = op.arg.add()
-                    value_arg.name = MaceKeyword.mace_value_str
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
                     value_arg.f = scalar
                     self._skip_tensor.add(tf_op.inputs[1].name)
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name =\
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 1
+                    self._skip_tensor.add(tf_op.inputs[1].name)
                     del op.input[1]
-                elif len(tf_op.inputs[0].shape) == 0 and \
+                elif len(tf_op.inputs[0].shape) == 0 and\
+                        tf_op.inputs[0].op.type == TFOpType.Const.name and\
                         is_commutative(type_arg.i):
                     scalar = tf_op.inputs[0].eval().astype(np.float32)
                     value_arg = op.arg.add()
-                    value_arg.name = MaceKeyword.mace_value_str
+                    value_arg.name = MaceKeyword.mace_scalar_input_str
                     value_arg.f = scalar
+                    value_index_arg = op.arg.add()
+                    value_index_arg.name =\
+                        MaceKeyword.mace_scalar_input_index_str
+                    value_index_arg.i = 0
                     self._skip_tensor.add(tf_op.inputs[0].name)
                     del op.input[0]
             except tf.errors.InvalidArgumentError:
@@ -771,7 +794,6 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_split(self, tf_op):
         axis = tf_op.inputs[0].eval().astype(np.int32)
         axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
-        input_shape = self.infer_tensor_shape(tf_op.inputs[1])
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Split.name
         del op.input[0]

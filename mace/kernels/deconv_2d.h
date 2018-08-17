@@ -174,15 +174,15 @@ struct Deconv2dFunctorBase {
     switch (padding) {
       case VALID:
         expected_input_height =
-            (out_height - filter_h) / strides[0] + 1;
+            (out_height - filter_h + strides[0]) / strides[0];
         expected_input_width =
-            (out_width - filter_w) / strides[1] + 1;
+            (out_width - filter_w + strides[1]) / strides[1];
         break;
       case SAME:
         expected_input_height =
-            (out_height - 1) / strides[0] + 1;
+            (out_height + strides[0] - 1) / strides[0];
         expected_input_width =
-            (out_width - 1) / strides[1] + 1;
+            (out_width + strides[1] - 1) / strides[1];
         break;
       default:
         MACE_CHECK(false, "Unsupported padding type: ", padding);

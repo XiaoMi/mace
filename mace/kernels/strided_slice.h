@@ -51,7 +51,6 @@ struct StridedSliceFunctor {
                         StatsFuture *future) {
     MACE_CHECK(ellipsis_mask_ == 0 && new_axis_mask_ == 0,
                "ellipsis_mask and new_axis_mask are not supported yet.");
-
     if (strides == nullptr) {
       tmp_strides_tensor_.Resize({begin_indices->size()});
       Tensor::MappingGuard strides_guard(&tmp_strides_tensor_);
@@ -68,7 +67,6 @@ struct StridedSliceFunctor {
     const int32_t *begin_indices_data = begin_indices->data<int32_t>();
     const int32_t *end_indices_data = end_indices->data<int32_t>();
     const int32_t *strides_data = strides->data<int32_t>();
-
     std::vector<int32_t> pad_begin_indices(input->dim_size(), 0);
     std::vector<int32_t> pad_end_indices(input->dim_size(), 0);
     std::vector<int32_t> pad_strides_indices(input->dim_size(), 1);
