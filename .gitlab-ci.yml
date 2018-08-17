@@ -78,6 +78,7 @@ build_libraries:
   stage: build_libraries
   script:
     - bash tools/build-standalone-lib.sh
+    - bazel build --copt=-fopenmp mace/tools/quantization:quantize_stat
 
 ndk_versions_compatible_tests:
   stage: ndk_versions_compatible_tests
