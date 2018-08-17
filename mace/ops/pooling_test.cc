@@ -18,6 +18,7 @@
 #include "mace/kernels/pooling.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/ops_test_util.h"
+#include "mace/kernels/quantize.h"
 
 namespace mace {
 namespace ops {
@@ -462,6 +463,178 @@ TEST_F(PoolingOpTest, OPENCLUnAlignedLargeKernelAvgPooling) {
   AvgPoolingTest<GPU, float>({3, 31, 37, 128}, {8, 8}, {8, 8}, Padding::SAME);
 }
 
+TEST_F(PoolingOpTest, QUANT_MAX_VALID) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+      "Input", {1, 4, 4, 2},
+      {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
+       8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
+
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp();
+
+  // Check
+  auto expected =
+      CreateTensor<uint8_t>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
+
+  ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+
+TEST_F(PoolingOpTest, QUANT_MAX_SAME) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<DeviceType::CPU, uint8_t>("Input", {1, 3, 3, 1},
+                                                  {0, 1, 2, 3, 4, 5, 6, 7, 8});
+
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::SAME)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::MAX)
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp();
+
+  // Check
+  auto expected = CreateTensor<uint8_t>({1, 2, 2, 1}, {4, 5, 7, 8});
+
+  ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+
+TEST_F(PoolingOpTest, QUANT_AVG_VALID) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddInputFromArray<DeviceType::CPU, uint8_t>(
+      "Input", {1, 4, 4, 2},
+      {0, 16, 1, 17, 2,  18, 3,  19, 4,  20, 5,  21, 6,  22, 7,  23,
+       8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
+
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("kernels", {2, 2})
+      .AddIntsArg("strides", {2, 2})
+      .AddIntArg("padding", Padding::VALID)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", PoolingType::AVG)
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp();
+
+  // Check
+  auto expected = CreateTensor<uint8_t>(
+      {1, 2, 2, 2}, {3, 19, 5, 21, 11, 27, 13, 29});
+
+  ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);
+}
+
+namespace {
+
+void TestQuant(const index_t batch,
+               const index_t in_height,
+               const index_t in_width,
+               const index_t channels,
+               const std::vector<int> &kernels,
+               const std::vector<int> &strides,
+               enum Padding padding_type,
+               PoolingType pooling) {
+  OpsTestNet net;
+  net.AddRandomInput<CPU, float>(
+      "Input", {batch, in_height, in_width, channels}, false);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "Input", NHWC, "InputNCHW", NCHW);
+
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("InputNCHW")
+      .Output("OutputNCHW")
+      .AddIntArg("pooling_type", pooling)
+      .AddIntsArg("kernels", kernels)
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+
+  net.RunOp(CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>(
+      "OutputNCHW", NCHW, "Output", NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Pooling", "PoolingTest")
+      .Input("QuantizedInput")
+      .Output("QuantizedOutput")
+      .AddIntsArg("kernels", kernels)
+      .AddIntsArg("strides", strides)
+      .AddIntArg("padding", padding_type)
+      .AddIntsArg("dilations", {1, 1})
+      .AddIntArg("pooling_type", pooling)
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *q_input = net.GetTensor("QuantizedInput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(q_input->scale());
+  q_output->SetZeroPoint(q_input->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(PoolingOpTest, Quant) {
+  TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::VALID, PoolingType::AVG);
+  TestQuant(1, 3, 3, 2, {3, 3}, {1, 1}, Padding::SAME, PoolingType::AVG);
+  TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::VALID, PoolingType::MAX);
+  TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::SAME, PoolingType::MAX);
+  TestQuant(1, 7, 7, 2048, {7, 7}, {1, 1}, Padding::SAME, PoolingType::AVG);
+  TestQuant(3, 15, 15, 128, {4, 4}, {4, 4}, Padding::VALID, PoolingType::AVG);
+  TestQuant(3, 15, 15, 128, {4, 4}, {4, 4}, Padding::VALID, PoolingType::MAX);
+  TestQuant(3, 31, 37, 128, {2, 2}, {2, 2}, Padding::VALID, PoolingType::AVG);
+  TestQuant(3, 31, 37, 128, {2, 2}, {2, 2}, Padding::VALID, PoolingType::MAX);
+}
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
