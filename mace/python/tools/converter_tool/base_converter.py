@@ -88,6 +88,7 @@ MaceSupportedOps = [
     'Dequantize',
     'Eltwise',
     'FoldedBatchNorm',
+    'Fill',
     'FullyConnected',
     'Gather',
     'Identity',
@@ -101,6 +102,7 @@ MaceSupportedOps = [
     'Reshape',
     'ResizeBilinear',
     'Slice',
+    'Split',
     'Shape',
     'Squeeze',
     'Stack',
@@ -146,6 +148,7 @@ class MaceKeyword(object):
     mace_constant_value_str = 'constant_value'
     mace_dims_str = 'dims'
     mace_axis_str = 'axis'
+    mace_num_split_str = 'num_split'
     mace_keepdims_str = 'keepdims'
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'

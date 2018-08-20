@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_SLICE_H_
-#define MACE_KERNELS_SLICE_H_
+#ifndef MACE_KERNELS_SPLIT_H_
+#define MACE_KERNELS_SPLIT_H_
 
 #include <memory>
 #include <functional>
@@ -31,15 +31,15 @@
 namespace mace {
 namespace kernels {
 
-struct SliceFunctorBase {
-  explicit SliceFunctorBase(const int32_t axis) : axis_(axis) {}
+struct SplitFunctorBase {
+  explicit SplitFunctorBase(const int32_t axis) : axis_(axis) {}
 
   int32_t axis_;
 };
 
 template<DeviceType D, typename T>
-struct SliceFunctor : SliceFunctorBase {
-  explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
+struct SplitFunctor : SplitFunctorBase {
+  explicit SplitFunctor(const int32_t axis) : SplitFunctorBase(axis) {}
 
   MaceStatus operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
@@ -89,8 +89,8 @@ struct SliceFunctor : SliceFunctorBase {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct SliceFunctor<DeviceType::GPU, T> : SliceFunctorBase {
-  explicit SliceFunctor(const int32_t axis) : SliceFunctorBase(axis) {}
+struct SplitFunctor<DeviceType::GPU, T> : SplitFunctorBase {
+  explicit SplitFunctor(const int32_t axis) : SplitFunctorBase(axis) {}
 
   MaceStatus operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
@@ -104,4 +104,4 @@ struct SliceFunctor<DeviceType::GPU, T> : SliceFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_SLICE_H_
+#endif  // MACE_KERNELS_SPLIT_H_

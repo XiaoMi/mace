@@ -40,11 +40,13 @@ import common
 VALIDATION_MODULE = 'VALIDATION'
 
 
-def load_data(file):
+def load_data(file, data_type='float32'):
     if os.path.isfile(file):
-        return np.fromfile(file=file, dtype=np.float32)
-    else:
-        return np.empty([0])
+        if data_type == 'float32':
+            return np.fromfile(file=file, dtype=np.float32)
+        elif data_type == 'int32':
+            return np.fromfile(file=file, dtype=np.int32)
+    return np.empty([0])
 
 
 def compare_output(platform, device_type, output_name, mace_out_value,
@@ -78,7 +80,7 @@ def normalize_tf_tensor_name(name):
 
 def validate_tf_model(platform, device_type, model_file, input_file,
                       mace_out_file, input_names, input_shapes,
-                      output_names, validation_threshold):
+                      output_names, validation_threshold, input_data_types):
     import tensorflow as tf
     if not os.path.isfile(model_file):
         common.MaceLogger.error(
@@ -98,7 +100,8 @@ def validate_tf_model(platform, device_type, model_file, input_file,
                 input_dict = {}
                 for i in range(len(input_names)):
                     input_value = load_data(
-                        common.formatted_file_name(input_file, input_names[i]))
+                        common.formatted_file_name(input_file, input_names[i]),
+                        input_data_types[i])
                     input_value = input_value.reshape(input_shapes[i])
                     input_node = graph.get_tensor_by_name(
                         normalize_tf_tensor_name(input_names[i]))
@@ -168,18 +171,23 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
 
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              device_type, input_shape, output_shape, input_node, output_node,
-             validation_threshold):
+             validation_threshold, input_data_type):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
                     for shape in input_shape_strs]
+    if input_data_type:
+        input_data_types = [data_type
+                            for data_type in input_data_type.split(',')]
+    else:
+        input_data_types = ['float32'] * len(input_names)
     output_names = [name for name in output_node.split(',')]
     assert len(input_names) == len(input_shapes)
 
     if platform == 'tensorflow':
         validate_tf_model(platform, device_type, model_file, input_file,
                           mace_out_file, input_names, input_shapes,
-                          output_names, validation_threshold)
+                          output_names, validation_threshold, input_data_types)
     elif platform == 'caffe':
         output_shape_strs = [shape for shape in output_shape.split(':')]
         output_shapes = [[int(x) for x in shape.split(',')]
@@ -221,6 +229,11 @@ def parse_args():
     parser.add_argument(
         "--input_node", type=str, default="input_node", help="input node")
     parser.add_argument(
+        "--input_data_type",
+        type=str,
+        default="",
+        help="input data type")
+    parser.add_argument(
         "--output_node", type=str, default="output_node", help="output node")
     parser.add_argument(
         "--validation_threshold", type=float, default=0.995,
@@ -241,4 +254,5 @@ if __name__ == '__main__':
              FLAGS.output_shape,
              FLAGS.input_node,
              FLAGS.output_node,
-             FLAGS.validation_threshold)
+             FLAGS.validation_threshold,
+             FLAGS.input_data_type)

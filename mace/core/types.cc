@@ -39,7 +39,7 @@ std::string DataTypeToString(const DataType dt) {
 #endif
       {DT_UINT8, "DT_UINT8"},
       {DT_INT32, "DT_UINT32"}};
-  MACE_CHECK(dt != DT_INVALID) << "Not support Invalid data type";
+  MACE_CHECK(dt != DT_INVALID, "Not support Invalid data type");
   return dtype_string_map[dt];
 }
 

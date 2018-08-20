@@ -130,6 +130,16 @@ class RuntimeType(object):
     cpu_gpu = 'cpu+gpu'
 
 
+InputDataTypeStrs = [
+    "int32",
+    "float32",
+]
+
+InputDataType = Enum('InputDataType',
+                     [(ele, ele) for ele in InputDataTypeStrs],
+                     type=str)
+
+
 CPUDataTypeStrs = [
     "fp32",
 ]
@@ -183,6 +193,7 @@ class YAMLKeyword(object):
     output_shapes = 'output_shapes'
     runtime = 'runtime'
     data_type = 'data_type'
+    input_data_types = 'input_data_types'
     limit_opencl_kernel_time = 'limit_opencl_kernel_time'
     nnlib_graph_mode = 'nnlib_graph_mode'
     obfuscate = 'obfuscate'
@@ -446,6 +457,18 @@ def format_model_config(flags):
                            "'%s' is necessary in subgraph" % key)
                 if not isinstance(value, list):
                     subgraph[key] = [value]
+
+            input_data_types = subgraph.get(YAMLKeyword.input_data_types, "")
+            if input_data_types:
+                if not isinstance(input_data_types, list):
+                    subgraph[YAMLKeyword.input_data_types] = [input_data_types]
+                for input_data_type in input_data_types:
+                    mace_check(input_data_type in InputDataTypeStrs,
+                               ModuleName.YAML_CONFIG,
+                               "'input_data_types' must be in "
+                               + str(InputDataTypeStrs))
+            else:
+                subgraph[YAMLKeyword.input_data_types] = []
 
             validation_threshold = subgraph.get(
                 YAMLKeyword.validation_threshold, {})
@@ -1025,7 +1048,8 @@ def tuning(library_name, model_name, model_config,
         subgraphs[0][YAMLKeyword.input_tensors],
         subgraphs[0][YAMLKeyword.input_shapes],
         subgraphs[0][YAMLKeyword.validation_inputs_data],
-        input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
+        input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
+        input_data_types=subgraphs[0][YAMLKeyword.input_data_types])
 
     sh_commands.tuning_run(
         abi=target_abi,
@@ -1170,7 +1194,8 @@ def run_specific_target(flags, configs, target_abi,
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
             subgraphs[0][YAMLKeyword.validation_inputs_data],
-            input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
+            input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
+            input_data_types=subgraphs[0][YAMLKeyword.input_data_types])
 
         runtime_list = []
         if target_abi == ABIType.host:
@@ -1236,6 +1261,7 @@ def run_specific_target(flags, configs, target_abi,
                     output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
                     model_output_dir=model_output_dir,
                     phone_data_dir=PHONE_DATA_DIR,
+                    input_data_types=subgraphs[0][YAMLKeyword.input_data_types],  # noqa
                     caffe_env=flags.caffe_env,
                     validation_threshold=subgraphs[0][YAMLKeyword.validation_threshold][device_type])  # noqa
             if flags.report and flags.round > 0:
@@ -1478,7 +1504,8 @@ def bm_specific_target(flags, configs, target_abi, target_soc, serial_num):
             subgraphs[0][YAMLKeyword.input_tensors],
             subgraphs[0][YAMLKeyword.input_shapes],
             subgraphs[0][YAMLKeyword.validation_inputs_data],
-            input_ranges=subgraphs[0][YAMLKeyword.input_ranges])
+            input_ranges=subgraphs[0][YAMLKeyword.input_ranges],
+            input_data_types=subgraphs[0][YAMLKeyword.input_data_types])
         runtime_list = []
         if target_abi == ABIType.host:
             runtime_list.extend([RuntimeType.cpu])

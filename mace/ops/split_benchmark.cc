@@ -22,7 +22,7 @@ namespace test {
 
 namespace {
 template<DeviceType D, typename T>
-void BMSliceHelper(int iters,
+void BMSplitHelper(int iters,
                    const std::vector<index_t> &input_shape,
                    const index_t num_outputs) {
   mace::testing::StopTiming();
@@ -42,7 +42,7 @@ void BMSliceHelper(int iters,
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
-    auto builder = OpDefBuilder("Slice", "SliceTest");
+    auto builder = OpDefBuilder("Split", "SplitTest");
     builder.Input("InputImage");
     for (int i = 0; i < num_outputs; ++i) {
       builder = builder.Output(MakeString("OutputImage", i));
@@ -51,7 +51,7 @@ void BMSliceHelper(int iters,
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    auto builder = OpDefBuilder("Slice", "SliceTest");
+    auto builder = OpDefBuilder("Split", "SplitTest");
     builder.Input("Input");
     for (int i = 0; i < num_outputs; ++i) {
       builder = builder.Output(MakeString("Output", i));
@@ -73,28 +73,28 @@ void BMSliceHelper(int iters,
 }
 }  // namespace
 
-#define MACE_BM_SLICE_MACRO(N, H, W, C, NO, TYPE, DEVICE)                    \
+#define MACE_BM_SPLIT_MACRO(N, H, W, C, NO, TYPE, DEVICE)                    \
   static void                                                                \
-      MACE_BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE(        \
+      MACE_BM_SPLIT_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE(        \
           int iters) {                                                       \
         const int64_t tot = static_cast<int64_t>(iters) * N * H * W * C;     \
         mace::testing::MaccProcessed(tot);                                   \
         mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                  \
-        BMSliceHelper<DEVICE, TYPE>(iters, {N, H, W, C}, NO);                \
+        BMSplitHelper<DEVICE, TYPE>(iters, {N, H, W, C}, NO);                \
       }                                                                      \
       MACE_BENCHMARK(                                                        \
-          MACE_BM_SLICE_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE)
+          MACE_BM_SPLIT_##N##_##H##_##W##_##C##_##NO##_##TYPE##_##DEVICE)
 
-#define MACE_BM_SLICE(N, H, W, C, NO)                 \
-  MACE_BM_SLICE_MACRO(N, H, W, C, NO, float, CPU);    \
-  MACE_BM_SLICE_MACRO(N, H, W, C, NO, float, GPU);    \
-  MACE_BM_SLICE_MACRO(N, H, W, C, NO, half, GPU);
+#define MACE_BM_SPLIT(N, H, W, C, NO)                 \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, CPU);    \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, float, GPU);    \
+  MACE_BM_SPLIT_MACRO(N, H, W, C, NO, half, GPU);
 
-MACE_BM_SLICE(1, 32, 32, 32, 2);
-MACE_BM_SLICE(1, 32, 32, 128, 2);
-MACE_BM_SLICE(1, 32, 32, 256, 2);
-MACE_BM_SLICE(1, 128, 128, 32, 2);
-MACE_BM_SLICE(1, 128, 128, 128, 2);
+MACE_BM_SPLIT(1, 32, 32, 32, 2);
+MACE_BM_SPLIT(1, 32, 32, 128, 2);
+MACE_BM_SPLIT(1, 32, 32, 256, 2);
+MACE_BM_SPLIT(1, 128, 128, 32, 2);
+MACE_BM_SPLIT(1, 128, 128, 128, 2);
 
 }  // namespace test
 }  // namespace ops

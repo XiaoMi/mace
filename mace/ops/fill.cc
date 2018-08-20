@@ -12,31 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/slice.h"
+#include "mace/ops/fill.h"
 
 namespace mace {
 namespace ops {
 
-void Register_Slice(OperatorRegistryBase *op_registry) {
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
+void Register_Fill(OperatorRegistryBase *op_registry) {
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Fill")
                                           .Device(DeviceType::CPU)
                                           .TypeConstraint<float>("T")
                                           .Build(),
-                         SliceOp<DeviceType::CPU, float>);
-
-#ifdef MACE_ENABLE_OPENCL
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                          .Device(DeviceType::GPU)
-                                          .TypeConstraint<float>("T")
-                                          .Build(),
-                         SliceOp<DeviceType::GPU, float>);
-
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Slice")
-                                          .Device(DeviceType::GPU)
-                                          .TypeConstraint<half>("T")
-                                          .Build(),
-                         SliceOp<DeviceType::GPU, half>);
-#endif  // MACE_ENABLE_OPENCL
+                         FillOp<DeviceType::CPU, float>);
 }
 
 }  // namespace ops

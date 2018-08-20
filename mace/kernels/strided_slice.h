@@ -169,7 +169,6 @@ struct StridedSliceFunctor {
              i += strides_data[0]) {
           *output_data++ = input_data[i];
         }
-
       } else if (input->dim_size() == 2) {
         for (index_t i = real_begin_indices[0];
              strides_data[0] > 0 ? i < real_end_indices[0]
@@ -179,7 +178,25 @@ struct StridedSliceFunctor {
                strides_data[1] > 0 ? j < real_end_indices[1]
                                    : j > real_end_indices[1];
                j += strides_data[1]) {
-            *output_data++ = input_data[i * dim_stride[0] + j];
+            *output_data++ = input_data[i * input->dim(1) + j];
+          }
+        }
+      } else if (input->dim_size() == 3) {
+        for (index_t i = real_begin_indices[0];
+             strides_data[0] > 0 ? i < real_end_indices[0]
+                                 : i > real_end_indices[0];
+             i += strides_data[0]) {
+          for (index_t j = real_begin_indices[1];
+               strides_data[1] > 0 ? j < real_end_indices[1]
+                                   : j > real_end_indices[1];
+               j += strides_data[1]) {
+            for (index_t k = real_begin_indices[2];
+                 strides_data[2] > 0 ? k < real_end_indices[2]
+                                     : k > real_end_indices[2];
+                 k += strides_data[2]) {
+              *output_data++ =
+                input_data[(i * input->dim(1) + j) * input->dim(2) + k];
+            }
           }
         }
       } else {

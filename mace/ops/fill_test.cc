@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gmock/gmock.h"
 #include "mace/core/operator.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -20,41 +19,47 @@ namespace mace {
 namespace ops {
 namespace test {
 
-class IdentityOpTest : public OpsTestBase {};
+class FillTest : public OpsTestBase {};
 
 namespace {
-void TestIdentity(const std::vector<index_t> &shape) {
+void TestFill(const std::vector<int32_t> &shape,
+              const float &value) {
   // Construct graph
   OpsTestNet net;
-  OpDefBuilder("Identity", "IdentityTest")
-      .Input("Input")
+  OpDefBuilder("Fill", "FillTest")
+      .Input("Shape")
+      .Input("Value")
       .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input", shape);
+  net.AddInputFromArray<DeviceType::CPU, int32_t>(
+      "Shape",
+      {static_cast<index_t>(shape.size())},
+      shape);
+
+  net.AddInputFromArray<DeviceType::CPU, float>("Value", {}, {value});
 
   // Run
   net.RunOp();
 
-  auto input = net.GetTensor("Input");
   auto output = net.GetTensor("Output");
 
-  EXPECT_THAT(output->shape(), ::testing::ContainerEq(shape));
+  for (index_t i = 0; i < output->dim_size(); ++i) {
+    EXPECT_EQ(output->dim(i), shape[i]);
+  }
 
-  const float *input_ptr = input->data<float>();
   const float *output_ptr = output->data<float>();
-  const int size = output->size();
-  for (int i = 0; i < size; ++i) {
-    EXPECT_EQ(input_ptr[i], output_ptr[i]);
+  const index_t size = output->size();
+  for (index_t i = 0; i < size; ++i) {
+    EXPECT_EQ(output_ptr[i], value);
   }
 }
 }  // namespace
 
-TEST_F(IdentityOpTest, TestIdentity) {
-  TestIdentity({1, 2, 3, 4});
-  TestIdentity({1});
-  TestIdentity({});
+TEST_F(FillTest, Simple) {
+  TestFill({3, 2, 1}, 5.0f);
+  TestFill({1, 3}, -1.0f);
 }
 
 }  // namespace test

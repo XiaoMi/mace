@@ -68,6 +68,7 @@ TFSupportedOps = [
     'Relu6',
     'Tanh',
     'Sigmoid',
+    'Fill',
     'FusedBatchNorm',
     'AvgPool',
     'MaxPool',
@@ -165,6 +166,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Relu6.name: self.convert_activation,
             TFOpType.Tanh.name: self.convert_activation,
             TFOpType.Sigmoid.name: self.convert_activation,
+            TFOpType.Fill.name: self.convert_fill,
             TFOpType.FusedBatchNorm.name: self.convert_fused_batchnorm,
             TFOpType.AvgPool.name: self.convert_pooling,
             TFOpType.MaxPool.name: self.convert_pooling,
@@ -457,6 +459,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             limit_arg = op.arg.add()
             limit_arg.name = MaceKeyword.mace_activation_max_limit_str
             limit_arg.f = 6.0
+
+    def convert_fill(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Fill.name
 
     def convert_fused_batchnorm(self, tf_op):
         op = self.convert_general_op(tf_op)
@@ -763,19 +769,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output_type.extend([mace_pb2.DT_INT32])
 
     def convert_split(self, tf_op):
-        # inputs: [dim, input]
         axis = tf_op.inputs[0].eval().astype(np.int32)
         axis = len(op.output_shape[0].dims) + axis if axis < 0 else axis
-        mace_check(axis == 3, 'Split with %d axis only support' % axis)
         input_shape = self.infer_tensor_shape(tf_op.inputs[1])
-        mace_check(len(input_shape) == 4 and (input_shape[3] % 4 == 0),
-                   "The input's 4th dimension should be a multiple of 4")
         op = self.convert_general_op(tf_op)
-        op.type = MaceOp.Slice.name
+        op.type = MaceOp.Split.name
         del op.input[0]
 
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str
         axis_arg.i = axis
+
+        num_split_arg = op.arg.add()
+        num_split_arg.name = MaceKeyword.mace_num_split_str
+        num_split_arg.i = tf_op.get_attr('num_split')
 
         self._skip_tensor.add(tf_op.inputs[0].name)

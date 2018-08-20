@@ -58,7 +58,7 @@ namespace kernels {
   if (runtime->IsOutOfRangeCheckEnabled()) {                               \
     (kernel_error)->Map(nullptr);                                          \
     char *kerror_code = (kernel_error)->mutable_data<char>();              \
-    MACE_CHECK(*kerror_code == 0) << "Kernel error code: " << *kerror_code;\
+    MACE_CHECK(*kerror_code == 0, "Kernel error code: ", *kerror_code);\
     (kernel_error)->UnMap();                                               \
   }
 

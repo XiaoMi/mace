@@ -17,13 +17,13 @@
 
 #include "gmock/gmock.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/slice.h"
+#include "mace/ops/split.h"
 
 namespace mace {
 namespace ops {
 namespace test {
 
-class SliceOpTest : public OpsTestBase {};
+class SplitOpTest : public OpsTestBase {};
 
 namespace {
 template <DeviceType D, typename T>
@@ -53,7 +53,7 @@ void RandomTest(const int num_outputs, const int axis) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
 
-    auto builder = OpDefBuilder("Slice", "SliceTest");
+    auto builder = OpDefBuilder("Split", "SplitTest");
     builder.Input("InputImage");
     for (int i = 0; i < num_outputs; ++i) {
       builder = builder.Output(MakeString("OutputImage", i));
@@ -61,7 +61,7 @@ void RandomTest(const int num_outputs, const int axis) {
     builder.AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
-    auto builder = OpDefBuilder("Slice", "SliceTest").AddIntArg("axis", axis);
+    auto builder = OpDefBuilder("Split", "SplitTest").AddIntArg("axis", axis);
     builder.Input("Input");
     for (int i = 0; i < num_outputs; ++i) {
       builder = builder.Output(MakeString("Output", i));
@@ -111,25 +111,25 @@ void RandomTest(const int num_outputs, const int axis) {
 }
 }  // namespace
 
-TEST_F(SliceOpTest, CPU) {
+TEST_F(SplitOpTest, CPU) {
   RandomTest<DeviceType::CPU, float>(2, 3);
   RandomTest<DeviceType::CPU, float>(4, 3);
   RandomTest<DeviceType::CPU, float>(11, 3);
 }
 
-TEST_F(SliceOpTest, CPUAxis1) {
+TEST_F(SplitOpTest, CPUAxis1) {
   RandomTest<DeviceType::CPU, float>(2, 1);
   RandomTest<DeviceType::CPU, float>(4, 1);
   RandomTest<DeviceType::CPU, float>(11, 1);
 }
 
-TEST_F(SliceOpTest, OPENCLFloat) {
+TEST_F(SplitOpTest, OPENCLFloat) {
   RandomTest<DeviceType::GPU, float>(2, 3);
   RandomTest<DeviceType::GPU, float>(4, 3);
   RandomTest<DeviceType::GPU, float>(11, 3);
 }
 
-TEST_F(SliceOpTest, OPENCLHalf) {
+TEST_F(SplitOpTest, OPENCLHalf) {
   RandomTest<DeviceType::GPU, half>(2, 3);
   RandomTest<DeviceType::GPU, half>(4, 3);
   RandomTest<DeviceType::GPU, half>(11, 3);
