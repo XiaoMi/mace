@@ -16,7 +16,6 @@
 
 #include "gflags/gflags.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
-#include "mace/core/threadpool.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/public/mace.h"
@@ -37,10 +36,6 @@ int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // config runtime
-  // TODO(liyin): Uncomment the following after removing openmp.
-//  mace::ThreadPoolRegister::ConfigThreadPool(FLAGS_omp_num_threads,
-//      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
-
   mace::MaceStatus status = mace::SetOpenMPThreadsAndAffinityPolicy(
       FLAGS_omp_num_threads,
       static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));

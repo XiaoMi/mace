@@ -75,9 +75,6 @@ int GetCPUMaxFreq(int cpu_id) {
   return freq;
 }
 
-}  // namespace
-
-
 MaceStatus SetThreadAffinity(cpu_set_t mask) {
 #if defined(__ANDROID__)
   pid_t pid = gettid();
@@ -92,6 +89,8 @@ MaceStatus SetThreadAffinity(cpu_set_t mask) {
     return MACE_SUCCESS;
   }
 }
+
+}  // namespace
 
 MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                   std::vector<int> *little_core_ids) {
