@@ -280,22 +280,28 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
 TEST_F(PoolingOpTest, OPENCLAlignedMaxPooling3S2) {
   MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
   MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
   MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
   MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<GPU, float>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLHalfAlignedMaxPooling3S2) {
   MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::VALID);
   MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 2}, Padding::VALID);
   MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {1, 1}, Padding::SAME);
   MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<GPU, half>({3, 64, 32, 32}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLUnalignedMaxPooling3S2) {
   MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 1}, Padding::VALID);
   MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 2}, Padding::VALID);
+  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 2}, Padding::VALID);
   MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {1, 1}, Padding::SAME);
   MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 2}, Padding::SAME);
+  MaxPooling3S2<GPU, half>({3, 41, 43, 47}, {2, 1}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, AVG_VALID) {
@@ -431,18 +437,26 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
 
 TEST_F(PoolingOpTest, OPENCLAlignedAvgPooling) {
   AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
+  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::VALID);
   AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
+  AvgPoolingTest<GPU, float>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLHalfAlignedAvgPooling) {
   AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::VALID);
+  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::VALID);
   AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {4, 4}, {4, 4}, Padding::SAME);
+  AvgPoolingTest<GPU, half>({3, 15, 15, 128}, {3, 4}, {1, 2}, Padding::SAME);
 }
 
 TEST_F(PoolingOpTest, OPENCLAlignedLargeKernelAvgPooling) {
   AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
                              Padding::VALID);
+  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {12, 16}, {12, 8},
+                             Padding::VALID);
   AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {16, 16}, {16, 16},
+                             Padding::SAME);
+  AvgPoolingTest<GPU, float>({3, 64, 64, 128}, {8, 16}, {8, 16},
                              Padding::SAME);
 }
 
@@ -622,8 +636,10 @@ void TestQuant(const index_t batch,
 TEST_F(PoolingOpTest, Quant) {
   TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::VALID, PoolingType::AVG);
   TestQuant(1, 3, 3, 2, {3, 3}, {1, 1}, Padding::SAME, PoolingType::AVG);
+  TestQuant(1, 3, 3, 2, {2, 3}, {1, 2}, Padding::SAME, PoolingType::AVG);
   TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::VALID, PoolingType::MAX);
   TestQuant(1, 7, 7, 1024, {7, 7}, {1, 1}, Padding::SAME, PoolingType::MAX);
+  TestQuant(1, 7, 7, 1024, {6, 7}, {4, 5}, Padding::SAME, PoolingType::MAX);
   TestQuant(1, 7, 7, 2048, {7, 7}, {1, 1}, Padding::SAME, PoolingType::AVG);
   TestQuant(3, 15, 15, 128, {4, 4}, {4, 4}, Padding::VALID, PoolingType::AVG);
   TestQuant(3, 15, 15, 128, {4, 4}, {4, 4}, Padding::VALID, PoolingType::MAX);

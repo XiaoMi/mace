@@ -129,7 +129,9 @@ MaceStatus PoolingFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     kernel_.setArg(idx++, paddings[0] / 2);
     kernel_.setArg(idx++, paddings[1] / 2);
     kernel_.setArg(idx++, strides_[0]);
+    kernel_.setArg(idx++, strides_[1]);
     kernel_.setArg(idx++, kernels_[0]);
+    kernel_.setArg(idx++, kernels_[1]);
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();

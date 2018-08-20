@@ -2,15 +2,16 @@
 
 #define MIN_VALUE -FLT_MAX
 
-inline int calculate_avg_block_size(const int pool_size,
+inline int calculate_avg_block_size(const int pool_size_h,
+                                    const int pool_size_w,
                                     const int pos_h,
                                     const int pos_w,
                                     const int h_size,
                                     const int w_size) {
   const int h_start = max(0, pos_h);
   const int w_start = max(0, pos_w);
-  const int h_end = min(pos_h + pool_size, h_size);
-  const int w_end = min(pos_w + pool_size, w_size);
+  const int h_end = min(pos_h + pool_size_h, h_size);
+  const int w_end = min(pos_w + pool_size_w, w_size);
   return mul24((h_end - h_start), (w_end - w_start));
 }
 
@@ -23,8 +24,10 @@ __kernel void pooling(KERNEL_ERROR_PARAMS
                       __private const int out_height,
                       __private const int pad_top,
                       __private const int pad_left,
-                      __private const int stride,
-                      __private const int pooling_size,
+                      __private const int stride_h,
+                      __private const int stride_w,
+                      __private const int pooling_size_h,
+                      __private const int pooling_size_w,
                       __write_only image2d_t output) {
 
   const int out_chan_idx = get_global_id(0);
@@ -40,19 +43,19 @@ __kernel void pooling(KERNEL_ERROR_PARAMS
   const int out_width = global_size_dim1;
 
   const int batch_idx = mul24((out_hb_idx / out_height), in_height);
-  const int in_height_start = mul24((out_hb_idx % out_height), stride) - pad_top;
-  const int in_width_start = mul24(out_width_idx, stride) - pad_left;
+  const int in_height_start = mul24((out_hb_idx % out_height), stride_h) - pad_top;
+  const int in_width_start = mul24(out_width_idx, stride_w) - pad_left;
   const int in_channel_offset = mul24(out_chan_idx, in_width);
 
 
 #ifdef POOL_AVG
   DATA_TYPE4 res = 0;
-  for (int height = 0; height < pooling_size; ++height) {
+  for (int height = 0; height < pooling_size_h; ++height) {
     int in_height_idx = in_height_start + height;
     in_height_idx = select(batch_idx + in_height_idx,
                        -1,
                        (in_height_idx < 0 || in_height_idx >= in_height));
-    for (int width = 0; width < pooling_size; ++width) {
+    for (int width = 0; width < pooling_size_w; ++width) {
       int in_width_idx = in_width_start + width;
       in_width_idx = select(in_channel_offset + in_width_idx,
                             -1,
@@ -62,19 +65,20 @@ __kernel void pooling(KERNEL_ERROR_PARAMS
       res = res + in;
     }
   }
-  const int block_size = calculate_avg_block_size(pooling_size,
+  const int block_size = calculate_avg_block_size(pooling_size_h,
+                                                  pooling_size_w,
                                                   in_height_start, in_width_start,
                                                   in_height, in_width);
   res /= block_size;
 #else
   DATA_TYPE4 res = (DATA_TYPE4)(MIN_VALUE);
-  for (int height = 0; height < pooling_size; ++height) {
+  for (int height = 0; height < pooling_size_h; ++height) {
     int in_height_idx = in_height_start + height;
     in_height_idx = select(batch_idx + in_height_idx,
                            -1,
                            (in_height_idx < 0 || in_height_idx >= in_height));
     if (in_height_idx != -1) {
-      for (int width = 0; width < pooling_size; ++width) {
+      for (int width = 0; width < pooling_size_w; ++width) {
         int in_width_idx = in_width_start + width;
         in_width_idx = select(in_channel_offset + in_width_idx,
                               -1,
