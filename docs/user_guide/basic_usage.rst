@@ -19,7 +19,7 @@ Here we use the mobilenet-v2 model as an example.
     .. code:: sh
 
         git clone https://github.com/XiaoMi/mace.git
-	cd mace/
+        cd mace/
         git fetch --all --tags --prune
 
         # Checkout the latest tag (i.e. release version)
