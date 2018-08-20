@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <set>
 
 #include "mace/benchmark/statistics.h"
@@ -151,7 +152,7 @@ std::string OpStat::StatByMetric(const Metric metric,
       "Stride", "Pad", "Filter Shape", "Output Shape", "Dilation", "name"
   };
   std::vector<std::vector<std::string>> data;
-  int count = top_limit;
+  int count = std::min(top_limit, static_cast<int>(records.size()));
   if (top_limit <= 0) count = static_cast<int>(records.size());
 
   int64_t accumulate_time = 0;
