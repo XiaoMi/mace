@@ -100,31 +100,38 @@ enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4, OHWI = 5 };
 
 class Tensor {
  public:
-  Tensor(Allocator *alloc, DataType type)
+  Tensor(Allocator *alloc, DataType type,
+         bool is_weight = false)
       : allocator_(alloc),
         dtype_(type),
         buffer_(nullptr),
         is_buffer_owner_(true),
         unused_(false),
         name_(""),
+        is_weight_(is_weight),
         scale_(0.f),
         zero_point_(0) {}
 
-  Tensor(BufferBase *buffer, DataType dtype)
+  Tensor(BufferBase *buffer, DataType dtype,
+         bool is_weight = false)
     : dtype_(dtype),
       buffer_(buffer),
       is_buffer_owner_(false),
       unused_(false),
       name_(""),
+      is_weight_(is_weight),
       scale_(0.f),
       zero_point_(0) {}
 
-  Tensor(const BufferSlice &buffer_slice, DataType dtype)
+  Tensor(const BufferSlice &buffer_slice,
+         DataType dtype,
+         bool is_weight = false)
       : dtype_(dtype),
         buffer_slice_(buffer_slice),
         is_buffer_owner_(false),
         unused_(false),
         name_(""),
+        is_weight_(is_weight),
         scale_(0.f),
         zero_point_(0) {
     buffer_ = &buffer_slice_;
@@ -373,6 +380,10 @@ class Tensor {
     MACE_DISABLE_COPY_AND_ASSIGN(MappingGuard);
   };
 
+  inline bool is_weight() const {
+    return is_weight_;
+  }
+
   inline float scale() const {
     return scale_;
   }
@@ -399,6 +410,7 @@ class Tensor {
   bool is_buffer_owner_;
   bool unused_;
   std::string name_;
+  const bool is_weight_;
   float scale_;
   int32_t zero_point_;
 

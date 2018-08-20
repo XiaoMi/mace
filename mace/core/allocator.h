@@ -34,8 +34,8 @@ namespace mace {
 #if defined(__hexagon__)
 constexpr size_t kMaceAlignment = 128;
 #elif defined(__ANDROID__)
-// 16 bytes = 128 bits = 32 * 4 (Neon)
-constexpr size_t kMaceAlignment = 16;
+// arm cache line
+constexpr size_t kMaceAlignment = 64;
 #else
 // 32 bytes = 256 bits (AVX512)
 constexpr size_t kMaceAlignment = 32;
