@@ -81,16 +81,34 @@ struct MatMulFunctor {
     const T *b_ptr_base = B->data<T>();
     T *c_ptr_base = C->mutable_data<T>();
 
-    // It is better to use large block size if it fits for fast cache.
-    // Assume l1 cache size is 32k, we load three blocks at a time (A, B, C),
-    // the block size should be sqrt(32k / sizeof(T) / 3).
     memset(c_ptr_base, 0, batch * height * width * sizeof(T));
 
-    Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base,
-         transpose_a, transpose_b);
+    if (height == 1 && width > 1 && B->is_weight()) {
+      // A * B = (B^T * A^T)^T
+      if (!transpose_b) {
+        if (B_transpose_.get() == nullptr) {
+          B_transpose_.reset(new Tensor(GetDeviceAllocator(D),
+                                        DataTypeToEnum<T>::v()));
+          B_transpose_->Resize({batch, width, K});
+          Tensor::MappingGuard guardbt(B_transpose_.get());
+          T *bt_ptr_base = B_transpose_->mutable_data<T>();
+          Transpose(b_ptr_base, K, width, width, bt_ptr_base);
+        }
+        Tensor::MappingGuard guardbt(B_transpose_.get());
+        T *bt_ptr_base = B_transpose_->mutable_data<T>();
+        Gemv(bt_ptr_base, a_ptr_base, batch, K, width, c_ptr_base);
+      } else {
+        Gemv(b_ptr_base, a_ptr_base, batch, K, width, c_ptr_base);
+      }
+    } else {
+      Gemm(a_ptr_base, b_ptr_base, batch, height, K, width, c_ptr_base,
+           transpose_a, transpose_b);
+    }
 
     return MACE_SUCCESS;
   }
+
+  std::unique_ptr<Tensor> B_transpose_;
 };
 
 template <>

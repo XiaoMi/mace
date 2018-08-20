@@ -43,7 +43,6 @@ void TestUnstack(const std::vector<index_t> &input_shape,
   net.RunOp();
 
   for (size_t i = 0; i < outputs.size(); ++i) {
-    LOG(INFO) << MakeString("Output", i);
     net.AddInputFromArray<CPU, float>("ExpectedOutput", output_shape,
                                       outputs[i]);
     ExpectTensorNear<float>(*net.GetOutput("ExpectedOutput"),
