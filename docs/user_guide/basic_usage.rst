@@ -197,7 +197,7 @@ When the deployment file is ready, you can use MACE converter tool to convert yo
     python tools/converter.py convert --config=/path/to/your/model_deployment_file.yml
 
 This command will download or load your pre-trained model and convert it to a MACE model proto file and weights data file.
-The generated model files will be stored in ``build/${library_name}/model`` folder.
+The generated model files will be stored in ``builds/${library_name}/model`` folder.
 
 .. warning::
 
