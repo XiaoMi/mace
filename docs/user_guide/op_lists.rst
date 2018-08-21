@@ -37,7 +37,7 @@ Operator lists
     "RELU1","Y",""
     "RELU6","Y",""
     "RELUX","Y",""
-    "RESHAPE","Y","Limited support: GPU is full supported, for CPU only supports softmax-like usage."
+    "RESHAPE","Y","Limited support: GPU only supports softmax-like usage, CPU only supports the usage which not change the storage format."
     "RESIZE_BILINEAR","Y",""
     "RNN","",""
     "RPN_PROPOSAL_LAYER","Y",""
