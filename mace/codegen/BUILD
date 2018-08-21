@@ -23,7 +23,8 @@ genrule(
         ":libmodels",
     ],
     outs = ["libgenerated_models.a"],
-    cmd = "$(STRIP) -x $(SRCS) -o $@",
+    cmd = "binary=`echo $(locations :libmodels) | xargs -n 1 | grep libmodels.a`;" +
+          "$(STRIP) -x $$binary -o $@",
     visibility = ["//visibility:public"],
 )
 
