@@ -64,6 +64,9 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
+            # TODO(liuqi): should move to transpose_filter
+            TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
+                self.transpose_matmul_weight,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
@@ -953,6 +956,29 @@ class Transformer(base_converter.ConverterInterface):
             self._input_output_added = True
 
         return False
+
+    def transpose_matmul_weight(self):
+        if self._option.device != DeviceType.CPU.value:
+            return False
+        net = self._model
+        transpose_arg_names = [MaceKeyword.mace_transpose_a_str,
+                               MaceKeyword.mace_transpose_b_str]
+        for op in net.op:
+            if op.type == MaceOp.MatMul.name:  # noqa
+                for i in range(len(op.input)):
+                    input = op.input[i]
+                    if input in self._consts \
+                            and len(self._consts[input].dims) == 2:
+                        arg = ConverterUtil.get_arg(op, transpose_arg_names[i])
+                        if arg is not None and arg.i == 1:
+                            print 'convert matmul'
+                            filter = self._consts[input]
+                            filter_data = np.array(filter.float_data).reshape(
+                                filter.dims)
+                            filter_data = filter_data.transpose(1, 0)
+                            filter.float_data[:] = filter_data.flat
+                            filter.dims[:] = filter_data.shape
+                            arg.i = 0
 
     def transpose_filters(self):
         net = self._model

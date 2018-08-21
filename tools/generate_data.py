@@ -44,19 +44,22 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
                         input_data_type):
     input_names = [name for name in input_node.split(',')]
     input_shapes = [shape for shape in input_shape.split(':')]
+
     if input_ranges:
         input_ranges = [r for r in input_ranges.split(':')]
     else:
-        input_ranges = [[-1, 1]] * len(input_names)
+        input_ranges = ["-1,1"] * len(input_names)
     if input_data_type:
         input_data_types = [data_type
                             for data_type in input_data_type.split(',')]
     else:
         input_data_types = ['float32'] * len(input_names)
+
     assert len(input_names) == len(input_shapes) == len(input_ranges) == len(input_data_types)  # noqa
     for i in range(len(input_names)):
         shape = [int(x) for x in input_shapes[i].split(',')]
-        generate_data(input_names[i], shape, input_file, input_ranges[i],
+        input_range = [float(x) for x in input_ranges[i].split(',')]
+        generate_data(input_names[i], shape, input_file, input_range,
                       input_data_types[i])
     print "Generate input file done."
 
