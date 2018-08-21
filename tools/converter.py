@@ -457,6 +457,7 @@ def format_model_config(flags):
                            "'%s' is necessary in subgraph" % key)
                 if not isinstance(value, list):
                     subgraph[key] = [value]
+                subgraph[key] = [str(v) for v in subgraph[key]]
 
             input_data_types = subgraph.get(YAMLKeyword.input_data_types, "")
             if input_data_types:
@@ -507,6 +508,8 @@ def format_model_config(flags):
                 subgraph[YAMLKeyword.input_ranges] = [input_ranges]
             else:
                 subgraph[YAMLKeyword.input_ranges] = input_ranges
+            subgraph[YAMLKeyword.input_ranges] =\
+                [str(v) for v in subgraph[YAMLKeyword.input_ranges]]
 
         for key in [YAMLKeyword.limit_opencl_kernel_time,
                     YAMLKeyword.nnlib_graph_mode,
