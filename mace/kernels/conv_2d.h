@@ -822,34 +822,6 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     }
   }
 
-  typedef gemmlowp::VectorMap<const int32_t, gemmlowp::VectorShape::Col>
-      ColVectorMap;
-  typedef std::tuple<
-      gemmlowp::OutputStageBiasAddition<ColVectorMap>,
-      gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint,
-      gemmlowp::OutputStageSaturatingCastToUint8> Pipeline;
-  inline Pipeline MakeOutputPipeline(
-      const int32_t* bias_data, const index_t channels, const float lhs_scale,
-      const float rhs_scale, const float output_scale,
-      const int32_t output_zero_point) {
-    ColVectorMap bias_vector(bias_data, channels);
-    gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_addition_stage;
-    bias_addition_stage.bias_vector = bias_vector;
-    int32_t quantized_multiplier;
-    int32_t right_shift;
-    GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
-                                &quantized_multiplier, &right_shift);
-    gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint
-        quantize_down_stage;
-    quantize_down_stage.result_offset_after_shift = output_zero_point;
-    quantize_down_stage.result_fixedpoint_multiplier = quantized_multiplier;
-    quantize_down_stage.result_shift = right_shift;
-
-    gemmlowp::OutputStageSaturatingCastToUint8 saturating_cast_stage;
-    return std::make_tuple(bias_addition_stage, quantize_down_stage,
-                           saturating_cast_stage);
-  }
-
   MaceStatus operator()(const Tensor *input,   // NHWC
                         const Tensor *filter,  // OHWI
                         const Tensor *bias,
@@ -959,7 +931,7 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     gemmlowp::MatrixMap<uint8_t, gemmlowp::MapOrder::ColMajor>
         output_matrix(output_data, gemm_output_rows, gemm_output_cols);
 
-    const auto &output_pipeline = MakeOutputPipeline(
+    const auto &output_pipeline = GemmlowpOutputPipeline::Make(
         bias_data, channels, filter->scale(), input->scale(), output->scale(),
         output->zero_point());
 
