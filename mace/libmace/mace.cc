@@ -226,7 +226,7 @@ MaceStatus MaceEngine::Impl::Init(
   for (auto input_name : input_nodes) {
     if (input_info_map_.find(input_name) == input_info_map_.end()) {
       LOG(FATAL) << "'" << input_name
-                 << "' is not belong to model's inputs: "
+                 << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
     ws_->CreateTensor(MakeString("mace_input_node_", input_name),
@@ -235,7 +235,7 @@ MaceStatus MaceEngine::Impl::Init(
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
       LOG(FATAL) << "'" << output_name
-                 << "' is not belong to model's outputs "
+                 << "' does not belong to model's outputs "
                  << MakeString(MapKeys(output_info_map_));
     }
     ws_->CreateTensor(MakeString("mace_output_node_", output_name),
@@ -322,7 +322,7 @@ MaceStatus MaceEngine::Impl::Run(
   for (auto &input : inputs) {
     if (input_info_map_.find(input.first) == input_info_map_.end()) {
       LOG(FATAL) << "'" << input.first
-                 << "' is not belong to model's inputs: "
+                 << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
     Tensor *input_tensor =
@@ -339,7 +339,7 @@ MaceStatus MaceEngine::Impl::Run(
   for (auto &output : *outputs) {
     if (output_info_map_.find(output.first) == output_info_map_.end()) {
       LOG(FATAL) << "'" << output.first
-                 << "' is not belong to model's outputs: "
+                 << "' does not belong to model's outputs: "
                  << MakeString(MapKeys(output_info_map_));
     }
     Tensor *output_tensor =
