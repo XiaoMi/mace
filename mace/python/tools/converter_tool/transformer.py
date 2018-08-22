@@ -64,9 +64,6 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
-            # TODO(liuqi): should move to transpose_filter
-            TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
-                self.transpose_matmul_weight,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
@@ -1056,6 +1053,8 @@ class Transformer(base_converter.ConverterInterface):
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                     transposed_filter.add(op.input[1])
+
+            self.transpose_matmul_weight()
 
         return False
 
