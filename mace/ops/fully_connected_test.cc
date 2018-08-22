@@ -15,6 +15,7 @@
 #include <fstream>
 
 #include "mace/core/operator.h"
+#include "mace/kernels/quantize.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -214,6 +215,107 @@ TEST_F(FullyConnectedOpTest, ComplexHalfWidthFormatAligned) {
   Random<half>(1, 11, 11, 32, 16);
   Random<half>(1, 16, 32, 32, 32);
   Random<half>(1, 14, 14, 13, 23);
+}
+
+namespace {
+void QuantRandom(const index_t batch,
+                 const index_t height,
+                 const index_t width,
+                 const index_t channels,
+                 const index_t out_channel) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<CPU, float>(
+      "Input", {batch, height, width, channels});
+  net.AddRandomInput<CPU, float>(
+      "Weight", {out_channel, height, width, channels});
+  net.AddRandomInput<CPU, float>("Bias", {out_channel});
+  net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
+  net.TransformDataFormat<CPU, float>("Weight", OHWI, "WeightOIHW", OIHW);
+
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
+      .Input("InputNCHW")
+      .Input("WeightOIHW")
+      .Input("Bias")
+      .Output("OutputNCHW")
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+  net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeWeight")
+      .Input("Weight")
+      .Output("QuantizedWeight")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeInput")
+      .Input("Input")
+      .Output("QuantizedInput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  Tensor *q_weight = net.GetTensor("QuantizedWeight");
+  Tensor *q_input = net.GetTensor("QuantizedInput");
+  Tensor *bias = net.GetTensor("Bias");
+  auto bias_data = bias->data<float>();
+  std::vector<int32_t> q_bias(bias->size());
+  kernels::QuantizeWithScaleAndZeropoint(
+      bias_data, bias->size(), q_input->scale() * q_weight->scale(), 0,
+      q_bias.data());
+  net.AddInputFromArray<DeviceType::CPU, int32_t>("QuantizedBias",
+                                                  {out_channel}, q_bias);
+
+  OpDefBuilder("FullyConnected", "QuantizeFullyConnectedTest")
+      .Input("QuantizedInput")
+      .Input("QuantizedWeight")
+      .Input("QuantizedBias")
+      .Output("QuantizedOutput")
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(FullyConnectedOpTest, Quant) {
+  QuantRandom(1, 16, 16, 32, 16);
+  QuantRandom(1, 7, 7, 32, 16);
+  QuantRandom(1, 7, 7, 512, 128);
+  QuantRandom(1, 1, 1, 2048, 1024);
 }
 
 }  // namespace test

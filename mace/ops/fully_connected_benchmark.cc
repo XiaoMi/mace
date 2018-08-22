@@ -80,6 +80,43 @@ void FCBenchmark(
   }
   net.Sync();
 }
+
+template <>
+void FCBenchmark<CPU, uint8_t>(
+    int iters, int batch, int height, int width, int channel, int out_channel) {
+  mace::testing::StopTiming();
+
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<CPU, uint8_t>("Input", {batch, height, width, channel});
+  net.GetTensor("Input")->SetScale(0.1);
+  net.AddRandomInput<CPU, uint8_t>("Weight",
+                                   {out_channel, height, width, channel});
+  net.GetTensor("Weight")->SetScale(0.1);
+  net.AddRandomInput<CPU, uint8_t>("Bias", {out_channel});
+
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(CPU);
+  net.GetTensor("Output")->SetScale(0.1);
+
+  // Warm-up
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
+  }
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    net.Run();
+  }
+}
 }  // namespace
 
 #define MACE_BM_FC_MACRO(N, H, W, C, OC, TYPE, DEVICE)                     \
@@ -98,7 +135,8 @@ void FCBenchmark(
 #define MACE_BM_FC(N, H, W, C, OC)                 \
   MACE_BM_FC_MACRO(N, H, W, C, OC, float, CPU);    \
   MACE_BM_FC_MACRO(N, H, W, C, OC, float, GPU);    \
-  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU);
+  MACE_BM_FC_MACRO(N, H, W, C, OC, half, GPU);     \
+  MACE_BM_FC_MACRO(N, H, W, C, OC, uint8_t, CPU);
 
 MACE_BM_FC(1, 16, 16, 32, 32);
 MACE_BM_FC(1, 8, 8, 32, 1000);
