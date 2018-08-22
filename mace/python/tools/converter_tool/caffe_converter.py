@@ -561,7 +561,7 @@ class CaffeConverter(base_converter.ConverterInterface):
 
     def convert_slice(self, caffe_op):
         op = self.convert_general_op(caffe_op)
-        op.type = MaceOp.Slice.name
+        op.type = MaceOp.Split.name
 
         if caffe_op.layer.HasField('slice_param'):
             param = caffe_op.layer.slice_param

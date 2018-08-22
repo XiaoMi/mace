@@ -40,7 +40,7 @@ class ShapeInference(object):
             MaceOp.Activation.name: self.infer_shape_general,
             MaceOp.Pooling.name: self.infer_shape_conv_pool_shape,
             MaceOp.Concat.name: self.infer_shape_concat,
-            MaceOp.Slice.name: self.infer_shape_slice,
+            MaceOp.Split.name: self.infer_shape_slice,
             MaceOp.Softmax.name: self.infer_shape_general,
             MaceOp.FullyConnected.name: self.infer_shape_fully_connected,
             MaceOp.Crop.name: self.infer_shape_crop,
