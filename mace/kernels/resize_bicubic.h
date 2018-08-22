@@ -95,12 +95,6 @@ inline void ResizeImage(const float *images,
              const float height_scale,
              const float width_scale,
              float *output) {
-//    std::stringstream tabss;
-//    for(int tabi = 0; tabi < 10; tabi++){
-//        tabss << GetCoeffsTable()[tabi] << "  ";
-//    }
-//    LOG(WARNING) << tabss.str().c_str();
-
   std::array<float, 4> coeff = {{0.0, 0.0, 0.0, 0.0}};
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
@@ -119,22 +113,24 @@ inline void ResizeImage(const float *images,
         for (index_t c = 0; c < channels; ++c) {
           // Use a 4x4 patch to compute the interpolated output value at
           // (b, y, x, c).
-
-          const float *channel_input_ptr = images + (b * channels + c) * in_height * in_width;
-          float *channel_output_ptr = output + (b * channels + c) * out_height * out_width;
+          const float *channel_input_ptr =
+                  images + (b * channels + c) * in_height * in_width;
+          float *channel_output_ptr =
+                  output + (b * channels + c) * out_height * out_width;
           for (index_t i = 0; i < 4; ++i) {
             const std::array<float, 4> values = {
-                    {static_cast<float>(
-                             channel_input_ptr[y_indices[i] * in_width + x_indices[0]]),
-                     static_cast<float>(
-                             channel_input_ptr[y_indices[i] * in_width + x_indices[1]]),
-                     static_cast<float>(
-                             channel_input_ptr[y_indices[i] * in_width + x_indices[2]]),
-                     static_cast<float>(
-                             channel_input_ptr[y_indices[i] * in_width + x_indices[3]])}};
+              {static_cast<float>(channel_input_ptr
+                  [y_indices[i] * in_width + x_indices[0]]),
+               static_cast<float>(channel_input_ptr
+                  [y_indices[i] * in_width + x_indices[1]]),
+               static_cast<float>(channel_input_ptr
+                  [y_indices[i] * in_width + x_indices[2]]),
+               static_cast<float>(channel_input_ptr
+                  [y_indices[i] * in_width + x_indices[3]])}};
             coeff[i] = Interpolate1D(x_weights, values);
           }
-          channel_output_ptr[y * out_width + x] = Interpolate1D(y_weights, coeff);
+          channel_output_ptr[y * out_width + x] =
+                  Interpolate1D(y_weights, coeff);
         }
       }
     }

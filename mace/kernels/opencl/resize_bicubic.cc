@@ -85,13 +85,7 @@ MaceStatus ResizeBicubicFunctor<DeviceType::GPU, T>::operator()(
     kwg_size_ =
             static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
-//  //create buffer
-//  cl::Buffer coeffs_buf(runtime->context(), CL_MEM_READ_WRITE, (kTableSize + 1 ) * 2 * sizeof(float));
-//  if (runtime->command_queue().enqueueWriteBuffer(coeffs_buf,CL_TRUE,0,(kTableSize + 1 ) * 2 * sizeof(float),GetCoeffsTable()) != CL_SUCCESS) {
-//    std::cout << "Failed to write memory;n";
-//    exit(1);
-//  }
-//  //end create buffer
+
   if (!IsVecEqual(input_shape_, input->shape())) {
     MACE_CHECK(out_height > 0 && out_width > 0);
     std::vector<index_t> output_shape{batch, out_height, out_width, channels};
@@ -116,7 +110,6 @@ MaceStatus ResizeBicubicFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, static_cast<int32_t>(out_height));
-//    kernel_.setArg(idx++, coeffs_buf);
 
     input_shape_ = input->shape();
   }

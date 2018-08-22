@@ -4,7 +4,6 @@
 const int kTableSize = (1 << 10);
 
 inline float ComputeCoeffs(int i) {
-//    const int kTableSize = (1 << 10);
   const float A = -0.75;
   float x = (i / 2) * 1.0 / kTableSize;
   if (i % 2 == 0){
@@ -18,39 +17,11 @@ inline float ComputeCoeffs(int i) {
   }
 }
 
-//#define GET_COEFFS(coeffs_tab, i) coeffs_tab[i]
-//float getCoeffs(const float *coeffs_tab, int i) {
-//    return coeffs_tab[i];
-//}
-
 #define BOUND(val, limit) min(limit - 1, max(0, val))
-//int Bound(int val, int limit) {
-//    return min(limit - 1, max(0, val));
-//}
-
-//float4 GetWeights(const float* coeffs_tab, float scale, int out_loc, int limit) {
-//    const int in_loc = scale * out_loc;
-//    const float delta = scale * out_loc - in_loc;
-//    const int offset = delta * kTableSize + 0.5; //lrintf not found in opencl;
-//    float4 weights = {getCoeffs(coeffs_tab, offset * 2 + 1),
-//                      getCoeffs(coeffs_tab, offset * 2),
-//                      getCoeffs(coeffs_tab, (kTableSize - offset) * 2),
-//                      getCoeffs(coeffs_tab, (kTableSize - offset) * 2 + 1)};
-//    return weights;
-//}
-//
-//int4 GetIndices(float scale, int out_loc, int limit) {
-//    const int in_loc = scale * out_loc;
-//    const float delta = scale * out_loc - in_loc;
-//    const int offset = delta * kTableSize + 0.5; //lrintf not found in opencl
-//    int4 indices = {Bound(in_loc - 1, limit), Bound(in_loc, limit),
-//                    Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
-//    return indices;
-//}
 
 __kernel void resize_bicubic_nocache(KERNEL_ERROR_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM3
-                                     __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
+                                     __read_only image2d_t input,
                                      __write_only image2d_t output,
                                      __private const float height_scale,
                                      __private const float width_scale,
@@ -83,27 +54,30 @@ __kernel void resize_bicubic_nocache(KERNEL_ERROR_PARAMS
   const int in_w_offset = mul24(ch_blk, in_width);
   const int in_h_offset = mul24(b, in_height);
 
-  //begin resize bicubic
   const int h_in_loc = height_scale * h;
   const float h_delta = height_scale * h - h_in_loc;
-  const int h_offset = h_delta * kTableSize + 0.5; //lrintf not found in opencl;
+  const int h_offset = h_delta * kTableSize + 0.5;
 
   const int w_in_loc = width_scale * w;
   const float w_delta = width_scale * w - w_in_loc;
-  const int w_offset = w_delta * kTableSize + 0.5; //lrintf not found in opencl;
+  const int w_offset = w_delta * kTableSize + 0.5;
 
   float4 y_weights = {ComputeCoeffs(h_offset * 2 + 1),
                       ComputeCoeffs(h_offset * 2),
                       ComputeCoeffs((kTableSize - h_offset) * 2),
                       ComputeCoeffs((kTableSize - h_offset) * 2 + 1)};
-  int4 y_indices = {BOUND(h_in_loc - 1, in_height), BOUND(h_in_loc, in_height),
-                    BOUND(h_in_loc + 1, in_height), BOUND(h_in_loc + 2, in_height)};
+  int4 y_indices = {BOUND(h_in_loc - 1, in_height),
+                    BOUND(h_in_loc, in_height),
+                    BOUND(h_in_loc + 1, in_height),
+                    BOUND(h_in_loc + 2, in_height)};
   float4 x_weights = {ComputeCoeffs(w_offset * 2 + 1),
                       ComputeCoeffs(w_offset * 2),
                       ComputeCoeffs((kTableSize - w_offset) * 2),
                       ComputeCoeffs((kTableSize - w_offset) * 2 + 1)};
-  int4 x_indices = {BOUND(w_in_loc - 1, in_width), BOUND(w_in_loc, in_width),
-                    BOUND(w_in_loc + 1, in_width), BOUND(w_in_loc + 2, in_width)};
+  int4 x_indices = {BOUND(w_in_loc - 1, in_width),
+                    BOUND(w_in_loc, in_width),
+                    BOUND(w_in_loc + 1, in_width),
+                    BOUND(w_in_loc + 2, in_width)};
 
   float4 coeffs0 = {0, 0, 0, 0};
   float4 coeffs1 = {0, 0, 0, 0};
@@ -115,13 +89,13 @@ __kernel void resize_bicubic_nocache(KERNEL_ERROR_PARAMS
     if ( i == 2 ) { y_index = y_indices.s2; }
     if ( i == 3 ) { y_index = y_indices.s3; }
     DATA_TYPE4 data0 = READ_IMAGET(input, SAMPLER,
-                                   (int2)(in_w_offset + x_indices.s0, in_h_offset + y_index));
+             (int2)(in_w_offset + x_indices.s0, in_h_offset + y_index));
     DATA_TYPE4 data1 = READ_IMAGET(input, SAMPLER,
-                                   (int2)(in_w_offset + x_indices.s1, in_h_offset + y_index));
+             (int2)(in_w_offset + x_indices.s1, in_h_offset + y_index));
     DATA_TYPE4 data2 = READ_IMAGET(input, SAMPLER,
-                                   (int2)(in_w_offset + x_indices.s2, in_h_offset + y_index));
+             (int2)(in_w_offset + x_indices.s2, in_h_offset + y_index));
     DATA_TYPE4 data3 = READ_IMAGET(input, SAMPLER,
-                                   (int2)(in_w_offset + x_indices.s3, in_h_offset + y_index));
+             (int2)(in_w_offset + x_indices.s3, in_h_offset + y_index));
 
     float4 xw0 = { x_weights.s0, x_weights.s0, x_weights.s0, x_weights.s0 };
     float4 xw1 = { x_weights.s1, x_weights.s1, x_weights.s1, x_weights.s1 };
@@ -150,7 +124,6 @@ __kernel void resize_bicubic_nocache(KERNEL_ERROR_PARAMS
   const int out_h_offset = mul24(b, out_height);
 
   WRITE_IMAGET(output, (int2)(out_w_offset + w, out_h_offset + h), outdata);
-  //end bicubic
 }
 
 

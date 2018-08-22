@@ -48,7 +48,6 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
                                                   NHWC);
 
   // Check
-  //TODO change expected data
   auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -63,7 +62,8 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners1) {
   std::vector<float> input(48);
   std::iota(begin(input), end(input), 0);
   net.AddInputFromArray<DeviceType::CPU, float>("Input", {1, 4, 4, 3}, input);
-  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW", NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                  NCHW);
 
   OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
       .Input("InputNCHW")
@@ -73,11 +73,14 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners1) {
 
   // Run
   net.RunOp();
-  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
+  net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
+                                                  NHWC);
 
   // Check
-  //TODO change expected data
-  auto expected = CreateTensor<float>({1, 2, 3, 3}, {0., 1., 2.,4.110297, 5.110297, 6.110297, 8.223037, 9.223036, 10.223037, 24., 25., 26., 28.110298, 29.1103, 30.110298, 32.223038, 33.223038, 34.223038});
+  auto expected = CreateTensor<float>({1, 2, 3, 3},
+      {0., 1., 2., 4.110297, 5.110297, 6.110297,
+       8.223037, 9.223036, 10.223037, 24., 25., 26.,
+       28.110298, 29.1103, 30.110298, 32.223038, 33.223038, 34.223038});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -167,7 +170,6 @@ void TestRandomResizeBicubic() {
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-5,
                             1e-4);
-
   }
 }
 }  // namespace

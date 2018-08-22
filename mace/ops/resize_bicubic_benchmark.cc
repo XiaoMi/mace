@@ -83,17 +83,17 @@ void ResizeBicubicBenchmark(int iters,
 }  // namespace
 
 #define MACE_BM_RESIZE_BICUBIC_MACRO(N, C, H0, W0, H1, W1, TYPE, DEVICE)      \
-  static void                                                                  \
+  static void                                                                 \
       MACE_BM_RESIZE_BICUBIC_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
-        ##DEVICE(                                                              \
-          int iters) {                                                         \
-    const int64_t macc = static_cast<int64_t>(iters) * N * C * H1 * W1 * 3;    \
-    const int64_t tot = static_cast<int64_t>(iters) * N * C * H0 * W0;         \
-    mace::testing::MaccProcessed(macc);                                        \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                        \
+        ##DEVICE(                                                             \
+          int iters) {                                                        \
+    const int64_t macc = static_cast<int64_t>(iters) * N * C * H1 * W1 * 3;   \
+    const int64_t tot = static_cast<int64_t>(iters) * N * C * H0 * W0;        \
+    mace::testing::MaccProcessed(macc);                                       \
+    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     ResizeBicubicBenchmark<DEVICE, TYPE>(iters, N, C, H0, W0, H1, W1);        \
-  }                                                                            \
-  MACE_BENCHMARK(                                                              \
+  }                                                                           \
+  MACE_BENCHMARK(                                                             \
       MACE_BM_RESIZE_BICUBIC_##N##_##C##_##H0##_##W0##_##H1##_##W1##_##TYPE##_\
         ##DEVICE)
 
