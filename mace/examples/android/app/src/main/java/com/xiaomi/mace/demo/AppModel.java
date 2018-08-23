@@ -49,11 +49,14 @@ public class AppModel {
         });
     }
 
-    public void maceMobilenetCreateEngine(final InitData initData) {
+    public void maceMobilenetCreateEngine(final InitData initData, final CreateEngineCallback callback) {
         mJniThread.post(new Runnable() {
             @Override
             public void run() {
-                JniMaceUtils.maceMobilenetCreateEngine(initData.getModel(), initData.getDevice());
+                int result = JniMaceUtils.maceMobilenetCreateEngine(initData.getModel(), initData.getDevice());
+                if (result == -1 && callback != null) {
+                    callback.onCreateEngineFail();
+                }
             }
         });
     }
@@ -70,6 +73,10 @@ public class AppModel {
                 EventBus.getDefault().post(new MessageEvent.MaceResultEvent(resultData));
             }
         });
+    }
+
+    public interface CreateEngineCallback {
+        void onCreateEngineFail();
     }
 
 }

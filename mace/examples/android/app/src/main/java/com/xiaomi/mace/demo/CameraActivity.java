@@ -15,6 +15,8 @@
 package com.xiaomi.mace.demo;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -23,6 +25,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import com.xiaomi.mace.demo.camera.CameraEngage;
@@ -39,7 +42,7 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.Arrays;
 import java.util.List;
 
-public class CameraActivity extends Activity implements View.OnClickListener {
+public class CameraActivity extends Activity implements View.OnClickListener, AppModel.CreateEngineCallback {
 
     CameraEngage mCameraEngage;
     ImageView mPictureResult;
@@ -138,7 +141,7 @@ public class CameraActivity extends Activity implements View.OnClickListener {
 
     private void initJni() {
         AppModel.instance.maceMobilenetSetAttrs(initData);
-        AppModel.instance.maceMobilenetCreateEngine(initData);
+        AppModel.instance.maceMobilenetCreateEngine(initData, this);
     }
 
     @Override
@@ -166,7 +169,7 @@ public class CameraActivity extends Activity implements View.OnClickListener {
             public void onCLickItem(String content) {
                 mSelectPhoneType.setText(content);
                 initData.setDevice(content);
-                AppModel.instance.maceMobilenetCreateEngine(initData);
+                AppModel.instance.maceMobilenetCreateEngine(initData, CameraActivity.this);
             }
         });
     }
@@ -178,8 +181,23 @@ public class CameraActivity extends Activity implements View.OnClickListener {
             public void onCLickItem(String content) {
                 mSelectMode.setText(content);
                 initData.setModel(content);
-                AppModel.instance.maceMobilenetCreateEngine(initData);
+                AppModel.instance.maceMobilenetCreateEngine(initData, CameraActivity.this);
             }
         });
+    }
+
+    @Override
+    public void onCreateEngineFail() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Error");
+        builder.setMessage("Failed to create inference engine with current setting!");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Quit", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+            }
+        });
+        builder.show();
     }
 }
