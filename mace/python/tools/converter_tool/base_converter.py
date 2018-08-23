@@ -198,7 +198,6 @@ class TransformerRule(Enum):
     QUANTIZE_NODES = 23
     ADD_QUANTIZE_TENSOR_RANGE = 24
     QUANTIZE_WEIGHTS = 25
-    TRANSPOSE_MATMUL_WEIGHT = 26
 
 
 class ConverterInterface(object):
@@ -349,8 +348,6 @@ class ConverterOption(object):
                 TransformerRule.FOLD_ACTIVATION,
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
-                # Transpose the weight of matmul if necessary
-                TransformerRule.TRANSPOSE_MATMUL_WEIGHT,
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
