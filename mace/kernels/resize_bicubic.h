@@ -54,7 +54,7 @@ inline const float* GetCoeffsTable() {
 }
 
 inline int64_t Bound(int64_t val, int64_t limit) {
-  return std::min(limit - 1ll, std::max(0ll, val));
+  return std::min<int64_t>(limit - 1ll, std::max<int64_t>(0ll, val));
 }
 
 inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
