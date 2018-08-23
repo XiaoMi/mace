@@ -117,7 +117,6 @@ class Transformer(base_converter.ConverterInterface):
                 changed = transformer()
                 if not changed:
                         break
-
         return self._model
 
     def filter_format(self):

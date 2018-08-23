@@ -101,6 +101,7 @@ MaceSupportedOps = [
     'ReduceMean',
     'Reshape',
     'ResizeBilinear',
+    'ScalarMath',
     'Slice',
     'Split',
     'Shape',
@@ -153,7 +154,7 @@ class MaceKeyword(object):
     mace_shape_str = 'shape'
     mace_winograd_filter_transformed = 'is_filter_transformed'
     mace_device = 'device'
-    mace_value_str = 'value'
+    mace_scalar_input_str = 'scalar_input'
     mace_wino_block_size = 'wino_block_size'
     mace_output_shape_str = 'output_shape'
     mace_begin_mask_str = 'begin_mask'
@@ -167,6 +168,8 @@ class MaceKeyword(object):
     mace_offset_str = 'offset'
     mace_from_caffe_str = 'from_caffe'
     mace_opencl_max_image_size = "opencl_max_image_size"
+    mace_seperate_buffer_str = 'seperate_buffer'
+    mace_scalar_input_index_str = 'scalar_input_index'
 
 
 class TransformerRule(Enum):

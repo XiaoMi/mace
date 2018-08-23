@@ -48,6 +48,10 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
     }
   }
 
+  if (scalar_input_index_ == 0) {
+    swapped = !swapped;
+  }
+
   std::vector<index_t> output_shape(4);
   output_shape[0] = input0->dim(0);
   output_shape[1] = input0->dim(1);
@@ -104,7 +108,7 @@ MaceStatus EltwiseFunctor<DeviceType::GPU, T>::operator()(const Tensor *input0,
     SET_3D_GWS_ARGS(kernel_);
     kernel_.setArg(idx++, *(input0->opencl_image()));
     if (input1 == nullptr) {
-      kernel_.setArg(idx++, value_);
+      kernel_.setArg(idx++, scalar_input_);
     } else {
       kernel_.setArg(idx++, *(input1->opencl_image()));
     }

@@ -124,6 +124,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
         tensor_map_[const_tensor.name()] = std::move(tensor);
       }
+      fused_buffer_ = false;
     } else {
 #else
     {
@@ -165,6 +166,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         tensor->SetZeroPoint(const_tensor.zero_point());
         tensor_map_[const_tensor.name()] = std::move(tensor);
       }
+      fused_buffer_ = true;
     }
   }
 
@@ -327,7 +329,34 @@ void Workspace::RemoveUnusedBuffer() {
       tensor_map_.erase(old_iter);
     }
   }
+  tensor_buffer_.reset(nullptr);
+}
 
+void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
+                                      const unsigned char *model_data) {
+  for (auto &const_tensor : net_def.tensors()) {
+    auto iter = tensor_map_.find(const_tensor.name());
+    if (iter->second->unused()) {
+      tensor_map_.erase(iter);
+    } else if (fused_buffer_) {
+      tensor_map_.erase(iter);
+      std::vector<index_t> dims;
+      for (const index_t d : const_tensor.dims()) {
+        dims.push_back(d);
+      }
+      std::unique_ptr<Tensor> tensor(
+          new Tensor(GetDeviceAllocator(DeviceType::GPU),
+                     const_tensor.data_type()));
+      tensor->Resize(dims);
+      MACE_CHECK(tensor->size() == const_tensor.data_size(),
+                 "Tensor's data_size not equal with the shape");
+      tensor->CopyBytes(model_data + const_tensor.offset(),
+                        const_tensor.data_size() *
+                            GetEnumTypeSize(const_tensor.data_type()));
+
+      tensor_map_[const_tensor.name()] = std::move(tensor);
+    }
+  }
   tensor_buffer_.reset(nullptr);
 }
 

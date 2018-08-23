@@ -46,7 +46,13 @@ struct StackFunctor {
     output_shape.insert(output_shape.begin() + axis_, inputs.size());
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
 
-    // On host, no need to map data
+    // Some inputs may be in gpu memory, so add mapping here.
+    std::vector<Tensor::MappingGuard> mappers;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      mappers.emplace_back(Tensor::MappingGuard(inputs[i]));
+    }
+
+    // Output is on host, no need to map data
     T *output_data = output->mutable_data<T>();
     std::vector<const T *> input_data(inputs.size());
     for (size_t i = 0; i < inputs.size(); ++i) {

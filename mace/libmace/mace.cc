@@ -267,7 +267,7 @@ MaceStatus MaceEngine::Impl::Init(
   }
 #endif
   if (device_type_ == DeviceType::GPU) {
-    ws_->RemoveUnusedBuffer();
+    ws_->RemoveAndReloadBuffer(*net_def, model_data);
   }
   return MaceStatus::MACE_SUCCESS;
 }

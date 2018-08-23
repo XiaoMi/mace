@@ -228,16 +228,24 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                 mace_pb2.GPU_IMAGE,
                 calculate_image_shape(OpenCLBufferType.IN_OUT_HEIGHT,
                                       buffer_shape))
-        elif op_type == 'Shape':
-            mem_block = MemoryBlock(mace_pb2.CPU_BUFFER,
-                                    [output_shape[0], 1])
+        elif op_type in ['Shape', 'StridedSlice', 'Stack', 'ScalarMath']:
+            if len(output_shape) == 1:
+                mem_block = MemoryBlock(mace_pb2.CPU_BUFFER,
+                                        [output_shape[0], 1])
+            elif len(output_shape) == 0:
+                mem_block = MemoryBlock(mace_pb2.CPU_BUFFER,
+                                        [1, 1])
+            else:
+                raise Exception('%s output shape dim size is not 0 or 1.' %
+                                op_type)
         else:
             if len(output_shape) == 2:  # only support fc/softmax
                 buffer_shape = [output_shape[0], 1, 1, output_shape[1]]
             elif len(output_shape) == 4:
                 buffer_shape = output_shape
             else:
-                raise Exception('output shape dim size is not 2 or 4.')
+                raise Exception('%s output shape dim size is not 2 or 4.' %
+                                op_type)
             mem_block = MemoryBlock(
                 mace_pb2.GPU_IMAGE,
                 calculate_image_shape(OpenCLBufferType.IN_OUT_CHANNEL,

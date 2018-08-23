@@ -28,6 +28,16 @@ void Register_Stack(OperatorRegistryBase *op_registry) {
                                           .TypeConstraint<int32_t>("T")
                                           .Build(),
                          StackOp<DeviceType::CPU, int32_t>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Stack")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<float>("T")
+                                          .Build(),
+                         StackOp<DeviceType::GPU, float>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("Stack")
+                                          .Device(DeviceType::GPU)
+                                          .TypeConstraint<int32_t>("T")
+                                          .Build(),
+                         StackOp<DeviceType::GPU, int32_t>);
 }
 
 }  // namespace ops

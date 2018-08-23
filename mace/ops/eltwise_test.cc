@@ -39,7 +39,7 @@ void SimpleScalarScalar(const kernels::EltwiseType type,
         .Input("Input")
         .AddIntArg("T", DataTypeToEnum<T>::v())
         .AddIntArg("type", static_cast<int>(type))
-        .AddFloatArg("value", x)
+        .AddFloatArg("scalar_input", x)
         .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("Output")
         .Finalize(net.NewOperatorDef());
@@ -72,7 +72,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
         .Input("TInput")
         .AddIntArg("T", DataTypeToEnum<T>::v())
         .AddIntArg("type", static_cast<int>(type))
-        .AddFloatArg("value", x)
+        .AddFloatArg("scalar_input", x)
         .AddIntArg("data_format", DataFormat::NCHW)
         .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("TOutput")
@@ -86,7 +86,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg")
         .AddIntArg("type", static_cast<int>(type))
-        .AddFloatArg("value", x)
+        .AddFloatArg("scalar_input", x)
         .Output("OutputImg")
         .Finalize(net.NewOperatorDef());
 
@@ -468,7 +468,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput")
       .AddIntArg("type", static_cast<int>(type))
-      .AddFloatArg("value", 0.1)
+      .AddFloatArg("scalar_input", 0.1)
       .AddIntArg("data_format", DataFormat::NCHW)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
@@ -484,7 +484,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg")
       .AddIntArg("type", static_cast<int>(type))
-      .AddFloatArg("value", 0.1)
+      .AddFloatArg("scalar_input", 0.1)
       .Output("OutputImg")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
