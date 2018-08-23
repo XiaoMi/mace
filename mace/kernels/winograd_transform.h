@@ -86,22 +86,13 @@ struct WinogradTransformFunctor<DeviceType::GPU, T>
 #endif  // MACE_ENABLE_OPENCL
 
 struct WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctorBase(const int batch,
-                                      const int height,
-                                      const int width,
-                                      const ActivationType activation,
+  WinogradInverseTransformFunctorBase(const ActivationType activation,
                                       const float relux_max_limit,
                                       const int block_size)
-      : batch_(batch),
-        height_(height),
-        width_(width),
-        wino_blk_size_(block_size),
+      : wino_blk_size_(block_size),
         activation_(activation),
         relux_max_limit_(relux_max_limit) {}
 
-  const int batch_;
-  const int height_;
-  const int width_;
   const int wino_blk_size_;
   const ActivationType activation_;
   const float relux_max_limit_;
@@ -109,21 +100,16 @@ struct WinogradInverseTransformFunctorBase {
 
 template<DeviceType D, typename T>
 struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctor(const int batch,
-                                  const int height,
-                                  const int width,
-                                  const ActivationType activation,
+  WinogradInverseTransformFunctor(const ActivationType activation,
                                   const float relux_max_limit,
                                   const int block_size)
       : WinogradInverseTransformFunctorBase(
-            batch, height, width, activation, relux_max_limit, block_size) {}
+            activation, relux_max_limit, block_size) {}
 
-  MaceStatus operator()(const Tensor *input,
-                        const Tensor *bias,
+  MaceStatus operator()(const std::vector<const Tensor*> &inputs,
                         Tensor *output,
                         StatsFuture *future) {
-    MACE_UNUSED(input);
-    MACE_UNUSED(bias);
+    MACE_UNUSED(inputs);
     MACE_UNUSED(output);
     MACE_UNUSED(future);
     MACE_NOT_IMPLEMENTED;
@@ -135,17 +121,13 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
 template <typename T>
 struct WinogradInverseTransformFunctor<DeviceType::GPU, T>
     : WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctor(const int batch,
-                                  const int height,
-                                  const int width,
-                                  const ActivationType activation,
+  WinogradInverseTransformFunctor(const ActivationType activation,
                                   const float relux_max_limit,
                                   const int block_size)
       : WinogradInverseTransformFunctorBase(
-            batch, height, width, activation, relux_max_limit, block_size) {}
+            activation, relux_max_limit, block_size) {}
 
-  MaceStatus operator()(const Tensor *input,
-                  const Tensor *bias,
+  MaceStatus operator()(const std::vector<const Tensor*> &inputs,
                   Tensor *output,
                   StatsFuture *future);
 

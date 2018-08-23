@@ -560,11 +560,47 @@ class Transformer(base_converter.ConverterInterface):
                     arg.name = MaceKeyword.mace_winograd_filter_transformed
                     arg.i = 1
 
+                    shape_op = net.op.add()
+                    shape_op.name = op.name + '_infer_shape'
+                    shape_op.type = MaceOp.InferConv2dShape.name
+                    shape_op.input.extend([op.input[0]])
+                    shape_op.output.extend([shape_op.name])
+                    shape_output_shape = shape_op.output_shape.add()
+                    shape_output_shape.dims.extend([4])
+
+                    kernels_arg = shape_op.arg.add()
+                    kernels_arg.name = MaceKeyword.mace_kernel_str
+                    kernels_arg.ints.extend([out_channels,
+                                             in_channels,
+                                             filter_height,
+                                             filter_width])
+
+                    if data_format is not None:
+                        data_format_arg = shape_op.arg.add()
+                        data_format_arg.name = MaceKeyword.mace_data_format_str
+                        data_format_arg.i = data_format.value
+
+                    if ConverterUtil.get_arg(op,
+                                             MaceKeyword.mace_padding_str) \
+                            is not None:
+                        padding_arg = shape_op.arg.add()
+                        padding_arg.name = MaceKeyword.mace_padding_str
+                        padding_arg.i = ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_padding_str).i
+                    elif ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_padding_values_str) \
+                            is not None:
+                        padding_arg = shape_op.arg.add()
+                        padding_arg.name = MaceKeyword.mace_padding_values_str
+                        padding_arg.ints.extend(ConverterUtil.get_arg(
+                            op, MaceKeyword.mace_padding_values_str).ints)
+
                     # Inverse transform
                     iwt_op = net.op.add()
                     iwt_op.name = op.name + '_inverse_transform'
                     iwt_op.type = MaceOp.WinogradInverseTransform.name
                     iwt_op.input.extend([matmul_op.output[0]])
+                    iwt_op.input.extend([shape_op.output[0]])
                     # biasadd
                     if len(op.input) >= 3:
                         iwt_op.input.extend([op.input[2]])
@@ -572,15 +608,6 @@ class Transformer(base_converter.ConverterInterface):
                     iwt_output_shape = iwt_op.output_shape.add()
                     iwt_output_shape.dims.extend(op.output_shape[0].dims)
 
-                    batch_arg = iwt_op.arg.add()
-                    batch_arg.name = 'batch'
-                    batch_arg.i = batch
-                    height_arg = iwt_op.arg.add()
-                    height_arg.name = 'height'
-                    height_arg.i = out_height
-                    width_arg = iwt_op.arg.add()
-                    width_arg.name = 'width'
-                    width_arg.i = out_width
                     blk_size_arg = iwt_op.arg.add()
                     blk_size_arg.name = MaceKeyword.mace_wino_block_size
                     blk_size_arg.i = block_size
@@ -1146,7 +1173,7 @@ class Transformer(base_converter.ConverterInterface):
                                           MaceKeyword.mace_winograd_filter_transformed) is not None:  # noqa
                 self.buffer_to_image(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
             elif op.type == MaceOp.WinogradInverseTransform.name \
-                    and len(op.input) >= 2:
+                    and len(op.input) >= 3:
                 self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.FullyConnected.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.WEIGHT_WIDTH)
