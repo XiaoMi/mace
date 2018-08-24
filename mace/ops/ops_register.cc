@@ -47,7 +47,6 @@ extern void Register_Proposal(OperatorRegistryBase *op_registry);
 extern void Register_Quantize(OperatorRegistryBase *op_registry);
 extern void Register_ReduceMean(OperatorRegistryBase *op_registry);
 extern void Register_Reshape(OperatorRegistryBase *op_registry);
-extern void Register_ResizeBicubic(OperatorRegistryBase *op_registry);
 extern void Register_ResizeBilinear(OperatorRegistryBase *op_registry);
 extern void Register_ScalarMath(OperatorRegistryBase *op_registry);
 extern void Register_Shape(OperatorRegistryBase *op_registry);
@@ -100,7 +99,6 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
   ops::Register_Quantize(this);
   ops::Register_ReduceMean(this);
   ops::Register_Reshape(this);
-  ops::Register_ResizeBicubic(this);
   ops::Register_ResizeBilinear(this);
   ops::Register_ScalarMath(this);
   ops::Register_Shape(this);
