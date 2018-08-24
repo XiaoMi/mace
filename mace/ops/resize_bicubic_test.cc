@@ -53,7 +53,7 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 
-TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners1) {
+TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
   testing::internal::LogToStderr();
   // Construct graph
   OpsTestNet net;
@@ -121,13 +121,13 @@ void TestRandomResizeBicubic() {
   testing::internal::LogToStderr();
   static unsigned int seed = time(NULL);
   for (int round = 0; round < 10; ++round) {
-      int batch = 1 + rand_r(&seed) % 5;
-      int channels = 1 + rand_r(&seed) % 100;
-      int height = 1 + rand_r(&seed) % 100;
-      int width = 1 + rand_r(&seed) % 100;
-      int in_height = 1 + rand_r(&seed) % 100;
-      int in_width = 1 + rand_r(&seed) % 100;
-      int align_corners = rand_r(&seed) % 1;
+    int batch = 1 + rand_r(&seed) % 5;
+    int channels = 1 + rand_r(&seed) % 100;
+    int height = 1 + rand_r(&seed) % 100;
+    int width = 1 + rand_r(&seed) % 100;
+    int in_height = 1 + rand_r(&seed) % 100;
+    int in_width = 1 + rand_r(&seed) % 100;
+    int align_corners = rand_r(&seed) % 1;
 
     // Construct graph
     OpsTestNet net;
