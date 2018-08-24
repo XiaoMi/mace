@@ -1,5 +1,4 @@
 #include <common.h>
-//#include <cstdio>
 
 const int kTableSize = (1 << 10);
 
