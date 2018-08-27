@@ -213,6 +213,116 @@ TEST_F(MatMulOpTest, OPENCLHalfUnAlignedWithBatch) {
   Complex<half>({2, 3}, 31, 61, 67);
 }
 
+namespace {
+void Quant(const std::vector<index_t> &batch,
+           const index_t height,
+           const index_t channels,
+           const index_t out_width,
+           const bool transpose_a,
+           const bool transpose_b) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
+                                        std::multiplies<index_t>());
+  if (transpose_a) {
+    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height});
+  } else {
+    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels});
+  }
+  if (transpose_b) {
+    net.AddRandomInput<CPU, float>("B", {batch_count, out_width, channels});
+  } else {
+    net.AddRandomInput<CPU, float>("B", {batch_count, channels, out_width});
+  }
+
+  OpDefBuilder("MatMul", "MatMulTest")
+      .Input("A")
+      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .Input("B")
+      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .Output("Output")
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("Quantize", "QuantizeA")
+      .Input("A")
+      .Output("QuantizedA")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeB")
+      .Input("B")
+      .Output("QuantizedB")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("MatMul", "QuantizeMatMulTest")
+      .Input("QuantizedA")
+      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .Input("QuantizedB")
+      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .Output("QuantizedOutput")
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+}  // namespace
+
+TEST_F(MatMulOpTest, Quant) {
+  Quant({1}, 64, 128, 32, false, false);
+  Quant({1}, 64, 32, 128, false, false);
+  Quant({2, 3}, 64, 32, 128, false, false);
+  Quant({1}, 64, 128, 32, false, true);
+  Quant({1}, 64, 32, 128, false, true);
+  Quant({2, 3}, 64, 32, 128, false, true);
+  Quant({1}, 64, 128, 32, true, false);
+  Quant({1}, 64, 32, 128, true, false);
+  Quant({2, 3}, 64, 32, 128, true, false);
+  Quant({1}, 64, 128, 32, true, true);
+  Quant({1}, 64, 32, 128, true, true);
+  Quant({2, 3}, 64, 32, 128, true, true);
+  // UnAligned
+  Quant({2}, 3, 3, 3, false, false);
+  Quant({16}, 31, 61, 67, false, true);
+  Quant({31}, 31, 61, 67, true, false);
+  Quant({2, 3}, 31, 61, 67, true, true);
+}
+
 // TODO(liyin): test transpose after implementing gpu runtime
 // now transpose test is in kernels_test
 

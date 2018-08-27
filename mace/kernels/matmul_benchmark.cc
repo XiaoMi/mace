@@ -109,9 +109,9 @@ void MatmulBenchmark_Mace(int iters, int m, int k, int n) {
 
 void MatmulBenchmark_Eigen(int iters, int m, int k, int n) {
   mace::testing::StopTiming();
-  Eigen::MatrixXd lhs = Eigen::MatrixXd::Random(m, k);
-  Eigen::MatrixXd rhs = Eigen::MatrixXd::Random(k, n);
-  Eigen::MatrixXd result = Eigen::MatrixXd::Zero(m, n);
+  Eigen::MatrixXf lhs = Eigen::MatrixXf::Random(m, k);
+  Eigen::MatrixXf rhs = Eigen::MatrixXf::Random(k, n);
+  Eigen::MatrixXf result = Eigen::MatrixXf::Zero(m, n);
   // warm up
   result = lhs * rhs;
   mace::testing::StartTiming();
