@@ -31,8 +31,12 @@ void MatMulBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("A", {batch, height, channels});
-  net.AddRandomInput<D, float>("B", {batch, channels, out_width});
+  net.AddRandomInput<D, T>("A", {batch, height, channels});
+  net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("A")->SetScale(0.1);
+    net.GetTensor("B")->SetScale(0.1);
+  }
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
@@ -50,12 +54,18 @@ void MatMulBenchmark(
         .Input("A")
         .Input("B")
         .Output("Output")
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   }
 
+  net.Setup(D);
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("Output")->SetScale(0.1);
+  }
+
   // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
   }
   net.Sync();
 
@@ -74,8 +84,12 @@ void MatMulTransposeBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("A", {batch, height, channels});
-  net.AddRandomInput<D, float>("B", {batch, out_width, channels});
+  net.AddRandomInput<D, T>("A", {batch, height, channels});
+  net.AddRandomInput<D, T>("B", {batch, out_width, channels});
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("A")->SetScale(0.1);
+    net.GetTensor("B")->SetScale(0.1);
+  }
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("MatMul", "MatMulBM")
@@ -83,14 +97,20 @@ void MatMulTransposeBenchmark(
         .Input("B")
         .AddIntArg("transpose_b", 1)
         .Output("Output")
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
     MACE_NOT_IMPLEMENTED;
   }
 
+  net.Setup(D);
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("Output")->SetScale(0.1);
+  }
+
   // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
   }
   net.Sync();
 
@@ -116,7 +136,8 @@ void MatMulTransposeBenchmark(
 #define MACE_BM_MATMUL(N, H, C, W)                 \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, GPU);    \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, half, GPU);
+  MACE_BM_MATMUL_MACRO(N, H, C, W, half, GPU);     \
+  MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, CPU);
 
 #define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \
   static void MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE(    \
@@ -130,7 +151,8 @@ void MatMulTransposeBenchmark(
   MACE_BENCHMARK(MACE_BM_MATMUL_##T_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
 MACE_BM_MATMUL(16, 32, 128, 49);
 MACE_BM_MATMUL(16, 32, 128, 961);
