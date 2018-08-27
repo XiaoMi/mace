@@ -25,7 +25,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 
 import com.xiaomi.mace.demo.camera.CameraEngage;
@@ -187,17 +186,29 @@ public class CameraActivity extends Activity implements View.OnClickListener, Ap
     }
 
     @Override
-    public void onCreateEngineFail() {
+    public void onCreateEngineFail(final boolean quit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Error");
-        builder.setMessage("Failed to create inference engine with current setting!");
+        builder.setMessage("Failed to create inference engine with current setting:\n" + initData.getModel() + ", " + initData.getDevice());
         builder.setCancelable(false);
-        builder.setPositiveButton("Quit", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(quit ? "Quit" : "Reset", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                finish();
+                if (quit) {
+                    System.exit(0);
+                } else {
+                    dialog.dismiss();
+                    resetCpu();
+                }
             }
         });
         builder.show();
+    }
+
+    private void resetCpu() {
+        String content = InitData.DEVICES[0];
+        mSelectPhoneType.setText(content);
+        initData.setDevice(content);
+        AppModel.instance.maceMobilenetCreateEngine(initData, CameraActivity.this);
     }
 }

@@ -28,6 +28,7 @@ import org.greenrobot.eventbus.EventBus;
 
 public class AppModel {
 
+    private boolean stopClassify = false;
     private Handler mJniThread;
     public static AppModel instance = new AppModel();
     private AppModel() {
@@ -54,8 +55,18 @@ public class AppModel {
             @Override
             public void run() {
                 int result = JniMaceUtils.maceMobilenetCreateEngine(initData.getModel(), initData.getDevice());
-                if (result == -1 && callback != null) {
-                    callback.onCreateEngineFail();
+                Log.i("APPModel", "maceMobilenetCreateEngine result = " + result);
+
+                if (result == -1) {
+                    stopClassify = true;
+                    MaceApp.app.mMainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            callback.onCreateEngineFail(InitData.DEVICES[0].equals(initData.getDevice()));
+                        }
+                    });
+                } else {
+                    stopClassify = false;
                 }
             }
         });
@@ -65,6 +76,9 @@ public class AppModel {
         mJniThread.post(new Runnable() {
             @Override
             public void run() {
+                if (stopClassify) {
+                    return;
+                }
                 long start = System.currentTimeMillis();
                 float[] result = JniMaceUtils.maceMobilenetClassify(input);
 
@@ -76,7 +90,7 @@ public class AppModel {
     }
 
     public interface CreateEngineCallback {
-        void onCreateEngineFail();
+        void onCreateEngineFail(final boolean quit);
     }
 
 }
