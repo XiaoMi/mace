@@ -41,7 +41,6 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
   net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
   net.TransformDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
-  bool from_caffe = output_shape.size() != 4;
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
@@ -55,7 +54,6 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
         .AddIntArg("padding", padding)
         .AddIntsArg("padding_values", padding_size)
         .AddIntsArg("output_shape", output_shape)
-        .AddIntArg("from_caffe", from_caffe)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(D);
@@ -74,7 +72,6 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
         .AddIntArg("padding", padding)
         .AddIntsArg("padding_values", padding_size)
         .AddIntsArg("output_shape", output_shape)
-        .AddIntArg("from_caffe", from_caffe)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -89,7 +86,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
 template <DeviceType D>
 void TestNHWCSimple3x3SAME_S1() {
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, 1, Padding::SAME,
-                   {0, 0}, {1, 3, 3, 3}, {3, 3, 3, 1},
+                   {}, {1, 3, 3, 3}, {3, 3, 3, 1},
                    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
                    {1, 3, 3, 3}, {4, 4, 4, 6, 6, 6, 4, 4, 4, 6, 6, 6, 9, 9,
@@ -101,7 +98,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    {1, 3, 3, 3}, {4, 4, 4, 6, 6, 6, 4, 4, 4, 6, 6, 6, 9, 9,
                                   9, 6, 6, 6, 4, 4, 4, 6, 6, 6, 4, 4, 4});
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 1, Padding::SAME,
-                   {0, 0}, {1, 3, 3, 3}, {3, 3, 3, 1},
+                   {}, {1, 3, 3, 3}, {3, 3, 3, 1},
                    {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
                     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
                    {1, 3, 3, 3}, {54,  66,  78,  126, 147, 168, 130, 146, 162,
@@ -119,7 +116,7 @@ void TestNHWCSimple3x3SAME_S1() {
 template <DeviceType D>
 void TestNHWCSimple3x3SAME_S2() {
   RunTestSimple<D>(
-      {1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, 2, Padding::SAME, {0, 0},
+      {1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, 2, Padding::SAME, {},
       {1, 6, 6, 3}, {3, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 6, 6, 3},
@@ -137,7 +134,7 @@ void TestNHWCSimple3x3SAME_S2() {
                      1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 4, 4, 4, 2, 2, 2, 4, 4, 4,
                      2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1});
   RunTestSimple<D>(
-      {1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, Padding::SAME, {0, 0},
+      {1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, Padding::SAME, {},
       {1, 6, 6, 3}, {3, 3, 3, 1},
       {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
@@ -167,7 +164,7 @@ template <DeviceType D>
 void TestNHWCSimple3x3SAME_S2_1() {
   RunTestSimple<D>(
       {1, 3, 3, 1}, {12, 18, 12, 18, 27, 18, 12, 18, 12}, 2, Padding::SAME,
-      {0, 0}, {1, 5, 5, 3}, {3, 3, 3, 1},
+      {}, {1, 5, 5, 3}, {3, 3, 3, 1},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 5, 5, 3},
@@ -181,7 +178,7 @@ void TestNHWCSimple3x3SAME_S2_1() {
 template <DeviceType D>
 void TestNHWCSimple3x3VALID_S2() {
   RunTestSimple<D>(
-      {1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, 2, Padding::VALID, {0, 0},
+      {1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, 2, Padding::VALID, {},
       {1, 7, 7, 3}, {3, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 7, 7, 3},
@@ -197,7 +194,7 @@ void TestNHWCSimple3x3VALID_S2() {
 template <DeviceType D>
 void TestNHWCSimple3x3VALID_S1() {
   RunTestSimple<D>(
-      {1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 1, Padding::VALID, {0, 0},
+      {1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, 1, Padding::VALID, {},
       {1, 5, 5, 3}, {3, 3, 3, 1},
       {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27},
@@ -212,7 +209,7 @@ void TestNHWCSimple3x3VALID_S1() {
 
 template <DeviceType D>
 void TestNHWCSimple2x2SAME() {
-  RunTestSimple<D>({1, 2, 2, 1}, {1, 1, 1, 1}, 1, Padding::SAME, {0, 0},
+  RunTestSimple<D>({1, 2, 2, 1}, {1, 1, 1, 1}, 1, Padding::SAME, {},
                    {1, 2, 2, 1}, {3, 3, 1, 1},
                    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
                    {1, 2, 2, 1}, {4.f, 4.f, 4.f, 4.f});
@@ -221,7 +218,7 @@ void TestNHWCSimple2x2SAME() {
 template <DeviceType D>
 void TestNHWCSimple2x2VALID() {
   RunTestSimple<D>(
-      {1, 2, 2, 1}, {1, 1, 1, 1}, 2, Padding::VALID, {0, 0}, {1, 5, 5, 1},
+      {1, 2, 2, 1}, {1, 1, 1, 1}, 2, Padding::VALID, {}, {1, 5, 5, 1},
       {3, 3, 1, 1}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
       {1, 5, 5, 1},
       {1.f, 1.f, 2.f, 1.f, 1.f, 1.f, 1.f, 2.f, 1.f, 1.f, 2.f, 2.f, 4.f,
@@ -333,7 +330,6 @@ void TestComplexDeconvNxNS12(const int batch,
       paddings.push_back(padding);
       paddings.push_back(padding);
     }
-    bool from_caffe = output_shape.size() != 4;
     // Construct graph
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("InputNCHW")
@@ -344,7 +340,6 @@ void TestComplexDeconvNxNS12(const int batch,
         .AddIntArg("padding", type)
         .AddIntsArg("padding_values", paddings)
         .AddIntsArg("output_shape", output_shape)
-        .AddIntArg("from_caffe", from_caffe)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
 
@@ -375,7 +370,6 @@ void TestComplexDeconvNxNS12(const int batch,
         .AddIntArg("padding", type)
         .AddIntsArg("padding_values", paddings)
         .AddIntsArg("output_shape", output_shape)
-        .AddIntArg("from_caffe", from_caffe)
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
     // Run on device

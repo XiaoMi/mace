@@ -167,7 +167,6 @@ class MaceKeyword(object):
     mace_transpose_b_str = 'transpose_b'
     mace_op_data_type_str = 'T'
     mace_offset_str = 'offset'
-    mace_from_caffe_str = 'from_caffe'
     mace_opencl_max_image_size = "opencl_max_image_size"
     mace_seperate_buffer_str = 'seperate_buffer'
     mace_scalar_input_index_str = 'scalar_input_index'

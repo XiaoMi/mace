@@ -39,8 +39,20 @@ class ShapeOp : public Operator<D, T> {
     Tensor::MappingGuard output_guard(output);
     int32_t *output_data = output->mutable_data<int32_t>();
 
-    for (index_t i = 0; i < input->dim_size(); ++i) {
-      output_data[i] = input->dim(i);
+    const int data_format =
+        OperatorBase::GetOptionalArg<int>("data_format", 0);
+    if (input->dim_size() == 4 &&
+        D == DeviceType::CPU &&
+        data_format == DataFormat::NCHW) {
+      // transpose NCHW to NHWC for cpu runtime
+      output_data[0] = static_cast<int32_t>(input->dim(0));
+      output_data[1] = static_cast<int32_t>(input->dim(2));
+      output_data[2] = static_cast<int32_t>(input->dim(3));
+      output_data[3] = static_cast<int32_t>(input->dim(1));
+    } else {
+      for (unsigned int i = 0; i < input->dim_size(); ++i) {
+        output_data[i] = static_cast<int32_t>(input->dim(i));
+      }
     }
     SetFutureDefaultWaitFn(future);
 
