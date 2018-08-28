@@ -31,6 +31,10 @@ struct GemmlowpOutputPipeline {
       gemmlowp::OutputStageBiasAddition<ColVectorMap>,
       gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint,
       gemmlowp::OutputStageSaturatingCastToUint8> Pipeline;
+  typedef std::tuple<
+      gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint,
+      gemmlowp::OutputStageSaturatingCastToUint8> NoBiasPipeline;
+
   static Pipeline Make(
       const int32_t *bias_data, const index_t channels, const float lhs_scale,
       const float rhs_scale, const float output_scale,
@@ -51,6 +55,23 @@ struct GemmlowpOutputPipeline {
     gemmlowp::OutputStageSaturatingCastToUint8 saturating_cast_stage;
     return std::make_tuple(bias_addition_stage, quantize_down_stage,
                            saturating_cast_stage);
+  }
+
+  static NoBiasPipeline MakeNoBias(
+      const float lhs_scale, const float rhs_scale, const float output_scale,
+      const int32_t output_zero_point) {
+    int32_t quantized_multiplier;
+    int32_t right_shift;
+    kernels::GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
+                                         &quantized_multiplier, &right_shift);
+    gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint
+        quantize_down_stage;
+    quantize_down_stage.result_offset_after_shift = output_zero_point;
+    quantize_down_stage.result_fixedpoint_multiplier = quantized_multiplier;
+    quantize_down_stage.result_shift = right_shift;
+
+    gemmlowp::OutputStageSaturatingCastToUint8 saturating_cast_stage;
+    return std::make_tuple(quantize_down_stage, saturating_cast_stage);
   }
 };
 }  // namespace mace

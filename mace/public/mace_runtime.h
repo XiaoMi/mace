@@ -136,14 +136,13 @@ void SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
 /// also be truncated to the corresponding cores number when num_threads_hint
 /// is larger than it.
 /// The OpenMP threads will be bind to (via sched_setaffinity) big cores
-/// (AFFINITY_BIG_ONLY) and little cores (AFFINITY_LITTLE_ONLY).
+/// (AFFINITY_BIG_ONLY) or little cores (AFFINITY_LITTLE_ONLY).
 ///
 /// \param num_threads_hint it is only a hint.
 /// \param policy one of CPUAffinityPolicy
-/// \param status MACE_SUCCESS for successful, or it can't reliabley
-/// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
-/// suggested to use AFFINITY_NONE to use all cores.
-/// \return
+/// \return MACE_SUCCESS for success, or it can't reliably detect big-LITTLE
+/// cores (see GetBigLittleCoreIDs). In such cases, it's suggested to use
+/// AFFINITY_NONE to use all cores.
 __attribute__((visibility("default")))
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
                                  CPUAffinityPolicy policy);
@@ -159,7 +158,6 @@ MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
 ///
 /// \param num_threads
 /// \param cpu_ids
-/// \param status
 /// \return
 __attribute__((visibility("default")))
 MaceStatus SetOpenMPThreadAffinity(int num_threads,
@@ -180,13 +178,25 @@ __attribute__((visibility("default")))
 MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                std::vector<int> *little_core_ids);
 
-// Set gemmlowp threads number and processor affinity.
-// gemmlowp is used by mace for quantization.
-// Caution: this function may hurt performance if improper parameters provided.
-//
-// This function may not work well on some chips (e.g. MTK). Setting thread
-// affinity to offline cores may run very slow or unexpectedly. In such cases,
-// please use SetGemmlowpThreadPolicy with default policy instead.
+/// \brief Set gemmlowp threads number and affinity policy for quantization.
+///
+/// Caution: this function may hurt performance if improper parameters provided.
+/// gemmlowp shares threads with OpenMP, which are set by SetOpenMPThreadPolicy,
+/// so affinity policy set by these two functions should be the same.
+/// When num_threads_hint is zero or negative,
+/// the function will set the threads number equaling to the number of
+/// big (AFFINITY_BIG_ONLY), little (AFFINITY_LITTLE_ONLY) or all
+/// (AFFINITY_NONE) cores according to the policy. The threads number will
+/// also be truncated to the corresponding cores number when num_threads_hint
+/// is larger than it.
+/// The gemmlowp threads will be bind to (via sched_setaffinity) big cores
+/// (AFFINITY_BIG_ONLY) or little cores (AFFINITY_LITTLE_ONLY).
+///
+/// \param num_threads_hint it is only a hint.
+/// \param policy one of CPUAffinityPolicy
+/// \return MACE_SUCCESS for success, or it can't reliably detect big-LITTLE
+/// cores (see GetBigLittleCoreIDs). In such cases, it's suggested to use
+/// AFFINITY_NONE to use all cores.
 __attribute__((visibility("default")))
 MaceStatus SetGemmlowpThreadPolicy(int num_threads_hint,
                                    CPUAffinityPolicy policy);
