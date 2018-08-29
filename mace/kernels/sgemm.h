@@ -92,7 +92,7 @@ class PackedBlock {
   PackedBlock() : data_tensor_(GetCPUAllocator(),
                                DataTypeToEnum<T>::v()) {}
 
-  const T *data() {
+  const T *data() const {
     return data_tensor_.data<T>();
   }
 
@@ -110,8 +110,8 @@ class PackedBlock {
 
 class SGemm {
  public:
-  void operator()(const MatrixMap<float> &lhs,
-                  const MatrixMap<float> &rhs,
+  void operator()(const MatrixMap<const float> &lhs,
+                  const MatrixMap<const float> &rhs,
                   MatrixMap<float> *result);
 
   void operator()(const PackedBlock<float> &lhs,
@@ -121,15 +121,17 @@ class SGemm {
                   const index_t width,
                   PackedBlock<float> *result);
 
-  void PackLhs(const MatrixMap<float> &lhs, PackedBlock<float> *packed_block);
+  void PackLhs(const MatrixMap<const float> &lhs,
+               PackedBlock<float> *packed_block);
 
-  void PackRhs(const MatrixMap<float> &rhs, PackedBlock<float> *packed_block);
+  void PackRhs(const MatrixMap<const float> &rhs,
+               PackedBlock<float> *packed_block);
 
   void UnPack(const PackedBlock<float> &packed_result,
               MatrixMap<float> *matrix_map);
 
  private:
-  void Pack(const MatrixMap<float> &src,
+  void Pack(const MatrixMap<const float> &src,
             const PackOrder order,
             PackedBlock<float> *packed_block);
 };
