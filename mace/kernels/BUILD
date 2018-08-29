@@ -45,11 +45,13 @@ cc_library(
         exclude = [
             "buffer_to_image.h",
             "image_to_buffer.h",
+            "lstmcell.h",
         ],
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
         "buffer_to_image.h",
         "image_to_buffer.h",
+        "lstmcell.h",
     ])),
     copts = [
         "-Werror",

@@ -53,6 +53,7 @@ extern void Register_Shape(OperatorRegistryBase *op_registry);
 extern void Register_Split(OperatorRegistryBase *op_registry);
 extern void Register_Softmax(OperatorRegistryBase *op_registry);
 extern void Register_Stack(OperatorRegistryBase *op_registry);
+extern void Register_Unstack(OperatorRegistryBase *op_registry);
 extern void Register_StridedSlice(OperatorRegistryBase *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistryBase *op_registry);
 extern void Register_SpaceToDepth(OperatorRegistryBase *op_registry);
@@ -64,6 +65,7 @@ extern void Register_WinogradTransform(OperatorRegistryBase *op_registry);
 #ifdef MACE_ENABLE_OPENCL
 extern void Register_BufferToImage(OperatorRegistryBase *op_registry);
 extern void Register_ImageToBuffer(OperatorRegistryBase *op_registry);
+extern void Register_LSTMCell(OperatorRegistryBase *op_registry);
 #endif  // MACE_ENABLE_OPENCL
 }  // namespace ops
 
@@ -105,6 +107,7 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
   ops::Register_Split(this);
   ops::Register_Softmax(this);
   ops::Register_Stack(this);
+  ops::Register_Unstack(this);
   ops::Register_StridedSlice(this);
   ops::Register_SpaceToBatchND(this);
   ops::Register_SpaceToDepth(this);
@@ -116,6 +119,7 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
 #ifdef MACE_ENABLE_OPENCL
   ops::Register_BufferToImage(this);
   ops::Register_ImageToBuffer(this);
+  ops::Register_LSTMCell(this);
 #endif  // MACE_ENABLE_OPENCL
 }
 
