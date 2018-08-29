@@ -76,6 +76,7 @@ MaceStatus ResizeBicubicFunctor<DeviceType::GPU, T>::operator()(
     auto dt = DataTypeToEnum<T>::value;
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace(MakeString("-DTABLE_SIZE=", kTableSize));
     MACE_RETURN_IF_ERROR(
             runtime->BuildKernel("resize_bicubic",
                                  kernel_name,

@@ -103,7 +103,6 @@ inline void ResizeImage(const float *images,
       std::array<index_t, 4> y_indices;
       GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
                                  &y_indices);
-      std::stringstream ss;
       for (index_t x = 0; x < out_width; ++x) {
         std::array<float, 4> x_weights;
         std::array<index_t, 4> x_indices;
