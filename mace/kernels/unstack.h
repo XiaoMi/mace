@@ -40,14 +40,14 @@ struct UnstackFunctor {
     if (axis_ < 0) {
       axis_ += input->dim_size();
     }
-    MACE_CHECK(outputs.size() == input_shape[axis_],
+    MACE_CHECK(static_cast<index_t>(outputs.size()) == input_shape[axis_],
                "output size not equal input_shape[axis]");
 
     std::vector<index_t> output_shape = input_shape;
     output_shape.erase(output_shape.begin() + axis_);
 
     std::vector<T *> output_data(outputs.size(), nullptr);
-    for (size_t i = 0; i < input_shape[axis_]; ++i) {
+    for (index_t i = 0; i < input_shape[axis_]; ++i) {
       MACE_RETURN_IF_ERROR(outputs[i]->Resize(output_shape));
       output_data[i] = outputs[i]->mutable_data<T>();
     }
@@ -63,7 +63,7 @@ struct UnstackFunctor {
     for (index_t h = 0; h < high_dim_elem_size; ++h) {
       int input_idx = h * input_shape[axis_] * low_dim_elem_size;
       int output_idx = h * low_dim_elem_size;
-      for (size_t i = 0; i < input_shape[axis_]; ++i) {
+      for (index_t i = 0; i < input_shape[axis_]; ++i) {
         memcpy(output_data[i] + output_idx, input_data + input_idx,
                sizeof(T) * low_dim_elem_size);
         input_idx += low_dim_elem_size;
