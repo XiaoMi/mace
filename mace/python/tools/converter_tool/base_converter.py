@@ -92,6 +92,7 @@ MaceSupportedOps = [
     'FullyConnected',
     'Gather',
     'Identity',
+    'InferConv2dShape',
     'LocalResponseNorm',
     'MatMul',
     'Pad',

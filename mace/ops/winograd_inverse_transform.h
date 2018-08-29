@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/activation.h"
@@ -30,27 +31,22 @@ class WinogradInverseTransformOp : public Operator<D, T> {
  public:
   WinogradInverseTransformOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("batch", 1),
-                 OperatorBase::GetOptionalArg<int>("height", 0),
-                 OperatorBase::GetOptionalArg<int>("width", 0),
-                 kernels::StringToActivationType(
+        functor_(kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),
                  OperatorBase::GetOptionalArg<int>("wino_block_size", 2)) {}
 
   MaceStatus Run(StatsFuture *future) override {
-    const Tensor *input_tensor = this->Input(INPUT);
-    const Tensor *bias = this->InputSize() == 2 ? this->Input(BIAS) : nullptr;
+    const std::vector<const Tensor *> &inputs = this->Inputs();
     Tensor *output_tensor = this->Output(OUTPUT);
-    return functor_(input_tensor, bias, output_tensor, future);
+    return functor_(inputs, output_tensor, future);
   }
 
  private:
   kernels::WinogradInverseTransformFunctor<D, T> functor_;
 
  protected:
-  MACE_OP_INPUT_TAGS(INPUT, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
