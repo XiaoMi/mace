@@ -101,6 +101,7 @@ MaceSupportedOps = [
     'Quantize',
     'ReduceMean',
     'Reshape',
+    'ResizeBicubic',
     'ResizeBilinear',
     'ScalarMath',
     'Slice',
