@@ -84,7 +84,7 @@ void LSTMCellCPU(OpsTestNet *net,
 
   OpDefBuilder("Eltwise", "ForgetAdd")
       .Input("SplitOutput2")
-      .AddFloatArg("value", forget_add_name)
+      .AddFloatArg("scalar_input", forget_add_name)
       .AddIntArg("T", DataTypeToEnum<T>::v())
       .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
       .Output("ForgetAdd")
@@ -176,7 +176,7 @@ void TestLSTMCell(const uint32_t &batch,
       .Input("WeightImage")
       .Input("BiasImage")
       .Input("PreCellImage")
-      .AddFloatArg("forget_add", forget_add)
+      .AddFloatArg("scalar_input", forget_add)
       .Output("CellImage")
       .Output("OutputImage")
       .Finalize(net.NewOperatorDef());

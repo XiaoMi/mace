@@ -29,7 +29,7 @@ class LSTMCellOp : public Operator<D, T> {
   LSTMCellOp(const OperatorDef &op_def, Workspace *ws)
       : Operator<D, T>(op_def, ws),
         functor_(static_cast<T>(
-              OperatorBase::GetOptionalArg<float>("value", 0.0))) {}
+              OperatorBase::GetOptionalArg<float>("scalar_input", 0.0))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
