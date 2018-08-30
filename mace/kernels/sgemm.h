@@ -15,6 +15,9 @@
 #ifndef MACE_KERNELS_SGEMM_H_
 #define MACE_KERNELS_SGEMM_H_
 
+#include <memory>
+#include <utility>
+
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
@@ -34,22 +37,23 @@ enum Major {
 template<typename T>
 class MatrixMap {
  public:
+  MatrixMap() {}
+
   MatrixMap(const index_t row,
             const index_t col,
             const Major major,
-            T *data) :
+            T *data,
+            const bool is_const = false) :
       row_(row),
       col_(col),
       stride_(major == RowMajor ? col : row),
       major_(major),
-      data_(data) {}
+      data_(data),
+      is_const_(is_const) {}
 
-  MatrixMap<T> transpose(const MatrixMap<T> &matrix_map) {
-    Major transpose_major = matrix_map.major_ == RowMajor ? ColMajor : RowMajor;
-    return MatrixMap<T>(matrix_map.col_,
-                        matrix_map.row_,
-                        transpose_major,
-                        matrix_map.data_);
+  MatrixMap transpose() const {
+    Major transpose_major = major_ == RowMajor ? ColMajor : RowMajor;
+    return MatrixMap(col_, row_, transpose_major, data_);
   }
 
   index_t row() const {
@@ -76,12 +80,17 @@ class MatrixMap {
     return data_ + row * stride_ + col;
   }
 
+  bool is_const() const {
+    return is_const_;
+  }
+
  private:
   index_t row_;
   index_t col_;
   index_t stride_;
   Major major_;
   T *data_;
+  bool is_const_;
 };
 
 typedef Major PackOrder;
@@ -110,6 +119,8 @@ class PackedBlock {
 
 class SGemm {
  public:
+  SGemm(): packed_(false) {}
+
   void operator()(const MatrixMap<const float> &lhs,
                   const MatrixMap<const float> &rhs,
                   MatrixMap<float> *result);
@@ -134,6 +145,10 @@ class SGemm {
   void Pack(const MatrixMap<const float> &src,
             const PackOrder order,
             PackedBlock<float> *packed_block);
+
+  PackedBlock<float> packed_lhs_;
+  PackedBlock<float> packed_rhs_;
+  bool packed_;
 };
 
 }  // namespace kernels
