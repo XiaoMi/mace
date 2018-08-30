@@ -228,7 +228,11 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                 mace_pb2.GPU_IMAGE,
                 calculate_image_shape(OpenCLBufferType.IN_OUT_HEIGHT,
                                       buffer_shape))
-        elif op_type in ['Shape', 'StridedSlice', 'Stack', 'ScalarMath']:
+        elif op_type in ['Shape',
+                         'InferConv2dShape',
+                         'StridedSlice',
+                         'Stack',
+                         'ScalarMath']:
             if len(output_shape) == 1:
                 mem_block = MemoryBlock(mace_pb2.CPU_BUFFER,
                                         [output_shape[0], 1])

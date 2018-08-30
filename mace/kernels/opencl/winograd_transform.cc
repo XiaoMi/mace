@@ -129,11 +129,13 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
 
 template <typename T>
 MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *input_tensor,
-    const Tensor *bias,
+    const std::vector<const Tensor*> &inputs,
     Tensor *output_tensor,
     StatsFuture *future) {
   auto runtime = OpenCLRuntime::Global();
+
+  const Tensor *input_tensor = inputs[0];
+  const Tensor *bias = inputs.size() == 3 ? inputs[2] : nullptr;
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name;
@@ -191,18 +193,23 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
+  Tensor::MappingGuard output_shape_guard(inputs[1]);
+  const int32_t *output_shape_data = inputs[1]->data<int32_t>();
+  const index_t batch = output_shape_data[0];
+  const index_t height = output_shape_data[1];
+  const index_t width = output_shape_data[2];
   const uint32_t gws[2] = {
       static_cast<uint32_t>(input_tensor->dim(2)),
       static_cast<uint32_t>(RoundUpDiv4(input_tensor->dim(1)))};
   if (!IsVecEqual(input_shape_, input_tensor->shape())) {
-    std::vector<index_t> output_shape = {batch_, height_, width_,
+    std::vector<index_t> output_shape = {batch, height, width,
                                          input_tensor->dim(1)};
     std::vector<size_t> image_shape;
     CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
     MACE_RETURN_IF_ERROR(output_tensor->ResizeImage(output_shape, image_shape));
 
-    const index_t round_h = (height_ + wino_blk_size_ - 1) / wino_blk_size_;
-    const index_t round_w = (width_ + wino_blk_size_ - 1) / wino_blk_size_;
+    const index_t round_h = (height + wino_blk_size_ - 1) / wino_blk_size_;
+    const index_t round_w = (width + wino_blk_size_ - 1) / wino_blk_size_;
 
     const float round_hw_r = 1.f / static_cast<float>(round_h * round_w);
     const float round_w_r = 1.f / static_cast<float>(round_w);

@@ -81,6 +81,7 @@ TFSupportedOps = [
     'Shape',
     'Transpose',
     'Softmax',
+    'ResizeBicubic',
     'ResizeBilinear',
     'Placeholder',
     'SpaceToBatchND',
@@ -181,6 +182,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Squeeze.name: self.convert_squeeze,
             TFOpType.Transpose.name: self.convert_transpose,
             TFOpType.Softmax.name: self.convert_softmax,
+            TFOpType.ResizeBicubic.name: self.convert_resize_bicubic,
             TFOpType.ResizeBilinear.name: self.convert_resize_bilinear,
             TFOpType.Placeholder.name: self.convert_nop,
             TFOpType.SpaceToBatchND.name: self.convert_space_batch,
@@ -536,6 +538,20 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_softmax(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Softmax.name
+
+    def convert_resize_bicubic(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ResizeBicubic.name
+        del op.input[1:]
+
+        size_arg = op.arg.add()
+        size_arg.name = MaceKeyword.mace_resize_size_str
+        size_value = tf_op.inputs[1].eval().astype(np.int32)
+        size_arg.ints.extend(size_value)
+        self._skip_tensor.add(tf_op.inputs[1].name)
+        align_corners_arg = op.arg.add()
+        align_corners_arg.name = MaceKeyword.mace_align_corners_str
+        align_corners_arg.i = tf_op.get_attr(tf_align_corners)
 
     def convert_resize_bilinear(self, tf_op):
         op = self.convert_general_op(tf_op)

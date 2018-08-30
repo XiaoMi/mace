@@ -84,6 +84,19 @@ void WinogradConvolution(const index_t batch,
   // Run on opencl
   net.RunOp(D);
 
+  OpDefBuilder("InferConv2dShape", "InferConv2dShapeTest")
+      .Input("InputImage")
+      .Output("ShapeOutput")
+      .AddIntArg("data_format", 0)
+      .AddIntsArg("strides", {1, 1})
+      .AddIntsArg("kernels", {static_cast<int>(out_channels),
+                              static_cast<int>(in_channels),
+                              3, 3})
+      .AddIntArg("padding", padding)
+      .OutputType({DataTypeToEnum<int32_t>::v()})
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(D);
+
   // MatMul
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("WinoFilter")
@@ -97,10 +110,8 @@ void WinogradConvolution(const index_t batch,
   // Inverse transform
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("WinoGemm")
+      .Input("ShapeOutput")
       .Input("BiasImage")
-      .AddIntArg("batch", batch)
-      .AddIntArg("height", output_shape[1])
-      .AddIntArg("width", output_shape[2])
       .AddIntArg("wino_block_size", block_size)
       .Output("WinoOutputImage")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
@@ -221,6 +232,19 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Run on opencl
   net.RunOp(D);
 
+  OpDefBuilder("InferConv2dShape", "InferConv2dShapeTest")
+      .Input("InputImage")
+      .Output("ShapeOutput")
+      .AddIntArg("data_format", 0)
+      .AddIntsArg("strides", {1, 1})
+      .AddIntsArg("kernels", {static_cast<int>(out_channels),
+                              static_cast<int>(in_channels),
+                              3, 3})
+      .AddIntsArg("padding_values", {padding, padding})
+      .OutputType({DataTypeToEnum<int32_t>::v()})
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(D);
+
   // MatMul
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("WinoFilter")
@@ -234,10 +258,8 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Inverse transform
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("WinoGemm")
+      .Input("ShapeOutput")
       .Input("BiasImage")
-      .AddIntArg("batch", batch)
-      .AddIntArg("height", output_shape[1])
-      .AddIntArg("width", output_shape[2])
       .AddIntArg("wino_block_size", block_size)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Output("WinoOutputImage")

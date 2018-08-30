@@ -14,7 +14,7 @@ python tools/converter.py run --config=/path/to/your/model_deployment_file --exa
 
 * Validate result
 ```
-python tools/converter.py run --config=/path/to/your/model_deployment_file --example --example
+python tools/converter.py run --config=/path/to/your/model_deployment_file --example --validate
 ```
 
 * Check the logs

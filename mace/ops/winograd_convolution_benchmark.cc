@@ -43,7 +43,21 @@ void BMWinogradConvolution(
   // transform filter
     BufferToImage<D, T>(&net, "Filter", "WinoFilter",
                         kernels::BufferType::WINOGRAD_FILTER, block_size);
-  // transform input
+
+  // Inference convolution output shape
+  OpDefBuilder("InferConv2dShape", "InferConv2dShapeTest")
+      .Input("InputImage")
+      .Output("ShapeOutput")
+      .AddIntArg("data_format", 0)
+      .AddIntsArg("strides", {1, 1})
+      .AddIntsArg("kernels", {static_cast<int>(out_channels),
+                              static_cast<int>(in_channels),
+                              3, 3})
+      .AddIntArg("padding", Padding::SAME)
+      .OutputType({DataTypeToEnum<int32_t>::v()})
+      .Finalize(net.NewOperatorDef());
+
+  // Transform input
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
       .Output("WinoInput")
@@ -63,6 +77,7 @@ void BMWinogradConvolution(
   // Inverse transform
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("WinoGemm")
+      .Input("ShapeOutput")
       .Input("BiasImage")
       .AddIntArg("batch", batch)
       .AddIntArg("height", height)
