@@ -15,6 +15,7 @@
 
 import enum
 import numpy as np
+import re
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
@@ -49,6 +50,10 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
+            TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE:
+                self.transform_lstmcell_zerostate,
+            TransformerRule.TRANSFORM_BASIC_LSTMCELL:
+                self.transform_basic_lstmcell,
             TransformerRule.FOLD_RESHAPE: self.fold_reshape,
             TransformerRule.TRANSFORM_MATMUL_TO_FC:
                 self.transform_matmul_to_fc,
@@ -329,6 +334,154 @@ class Transformer(base_converter.ConverterInterface):
 
                     self.safe_remove_node(op, None)
                     return True
+
+        return False
+
+    def transform_lstmcell_zerostate(self):
+        net = self._model
+
+        zero_state_pattern = \
+                re.compile(r'^.*BasicLSTMCellZeroState_?[0-9]*/[a-zA-Z]+_?[0-9]*')  # noqa
+        for op in net.op:
+            if op.type == MaceOp.Fill.name and \
+                    zero_state_pattern.match(op.name):
+                print("Transform lstm zerostate")
+                concat_op = self._producer[op.input[0]]
+                consumer_op = self._consumers[op.output[0]][0]
+
+                dims = [self._consts[concat_op.input[0]].int32_data[0],
+                        self._consts[concat_op.input[1]].int32_data[0]]
+                tensor_def = net.tensors.add()
+                tensor_def.name = op.output[0].replace('/zeros', '/init_const')
+                tensor_def.dims.extend(dims)
+                tensor_def.data_type = self._consts[op.input[1]].data_type
+                tensor_def.float_data.extend(
+                        [self._consts[op.input[1]].float_data[0]] *
+                        (dims[0] * dims[1]))
+
+                for i in range(len(consumer_op.input)):
+                    if zero_state_pattern.match(consumer_op.input[i][:-2]):
+                        consumer_op.input[i] = tensor_def.name
+
+                net.tensors.remove(self._consts[op.input[1]])
+                net.tensors.remove(self._consts[concat_op.input[0]])
+                net.tensors.remove(self._consts[concat_op.input[1]])
+
+                net.op.remove(concat_op)
+                net.op.remove(op)
+
+                return True
+
+    def transform_basic_lstmcell(self):
+        if self._option.device != DeviceType.GPU.value:
+            return False
+
+        net = self._model
+        basic_lstm_concat_pattern = \
+            re.compile(r'^.*basic_lstm_cell_?[0-9]*/concat_?[0-9]*')
+        for op in net.op:
+            if op.type == MaceOp.Concat.name and \
+                    basic_lstm_concat_pattern.match(op.name):
+                print("Transform basic lstmcell")
+                ops_to_delete = []
+                ops_to_delete.extend([op])
+
+                op_def = net.op.add()
+                op_def.name = op.name.replace('/concat', '/folded_lstmcell')
+                op_def.type = MaceOp.LSTMCell.name
+                op_def.arg.extend(op.arg[:-1])
+
+                # Concat pre output and cur input
+                # extend concat inputs
+                op_def.input.extend([op_input for op_input in op.input])
+
+                # lstm MatMul in FC of [pre_output, cur_input]
+                matmul_op = self._consumers[op.output[0]][0]
+                ops_to_delete.extend([matmul_op])
+                # extend MatMul weight input
+                op_def.input.extend([matmul_op.input[1]])
+
+                # lstm BiasAdd in FC of [pre_output, cur_input]
+                biasadd_op = self._consumers[matmul_op.output[0]][0]
+                ops_to_delete.extend([biasadd_op])
+                # extend BiasAdd bias input
+                op_def.input.extend([biasadd_op.input[1]])
+
+                # Split FC output into i, j, f, o
+                # i = input_gate, j = new_input, f = forget_gate, o = output_gate  # noqa
+                split_op = self._consumers[biasadd_op.output[0]][0]
+                ops_to_delete.extend([split_op])
+
+                # input gate activation
+                input_gate_op = self._consumers[split_op.output[0]][0]
+                ops_to_delete.extend([input_gate_op])
+                # new input gate
+                new_input_tanh_op = self._consumers[split_op.output[1]][0]
+                ops_to_delete.extend([new_input_tanh_op])
+                # forget gate add
+                forget_add_op = self._consumers[split_op.output[2]][0]
+                ops_to_delete.extend([forget_add_op])
+                # output gate activation
+                output_gate_op = self._consumers[split_op.output[3]][0]
+                ops_to_delete.extend([output_gate_op])
+
+                # extend forget add
+                mace_check(len(forget_add_op.input) == 1,
+                           'Wrong LSTM format in forget gate inputs')
+                for arg in forget_add_op.arg:
+                    if arg.name == MaceKeyword.mace_scalar_input_str:
+                        op_def.arg.extend([arg])
+
+                # state remember
+                remember_mul_op = self._consumers[input_gate_op.output[0]][0]
+                ops_to_delete.extend([remember_mul_op])
+                mace_check(remember_mul_op.name == self._consumers[
+                               new_input_tanh_op.output[0]][0].name,
+                           'Wrong LSTM format in input sig & input tanh mul')
+
+                # forget gate activation
+                forget_gate_op = self._consumers[forget_add_op.output[0]][0]
+                ops_to_delete.extend([forget_gate_op])
+
+                # Mul `forget` & `pre cell state`
+                forget_mul_op = self._consumers[forget_gate_op.output[0]][0]
+                ops_to_delete.extend([forget_mul_op])
+
+                # extend pre cell state input
+                op_def.input.extend([forget_mul_op.input[0]])
+
+                # get cur cell state
+                # Add `forget gate output` & `remember mul output`
+                remember_forget_add_op = \
+                    self._consumers[remember_mul_op.output[0]][0]
+                ops_to_delete.extend([remember_forget_add_op])
+                mace_check(remember_forget_add_op.name ==
+                           self._consumers[forget_mul_op.output[0]][0].name,
+                           'Wrong LSTM format in add forget gate & remember mul')  # noqa
+                op_def.output.extend([remember_forget_add_op.output[0]])
+                op_def.output_shape.extend(remember_forget_add_op.output_shape)
+
+                # cell state output tanh
+                for consumer in \
+                        self._consumers[remember_forget_add_op.output[0]]:
+                    if consumer.type == MaceOp.Activation.name and \
+                            consumer.name.find('basic_lstm_cell') > 0:
+                        cell_tanh_op = consumer
+                ops_to_delete.extend([cell_tanh_op])
+
+                # final mul, get output
+                final_mul_op = self._consumers[cell_tanh_op.output[0]][0]
+                ops_to_delete.extend([final_mul_op])
+                mace_check(final_mul_op.name ==
+                           self._consumers[output_gate_op.output[0]][0].name,
+                           'Wrong LSTM format in final mul')
+                op_def.output.extend([final_mul_op.output[0]])
+                op_def.output_shape.extend(final_mul_op.output_shape)
+
+                for op_to_del in ops_to_delete:
+                    net.op.remove(op_to_del)
+
+                return True
 
         return False
 
@@ -1183,6 +1336,15 @@ class Transformer(base_converter.ConverterInterface):
                 if ConverterUtil.get_arg(op,
                                          MaceKeyword.mace_activation_type_str).s == ActivationType.PRELU.name:  # noqa
                     self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+            elif op.type == MaceOp.LSTMCell.name:
+                if op.input[1] in self._consts:
+                    self.buffer_to_image(op, 1,
+                                         OpenCLBufferType.IN_OUT_CHANNEL)
+                self.buffer_to_image(op, 2, OpenCLBufferType.IN_OUT_CHANNEL)
+                self.buffer_to_image(op, 3, OpenCLBufferType.ARGUMENT)
+                if op.input[4] in self._consts:
+                    self.buffer_to_image(op, 4,
+                                         OpenCLBufferType.IN_OUT_CHANNEL)
 
         # Add OpenCL max image size
         arg = net.arg.add()

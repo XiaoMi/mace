@@ -44,18 +44,26 @@ def calculate_image_shape(buffer_type, shape, winograd_blk_size=0):
         image_shape[0] = shape[1]
         image_shape[1] = shape[2] * shape[3] * roundup_div4(shape[0])
     elif buffer_type == OpenCLBufferType.IN_OUT_CHANNEL:
-        mace_check(len(shape) == 4, "Conv2D input/output buffer should be 4D")
-        image_shape[0] = roundup_div4(shape[3]) * shape[2]
-        image_shape[1] = shape[0] * shape[1]
+        mace_check(len(shape) == 2 or len(shape) == 4,
+                   "input/output buffer should be 2D|4D")
+        if len(shape) == 4:
+            image_shape[0] = roundup_div4(shape[3]) * shape[2]
+            image_shape[1] = shape[0] * shape[1]
+        elif len(shape) == 2:
+            image_shape[0] = roundup_div4(shape[1])
+            image_shape[1] = shape[0]
     elif buffer_type == OpenCLBufferType.ARGUMENT:
         mace_check(len(shape) == 1,
                    "Argument buffer should be 1D not " + str(shape))
         image_shape[0] = roundup_div4(shape[0])
         image_shape[1] = 1
     elif buffer_type == OpenCLBufferType.IN_OUT_HEIGHT:
-        mace_check(len(shape) == 4, "Input/output buffer should be 4D")
-        image_shape[0] = shape[2] * shape[3]
-        image_shape[1] = shape[0] * roundup_div4(shape[1])
+        if len(shape) == 4:
+            image_shape[0] = shape[2] * shape[3]
+            image_shape[1] = shape[0] * roundup_div4(shape[1])
+        elif len(shape) == 2:
+            image_shape[0] = shape[0]
+            image_shape[1] = roundup_div4(shape[1])
     elif buffer_type == OpenCLBufferType.IN_OUT_WIDTH:
         mace_check(len(shape) == 4, "Input/output buffer should be 4D")
         image_shape[0] = roundup_div4(shape[2]) * shape[3]
