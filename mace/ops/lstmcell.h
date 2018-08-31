@@ -40,9 +40,6 @@ class LSTMCellOp : public Operator<D, T> {
     Tensor *cell = this->Output(CELL);
     Tensor *output = this->Output(OUTPUT);
 
-    MACE_CHECK(input->dim_size() == 2 && input->dim(1) % 4 == 0,
-               "LSTM step should be a multiple of 4");
-
     return functor_(
         input, pre_output, weight, bias, pre_cell, cell, output, future);
   };

@@ -31,8 +31,12 @@ MaceStatus LSTMCellFunctor<DeviceType::GPU, T>::operator()(
     Tensor *cell,
     Tensor *output,
     StatsFuture *future) {
+  MACE_CHECK(input->dim_size() == 2 && input->dim(1) % 4 == 0,
+             "LSTM step should be a multiple of 4");
+
   const index_t height = input->dim(0);
   const index_t width = input->dim(1);
+  const index_t width_blocks = width / 4;
 
   auto runtime = OpenCLRuntime::Global();
 
@@ -53,14 +57,13 @@ MaceStatus LSTMCellFunctor<DeviceType::GPU, T>::operator()(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const index_t width_blocks = RoundUpDiv4(width);
   const uint32_t gws[2] = {static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height)};
 
   if (!IsVecEqual(input_shape_, input->shape())) {
-    std::vector<index_t> output_shape_paded = {height, 1, 1, width};
+    std::vector<index_t> output_shape_padded = {height, 1, 1, width};
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape_paded, BufferType::IN_OUT_CHANNEL,
+    CalImage2DShape(output_shape_padded, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
     MACE_RETURN_IF_ERROR(output->ResizeImage(input->shape(),
                                              output_image_shape));
