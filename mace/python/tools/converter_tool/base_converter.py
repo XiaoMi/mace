@@ -368,6 +368,8 @@ class ConverterOption(object):
                 TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 # Transform finalization
                 TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
+                # for quantization entropy calibration use
+                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                 TransformerRule.SORT_BY_EXECUTION,
             ]
             if self._quantize:
