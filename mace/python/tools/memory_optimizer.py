@@ -244,7 +244,7 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                                 op_type)
         else:
             if len(output_shape) == 2:  # only support fc/softmax
-                buffer_shape = [output_shape[0], 1, 1, output_shape[1]]
+                buffer_shape = [output_shape[0], output_shape[1]]
             elif len(output_shape) == 4:
                 buffer_shape = output_shape
             else:
