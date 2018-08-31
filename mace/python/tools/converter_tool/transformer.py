@@ -1174,7 +1174,7 @@ class Transformer(base_converter.ConverterInterface):
                 self.buffer_to_image(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
             elif op.type == MaceOp.WinogradInverseTransform.name \
                     and len(op.input) >= 3:
-                self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+                self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.FullyConnected.name:
                 self.buffer_to_image(op, 1, OpenCLBufferType.WEIGHT_WIDTH)
                 if len(op.input) >= 3:
