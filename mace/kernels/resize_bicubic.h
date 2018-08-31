@@ -95,7 +95,6 @@ inline void ResizeImage(const float *images,
              const float height_scale,
              const float width_scale,
              float *output) {
-  std::vector<float> coeff = {0.0, 0.0, 0.0, 0.0};
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t y = 0; y < out_height; ++y) {
@@ -116,6 +115,7 @@ inline void ResizeImage(const float *images,
                   images + (b * channels + c) * in_height * in_width;
           float *channel_output_ptr =
                   output + (b * channels + c) * out_height * out_width;
+          std::vector<float> coeff(4, 0.0);
           for (index_t i = 0; i < 4; ++i) {
             const std::vector<float> values = {
               static_cast<float>(channel_input_ptr
