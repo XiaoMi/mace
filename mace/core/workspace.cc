@@ -178,12 +178,14 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
   if (type == DeviceType::CPU && net_def.has_quantize_info()) {
     for (const auto
           &activation_info: net_def.quantize_info().activation_info()) {
-      MACE_CHECK(HasTensor(activation_info.tensor_name()),
-                 "Quantize info exist for non-existed tensor",
-                 activation_info.tensor_name());
-      Tensor *tensor = GetTensor(activation_info.tensor_name());
-      tensor->SetScale(activation_info.scale());
-      tensor->SetZeroPoint(activation_info.zero_point());
+      if (HasTensor(activation_info.tensor_name())) {
+        Tensor *tensor = GetTensor(activation_info.tensor_name());
+        tensor->SetScale(activation_info.scale());
+        tensor->SetZeroPoint(activation_info.zero_point());
+      } else {
+        LOG(WARNING) << "Quantize info exists for non-existed tensor: "
+            << activation_info.tensor_name();
+      }
     }
   }
 

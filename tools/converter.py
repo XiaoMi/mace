@@ -481,13 +481,15 @@ def format_model_config(flags):
                     DeviceType.CPU: 0.999,
                     DeviceType.GPU: 0.995,
                     DeviceType.HEXAGON: 0.930,
+                    DeviceType.CPU + "_QUANTIZE": 0.980,
                     }
             for k, v in six.iteritems(validation_threshold):
                 if k.upper() == 'DSP':
                     k = DeviceType.HEXAGON
                 if k.upper() not in (DeviceType.CPU,
                                      DeviceType.GPU,
-                                     DeviceType.HEXAGON):
+                                     DeviceType.HEXAGON,
+                                     DeviceType.CPU + "_QUANTIZE"):
                     raise argparse.ArgumentTypeError(
                             'Unsupported validation threshold runtime: %s' % k)
                 threshold_dict[k.upper()] = v
@@ -1251,6 +1253,10 @@ def run_specific_target(flags, configs, target_abi,
                     model_config[YAMLKeyword.weight_file_path],
                     model_config[YAMLKeyword.weight_sha256_checksum])
 
+                validate_type = device_type
+                if model_config[YAMLKeyword.quantize] == 1:
+                    validate_type = device_type + "_QUANTIZE"
+
                 sh_commands.validate_model(
                     abi=target_abi,
                     serialno=serial_num,
@@ -1266,7 +1272,7 @@ def run_specific_target(flags, configs, target_abi,
                     phone_data_dir=PHONE_DATA_DIR,
                     input_data_types=subgraphs[0][YAMLKeyword.input_data_types],  # noqa
                     caffe_env=flags.caffe_env,
-                    validation_threshold=subgraphs[0][YAMLKeyword.validation_threshold][device_type])  # noqa
+                    validation_threshold=subgraphs[0][YAMLKeyword.validation_threshold][validate_type])  # noqa
             if flags.report and flags.round > 0:
                 tuned = is_tuned and device_type == DeviceType.GPU
                 report_run_statistics(
