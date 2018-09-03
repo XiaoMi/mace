@@ -94,6 +94,7 @@ MaceSupportedOps = [
     'Identity',
     'InferConv2dShape',
     'LocalResponseNorm',
+    'LSTMCell',
     'MatMul',
     'Pad',
     'Pooling',
@@ -109,6 +110,7 @@ MaceSupportedOps = [
     'Shape',
     'Squeeze',
     'Stack',
+    'Unstack',
     'StridedSlice',
     'Softmax',
     'SpaceToBatchND',
@@ -200,6 +202,8 @@ class TransformerRule(Enum):
     QUANTIZE_NODES = 23
     ADD_QUANTIZE_TENSOR_RANGE = 24
     QUANTIZE_WEIGHTS = 25
+    TRANSFORM_LSTMCELL_ZEROSTATE = 26
+    TRANSFORM_BASIC_LSTMCELL = 27
 
 
 class ConverterInterface(object):
@@ -338,6 +342,8 @@ class ConverterOption(object):
                 # Model structure related transformation
                 TransformerRule.REMOVE_IDENTITY_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
+                TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
+                TransformerRule.TRANSFORM_BASIC_LSTMCELL,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
                 TransformerRule.FOLD_BATCHNORM,

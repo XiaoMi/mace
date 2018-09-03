@@ -61,6 +61,11 @@
 __constant sampler_t SAMPLER =
     CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
+inline float4 do_sigmoid(float4 in) {
+  // native_func not support half
+  return native_recip(1.0 + native_exp(-in));
+}
+
 inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #ifdef USE_PRELU
                                 DATA_TYPE4 prelu_alpha,
@@ -80,7 +85,7 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
   out = tanh(in);
 #endif
 #ifdef USE_SIGMOID
-  out = native_recip((DATA_TYPE)1 + native_exp(-in));
+  out = do_sigmoid(in);
 #endif
   return out;
 }

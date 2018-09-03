@@ -97,6 +97,8 @@ TFSupportedOps = [
     'Slice',
     'Stack',
     'Pack',
+    'Unstack',
+    'Unpack',
     'Cast',
     'ArgMax',
     'Split',
@@ -198,6 +200,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Slice.name: self.convert_slice,
             TFOpType.Pack.name: self.convert_stack,
             TFOpType.Stack.name: self.convert_stack,
+            TFOpType.Unpack.name: self.convert_unstack,
+            TFOpType.Unstack.name: self.convert_unstack,
             TFOpType.Cast.name: self.convert_cast,
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.Split.name: self.convert_split,
@@ -782,6 +786,17 @@ class TensorflowConverter(base_converter.ConverterInterface):
     def convert_stack(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Stack.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        try:
+            axis_arg.i = tf_op.get_attr(MaceKeyword.mace_axis_str)
+        except ValueError:
+            axis_arg.i = 0
+
+    def convert_unstack(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Unstack.name
 
         axis_arg = op.arg.add()
         axis_arg.name = MaceKeyword.mace_axis_str

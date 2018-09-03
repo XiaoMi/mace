@@ -38,11 +38,13 @@ cc_library(
             "*_benchmark.cc",
             "buffer_to_image.cc",
             "image_to_buffer.cc",
+            "lstmcell.cc",
         ],
     ) + if_opencl_enabled(
         [
             "buffer_to_image.cc",
             "image_to_buffer.cc",
+            "lstmcell.cc",
         ],
     ),
     hdrs = glob(

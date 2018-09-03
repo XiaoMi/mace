@@ -202,6 +202,21 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
+  void CopyData(const std::string &src_name,
+                const std::string &dst_name) {
+    Tensor *input = ws_.GetTensor(src_name);
+    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
+                                      DataTypeToEnum<T>::v());
+
+    const std::vector<index_t> input_shape = input->shape();
+    output->Resize(input_shape);
+
+    Tensor::MappingGuard input_guard(input);
+    const T *input_data = input->data<T>();
+    output->CopyBytes(input->raw_data(), input->size() * input->SizeOfType());
+  }
+
+  template <DeviceType D, typename T>
   void TransformDataFormat(const std::string &src_name,
                            const DataFormat src_format,
                            const std::string &dst_name,
