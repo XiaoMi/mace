@@ -199,7 +199,8 @@ def adb_run(abi,
             vlog_level=0,
             device_bin_path="/data/local/tmp/mace",
             out_of_range_check=True,
-            address_sanitizer=False):
+            address_sanitizer=False,
+            simpleperf=False):
     host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
     device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
     props = adb_getprop_by_serialno(serialno)
@@ -219,25 +220,54 @@ def adb_run(abi,
             adb_push(find_asan_rt_library(abi), device_bin_path, serialno)
             ld_preload = "LD_PRELOAD=%s/%s" % (device_bin_path,
                                                asan_rt_library_names(abi)),
+
         opencl_profiling = 1 if opencl_profiling else 0
         out_of_range_check = 1 if out_of_range_check else 0
         print("Run %s" % device_bin_full_path)
 
         stdout_buff = []
         process_output = make_output_processor(stdout_buff)
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            ld_preload,
-            "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
-            "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
-            "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
-            device_bin_full_path,
-            args,
-            _tty_in=True,
-            _out=process_output,
-            _err_to_out=True)
+
+        if simpleperf:
+            adb_push(find_simpleperf_library(abi), device_bin_path, serialno)
+            simpleperf_cmd = "%s/simpleperf" % device_bin_path
+            sh.adb(
+                "-s",
+                serialno,
+                "shell",
+                ld_preload,
+                "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
+                "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
+                "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
+                simpleperf_cmd,
+                "stat",
+                "--group",
+                "raw-l1-dcache,raw-l1-dcache-refill",
+                "--group",
+                "raw-l2-dcache,raw-l2-dcache-refill",
+                "--group",
+                "raw-l1-dtlb,raw-l1-dtlb-refill",
+                "--group",
+                "raw-l2-dtlb,raw-l2-dtlb-refill",
+                device_bin_full_path,
+                args,
+                _tty_in=True,
+                _out=process_output,
+                _err_to_out=True)
+        else:
+            sh.adb(
+                "-s",
+                serialno,
+                "shell",
+                ld_preload,
+                "MACE_OUT_OF_RANGE_CHECK=%d" % out_of_range_check,
+                "MACE_OPENCL_PROFILING=%d" % opencl_profiling,
+                "MACE_CPP_MIN_VLOG_LEVEL=%d" % vlog_level,
+                device_bin_full_path,
+                args,
+                _tty_in=True,
+                _out=process_output,
+                _err_to_out=True)
         return "".join(stdout_buff)
 
 
@@ -267,6 +297,37 @@ def find_asan_rt_library(abi, asan_rt_path=''):
                 "More than one AddressSanitizer runtime library, use the 1st")
         return candidates[0]
     return "%s/%s" % (asan_rt_path, asan_rt_library_names(abi))
+
+
+def simpleperf_abi_dir_names(abi):
+    simpleperf_dir_names = {
+        "armeabi-v7a": "arm",
+        "arm64-v8a": "arm64",
+    }
+    return simpleperf_dir_names[abi]
+
+
+def find_simpleperf_library(abi, simpleperf_path=''):
+    if not simpleperf_path:
+        find_path = os.environ['ANDROID_NDK_HOME']
+        candidates = split_stdout(sh.find(find_path, "-name", "simpleperf"))
+        if len(candidates) == 0:
+            common.MaceLogger.error(
+                "Toolchain",
+                "Can't find Simpleperf runtime library in % s" %
+                find_path)
+        found = False
+        for candidate in candidates:
+            if candidate.find(simpleperf_abi_dir_names(abi) + "/") != -1:
+                found = True
+                return candidate
+        if not found:
+            common.MaceLogger.error(
+                "Toolchain",
+                "Can't find Simpleperf runtime library in % s" %
+                find_path)
+
+    return "%s/simpleperf" % simpleperf_path
 
 
 ################################
