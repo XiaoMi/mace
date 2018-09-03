@@ -22,6 +22,7 @@
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/kernels/gemm.h"
 #include "mace/kernels/gemmlowp_util.h"
+#include "mace/kernels/sgemm.h"
 
 namespace gemmlowp {
 
@@ -104,6 +105,26 @@ void MatmulBenchmark_Mace(int iters, int m, int k, int n) {
   mace::testing::StartTiming();
   while (iters--) {
     Gemm(lhs.data(), rhs.data(), 1, m, k, n, result.data());
+  }
+}
+
+void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
+  mace::testing::StopTiming();
+  std::vector<float> lhs(m * k);
+  std::vector<float> rhs(k * n);
+  std::vector<float> result(m * n);
+
+  kernels::MatrixMap<const float> matrix_lhs(m, k, RowMajor, lhs.data(), true);
+  kernels::MatrixMap<const float> matrix_rhs(k, n, RowMajor, rhs.data(), true);
+  kernels::MatrixMap<float> matrix_result(m, n, RowMajor, result.data());
+
+  kernels::SGemm sgemm;
+
+  sgemm(matrix_lhs, matrix_rhs, &matrix_result);
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    sgemm(matrix_lhs, matrix_rhs, &matrix_result);
   }
 }
 
@@ -202,6 +223,7 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
 
 #define MACE_BM_MATMUL(M, K, N)                          \
   MACE_BM_MATMUL_FUNC(M, K, N, Mace, float);             \
+  MACE_BM_MATMUL_FUNC(M, K, N, Mace_SGemm, float);       \
   MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float);            \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_uint8, uint8_t); \
   MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_int32, uint8_t);
@@ -215,14 +237,42 @@ MACE_BM_MATMUL(15, 384, 384);
 MACE_BM_MATMUL(15, 384, 1536);
 MACE_BM_MATMUL(15, 1536, 384);
 
-MACE_BM_MATMUL(1, 384, 384);
-MACE_BM_MATMUL(1, 384, 1536);
-MACE_BM_MATMUL(1, 1536, 384);
-MACE_BM_MATMUL(1, 384, 44678);
+MACE_BM_MATMUL(1, 256, 256);
+MACE_BM_MATMUL(1, 256, 1536);
+MACE_BM_MATMUL(1, 1536, 256);
+MACE_BM_MATMUL(256, 256, 1);
+MACE_BM_MATMUL(1536, 256, 1);
+MACE_BM_MATMUL(256, 1536, 1);
+MACE_BM_MATMUL(29792, 256, 1);
+MACE_BM_MATMUL(1, 256, 29792);
+MACE_BM_MATMUL(2, 256, 256);
+MACE_BM_MATMUL(2, 256, 1536);
+MACE_BM_MATMUL(2, 1536, 256);
+MACE_BM_MATMUL(3, 256, 256);
+MACE_BM_MATMUL(3, 256, 1536);
+MACE_BM_MATMUL(3, 1536, 256);
+MACE_BM_MATMUL(4, 256, 256);
+MACE_BM_MATMUL(4, 256, 1536);
+MACE_BM_MATMUL(4, 1536, 256);
+MACE_BM_MATMUL(8, 256, 256);
+MACE_BM_MATMUL(8, 256, 1536);
+MACE_BM_MATMUL(8, 1536, 256);
+MACE_BM_MATMUL(10, 256, 256);
+MACE_BM_MATMUL(10, 256, 1536);
+MACE_BM_MATMUL(10, 1536, 256);
+MACE_BM_MATMUL(15, 256, 256);
+MACE_BM_MATMUL(15, 256, 1536);
+MACE_BM_MATMUL(15, 1536, 256);
 
 // Embedding size 128
 MACE_BM_MATMUL(1, 128, 1536);
 MACE_BM_MATMUL(1, 128, 44678);
+
+// MobileNet
+MACE_BM_MATMUL(128, 128, 3136);
+MACE_BM_MATMUL(256, 256, 784);
+MACE_BM_MATMUL(512, 512, 196);
+MACE_BM_MATMUL(1024, 1024, 49);
 
 }  // namespace test
 }  // namespace kernels

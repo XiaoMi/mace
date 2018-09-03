@@ -505,12 +505,12 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
 #pragma omp parallel for
   for (index_t bw = 0; bw < remain_w; ++bw) {
     index_t remain_h = height;
-    index_t block_h = 0;
 
     const float *lhs_ptr = lhs_data;
     float *res_ptr = result_data + height * bw;
 
 #if defined(MACE_ENABLE_NEON)
+    index_t block_h = 0;
 #if defined(__aarch64__)
     block_h = remain_h >> 3;
     remain_h -= (block_h << 3);
@@ -555,12 +555,13 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
       for (index_t d = 0; d < remain_d; ++d) {
         // 8.1.1
         float32x4_t b0, b1;
+        float32x4_t a0 = vdupq_n_f32(rhs_ptr[0]);
 
         b0 = vld1q_f32(lhs_ptr);
         b1 = vld1q_f32(lhs_ptr + 4);
 
-        c0 += b0 * rhs_ptr[0];
-        c1 += b1 * rhs_ptr[0];
+        c0 = vfmaq_laneq_f32(c0, b0, a0, 0);
+        c1 = vfmaq_laneq_f32(c1, b1, a0, 0);
 
         lhs_ptr += 8;
         rhs_ptr += 1;
@@ -611,10 +612,11 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
       for (index_t d = 0; d < remain_d; ++d) {
         // 4.1.1
         float32x4_t b0, b1;
+        float32x2_t a0 = vdup_n_f32(rhs_ptr[0]);
 
         b0 = vld1q_f32(lhs_ptr);
 
-        c0 += b0 * rhs_ptr[0];
+        c0 = vmlaq_lane_f32(c0, b0, a0, 0);
 
         lhs_ptr += 4;
         rhs_ptr += 1;
@@ -631,11 +633,12 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
       const float *rhs_ptr = rhs_data + depth * bw;
 
       index_t remain_d = depth;
-      index_t block_d = 0;
 
       float sum = 0.f;
 
 #if defined(MACE_ENABLE_NEON)
+      index_t block_d = 0;
+
       float32x4_t c0;
       c0 = vdupq_n_f32(0.f);
 

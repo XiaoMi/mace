@@ -53,7 +53,7 @@ class MatrixMap {
 
   MatrixMap transpose() const {
     Major transpose_major = major_ == RowMajor ? ColMajor : RowMajor;
-    return MatrixMap(col_, row_, transpose_major, data_);
+    return MatrixMap(col_, row_, transpose_major, data_, is_const_);
   }
 
   index_t row() const {

@@ -82,10 +82,12 @@ TEST(SGemmTest, Pack) {
   std::vector<float> data =
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36};
+
   // For no-transpose lhs
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
            3, 4, Major::RowMajor, PackOrder::ColMajor);
+#if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16},
            4, 4, Major::RowMajor, PackOrder::ColMajor);
@@ -93,14 +95,18 @@ TEST(SGemmTest, Pack) {
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16, 17, 18, 19,
             20},
            5, 4, Major::RowMajor, PackOrder::ColMajor);
+#if defined(__aarch64__)
   TestPack(data,
            {1, 5, 9, 13, 17, 21, 25, 29, 2, 6, 10, 14, 18, 22, 26, 30, 3, 7, 11,
             15, 19, 23, 27, 31, 4, 8, 12, 16, 20, 24, 28, 32, 33, 34, 35, 36},
            9, 4, Major::RowMajor, PackOrder::ColMajor);
+#endif
+#endif
   // For transpose-needed lhs
   TestPack(data,
            {1, 4, 7, 10, 2, 5, 8, 11, 3, 6, 9, 12},
            3, 4, Major::ColMajor, PackOrder::ColMajor);
+#if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
            4, 4, Major::ColMajor, PackOrder::ColMajor);
@@ -108,14 +114,18 @@ TEST(SGemmTest, Pack) {
            {1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 5, 10, 15,
             20},
            5, 4, Major::ColMajor, PackOrder::ColMajor);
+#if defined(__aarch64__)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21,
             22, 23, 24, 25, 26, 28, 29, 30, 31, 32, 33, 34, 35, 9, 18, 27, 36},
            9, 4, Major::ColMajor, PackOrder::ColMajor);
+#endif
+#endif
   // For no-transpose rhs
   TestPack(data,
            {1, 4, 7, 10, 2, 5, 8, 11, 3, 6, 9, 12},
            4, 3, Major::RowMajor, PackOrder::RowMajor);
+#if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
            4, 4, Major::RowMajor, PackOrder::RowMajor);
@@ -123,10 +133,12 @@ TEST(SGemmTest, Pack) {
            {1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 5, 10, 15,
             20},
            4, 5, Major::RowMajor, PackOrder::RowMajor);
+#endif
   // For transpose-needed rhs
   TestPack(data,
            {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12},
            4, 3, Major::ColMajor, PackOrder::RowMajor);
+#if defined(MACE_ENABLE_NEON)
   TestPack(data,
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16},
            4, 4, Major::ColMajor, PackOrder::RowMajor);
@@ -134,6 +146,7 @@ TEST(SGemmTest, Pack) {
            {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16, 17, 18, 19,
             20},
            4, 5, Major::ColMajor, PackOrder::RowMajor);
+#endif
 }
 
 TEST(SGemmTest, UnPack) {
