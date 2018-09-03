@@ -110,6 +110,11 @@ def parse_args():
         '--address_sanitizer',
         action="store_true",
         help="Whether to enable AddressSanitizer")
+    parser.add_argument(
+        "--simpleperf",
+        type=str2bool,
+        default=False,
+        help="Whether to use simpleperf stat")
     return parser.parse_known_args()
 
 
@@ -151,7 +156,8 @@ def main(unused_args):
                     vlog_level=0,
                     device_bin_path="/data/local/tmp/mace",
                     out_of_range_check=True,
-                    address_sanitizer=FLAGS.address_sanitizer)
+                    address_sanitizer=FLAGS.address_sanitizer,
+                    simpleperf=FLAGS.simpleperf)
                 device_properties = sh_commands.adb_getprop_by_serialno(
                     serialno)
                 globals()[FLAGS.stdout_processor](stdouts, device_properties,
