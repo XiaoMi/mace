@@ -62,6 +62,8 @@ std::unique_ptr<OperatorBase> OperatorRegistryBase::CreateOperator(
   const int op_mode_i = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
       operator_def, "mode", static_cast<int>(NetMode::NORMAL));
   const NetMode op_mode = static_cast<NetMode>(op_mode_i);
+  VLOG(3) << "Creating operator " << operator_def.name() << "("
+          << operator_def.type() << "<" << dtype << ">" << ")";
   if (op_mode == mode) {
     return registry_.Create(
         OpKeyBuilder(operator_def.type().data())
