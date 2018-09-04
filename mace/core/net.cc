@@ -48,8 +48,6 @@ SerialNet::SerialNet(
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             operator_def, "device", static_cast<int>(device_type_));
     if (op_device == type) {
-      VLOG(3) << "Creating operator " << operator_def.name() << "("
-              << operator_def.type() << ")";
       OperatorDef temp_def(operator_def);
       std::unique_ptr<OperatorBase> op(
           op_registry->CreateOperator(temp_def, ws, type, mode));

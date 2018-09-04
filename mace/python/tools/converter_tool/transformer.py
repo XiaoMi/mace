@@ -104,6 +104,7 @@ class Transformer(base_converter.ConverterInterface):
         self._target_data_format = DataFormat.NHWC
         self._input_output_added = False
         self._opencl_max_image_size = [0, 0]
+        self._output_op_names = set()
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
 
@@ -1388,6 +1389,7 @@ class Transformer(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
+            self._output_op_names.add(op_def.name)
 
         self._input_output_added = True
 
@@ -1525,7 +1527,8 @@ class Transformer(base_converter.ConverterInterface):
                 data_type_arg.name = MaceKeyword.mace_op_data_type_str
                 data_type_arg.i = self._option.data_type
             elif data_type_arg.i != self._option.data_type \
-                    and data_type_arg.i == mace_pb2.DT_FLOAT:
+                    and data_type_arg.i == mace_pb2.DT_FLOAT \
+                    and op.name not in self._output_op_names:
                 data_type_arg.i = self._option.data_type
 
         return False
