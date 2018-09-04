@@ -63,7 +63,7 @@ __constant sampler_t SAMPLER =
 
 inline float4 do_sigmoid(float4 in) {
   // native_func not support half
-  return native_recip(1.0 + native_exp(-in));
+  return native_recip(1.0f + native_exp(-in));
 }
 
 inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
