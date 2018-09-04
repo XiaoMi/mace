@@ -64,6 +64,7 @@ cc_library(
         "//mace/codegen:generated_version",
         "//mace/proto:mace_cc",
         "//mace/utils",
+        "@gemmlowp",
     ] + if_opencl_enabled([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
@@ -84,7 +85,7 @@ cc_library(
         "-Wno-missing-field-initializers",
     ],
     deps = [
-        "@opencl_clhpp//:opencl_clhpp",
+        "@opencl_clhpp",
         "@opencl_headers//:opencl20_headers",
     ],
 )

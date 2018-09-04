@@ -72,7 +72,7 @@ extra_tests:
 platform_compatible_tests:
   stage: platform_compatible_tests
   script:
-    - bazel build mace/core:core
+    - bazel build mace/core:core --define openmp=true
 
 build_libraries:
   stage: build_libraries

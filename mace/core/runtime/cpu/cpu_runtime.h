@@ -29,7 +29,8 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                            const std::vector<int> &cpu_ids);
 
 MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
-                                             CPUAffinityPolicy policy);
+                                             CPUAffinityPolicy policy,
+                                             bool use_gemmlowp = false);
 
 }  // namespace mace
 
