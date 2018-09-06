@@ -24,7 +24,7 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
                           const Tensor *input,
                           const Tensor *filter,
                           const Tensor *bias,
-                          const int stride,
+                          const int *strides,
                           const int *paddings,
                           const ActivationType activation,
                           const float relux_max_limit,
@@ -42,17 +42,20 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
-  MACE_CHECK(stride > 0, "stride should > 0.");
+  const int stride_h = strides[0];
+  const int stride_w = strides[1];
+  MACE_CHECK(stride_w > 0 && stride_h > 0, "strides should be > 0.");
 #define MACE_WIDTH_BLK 5
-  const index_t n_strides = (width + stride - 1) / stride;
+  const index_t n_strides = (width + stride_w - 1) / stride_w;
   const index_t width_blocks =
-      ((n_strides + MACE_WIDTH_BLK - 1) / MACE_WIDTH_BLK) * stride;
-  const float stride_r = 1.f / static_cast<float>(stride);
+      ((n_strides + MACE_WIDTH_BLK - 1) / MACE_WIDTH_BLK) * stride_w;
+  const float stride_h_r = 1.f / static_cast<float>(stride_h);
+  const float stride_w_r = 1.f / static_cast<float>(stride_w);
   const int padding_h = (paddings[0] + 1) >> 1;
-  const int padding_w = (paddings[0] + 1) >> 1;
+  const int padding_w = (paddings[1] + 1) >> 1;
 
-  const int align_h = stride - 1 - padding_h;
-  const int align_w = stride - 1 - padding_w;
+  const int align_h = stride_h - 1 - padding_h;
+  const int align_w = stride_w - 1 - padding_w;
   const int kernel_size = filter->dim(2) * filter->dim(3);
 
   auto runtime = OpenCLRuntime::Global();
@@ -113,8 +116,10 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
     kernel->setArg(idx++, static_cast<int32_t>(height));
     kernel->setArg(idx++, static_cast<int32_t>(width));
     kernel->setArg(idx++, static_cast<int32_t>(channels));
-    kernel->setArg(idx++, static_cast<int32_t>(stride));
-    kernel->setArg(idx++, stride_r);
+    kernel->setArg(idx++, static_cast<int32_t>(stride_h));
+    kernel->setArg(idx++, static_cast<int32_t>(stride_w));
+    kernel->setArg(idx++, stride_h_r);
+    kernel->setArg(idx++, stride_w_r);
     kernel->setArg(idx++, static_cast<int32_t>(align_h));
     kernel->setArg(idx++, static_cast<int32_t>(align_w));
     kernel->setArg(idx++, static_cast<int32_t>(padding_h));
@@ -152,34 +157,43 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
   MACE_CHECK_NOTNULL(input);
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
-  if (!from_caffe_) {
+  std::vector<int> paddings(2);
+  std::vector<index_t> output_shape(4);
+  if (paddings_.empty()) {
+    paddings = std::vector<int>(2, 0);
     if (output_shape_.size() != 4) {
       MACE_CHECK_NOTNULL(output_shape_tensor);
       MACE_CHECK(output_shape_tensor->size() == 4);
       Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
       auto output_shape_data =
           output_shape_tensor->data<int32_t>();
-      output_shape_ =
+      output_shape =
           std::vector<index_t>(output_shape_data, output_shape_data + 4);
+    } else {
+      output_shape = output_shape_;
     }
-    paddings_.clear();
-    paddings_ = std::vector<int>(2, 0);
-    CalcDeconvPaddingAndInputSize(input->shape().data(), filter->shape().data(),
-                                  strides_, padding_type_, output_shape_.data(),
-                                  paddings_.data());
+    CalcDeconvPaddingAndInputSize(input->shape().data(),
+                                  filter->shape().data(),
+                                  strides_.data(),
+                                  padding_type_,
+                                  output_shape.data(),
+                                  paddings.data());
   } else {
-    output_shape_.clear();
-    output_shape_ = std::vector<index_t>(4, 0);
-    CalcDeconvOutputSize(input->shape().data(), filter->shape().data(),
-                         strides_, output_shape_.data(), paddings_.data());
+    paddings = paddings_;
+    output_shape = std::vector<index_t>(4, 0);
+    CalcDeconvOutputSize(input->shape().data(),
+                         filter->shape().data(),
+                         strides_.data(),
+                         output_shape.data(),
+                         paddings.data());
   }
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape_, BufferType::IN_OUT_CHANNEL,
+  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape_, output_image_shape));
+  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  return Deconv2dOpencl(&kernel_, input, filter, bias, strides_[0],
-                        paddings_.data(), activation_, relux_max_limit_,
+  return Deconv2dOpencl(&kernel_, input, filter, bias, strides_.data(),
+                        paddings.data(), activation_, relux_max_limit_,
                         DataTypeToEnum<T>::value, &input_shape_, output, future,
                         &kwg_size_, &kernel_error_);
 }

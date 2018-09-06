@@ -414,10 +414,6 @@ class CaffeConverter(base_converter.ConverterInterface):
 
         op.type = MaceOp.Deconv2D.name
 
-        from_caffe_arg = op.arg.add()
-        from_caffe_arg.name = MaceKeyword.mace_from_caffe_str
-        from_caffe_arg.i = 1
-
         self.add_stride_pad_kernel_arg(param, op)
         # dilation is specific for convolution in caffe
         dilations = [1, 1]

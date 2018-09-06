@@ -90,20 +90,18 @@ void Deconv2dNCHW(const T *input,
 }  // namespace deconv
 
 struct Deconv2dFunctorBase {
-  Deconv2dFunctorBase(const int *strides,
+  Deconv2dFunctorBase(const std::vector<int> &strides,
                       const Padding &padding_type,
                       const std::vector<int> &paddings,
                       const std::vector<index_t> &output_shape,
                       const ActivationType activation,
-                      const float relux_max_limit,
-                      const bool from_caffe)
+                      const float relux_max_limit)
       : strides_(strides),
         padding_type_(padding_type),
         paddings_(paddings),
         output_shape_(output_shape),
         activation_(activation),
-        relux_max_limit_(relux_max_limit),
-        from_caffe_(from_caffe) {}
+        relux_max_limit_(relux_max_limit) {}
 
   static void CalcDeconvOutputSize(
       const index_t *input_shape,   // NHWC
@@ -202,31 +200,28 @@ struct Deconv2dFunctorBase {
     padding_size[1] = std::max<int>(0, p_w);
   }
 
-  const int *strides_;  // [stride_h, stride_w]
+  std::vector<int> strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
   std::vector<int> paddings_;
   std::vector<index_t> output_shape_;
   const ActivationType activation_;
   const float relux_max_limit_;
-  const bool from_caffe_;
 };
 
 template <DeviceType D, typename T>
 struct Deconv2dFunctor : Deconv2dFunctorBase {
-  Deconv2dFunctor(const int *strides,
+  Deconv2dFunctor(const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit,
-                  const bool from_caffe)
+                  const float relux_max_limit)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
                             output_shape,
                             activation,
-                            relux_max_limit,
-                            from_caffe) {}
+                            relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,   // NCHW
                   const Tensor *filter,  // OIHW
@@ -239,13 +234,12 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-    if (!from_caffe_) {  // tensorflow
-      std::vector<index_t> output_shape(4);
+    std::vector<int> paddings(2);
+    std::vector<index_t> output_shape(4);
+    if (paddings_.empty()) {  // tensorflow
+      paddings = std::vector<int>(2, 0);
       if (output_shape_.size() == 4) {
-        output_shape[0] = output_shape_[0];
-        output_shape[1] = output_shape_[3];
-        output_shape[2] = output_shape_[1];
-        output_shape[3] = output_shape_[2];
+        output_shape = output_shape_;
       } else {
         MACE_CHECK_NOTNULL(output_shape_tensor);
         MACE_CHECK(output_shape_tensor->size() == 4);
@@ -255,36 +249,38 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
         output_shape =
             std::vector<index_t>(output_shape_data, output_shape_data + 4);
       }
-      paddings_.clear();
-      paddings_ = std::vector<int>(2, 0);
+      const index_t t = output_shape[1];
+      output_shape[1] = output_shape[3];
+      output_shape[3] = output_shape[2];
+      output_shape[2] = t;
+
       CalcDeconvPaddingAndInputSize(
           input->shape().data(),
           filter->shape().data(),
-          strides_, padding_type_,
+          strides_.data(), padding_type_,
           output_shape.data(),
-          paddings_.data(), true);
-      MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+          paddings.data(), true);
     } else {  // caffe
-      output_shape_.clear();
-      output_shape_ = std::vector<index_t>(4, 0);
+      paddings = paddings_;
+      output_shape = std::vector<index_t>(4, 0);
       CalcDeconvOutputSize(input->shape().data(),
                            filter->shape().data(),
-                           strides_,
-                           output_shape_.data(),
-                           paddings_.data(), true);
-      MACE_RETURN_IF_ERROR(output->Resize(output_shape_));
+                           strides_.data(),
+                           output_shape.data(),
+                           paddings.data(), true);
     }
+    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);
     const index_t *in_shape = input->shape().data();
-    const index_t *out_shape = output->shape().data();
     const index_t kernel_hw[2] = {kernel_h, kernel_w};
 
-    MACE_CHECK(filter->dim(0) == out_shape[1], filter->dim(0), " != ",
-               out_shape[1]);
+    MACE_CHECK(filter->dim(0) == output_shape[1], filter->dim(0), " != ",
+               output_shape[1]);
     MACE_CHECK(filter->dim(1) == in_shape[1], filter->dim(1), " != ",
                in_shape[1]);
-    MACE_CHECK(in_shape[0] == out_shape[0], "Input/Output batch size mismatch");
+    MACE_CHECK(in_shape[0] == output_shape[0],
+               "Input/Output batch size mismatch");
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);
@@ -294,15 +290,15 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
     auto output_data = output->mutable_data<T>();
     int padding[2];
-    padding[0] = (paddings_[0] + 1) >> 1;
-    padding[1] = (paddings_[1] + 1) >> 1;
+    padding[0] = (paddings[0] + 1) >> 1;
+    padding[1] = (paddings[1] + 1) >> 1;
     deconv::Deconv2dNCHW(input_data,
                          filter_data,
                          bias_data,
                          in_shape,
-                         out_shape,
+                         output_shape.data(),
                          kernel_hw,
-                         strides_,
+                         strides_.data(),
                          padding,
                          output_data);
 
@@ -319,20 +315,18 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
-  Deconv2dFunctor(const int *strides,
+  Deconv2dFunctor(const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit,
-                  const bool from_caffe)
+                  const float relux_max_limit)
       : Deconv2dFunctorBase(strides,
                             padding_type,
                             paddings,
                             output_shape,
                             activation,
-                            relux_max_limit,
-                            from_caffe) {}
+                            relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
