@@ -148,6 +148,7 @@ class SGemm {
 
   PackedBlock<float> packed_lhs_;
   PackedBlock<float> packed_rhs_;
+  PackedBlock<float> packed_result_;
   bool packed_;
 };
 
