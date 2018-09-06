@@ -32,11 +32,11 @@ namespace kernels {
 
 static const int64_t kTableSize = (1 << 10);
 
-inline const float* InitCoeffsTable() {
+inline const float *InitCoeffsTable() {
   // Allocate and initialize coefficients table using Bicubic
   // convolution algorithm.
   // https://en.wikipedia.org/wiki/Bicubic_interpolation
-  float* coeffs_tab = new float[(kTableSize + 1) * 2];
+  float *coeffs_tab = new float[(kTableSize + 1) * 2];
   static const double A = -0.75;
   for (int i = 0; i <= kTableSize; ++i) {
     float x = i * 1.0 / kTableSize;
@@ -47,23 +47,25 @@ inline const float* InitCoeffsTable() {
   return coeffs_tab;
 }
 
-inline const float* GetCoeffsTable() {
+inline const float *GetCoeffsTable() {
   // Static so that we initialize it on first use
-  static const float* coeffs_tab = InitCoeffsTable();
+  static const float *coeffs_tab = InitCoeffsTable();
   return coeffs_tab;
 }
 
-inline int64_t Bound(int64_t val, int64_t limit) {
+inline int64_t Bound(const int64_t val, const int64_t limit) {
   return std::min<int64_t>(limit - 1ll, std::max<int64_t>(0ll, val));
 }
 
-inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
-                                 std::vector<float>* weights,
-                                 std::vector<int64_t>* indices) {
+inline void GetWeightsAndIndices(const float scale,
+                                 const int64_t out_loc,
+                                 const int64_t limit,
+                                 std::vector<float> *weights,
+                                 std::vector<int64_t> *indices) {
   const int64_t in_loc = scale * out_loc;
   const float delta = scale * out_loc - in_loc;
   const int64_t offset = lrintf(delta * kTableSize);
-  const float* coeffs_tab = GetCoeffsTable();
+  const float *coeffs_tab = GetCoeffsTable();
   *weights = {coeffs_tab[offset * 2 + 1], coeffs_tab[offset * 2],
                       coeffs_tab[(kTableSize - offset) * 2],
                       coeffs_tab[(kTableSize - offset) * 2 + 1]};
@@ -71,30 +73,30 @@ inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
                       Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
 }
 
-inline float Interpolate1D(const std::vector<float>& weights,
-                           const std::vector<float>& values) {
+inline float Interpolate1D(const std::vector<float> &weights,
+                           const std::vector<float> &values) {
   return values[0] * weights[0] + values[1] * weights[1] +
          values[2] * weights[2] + values[3] * weights[3];
 }
 
-inline float CalculateResizeScale(index_t in_size,
-                                  index_t out_size,
-                                  bool align_corners) {
+inline float CalculateResizeScale(const index_t in_size,
+                                  const index_t out_size,
+                                  const bool align_corners) {
   return (align_corners && out_size > 1)
          ? (in_size - 1) / static_cast<float>(out_size - 1)
          : in_size / static_cast<float>(out_size);
 }
 
 inline void ResizeImage(const float *images,
-             const index_t batch_size,
-             const index_t in_height,
-             const index_t in_width,
-             const index_t out_height,
-             const index_t out_width,
-             const index_t channels,
-             const float height_scale,
-             const float width_scale,
-             float *output) {
+                        const index_t batch_size,
+                        const index_t in_height,
+                        const index_t in_width,
+                        const index_t out_height,
+                        const index_t out_width,
+                        const index_t channels,
+                        const float height_scale,
+                        const float width_scale,
+                        float *output) {
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t y = 0; y < out_height; ++y) {
@@ -138,7 +140,7 @@ inline void ResizeImage(const float *images,
 
 struct ResizeBicubicFunctorBase {
   ResizeBicubicFunctorBase(const std::vector<index_t> &size,
-                            bool align_corners)
+                           bool align_corners)
       : align_corners_(align_corners) {
     MACE_CHECK(size.size() == 2);
     out_height_ = size[0];
