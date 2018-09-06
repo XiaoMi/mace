@@ -54,7 +54,7 @@ inline const float *GetCoeffsTable() {
   return coeffs_tab;
 }
 
-inline int64_t Bound(int64_t val, int64_t limit) {
+inline int64_t Bound(const int64_t val, const int64_t limit) {
   return std::min<int64_t>(limit - 1ll, std::max<int64_t>(0ll, val));
 }
 
@@ -79,9 +79,9 @@ inline float Interpolate1D(const std::vector<float> &weights,
          values[2] * weights[2] + values[3] * weights[3];
 }
 
-inline float CalculateResizeScale(index_t in_size,
-                                  index_t out_size,
-                                  bool align_corners) {
+inline float CalculateResizeScale(const index_t in_size,
+                                  const index_t out_size,
+                                  const bool align_corners) {
   return (align_corners && out_size > 1)
          ? (in_size - 1) / static_cast<float>(out_size - 1)
          : in_size / static_cast<float>(out_size);
