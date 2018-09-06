@@ -19,23 +19,22 @@
 
 #include "mace/core/operator.h"
 #include "mace/kernels/deconv_2d.h"
-#include "mace/ops/conv_pool_2d_base.h"
 
 namespace mace {
 namespace ops {
 
 template <DeviceType D, typename T>
-class Deconv2dOp : public ConvPool2dOpBase<D, T> {
+class Deconv2dOp : public Operator<D, T> {
  public:
   Deconv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws),
-        functor_(this->strides_.data(),
-                 this->padding_type_,
-                 this->paddings_,
+      : Operator<D, T>(op_def, ws),
+        functor_(OperatorBase::GetRepeatedArgs<int>("strides"),
+                 static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
+                     "padding", static_cast<int>(SAME))),
+                 OperatorBase::GetRepeatedArgs<int>("padding_values"),
                  OperatorBase::GetRepeatedArgs<index_t>("output_shape"),
                  kernels::ActivationType::NOOP,
-                 0.0f,
-                 OperatorBase::GetOptionalArg<bool>("from_caffe", false)) {}
+                 0.0f) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

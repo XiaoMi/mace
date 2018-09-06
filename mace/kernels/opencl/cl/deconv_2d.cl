@@ -15,8 +15,10 @@ __kernel void deconv_2d(KERNEL_ERROR_PARAMS
                         __private const int out_height,
                         __private const int out_width,
                         __private const int out_channel,
-                        __private const int stride,
-                        __private const float stride_r,
+                        __private const int stride_h,
+                        __private const int stride_w,
+                        __private const float stride_h_r,
+                        __private const float stride_w_r,
                         __private const int align_h,
                         __private const int align_w,
                         __private const int padding_h,
@@ -53,18 +55,18 @@ __kernel void deconv_2d(KERNEL_ERROR_PARAMS
   DATA_TYPE4 out4 = 0;
 #endif
 
-  const int n_stride = mad(w_id, stride_r, 0);
-  const int mod_stride = w_id - mul24(n_stride, stride);
-  const int w = mad24(mul24(n_stride, 5), stride, mod_stride);
+  const int n_stride = mad(w_id, stride_w_r, 0);
+  const int mod_stride = w_id - mul24(n_stride, stride_w);
+  const int w = mad24(mul24(n_stride, 5), stride_w, mod_stride);
   const int b = hb / out_height;
   const int h = hb - mul24(b, out_height);
   if (w < out_width) {
-    int start_x = floor((float) (w + align_w) * stride_r);
-    int start_y = (h + align_h) * stride_r;
+    int start_x = floor((float) (w + align_w) * stride_w_r);
+    int start_y = (h + align_h) * stride_h_r;
     start_y = max(0, start_y);
 
-    int f_start_x = mad24(start_x, stride, padding_w) - w;
-    int f_start_y = mad24(start_y, stride, padding_h) - h;
+    int f_start_x = mad24(start_x, stride_w, padding_w) - w;
+    int f_start_y = mad24(start_y, stride_h, padding_h) - h;
     f_start_x = kernel_w - 1 - f_start_x;
     f_start_y = kernel_h - 1 - f_start_y;
 
@@ -79,10 +81,10 @@ __kernel void deconv_2d(KERNEL_ERROR_PARAMS
       f_pos_x1 = f_pos_x0 + 1;
       f_pos_x2 = f_pos_x0 + 2;
       f_pos_x3 = f_pos_x0 + 3;
-      for (int f_y = f_start_y, idx_h = start_y ; f_y >= 0; f_y -= stride, ++idx_h) {
+      for (int f_y = f_start_y, idx_h = start_y ; f_y >= 0; f_y -= stride_h, ++idx_h) {
         index_y = mad24(b, in_height, idx_h);
         in_pos.y = select(index_y, -1, idx_h < 0 || idx_h >= in_height);
-        for (int f_x = f_start_x, idx_w = start_x; f_x >= 0; f_x -= stride, ++idx_w) {
+        for (int f_x = f_start_x, idx_w = start_x; f_x >= 0; f_x -= stride_w, ++idx_w) {
           f_pos_y = mad24(f_y, kernel_w, f_x);
           f_pos_y = mad24(c, kernel_size, f_pos_y);
           weight0 = READ_IMAGET(weights, SAMPLER, (int2)(f_pos_x0, f_pos_y));
@@ -141,24 +143,24 @@ __kernel void deconv_2d(KERNEL_ERROR_PARAMS
     out_pos.x = mad24(c, out_width, ow);
     WRITE_IMAGET(output, out_pos, out0);
 
-    ow += stride;
+    ow += stride_w;
     if (ow >= out_width) return;
-    out_pos.x += stride;
+    out_pos.x += stride_w;
     WRITE_IMAGET(output, out_pos, out1);
 
-    ow += stride;
+    ow += stride_w;
     if (ow >= out_width) return;
-    out_pos.x += stride;
+    out_pos.x += stride_w;
     WRITE_IMAGET(output, out_pos, out2);
 
-    ow += stride;
+    ow += stride_w;
     if (ow >= out_width) return;
-    out_pos.x += stride;
+    out_pos.x += stride_w;
     WRITE_IMAGET(output, out_pos, out3);
 
-    ow += stride;
+    ow += stride_w;
     if (ow >= out_width) return;
-    out_pos.x += stride;
+    out_pos.x += stride_w;
     WRITE_IMAGET(output, out_pos, out4);
   }
 }
