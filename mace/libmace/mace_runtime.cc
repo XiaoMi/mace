@@ -90,10 +90,13 @@ void SetGPUHints(GPUPerfHint gpu_perf_hint, GPUPriorityHint gpu_priority_hint) {
 }
 
 MaceStatus SetOpenMPThreadPolicy(int num_threads_hint,
-                                 CPUAffinityPolicy policy) {
+                                 CPUAffinityPolicy policy,
+                                 bool use_gemmlowp) {
   VLOG(1) << "Set OpenMP threads number hint: " << num_threads_hint
           << ", affinity policy: " << policy;
-  return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint, policy);
+  return SetOpenMPThreadsAndAffinityPolicy(num_threads_hint,
+                                           policy,
+                                           use_gemmlowp);
 }
 
 MaceStatus SetOpenMPThreadAffinity(int num_threads,
