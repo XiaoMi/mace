@@ -115,7 +115,7 @@ public class CameraApiLessM extends CameraEngage implements Camera.AutoFocusCall
 
     private Camera.Size getOptimalSize(List<Camera.Size> sizes, int w, int h) {
         final double ASPECT_TOLERANCE = 0.1;
-        double targetRatio = (double) h / w;
+        double targetRatio = (double) w / h;
         Camera.Size optimalSize = null;
         double minDiff = Double.MAX_VALUE;
 
