@@ -104,6 +104,7 @@ inline void QuantizeWithScaleAndZeropoint(const float *input,
                                           int32_t zero_point,
                                           T *output) {
   float recip_scale = 1 / scale;
+#pragma omp parallel for
   for (int i = 0; i < size; ++i) {
     output[i] = Saturate<T>(roundf(zero_point + recip_scale * input[i]));
   }
@@ -132,6 +133,7 @@ inline void Dequantize(const T *input,
                        const float scale,
                        const int32_t zero_point,
                        float *output) {
+#pragma omp parallel for
   for (int i = 0; i < size; ++i) {
     output[i] = scale * (input[i] - zero_point);
   }

@@ -170,7 +170,6 @@ class MaceKeyword(object):
     mace_transpose_b_str = 'transpose_b'
     mace_op_data_type_str = 'T'
     mace_offset_str = 'offset'
-    mace_from_caffe_str = 'from_caffe'
     mace_opencl_max_image_size = "opencl_max_image_size"
     mace_seperate_buffer_str = 'seperate_buffer'
     mace_scalar_input_index_str = 'scalar_input_index'
@@ -368,6 +367,8 @@ class ConverterOption(object):
                 TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 # Transform finalization
                 TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
+                # for quantization entropy calibration use
+                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                 TransformerRule.SORT_BY_EXECUTION,
             ]
             if self._quantize:

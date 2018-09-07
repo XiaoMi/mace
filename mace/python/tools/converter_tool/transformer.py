@@ -1641,6 +1641,7 @@ class Transformer(base_converter.ConverterInterface):
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
+            op_def.output_type.extend([mace_pb2.DT_FLOAT])
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
 
@@ -1650,6 +1651,9 @@ class Transformer(base_converter.ConverterInterface):
         print("Add quantize tensor range")
         net = self._model
         range_file = self._option.quantize_range_file
+        if not range_file:
+            return
+
         with open(range_file) as f:
             for line in f:
                 tensor_name, minmax = line.split("@@")

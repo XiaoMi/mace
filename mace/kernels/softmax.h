@@ -123,7 +123,7 @@ struct SoftmaxFunctor<DeviceType::CPU, float> {
   }
 };
 
-static const int kInputDeltaIntBits = 5;
+static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
 template<>

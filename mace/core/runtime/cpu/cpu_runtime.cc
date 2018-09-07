@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include "public/gemmlowp.h"
 #include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/public/mace_runtime.h"
@@ -57,8 +58,8 @@ int GetCPUCount() {
 int GetCPUMaxFreq(int cpu_id) {
   char path[64];
   snprintf(path, sizeof(path),
-          "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
-          cpu_id);
+           "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
+           cpu_id);
 
   FILE *fp = fopen(path, "rb");
   if (!fp) {
@@ -91,6 +92,11 @@ MaceStatus SetThreadAffinity(cpu_set_t mask) {
 }
 
 }  // namespace
+
+gemmlowp::GemmContext& GetGemmlowpContext() {
+  static auto *gemm_context = new gemmlowp::GemmContext;
+  return *gemm_context;
+}
 
 MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                   std::vector<int> *little_core_ids) {
@@ -166,8 +172,13 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 }
 
 MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
-                                             CPUAffinityPolicy policy) {
+                                             CPUAffinityPolicy policy,
+                                             bool use_gemmlowp) {
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
+    if (use_gemmlowp) {
+      gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+      gemm_context.set_max_num_threads(std::max(0, omp_num_threads_hint));
+    }
 #ifdef MACE_ENABLE_OPENMP
     if (omp_num_threads_hint > 0) {
       omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
@@ -195,6 +206,11 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
   if (omp_num_threads_hint <= 0 ||
       omp_num_threads_hint > static_cast<int>(use_cpu_ids.size())) {
     omp_num_threads_hint = use_cpu_ids.size();
+  }
+
+  if (use_gemmlowp) {
+    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+    gemm_context.set_max_num_threads(omp_num_threads_hint);
   }
 
   return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
