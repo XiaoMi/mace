@@ -66,6 +66,12 @@ void GemvRef(const float *m_ptr,
              const index_t height,
              float *out_ptr);
 
+void Transpose(const float *src,
+               index_t height,
+               index_t width,
+               index_t stride_w,
+               float *dst);
+
 }  // namespace kernels
 }  // namespace mace
 

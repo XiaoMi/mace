@@ -22,6 +22,8 @@
 
 namespace mace {
 
+extern int MaceOpenMPThreadCount;
+
 MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
                                   std::vector<int> *little_core_ids);
 

@@ -20,6 +20,7 @@
 #endif
 
 #include <vector>
+#include <algorithm>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
@@ -122,9 +123,20 @@ struct TransposeFunctor {
       MACE_CHECK(dims_[0] == 1 && dims_[1] == 0, "no need transform");
       index_t stride_i = input_shape[0];
       index_t stride_j = input_shape[1];
-      for (int i = 0; i < input_shape[0]; ++i) {
-        for (int j = 0; j < input_shape[1]; ++j) {
-          output_data[j * stride_i + i] = input_data[i * stride_j + j];
+
+      index_t tile_size = input_shape[0] > 512 || input_shape[1] > 512
+                          ? 64 : 32;
+#pragma omp parallel for collapse(2)
+      for (index_t i = 0; i < input_shape[0]; i += tile_size) {
+        for (index_t j = 0; j < input_shape[1]; j += tile_size) {
+          index_t end_i = std::min(i + tile_size, input_shape[0]);
+          index_t end_j = std::min(j + tile_size, input_shape[1]);
+          for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
+            for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
+              output_data[tile_j * stride_i + tile_i] =
+                  input_data[tile_i * stride_j + tile_j];
+            }
+          }
         }
       }
     } else if (input->dim_size() == 4) {
