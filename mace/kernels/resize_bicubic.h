@@ -33,11 +33,11 @@ namespace kernels {
 
 static const int64_t kTableSize = (1 << 10);
 
-inline const float* InitCoeffsTable() {
+inline const float *InitCoeffsTable() {
   // Allocate and initialize coefficients table using Bicubic
   // convolution algorithm.
   // https://en.wikipedia.org/wiki/Bicubic_interpolation
-  float* coeffs_tab = new float[(kTableSize + 1) * 2];
+  float *coeffs_tab = new float[(kTableSize + 1) * 2];
   static const double A = -0.75;
   for (int i = 0; i <= kTableSize; ++i) {
     float x = i * 1.0 / kTableSize;
@@ -48,9 +48,9 @@ inline const float* InitCoeffsTable() {
   return coeffs_tab;
 }
 
-inline const float* GetCoeffsTable() {
+inline const float *GetCoeffsTable() {
   // Static so that we initialize it on first use
-  static const float* coeffs_tab = InitCoeffsTable();
+  static const float *coeffs_tab = InitCoeffsTable();
   return coeffs_tab;
 }
 
@@ -73,8 +73,8 @@ inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
               Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
 }
 
-inline float Interpolate1D(const std::vector<float>& weights,
-                           const std::vector<float>& values) {
+inline float Interpolate1D(const std::vector<float> &weights,
+                           const std::vector<float> &values) {
   return values[0] * weights[0] + values[1] * weights[1] +
          values[2] * weights[2] + values[3] * weights[3];
 }
@@ -88,15 +88,15 @@ inline float CalculateResizeScale(index_t in_size,
 }
 
 inline void ResizeImage(const float *images,
-             const index_t batch_size,
-             const index_t in_height,
-             const index_t in_width,
-             const index_t out_height,
-             const index_t out_width,
-             const index_t channels,
-             const float height_scale,
-             const float width_scale,
-             float *output) {
+                        const index_t batch_size,
+                        const index_t in_height,
+                        const index_t in_width,
+                        const index_t out_height,
+                        const index_t out_width,
+                        const index_t channels,
+                        const float height_scale,
+                        const float width_scale,
+                        float *output) {
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t y = 0; y < out_height; ++y) {
