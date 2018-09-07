@@ -64,11 +64,12 @@ inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
   const float delta = scale * out_loc - in_loc;
   const int64_t offset = lrintf(delta * kTableSize);
   const float *coeffs_tab = GetCoeffsTable();
-  *weights = {coeffs_tab[offset * 2 + 1], coeffs_tab[offset * 2],
-                      coeffs_tab[(kTableSize - offset) * 2],
-                      coeffs_tab[(kTableSize - offset) * 2 + 1]};
+  *weights = {coeffs_tab[offset * 2 + 1],
+              coeffs_tab[offset * 2],
+              coeffs_tab[(kTableSize - offset) * 2],
+              coeffs_tab[(kTableSize - offset) * 2 + 1]};
   *indices = {Bound(in_loc - 1, limit), Bound(in_loc, limit),
-                      Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
+              Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
 }
 
 inline float Interpolate1D(const std::vector<float> &weights,
