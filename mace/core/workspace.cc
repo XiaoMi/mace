@@ -105,7 +105,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 
         std::unique_ptr<Tensor> tensor(
             new Tensor(GetDeviceAllocator(type),
-                       const_tensor.data_type()));
+                       const_tensor.data_type(), true));
         tensor->Resize(dims);
 
         MACE_CHECK(tensor->size() == const_tensor.data_size(),
@@ -159,7 +159,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
                 tensor_buffer_.get(), const_tensor.offset(),
                 const_tensor.data_size() *
                     GetEnumTypeSize(const_tensor.data_type())),
-                       const_tensor.data_type()));
+                       const_tensor.data_type(), true));
 
         tensor->Reshape(dims);
         tensor->SetScale(const_tensor.scale());
