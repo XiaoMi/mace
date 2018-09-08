@@ -39,11 +39,13 @@ class MatrixMap {
  public:
   MatrixMap() {}
 
-  MatrixMap(const index_t row,
+  MatrixMap(const index_t batch,
+            const index_t row,
             const index_t col,
             const Major major,
             T *data,
             const bool is_const = false) :
+      batch_(batch),
       row_(row),
       col_(col),
       stride_(major == RowMajor ? col : row),
@@ -53,7 +55,11 @@ class MatrixMap {
 
   MatrixMap transpose() const {
     Major transpose_major = major_ == RowMajor ? ColMajor : RowMajor;
-    return MatrixMap(col_, row_, transpose_major, data_, is_const_);
+    return MatrixMap(batch_, col_, row_, transpose_major, data_, is_const_);
+  }
+
+  index_t batch() const {
+    return batch_;
   }
 
   index_t row() const {
@@ -76,8 +82,12 @@ class MatrixMap {
     return data_;
   }
 
-  T *data(int row, int col) const {
-    return data_ + row * stride_ + col;
+  T *batch_data(index_t batch) const {
+    return data_ + batch * row_ * col_;
+  }
+
+  index_t size() const {
+    return batch_ * row_ * col_;
   }
 
   bool is_const() const {
@@ -85,6 +95,7 @@ class MatrixMap {
   }
 
  private:
+  index_t batch_;
   index_t row_;
   index_t col_;
   index_t stride_;
@@ -94,61 +105,76 @@ class MatrixMap {
 };
 
 typedef Major PackOrder;
-
-template<typename T>
-class PackedBlock {
- public:
-  PackedBlock() : data_tensor_(GetCPUAllocator(),
-                               DataTypeToEnum<T>::v()) {}
-
-  const T *data() const {
-    return data_tensor_.data<T>();
-  }
-
-  T *mutable_data() {
-    return data_tensor_.mutable_data<T>();
-  }
-
-  Tensor *tensor() {
-    return &data_tensor_;
-  }
-
- private:
-  Tensor data_tensor_;
-};
+typedef Tensor PackedBlock;
 
 class SGemm {
  public:
-  SGemm(): packed_(false) {}
+  SGemm()
+      : packed_lhs_(nullptr),
+        packed_rhs_(nullptr),
+        packed_(false) {}
 
   void operator()(const MatrixMap<const float> &lhs,
                   const MatrixMap<const float> &rhs,
-                  MatrixMap<float> *result);
+                  MatrixMap<float> *result,
+                  ScratchBuffer *scratch_buffer = nullptr);
 
-  void operator()(const PackedBlock<float> &lhs,
-                  const PackedBlock<float> &rhs,
-                  const index_t height,
-                  const index_t depth,
-                  const index_t width,
-                  PackedBlock<float> *result);
+  void Run(const float *A,
+           const float *B,
+           const index_t batch,
+           const index_t height_a,
+           const index_t width_a,
+           const index_t height_b,
+           const index_t width_b,
+           const bool transpose_a,
+           const bool transpose_b,
+           const bool is_a_weight,
+           const bool is_b_weight,
+           float *C,
+           ScratchBuffer *scratch_buffer = nullptr);
 
   void PackLhs(const MatrixMap<const float> &lhs,
-               PackedBlock<float> *packed_block);
+               PackedBlock *packed_block);
 
   void PackRhs(const MatrixMap<const float> &rhs,
-               PackedBlock<float> *packed_block);
+               PackedBlock *packed_block);
 
-  void UnPack(const PackedBlock<float> &packed_result,
+  void UnPack(const PackedBlock &packed_result,
               MatrixMap<float> *matrix_map);
 
  private:
   void Pack(const MatrixMap<const float> &src,
             const PackOrder order,
-            PackedBlock<float> *packed_block);
+            PackedBlock *packed_block);
 
-  PackedBlock<float> packed_lhs_;
-  PackedBlock<float> packed_rhs_;
-  PackedBlock<float> packed_result_;
+  void PackPerBatch(const MatrixMap<const float> &src,
+                    const PackOrder order,
+                    const index_t batch_index,
+                    float *packed_data);
+
+  void UnPackPerBatch(const float *packed_data,
+                      const index_t batch_index,
+                      MatrixMap<float> *matrix_map);
+
+  void RunInternal(const PackedBlock &lhs,
+                   const PackedBlock &rhs,
+                   const index_t batch,
+                   const index_t height,
+                   const index_t depth,
+                   const index_t width,
+                   PackedBlock *result);
+
+  void RunPerBatch(const float *lhs,
+                   const float *rhs,
+                   const index_t height,
+                   const index_t depth,
+                   const index_t width,
+                   float *result);
+
+  std::unique_ptr<Tensor> packed_lhs_;
+  std::unique_ptr<Tensor> packed_rhs_;
+  std::unique_ptr<Tensor> packed_result_;
+
   bool packed_;
 };
 

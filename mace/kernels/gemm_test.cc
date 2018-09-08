@@ -74,25 +74,26 @@ void GemvTest(index_t batch, index_t N, index_t M) {
   }
 }
 
-void SGemmTest(index_t N,
+void SGemmTest(index_t batch,
+               index_t N,
                index_t K,
                index_t M,
                bool transpose_a,
                bool transpose_b) {
-  std::unique_ptr<float[]> A(new float[N * K]);
-  std::unique_ptr<float[]> B(new float[K * M]);
-  std::unique_ptr<float[]> C(new float[N * M]);
-  std::unique_ptr<float[]> C_ref(new float[N * M]);
+  std::unique_ptr<float[]> A(new float[batch * N * K]);
+  std::unique_ptr<float[]> B(new float[batch * K * M]);
+  std::unique_ptr<float[]> C(new float[batch * N * M]);
+  std::unique_ptr<float[]> C_ref(new float[batch * N * M]);
 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::normal_distribution<float> nd(0, 1);
 
-  std::generate(A.get(), A.get() + N * K,
+  std::generate(A.get(), A.get() + batch * N * K,
                 [&gen, &nd] { return nd(gen); });
-  std::generate(B.get(), B.get() + K * M,
+  std::generate(B.get(), B.get() + batch * K * M,
                 [&gen, &nd] { return nd(gen); });
-  kernels::GemmRef(A.get(), B.get(), 1, N, K, M, C_ref.get(), transpose_a,
+  kernels::GemmRef(A.get(), B.get(), batch, N, K, M, C_ref.get(), transpose_a,
                    transpose_b);
 
   kernels::MatrixMap<const float> matrix_a;
@@ -100,22 +101,38 @@ void SGemmTest(index_t N,
 
   if (!transpose_a) {
     matrix_a =
-        kernels::MatrixMap<const float>(N, K, kernels::RowMajor, A.get());
+        kernels::MatrixMap<const float>(batch,
+                                        N,
+                                        K,
+                                        kernels::RowMajor,
+                                        A.get());
   } else {
     matrix_a =
-        kernels::MatrixMap<const float>(K, N, kernels::RowMajor, A.get());
+        kernels::MatrixMap<const float>(batch,
+                                        K,
+                                        N,
+                                        kernels::RowMajor,
+                                        A.get());
     matrix_a = matrix_a.transpose();
   }
 
   if (!transpose_b) {
     matrix_b =
-        kernels::MatrixMap<const float>(K, M, kernels::RowMajor, B.get());
+        kernels::MatrixMap<const float>(batch,
+                                        K,
+                                        M,
+                                        kernels::RowMajor,
+                                        B.get());
   } else {
     matrix_b =
-        kernels::MatrixMap<const float>(M, K, kernels::RowMajor, B.get());
+        kernels::MatrixMap<const float>(batch,
+                                        M,
+                                        K,
+                                        kernels::RowMajor,
+                                        B.get());
     matrix_b = matrix_b.transpose();
   }
-  kernels::MatrixMap<float> matrix_c(N, M, kernels::RowMajor, C.get());
+  kernels::MatrixMap<float> matrix_c(batch, N, M, kernels::RowMajor, C.get());
 
   kernels::SGemm sgemm;
   sgemm(matrix_a, matrix_b, &matrix_c);
@@ -168,18 +185,12 @@ TEST(GEMMTest, gemv) {
 }
 
 namespace {
-void TestSGemmTranspose(index_t N, index_t K, index_t M) {
-  SGemmTest(N, K, M, false, false);
-  SGemmTest(N, K, M, true, false);
-  SGemmTest(N, K, M, false, true);
-  SGemmTest(N, K, M, true, true);
+void TestSGemmTranspose(index_t batch, index_t N, index_t K, index_t M) {
+  SGemmTest(batch, N, K, M, false, false);
+  SGemmTest(batch, N, K, M, true, false);
+  SGemmTest(batch, N, K, M, false, true);
+  SGemmTest(batch, N, K, M, true, true);
 }
-}
-
-TEST(SGEMMTest, AlignedWithoutBatch) {
-  TestSGemmTranspose(4, 4, 4);
-  TestSGemmTranspose(8, 8, 8);
-  TestSGemmTranspose(16, 16, 16);
 }
 
 TEST(SGEMMTest, UnalignedWithoutBatch) {
@@ -187,7 +198,8 @@ TEST(SGEMMTest, UnalignedWithoutBatch) {
   for (index_t N : tests) {
     for (index_t K : tests) {
       for (index_t M : tests) {
-        TestSGemmTranspose(N, K, M);
+        TestSGemmTranspose(1, N, K, M);
+        TestSGemmTranspose(16, N, K, M);
       }
     }
   }

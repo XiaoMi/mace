@@ -211,8 +211,8 @@ void WinoMatMulBenchmark(
   const index_t round_w = (width + block_size - 1) / block_size;
   const index_t out_width = round_h * round_w;
   // Add input data
-  net.AddRandomInput<D, float>("A", {batch, out_channels, in_channels, 1});
-  net.AddRandomInput<D, float>("B", {batch, in_channels, out_width, 1});
+  net.AddRandomInput<D, float>("A", {batch, out_channels, in_channels});
+  net.AddRandomInput<D, float>("B", {batch, in_channels, out_width});
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);

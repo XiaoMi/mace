@@ -399,6 +399,10 @@ class Tensor {
     zero_point_ = zero_point;
   }
 
+  inline void SetIsWeight(bool is_weight) {
+    is_weight_ = is_weight;
+  }
+
  private:
   Allocator *allocator_;
   DataType dtype_;
@@ -409,7 +413,7 @@ class Tensor {
   bool is_buffer_owner_;
   bool unused_;
   std::string name_;
-  const bool is_weight_;
+  bool is_weight_;
   float scale_;
   int32_t zero_point_;
 

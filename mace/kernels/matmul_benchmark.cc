@@ -114,9 +114,11 @@ void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
   std::vector<float> rhs(k * n);
   std::vector<float> result(m * n);
 
-  kernels::MatrixMap<const float> matrix_lhs(m, k, RowMajor, lhs.data(), true);
-  kernels::MatrixMap<const float> matrix_rhs(k, n, RowMajor, rhs.data(), true);
-  kernels::MatrixMap<float> matrix_result(m, n, RowMajor, result.data());
+  kernels::MatrixMap<const float> matrix_lhs(1, m, k, RowMajor, lhs.data(),
+                                             true);
+  kernels::MatrixMap<const float> matrix_rhs(1, k, n, RowMajor, rhs.data(),
+                                             true);
+  kernels::MatrixMap<float> matrix_result(1, m, n, RowMajor, result.data());
 
   kernels::SGemm sgemm;
 

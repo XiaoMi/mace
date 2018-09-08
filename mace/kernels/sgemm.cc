@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/sgemm.h"
-
 #include <memory>
+
+#include "mace/kernels/sgemm.h"
+#include "mace/core/runtime/cpu/cpu_runtime.h"
+
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -29,29 +31,118 @@ namespace kernels {
 
 void SGemm::operator()(const MatrixMap<const float> &lhs,
                        const MatrixMap<const float> &rhs,
-                       MatrixMap<float> *result) {
+                       MatrixMap<float> *result,
+                       ScratchBuffer *scratch_buffer) {
   if (rhs.col() < lhs.row()) {
     MatrixMap<const float> lhs_transpose = lhs.transpose();
     MatrixMap<const float> rhs_transpose = rhs.transpose();
     MatrixMap<float> result_transpose = result->transpose();
-    return operator()(rhs_transpose, lhs_transpose, &result_transpose);
+    return operator()(rhs_transpose,
+                      lhs_transpose,
+                      &result_transpose,
+                      scratch_buffer);
   }
 
-  if (!packed_ || !lhs.is_const()) {
-    PackLhs(lhs, &packed_lhs_);
+  if (scratch_buffer != nullptr) {
+    scratch_buffer->Rewind();
+    index_t total_size = result->size();
+    if (!lhs.is_const()) {
+      total_size += lhs.size();
+    }
+    if (!rhs.is_const()) {
+      total_size += rhs.size();
+    }
+    scratch_buffer->GrowSize(total_size * sizeof(float));
+
+    scratch_buffer->Rewind();
+    if (!lhs.is_const()) {
+      packed_lhs_.reset(new Tensor(scratch_buffer->Scratch(
+          lhs.size() * sizeof(float)), DT_FLOAT));
+    }
+    if (!rhs.is_const()) {
+      packed_lhs_.reset(new Tensor(scratch_buffer->Scratch(
+          rhs.size() * sizeof(float)), DT_FLOAT));
+    }
+    packed_result_.reset(new Tensor(scratch_buffer->Scratch(
+        result->size() * sizeof(float)), DT_FLOAT));
   }
-  if (!packed_ || !rhs.is_const()) {
-    PackRhs(rhs, &packed_rhs_);
+
+  if (packed_lhs_.get() == nullptr) {
+    packed_lhs_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_lhs_->Resize({lhs.size()});
+  }
+  if (packed_rhs_.get() == nullptr) {
+    packed_rhs_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_rhs_->Resize({rhs.size()});
+  }
+  if (packed_result_.get() == nullptr) {
+    packed_result_.reset(new Tensor(GetCPUAllocator(), DT_FLOAT));
+    packed_result_->Resize({result->size()});
+  }
+
+  if (!lhs.is_const() || !packed_) {
+    PackLhs(lhs, packed_lhs_.get());
+  }
+  if (!rhs.is_const() || !packed_) {
+    PackRhs(rhs, packed_rhs_.get());
   }
   packed_ = true;
 
-  operator()(packed_lhs_,
-             packed_rhs_,
-             lhs.row(),
-             lhs.col(),
-             rhs.col(),
-             &packed_result_);
-  UnPack(packed_result_, result);
+  RunInternal(*packed_lhs_,
+              *packed_rhs_,
+              lhs.batch(),
+              lhs.row(),
+              lhs.col(),
+              rhs.col(),
+              packed_result_.get());
+
+  UnPack(*packed_result_, result);
+}
+
+void SGemm::Run(const float *A,
+                const float *B,
+                const index_t batch,
+                const index_t height_a,
+                const index_t width_a,
+                const index_t height_b,
+                const index_t width_b,
+                const bool transpose_a,
+                const bool transpose_b,
+                const bool is_a_weight,
+                const bool is_b_weight,
+                float *C,
+                ScratchBuffer *scratch_buffer) {
+  index_t height_c = height_a;
+  index_t width_c = width_b;
+  if (transpose_a) {
+    height_c = width_a;
+  }
+  if (transpose_b) {
+    width_c = height_b;
+  }
+
+  MatrixMap<const float> matrix_a =
+      MatrixMap<const float>(batch,
+                             height_a,
+                             width_a,
+                             kernels::RowMajor,
+                             A,
+                             is_a_weight);
+  MatrixMap<const float> matrix_b =
+      kernels::MatrixMap<const float>(batch,
+                                      height_b,
+                                      width_b,
+                                      kernels::RowMajor,
+                                      B,
+                                      is_b_weight);
+  if (transpose_a) {
+    matrix_a = matrix_a.transpose();
+  }
+  if (transpose_b) {
+    matrix_b = matrix_b.transpose();
+  }
+  MatrixMap<float> matrix_c(batch, height_c, width_c, kernels::RowMajor, C);
+  operator()(matrix_a, matrix_b, &matrix_c, scratch_buffer);
 }
 
 #if defined(MACE_ENABLE_NEON)
@@ -141,17 +232,43 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
 #endif  // __aarch64__
 #endif  // MACE_ENABLE_NEON
 
-void SGemm::operator()(const PackedBlock<float> &lhs,
-                       const PackedBlock<float> &rhs,
-                       const index_t height,
-                       const index_t depth,
-                       const index_t width,
-                       PackedBlock<float> *result) {
-  result->tensor()->Resize({height * width});
-  const float *lhs_data = lhs.data();
-  const float *rhs_data = rhs.data();
-  float *result_data = result->mutable_data();
+void SGemm::RunInternal(const PackedBlock &lhs,
+                        const PackedBlock &rhs,
+                        const index_t batch,
+                        const index_t height,
+                        const index_t depth,
+                        const index_t width,
+                        PackedBlock *result) {
+  const float *lhs_data = lhs.data<float>();
+  const float *rhs_data = rhs.data<float>();
+  float *result_data = result->mutable_data<float>();
 
+#define MACE_SGEMM_RUN_PER_BATCH                      \
+  for (index_t b = 0; b < batch; ++b) {               \
+    RunPerBatch(lhs_data + b * height * depth,        \
+                rhs_data + b * depth * width,         \
+                height,                               \
+                depth,                                \
+                width,                                \
+                result_data + b * height * width);    \
+  }
+
+  if (batch >= MaceOpenMPThreadCount) {
+#pragma omp parallel for
+    MACE_SGEMM_RUN_PER_BATCH
+  } else {
+    MACE_SGEMM_RUN_PER_BATCH
+  }
+
+#undef MACE_SGEMM_RUN_PER_BATCH
+}
+
+void SGemm::RunPerBatch(const float *lhs_data,
+                        const float *rhs_data,
+                        const index_t height,
+                        const index_t depth,
+                        const index_t width,
+                        float *result_data) {
 #if defined(MACE_ENABLE_NEON)
   const index_t block_w = width >> 2;
   const index_t remain_w = width - (block_w << 2);
@@ -508,11 +625,10 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
 
       float32x4_t c0 = vdupq_n_f32(0.f);
 
-#if defined(__aarch64__)
+      // d: 8
       block_d = remain_d >> 3;
       remain_d -= (block_d << 3);
 
-      // d: 8
       for (index_t bd = 0; bd < block_d; ++bd) {
         // 1.8.4
         float32x4_t a0, a1;
@@ -535,7 +651,6 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
         lhs_ptr += 8;
         rhs_ptr += 32;
       }
-#endif  // __aarch64__
 
       block_d = remain_d >> 2;
       remain_d -= (block_d << 2);
@@ -608,7 +723,7 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
 
       index_t remain_d = depth;
 
-      float32x4_t c0, c1, c2, c3, c4, c5, c6, c7;
+      float32x4_t c0, c1;
       c0 = vdupq_n_f32(0.f);
       c1 = vdupq_n_f32(0.f);
 
@@ -787,93 +902,74 @@ void SGemm::operator()(const PackedBlock<float> &lhs,
 }
 
 void SGemm::PackLhs(const MatrixMap<const float> &lhs,
-                    PackedBlock<float> *packed_block) {
+                    PackedBlock *packed_block) {
   Pack(lhs, PackOrder::ColMajor, packed_block);
 }
 
 void SGemm::PackRhs(const MatrixMap<const float> &rhs,
-                    PackedBlock<float> *packed_block) {
+                    PackedBlock *packed_block) {
   Pack(rhs, PackOrder::RowMajor, packed_block);
 }
 
-void SGemm::UnPack(const PackedBlock<float> &packed_result,
+void SGemm::Pack(const MatrixMap<const float> &src,
+                 const PackOrder order,
+                 PackedBlock *packed_block) {
+  MACE_CHECK_NOTNULL(packed_block);
+
+  const index_t height = src.row();
+  const index_t width = src.col();
+  auto packed_data = packed_block->mutable_data<float>();
+
+#define MACE_SGEMM_PACK_PER_BATCH                                     \
+    for (index_t b = 0; b < src.batch(); ++b) {                       \
+      PackPerBatch(src, order, b, packed_data + b * height * width);  \
+    }
+  if (src.batch() >= MaceOpenMPThreadCount) {
+#pragma omp parallel for
+    MACE_SGEMM_PACK_PER_BATCH
+  } else {
+    MACE_SGEMM_PACK_PER_BATCH
+  }
+#undef MACE_SGEMM_PACK_PER_BATCH
+}
+
+void SGemm::UnPack(const PackedBlock &packed_result,
                    MatrixMap<float> *matrix_map) {
   MACE_CHECK_NOTNULL(matrix_map);
 
   const index_t height = matrix_map->row();
   const index_t width = matrix_map->col();
-  auto packed_data = packed_result.data();
-  auto unpacked_data = matrix_map->data();
+  auto packed_data = packed_result.data<float>();
 
-  if (matrix_map->major() == Major::RowMajor) {
-    // This is for non-transposed result
-    index_t w = 0;
-#if defined(MACE_ENABLE_NEON)
-    #pragma omp parallel for
-    for (index_t iw = w; iw <= width - 4; iw += 4) {
-      const float *packed_data_ptr = packed_data + iw * height;
-      float *unpacked_data_ptr = unpacked_data + iw;
-      for (index_t h = 0; h < height; ++h) {
-        const index_t packed_offset = h * 4;
-        const index_t unpacked_offset = h * width;
-        float32x4_t vs = vld1q_f32(packed_data_ptr + packed_offset);
-        vst1q_f32(unpacked_data_ptr + unpacked_offset, vs);
-      }
-    }
-    w += (width - w) / 4 * 4;
-#endif
-#pragma omp parallel for
-    for (index_t iw = w; iw < width; ++iw) {
-      const float *packed_data_ptr = packed_data + iw * height;
-      float *unpacked_data_ptr = unpacked_data + iw;
-      for (index_t h = 0; h < height; ++h) {
-        unpacked_data_ptr[h * width] = packed_data_ptr[h];
-      }
-    }
-  } else {
-    // This is for transposed result
-    index_t w = 0;
-#if defined(MACE_ENABLE_NEON)
-    #pragma omp parallel for
-    for (index_t iw = w; iw <= width - 4; iw += 4) {
-      const float *packed_data_ptr = packed_data + iw * height;
-      float *unpacked_data_ptr = unpacked_data + iw * height;
-      for (index_t h = 0; h < height; ++h) {
-        const index_t packed_offset = h * 4;
-        const index_t unpacked_offset = h;
-        float32x4_t vs = vld1q_f32(packed_data_ptr + packed_offset);
-        unpacked_data_ptr[unpacked_offset] = vs[0];
-        unpacked_data_ptr[unpacked_offset + height] = vs[1];
-        unpacked_data_ptr[unpacked_offset + 2 * height] = vs[2];
-        unpacked_data_ptr[unpacked_offset + 3 * height] = vs[3];
-      }
-    }
-    w += (width - w) / 4 * 4;
-#endif
-#pragma omp parallel for
-    for (index_t iw = w; iw < width; ++iw) {
-      std::copy_n(
-          packed_data + iw * height, height, unpacked_data + iw * height);
-    }
+#define MACE_SGEMM_UNPACK_PER_BATCH                                   \
+  for (index_t b = 0; b < matrix_map->batch(); ++b) {                 \
+    UnPackPerBatch(packed_data + b * height * width, b, matrix_map);  \
   }
+
+  if (matrix_map->batch() >= MaceOpenMPThreadCount) {
+#pragma omp parallel for
+    MACE_SGEMM_UNPACK_PER_BATCH
+  } else {
+    MACE_SGEMM_UNPACK_PER_BATCH
+  }
+#undef MACE_SGEMM_UNPACK_PER_BATCH
 }
 
-void SGemm::Pack(const MatrixMap<const float> &src,
-                 const PackOrder order,
-                 PackedBlock<float> *packed_block) {
-  MACE_CHECK_NOTNULL(packed_block);
+void SGemm::PackPerBatch(const MatrixMap<const float> &src,
+                         const PackOrder order,
+                         const index_t batch_index,
+                         float *packed_data) {
+  MACE_CHECK_NOTNULL(packed_data);
 
   const index_t height = src.row();
   const index_t width = src.col();
-  packed_block->tensor()->Resize({height * width});
-  auto src_data = src.data();
-  auto packed_data = packed_block->mutable_data();
+  auto src_data = src.batch_data(batch_index);
 
   if (src.major() == Major::RowMajor && order == PackOrder::ColMajor) {
     // This is for packing no-transpose lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
-    #if defined(__aarch64__)
+#if defined(__aarch64__)
 #pragma omp parallel for
     for (index_t ih = h; ih <= height - 8; ih += 8) {
       const float *src_data_ptr = src_data + ih * width;
@@ -919,7 +1015,7 @@ void SGemm::Pack(const MatrixMap<const float> &src,
     // This is for packing transpose-needed lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
-    #if defined(__aarch64__)
+#if defined(__aarch64__)
 #pragma omp parallel for
     for (index_t ih = h; ih <= height - 8; ih += 8) {
       const float *src_data_ptr = src_data + ih;
@@ -960,7 +1056,7 @@ void SGemm::Pack(const MatrixMap<const float> &src,
     // This is for packing no-transpose rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-    #pragma omp parallel for
+#pragma omp parallel for
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *src_data_ptr = src_data + iw;
       float *packed_data_ptr = packed_data + iw * height;
@@ -985,7 +1081,7 @@ void SGemm::Pack(const MatrixMap<const float> &src,
     // This is for packing transpose-needed rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-    #pragma omp parallel for
+#pragma omp parallel for
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *src_data_ptr = src_data + iw * height;
       float *packed_data_ptr = packed_data + iw * height;
@@ -1004,6 +1100,68 @@ void SGemm::Pack(const MatrixMap<const float> &src,
 #pragma omp parallel for
     for (index_t iw = w; iw < width; ++iw) {
       std::copy_n(src_data + iw * height, height, packed_data + iw * height);
+    }
+  }
+}
+
+void SGemm::UnPackPerBatch(const float *packed_data,
+                           const index_t batch_index,
+                           MatrixMap<float> *matrix_map) {
+  MACE_CHECK_NOTNULL(matrix_map);
+
+  const index_t height = matrix_map->row();
+  const index_t width = matrix_map->col();
+  auto unpacked_data = matrix_map->batch_data(batch_index);
+
+  if (matrix_map->major() == Major::RowMajor) {
+    // This is for non-transposed result
+    index_t w = 0;
+#if defined(MACE_ENABLE_NEON)
+#pragma omp parallel for
+    for (index_t iw = w; iw <= width - 4; iw += 4) {
+      const float *packed_data_ptr = packed_data + iw * height;
+      float *unpacked_data_ptr = unpacked_data + iw;
+      for (index_t h = 0; h < height; ++h) {
+        const index_t packed_offset = h * 4;
+        const index_t unpacked_offset = h * width;
+        float32x4_t vs = vld1q_f32(packed_data_ptr + packed_offset);
+        vst1q_f32(unpacked_data_ptr + unpacked_offset, vs);
+      }
+    }
+    w += (width - w) / 4 * 4;
+#endif
+#pragma omp parallel for
+    for (index_t iw = w; iw < width; ++iw) {
+      const float *packed_data_ptr = packed_data + iw * height;
+      float *unpacked_data_ptr = unpacked_data + iw;
+      for (index_t h = 0; h < height; ++h) {
+        unpacked_data_ptr[h * width] = packed_data_ptr[h];
+      }
+    }
+  } else {
+    // This is for transposed result
+    index_t w = 0;
+#if defined(MACE_ENABLE_NEON)
+#pragma omp parallel for
+    for (index_t iw = w; iw <= width - 4; iw += 4) {
+      const float *packed_data_ptr = packed_data + iw * height;
+      float *unpacked_data_ptr = unpacked_data + iw * height;
+      for (index_t h = 0; h < height; ++h) {
+        const index_t packed_offset = h * 4;
+        const index_t unpacked_offset = h;
+        float32x4_t vs = vld1q_f32(packed_data_ptr + packed_offset);
+        unpacked_data_ptr[unpacked_offset] = vs[0];
+        unpacked_data_ptr[unpacked_offset + height] = vs[1];
+        unpacked_data_ptr[unpacked_offset + 2 * height] = vs[2];
+        unpacked_data_ptr[unpacked_offset + 3 * height] = vs[3];
+      }
+    }
+    w += (width - w) / 4 * 4;
+#endif
+#pragma omp parallel for
+    for (index_t iw = w; iw < width; ++iw) {
+      std::copy_n(
+          packed_data + iw * height, height, unpacked_data + iw * height);
     }
   }
 }

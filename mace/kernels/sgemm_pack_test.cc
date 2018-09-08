@@ -31,17 +31,17 @@ void TestPack(const std::vector<float> &data,
               Major src_order,
               PackOrder pack_order) {
   SGemm sg;
-  MatrixMap<const float> src_matrix(height, width, src_order, data.data());
-  PackedBlock<float> packed;
-  packed.tensor()->Resize({height, width});
+  MatrixMap<const float> src_matrix(1, height, width, src_order, data.data());
+  PackedBlock packed;
+  packed.Resize({height, width});
   if (pack_order == PackOrder::ColMajor) {
     sg.PackLhs(src_matrix, &packed);
   } else {
     sg.PackRhs(src_matrix, &packed);
   }
 
-  auto packed_data = packed.data();
-  for (index_t i = 0; i < packed.tensor()->size(); ++i) {
+  auto packed_data = packed.data<float>();
+  for (index_t i = 0; i < packed.size(); ++i) {
     EXPECT_EQ(expected_data[i], packed_data[i]);
   }
 }
@@ -57,9 +57,9 @@ void TestUnPack(const index_t height,
     data[i] = rand_r(&seed);
   }
 
-  MatrixMap<const float> src_matrix(height, width, src_order, data.data());
-  PackedBlock<float> packed;
-  packed.tensor()->Resize({height, width});
+  MatrixMap<const float> src_matrix(1, height, width, src_order, data.data());
+  PackedBlock packed;
+  packed.Resize({height, width});
   SGemm sg;
   if (pack_order == PackOrder::ColMajor) {
     sg.PackLhs(src_matrix, &packed);
@@ -68,17 +68,18 @@ void TestUnPack(const index_t height,
   }
 
   std::vector<float> unpacked(matrix_size);
-  MatrixMap<float> unpacked_matrix(height, width, src_order, unpacked.data());
+  MatrixMap<float>
+      unpacked_matrix(1, height, width, src_order, unpacked.data());
   sg.UnPack(packed, &unpacked_matrix);
   auto unpacked_data = unpacked.data();
-  for (index_t i = 0; i < packed.tensor()->size(); ++i) {
+  for (index_t i = 0; i < packed.size(); ++i) {
     EXPECT_EQ(data[i], unpacked_data[i]);
   }
 }
 }  // namespace
 
 
-TEST(SGemmTest, Pack) {
+TEST(SGemmPackTest, Pack) {
   std::vector<float> data =
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36};
@@ -149,7 +150,7 @@ TEST(SGemmTest, Pack) {
 #endif
 }
 
-TEST(SGemmTest, UnPack) {
+TEST(SGemmPackTest, UnPack) {
   TestUnPack(4, 3, Major::RowMajor, PackOrder::RowMajor);
   TestUnPack(4, 4, Major::RowMajor, PackOrder::RowMajor);
   TestUnPack(4, 5, Major::RowMajor, PackOrder::RowMajor);
