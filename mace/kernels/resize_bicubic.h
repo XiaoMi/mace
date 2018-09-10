@@ -102,7 +102,7 @@ inline void ResizeImage(const float *images,
       std::vector<float> y_weights;
       std::vector<index_t> y_indices;
       GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
-                                 &y_indices);
+                           &y_indices);
       for (index_t x = 0; x < out_width; ++x) {
         std::vector<float> x_weights;
         std::vector<index_t> x_indices;
