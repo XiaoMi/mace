@@ -203,6 +203,8 @@ class TransformerRule(Enum):
     QUANTIZE_WEIGHTS = 25
     TRANSFORM_LSTMCELL_ZEROSTATE = 26
     TRANSFORM_BASIC_LSTMCELL = 27
+    TRANSFORM_FAKE_QUANTIZE = 28
+    CHECK_QUANTIZE_INFO = 29
 
 
 class ConverterInterface(object):
@@ -218,6 +220,7 @@ class NodeInfo(object):
     def __init__(self):
         self._name = None
         self._shape = []
+        self._range = [-1.0, 1.0]
 
     @property
     def name(self):
@@ -227,6 +230,10 @@ class NodeInfo(object):
     def shape(self):
         return self._shape
 
+    @property
+    def range(self):
+        return self._range
+
     @name.setter
     def name(self, name):
         self._name = name
@@ -234,6 +241,10 @@ class NodeInfo(object):
     @shape.setter
     def shape(self, shape):
         self._shape = shape
+
+    @range.setter
+    def range(self, range):
+        self._range = range
 
     def __str__(self):
         return '%s %s' % (self._name, str(self._shape))
@@ -339,6 +350,7 @@ class ConverterOption(object):
         else:
             self._transformer_option = [
                 # Model structure related transformation
+                TransformerRule.TRANSFORM_FAKE_QUANTIZE,
                 TransformerRule.REMOVE_IDENTITY_OP,
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
@@ -368,15 +380,17 @@ class ConverterOption(object):
                 # Transform finalization
                 TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
                 # for quantization entropy calibration use
-                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                 TransformerRule.SORT_BY_EXECUTION,
+                # Need to be put after SORT_BY_EXECUTION
+                TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
             ]
             if self._quantize:
-                self._transformer_option = self._transformer_option[:-1] + [
+                self._transformer_option = self._transformer_option + [
+                    # need to be put after ADD_QUANTIZE_TENSOR_RANGE
                     TransformerRule.QUANTIZE_NODES,
-                    TransformerRule.ADD_QUANTIZE_TENSOR_RANGE,
                     TransformerRule.QUANTIZE_WEIGHTS,
                     TransformerRule.SORT_BY_EXECUTION,
+                    TransformerRule.CHECK_QUANTIZE_INFO,
                 ]
 
 

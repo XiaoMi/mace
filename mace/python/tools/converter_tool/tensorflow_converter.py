@@ -102,6 +102,7 @@ TFSupportedOps = [
     'Cast',
     'ArgMax',
     'Split',
+    'FakeQuantWithMinMaxVars',
 ]
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
@@ -205,6 +206,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Cast.name: self.convert_cast,
             TFOpType.ArgMax.name: self.convert_argmax,
             TFOpType.Split.name: self.convert_split,
+            TFOpType.FakeQuantWithMinMaxVars.name: self.convert_fake_quantize,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -841,3 +843,21 @@ class TensorflowConverter(base_converter.ConverterInterface):
         num_split_arg.i = tf_op.get_attr('num_split')
 
         self._skip_tensor.add(tf_op.inputs[0].name)
+
+    def convert_fake_quantize(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        min_arg = op.arg.add()
+        min_arg.name = 'min'
+        min_arg.f = tf_op.inputs[1].eval()
+        max_arg = op.arg.add()
+        max_arg.name = 'max'
+        max_arg.f = tf_op.inputs[2].eval()
+        narrow_range_arg = op.arg.add()
+        narrow_range_arg.name = 'narrow_range'
+        narrow_range_arg.i = int(tf_op.get_attr('narrow_range'))
+        num_bits_arg = op.arg.add()
+        num_bits_arg.name = 'num_bits'
+        num_bits_arg.i = int(tf_op.get_attr('num_bits'))
+
+        self._skip_tensor.add(tf_op.inputs[1].name)
+        self._skip_tensor.add(tf_op.inputs[2].name)

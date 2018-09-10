@@ -59,6 +59,13 @@ message OutputShape {
   repeated int64 dims = 1;
 }
 
+message QuantizeActivationInfo {
+  optional float scale = 1;
+  optional int32 zero_point = 2;
+  optional float minval = 3;  // hexagon uses min/max
+  optional float maxval = 4;
+}
+
 message OperatorDef {
   repeated string input = 1;
   repeated string output = 2;
@@ -67,6 +74,7 @@ message OperatorDef {
   repeated Argument arg = 5;
   repeated OutputShape output_shape = 6;
   repeated DataType output_type = 7;
+  repeated QuantizeActivationInfo quantize_info = 8;
 
   repeated int32 mem_id = 10;
 
@@ -106,23 +114,12 @@ message OutputInfo {
   optional DataType data_type = 5 [default = DT_FLOAT];
 }
 
-message QuantizeActivationInfo {
-  optional string tensor_name = 1;
-  optional float scale = 2;
-  optional int32 zero_point = 3;
-}
-
-message QuantizeInfo {
-  repeated QuantizeActivationInfo activation_info = 1;
-}
-
 message NetDef {
   optional string name = 1;
   repeated OperatorDef op = 2;
   optional string version = 3;
   repeated Argument arg = 4;
   repeated ConstTensor tensors = 5;
-  optional QuantizeInfo quantize_info = 6;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;

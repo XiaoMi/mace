@@ -122,6 +122,16 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
           {{ net.op[i].node_id }},
           { {{ net.op[i].mem_id | join(', ') }} });
 
+
+  op->mutable_quantize_info()->Reserve({{ net.op[i].quantize_info | length }});
+  {% for j in range(net.op[i].quantize_info|length) %}
+    auto quantize_info{{j}} = op->add_quantize_info();
+    quantize_info{{j}}->set_scale({{ net.op[i].quantize_info[j].scale }});
+    quantize_info{{j}}->set_zero_point({{ net.op[i].quantize_info[j].zero_point }});
+    quantize_info{{j}}->set_minval({{ net.op[i].quantize_info[j].minval }});
+    quantize_info{{j}}->set_maxval({{ net.op[i].quantize_info[j].maxval }});
+  {% endfor %}
+
   {% if runtime == 'dsp' %}
     op->set_padding({{ net.op[i].padding }});
     {% if net.op[i].node_input | length > 0 %}

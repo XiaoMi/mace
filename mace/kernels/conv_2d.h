@@ -879,6 +879,17 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     const index_t depth = input_channels * filter_h * filter_w;
     const index_t columns = batch * height * width;
 
+    VLOG(2) << "input scale/zero: " << input->scale() << ", "
+            << input->zero_point();
+    VLOG(2) << "filter scale/zero: " << filter->scale() << ", "
+            << filter->zero_point();
+    if (bias) {
+      VLOG(2) << "bias scale/zero: " << bias->scale() << ", "
+              << bias->zero_point();
+    }
+    VLOG(2) << "output scale/zero: " << output->scale() << ", "
+            << output->zero_point();
+
     MACE_CHECK(filter->dim(0) == channels, filter->dim(0), " != ", channels);
     MACE_CHECK(filter->dim(3) == input_channels, filter->dim(3), " != ",
                input_channels);

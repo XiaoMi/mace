@@ -109,7 +109,9 @@ class Tensor {
         name_(""),
         is_weight_(is_weight),
         scale_(0.f),
-        zero_point_(0) {}
+        zero_point_(0),
+        minval_(0.f),
+        maxval_(0.f) {}
 
   Tensor(BufferBase *buffer, DataType dtype,
          bool is_weight = false)
@@ -120,7 +122,9 @@ class Tensor {
       name_(""),
       is_weight_(is_weight),
       scale_(0.f),
-      zero_point_(0) {}
+      zero_point_(0),
+      minval_(0.f),
+      maxval_(0.f) {}
 
   Tensor(const BufferSlice &buffer_slice,
          DataType dtype,
@@ -132,7 +136,9 @@ class Tensor {
         name_(""),
         is_weight_(is_weight),
         scale_(0.f),
-        zero_point_(0) {
+        zero_point_(0),
+        minval_(0.f),
+        maxval_(0.f) {
     buffer_ = &buffer_slice_;
   }
 
@@ -391,6 +397,15 @@ class Tensor {
     return zero_point_;
   }
 
+  // hexagon now uses min/max instead of scale and zero
+  inline float minval() const {
+    return minval_;
+  }
+
+  inline float maxval() const {
+    return maxval_;
+  }
+
   inline void SetScale(float scale) {
     scale_ = scale;
   }
@@ -401,6 +416,14 @@ class Tensor {
 
   inline void SetIsWeight(bool is_weight) {
     is_weight_ = is_weight;
+  }
+
+  inline void SetMinVal(float minval) {
+    minval_ = minval;
+  }
+
+  inline void SetMaxVal(float maxval) {
+    maxval_ = maxval;
   }
 
  private:
@@ -416,6 +439,8 @@ class Tensor {
   bool is_weight_;
   float scale_;
   int32_t zero_point_;
+  float minval_;
+  float maxval_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Tensor);
 };

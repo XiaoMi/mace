@@ -138,20 +138,6 @@ void CreateMemoryArena(mace::MemoryArena *mem_arena) {
 }
 {% endif %}
 
-void AddQuantizeInfo(NetDef *net_def) {
-  MACE_LATENCY_LOGGER(1, "Add quantize info");
-  (void) net_def;
-
-  {% for i in range(net.quantize_info.activation_info|length) %}
-  mace::QuantizeActivationInfo *activation_info{{i}} =
-      net_def->mutable_quantize_info()->add_activation_info();
-  activation_info{{i}}->set_tensor_name("{{net.quantize_info.activation_info[i].tensor_name}}");
-  activation_info{{i}}->set_scale({{net.quantize_info.activation_info[i].scale}});
-  activation_info{{i}}->set_zero_point({{net.quantize_info.activation_info[i].zero_point}});
-
-  {% endfor %}
-}
-
 }  // namespace
 
 namespace {{tag}} {
@@ -178,8 +164,6 @@ const std::shared_ptr<NetDef> CreateNet() {
   {% if net.output_info | length > 0 %}
   CreateOutputInfo(net_def.get());
   {% endif %}
-
-  AddQuantizeInfo(net_def.get());
 
   return net_def;
 }
