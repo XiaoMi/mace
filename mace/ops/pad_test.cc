@@ -63,7 +63,7 @@ void Simple() {
 
   auto output = net.GetTensor("Output");
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 5, 6, 1}, {
                         1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2,   2,   2,
                         1.0, 1.0, 1.0, 2,   2,   2,   1.0, 1.0, 1.0, 1.0,
@@ -99,7 +99,7 @@ TEST_F(PadTest, ComplexCPU) {
 
   auto output = net.GetTensor("Output");
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 3, 3, 4},
       {
           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
@@ -134,8 +134,8 @@ void Complex(const std::vector<index_t> &input_shape,
   net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                   NHWC);
 
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
                                     kernels::BufferType::IN_OUT_CHANNEL);
@@ -155,9 +155,9 @@ void Complex(const std::vector<index_t> &input_shape,
   auto output = net.GetTensor("OpenCLOutput");
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(expected, *output, 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *output, 1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *output, 1e-5);
+    ExpectTensorNear<float>(*expected, *output, 1e-5);
   }
 }
 }  // namespace

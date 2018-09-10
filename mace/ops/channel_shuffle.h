@@ -26,10 +26,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class ChannelShuffleOp : public Operator<D, T> {
  public:
-  ChannelShuffleOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
+  ChannelShuffleOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
         group_(OperatorBase::GetOptionalArg<int>("group", 1)),
-        functor_(this->group_) {}
+        functor_(context, this->group_) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

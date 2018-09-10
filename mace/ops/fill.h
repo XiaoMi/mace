@@ -26,9 +26,9 @@ namespace ops {
 template <DeviceType D, class T>
 class FillOp : public Operator<D, T> {
  public:
-  FillOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_() {}
+  FillOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *shape = this->Input(SHAPE);

@@ -27,10 +27,12 @@
 namespace mace {
 namespace kernels {
 
-struct FullyConnectedBase {
-  FullyConnectedBase(const ActivationType activation,
+struct FullyConnectedBase : OpKernel {
+  FullyConnectedBase(OpKernelContext *context,
+                     const ActivationType activation,
                      const float relux_max_limit)
-      : activation_(activation),
+      : OpKernel(context),
+        activation_(activation),
         relux_max_limit_(relux_max_limit) {}
 
   const ActivationType activation_;
@@ -42,9 +44,10 @@ struct FullyConnectedFunctor;
 
 template <>
 struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
-  FullyConnectedFunctor(const ActivationType activation,
+  FullyConnectedFunctor(OpKernelContext *context,
+                        const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(activation, relux_max_limit) {}
+      : FullyConnectedBase(context, activation, relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *weight,
@@ -86,9 +89,10 @@ struct FullyConnectedFunctor<DeviceType::CPU, float>: FullyConnectedBase {
 
 template <>
 struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
-  FullyConnectedFunctor(const ActivationType activation,
+  FullyConnectedFunctor(OpKernelContext *context,
+                        const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(activation, relux_max_limit) {}
+      : FullyConnectedBase(context, activation, relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *weight,
@@ -117,7 +121,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
     const int32_t *bias_ptr = nullptr;
     if (bias == nullptr) {
       zero_bias.reset(
-          new Tensor(GetDeviceAllocator(DeviceType::CPU), DT_INT32));
+          new Tensor(GetCPUAllocator(), DT_INT32));
       zero_bias->Resize(bias_shape);
       zero_bias->Clear();
       bias_ptr = zero_bias->data<int32_t>();
@@ -148,9 +152,10 @@ struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::GPU, T> : FullyConnectedBase {
-  FullyConnectedFunctor(const ActivationType activation,
+  FullyConnectedFunctor(OpKernelContext *context,
+                        const ActivationType activation,
                         const float relux_max_limit)
-      : FullyConnectedBase(activation, relux_max_limit) {}
+      : FullyConnectedBase(context, activation, relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *weight,

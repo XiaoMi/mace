@@ -24,8 +24,9 @@ namespace ops {
 template<DeviceType D, class T>
 class QuantizeOp : public Operator<D, T> {
  public:
-  QuantizeOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
+  QuantizeOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context),
         non_zero_(
             static_cast<bool>(OperatorBase::GetOptionalArg<int>("non_zero",
                                                                 0))) {}
@@ -50,8 +51,8 @@ class QuantizeOp : public Operator<D, T> {
 template<DeviceType D, class T>
 class DequantizeOp : public Operator<D, T> {
  public:
-  DequantizeOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {}
+  DequantizeOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context), functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

@@ -47,7 +47,7 @@ void TestGather(const std::vector<index_t> &weight_shape,
   // Run
   net.RunOp(CPU);
 
-  auto expected = CreateTensor<float>(output_shape, output);
+  auto expected = net.CreateTensor<float>(output_shape, output);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }

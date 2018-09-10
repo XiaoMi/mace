@@ -21,6 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
@@ -30,8 +31,8 @@ template <DeviceType D, class T>
 struct FillFunctor;
 
 template <>
-struct FillFunctor<DeviceType::CPU, float> {
-  FillFunctor() {}
+struct FillFunctor<DeviceType::CPU, float> : OpKernel {
+  explicit FillFunctor(OpKernelContext *context) : OpKernel(context) {}
 
   MaceStatus operator()(const Tensor *shape,
                         const Tensor *value,

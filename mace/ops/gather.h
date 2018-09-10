@@ -24,9 +24,10 @@ namespace ops {
 template<DeviceType D, class T>
 class GatherOp : public Operator<D, T> {
  public:
-  GatherOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("axis", 0),
+  GatherOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 OperatorBase::GetOptionalArg<int>("axis", 0),
                  OperatorBase::GetOptionalArg<float>("y", 1.0)) {}
 
   MaceStatus Run(StatsFuture *future) override {

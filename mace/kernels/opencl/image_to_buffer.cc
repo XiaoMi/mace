@@ -67,12 +67,12 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
       break;
   }
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;

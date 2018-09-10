@@ -21,7 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-#include "mace/public/mace.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -34,7 +34,9 @@ template<DeviceType D, typename T>
 struct LocalResponseNormFunctor;
 
 template<>
-struct LocalResponseNormFunctor<DeviceType::CPU, float> {
+struct LocalResponseNormFunctor<DeviceType::CPU, float> : OpKernel {
+  explicit LocalResponseNormFunctor(OpKernelContext *context)
+      : OpKernel(context) {}
   MaceStatus operator()(const Tensor *input,
                   int depth_radius,
                   float bias,

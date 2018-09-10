@@ -57,7 +57,7 @@ TEST_F(PoolingOpTest, MAX_VALID) {
 
   // Check
   auto expected =
-      CreateTensor<float>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
+      net.CreateTensor<float>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -90,7 +90,7 @@ TEST_F(PoolingOpTest, MAX_SAME) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 2, 2, 1}, {4, 5, 7, 8});
+  auto expected = net.CreateTensor<float>({1, 2, 2, 1}, {4, 5, 7, 8});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -124,7 +124,7 @@ TEST_F(PoolingOpTest, MAX_VALID_DILATION) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 2, 2, 1}, {10, 11, 14, 15});
+  auto expected = net.CreateTensor<float>({1, 2, 2, 1}, {10, 11, 14, 15});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -158,7 +158,7 @@ TEST_F(PoolingOpTest, MAX_k2x2s2x2) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 5, 1}, {10, 12, 14, 16, 17});
+  auto expected = net.CreateTensor<float>({1, 1, 5, 1}, {10, 12, 14, 16, 17});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -209,7 +209,7 @@ void SimpleMaxPooling3S2() {
   }
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 4, 1}, {20, 22, 24, 26});
+  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {20, 22, 24, 26});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -249,8 +249,8 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
 
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -269,10 +269,10 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
                           kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-3,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,
                             1e-4);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
   }
 }
 }  // namespace
@@ -334,7 +334,7 @@ TEST_F(PoolingOpTest, AVG_VALID) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 2, 2, 2}, {2.5, 18.5, 4.5, 20.5, 10.5, 26.5, 12.5, 28.5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -368,7 +368,7 @@ void SimpleAvgPoolingTest() {
                           kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
+  auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -407,8 +407,8 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
 
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -427,10 +427,10 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
                           kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-3,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,
                             1e-3);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
   }
 }
 }  // namespace
@@ -503,7 +503,7 @@ TEST_F(PoolingOpTest, QUANT_MAX_VALID) {
 
   // Check
   auto expected =
-      CreateTensor<uint8_t>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
+      net.CreateTensor<uint8_t>({1, 2, 2, 2}, {5, 21, 7, 23, 13, 29, 15, 31});
 
   ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -531,7 +531,7 @@ TEST_F(PoolingOpTest, QUANT_MAX_SAME) {
   net.RunOp();
 
   // Check
-  auto expected = CreateTensor<uint8_t>({1, 2, 2, 1}, {4, 5, 7, 8});
+  auto expected = net.CreateTensor<uint8_t>({1, 2, 2, 1}, {4, 5, 7, 8});
 
   ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -561,7 +561,7 @@ TEST_F(PoolingOpTest, QUANT_AVG_VALID) {
   net.RunOp();
 
   // Check
-  auto expected = CreateTensor<uint8_t>(
+  auto expected = net.CreateTensor<uint8_t>(
       {1, 2, 2, 2}, {3, 19, 5, 21, 11, 27, 13, 29});
 
   ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"), 1e-5);

@@ -76,7 +76,7 @@ void Simple(const std::vector<index_t> &input_shape,
   }
 
   // Check
-  auto expected = CreateTensor<float>(output_shape, output_value);
+  auto expected = net.CreateTensor<float>(output_shape, output_value);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -156,8 +156,8 @@ void Random(const index_t batch,
   net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
 
   // Check
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
@@ -181,10 +181,10 @@ void Random(const index_t batch,
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-1,
                             1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
                             1e-3);
   }
 }

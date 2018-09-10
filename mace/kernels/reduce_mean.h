@@ -24,6 +24,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
 #endif
@@ -31,10 +32,12 @@
 namespace mace {
 namespace kernels {
 
-struct ReduceFunctorBase {
-  ReduceFunctorBase(const std::vector<int> &axis,
+struct ReduceFunctorBase : OpKernel {
+  ReduceFunctorBase(OpKernelContext *context,
+                    const std::vector<int> &axis,
                     const bool keep_dims)
-      : keep_dims_(keep_dims),
+      : OpKernel(context),
+        keep_dims_(keep_dims),
         axis_(axis) {}
   bool keep_dims_;
   bool reduce_first_axis_;
@@ -44,10 +47,11 @@ struct ReduceFunctorBase {
 };
 
 template <DeviceType D, typename T>
-struct ReduceMeanFunctor : ReduceFunctorBase{
-  ReduceMeanFunctor(const std::vector<int> &axis,
+struct ReduceMeanFunctor : ReduceFunctorBase {
+  ReduceMeanFunctor(OpKernelContext *context,
+                    const std::vector<int> &axis,
                     const bool keep_dims)
-      : ReduceFunctorBase(axis, keep_dims) {}
+      : ReduceFunctorBase(context, axis, keep_dims) {}
 
   void Simplify(const Tensor *input) {
     std::vector<bool> bitmap(static_cast<uint32_t>(input->dim_size()), false);
@@ -220,9 +224,10 @@ struct ReduceMeanFunctor : ReduceFunctorBase{
 template <typename T>
 struct ReduceMeanFunctor<DeviceType::GPU, T>
     : ReduceFunctorBase {
-  ReduceMeanFunctor(const std::vector<int> axis,
+  ReduceMeanFunctor(OpKernelContext *context,
+                    const std::vector<int> axis,
                     const bool keep_dims)
-      : ReduceFunctorBase(axis, keep_dims) {}
+      : ReduceFunctorBase(context, axis, keep_dims) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output_tensor,

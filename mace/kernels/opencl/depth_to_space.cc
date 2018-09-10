@@ -72,11 +72,11 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::stringstream kernel_name_ss;
@@ -119,8 +119,8 @@ MaceStatus DepthToSpaceOpFunctor<DeviceType::GPU, T>::operator()(
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

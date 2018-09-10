@@ -49,7 +49,7 @@ void SimpleScalarScalar(const kernels::EltwiseType type,
     MACE_NOT_IMPLEMENTED;
   }
 
-  auto expected = CreateTensor<DstType>({}, {output});
+  auto expected = net.CreateTensor<DstType>({}, {output});
 
   ExpectTensorNear<DstType>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -97,7 +97,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
                               kernels::BufferType::IN_OUT_CHANNEL);
   }
 
-  auto expected = CreateTensor<DstType>(shape, output);
+  auto expected = net.CreateTensor<DstType>(shape, output);
 
   ExpectTensorNear<DstType>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -167,7 +167,7 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
   if (input0.size() < input1.size()) {
     output_shape = shape1;
   }
-  auto expected = CreateTensor<DstType>(output_shape, output);
+  auto expected = net.CreateTensor<DstType>(output_shape, output);
 
   ExpectTensorNear<DstType>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -206,7 +206,7 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
     MACE_NOT_IMPLEMENTED;
   }
 
-  auto expected = CreateTensor<DstType>(output_shape, output);
+  auto expected = net.CreateTensor<DstType>(output_shape, output);
   ExpectTensorNear<DstType>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
@@ -476,8 +476,8 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   net.RunOp(DeviceType::CPU);
   net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                   NHWC);
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImg",
                                     kernels::BufferType::IN_OUT_CHANNEL);
@@ -496,9 +496,9 @@ void RandomTensorScalar(const kernels::EltwiseType type,
                                         kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("GPUOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
   }
 }
 
@@ -531,8 +531,8 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
   net.RunOp(DeviceType::CPU);
   net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
                                                   NHWC);
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImg0",
                                     kernels::BufferType::IN_OUT_CHANNEL);
@@ -554,9 +554,9 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
                                         kernels::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("GPUOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
   }
 }
 }  // namespace

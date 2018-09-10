@@ -64,7 +64,7 @@ void RunDepthToSpace(const bool d2s,
     ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
                                           kernels::BufferType::IN_OUT_CHANNEL);
   }
-  auto expected = CreateTensor<float>(expected_shape, expected_data);
+  auto expected = net.CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace

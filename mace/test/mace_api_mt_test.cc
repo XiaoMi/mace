@@ -18,7 +18,6 @@
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/public/mace_runtime.h"
 
 namespace mace {
 namespace test {
@@ -200,7 +199,7 @@ void CheckOutputs(const NetDef &net_def,
 
   for (auto output : outputs) {
     std::unique_ptr<Tensor> tmp_tensor(
-        new Tensor(GetDeviceAllocator(DeviceType::CPU),
+        new Tensor(GetCPUAllocator(),
                    DataTypeToEnum<float>::v()));
     auto output_shape = output.second.shape();
     const int64_t data_size = std::accumulate(output_shape.begin(),
@@ -333,13 +332,9 @@ void MaceRunFunc(const int in_out_size) {
     OutputInfo *info = net_def->add_output_info();
     info->set_name(output_names[i]);
   }
+  MaceEngineConfig config(DeviceType::GPU);
 
-  const std::string file_path ="/data/local/tmp/mace";
-  std::shared_ptr<KVStorageFactory> storage_factory(
-      new FileStorageFactory(file_path));
-  mace::SetKVStorageFactory(storage_factory);
-
-  MaceEngine engine(device);
+  MaceEngine engine(config);
   MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
       reinterpret_cast<unsigned char *>(data.data()));
   EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);
@@ -367,7 +362,7 @@ TEST_F(MaceMTAPITest, MultipleThread) {
   const int thread_num = 10;
   std::vector<std::thread> threads;
   for (int i = 0; i < thread_num; ++i) {
-    threads.push_back(std::thread(MaceRunFunc, i));
+    threads.push_back(std::thread(MaceRunFunc, 1));
   }
   for (auto &t : threads) {
     t.join();

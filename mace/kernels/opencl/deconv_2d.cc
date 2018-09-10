@@ -20,7 +20,8 @@ namespace kernels {
 
 namespace {
 
-MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
+MaceStatus Deconv2dOpencl(OpKernelContext *context,
+                          cl::Kernel *kernel,
                           const Tensor *input,
                           const Tensor *filter,
                           const Tensor *bias,
@@ -58,11 +59,11 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
   const int align_w = stride_w - 1 - padding_w;
   const int kernel_size = filter->dim(2) * filter->dim(3);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("deconv_2d");
     built_options.emplace("-Ddeconv_2d=" + kernel_name);
@@ -133,11 +134,11 @@ MaceStatus Deconv2dOpencl(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, *kwg_size);
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, *kwg_size);
   std::string tuning_key =
       Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(*kernel_error);
@@ -192,9 +193,10 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
                   &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  return Deconv2dOpencl(&kernel_, input, filter, bias, strides_.data(),
-                        paddings.data(), activation_, relux_max_limit_,
-                        DataTypeToEnum<T>::value, &input_shape_, output, future,
+  return Deconv2dOpencl(context_, &kernel_, input, filter, bias,
+                        strides_.data(), paddings.data(), activation_,
+                        relux_max_limit_, DataTypeToEnum<T>::value,
+                        &input_shape_, output, future,
                         &kwg_size_, &kernel_error_);
 }
 

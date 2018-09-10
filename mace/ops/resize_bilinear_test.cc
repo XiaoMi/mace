@@ -48,7 +48,7 @@ TEST_F(ResizeBilinearTest, CPUResizeBilinearWOAlignCorners) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
+  auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -78,7 +78,7 @@ TEST_F(ResizeBilinearTest, ResizeBilinearWAlignCorners) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
+  auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -116,8 +116,8 @@ void TestRandomResizeBilinear() {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);
 
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
+    auto expected = net.CreateTensor<float>();
+    expected->Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::GPU) {
       BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -136,7 +136,7 @@ void TestRandomResizeBilinear() {
                               kernels::BufferType::IN_OUT_CHANNEL);
     }
     // Check
-    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-5,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("DeviceOutput"), 1e-5,
                             1e-6);
   }
 }

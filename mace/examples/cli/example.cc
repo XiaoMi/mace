@@ -21,7 +21,6 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 // if convert model to code.
 #ifdef MODEL_GRAPH_FORMAT_CODE
 #include "mace/codegen/engine/mace_engine_factory.h"
@@ -157,39 +156,39 @@ bool RunModel(const std::vector<std::string> &input_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
   // load model
   DeviceType device_type = ParseDeviceType(FLAGS_device);
-  // config runtime
-  mace::SetOpenMPThreadPolicy(
+  // configuration
+  // Detailed information please see mace.h
+  MaceStatus status;
+  MaceEngineConfig config(device_type);
+  status = config.SetCPUThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
+  if (status != MACE_SUCCESS) {
+    std::cerr << "Set openmp or cpu affinity failed." << std::endl;
+  }
 #ifdef MACE_ENABLE_OPENCL
+  std::shared_ptr<GPUContext> gpu_context;
   if (device_type == DeviceType::GPU) {
-    mace::SetGPUHints(
+    // DO NOT USE tmp directory.
+    // Please use APP's own directory and make sure the directory exists.
+    const char *storage_path_ptr = getenv("MACE_INTERNAL_STORAGE_PATH");
+    const std::string storage_path =
+        std::string(storage_path_ptr == nullptr ?
+                    "/data/local/tmp/mace_run/interior" : storage_path_ptr);
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+
+    gpu_context = GPUContextBuilder()
+        .SetStoragePath(storage_path)
+        .SetOpenCLBinaryPaths(opencl_binary_paths)
+        .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
+        .Finalize();
+
+    config.SetGPUContext(gpu_context);
+    config.SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-
-    // Just call once. (Not thread-safe)
-    // Set paths of Generated OpenCL Compiled Kernel Binary file
-    // if you build gpu library of specific soc.
-    // Using OpenCL binary will speed up the initialization.
-    // OpenCL binary is corresponding to the OpenCL Driver version,
-    // you should update the binary when OpenCL Driver changed.
-    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
-    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
-
-    mace::SetOpenCLParameterPath(FLAGS_opencl_parameter_file);
   }
 #endif  // MACE_ENABLE_OPENCL
-
-  // DO NOT USE tmp directory.
-  // Please use APP's own directory and make sure the directory exists.
-  // Just call once
-  const std::string internal_storage_path =
-      "/data/local/tmp/mace_run/interior";
-
-  // Config internal kv storage factory.
-  std::shared_ptr<KVStorageFactory> storage_factory(
-      new FileStorageFactory(internal_storage_path));
-  SetKVStorageFactory(storage_factory);
 
   // Create Engine
   std::shared_ptr<mace::MaceEngine> engine;
@@ -204,7 +203,7 @@ bool RunModel(const std::vector<std::string> &input_names,
                                FLAGS_model_data_file,
                                input_names,
                                output_names,
-                               device_type,
+                               config,
                                &engine);
 #else
   std::vector<unsigned char> model_pb_data;
@@ -216,7 +215,7 @@ bool RunModel(const std::vector<std::string> &input_names,
                                 FLAGS_model_data_file,
                                 input_names,
                                 output_names,
-                                device_type,
+                                config,
                                 &engine);
 #endif
 

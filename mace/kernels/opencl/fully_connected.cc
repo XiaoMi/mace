@@ -22,7 +22,8 @@ namespace kernels {
 
 namespace {
 template <typename T>
-MaceStatus FCWXKernel(cl::Kernel *kernel,
+MaceStatus FCWXKernel(OpKernelContext *context,
+                      cl::Kernel *kernel,
                       const Tensor *input,
                       const Tensor *weight,
                       const Tensor *bias,
@@ -36,7 +37,7 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
                       std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     const index_t batch = output->dim(0);
@@ -44,7 +45,7 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
     const index_t output_blocks = RoundUpDiv4(output_size);
 
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected_width");
@@ -154,7 +155,8 @@ MaceStatus FCWXKernel(cl::Kernel *kernel,
 }
 
 template <typename T>
-MaceStatus FCWTXKernel(cl::Kernel *kernel,
+MaceStatus FCWTXKernel(OpKernelContext *context,
+                       cl::Kernel *kernel,
                        const Tensor *input,
                        const Tensor *weight,
                        const Tensor *bias,
@@ -168,10 +170,10 @@ MaceStatus FCWTXKernel(cl::Kernel *kernel,
                        std::unique_ptr<BufferBase> *kernel_error) {
   MACE_CHECK_NOTNULL(gws);
   MACE_CHECK_NOTNULL(lws);
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("fully_connected");
@@ -236,7 +238,7 @@ MaceStatus FCWTXKernel(cl::Kernel *kernel,
   std::string tuning_key =
       Concat("fc_opencl_kernel", output->dim(0), output->dim(1), output->dim(2),
              output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(*kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
                                            gws->data(), *lws, future));
 
   OUT_OF_RANGE_VALIDATION(*kernel_error);
@@ -257,7 +259,8 @@ MaceStatus FullyConnectedFunctor<DeviceType::GPU, T>::operator()(
                   &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  return FCWXKernel<T>(&kernel_, input, weight, bias, &input_shape_, output,
+  return FCWXKernel<T>(context_,
+                       &kernel_, input, weight, bias, &input_shape_, output,
                        activation_, &gws_, &lws_, relux_max_limit_, future,
                        &kernel_error_);
 }

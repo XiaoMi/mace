@@ -1,15 +1,10 @@
 mace {
   global:
+    *GPUContextBuilder*;
+    *MaceEngineConfig*;
     *MaceTensor*;
     *MaceEngine*;
     *CreateMaceEngineFromProto*;
-    *FileStorageFactory*;
-    *SetKVStorageFactory*;
-    *SetOpenCLBinaryPaths*;
-    *SetOpenCLParameterPath*;
-    *SetGPUHints*;
-    *SetOpenMPThreadPolicy*;
-    *SetOpenMPThreadAffinity*;
     *GetBigLittleCoreIDs*;
     *MaceVersion*;
 

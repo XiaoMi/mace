@@ -42,14 +42,16 @@
 namespace mace {
 namespace kernels {
 
-struct Conv2dFunctorBase {
-  Conv2dFunctorBase(const int *strides,
+struct Conv2dFunctorBase : OpKernel {
+  Conv2dFunctorBase(OpKernelContext *context,
+                    const int *strides,
                     const Padding &padding_type,
                     const std::vector<int> &paddings,
                     const int *dilations,
                     const ActivationType activation,
                     const float relux_max_limit)
-    : strides_(strides),
+    : OpKernel(context),
+      strides_(strides),
       padding_type_(padding_type),
       paddings_(paddings),
       dilations_(dilations),
@@ -69,7 +71,8 @@ struct Conv2dFunctor;
 
 template<>
 struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
-  Conv2dFunctor(const int *strides,
+  Conv2dFunctor(OpKernelContext *context,
+                const int *strides,
                 const Padding &padding_type,
                 const std::vector<int> &paddings,
                 const int *dilations,
@@ -77,12 +80,14 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                 const float relux_max_limit,
                 const bool is_filter_transformed,
                 ScratchBuffer *scratch)
-    : Conv2dFunctorBase(strides,
+    : Conv2dFunctorBase(context,
+                        strides,
                         padding_type,
                         paddings,
                         dilations,
                         activation,
                         relux_max_limit),
+      transformed_filter_(GetCPUAllocator(), DataType::DT_FLOAT),
       is_filter_transformed_(is_filter_transformed),
       scratch_(scratch) {}
 
@@ -721,7 +726,8 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
 template<>
 struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
-  Conv2dFunctor(const int *strides,
+  Conv2dFunctor(OpKernelContext *context,
+                const int *strides,
                 const Padding &padding_type,
                 const std::vector<int> &paddings,
                 const int *dilations,
@@ -729,7 +735,8 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
                 const float relux_max_limit,
                 const bool is_filter_transformed,
                 ScratchBuffer *scratch)
-      : Conv2dFunctorBase(strides,
+      : Conv2dFunctorBase(context,
+                          strides,
                           padding_type,
                           paddings,
                           dilations,
@@ -949,7 +956,8 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
-  Conv2dFunctor(const int *strides,
+  Conv2dFunctor(OpKernelContext *context,
+                const int *strides,
                 const Padding &padding_type,
                 const std::vector<int> &paddings,
                 const int *dilations,
@@ -957,7 +965,8 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
                 const float relux_max_limit,
                 const bool is_filter_transformed,
                 ScratchBuffer *scratch)
-    : Conv2dFunctorBase(strides,
+    : Conv2dFunctorBase(context,
+                        strides,
                         padding_type,
                         paddings,
                         dilations,
@@ -968,10 +977,10 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
   }
 
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *filter,
-                  const Tensor *bias,
-                  Tensor *output,
-                  StatsFuture *future);
+                        const Tensor *filter,
+                        const Tensor *bias,
+                        Tensor *output,
+                        StatsFuture *future);
 
   cl::Kernel kernel_;
   uint32_t kwg_size_;

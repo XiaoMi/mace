@@ -26,8 +26,8 @@ namespace ops {
 template <DeviceType D, class T>
 class AddNOp : public Operator<D, T> {
  public:
-  AddNOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {}
+  AddNOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context), functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     Tensor *output_tensor = this->Output(0);

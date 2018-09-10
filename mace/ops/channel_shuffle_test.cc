@@ -45,7 +45,7 @@ TEST_F(ChannelShuffleOpTest, C8G4_CPU) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 1, 2, 8}, {0, 2, 4, 6, 1, 3, 5, 7, 8, 10, 12, 14, 9, 11, 13, 15});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -77,7 +77,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
                                         kernels::BufferType::IN_OUT_CHANNEL);
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 1, 2, 16},
       {0,  4,  8,  12, 1,  5,  9,  13, 2,  6,  10, 14, 3,  7,  11, 15,
        16, 20, 24, 28, 17, 21, 25, 29, 18, 22, 26, 30, 19, 23, 27, 31});

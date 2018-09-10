@@ -30,7 +30,6 @@
 #include "public/gemmlowp.h"
 #include "mace/core/macros.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 
 namespace mace {

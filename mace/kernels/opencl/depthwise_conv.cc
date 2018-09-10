@@ -24,13 +24,15 @@ namespace kernels {
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (4 + 4 + 1) * 4 * 4;
-std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+                              const uint32_t *gws,
+                              const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+        cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = cache_size / kBaseGPUMemCacheSize;
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     if (lws[1] >= base) {
@@ -58,7 +60,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
 
 }  // namespace
 
-static MaceStatus DepthwiseConv2d(cl::Kernel *kernel,
+static MaceStatus DepthwiseConv2d(OpKernelContext *context,
+                                  cl::Kernel *kernel,
                                   const Tensor *input,   // NHWC
                                   const Tensor *filter,  // HWIM
                                   const Tensor *bias,
@@ -89,11 +92,11 @@ static MaceStatus DepthwiseConv2d(cl::Kernel *kernel,
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d");
     if (stride == 1 && dilations[0] == 1 && dilations[1] == 1) {
@@ -170,10 +173,10 @@ static MaceStatus DepthwiseConv2d(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
   std::string tuning_key =
       Concat("depthwise_conv2d_ocl_kernel", gws[0], gws[1], gws[2], multiplier);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(*kernel_error);
@@ -190,14 +193,10 @@ MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
   if (strides_[0] != strides_[1]) {
-    LOG(WARNING) << "OpenCL depthwise conv2d kernel with "
-                 << "filter" << kernel_h << "x" << kernel_w << ","
-                 << " stride " << strides_[0] << "x" << strides_[1]
-                 << " is not implemented yet, using slow version";
-    // TODO(heliangliang) The CPU/NEON kernel should map the buffer
-    return DepthwiseConv2dFunctor<DeviceType::CPU, float>(
-        strides_, padding_type_, paddings_, dilations_, activation_,
-        relux_max_limit_)(input, filter, bias, output, future);
+    LOG(FATAL) << "GPU depthwise conv2d kernel with "
+               << "filter" << kernel_h << "x" << kernel_w << ","
+               << " stride " << strides_[0] << "x" << strides_[1]
+               << " is not implemented yet.";
   }
 
   // Create a fake conv_2d filter to calculate the paddings and output size
@@ -226,6 +225,7 @@ MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   return DepthwiseConv2d(
+      context_,
       &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
       activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
       output, future, &kwg_size_, &kernel_error_);

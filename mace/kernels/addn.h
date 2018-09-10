@@ -24,6 +24,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -35,10 +36,11 @@ namespace kernels {
 constexpr int kCostPerGroup = 1024;
 
 template <DeviceType D, typename T>
-struct AddNFunctor {
+struct AddNFunctor : OpKernel {
+  explicit AddNFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const std::vector<const Tensor *> &input_tensors,
-                  Tensor *output_tensor,
-                  StatsFuture *future) {
+                        Tensor *output_tensor,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     MACE_RETURN_IF_ERROR(output_tensor->ResizeLike(input_tensors[0]));
     index_t size = output_tensor->size();
@@ -95,7 +97,8 @@ struct AddNFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct AddNFunctor<DeviceType::GPU, T> {
+struct AddNFunctor<DeviceType::GPU, T> : OpKernel {
+  explicit AddNFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const std::vector<const Tensor *> &input_tensors,
                   Tensor *output_tensor,
                   StatsFuture *future);

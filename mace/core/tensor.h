@@ -25,7 +25,6 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
 #endif
-#include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
 #ifdef MACE_ENABLE_NEON
@@ -38,10 +37,10 @@
 namespace mace {
 
 #define MACE_SINGLE_ARG(...) __VA_ARGS__
-#define MACE_CASE(TYPE, STATEMENTS)             \
+#define MACE_CASE(TYPE, STATEMENTS)   \
   case DataTypeToEnum<TYPE>::value: { \
     typedef TYPE T;                   \
-    STATEMENTS;                            \
+    STATEMENTS;                       \
     break;                            \
   }
 
@@ -137,7 +136,7 @@ class Tensor {
     buffer_ = &buffer_slice_;
   }
 
-  Tensor() : Tensor(GetDeviceAllocator(CPU), DT_FLOAT) {}
+  Tensor() : Tensor(GetCPUAllocator(), DT_FLOAT) {}
 
   ~Tensor() {
     if (is_buffer_owner_ && buffer_ != nullptr) {
@@ -270,7 +269,7 @@ class Tensor {
     image_shape_ = image_shape;
     if (buffer_ == nullptr) {
       MACE_CHECK(is_buffer_owner_);
-      buffer_ = new Image();
+      buffer_ = new Image(allocator_);
       return buffer_->Allocate(image_shape, dtype_);
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");

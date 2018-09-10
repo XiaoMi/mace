@@ -26,7 +26,6 @@
 #include <numeric>
 
 #include "src/main/cpp/include/mace/public/mace.h"
-#include "src/main/cpp/include/mace/public/mace_runtime.h"
 #include "src/main/cpp/include/mace/public/mace_engine_factory.h"
 
 namespace {
@@ -39,8 +38,8 @@ struct ModelInfo {
 };
 
 struct MaceContext {
+  std::shared_ptr<mace::GPUContext> gpu_context;
   std::shared_ptr<mace::MaceEngine> engine;
-  std::shared_ptr<mace::KVStorageFactory> storage_factory;
   std::string model_name;
   mace::DeviceType device_type = mace::DeviceType::CPU;
   std::map<std::string, ModelInfo> model_infos = {
@@ -72,48 +71,65 @@ MaceContext& GetMaceContext() {
 
 }  // namespace
 
-JNIEXPORT jint JNICALL Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetSetAttrs(
-    JNIEnv *env, jclass thisObj, jint omp_num_threads, jint cpu_affinity_policy,
-    jint gpu_perf_hint, jint gpu_priority_hint, jstring kernel_path) {
+JNIEXPORT jint JNICALL
+Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(
+    JNIEnv *env, jclass thisObj, jstring storage_path) {
   MaceContext &mace_context = GetMaceContext();
+  // DO NOT USE tmp directory.
+  // Please use APP's own directory and make sure the directory exists.
+  const char *storage_path_ptr = env->GetStringUTFChars(storage_path, nullptr);
+  if (storage_path_ptr == nullptr) return JNI_ERR;
+  const std::string storage_file_path(storage_path_ptr);
+  env->ReleaseStringUTFChars(storage_path, storage_path_ptr);
 
-  mace::MaceStatus status;
-      // openmp
-  status = mace::SetOpenMPThreadPolicy(
-      omp_num_threads,
-      static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));
-
-  __android_log_print(ANDROID_LOG_ERROR,
-                      "image_classify attrs",
-                      "openmp result: %d, threads: %d, cpu: %d",
-                      status, omp_num_threads, cpu_affinity_policy);
-
-  //  gpu
-  mace::SetGPUHints(
-      static_cast<mace::GPUPerfHint>(gpu_perf_hint),
-      static_cast<mace::GPUPriorityHint>(gpu_priority_hint));
-
-  __android_log_print(ANDROID_LOG_ERROR,
-                      "image_classify attrs",
-                      "gpu perf: %d, priority: %d",
-                      gpu_perf_hint, gpu_priority_hint);
-
-  //  opencl cache
-  const char *kernel_path_ptr = env->GetStringUTFChars(kernel_path, nullptr);
-  if (kernel_path_ptr == nullptr) return JNI_ERR;
-  const std::string kernel_file_path(kernel_path_ptr);
-  mace_context.storage_factory.reset(
-      new mace::FileStorageFactory(kernel_file_path));
-  mace::SetKVStorageFactory(mace_context.storage_factory);
-  env->ReleaseStringUTFChars(kernel_path, kernel_path_ptr);
+  mace_context.gpu_context = mace::GPUContextBuilder()
+      .SetStoragePath(storage_file_path)
+      .Finalize();
 
   return JNI_OK;
 }
 
 JNIEXPORT jint JNICALL
 Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
-    JNIEnv *env, jclass thisObj, jstring model_name_str, jstring device) {
+    JNIEnv *env, jclass thisObj, jint omp_num_threads, jint cpu_affinity_policy,
+    jint gpu_perf_hint, jint gpu_priority_hint,
+    jstring model_name_str, jstring device) {
   MaceContext &mace_context = GetMaceContext();
+
+  // get device
+  const char *device_ptr = env->GetStringUTFChars(device, nullptr);
+  if (device_ptr == nullptr) return JNI_ERR;
+  mace_context.device_type = ParseDeviceType(device_ptr);
+  env->ReleaseStringUTFChars(device, device_ptr);
+
+  // create MaceEngineConfig
+  mace::MaceStatus status;
+  mace::MaceEngineConfig config(mace_context.device_type);
+  status = config.SetCPUThreadPolicy(
+      omp_num_threads,
+      static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));
+  if (status != mace::MACE_SUCCESS) {
+    __android_log_print(ANDROID_LOG_ERROR,
+                        "image_classify attrs",
+                        "openmp result: %d, threads: %d, cpu: %d",
+                        status, omp_num_threads, cpu_affinity_policy);
+  }
+  if (mace_context.device_type == mace::DeviceType::GPU) {
+    config.SetGPUContext(mace_context.gpu_context);
+    config.SetGPUHints(
+        static_cast<mace::GPUPerfHint>(gpu_perf_hint),
+        static_cast<mace::GPUPriorityHint>(gpu_priority_hint));
+    __android_log_print(ANDROID_LOG_INFO,
+                        "image_classify attrs",
+                        "gpu perf: %d, priority: %d",
+                        gpu_perf_hint, gpu_priority_hint);
+  }
+
+  __android_log_print(ANDROID_LOG_INFO,
+                      "image_classify attrs",
+                      "device: %d",
+                      mace_context.device_type);
+
   //  parse model name
   const char *model_name_ptr = env->GetStringUTFChars(model_name_str, nullptr);
   if (model_name_ptr == nullptr) return JNI_ERR;
@@ -133,26 +149,15 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
   std::vector<std::string> input_names = {model_info_iter->second.input_name};
   std::vector<std::string> output_names = {model_info_iter->second.output_name};
 
-  // get device
-  const char *device_ptr = env->GetStringUTFChars(device, nullptr);
-  if (device_ptr == nullptr) return JNI_ERR;
-  mace_context.device_type = ParseDeviceType(device_ptr);
-  env->ReleaseStringUTFChars(device, device_ptr);
-
-  __android_log_print(ANDROID_LOG_ERROR,
-                      "image_classify attrs",
-                      "device: %d",
-                      mace_context.device_type);
-
   mace::MaceStatus create_engine_status =
       CreateMaceEngineFromCode(mace_context.model_name,
                                std::string(),
                                input_names,
                                output_names,
-                               mace_context.device_type,
+                               config,
                                &mace_context.engine);
 
-  __android_log_print(ANDROID_LOG_ERROR,
+  __android_log_print(ANDROID_LOG_INFO,
                       "image_classify attrs",
                       "create result: %d",
                       create_engine_status);

@@ -26,8 +26,8 @@ namespace ops {
 template<DeviceType D, class T>
 class ArgMaxOp : public Operator<D, T> {
  public:
-  ArgMaxOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {}
+  ArgMaxOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context), functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(0);

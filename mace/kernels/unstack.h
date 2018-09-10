@@ -22,14 +22,16 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct UnstackFunctor {
-  explicit UnstackFunctor(int axis) : axis_(axis) {}
+struct UnstackFunctor : OpKernel {
+  UnstackFunctor(OpKernelContext *context, int axis)
+      : OpKernel(context), axis_(axis) {}
 
   MaceStatus operator()(const Tensor *input,
                         const std::vector<Tensor *> &outputs,

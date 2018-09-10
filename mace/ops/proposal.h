@@ -24,9 +24,10 @@ namespace ops {
 template <DeviceType D, class T>
 class ProposalOp : public Operator<D, T> {
  public:
-  ProposalOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("min_size", 16),
+  ProposalOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 OperatorBase::GetOptionalArg<int>("min_size", 16),
                  OperatorBase::GetOptionalArg<float>("nms_thresh", 0.7),
                  OperatorBase::GetOptionalArg<int>("pre_nms_top_n", 6000),
                  OperatorBase::GetOptionalArg<int>("post_nms_top_n", 300),

@@ -21,6 +21,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -30,15 +31,17 @@
 namespace mace {
 namespace kernels {
 
-struct ConcatFunctorBase {
-  explicit ConcatFunctorBase(const int32_t axis) : axis_(axis) {}
+struct ConcatFunctorBase : OpKernel {
+  ConcatFunctorBase(OpKernelContext *context, const int32_t axis)
+      : OpKernel(context), axis_(axis) {}
 
   int32_t axis_;
 };
 
 template <DeviceType D, typename T>
 struct ConcatFunctor : ConcatFunctorBase {
-  explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
+  ConcatFunctor(OpKernelContext *context, const int32_t axis)
+      : ConcatFunctorBase(context, axis) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
@@ -97,7 +100,8 @@ struct ConcatFunctor : ConcatFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct ConcatFunctor<DeviceType::GPU, T> : ConcatFunctorBase {
-  explicit ConcatFunctor(const int32_t axis) : ConcatFunctorBase(axis) {}
+  ConcatFunctor(OpKernelContext *context, const int32_t axis)
+      : ConcatFunctorBase(context, axis) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                   Tensor *output,
