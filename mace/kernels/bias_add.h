@@ -21,6 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -30,10 +31,10 @@
 namespace mace {
 namespace kernels {
 
-struct BiasAddFunctorBase {
-  explicit BiasAddFunctorBase(const DataFormat data_format) {
-    data_format_ = data_format;
-  }
+struct BiasAddFunctorBase : OpKernel {
+  BiasAddFunctorBase(OpKernelContext *context,
+                     const DataFormat data_format)
+      : OpKernel(context), data_format_(data_format) {}
 
   DataFormat data_format_;
 };
@@ -43,8 +44,9 @@ struct BiasAddFunctor;
 
 template <>
 struct BiasAddFunctor<DeviceType::CPU, float> : BiasAddFunctorBase {
-  explicit BiasAddFunctor(const DataFormat data_format)
-      : BiasAddFunctorBase(data_format) {}
+  BiasAddFunctor(OpKernelContext *context,
+                 const DataFormat data_format)
+      : BiasAddFunctorBase(context, data_format) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *bias,
@@ -96,8 +98,8 @@ struct BiasAddFunctor<DeviceType::CPU, float> : BiasAddFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct BiasAddFunctor<DeviceType::GPU, T> : BiasAddFunctorBase {
-  explicit BiasAddFunctor(const DataFormat data_format)
-      : BiasAddFunctorBase(data_format) {}
+  BiasAddFunctor(OpKernelContext *context, const DataFormat data_format)
+      : BiasAddFunctorBase(context, data_format) {}
   MaceStatus operator()(const Tensor *input,
                         const Tensor *bias,
                         Tensor *output,

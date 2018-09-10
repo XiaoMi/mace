@@ -26,9 +26,10 @@ namespace ops {
 template <DeviceType D, class T>
 class ActivationOp : public Operator<D, T> {
  public:
-  ActivationOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(kernels::StringToActivationType(
+  ActivationOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                  static_cast<T>(

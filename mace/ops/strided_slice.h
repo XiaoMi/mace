@@ -24,9 +24,10 @@ namespace ops {
 template <DeviceType D, class T>
 class StridedSliceOp : public Operator<D, T> {
  public:
-  StridedSliceOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("begin_mask", 0),
+  StridedSliceOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 OperatorBase::GetOptionalArg<int>("begin_mask", 0),
                  OperatorBase::GetOptionalArg<int>("end_mask", 0),
                  OperatorBase::GetOptionalArg<int>("ellipsis_mask", 0),
                  OperatorBase::GetOptionalArg<int>("new_axis_mask", 0),

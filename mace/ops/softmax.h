@@ -24,8 +24,9 @@ namespace ops {
 template <DeviceType D, class T>
 class SoftmaxOp : public Operator<D, T> {
  public:
-  SoftmaxOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws) {}
+  SoftmaxOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *logits = this->Input(LOGITS);

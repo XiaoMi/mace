@@ -20,13 +20,15 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 namespace mace {
 namespace kernels {
 
 template<DeviceType D, typename T>
-struct ChannelShuffleFunctor {
-  explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
+struct ChannelShuffleFunctor : OpKernel {
+  ChannelShuffleFunctor(OpKernelContext *context, const int groups)
+      : OpKernel(context), groups_(groups) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -70,8 +72,9 @@ struct ChannelShuffleFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct ChannelShuffleFunctor<DeviceType::GPU, T> {
-  explicit ChannelShuffleFunctor(const int groups) : groups_(groups) {}
+struct ChannelShuffleFunctor<DeviceType::GPU, T> : OpKernel {
+  ChannelShuffleFunctor(OpKernelContext *context, const int groups)
+      : OpKernel(context), groups_(groups) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,

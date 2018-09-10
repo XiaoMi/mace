@@ -25,9 +25,9 @@ namespace ops {
 template <DeviceType D, class T>
 class BatchNormOp : public Operator<D, T> {
  public:
-  BatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(false, kernels::ActivationType::NOOP, 0.0f) {
+  BatchNormOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context, false, kernels::ActivationType::NOOP, 0.0f) {
     epsilon_ = OperatorBase::GetOptionalArg<float>("epsilon",
                                                    static_cast<float>(1e-4));
   }
@@ -52,7 +52,8 @@ class BatchNormOp : public Operator<D, T> {
 
     Tensor *output = this->Output(OUTPUT);
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
-    return functor_(input, scale, offset, mean, var, epsilon_, output, future);
+    return functor_(input, scale, offset,
+                    mean, var, epsilon_, output, future);
   }
 
  private:

@@ -139,7 +139,7 @@ public class CameraActivity extends Activity implements View.OnClickListener, Ap
     }
 
     private void initJni() {
-        AppModel.instance.maceMobilenetSetAttrs(initData);
+        AppModel.instance.maceMobilenetCreateGPUContext(initData);
         AppModel.instance.maceMobilenetCreateEngine(initData, this);
     }
 

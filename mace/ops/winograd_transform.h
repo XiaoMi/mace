@@ -26,9 +26,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class WinogradTransformOp : public Operator<D, T> {
  public:
-  WinogradTransformOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
+  WinogradTransformOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
                      "padding", static_cast<int>(VALID))),
                  OperatorBase::GetRepeatedArgs<int>("padding_values"),
                  OperatorBase::GetOptionalArg<int>(

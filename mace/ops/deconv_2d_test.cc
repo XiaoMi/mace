@@ -79,7 +79,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
                                                     "Output", NHWC);
   }
 
-  auto expected = CreateTensor<float>(expected_shape, expected_data);
+  auto expected = net.CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 0.0001);
 }
 
@@ -350,8 +350,8 @@ void TestComplexDeconvNxNS12(const int batch,
                                                     "Output", NHWC);
 
     // Check
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
+    auto expected = net.CreateTensor<float>();
+    expected->Copy(*net.GetOutput("Output"));
 
     // run on gpu
     BufferToImage<D, T>(&net, "Input", "InputImage",
@@ -377,7 +377,7 @@ void TestComplexDeconvNxNS12(const int batch,
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-4,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-4,
                             1e-4);
   };
 

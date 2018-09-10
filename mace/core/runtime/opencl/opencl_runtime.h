@@ -22,11 +22,12 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/file_storage.h"
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
-#include "mace/public/mace_runtime.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
+#include "mace/utils/tuner.h"
 
 namespace mace {
 
@@ -60,29 +61,17 @@ const std::string OpenCLErrorToString(cl_int error);
     return MaceStatus::MACE_OUT_OF_RESOURCES;               \
   }
 
-class OpenCLProfilingTimer : public Timer {
- public:
-  explicit OpenCLProfilingTimer(const cl::Event *event)
-      : event_(event), accumulated_micros_(0) {}
-  void StartTiming() override;
-  void StopTiming() override;
-  void AccumulateTiming() override;
-  void ClearTiming() override;
-  double ElapsedMicros() override;
-  double AccumulatedMicros() override;
-
- private:
-  const cl::Event *event_;
-  double start_nanos_;
-  double stop_nanos_;
-  double accumulated_micros_;
-};
-
 class OpenCLRuntime {
  public:
-  static OpenCLRuntime *Global();
-  static void Configure(GPUPerfHint, GPUPriorityHint);
-  static void ConfigureOpenCLBinaryPath(const std::vector<std::string> &paths);
+  OpenCLRuntime(
+      KVStorage *cache_storage = nullptr,
+      const GPUPriorityHint priority_hint = GPUPriorityHint::PRIORITY_NORMAL,
+      const GPUPerfHint perf_hint = GPUPerfHint::PERF_NORMAL,
+      KVStorage *precompiled_binary_storage = nullptr,
+      Tuner<uint32_t> *tuner = nullptr);
+  ~OpenCLRuntime();
+  OpenCLRuntime(const OpenCLRuntime &) = delete;
+  OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
 
   cl::Context &context();
   cl::Device &device();
@@ -91,6 +80,7 @@ class OpenCLRuntime {
   const std::string platform_info() const;
   uint64_t device_global_mem_cache_size() const;
   uint32_t device_compute_units() const;
+  Tuner<uint32_t> *tuner();
   bool is_opencl_avaliable();
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
@@ -112,11 +102,6 @@ class OpenCLRuntime {
   void SaveBuiltCLProgram();
 
  private:
-  OpenCLRuntime();
-  ~OpenCLRuntime();
-  OpenCLRuntime(const OpenCLRuntime &) = delete;
-  OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
-
   bool BuildProgram(const std::string &program_file_name,
                     const std::string &binary_file_name,
                     const std::string &build_options,
@@ -137,10 +122,13 @@ class OpenCLRuntime {
   OpenCLVersion ParseDeviceVersion(const std::string &device_version);
 
  private:
-  std::unique_ptr<KVStorage> precompiled_binary_storage_;
-  std::unique_ptr<KVStorage> cache_storage_;
+  KVStorage *cache_storage_;
+  KVStorage *precompiled_binary_storage_;
+  Tuner<uint32_t> *tuner_;
   bool is_opencl_avaliable_;
   bool is_profiling_enabled_;
+  OpenCLVersion opencl_version_;
+  GPUType gpu_type_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
   std::shared_ptr<cl::Context> context_;
@@ -149,18 +137,30 @@ class OpenCLRuntime {
   std::map<std::string, cl::Program> built_program_map_;
   std::mutex program_build_mutex_;
   std::string platform_info_;
-  OpenCLVersion opencl_version_;
   std::string precompiled_binary_platform_info_;
   bool out_of_range_check_;
   uint64_t device_gloabl_mem_cache_size_;
   uint32_t device_compute_units_;
-  GPUType gpu_type_;
-
-  static GPUPerfHint kGPUPerfHint;
-  static GPUPriorityHint kGPUPriorityHint;
-  static std::string kPrecompiledBinaryPath;
 };
 
+class OpenCLProfilingTimer : public Timer {
+ public:
+  OpenCLProfilingTimer(OpenCLRuntime *runtime, const cl::Event *event)
+      : runtime_(runtime), event_(event), accumulated_micros_(0) {}
+  void StartTiming() override;
+  void StopTiming() override;
+  void AccumulateTiming() override;
+  void ClearTiming() override;
+  double ElapsedMicros() override;
+  double AccumulatedMicros() override;
+
+ private:
+  OpenCLRuntime *runtime_;
+  const cl::Event *event_;
+  double start_nanos_;
+  double stop_nanos_;
+  double accumulated_micros_;
+};
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_RUNTIME_H_

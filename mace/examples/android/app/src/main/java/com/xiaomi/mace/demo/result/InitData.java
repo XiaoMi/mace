@@ -29,7 +29,7 @@ public class InitData {
     private int cpuAffinityPolicy;
     private int gpuPerfHint;
     private int gpuPriorityHint;
-    private String kernelPath = "";
+    private String storagePath = "";
 
     public InitData() {
         model = MODELS[0];
@@ -38,8 +38,8 @@ public class InitData {
         gpuPerfHint = 3;
         gpuPriorityHint = 3;
         device = DEVICES[0];
-        kernelPath = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "mace";
-        File file = new File(kernelPath);
+        storagePath = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "mace";
+        File file = new File(storagePath);
         if (!file.exists()) {
             file.mkdir();
         }
@@ -94,11 +94,11 @@ public class InitData {
         this.gpuPriorityHint = gpuPriorityHint;
     }
 
-    public String getKernelPath() {
-        return kernelPath;
+    public String getStoragePath() {
+        return storagePath;
     }
 
-    public void setKernelPath(String kernelPath) {
-        this.kernelPath = kernelPath;
+    public void setStoragePath(String storagePath) {
+        this.storagePath = storagePath;
     }
 }

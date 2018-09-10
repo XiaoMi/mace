@@ -26,9 +26,9 @@ namespace ops {
 template <DeviceType D, class T>
 class UnstackOp : public Operator<D, T> {
  public:
-  UnstackOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("axis", 0)) {}
+  UnstackOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context, OperatorBase::GetOptionalArg<int>("axis", 0)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

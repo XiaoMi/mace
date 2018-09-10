@@ -22,7 +22,6 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/utils.h"
 #include "mace/benchmark/statistics.h"
@@ -257,35 +256,39 @@ int Main(int argc, char **argv) {
 
   mace::DeviceType device_type = ParseDeviceType(FLAGS_device);
 
-  // config runtime
-  MaceStatus ret = mace::SetOpenMPThreadPolicy(
+  // configuration
+  MaceStatus mace_status;
+  MaceEngineConfig config(device_type);
+  mace_status = config.SetCPUThreadPolicy(
       FLAGS_omp_num_threads,
-      static_cast<CPUAffinityPolicy>(FLAGS_cpu_affinity_policy),
+      static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy),
       true);
-  if (ret != MACE_SUCCESS) {
-    LOG(WARNING) << "Set openmp or cpu affinity failed.";
+  if (mace_status != MACE_SUCCESS) {
+    LOG(INFO) << "Set openmp or cpu affinity failed.";
   }
 #ifdef MACE_ENABLE_OPENCL
+  std::shared_ptr<GPUContext> gpu_context;
   if (device_type == DeviceType::GPU) {
-    mace::SetGPUHints(
+    // DO NOT USE tmp directory.
+    // Please use APP's own directory and make sure the directory exists.
+    const char *storage_path_ptr = getenv("MACE_INTERNAL_STORAGE_PATH");
+    const std::string storage_path =
+        std::string(storage_path_ptr == nullptr ?
+                    "/data/local/tmp/mace_run/interior" : storage_path_ptr);
+    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
+
+    gpu_context = GPUContextBuilder()
+        .SetStoragePath(storage_path)
+        .SetOpenCLBinaryPaths(opencl_binary_paths)
+        .SetOpenCLParameterPath(FLAGS_opencl_parameter_file)
+        .Finalize();
+
+    config.SetGPUContext(gpu_context);
+    config.SetGPUHints(
         static_cast<GPUPerfHint>(FLAGS_gpu_perf_hint),
         static_cast<GPUPriorityHint>(FLAGS_gpu_priority_hint));
-
-    std::vector<std::string> opencl_binary_paths = {FLAGS_opencl_binary_file};
-    mace::SetOpenCLBinaryPaths(opencl_binary_paths);
-
-    mace::SetOpenCLParameterPath(FLAGS_opencl_parameter_file);
   }
 #endif  // MACE_ENABLE_OPENCL
-
-  const char *kernel_path = getenv("MACE_INTERNAL_STORAGE_PATH");
-  const std::string kernel_file_path =
-      std::string(kernel_path == nullptr ?
-                  "/data/local/tmp/mace_run/interior" : kernel_path);
-
-  std::shared_ptr<KVStorageFactory> storage_factory(
-      new FileStorageFactory(kernel_file_path));
-  SetKVStorageFactory(storage_factory);
 
   // Create Engine
   std::shared_ptr<mace::MaceEngine> engine;
@@ -306,7 +309,7 @@ int Main(int argc, char **argv) {
                                  model_data_file_ptr,
                                  input_names,
                                  output_names,
-                                 device_type,
+                                 config,
                                  &engine);
 #else
   create_engine_status =
@@ -314,7 +317,7 @@ int Main(int argc, char **argv) {
                                 model_data_file_ptr,
                                 input_names,
                                 output_names,
-                                device_type,
+                                config,
                                 &engine);
 #endif
   if (create_engine_status != MaceStatus::MACE_SUCCESS) {

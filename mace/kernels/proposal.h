@@ -21,6 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
@@ -121,8 +122,9 @@ inline std::vector<int> nms(const float *bboxes_ptr,
 
 
 template<DeviceType D, typename T>
-struct ProposalFunctor {
-  ProposalFunctor(const int min_size,
+struct ProposalFunctor : OpKernel {
+  ProposalFunctor(OpKernelContext *context,
+                  const int min_size,
                   const float nms_thresh,
                   const int pre_nms_top_n,
                   const int post_nms_top_n,
@@ -130,6 +132,7 @@ struct ProposalFunctor {
                   const int base_size,
                   const std::vector<int> &scales,
                   const std::vector<float> &ratios) :
+      OpKernel(context),
       min_size_(min_size),
       thresh_(nms_thresh),
       pre_nms_top_n_(pre_nms_top_n),

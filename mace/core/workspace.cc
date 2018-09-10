@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/workspace.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -21,8 +24,6 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif
-#include "mace/core/workspace.h"
-#include "mace/utils/timer.h"
 
 namespace mace {
 
@@ -35,8 +36,8 @@ bool ShouldPreallocateMemoryForOp(const OperatorDef &op) {
 }
 }  // namespace
 
-Workspace::Workspace() : host_scratch_buffer_(new ScratchBuffer(
-  GetDeviceAllocator(DeviceType::CPU))) {}
+Workspace::Workspace() :
+    host_scratch_buffer_(new ScratchBuffer(GetCPUAllocator())) {}
 
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
@@ -74,7 +75,7 @@ std::vector<std::string> Workspace::Tensors() const {
 }
 
 MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
-                                      DeviceType type,
+                                      Device *device,
                                       const unsigned char *model_data) {
   MACE_LATENCY_LOGGER(1, "Load model tensors");
   index_t model_data_size = 0;
@@ -87,10 +88,12 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
   }
   VLOG(3) << "Model data size: " << model_data_size;
 
+  const DeviceType device_type = device->device_type();
+
   if (model_data_size > 0) {
 #ifdef MACE_ENABLE_OPENCL
-    if (type == DeviceType::GPU &&
-        OpenCLRuntime::Global()->GetDeviceMaxMemAllocSize() <=
+    if (device_type == DeviceType::GPU &&
+        device->opencl_runtime()->GetDeviceMaxMemAllocSize() <=
             static_cast<uint64_t>(model_data_size)) {
       for (auto &const_tensor : net_def.tensors()) {
         MACE_LATENCY_LOGGER(2, "Load tensor ", const_tensor.name());
@@ -104,7 +107,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
         }
 
         std::unique_ptr<Tensor> tensor(
-            new Tensor(GetDeviceAllocator(type),
+            new Tensor(device->allocator(),
                        const_tensor.data_type(), true));
         tensor->Resize(dims);
 
@@ -129,14 +132,14 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 #else
     {
 #endif
-      if (type == DeviceType::CPU) {
+      if (device_type == DeviceType::CPU) {
         tensor_buffer_ = std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(type),
+            new Buffer(device->allocator(),
                        const_cast<unsigned char*>(model_data),
                        model_data_size));
       } else {
         tensor_buffer_ = std::unique_ptr<Buffer>(
-            new Buffer(GetDeviceAllocator(type)));
+            new Buffer(device->allocator()));
         MACE_RETURN_IF_ERROR(tensor_buffer_->Allocate(model_data_size));
         tensor_buffer_->Map(nullptr);
         tensor_buffer_->Copy(const_cast<unsigned char*>(model_data),
@@ -170,12 +173,12 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
     }
   }
 
-  if (type == DeviceType::CPU || type == DeviceType::GPU) {
-    MaceStatus status = CreateOutputTensorBuffer(net_def, type);
+  if (device_type == DeviceType::CPU || device_type == DeviceType::GPU) {
+    MaceStatus status = CreateOutputTensorBuffer(net_def, device);
     if (status != MaceStatus::MACE_SUCCESS) return status;
   }
 
-  if (type == DeviceType::CPU && net_def.has_quantize_info()) {
+  if (device_type == DeviceType::CPU && net_def.has_quantize_info()) {
     for (const auto
           &activation_info: net_def.quantize_info().activation_info()) {
       if (HasTensor(activation_info.tensor_name())) {
@@ -193,7 +196,8 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
 }
 
 MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
-                                               DeviceType device_type) {
+                                               Device *device) {
+  DeviceType device_type = device->device_type();
   DataType dtype = DataType::DT_INVALID;
   if (net_def.mem_arena().mem_block_size() > 0) {
     // We use the data type of the first op with mem id,
@@ -227,7 +231,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
               << ", memory type: " << mem_block.mem_type();
       if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
         std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(GetDeviceAllocator(DeviceType::CPU)));
+            new Buffer(GetCPUAllocator()));
         MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
             mem_block.x() * GetEnumTypeSize(dtype)
                 + MACE_EXTRA_BUFFER_PAD_SIZE));
@@ -235,14 +239,14 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
                                           std::move(tensor_buf));
       } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
         std::unique_ptr<BufferBase> image_buf(
-            new Image());
+            new Image(device->allocator()));
         MACE_RETURN_IF_ERROR(image_buf->Allocate(
             {mem_block.x(), mem_block.y()}, dtype));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(image_buf));
       } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
         std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(GetDeviceAllocator(DeviceType::GPU)));
+            new Buffer(device->allocator()));
         MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
             mem_block.x() * GetEnumTypeSize(dtype)));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
@@ -305,7 +309,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
                 op, "T", static_cast<int>(DT_FLOAT)));
           }
           CreateTensor(op.output(i),
-                       GetDeviceAllocator(device_type),
+                       device->allocator(),
                        output_type);
         }
       }
@@ -335,7 +339,8 @@ void Workspace::RemoveUnusedBuffer() {
 }
 
 void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
-                                      const unsigned char *model_data) {
+                                      const unsigned char *model_data,
+                                      Allocator *alloc) {
   for (auto &const_tensor : net_def.tensors()) {
     auto iter = tensor_map_.find(const_tensor.name());
     if (iter->second->unused()) {
@@ -347,8 +352,7 @@ void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
         dims.push_back(d);
       }
       std::unique_ptr<Tensor> tensor(
-          new Tensor(GetDeviceAllocator(DeviceType::GPU),
-                     const_tensor.data_type()));
+          new Tensor(alloc, const_tensor.data_type()));
       tensor->Resize(dims);
       MACE_CHECK(tensor->size() == const_tensor.data_size(),
                  "Tensor's data_size not equal with the shape");

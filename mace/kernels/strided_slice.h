@@ -21,26 +21,29 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct StridedSliceFunctor {
-  StridedSliceFunctor(int begin_mask,
+struct StridedSliceFunctor : OpKernel {
+  StridedSliceFunctor(OpKernelContext *context,
+                      int begin_mask,
                       int end_mask,
                       int ellipsis_mask,
                       int new_axis_mask,
                       int shrink_axis_mask,
                       bool is_slice)
-      : begin_mask_(begin_mask),
+      : OpKernel(context),
+        begin_mask_(begin_mask),
         end_mask_(end_mask),
         ellipsis_mask_(ellipsis_mask),
         new_axis_mask_(new_axis_mask),
         shrink_axis_mask_(shrink_axis_mask),
         is_slice_(is_slice),
-        tmp_strides_tensor_(GetDeviceAllocator(D),
+        tmp_strides_tensor_(context->device()->allocator(),
                             DataTypeToEnum<int32_t>::v()) {}
 
   MaceStatus operator()(const Tensor *input,

@@ -37,14 +37,16 @@
 namespace mace {
 namespace kernels {
 
-struct DepthwiseConv2dFunctorBase {
-  DepthwiseConv2dFunctorBase(const int *strides,
+struct DepthwiseConv2dFunctorBase : OpKernel {
+  DepthwiseConv2dFunctorBase(OpKernelContext *context,
+                             const int *strides,
                              const Padding padding_type,
                              const std::vector<int> &paddings,
                              const int *dilations,
                              const ActivationType activation,
                              const float relux_max_limit)
-    : strides_(strides),
+    : OpKernel(context),
+      strides_(strides),
       padding_type_(padding_type),
       paddings_(paddings),
       dilations_(dilations),
@@ -65,13 +67,15 @@ struct DepthwiseConv2dFunctor;
 template<>
 struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
   : public DepthwiseConv2dFunctorBase {
-  DepthwiseConv2dFunctor(const int *strides,
+  DepthwiseConv2dFunctor(OpKernelContext *context,
+                         const int *strides,
                          const Padding padding_type,
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit)
-    : DepthwiseConv2dFunctorBase(strides,
+    : DepthwiseConv2dFunctorBase(context,
+                                 strides,
                                  padding_type,
                                  paddings,
                                  dilations,
@@ -288,13 +292,15 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, float>
 template<>
 struct DepthwiseConv2dFunctor<DeviceType::CPU, uint8_t>
     : public DepthwiseConv2dFunctorBase {
-  DepthwiseConv2dFunctor(const int *strides,
+  DepthwiseConv2dFunctor(OpKernelContext *context,
+                         const int *strides,
                          const Padding padding_type,
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit)
-      : DepthwiseConv2dFunctorBase(strides,
+      : DepthwiseConv2dFunctorBase(context,
+                                   strides,
                                    padding_type,
                                    paddings,
                                    dilations,
@@ -451,7 +457,7 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, uint8_t>
       const int32_t *bias_data = nullptr;
       if (bias == nullptr) {
         zero_bias.reset(
-            new Tensor(GetDeviceAllocator(DeviceType::CPU), DT_INT32));
+            new Tensor(GetCPUAllocator(), DT_INT32));
         zero_bias->Resize(bias_shape);
         zero_bias->Clear();
         bias_data = zero_bias->data<int32_t>();
@@ -495,13 +501,15 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, uint8_t>
 template<typename T>
 struct DepthwiseConv2dFunctor<DeviceType::GPU, T>
   : DepthwiseConv2dFunctorBase {
-  DepthwiseConv2dFunctor(const int *strides,
+  DepthwiseConv2dFunctor(OpKernelContext *context,
+                         const int *strides,
                          const Padding padding_type,
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
                          const float relux_max_limit)
-    : DepthwiseConv2dFunctorBase(strides,
+    : DepthwiseConv2dFunctorBase(context,
+                                 strides,
                                  padding_type,
                                  paddings,
                                  dilations,

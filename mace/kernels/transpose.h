@@ -105,8 +105,9 @@ static void TransposeNCHWToNHWCC2(const float *input,
 }
 
 template<DeviceType D, typename T>
-struct TransposeFunctor {
-  explicit TransposeFunctor(const std::vector<int> &dims) : dims_(dims) {}
+struct TransposeFunctor : OpKernel {
+  TransposeFunctor(OpKernelContext *context, const std::vector<int> &dims)
+      : OpKernel(context), dims_(dims) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,

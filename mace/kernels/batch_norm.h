@@ -33,11 +33,13 @@
 namespace mace {
 namespace kernels {
 
-struct BatchNormFunctorBase {
-  BatchNormFunctorBase(bool folded_constant,
+struct BatchNormFunctorBase : OpKernel {
+  BatchNormFunctorBase(OpKernelContext *context,
+                       bool folded_constant,
                        const ActivationType activation,
                        const float relux_max_limit)
-    : folded_constant_(folded_constant),
+    : OpKernel(context),
+      folded_constant_(folded_constant),
       activation_(activation),
       relux_max_limit_(relux_max_limit) {}
 
@@ -51,10 +53,14 @@ struct BatchNormFunctor;
 
 template<>
 struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
-  BatchNormFunctor(const bool folded_constant,
+  BatchNormFunctor(OpKernelContext *context,
+                   const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
+      : BatchNormFunctorBase(context,
+                             folded_constant,
+                             activation,
+                             relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *scale,
@@ -132,10 +138,14 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct BatchNormFunctor<DeviceType::GPU, T> : BatchNormFunctorBase {
-  BatchNormFunctor(const bool folded_constant,
+  BatchNormFunctor(OpKernelContext *context,
+                   const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-    : BatchNormFunctorBase(folded_constant, activation, relux_max_limit) {}
+      : BatchNormFunctorBase(context,
+                             folded_constant,
+                             activation,
+                             relux_max_limit) {}
   MaceStatus operator()(const Tensor *input,
                   const Tensor *scale,
                   const Tensor *offset,

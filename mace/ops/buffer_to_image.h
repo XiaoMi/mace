@@ -24,9 +24,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class BufferToImageOp : public Operator<D, T> {
  public:
-  BufferToImageOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("wino_block_size", 2)) {}
+  BufferToImageOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 OperatorBase::GetOptionalArg<int>("wino_block_size", 2)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input_tensor = this->Input(INPUT);

@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "mace/core/op_kernel_context.h"
+#include "mace/core/runtime/opencl/gpu_device.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
@@ -25,14 +27,15 @@ namespace mace {
 namespace kernels {
 namespace {
 
-bool BufferToImageOpImpl(Tensor *buffer,
+bool BufferToImageOpImpl(OpKernelContext *context,
+                         Tensor *buffer,
                          Tensor *image,
                          const std::vector<size_t> &image_shape) {
   std::unique_ptr<BufferBase> kernel_error;
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   std::string kernel_name = "in_out_buffer_to_image";
   std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
@@ -40,7 +43,7 @@ bool BufferToImageOpImpl(Tensor *buffer,
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
-  OUT_OF_RANGE_CONFIG(kernel_error);
+  OUT_OF_RANGE_CONFIG(kernel_error, context);
   NON_UNIFORM_WG_CONFIG;
   if (buffer->dtype() == image->dtype()) {
     built_options.emplace("-DDATA_TYPE=" +
@@ -127,25 +130,33 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   index_t width = 7;
   index_t channels = 11;
 
-  std::vector<index_t> buffer_shape = {batch, height, width, channels};
+  GPUContext gpu_context;
+  std::unique_ptr<Device> device(new GPUDevice(gpu_context.opencl_tuner()));
+
   Workspace ws;
+  OpKernelContext context(&ws, device.get());
+
+  std::vector<index_t> buffer_shape = {batch, height, width, channels};
   Tensor *buffer =
-      ws.CreateTensor("Buffer", GetDeviceAllocator(DeviceType::GPU),
+      ws.CreateTensor("Buffer", device->allocator(),
                       DataTypeToEnum<float>::v());
   buffer->Resize(buffer_shape);
 
   std::vector<size_t> image_shape;
-  Tensor *image = ws.CreateTensor("Image", GetDeviceAllocator(DeviceType::GPU),
+  Tensor *image = ws.CreateTensor("Image", device->allocator(),
                                   DataTypeToEnum<float>::v());
   CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
   image->ResizeImage(buffer->shape(), image_shape);
-  ASSERT_FALSE(BufferToImageOpImpl(buffer, image, image_shape));
+  ASSERT_FALSE(BufferToImageOpImpl(&context, buffer, image, image_shape));
 
   std::vector<size_t> overflow_image_shape = image_shape;
   for (size_t i = 0; i < overflow_image_shape.size(); ++i) {
     overflow_image_shape[i] += 1;
   }
-  ASSERT_TRUE(BufferToImageOpImpl(buffer, image, overflow_image_shape));
+  ASSERT_TRUE(BufferToImageOpImpl(&context,
+                                  buffer,
+                                  image,
+                                  overflow_image_shape));
 }
 
 }  // namespace kernels

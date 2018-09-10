@@ -39,7 +39,7 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
   const index_t channel_blocks = RoundUpDiv4(channels);
   const uint32_t image_size = static_cast<uint32_t >(in_height * in_width);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
   std::vector<uint32_t> gws(3);
   std::vector<uint32_t> lws(3);
   std::vector<index_t> output_shape{batch, 1, 1, channels};
@@ -50,7 +50,7 @@ MaceStatus ReduceMeanFunctor<DeviceType::GPU, T>::operator()(
   if (kernel_.get() == nullptr) {
     const DataType dt = DataTypeToEnum<T>::value;
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce_mean");
     built_options.emplace("-Dreduce_mean=" + kernel_name);

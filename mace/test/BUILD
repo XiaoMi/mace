@@ -1,6 +1,3 @@
-# Description:
-# Mace operators.
-#
 package(
     default_visibility = ["//visibility:public"],
 )

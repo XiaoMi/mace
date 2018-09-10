@@ -26,9 +26,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class Deconv2dOp : public Operator<D, T> {
  public:
-  Deconv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetRepeatedArgs<int>("strides"),
+  Deconv2dOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 OperatorBase::GetRepeatedArgs<int>("strides"),
                  static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
                      "padding", static_cast<int>(SAME))),
                  OperatorBase::GetRepeatedArgs<int>("padding_values"),

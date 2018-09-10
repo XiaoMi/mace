@@ -29,6 +29,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/gemm.h"
+#include "mace/kernels/kernel.h"
 #include "mace/utils/utils.h"
 #include "mace/kernels/gemmlowp_util.h"
 
@@ -40,7 +41,8 @@ namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct MatMulFunctor {
+struct MatMulFunctor : OpKernel {
+  explicit MatMulFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *A,
                         const Tensor *B,
                         Tensor *C,
@@ -87,7 +89,7 @@ struct MatMulFunctor {
       // A * B = (B^T * A^T)^T
       if (!transpose_b) {
         if (B_transpose_.get() == nullptr) {
-          B_transpose_.reset(new Tensor(GetDeviceAllocator(D),
+          B_transpose_.reset(new Tensor(context_->device()->allocator(),
                                         DataTypeToEnum<T>::v()));
           B_transpose_->Resize({batch, width, K});
           Tensor::MappingGuard guardbt(B_transpose_.get());
@@ -112,7 +114,8 @@ struct MatMulFunctor {
 };
 
 template <>
-struct MatMulFunctor<CPU, uint8_t> {
+struct MatMulFunctor<CPU, uint8_t> : OpKernel {
+  explicit MatMulFunctor(OpKernelContext *context) : OpKernel(context) {}
   template<gemmlowp::MapOrder AOrder, gemmlowp::MapOrder BOrder>
   void MatMulImpl(const Tensor *A,
                   const Tensor *B,
@@ -208,7 +211,8 @@ struct MatMulFunctor<CPU, uint8_t> {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct MatMulFunctor<DeviceType::GPU, T> {
+struct MatMulFunctor<DeviceType::GPU, T> : OpKernel {
+  explicit MatMulFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *A,
                         const Tensor *B,
                         Tensor *C,

@@ -18,12 +18,15 @@
 #include <vector>
 
 #include "mace/core/operator.h"
+#include "mace/core/op_kernel_context.h"
 
 namespace mace {
 
-OperatorBase::OperatorBase(const OperatorDef &operator_def, Workspace *ws)
-    : operator_ws_(ws),
-      operator_def_(std::make_shared<OperatorDef>(operator_def)) {}
+OperatorBase::OperatorBase(const OperatorDef &operator_def,
+                           OpKernelContext *context)
+    : operator_def_(std::make_shared<OperatorDef>(operator_def)) {
+  MACE_UNUSED(context);
+}
 
 OpKeyBuilder::OpKeyBuilder(const char *op_name) : op_name_(op_name) {}
 
@@ -54,7 +57,7 @@ OperatorRegistryBase::~OperatorRegistryBase() {}
 
 std::unique_ptr<OperatorBase> OperatorRegistryBase::CreateOperator(
     const OperatorDef &operator_def,
-    Workspace *ws,
+    OpKernelContext *context,
     DeviceType type,
     const NetMode mode) const {
   const int dtype = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
@@ -70,7 +73,7 @@ std::unique_ptr<OperatorBase> OperatorRegistryBase::CreateOperator(
             .Device(type)
             .TypeConstraint("T", static_cast<DataType>(dtype))
             .Build(),
-        operator_def, ws);
+        operator_def, context);
   } else {
     return nullptr;
   }

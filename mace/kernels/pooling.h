@@ -23,6 +23,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/kernels/kernel.h"
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -41,14 +42,16 @@ enum PoolingType {
 
 namespace kernels {
 
-struct PoolingFunctorBase {
-  PoolingFunctorBase(const PoolingType pooling_type,
+struct PoolingFunctorBase : OpKernel {
+  PoolingFunctorBase(OpKernelContext *context,
+                     const PoolingType pooling_type,
                      const int *kernels,
                      const int *strides,
                      const Padding padding_type,
                      const std::vector<int> &paddings,
                      const int *dilations)
-      : pooling_type_(pooling_type),
+      : OpKernel(context),
+        pooling_type_(pooling_type),
         kernels_(kernels),
         strides_(strides),
         padding_type_(padding_type),
@@ -68,14 +71,20 @@ struct PoolingFunctor;
 
 template <>
 struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
-  PoolingFunctor(const PoolingType pooling_type,
+  PoolingFunctor(OpKernelContext *context,
+                 const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
                  const Padding padding_type,
                  const std::vector<int> &paddings,
                  const int *dilations)
-      : PoolingFunctorBase(
-            pooling_type, kernels, strides, padding_type, paddings, dilations) {
+      : PoolingFunctorBase(context,
+                           pooling_type,
+                           kernels,
+                           strides,
+                           padding_type,
+                           paddings,
+                           dilations) {
   }
 
   void MaxPooling(const float *input,
@@ -231,15 +240,20 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
 
 template <>
 struct PoolingFunctor<DeviceType::CPU, uint8_t>: PoolingFunctorBase {
-  PoolingFunctor(const PoolingType pooling_type,
+  PoolingFunctor(OpKernelContext *context,
+                 const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
                  const Padding padding_type,
                  const std::vector<int> &paddings,
                  const int *dilations)
-      : PoolingFunctorBase(
-      pooling_type, kernels, strides, padding_type, paddings, dilations) {
-  }
+      : PoolingFunctorBase(context,
+                           pooling_type,
+                           kernels,
+                           strides,
+                           padding_type,
+                           paddings,
+                           dilations) {}
 
   void MaxPooling(const uint8_t *input,
                   const index_t *in_shape,
@@ -443,14 +457,20 @@ struct PoolingFunctor<DeviceType::CPU, uint8_t>: PoolingFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct PoolingFunctor<DeviceType::GPU, T> : PoolingFunctorBase {
-  PoolingFunctor(const PoolingType pooling_type,
+  PoolingFunctor(OpKernelContext *context,
+                 const PoolingType pooling_type,
                  const int *kernels,
                  const int *strides,
                  const Padding padding_type,
                  const std::vector<int> &paddings,
                  const int *dilations)
-      : PoolingFunctorBase(
-            pooling_type, kernels, strides, padding_type, paddings, dilations) {
+      : PoolingFunctorBase(context,
+                           pooling_type,
+                           kernels,
+                           strides,
+                           padding_type,
+                           paddings,
+                           dilations) {
   }
   MaceStatus operator()(const Tensor *input_tensor,
                   Tensor *output_tensor,
