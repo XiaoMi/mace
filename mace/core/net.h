@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/public/mace.h"
 
 namespace mace {
 
@@ -33,7 +32,7 @@ class NetBase {
   NetBase(const std::shared_ptr<const OperatorRegistryBase> op_registry,
           const std::shared_ptr<const NetDef> net_def,
           Workspace *ws,
-          DeviceType type);
+          Device *device);
   virtual ~NetBase() noexcept {}
 
   virtual MaceStatus Run(RunMetadata *run_metadata = nullptr) = 0;
@@ -52,14 +51,15 @@ class SerialNet : public NetBase {
   SerialNet(const std::shared_ptr<const OperatorRegistryBase> op_registry,
             const std::shared_ptr<const NetDef> net_def,
             Workspace *ws,
-            DeviceType type,
+            Device *device,
             const NetMode mode = NetMode::NORMAL);
 
   MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
 
  protected:
   std::vector<std::unique_ptr<OperatorBase> > operators_;
-  DeviceType device_type_;
+  Device *device_;
+  std::unique_ptr<OpKernelContext> op_kernel_context_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(SerialNet);
 };
@@ -68,13 +68,13 @@ std::unique_ptr<NetBase> CreateNet(
     const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const NetDef &net_def,
     Workspace *ws,
-    DeviceType type,
+    Device *device,
     const NetMode mode = NetMode::NORMAL);
 std::unique_ptr<NetBase> CreateNet(
     const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const std::shared_ptr<const NetDef> net_def,
     Workspace *ws,
-    DeviceType type,
+    Device *device,
     const NetMode mode = NetMode::NORMAL);
 
 }  // namespace mace

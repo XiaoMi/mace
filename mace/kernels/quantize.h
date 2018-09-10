@@ -21,6 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 namespace mace {
 namespace kernels {
@@ -173,8 +174,8 @@ template<DeviceType D, typename T>
 struct QuantizeFunctor;
 
 template<>
-struct QuantizeFunctor<CPU, uint8_t> {
-  QuantizeFunctor() {}
+struct QuantizeFunctor<CPU, uint8_t> : OpKernel {
+  explicit QuantizeFunctor(OpKernelContext *context) : OpKernel(context) {}
 
   MaceStatus operator()(const Tensor *input,
                         const bool non_zero,
@@ -212,8 +213,8 @@ template<DeviceType D, typename T>
 struct DequantizeFunctor;
 
 template<>
-struct DequantizeFunctor<CPU, uint8_t> {
-  DequantizeFunctor() {}
+struct DequantizeFunctor<CPU, uint8_t> : OpKernel {
+  explicit DequantizeFunctor(OpKernelContext *context) : OpKernel(context) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,

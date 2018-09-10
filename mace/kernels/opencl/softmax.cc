@@ -24,13 +24,15 @@ namespace kernels {
 
 namespace {
 
-std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+                              const uint32_t *gws,
+                              const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+        cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     if (gws[0] < base) {
@@ -78,11 +80,11 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("softmax");
     built_options.emplace("-Dsoftmax=" + kernel_name);
@@ -107,10 +109,10 @@ MaceStatus SoftmaxFunctor<DeviceType::GPU, T>::operator()(const Tensor *logits,
     input_shape_ = logits->shape();
   }
 
-  std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
+  std::vector<uint32_t> lws = LocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

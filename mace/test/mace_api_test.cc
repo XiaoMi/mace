@@ -18,7 +18,7 @@
 #include "mace/core/operator.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/public/mace_runtime.h"
+#include "mace/public/mace.h"
 
 namespace mace {
 namespace test {
@@ -199,9 +199,10 @@ void CheckOutputs(const NetDef &net_def,
   }
   net.RunNet(net_def, D);
 
+  std::unique_ptr<Allocator> allocator(new CPUAllocator);
   for (auto output : outputs) {
     std::unique_ptr<Tensor> tmp_tensor(
-        new Tensor(GetDeviceAllocator(DeviceType::CPU),
+        new Tensor(allocator.get(),
                    DataTypeToEnum<float>::v()));
     auto output_shape = output.second.shape();
     const int64_t data_size = std::accumulate(output_shape.begin(),
@@ -333,7 +334,9 @@ void MaceRun(const int in_out_size,
     info->set_name(output_names[i]);
   }
 
-  MaceEngine engine(device);
+  MaceEngineConfig config(DeviceType::GPU);
+
+  MaceEngine engine(config);
   MaceStatus status = engine.Init(net_def.get(), input_names, output_names,
       reinterpret_cast<unsigned char *>(data.data()));
   EXPECT_EQ(status, MaceStatus::MACE_SUCCESS);

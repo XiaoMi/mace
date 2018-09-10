@@ -53,11 +53,11 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
       static_cast<uint32_t>(height_blocks * batch),
   };
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
@@ -84,7 +84,7 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
 
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

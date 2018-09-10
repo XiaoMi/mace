@@ -20,9 +20,9 @@ public class JniMaceUtils {
         System.loadLibrary("mace_mobile_jni");
     }
 
-    public static native int maceMobilenetSetAttrs(int ompNumThreads, int cpuAffinityPolicy, int gpuPerfHint, int gpuPriorityHint, String kernelPath);
+    public static native int maceMobilenetCreateGPUContext(String storagePath);
 
-    public static native int maceMobilenetCreateEngine(String model, String device);
+    public static native int maceMobilenetCreateEngine(int ompNumThreads, int cpuAffinityPolicy, int gpuPerfHint, int gpuPriorityHint, String model, String device);
 
     public static native float[] maceMobilenetClassify(float[] input);
 

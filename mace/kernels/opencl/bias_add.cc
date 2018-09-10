@@ -39,12 +39,12 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                            static_cast<uint32_t>(width),
                            static_cast<uint32_t>(height * batch)};
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
     auto dt = DataTypeToEnum<T>::value;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("bias_add");
     built_options.emplace("-Dbias_add=" + kernel_name);
@@ -65,7 +65,7 @@ MaceStatus BiasAddFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
 
   cl::Event event;
   cl_int error;

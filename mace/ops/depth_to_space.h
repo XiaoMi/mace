@@ -27,10 +27,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class DepthToSpaceOp : public Operator<D, T> {
  public:
-  DepthToSpaceOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
+  DepthToSpaceOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
         block_size_(OperatorBase::GetOptionalArg<int>("block_size", 1)),
-        functor_(this->block_size_, true) {}
+        functor_(context, this->block_size_, true) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

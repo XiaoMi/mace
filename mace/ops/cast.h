@@ -25,8 +25,8 @@ namespace ops {
 template <DeviceType D, typename SrcType>
 class CastOp : public Operator<D, SrcType> {
  public:
-  CastOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, SrcType>(op_def, ws) {}
+  CastOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, SrcType>(op_def, context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_UNUSED(future);

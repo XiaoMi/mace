@@ -22,13 +22,15 @@ namespace mace {
 namespace kernels {
 
 namespace {
-std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+                              const uint32_t *gws,
+                              const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+        cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
@@ -41,7 +43,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
 
 }  // namespace
 
-static MaceStatus Concat2(cl::Kernel *kernel,
+static MaceStatus Concat2(OpKernelContext *context,
+                          cl::Kernel *kernel,
                           const Tensor *input0,
                           const Tensor *input1,
                           const DataType dt,
@@ -61,11 +64,11 @@ static MaceStatus Concat2(cl::Kernel *kernel,
       static_cast<uint32_t>(batch * height),
   };
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel");
     built_options.emplace("-Dconcat_channel=" + kernel_name);
@@ -100,17 +103,18 @@ static MaceStatus Concat2(cl::Kernel *kernel,
     *prev_input_shape = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
   std::string tuning_key =
       Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
   OUT_OF_RANGE_VALIDATION(*kernel_error);
   return MACE_SUCCESS;
 }
 
-static MaceStatus ConcatN(cl::Kernel *kernel,
+static MaceStatus ConcatN(OpKernelContext *context,
+                          cl::Kernel *kernel,
                           const std::vector<const Tensor *> &input_list,
                           const DataType dt,
                           Tensor *output,
@@ -121,11 +125,11 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("concat_channel_multi");
     built_options.emplace("-Dconcat_channel_multi=" + kernel_name);
@@ -148,7 +152,7 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
         static_cast<uint32_t>(input_channel_blk), static_cast<uint32_t>(width),
         static_cast<uint32_t>(batch * height),
     };
-    const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+    const std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
 
     uint32_t idx = 0;
     OUT_OF_RANGE_SET_ARG_PTR;
@@ -168,8 +172,6 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
       for (size_t j = 0; j < 3; ++j) {
         roundup_gws[j] = RoundUp(gws[j], lws[j]);
       }
-      const std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
-
       error = runtime->command_queue().enqueueNDRangeKernel(
           *kernel, cl::NullRange,
           cl::NDRange(roundup_gws[0], roundup_gws[1], roundup_gws[2]),
@@ -187,7 +189,7 @@ static MaceStatus ConcatN(cl::Kernel *kernel,
     }
   }
   if (future != nullptr) {
-    future->wait_fn = [runtime, call_stats](CallStats *stats) {
+    future->wait_fn = [call_stats](CallStats *stats) {
       if (stats != nullptr) {
         stats->start_micros = call_stats.start_micros;
         stats->end_micros = stats->start_micros + call_stats.end_micros;
@@ -234,12 +236,14 @@ MaceStatus ConcatFunctor<DeviceType::GPU, T>::operator()(
 
   switch (inputs_count) {
     case 2:
-      return Concat2(&kernel_, input_list[0], input_list[1],
+      return Concat2(context_,
+                     &kernel_, input_list[0], input_list[1],
                      DataTypeToEnum<T>::value, &input_shape_, output, future,
                      &kwg_size_, &kernel_error_);
     default:
       if (divisible_four) {
-        return ConcatN(&kernel_, input_list, DataTypeToEnum<T>::value, output,
+        return ConcatN(context_,
+                       &kernel_, input_list, DataTypeToEnum<T>::value, output,
                        future, &kwg_size_, &kernel_error_);
       } else {
         MACE_NOT_IMPLEMENTED;

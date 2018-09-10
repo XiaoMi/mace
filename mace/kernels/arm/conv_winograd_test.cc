@@ -37,10 +37,10 @@ TEST(ConvWinogradTest, winograd) {
   index_t filter_size = 3 * 3 * in_channels * out_channels;
   index_t output_size = batch * out_channels * out_height * out_width;
 
-  Tensor input;
-  Tensor filter;
-  Tensor output;
-  Tensor output_ref;
+  Tensor input(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor filter(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor output(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor output_ref(GetCPUAllocator(), DataType::DT_FLOAT);
 
   input.Resize({batch, in_channels, in_height, in_width});
   filter.Resize({out_channels, in_channels, 3, 3});

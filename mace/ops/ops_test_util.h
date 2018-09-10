@@ -17,6 +17,7 @@
 
 #include <functional>
 #include <limits>
+#include <map>
 #include <memory>
 #include <random>
 #include <string>
@@ -26,7 +27,8 @@
 
 #include "gtest/gtest.h"
 #include "mace/core/net.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/core/device_context.h"
+#include "mace/core/runtime/opencl/gpu_device.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/kernels/opencl/common.h"
@@ -110,9 +112,28 @@ class OpDefBuilder {
   OperatorDef op_def_;
 };
 
+class OpTestContext {
+ public:
+  static OpTestContext *Get();
+  std::shared_ptr<GPUContext> gpu_context() const;
+  Device *GetDevice(DeviceType device_type);
+ private:
+  OpTestContext();
+  MACE_DISABLE_COPY_AND_ASSIGN(OpTestContext);
+
+  std::shared_ptr<GPUContext> gpu_context_;
+  std::map<DeviceType, std::unique_ptr<Device>> device_map_;
+};
+
 class OpsTestNet {
  public:
-  OpsTestNet() : op_registry_(new OperatorRegistry()) {}
+  OpsTestNet() :
+    op_registry_(new OperatorRegistry()) {
+  }
+
+  ~OpsTestNet() {
+    Sync();
+  }
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -121,7 +142,8 @@ class OpsTestNet {
                          const float scale = 0.0,
                          const int32_t zero_point = 0) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
+                         DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -136,7 +158,8 @@ class OpsTestNet {
                         const std::vector<index_t> &shape,
                         const T data) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
+                         DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -149,7 +172,8 @@ class OpsTestNet {
                       bool positive = true,
                       bool truncate = false) {
     Tensor *input =
-        ws_.CreateTensor(name, GetDeviceAllocator(D), DataTypeToEnum<T>::v());
+        ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
+                         DataTypeToEnum<T>::v());
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -184,8 +208,10 @@ class OpsTestNet {
   template <DeviceType D, typename T>
   void Transpose2D(const std::string &src_name, const std::string &dst_name) {
     Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
+    Tensor *output = ws_.CreateTensor(
+        dst_name,
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 2, "input shape != 2");
     output->Resize({input_shape[1], input_shape[0]});
@@ -205,8 +231,10 @@ class OpsTestNet {
   void CopyData(const std::string &src_name,
                 const std::string &dst_name) {
     Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
+    Tensor *output = ws_.CreateTensor(
+        dst_name,
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v());
 
     const std::vector<index_t> input_shape = input->shape();
     output->Resize(input_shape);
@@ -222,8 +250,10 @@ class OpsTestNet {
                            const std::string &dst_name,
                            const DataFormat dst_format) {
     Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(dst_name, GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
+    Tensor *output = ws_.CreateTensor(
+        dst_name,
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 4, "input shape != 4");
 
@@ -352,8 +382,10 @@ class OpsTestNet {
   void FillNHWCInputToNCHWInput(const std::string &name_nchw,
                                 const std::string &name_nhwc) {
     Tensor *input = ws_.GetTensor(name_nhwc);
-    Tensor *output = ws_.CreateTensor(name_nchw, GetDeviceAllocator(D),
-                                      DataTypeToEnum<T>::v());
+    Tensor *output = ws_.CreateTensor(
+        name_nchw,
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v());
     const std::vector<index_t> input_shape = input->shape();
     index_t batch = input_shape[0];
     index_t height = input_shape[1];
@@ -374,6 +406,22 @@ class OpsTestNet {
     }
   }
 
+  // Create standalone tensor on device D with T type.
+  template <typename T, DeviceType D = DeviceType::CPU>
+  std::unique_ptr<Tensor> CreateTensor(
+      const std::vector<index_t> &shape = {},
+      const std::vector<T> &data = {}) {
+    std::unique_ptr<Tensor> res(
+        new Tensor(OpTestContext::Get()->GetDevice(D)->allocator(),
+                   DataTypeToEnum<T>::v()));
+    if (!data.empty()) {
+      res->Resize(shape);
+      T *input_data = res->mutable_data<T>();
+      memcpy(input_data, data.data(), data.size() * sizeof(T));
+    }
+    return res;
+  }
+
   OperatorDef *NewOperatorDef() {
     op_defs_.clear();
     op_defs_.emplace_back(OperatorDef());
@@ -392,8 +440,9 @@ class OpsTestNet {
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
     }
-    net_ = CreateNet(op_registry_, net_def, &ws_, device);
-    device_ = device;
+    net_ = CreateNet(op_registry_, net_def, &ws_,
+                     OpTestContext::Get()->GetDevice(device));
+    device_type_ = device;
     return net_ != nullptr;
   }
 
@@ -416,10 +465,15 @@ class OpsTestNet {
   MaceStatus RunOp() { return RunOp(DeviceType::CPU); }
 
   MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
-    device_ = device;
-    net_ = CreateNet(op_registry_, net_def, &ws_, device, NetMode::INIT);
+    device_type_ = device;
+    net_ = CreateNet(op_registry_,
+                     net_def,
+                     &ws_,
+                     OpTestContext::Get()->GetDevice(device),
+                     NetMode::INIT);
     MACE_RETURN_IF_ERROR(net_->Run());
-    net_ = CreateNet(op_registry_, net_def, &ws_, device);
+    net_ = CreateNet(op_registry_, net_def, &ws_,
+                     OpTestContext::Get()->GetDevice(device));
     return net_->Run();
   }
 
@@ -432,9 +486,12 @@ class OpsTestNet {
   }
 
   void Sync() {
-    if (net_ && device_ == DeviceType::GPU) {
-      OpenCLRuntime::Global()->command_queue().finish();
+#ifdef MACE_ENABLE_OPENCL
+    if (net_ && device_type_ == DeviceType::GPU) {
+      OpTestContext::Get()->GetDevice(DeviceType::GPU)->opencl_runtime()
+          ->command_queue().finish();
     }
+#endif
   }
 
  public:
@@ -442,17 +499,17 @@ class OpsTestNet {
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;
-  DeviceType device_;
+  DeviceType device_type_;
 };
 
 class OpsTestBase : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    // OpenCLRuntime::CreateGlobal();
+    SetOpenMPThreadsAndAffinityPolicy(-1,
+                                      CPUAffinityPolicy::AFFINITY_BIG_ONLY);
   }
 
   virtual void TearDown() {
-    // OpenCLRuntime::DestroyGlobal();
   }
 };
 
@@ -508,17 +565,6 @@ std::vector<T> VectorStaticCast(const std::vector<float> &&src) {
     dest.push_back(static_cast<T>(f));
   }
   return std::move(dest);
-}
-
-template <typename T>
-std::unique_ptr<Tensor> CreateTensor(const std::vector<index_t> &shape,
-                                     const std::vector<T> &data) {
-  std::unique_ptr<Tensor> res(
-      new Tensor(GetDeviceAllocator(DeviceType::CPU), DataTypeToEnum<T>::v()));
-  res->Resize(shape);
-  T *input_data = res->mutable_data<T>();
-  memcpy(input_data, data.data(), data.size() * sizeof(T));
-  return res;
 }
 
 inline bool IsSameSize(const Tensor &x, const Tensor &y) {

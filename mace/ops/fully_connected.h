@@ -26,9 +26,9 @@ namespace ops {
 template <DeviceType D, class T>
 class FullyConnectedOp : public Operator<D, T> {
  public:
-  FullyConnectedOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(kernels::StringToActivationType(
+  FullyConnectedOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context, kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
@@ -61,7 +61,8 @@ class FullyConnectedOp : public Operator<D, T> {
                  " don't match.");
     }
 
-    return functor_(input, weight, bias, output, future);
+    return functor_(input, weight,
+                    bias, output, future);
   }
 
  private:

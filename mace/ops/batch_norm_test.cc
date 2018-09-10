@@ -79,7 +79,7 @@ void Simple() {
   }
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 6, 2, 1}, {-3.8543, -3.8543, -1.5125, -1.5125, 0.8291, 0.8291, 3.1708,
                      3.1708, 5.5125, 5.5125, 7.8543, 7.8543});
 
@@ -130,8 +130,8 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
                                                   NHWC);
 
   // Check
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
@@ -166,7 +166,8 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+                          1e-5, 1e-4);
 }
 
 TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
@@ -208,8 +209,8 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
                                                   NHWC);
 
   // Check
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
@@ -245,7 +246,8 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1, 1e-2);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+                          1e-1, 1e-2);
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
@@ -287,8 +289,8 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
                                                   NHWC);
 
   // Check
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
@@ -323,7 +325,8 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+                          1e-5, 1e-4);
 }
 
 TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
@@ -365,8 +368,8 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
                                                   NHWC);
 
   // Check
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
@@ -402,7 +405,8 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
                                         kernels::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-1, 1e-2);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+                          1e-1, 1e-2);
 }
 
 }  // namespace test

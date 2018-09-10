@@ -26,8 +26,8 @@ namespace ops {
 template <DeviceType D, typename T>
 class ReshapeOp : public Operator<D, T> {
  public:
-  ReshapeOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws) {}
+  ReshapeOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context), functor_(context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

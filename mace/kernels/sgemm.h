@@ -89,7 +89,7 @@ typedef Major PackOrder;
 template<typename T>
 class PackedBlock {
  public:
-  PackedBlock() : data_tensor_(GetDeviceAllocator(CPU),
+  PackedBlock() : data_tensor_(GetCPUAllocator(),
                                DataTypeToEnum<T>::v()) {}
 
   const T *data() {

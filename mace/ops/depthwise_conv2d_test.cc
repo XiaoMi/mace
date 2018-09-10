@@ -80,7 +80,7 @@ void SimpleValidTest() {
   }
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 2, 2, 2},
       {37.1f, 148.2f, 47.1f, 188.2f, 67.1f, 268.2f, 77.1f, 308.2f});
 
@@ -212,7 +212,7 @@ void ComplexValidTest(index_t batch,
   }
 
   auto expected =
-      CreateTensor<T>({1, out_height, out_width, out_channels}, expect);
+      net.CreateTensor<T>({1, out_height, out_width, out_channels}, expect);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<T>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -284,8 +284,8 @@ void TestNxNS12(const index_t height, const index_t width) {
                                                     "Output", NHWC);
 
     // Check
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
+    auto expected = net.CreateTensor<float>();
+    expected->Copy(*net.GetOutput("Output"));
 
     BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
                                       kernels::BufferType::IN_OUT_CHANNEL);
@@ -312,10 +312,10 @@ void TestNxNS12(const index_t height, const index_t width) {
 
     // Check
     if (DataTypeToEnum<T>::value == DT_FLOAT) {
-      ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-5,
+      ExpectTensorNear<float>(*expected, *net.GetOutput("DeviceOutput"), 1e-5,
                               1e-4);
     } else {
-      ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-2,
+      ExpectTensorNear<float>(*expected, *net.GetOutput("DeviceOutput"), 1e-2,
                               1e-2);
     }
   };
@@ -387,7 +387,7 @@ void QuantSimpleValidTest() {
   net.Run();
 
   // Check
-  auto expected = CreateTensor<uint8_t>({1, 1, 1, 2}, {255, 21});
+  auto expected = net.CreateTensor<uint8_t>({1, 1, 1, 2}, {255, 21});
 
   ExpectTensorNear<uint8_t>(*expected, *net.GetOutput("Output"));
 }

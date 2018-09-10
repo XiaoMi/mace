@@ -19,6 +19,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -29,9 +30,11 @@ namespace mace {
 namespace kernels {
 
 template<DeviceType D, typename T>
-struct DepthToSpaceOpFunctor {
-  explicit DepthToSpaceOpFunctor(const int block_size, bool d2s)
-      : block_size_(block_size), d2s_(d2s) {}
+struct DepthToSpaceOpFunctor : OpKernel {
+  DepthToSpaceOpFunctor(OpKernelContext *context,
+                        const int block_size,
+                        bool d2s)
+      : OpKernel(context), block_size_(block_size), d2s_(d2s) {}
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future) {
@@ -123,9 +126,11 @@ struct DepthToSpaceOpFunctor {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct DepthToSpaceOpFunctor<DeviceType::GPU, T> {
-  DepthToSpaceOpFunctor(const int block_size, bool d2s)
-      : block_size_(block_size), d2s_(d2s) {}
+struct DepthToSpaceOpFunctor<DeviceType::GPU, T> : OpKernel {
+  DepthToSpaceOpFunctor(OpKernelContext *context,
+                        const int block_size,
+                        bool d2s)
+      : OpKernel(context), block_size_(block_size), d2s_(d2s) {}
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);

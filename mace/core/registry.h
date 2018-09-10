@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
 namespace mace {

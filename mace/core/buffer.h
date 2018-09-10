@@ -218,9 +218,9 @@ class Buffer : public BufferBase {
 
 class Image : public BufferBase {
  public:
-  Image()
+  explicit Image(Allocator *allocator)
       : BufferBase(0),
-        allocator_(GetDeviceAllocator(GPU)),
+        allocator_(allocator),
         buf_(nullptr),
         mapped_buf_(nullptr) {}
 

@@ -21,6 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -29,10 +30,13 @@
 namespace mace {
 namespace kernels {
 
-struct PadFunctorBase {
-  PadFunctorBase(const std::vector<int> &paddings,
+struct PadFunctorBase : OpKernel {
+  PadFunctorBase(OpKernelContext *context,
+                 const std::vector<int> &paddings,
                  const float constant_value)
-      : paddings_(paddings), constant_value_(constant_value) {}
+      : OpKernel(context),
+        paddings_(paddings),
+        constant_value_(constant_value) {}
 
   std::vector<int> paddings_;
   float constant_value_;
@@ -40,9 +44,10 @@ struct PadFunctorBase {
 
 template<DeviceType D, typename T>
 struct PadFunctor : public PadFunctorBase {
-  PadFunctor(const std::vector<int> &paddings,
+  PadFunctor(OpKernelContext *context,
+             const std::vector<int> &paddings,
              const float constant_value)
-      : PadFunctorBase(paddings, constant_value) {}
+      : PadFunctorBase(context, paddings, constant_value) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -93,9 +98,10 @@ struct PadFunctor : public PadFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct PadFunctor<DeviceType::GPU, T> : PadFunctorBase {
-  PadFunctor(const std::vector<int> &paddings,
+  PadFunctor(OpKernelContext *context,
+             const std::vector<int> &paddings,
              const float constant_value)
-      : PadFunctorBase(paddings, constant_value) {}
+      : PadFunctorBase(context, paddings, constant_value) {}
 
   MaceStatus operator()(const Tensor *input,
                   Tensor *output,

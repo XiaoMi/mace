@@ -24,11 +24,9 @@
 #include <vector>
 #include <utility>
 
-#include "mace/public/mace_runtime.h"
 #include "mace/core/macros.h"
 #include "mace/core/file_storage.h"
 #include "mace/core/runtime/opencl/opencl_extension.h"
-#include "mace/public/mace.h"
 #include "mace/utils/tuner.h"
 
 namespace mace {
@@ -249,14 +247,12 @@ std::string FindFirstExistPath(const std::vector<std::string> &paths) {
 
 const char *kOpenCLPlatformInfoKey =
     "mace_opencl_precompiled_platform_info_key";
-const char *kPrecompiledProgramFileName =
-    "mace_cl_compiled_program.bin";
 }  // namespace
 
 void OpenCLProfilingTimer::StartTiming() {}
 
 void OpenCLProfilingTimer::StopTiming() {
-  OpenCLRuntime::Global()->command_queue().finish();
+  runtime_->command_queue().finish();
   start_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_START>();
   stop_nanos_ = event_->getProfilingInfo<CL_PROFILING_COMMAND_END>();
 }
@@ -278,35 +274,15 @@ void OpenCLProfilingTimer::ClearTiming() {
   accumulated_micros_ = 0;
 }
 
-GPUPerfHint OpenCLRuntime::kGPUPerfHint = GPUPerfHint::PERF_NORMAL;
-GPUPriorityHint OpenCLRuntime::kGPUPriorityHint =
-    GPUPriorityHint::PRIORITY_DEFAULT;
-std::string
-    OpenCLRuntime::kPrecompiledBinaryPath = "";  // NOLINT(runtime/string)
-
-OpenCLRuntime *OpenCLRuntime::Global() {
-  static OpenCLRuntime runtime;
-  return &runtime;
-}
-
-void OpenCLRuntime::Configure(GPUPerfHint gpu_perf_hint,
-                              GPUPriorityHint gpu_priority_hint) {
-  OpenCLRuntime::kGPUPerfHint = gpu_perf_hint;
-  OpenCLRuntime::kGPUPriorityHint = gpu_priority_hint;
-}
-
-void OpenCLRuntime::ConfigureOpenCLBinaryPath(
-    const std::vector<std::string> &paths) {
-  OpenCLRuntime::kPrecompiledBinaryPath = FindFirstExistPath(paths);
-  if (OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
-    LOG(WARNING) << "There is no precompiled OpenCL binary file in "
-                 << MakeString(paths);
-  }
-}
-
-OpenCLRuntime::OpenCLRuntime():
-    precompiled_binary_storage_(nullptr),
-    cache_storage_(nullptr),
+OpenCLRuntime::OpenCLRuntime(
+    KVStorage *cache_storage,
+    const GPUPriorityHint priority_hint,
+    const GPUPerfHint perf_hint,
+    KVStorage *precompiled_binary_storage,
+    Tuner<uint32_t> *tuner):
+    cache_storage_(cache_storage),
+    precompiled_binary_storage_(precompiled_binary_storage),
+    tuner_(tuner),
     is_opencl_avaliable_(false),
     is_profiling_enabled_(false),
     opencl_version_(CL_VER_UNKNOWN),
@@ -362,7 +338,7 @@ OpenCLRuntime::OpenCLRuntime():
   cl_command_queue_properties properties = 0;
 
   const char *profiling = getenv("MACE_OPENCL_PROFILING");
-  if (Tuner<uint32_t>::Get()->IsTuning() ||
+  if (IsTuning() ||
       (profiling != nullptr && strlen(profiling) == 1 && profiling[0] == '1')) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
     is_profiling_enabled_ = true;
@@ -374,8 +350,8 @@ OpenCLRuntime::OpenCLRuntime():
     std::vector<cl_context_properties> context_properties;
     context_properties.reserve(5);
     GetAdrenoContextProperties(&context_properties,
-                               OpenCLRuntime::kGPUPerfHint,
-                               OpenCLRuntime::kGPUPriorityHint);
+                               perf_hint,
+                               priority_hint);
     context_ = std::shared_ptr<cl::Context>(
         new cl::Context({*device_}, context_properties.data(),
                         nullptr, nullptr, &err));
@@ -408,12 +384,8 @@ OpenCLRuntime::OpenCLRuntime():
     return;
   }
 
-  extern std::shared_ptr<KVStorageFactory> kStorageFactory;
   std::string cached_binary_platform_info;
-  if (kStorageFactory != nullptr) {
-    cache_storage_ =
-        kStorageFactory->CreateStorage(kPrecompiledProgramFileName);
-
+  if (cache_storage_ != nullptr) {
     if (cache_storage_->Load() != 0) {
       LOG(WARNING) << "Load OpenCL cached compiled kernel file failed. "
                    << "Please make sure the storage directory exist "
@@ -432,9 +404,10 @@ OpenCLRuntime::OpenCLRuntime():
   }
 
   if (cached_binary_platform_info != platform_info_) {
-    if (!OpenCLRuntime::kPrecompiledBinaryPath.empty()) {
-      precompiled_binary_storage_.reset(
-          new FileStorage(OpenCLRuntime::kPrecompiledBinaryPath));
+    if (precompiled_binary_storage_ == nullptr) {
+      VLOG(1) << "There is no precompiled OpenCL binary in"
+          " all OpenCL binary paths.";
+    } else {
       if (precompiled_binary_storage_->Load() != 0) {
         LOG(WARNING) << "Load OpenCL precompiled kernel file failed. "
                      << "Please make sure the storage directory exist "
@@ -486,6 +459,8 @@ cl::Context &OpenCLRuntime::context() { return *context_; }
 cl::Device &OpenCLRuntime::device() { return *device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
+
+Tuner<uint32_t> *OpenCLRuntime::tuner() { return tuner_; }
 
 uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
   return device_gloabl_mem_cache_size_;

@@ -22,14 +22,16 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct StackFunctor {
-  explicit StackFunctor(int axis) : axis_(axis) {}
+struct StackFunctor : OpKernel {
+  StackFunctor(OpKernelContext *context, int axis)
+      : OpKernel(context), axis_(axis) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &inputs,
                         Tensor *output,

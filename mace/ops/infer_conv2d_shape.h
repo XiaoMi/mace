@@ -26,8 +26,8 @@ namespace ops {
 template <DeviceType D, typename T>
 class InferConv2dShapeOp : public Operator<D, T> {
  public:
-  InferConv2dShapeOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws) {}
+  InferConv2dShapeOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

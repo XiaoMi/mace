@@ -54,12 +54,12 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
       chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
       static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
@@ -99,11 +99,11 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     space_shape_ = space_tensor->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
       Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

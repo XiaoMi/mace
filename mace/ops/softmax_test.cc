@@ -29,7 +29,7 @@ void Simple() {
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 1, 2, 4},
                                   {1, 1, 1, 1, 1, 2, 3, 4});
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 1, 2, 4},
       {0.25, 0.25, 0.25, 0.25, 0.0320586, 0.08714432, 0.23688282, 0.64391426});
 
@@ -113,8 +113,8 @@ void Complex(const std::vector<index_t> &logits_shape) {
     net.TransformDataFormat<CPU, float>("OutputNCHW", NCHW, "Output", NHWC);
   }
 
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, float>(&net, "Input", "InputImage",
                           kernels::BufferType::IN_OUT_CHANNEL);
@@ -131,7 +131,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
   ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
 
-  ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
 }  // namespace
 

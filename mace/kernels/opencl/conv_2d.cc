@@ -18,7 +18,8 @@
 namespace mace {
 namespace kernels {
 
-extern MaceStatus Conv2dOpenclK1x1(cl::Kernel *kernel,
+extern MaceStatus Conv2dOpenclK1x1(OpKernelContext *runtime,
+                                   cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
                                    const Tensor *bias,
@@ -34,7 +35,8 @@ extern MaceStatus Conv2dOpenclK1x1(cl::Kernel *kernel,
                                    uint32_t *kwg_size,
                                    std::unique_ptr<BufferBase> *kernel_error);
 
-extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
+extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *runtime,
+                                   cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
                                    const Tensor *bias,
@@ -50,7 +52,8 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
                                    uint32_t *kwg_size,
                                    std::unique_ptr<BufferBase> *kernel_error);
 
-extern MaceStatus Conv2dOpencl(cl::Kernel *kernel,
+extern MaceStatus Conv2dOpencl(OpKernelContext *runtime,
+                               cl::Kernel *kernel,
                                const Tensor *input,
                                const Tensor *filter,
                                const Tensor *bias,
@@ -73,9 +76,10 @@ MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
                                                          Tensor *output,
                                                          StatsFuture *future) {
   typedef MaceStatus (*Conv2dOpenclFunction)(
-      cl::Kernel * kernel, const Tensor *input, const Tensor *filter,
-      const Tensor *bias, const int stride, const int *padding,
-      const int *dilations, const ActivationType activation,
+      OpKernelContext *runtime, cl::Kernel * kernel, const Tensor *input,
+      const Tensor *filter, const Tensor *bias, const int stride,
+      const int *padding, const int *dilations,
+      const ActivationType activation,
       const float relux_max_limit, const DataType dt,
       std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future,
       uint32_t *kwg_size, std::unique_ptr<BufferBase> *kernel_error);
@@ -116,12 +120,12 @@ MaceStatus Conv2dFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
   if (kernel_h == kernel_w && kernel_h <= 3 &&
       selector[kernel_h - 1] != nullptr) {
     auto conv2d_func = selector[kernel_h - 1];
-    return conv2d_func(
+    return conv2d_func(context_,
         &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
         activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
         output, future, &kwg_size_, &kernel_error_);
   } else {
-    return Conv2dOpencl(
+    return Conv2dOpencl(context_,
         &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
         activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
         output, future, &kwg_size_, &kernel_error_);

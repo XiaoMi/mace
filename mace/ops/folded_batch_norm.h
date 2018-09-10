@@ -26,9 +26,10 @@ namespace ops {
 template <DeviceType D, class T>
 class FoldedBatchNormOp : public Operator<D, T> {
  public:
-  FoldedBatchNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(true,
+  FoldedBatchNormOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 true,
                  kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),

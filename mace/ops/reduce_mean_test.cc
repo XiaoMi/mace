@@ -57,7 +57,7 @@ void Simple(const std::vector<index_t> &input_shape,
     ImageToBuffer<D, float>(&net, "OutputImg", "Output",
                             kernels::BufferType::IN_OUT_CHANNEL);
   }
-  auto expected = CreateTensor<float>(output_shape, output);
+  auto expected = net.CreateTensor<float>(output_shape, output);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
 }
 

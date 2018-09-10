@@ -21,13 +21,15 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 namespace mace {
 namespace kernels {
 
-struct GatherBase {
-  explicit GatherBase(int axis, float y) : axis_(axis), y_(y) {}
+struct GatherBase : OpKernel {
+  GatherBase(OpKernelContext *context, int axis, float y)
+      : OpKernel(context), axis_(axis), y_(y) {}
 
   int axis_;
   float y_;
@@ -38,7 +40,8 @@ struct GatherFunctor;
 
 template <>
 struct GatherFunctor<DeviceType::CPU, float> : GatherBase {
-  explicit GatherFunctor(int axis, float y) : GatherBase(axis, y) {}
+  GatherFunctor(OpKernelContext *context, int axis, float y)
+      : GatherBase(context, axis, y) {}
 
   MaceStatus operator()(const Tensor *params,
                         const Tensor *indices,

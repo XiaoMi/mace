@@ -48,7 +48,7 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCorners) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
+  auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 6, 7, 8});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }
@@ -77,7 +77,7 @@ TEST_F(ResizeBicubicTest, CPUResizeBicubicWOAlignCornersFloat) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 2, 3, 3},
+  auto expected = net.CreateTensor<float>({1, 2, 3, 3},
       {0., 1., 2., 4.110297, 5.110297, 6.110297,
        8.223037, 9.223036, 10.223037, 24., 25., 26.,
        28.110298, 29.1103, 30.110298, 32.223038, 33.223038, 34.223038});
@@ -110,7 +110,7 @@ TEST_F(ResizeBicubicTest, ResizeBicubicWAlignCorners) {
                                                   NHWC);
 
   // Check
-  auto expected = CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
+  auto expected = net.CreateTensor<float>({1, 1, 2, 3}, {0, 1, 2, 9, 10, 11});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
 }

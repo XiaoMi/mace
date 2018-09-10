@@ -40,11 +40,11 @@ MaceStatus SplitFunctor<DeviceType::GPU, T>::operator()(
         output_list[i]->ResizeImage(output_shape, image_shape));
   }
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("split");
     built_options.emplace("-Dsplit=" + kernel_name);
@@ -66,7 +66,7 @@ MaceStatus SplitFunctor<DeviceType::GPU, T>::operator()(
       static_cast<uint32_t>(input->dim(0) * input->dim(1)),
   };
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   cl::Event event;
   CallStats call_stats{INT64_MAX, 0};
   for (size_t i = 0; i < outputs_count; ++i) {

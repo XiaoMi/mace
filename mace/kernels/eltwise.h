@@ -23,6 +23,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -802,13 +803,15 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
   }
 }
 
-struct EltwiseFunctorBase {
-  EltwiseFunctorBase(const EltwiseType type,
+struct EltwiseFunctorBase : OpKernel {
+  EltwiseFunctorBase(OpKernelContext *context,
+                     const EltwiseType type,
                      const std::vector<float> &coeff,
                      const float scalar_input,
                      const int32_t scalar_input_index,
                      const DataFormat data_format)
-      : type_(type),
+      : OpKernel(context),
+        type_(type),
         coeff_(coeff),
         scalar_input_(scalar_input),
         scalar_input_index_(scalar_input_index),
@@ -823,12 +826,14 @@ struct EltwiseFunctorBase {
 
 template <DeviceType D, typename T>
 struct EltwiseFunctor : EltwiseFunctorBase {
-  EltwiseFunctor(const EltwiseType type,
+  EltwiseFunctor(OpKernelContext *context,
+                 const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float scalar_input,  // float as it comes from arg
                  const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(type,
+      : EltwiseFunctorBase(context,
+                           type,
                            coeff,
                            scalar_input,
                            scalar_input_index,
@@ -956,12 +961,14 @@ struct EltwiseFunctor : EltwiseFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
-  EltwiseFunctor(const EltwiseType type,
+  EltwiseFunctor(OpKernelContext *context,
+                 const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float scalar_input,
                  const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(type,
+      : EltwiseFunctorBase(context,
+                           type,
                            coeff,
                            scalar_input,
                            scalar_input_index,

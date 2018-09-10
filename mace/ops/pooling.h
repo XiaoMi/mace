@@ -27,13 +27,14 @@ namespace ops {
 template <DeviceType D, class T>
 class PoolingOp : public ConvPool2dOpBase<D, T> {
  public:
-  PoolingOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws),
+  PoolingOp(const OperatorDef &op_def, OpKernelContext *context)
+      : ConvPool2dOpBase<D, T>(op_def, context),
         kernels_(OperatorBase::GetRepeatedArgs<int>("kernels")),
         pooling_type_(
             static_cast<PoolingType>(OperatorBase::GetOptionalArg<int>(
                 "pooling_type", static_cast<int>(AVG)))),
-        functor_(pooling_type_,
+        functor_(context,
+                 pooling_type_,
                  kernels_.data(),
                  this->strides_.data(),
                  this->padding_type_,

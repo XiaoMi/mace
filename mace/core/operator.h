@@ -22,17 +22,17 @@
 
 #include "mace/core/arg_helper.h"
 #include "mace/core/future.h"
+#include "mace/core/op_kernel_context.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/proto/mace.pb.h"
-#include "mace/public/mace.h"
 
 namespace mace {
 
 class OperatorBase {
  public:
-  explicit OperatorBase(const OperatorDef &operator_def, Workspace *ws);
+  explicit OperatorBase(const OperatorDef &operator_def, OpKernelContext *);
   virtual ~OperatorBase() noexcept {}
 
   template <typename T>
@@ -78,7 +78,6 @@ class OperatorBase {
   inline bool has_debug_def() const { return operator_def_ != nullptr; }
 
  protected:
-  Workspace *operator_ws_;
   std::shared_ptr<const OperatorDef> operator_def_;
   std::vector<const Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
@@ -89,8 +88,9 @@ class OperatorBase {
 template <DeviceType D, class T>
 class Operator : public OperatorBase {
  public:
-  explicit Operator(const OperatorDef &operator_def, Workspace *ws)
-      : OperatorBase(operator_def, ws) {
+  explicit Operator(const OperatorDef &operator_def, OpKernelContext *context)
+      : OperatorBase(operator_def, context) {
+    Workspace *ws = context->workspace();
     for (const std::string &input_str : operator_def.input()) {
       const Tensor *tensor = ws->GetTensor(input_str);
       MACE_CHECK(tensor != nullptr, "op ", operator_def.type(),
@@ -116,7 +116,7 @@ class Operator : public OperatorBase {
           output_type = DataTypeToEnum<T>::v();
         }
         outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-          output_str, GetDeviceAllocator(D), output_type)));
+          output_str, context->device()->allocator(), output_type)));
       }
     }
   }
@@ -165,13 +165,16 @@ OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
 
 class OperatorRegistryBase {
  public:
-  typedef Registry<std::string, OperatorBase, const OperatorDef &, Workspace *>
+  typedef Registry<std::string,
+                   OperatorBase,
+                   const OperatorDef &,
+                   OpKernelContext *>
       RegistryType;
   OperatorRegistryBase() = default;
   virtual ~OperatorRegistryBase();
   RegistryType *registry() { return &registry_; }
   std::unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
-                                               Workspace *ws,
+                                               OpKernelContext *context,
                                                DeviceType type,
                                                const NetMode mode) const;
 
@@ -183,7 +186,7 @@ class OperatorRegistryBase {
 MACE_DECLARE_REGISTRY(OpRegistry,
                       OperatorBase,
                       const OperatorDef &,
-                      Workspace *);
+                      OpKernelContext *);
 
 #define MACE_REGISTER_OPERATOR(op_registry, name, ...) \
   MACE_REGISTER_CLASS(OpRegistry, op_registry->registry(), name, __VA_ARGS__)
