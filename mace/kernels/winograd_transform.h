@@ -30,11 +30,13 @@
 namespace mace {
 namespace kernels {
 
-struct WinogradTransformFunctorBase {
-  WinogradTransformFunctorBase(const Padding &padding_type,
+struct WinogradTransformFunctorBase : OpKernel {
+  WinogradTransformFunctorBase(OpKernelContext *context,
+                               const Padding &padding_type,
                                const std::vector<int> &paddings,
                                const int block_size)
-      : strides_({1, 1}),
+      : OpKernel(context),
+        strides_({1, 1}),
         dilations_({1, 1}),
         padding_type_(padding_type),
         paddings_(paddings),
@@ -49,10 +51,14 @@ struct WinogradTransformFunctorBase {
 
 template<DeviceType D, typename T>
 struct WinogradTransformFunctor : WinogradTransformFunctorBase {
-  WinogradTransformFunctor(const Padding &padding_type,
+  WinogradTransformFunctor(OpKernelContext *context,
+                           const Padding &padding_type,
                            const std::vector<int> &paddings,
                            const int block_size)
-      : WinogradTransformFunctorBase(padding_type, paddings, block_size) {}
+      : WinogradTransformFunctorBase(context,
+                                     padding_type,
+                                     paddings,
+                                     block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -69,10 +75,14 @@ struct WinogradTransformFunctor : WinogradTransformFunctorBase {
 template<typename T>
 struct WinogradTransformFunctor<DeviceType::GPU, T>
     : WinogradTransformFunctorBase {
-  WinogradTransformFunctor(const Padding &padding_type,
+  WinogradTransformFunctor(OpKernelContext *context,
+                           const Padding &padding_type,
                            const std::vector<int> &paddings,
                            const int block_size)
-      : WinogradTransformFunctorBase(padding_type, paddings, block_size) {}
+      : WinogradTransformFunctorBase(context,
+                                     padding_type,
+                                     paddings,
+                                     block_size) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -85,11 +95,13 @@ struct WinogradTransformFunctor<DeviceType::GPU, T>
 };
 #endif  // MACE_ENABLE_OPENCL
 
-struct WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctorBase(const ActivationType activation,
+struct WinogradInverseTransformFunctorBase : OpKernel {
+  WinogradInverseTransformFunctorBase(OpKernelContext *context,
+                                      const ActivationType activation,
                                       const float relux_max_limit,
                                       const int block_size)
-      : wino_blk_size_(block_size),
+      : OpKernel(context),
+        wino_blk_size_(block_size),
         activation_(activation),
         relux_max_limit_(relux_max_limit) {}
 
@@ -100,11 +112,12 @@ struct WinogradInverseTransformFunctorBase {
 
 template<DeviceType D, typename T>
 struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctor(const ActivationType activation,
+  WinogradInverseTransformFunctor(OpKernelContext *context,
+                                  const ActivationType activation,
                                   const float relux_max_limit,
                                   const int block_size)
       : WinogradInverseTransformFunctorBase(
-            activation, relux_max_limit, block_size) {}
+            context, activation, relux_max_limit, block_size) {}
 
   MaceStatus operator()(const std::vector<const Tensor*> &inputs,
                         Tensor *output,
@@ -121,11 +134,12 @@ struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
 template <typename T>
 struct WinogradInverseTransformFunctor<DeviceType::GPU, T>
     : WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctor(const ActivationType activation,
+  WinogradInverseTransformFunctor(OpKernelContext *context,
+                                  const ActivationType activation,
                                   const float relux_max_limit,
                                   const int block_size)
       : WinogradInverseTransformFunctorBase(
-            activation, relux_max_limit, block_size) {}
+            context, activation, relux_max_limit, block_size) {}
 
   MaceStatus operator()(const std::vector<const Tensor*> &inputs,
                   Tensor *output,

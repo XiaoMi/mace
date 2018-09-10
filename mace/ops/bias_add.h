@@ -24,10 +24,11 @@ namespace ops {
 template <DeviceType D, class T>
 class BiasAddOp : public Operator<D, T> {
  public:
-  BiasAddOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(static_cast<DataFormat>(OperatorBase::GetOptionalArg<int>(
-            "data_format", NHWC))) {}
+  BiasAddOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 static_cast<DataFormat>(OperatorBase::GetOptionalArg<int>(
+                     "data_format", NHWC))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

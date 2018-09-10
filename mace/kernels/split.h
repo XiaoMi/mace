@@ -22,6 +22,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -31,15 +32,17 @@
 namespace mace {
 namespace kernels {
 
-struct SplitFunctorBase {
-  explicit SplitFunctorBase(const int32_t axis) : axis_(axis) {}
+struct SplitFunctorBase : OpKernel {
+  SplitFunctorBase(OpKernelContext *context, const int32_t axis)
+      : OpKernel(context), axis_(axis) {}
 
   int32_t axis_;
 };
 
 template<DeviceType D, typename T>
 struct SplitFunctor : SplitFunctorBase {
-  explicit SplitFunctor(const int32_t axis) : SplitFunctorBase(axis) {}
+  SplitFunctor(OpKernelContext *context, const int32_t axis)
+      : SplitFunctorBase(context, axis) {}
 
   MaceStatus operator()(const Tensor *input,
                   const std::vector<Tensor *> &output_list,
@@ -90,11 +93,12 @@ struct SplitFunctor : SplitFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
 struct SplitFunctor<DeviceType::GPU, T> : SplitFunctorBase {
-  explicit SplitFunctor(const int32_t axis) : SplitFunctorBase(axis) {}
+  SplitFunctor(OpKernelContext *context, const int32_t axis)
+      : SplitFunctorBase(context, axis) {}
 
   MaceStatus operator()(const Tensor *input,
-                  const std::vector<Tensor *> &output_list,
-                  StatsFuture *future);
+                        const std::vector<Tensor *> &output_list,
+                        StatsFuture *future);
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::unique_ptr<BufferBase> kernel_error_;

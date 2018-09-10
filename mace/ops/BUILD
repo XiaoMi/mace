@@ -23,8 +23,25 @@ cc_library(
     hdrs = [
         "ops_test_util.h",
     ],
+    srcs = [
+        "ops_test_util.cc",
+    ],
+    copts = [
+        "-Werror",
+        "-Wextra",
+    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
     deps = [
-        "//mace/core",
+        "//mace/ops",
         "@gtest",
     ],
 )
@@ -36,6 +53,7 @@ cc_library(
         exclude = [
             "*_test.cc",
             "*_benchmark.cc",
+            "ops_test_util.cc",
             "buffer_to_image.cc",
             "image_to_buffer.cc",
             "lstmcell.cc",

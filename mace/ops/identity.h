@@ -25,8 +25,8 @@ namespace ops {
 template <DeviceType D, typename T>
 class IdentityOp : public Operator<D, T> {
  public:
-  IdentityOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws) {}
+  IdentityOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

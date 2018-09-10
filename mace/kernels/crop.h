@@ -21,6 +21,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -30,10 +31,12 @@
 namespace mace {
 namespace kernels {
 
-struct CropFunctorBase {
-  CropFunctorBase(const int axis,
+struct CropFunctorBase : OpKernel {
+  CropFunctorBase(OpKernelContext *context,
+                  const int axis,
                   const std::vector<int> &offset)
-      : axis_(axis),
+      : OpKernel(context),
+        axis_(axis),
         offset_(offset) {}
 
   const int axis_;
@@ -42,8 +45,10 @@ struct CropFunctorBase {
 
 template <DeviceType D, typename T>
 struct CropFunctor : CropFunctorBase {
-  CropFunctor(const int axis, const std::vector<int> &offset)
-      : CropFunctorBase(axis, offset) {}
+  CropFunctor(OpKernelContext *context,
+              const int axis,
+              const std::vector<int> &offset)
+      : CropFunctorBase(context, axis, offset) {}
 
   void crop_copy(const T* input_data, T* output_data,
                  const std::vector<index_t> &input_shape,
@@ -121,12 +126,14 @@ struct CropFunctor : CropFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct CropFunctor<DeviceType::GPU, T> : CropFunctorBase {
-  CropFunctor(const int axis, const std::vector<int> &offset)
-  : CropFunctorBase(axis, offset) {}
+  CropFunctor(OpKernelContext *context,
+              const int axis,
+              const std::vector<int> &offset)
+      : CropFunctorBase(context, axis, offset) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
-                  Tensor *output,
-                  StatsFuture *future);
+                        Tensor *output,
+                        StatsFuture *future);
   cl::Kernel kernel_;
   uint32_t kwg_size_;
   std::unique_ptr<BufferBase> kernel_error_;

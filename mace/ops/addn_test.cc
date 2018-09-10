@@ -39,7 +39,7 @@ void SimpleAdd2() {
   // Run
   net.RunOp(D);
 
-  auto expected = CreateTensor<float>({1, 2, 3, 1}, {2, 4, 6, 8, 10, 12});
+  auto expected = net.CreateTensor<float>({1, 2, 3, 1}, {2, 4, 6, 8, 10, 12});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -98,7 +98,7 @@ void SimpleAdd3() {
   }
 
   auto expected =
-      CreateTensor<float>({1, 2, 3, 1}, {-0.000713, 8, 12, 16, 20, 24});
+      net.CreateTensor<float>({1, 2, 3, 1}, {-0.000713, 8, 12, 16, 20, 24});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4, 1e-3);
 }
@@ -136,8 +136,8 @@ void RandomTest() {
     // run on cpu
     net.RunOp();
     // Check
-    Tensor expected;
-    expected.Copy(*net.GetOutput("Output"));
+    auto expected = net.CreateTensor<float>();
+    expected->Copy(*net.GetOutput("Output"));
 
     // run on gpu
     for (int i = 0; i < input_num; ++i) {
@@ -160,7 +160,7 @@ void RandomTest() {
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
                             kernels::BufferType::IN_OUT_CHANNEL);
 
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
                             1e-2);
   }
 }

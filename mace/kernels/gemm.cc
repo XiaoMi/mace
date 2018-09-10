@@ -1341,8 +1341,8 @@ void Gemm(const float *A,
               ik_begin = bk * block_size_k + (bk < remain_k ? bk : remain_k);
           const index_t ik_end = std::min(K, ik_begin + this_block_size_k);
 
-          Tensor trans_a;
-          Tensor trans_b;
+          Tensor trans_a(GetCPUAllocator(), DataType::DT_FLOAT);
+          Tensor trans_b(GetCPUAllocator(), DataType::DT_FLOAT);
           const float *real_a = nullptr;
           const float *real_b = nullptr;
           float *real_c = c_base + (ih_begin * width + iw_begin);
@@ -1399,8 +1399,8 @@ void GemmRef(const float *A,
              const bool transpose_b) {
   memset(C, 0, sizeof(float) * batch * height * width);
 
-  Tensor trans_a;
-  Tensor trans_b;
+  Tensor trans_a(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor trans_b(GetCPUAllocator(), DataType::DT_FLOAT);
   float *trans_a_data = nullptr;
   float *trans_b_data = nullptr;
   if (transpose_a) {

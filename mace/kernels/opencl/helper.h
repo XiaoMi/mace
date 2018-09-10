@@ -31,11 +31,11 @@
 namespace mace {
 namespace kernels {
 
-#define OUT_OF_RANGE_CONFIG(kernel_error)                   \
+#define OUT_OF_RANGE_CONFIG(kernel_error, context)          \
   if (runtime->IsOutOfRangeCheckEnabled()) {                \
     built_options.emplace("-DOUT_OF_RANGE_CHECK");          \
     (kernel_error) = std::move(std::unique_ptr<Buffer>(     \
-        new Buffer(GetDeviceAllocator(DeviceType::GPU))));  \
+        new Buffer((context)->device()->allocator())));     \
     MACE_RETURN_IF_ERROR((kernel_error)->Allocate(1));      \
     (kernel_error)->Map(nullptr);                           \
     *((kernel_error)->mutable_data<char>()) = 0;            \
@@ -115,14 +115,16 @@ std::string DtToCLDt(const DataType dt);
 std::string DtToUpCompatibleCLDt(const DataType dt);
 
 // Tuning or Run OpenCL kernel with 3D work group size
-MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
+MaceStatus TuningOrRun3DKernel(OpenCLRuntime *runtime,
+                               const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
                                StatsFuture *future);
 
 // Tuning or Run OpenCL kernel with 2D work group size
-MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
+MaceStatus TuningOrRun2DKernel(OpenCLRuntime *runtime,
+                               const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
@@ -162,7 +164,8 @@ std::string Concat(Args... args) {
   return ss.str();
 }
 
-std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
+std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
+                                       const uint32_t *gws,
                                        const uint32_t kwg_size);
 }  // namespace kernels
 }  // namespace mace

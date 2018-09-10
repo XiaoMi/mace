@@ -24,8 +24,8 @@ namespace ops {
 template <DeviceType D, class T>
 class LocalResponseNormOp : public Operator<D, T> {
  public:
-  LocalResponseNormOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws), functor_() {
+  LocalResponseNormOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context), functor_(context) {
     depth_radius_ = OperatorBase::GetOptionalArg<int>("depth_radius", 5);
     bias_ = OperatorBase::GetOptionalArg<float>("bias", 1.0f);
     alpha_ = OperatorBase::GetOptionalArg<float>("alpha", 1.0f);

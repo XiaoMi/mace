@@ -27,9 +27,10 @@ namespace ops {
 template <DeviceType D, class T>
 class ReduceMeanOp : public Operator<D, T> {
  public:
-  ReduceMeanOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetRepeatedArgs<int>("axis"),
+  ReduceMeanOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 OperatorBase::GetRepeatedArgs<int>("axis"),
                  OperatorBase::GetOptionalArg<bool>("keepdims", false)) {}
 
   MaceStatus Run(StatsFuture *future) override {

@@ -11,7 +11,6 @@ cc_library(
     name = "public",
     hdrs = [
         "mace.h",
-        "mace_runtime.h",
     ],
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
 )

@@ -27,6 +27,7 @@
 #include "mace/utils/utils.h"
 #include "mace/kernels/fixpoint.h"
 #include "mace/kernels/gemmlowp_util.h"
+#include "mace/kernels/kernel.h"
 #include "mace/kernels/quantize.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -40,7 +41,8 @@ template<DeviceType D, typename T>
 struct SoftmaxFunctor;
 
 template<>
-struct SoftmaxFunctor<DeviceType::CPU, float> {
+struct SoftmaxFunctor<DeviceType::CPU, float> : OpKernel {
+  explicit SoftmaxFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future) {
@@ -127,7 +129,8 @@ static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
 template<>
-struct SoftmaxFunctor<DeviceType::CPU, uint8_t> {
+struct SoftmaxFunctor<DeviceType::CPU, uint8_t> : OpKernel {
+  explicit SoftmaxFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future) {
@@ -354,7 +357,8 @@ struct SoftmaxFunctor<DeviceType::CPU, uint8_t> {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct SoftmaxFunctor<DeviceType::GPU, T> {
+struct SoftmaxFunctor<DeviceType::GPU, T> : OpKernel {
+  explicit SoftmaxFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *logits,
                         Tensor *output,
                         StatsFuture *future);

@@ -15,6 +15,8 @@
 #ifndef MACE_UTILS_TUNER_H_
 #define MACE_UTILS_TUNER_H_
 #include <stdlib.h>
+
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <limits>
@@ -29,18 +31,24 @@
 
 namespace mace {
 
+inline bool IsTuning() {
+  const char *tuning = getenv("MACE_TUNING");
+  return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
+}
+
 template <typename param_type>
 class Tuner {
  public:
-  static Tuner *Get() {
-    static Tuner tuner;
-    return &tuner;
+  explicit Tuner(const std::string tuned_param_file_path = ""):
+      tuned_param_file_path_(tuned_param_file_path) {
+    path_ = getenv("MACE_RUN_PARAMETER_PATH");
+    ReadRunParamters();
   }
 
-  inline bool IsTuning() {
-    const char *tuning = getenv("MACE_TUNING");
-    return tuning != nullptr && strlen(tuning) == 1 && tuning[0] == '1';
-  }
+  ~Tuner() { WriteRunParameters(); }
+
+  Tuner(const Tuner &) = delete;
+  Tuner &operator=(const Tuner &) = delete;
 
   template <typename RetType>
   RetType TuneOrRun(
@@ -76,16 +84,6 @@ class Tuner {
   }
 
  private:
-  Tuner() {
-    path_ = getenv("MACE_RUN_PARAMETER_PATH");
-    ReadRunParamters();
-  }
-
-  ~Tuner() { WriteRunParameters(); }
-
-  Tuner(const Tuner &) = delete;
-  Tuner &operator=(const Tuner &) = delete;
-
   inline void WriteRunParameters() {
     if (path_ != nullptr) {
       VLOG(3) << "Write tuning result to " << path_;
@@ -117,9 +115,9 @@ class Tuner {
   }
 
   inline void ReadRunParamters() {
-    extern std::string kOpenCLParameterPath;
-    if (!kOpenCLParameterPath.empty()) {
-      std::ifstream ifs(kOpenCLParameterPath, std::ios::binary | std::ios::in);
+    if (!tuned_param_file_path_.empty()) {
+      std::ifstream ifs(tuned_param_file_path_,
+                        std::ios::binary | std::ios::in);
       if (ifs.is_open()) {
         int64_t num_params = 0;
         ifs.read(reinterpret_cast<char *>(&num_params), sizeof(num_params));
@@ -144,7 +142,7 @@ class Tuner {
         LOG(WARNING) << "Read OpenCL tuned parameters file failed.";
       }
     } else {
-      LOG(INFO) << "There is no tuned parameters.";
+      VLOG(1) << "There is no tuned parameters.";
     }
   }
 
@@ -207,6 +205,7 @@ class Tuner {
   }
 
  private:
+  std::string tuned_param_file_path_;
   const char *path_;
   std::unordered_map<std::string, std::vector<param_type>> param_table_;
 };

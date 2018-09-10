@@ -19,17 +19,14 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
+#include "mace/kernels/kernel.h"
 
 namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct ReshapeFunctor {
-  ReshapeFunctor() {}
+struct ReshapeFunctor : OpKernel {
+  explicit ReshapeFunctor(OpKernelContext *context) : OpKernel(context) {}
 
   MaceStatus operator()(const Tensor *input,
                   const std::vector<index_t> &out_shape,

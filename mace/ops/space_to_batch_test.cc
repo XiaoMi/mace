@@ -116,24 +116,23 @@ void TestBidirectionalTransform(const std::vector<index_t> &space_shape,
                                 const std::vector<int> &padding_data,
                                 const std::vector<index_t> &batch_shape,
                                 const std::vector<float> &batch_data) {
-  auto space_tensor = std::unique_ptr<Tensor>(
-      new Tensor(GetDeviceAllocator(DeviceType::GPU), DataTypeToEnum<T>::v()));
+  OpsTestNet net;
+  auto space_tensor = net.CreateTensor<T, GPU>();
   space_tensor->Resize(space_shape);
   {
     Tensor::MappingGuard space_mapper(space_tensor.get());
-    T *space_ptr = space_tensor->mutable_data<T>();
+    T *space_ptr = space_tensor->template mutable_data<T>();
     MACE_CHECK(static_cast<size_t>(space_tensor->size()) == space_data.size())
         << "Space tensor size:" << space_tensor->size()
         << ", space data size:" << space_data.size();
     memcpy(space_ptr, space_data.data(), space_data.size() * sizeof(T));
   }
 
-  auto batch_tensor = std::unique_ptr<Tensor>(
-      new Tensor(GetDeviceAllocator(DeviceType::GPU), DataTypeToEnum<T>::v()));
+  auto batch_tensor = net.CreateTensor<T, GPU>();
   batch_tensor->Resize(batch_shape);
   {
     Tensor::MappingGuard batch_mapper(batch_tensor.get());
-    T *batch_ptr = batch_tensor->mutable_data<T>();
+    T *batch_ptr = batch_tensor->template mutable_data<T>();
     MACE_CHECK(static_cast<size_t>(batch_tensor->size()) == batch_data.size());
     memcpy(batch_ptr, batch_data.data(), batch_data.size() * sizeof(T));
   }

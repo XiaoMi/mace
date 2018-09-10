@@ -89,14 +89,16 @@ void Deconv2dNCHW(const T *input,
 }
 }  // namespace deconv
 
-struct Deconv2dFunctorBase {
-  Deconv2dFunctorBase(const std::vector<int> &strides,
+struct Deconv2dFunctorBase : OpKernel {
+  Deconv2dFunctorBase(OpKernelContext *context,
+                      const std::vector<int> &strides,
                       const Padding &padding_type,
                       const std::vector<int> &paddings,
                       const std::vector<index_t> &output_shape,
                       const ActivationType activation,
                       const float relux_max_limit)
-      : strides_(strides),
+      : OpKernel(context),
+        strides_(strides),
         padding_type_(padding_type),
         paddings_(paddings),
         output_shape_(output_shape),
@@ -210,13 +212,15 @@ struct Deconv2dFunctorBase {
 
 template <DeviceType D, typename T>
 struct Deconv2dFunctor : Deconv2dFunctorBase {
-  Deconv2dFunctor(const std::vector<int> &strides,
+  Deconv2dFunctor(OpKernelContext *context,
+                  const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
                   const float relux_max_limit)
-      : Deconv2dFunctorBase(strides,
+      : Deconv2dFunctorBase(context,
+                            strides,
                             padding_type,
                             paddings,
                             output_shape,
@@ -315,13 +319,15 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
-  Deconv2dFunctor(const std::vector<int> &strides,
+  Deconv2dFunctor(OpKernelContext *context,
+                  const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
                   const float relux_max_limit)
-      : Deconv2dFunctorBase(strides,
+      : Deconv2dFunctorBase(context,
+                            strides,
                             padding_type,
                             paddings,
                             output_shape,

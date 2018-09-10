@@ -26,9 +26,9 @@ namespace ops {
 template <DeviceType D, typename T>
 class ConcatOp : public Operator<D, T> {
  public:
-  ConcatOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("axis", 3)) {}
+  ConcatOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context, OperatorBase::GetOptionalArg<int>("axis", 3)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_CHECK(this->InputSize() >= 2)

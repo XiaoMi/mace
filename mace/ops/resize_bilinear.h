@@ -24,9 +24,10 @@ namespace ops {
 template <DeviceType D, class T>
 class ResizeBilinearOp : public Operator<D, T> {
  public:
-  ResizeBilinearOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
-        functor_(OperatorBase::GetRepeatedArgs<index_t>("size", {-1, -1}),
+  ResizeBilinearOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context,
+                 OperatorBase::GetRepeatedArgs<index_t>("size", {-1, -1}),
                  OperatorBase::GetOptionalArg<bool>("align_corners", false)) {}
 
   MaceStatus Run(StatsFuture *future) override {

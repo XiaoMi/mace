@@ -65,7 +65,7 @@ void Simple(const std::vector<index_t> &A_shape,
   }
 
   // Check
-  auto expected = CreateTensor<float>(C_shape, C_value);
+  auto expected = net.CreateTensor<float>(C_shape, C_value);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -171,15 +171,15 @@ void Complex(const std::vector<index_t> &batch,
   // Check
   EXPECT_EQ(expected_output_shape, net.GetOutput("Output")->shape());
 
-  Tensor expected;
-  expected.Copy(*net.GetOutput("Output"));
-  expected.Reshape({batch_count, height, out_width});
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("Output"));
+  expected->Reshape({batch_count, height, out_width});
 
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
                             1e-1);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("OPENCLOutput"), 1e-5,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5,
                             1e-5);
   }
 }

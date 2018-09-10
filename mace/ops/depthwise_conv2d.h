@@ -29,9 +29,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class DepthwiseConv2dOp : public ConvPool2dOpBase<D, T> {
  public:
-  DepthwiseConv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws),
-        functor_(this->strides_.data(),
+  DepthwiseConv2dOp(const OperatorDef &op_def, OpKernelContext *context)
+      : ConvPool2dOpBase<D, T>(op_def, context),
+        functor_(context,
+                 this->strides_.data(),
                  this->padding_type_,
                  this->paddings_,
                  this->dilations_.data(),

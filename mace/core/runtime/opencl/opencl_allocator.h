@@ -15,15 +15,17 @@
 #ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_ALLOCATOR_H_
 #define MACE_CORE_RUNTIME_OPENCL_OPENCL_ALLOCATOR_H_
 
+#include <memory>
 #include <vector>
 
 #include "mace/core/allocator.h"
+#include "mace/core/runtime/opencl/opencl_runtime.h"
 
 namespace mace {
 
 class OpenCLAllocator : public Allocator {
  public:
-  OpenCLAllocator();
+  explicit OpenCLAllocator(OpenCLRuntime *opencl_runtime);
 
   ~OpenCLAllocator() override;
 
@@ -51,6 +53,9 @@ class OpenCLAllocator : public Allocator {
   void Unmap(void *buffer, void *mapped_ptr) const override;
 
   bool OnHost() const override;
+
+ private:
+  OpenCLRuntime *opencl_runtime_;
 };
 
 }  // namespace mace

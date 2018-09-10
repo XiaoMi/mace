@@ -20,21 +20,24 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/kernels/opencl/common.h"
 
 namespace mace {
 namespace kernels {
 
-struct ImageToBufferFunctorBase {
-  explicit ImageToBufferFunctorBase(const int wino_blk_size)
-    : wino_blk_size_(wino_blk_size) {}
+struct ImageToBufferFunctorBase : OpKernel {
+  ImageToBufferFunctorBase(OpKernelContext *context,
+                           const int wino_blk_size)
+    : OpKernel(context),
+      wino_blk_size_(wino_blk_size) {}
   const int wino_blk_size_;
 };
 
 template <DeviceType D, typename T>
 struct ImageToBufferFunctor : ImageToBufferFunctorBase {
-  explicit ImageToBufferFunctor(const int wino_blk_size)
-    : ImageToBufferFunctorBase(wino_blk_size) {}
+  ImageToBufferFunctor(OpKernelContext *context, const int wino_blk_size)
+    : ImageToBufferFunctorBase(context, wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
                         const BufferType type,
                         Tensor *output,
@@ -50,8 +53,9 @@ struct ImageToBufferFunctor : ImageToBufferFunctorBase {
 
 template <typename T>
 struct ImageToBufferFunctor<DeviceType::GPU, T> : ImageToBufferFunctorBase {
-  explicit ImageToBufferFunctor(const int wino_blk_size)
-    : ImageToBufferFunctorBase(wino_blk_size) {}
+  ImageToBufferFunctor(OpKernelContext *context,
+                                const int wino_blk_size)
+      : ImageToBufferFunctorBase(context, wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
                         const BufferType type,
                         Tensor *output,

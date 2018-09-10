@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 
 namespace mace {
 
@@ -34,6 +33,16 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
                                              CPUAffinityPolicy policy,
                                              bool use_gemmlowp = false);
 
+class CPURuntime {
+ public:
+  explicit CPURuntime(const int num_threads) : num_threads_(num_threads) {}
+  ~CPURuntime() = default;
+  inline int num_threads() const {
+    return num_threads_;
+  }
+ private:
+  int num_threads_;
+};
 }  // namespace mace
 
 #endif  // MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_

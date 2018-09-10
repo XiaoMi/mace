@@ -47,11 +47,11 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
 
   const index_t channel_blocks = RoundUpDiv4(channels);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("pad");
     built_options.emplace("-Dpad=" + kernel_name);
@@ -85,10 +85,10 @@ MaceStatus PadFunctor<DeviceType::GPU, T>::operator()(const Tensor *input,
     input_shape_ = input->shape();
   }
 
-  const std::vector<uint32_t> lws = Default3DLocalWS(gws, kwg_size_);
+  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   std::string tuning_key = Concat("pad", output->dim(0), output->dim(1),
                                   output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

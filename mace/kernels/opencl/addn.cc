@@ -34,7 +34,7 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
   const index_t width = input_tensors[0]->dim(2);
   const index_t channels = input_tensors[0]->dim(3);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   for (size_t i = 1; i < size; ++i) {
     MACE_CHECK_NOTNULL(input_tensors[i]);
@@ -49,7 +49,7 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
       MACE_NOT_IMPLEMENTED;
     }
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     auto dt = DataTypeToEnum<T>::value;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("addn");
@@ -96,7 +96,7 @@ MaceStatus AddNFunctor<DeviceType::GPU, T>::operator()(
   std::string tuning_key =
       Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
              output_tensor->dim(2), output_tensor->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
   OUT_OF_RANGE_VALIDATION(kernel_error_);
   return MACE_SUCCESS;

@@ -49,60 +49,60 @@ void ScalarMathTest(const kernels::EltwiseType type,
   net.RunOp(D);
 
 
-  auto expected = CreateTensor<DstType>({}, {output});
+  auto expected = net.CreateTensor<DstType>({}, {output});
 
   ExpectTensorNear<DstType>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
 TEST_F(ScalarMathOpTest, SimpleCPU) {
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::SUM, 1, 2, 3, 3);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::SUB, 1, 2, 3, -1);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::PROD, 3, -2, 3, -6);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::DIV, 3, -2, 1, -1.5);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::MIN, 3, -2, 1, -2);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::MAX, 3, -2, 1, 3);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::NEG, 3, -2, 1, -3);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::ABS, 3, -2, 1, 3);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
-ScalarMathTest<DeviceType::CPU, float, float>(
-    kernels::EltwiseType::POW, 3, 1, 1, 3);
-ScalarMathTest<DeviceType::CPU, float, int32_t>(
-    kernels::EltwiseType::EQUAL, 3, 3, 1, 1);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::SUM, 1, 2, 3, 3);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::SUB, 1, 2, 3, -1);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::PROD, 3, -2, 3, -6);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::DIV, 3, -2, 1, -1.5);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::MIN, 3, -2, 1, -2);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::MAX, 3, -2, 1, 3);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::NEG, 3, -2, 1, -3);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::ABS, 3, -2, 1, 3);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
+  ScalarMathTest<DeviceType::CPU, float, float>(
+      kernels::EltwiseType::POW, 3, 1, 1, 3);
+  ScalarMathTest<DeviceType::CPU, float, int32_t>(
+      kernels::EltwiseType::EQUAL, 3, 3, 1, 1);
 }
 
 TEST_F(ScalarMathOpTest, SimpleGPU) {
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::SUM, 1, 2, 1, 3);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::SUB, 1, 2, 1, -1);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::PROD, 3, -2, 1, -6);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::DIV, 3, -2, 1, -1.5);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::MIN, 3, -2, 1, -2);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::MAX, 3, -2, 1, 3);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::NEG, 3, -2, 1, -3);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::ABS, 3, -2, 1, 3);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
-ScalarMathTest<DeviceType::GPU, float, float>(
-    kernels::EltwiseType::POW, 3, 1, 1, 3);
-ScalarMathTest<DeviceType::GPU, float, int32_t>(
-    kernels::EltwiseType::EQUAL, 3, 3, 1, 1);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SUM, 1, 2, 1, 3);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SUB, 1, 2, 1, -1);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::PROD, 3, -2, 1, -6);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::DIV, 3, -2, 1, -1.5);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::MIN, 3, -2, 1, -2);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::MAX, 3, -2, 1, 3);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::NEG, 3, -2, 1, -3);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::ABS, 3, -2, 1, 3);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SQR_DIFF, 3, -2, 1, 25);
+  ScalarMathTest<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::POW, 3, 1, 1, 3);
+  ScalarMathTest<DeviceType::GPU, float, int32_t>(
+      kernels::EltwiseType::EQUAL, 3, 3, 1, 1);
 }
 }  // namespace test
 }  // namespace ops

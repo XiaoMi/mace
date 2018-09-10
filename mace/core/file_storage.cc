@@ -28,10 +28,36 @@
 
 namespace mace {
 
-std::shared_ptr<KVStorageFactory> kStorageFactory = nullptr;
+class FileStorageFactory::Impl {
+ public:
+  explicit Impl(const std::string &path);
+
+  std::unique_ptr<KVStorage> CreateStorage(const std::string &name);
+
+ private:
+  std::string path_;
+};
+
+FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
+
+std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
+    const std::string &name) {
+  return std::move(std::unique_ptr<KVStorage>(
+      new FileStorage(path_ + "/" + name)));
+}
+
+FileStorageFactory::FileStorageFactory(const std::string &path):
+    impl_(new FileStorageFactory::Impl(path)) {}
+
+FileStorageFactory::~FileStorageFactory() = default;
+
+std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
+    const std::string &name) {
+  return impl_->CreateStorage(name);
+}
 
 FileStorage::FileStorage(const std::string &file_path):
-    data_changed_(false), file_path_(file_path) {}
+    loaded_(false), data_changed_(false), file_path_(file_path) {}
 
 int FileStorage::Load() {
   struct stat st;
@@ -47,6 +73,9 @@ int FileStorage::Load() {
     }
   }
   utils::WriteLock lock(&data_mutex_);
+  if (loaded_) {
+    return 0;
+  }
   int fd = open(file_path_.c_str(), O_RDONLY);
   if (fd < 0) {
     if (errno == ENOENT) {
@@ -118,13 +147,17 @@ int FileStorage::Load() {
                  << " failed, error code: " << strerror(errno);
     return -1;
   }
+  loaded_ = true;
   return 0;
 }
 
-void FileStorage::Clear() {
+bool FileStorage::Clear() {
   utils::WriteLock lock(&data_mutex_);
-  data_.clear();
-  data_changed_ = true;
+  if (!data_.empty()) {
+    data_.clear();
+    data_changed_ = true;
+  }
+  return true;
 }
 
 bool FileStorage::Insert(const std::string &key,

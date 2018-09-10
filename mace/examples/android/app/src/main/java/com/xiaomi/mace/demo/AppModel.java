@@ -37,15 +37,13 @@ public class AppModel {
         mJniThread = new Handler(thread.getLooper());
     }
 
-    public void maceMobilenetSetAttrs(final InitData initData) {
+    public void maceMobilenetCreateGPUContext(final InitData initData) {
         mJniThread.post(new Runnable() {
             @Override
             public void run() {
-                int result = JniMaceUtils.maceMobilenetSetAttrs(
-                        initData.getOmpNumThreads(), initData.getCpuAffinityPolicy(),
-                        initData.getGpuPerfHint(), initData.getGpuPriorityHint(),
-                        initData.getKernelPath());
-                Log.i("APPModel", "maceMobilenetSetAttrs result = " + result);
+                int result = JniMaceUtils.maceMobilenetCreateGPUContext(
+                        initData.getStoragePath());
+                Log.i("APPModel", "maceMobilenetCreateGPUContext result = " + result);
             }
         });
     }
@@ -54,7 +52,10 @@ public class AppModel {
         mJniThread.post(new Runnable() {
             @Override
             public void run() {
-                int result = JniMaceUtils.maceMobilenetCreateEngine(initData.getModel(), initData.getDevice());
+                int result = JniMaceUtils.maceMobilenetCreateEngine(
+                        initData.getOmpNumThreads(), initData.getCpuAffinityPolicy(),
+                        initData.getGpuPerfHint(), initData.getGpuPriorityHint(),
+                        initData.getModel(), initData.getDevice());
                 Log.i("APPModel", "maceMobilenetCreateEngine result = " + result);
 
                 if (result == -1) {

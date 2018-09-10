@@ -18,6 +18,7 @@
 
 #include "mace/core/macros.h"
 #include "mace/core/net.h"
+#include "mace/public/mace.h"
 #include "mace/utils/memory_logging.h"
 #include "mace/utils/timer.h"
 #include "mace/utils/utils.h"
@@ -27,30 +28,35 @@ namespace mace {
 NetBase::NetBase(const std::shared_ptr<const OperatorRegistryBase> op_registry,
                  const std::shared_ptr<const NetDef> net_def,
                  Workspace *ws,
-                 DeviceType type)
+                 Device *device)
     : name_(net_def->name()), op_registry_(op_registry) {
   MACE_UNUSED(ws);
-  MACE_UNUSED(type);
+  MACE_UNUSED(device);
 }
 
 SerialNet::SerialNet(
     const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const std::shared_ptr<const NetDef> net_def,
     Workspace *ws,
-    DeviceType type,
+    Device *device,
     const NetMode mode)
-    : NetBase(op_registry, net_def, ws, type), device_type_(type) {
+    : NetBase(op_registry, net_def, ws, device), device_(device),
+      op_kernel_context_(new OpKernelContext(ws, device)) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
+  DeviceType device_type = device->device_type();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);
     // TODO(liuqi): refactor to add device_type to OperatorDef
     const int op_device =
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            operator_def, "device", static_cast<int>(device_type_));
-    if (op_device == type) {
+            operator_def, "device", static_cast<int>(device_type));
+    if (op_device == device_type) {
+      VLOG(3) << "Creating operator " << operator_def.name() << "("
+              << operator_def.type() << ")";
       OperatorDef temp_def(operator_def);
       std::unique_ptr<OperatorBase> op(
-          op_registry->CreateOperator(temp_def, ws, type, mode));
+          op_registry->CreateOperator(temp_def, op_kernel_context_.get(),
+                                      device_type, mode));
       if (op) {
         operators_.emplace_back(std::move(op));
       }
@@ -61,13 +67,14 @@ SerialNet::SerialNet(
 MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
   MACE_MEMORY_LOGGING_GUARD();
   MACE_LATENCY_LOGGER(1, "Running net");
+  const DeviceType device_type = device_->device_type();
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
     MACE_LATENCY_LOGGER(2, "Running operator ", op->debug_def().name(), "(",
                         op->debug_def().type(), "), mem_id: ",
                         MakeListString(op->debug_def().mem_id().data(),
                                        op->debug_def().mem_id().size()));
-    bool future_wait = (device_type_ == DeviceType::GPU &&
+    bool future_wait = (device_type == DeviceType::GPU &&
                         (run_metadata != nullptr ||
                          std::distance(iter, operators_.end()) == 1));
 
@@ -80,6 +87,9 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
       } else {
         future.wait_fn(nullptr);
       }
+#ifdef MACE_ENABLE_OPENCL
+      device_->opencl_runtime()->command_queue().finish();
+#endif
     } else if (run_metadata != nullptr) {
       call_stats.start_micros = NowMicros();
       MACE_RETURN_IF_ERROR(op->Run(nullptr));
@@ -125,7 +135,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     VLOG(3) << "Operator " << op->debug_def().name()
             << " has shape: " << MakeString(op->Output(0)->shape());
 
-    if (EnvEnabled("MACE_LOG_TENSOR_RANGE") && device_type_ == CPU) {
+    if (EnvEnabled("MACE_LOG_TENSOR_RANGE") && device_type == CPU) {
       for (int i = 0; i < op->OutputSize(); ++i) {
         int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));
         if (data_type == static_cast<int>(DT_FLOAT)) {
@@ -151,20 +161,20 @@ std::unique_ptr<NetBase> CreateNet(
     const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const NetDef &net_def,
     Workspace *ws,
-    DeviceType type,
+    Device *device,
     const NetMode mode) {
   std::shared_ptr<NetDef> tmp_net_def(new NetDef(net_def));
-  return CreateNet(op_registry, tmp_net_def, ws, type, mode);
+  return CreateNet(op_registry, tmp_net_def, ws, device, mode);
 }
 
 std::unique_ptr<NetBase> CreateNet(
     const std::shared_ptr<const OperatorRegistryBase> op_registry,
     const std::shared_ptr<const NetDef> net_def,
     Workspace *ws,
-    DeviceType type,
+    Device *device,
     const NetMode mode) {
   std::unique_ptr<NetBase> net(
-      new SerialNet(op_registry, net_def, ws, type, mode));
+      new SerialNet(op_registry, net_def, ws, device, mode));
   return net;
 }
 

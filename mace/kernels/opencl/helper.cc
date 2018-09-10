@@ -226,14 +226,14 @@ std::string DtToUpCompatibleCLCMDDt(const DataType dt) {
   }
 }
 
-std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
+std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
+                                       const uint32_t *gws,
                                        const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
-    uint64_t cache_size =
-        OpenCLRuntime::Global()->device_global_mem_cache_size();
+    uint64_t cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     lws[2] =
@@ -245,13 +245,12 @@ std::vector<uint32_t> Default3DLocalWS(const uint32_t *gws,
   return lws;
 }
 
-MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
+MaceStatus TuningOrRun3DKernel(OpenCLRuntime *runtime,
+                               const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
                                StatsFuture *future) {
-  auto runtime = OpenCLRuntime::Global();
-
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
@@ -366,29 +365,28 @@ MaceStatus TuningOrRun3DKernel(const cl::Kernel &kernel,
     }
     return error;
   };
-  OpenCLProfilingTimer timer(&event);
-  cl_int err = Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(
+  OpenCLProfilingTimer timer(runtime, &event);
+  cl_int err = runtime->tuner()->template TuneOrRun<cl_int>(
       tuning_key, lws, params_generator, func, &timer);
   MACE_CL_RET_STATUS(err);
 
   if (future != nullptr) {
-    future->wait_fn = [event](CallStats *stats) {
+    future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
-        OpenCLRuntime::Global()->GetCallStats(event, stats);
+        runtime->GetCallStats(event, stats);
       }
     };
   }
   return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
+MaceStatus TuningOrRun2DKernel(OpenCLRuntime *runtime,
+                               const cl::Kernel &kernel,
                                const std::string tuning_key,
                                const uint32_t *gws,
                                const std::vector<uint32_t> &lws,
                                StatsFuture *future) {
-  auto runtime = OpenCLRuntime::Global();
-
   auto params_generator = [&]() -> std::vector<std::vector<uint32_t>> {
     const uint32_t kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel));
@@ -475,8 +473,8 @@ MaceStatus TuningOrRun2DKernel(const cl::Kernel &kernel,
     }
     return error;
   };
-  OpenCLProfilingTimer timer(&event);
-  cl_int err = Tuner<uint32_t>::Get()->template TuneOrRun<cl_int>(
+  OpenCLProfilingTimer timer(runtime, &event);
+  cl_int err = runtime->tuner()->template TuneOrRun<cl_int>(
       tuning_key, lws, params_generator, func, &timer);
   MACE_CL_RET_STATUS(err);
 

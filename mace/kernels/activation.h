@@ -23,6 +23,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -126,10 +127,14 @@ template <DeviceType D, typename T>
 class ActivationFunctor;
 
 template <>
-class ActivationFunctor<DeviceType::CPU, float> {
+class ActivationFunctor<DeviceType::CPU, float> : OpKernel {
  public:
-  ActivationFunctor(ActivationType type, float relux_max_limit)
-      : activation_(type), relux_max_limit_(relux_max_limit) {}
+  ActivationFunctor(OpKernelContext *context,
+                    ActivationType type,
+                    float relux_max_limit)
+      : OpKernel(context),
+        activation_(type),
+        relux_max_limit_(relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *alpha,
@@ -159,10 +164,14 @@ class ActivationFunctor<DeviceType::CPU, float> {
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-class ActivationFunctor<DeviceType::GPU, T> {
+class ActivationFunctor<DeviceType::GPU, T> : OpKernel {
  public:
-  ActivationFunctor(ActivationType type, T relux_max_limit)
-      : activation_(type), relux_max_limit_(static_cast<T>(relux_max_limit)) {}
+  ActivationFunctor(OpKernelContext *context,
+                    ActivationType type,
+                    T relux_max_limit)
+      : OpKernel(context),
+        activation_(type),
+        relux_max_limit_(static_cast<T>(relux_max_limit)) {}
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *alpha,
