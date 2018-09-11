@@ -124,7 +124,7 @@ class MemoryOptimizer(object):
     @staticmethod
     def is_memory_reuse_op(op):
         return op.type == 'Reshape' or op.type == 'Identity' \
-               or op.type == 'Squeeze'
+               or op.type == 'Squeeze' or op.type == 'ExpandDims'
 
     def optimize(self):
         for op in self.net_def.op:

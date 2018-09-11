@@ -19,6 +19,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -27,18 +28,13 @@
 namespace mace {
 namespace kernels {
 
-struct ExpandDimsBase {
-  explicit ExpandDimsBase(int axis) : axis_(axis) {}
-
-  int axis_;
-};
-
 template <DeviceType D, typename T>
 struct ExpandDimsFunctor;
 
 template <typename T>
-struct ExpandDimsFunctor<DeviceType::CPU, T> : ExpandDimsBase {
-  explicit ExpandDimsFunctor(int axis) : ExpandDimsBase(axis) {}
+struct ExpandDimsFunctor<DeviceType::CPU, T> : OpKernel {
+  explicit ExpandDimsFunctor(OpKernelContext *context, int axis)
+    : OpKernel(context), axis_(axis) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -64,6 +60,8 @@ struct ExpandDimsFunctor<DeviceType::CPU, T> : ExpandDimsBase {
 
     return MACE_SUCCESS;
   }
+
+  int axis_;
 };
 
 }  // namespace kernels

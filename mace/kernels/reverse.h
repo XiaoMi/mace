@@ -20,6 +20,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -32,7 +33,8 @@ template <DeviceType D, typename T>
 struct ReverseFunctor;
 
 template <typename T>
-struct ReverseFunctor<DeviceType::CPU, T> {
+struct ReverseFunctor<DeviceType::CPU, T> : OpKernel {
+  explicit ReverseFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *input,
                         const Tensor *axis,
                         Tensor *output,

@@ -28,6 +28,11 @@ void Register_ExpandDims(OperatorRegistryBase *op_registry) {
                                           .TypeConstraint<int32_t>("T")
                                           .Build(),
                          ExpandDimsOp<DeviceType::CPU, int32_t>);
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("ExpandDims")
+                                          .Device(DeviceType::CPU)
+                                          .TypeConstraint<uint8_t>("T")
+                                          .Build(),
+                         ExpandDimsOp<DeviceType::CPU, uint8_t>);
 }
 
 }  // namespace ops
