@@ -131,10 +131,6 @@ class OpsTestNet {
     op_registry_(new OperatorRegistry()) {
   }
 
-  ~OpsTestNet() {
-    Sync();
-  }
-
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
