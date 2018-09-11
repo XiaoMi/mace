@@ -133,7 +133,8 @@ void TestRandomResizeBicubic() {
     OpsTestNet net;
     // Add input data
     net.AddRandomInput<D, float>("Input",
-                                 {batch, in_height, in_width, channels});
+                                 {batch, in_height, in_width, channels},
+                                 true, true);
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
 
@@ -169,7 +170,7 @@ void TestRandomResizeBicubic() {
     }
     // Check
     ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-2,
-                            1e-4);
+                            1e-2);
   }
 }
 }  // namespace

@@ -33,25 +33,27 @@ namespace kernels {
 
 static const int64_t kTableSize = (1 << 10);
 
-inline const float* InitCoeffsTable() {
+inline const std::shared_ptr<float> InitCoeffsTable() {
   // Allocate and initialize coefficients table using Bicubic
   // convolution algorithm.
   // https://en.wikipedia.org/wiki/Bicubic_interpolation
-  float* coeffs_tab = new float[(kTableSize + 1) * 2];
+  auto coeffs_tab = std::shared_ptr<float>(new float[(kTableSize + 1) * 2],
+                                          std::default_delete<float[]>());
+  float *coeffs_tab_ptr = coeffs_tab.get();
   static const double A = -0.75;
   for (int i = 0; i <= kTableSize; ++i) {
     float x = i * 1.0 / kTableSize;
-    coeffs_tab[i * 2] = ((A + 2) * x - (A + 3)) * x * x + 1;
+    coeffs_tab_ptr[i * 2] = ((A + 2) * x - (A + 3)) * x * x + 1;
     x += 1.0;
-    coeffs_tab[i * 2 + 1] = ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+    coeffs_tab_ptr[i * 2 + 1] = ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
   }
   return coeffs_tab;
 }
 
-inline const float* GetCoeffsTable() {
+inline const float *GetCoeffsTable() {
   // Static so that we initialize it on first use
-  static const float* coeffs_tab = InitCoeffsTable();
-  return coeffs_tab;
+  static const std::shared_ptr<float> coeffs_tab = InitCoeffsTable();
+  return coeffs_tab.get();
 }
 
 inline int64_t Bound(int64_t val, int64_t limit) {
@@ -59,21 +61,22 @@ inline int64_t Bound(int64_t val, int64_t limit) {
 }
 
 inline void GetWeightsAndIndices(float scale, int64_t out_loc, int64_t limit,
-                                 std::array<float, 4>* weights,
-                                 std::array<int64_t, 4>* indices) {
+                                 std::vector<float> *weights,
+                                 std::vector<int64_t> *indices) {
   const int64_t in_loc = scale * out_loc;
   const float delta = scale * out_loc - in_loc;
   const int64_t offset = lrintf(delta * kTableSize);
-  const float* coeffs_tab = GetCoeffsTable();
-  *weights = {{coeffs_tab[offset * 2 + 1], coeffs_tab[offset * 2],
-                      coeffs_tab[(kTableSize - offset) * 2],
-                      coeffs_tab[(kTableSize - offset) * 2 + 1]}};
-  *indices = {{Bound(in_loc - 1, limit), Bound(in_loc, limit),
-                      Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)}};
+  const float *coeffs_tab = GetCoeffsTable();
+  *weights = {coeffs_tab[offset * 2 + 1],
+              coeffs_tab[offset * 2],
+              coeffs_tab[(kTableSize - offset) * 2],
+              coeffs_tab[(kTableSize - offset) * 2 + 1]};
+  *indices = {Bound(in_loc - 1, limit), Bound(in_loc, limit),
+              Bound(in_loc + 1, limit), Bound(in_loc + 2, limit)};
 }
 
-inline float Interpolate1D(const std::array<float, 4>& weights,
-                           const std::array<float, 4>& values) {
+inline float Interpolate1D(const std::vector<float> &weights,
+                           const std::vector<float> &values) {
   return values[0] * weights[0] + values[1] * weights[1] +
          values[2] * weights[2] + values[3] * weights[3];
 }
@@ -87,26 +90,25 @@ inline float CalculateResizeScale(index_t in_size,
 }
 
 inline void ResizeImage(const float *images,
-             const index_t batch_size,
-             const index_t in_height,
-             const index_t in_width,
-             const index_t out_height,
-             const index_t out_width,
-             const index_t channels,
-             const float height_scale,
-             const float width_scale,
-             float *output) {
-  std::array<float, 4> coeff = {{0.0, 0.0, 0.0, 0.0}};
+                        const index_t batch_size,
+                        const index_t in_height,
+                        const index_t in_width,
+                        const index_t out_height,
+                        const index_t out_width,
+                        const index_t channels,
+                        const float height_scale,
+                        const float width_scale,
+                        float *output) {
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t y = 0; y < out_height; ++y) {
-      std::array<float, 4> y_weights;
-      std::array<index_t, 4> y_indices;
+      std::vector<float> y_weights;
+      std::vector<index_t> y_indices;
       GetWeightsAndIndices(height_scale, y, in_height, &y_weights,
-                                 &y_indices);
+                           &y_indices);
       for (index_t x = 0; x < out_width; ++x) {
-        std::array<float, 4> x_weights;
-        std::array<index_t, 4> x_indices;
+        std::vector<float> x_weights;
+        std::vector<index_t> x_indices;
         GetWeightsAndIndices(width_scale, x, in_width, &x_weights,
                              &x_indices);
 
@@ -117,16 +119,17 @@ inline void ResizeImage(const float *images,
                   images + (b * channels + c) * in_height * in_width;
           float *channel_output_ptr =
                   output + (b * channels + c) * out_height * out_width;
+          std::vector<float> coeff(4, 0.0);
           for (index_t i = 0; i < 4; ++i) {
-            const std::array<float, 4> values = {
-              {static_cast<float>(channel_input_ptr
+            const std::vector<float> values = {
+              static_cast<float>(channel_input_ptr
                   [y_indices[i] * in_width + x_indices[0]]),
-               static_cast<float>(channel_input_ptr
+              static_cast<float>(channel_input_ptr
                   [y_indices[i] * in_width + x_indices[1]]),
-               static_cast<float>(channel_input_ptr
+              static_cast<float>(channel_input_ptr
                   [y_indices[i] * in_width + x_indices[2]]),
-               static_cast<float>(channel_input_ptr
-                  [y_indices[i] * in_width + x_indices[3]])}};
+              static_cast<float>(channel_input_ptr
+                  [y_indices[i] * in_width + x_indices[3]])};
             coeff[i] = Interpolate1D(x_weights, values);
           }
           channel_output_ptr[y * out_width + x] =
