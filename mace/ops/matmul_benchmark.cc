@@ -33,13 +33,15 @@ void MatMulBenchmark(
   // Add input data
   net.AddRandomInput<D, T>("A", {batch, height, channels});
   net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+  net.GetTensor("A")->SetIsWeight(true);
+  net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
     net.GetTensor("A")->SetScale(0.1);
     net.GetTensor("B")->SetScale(0.1);
   }
-
   if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
+    BufferToImage<D, T>(&net, "A", "AImage",
+                        kernels::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, T>(&net, "B", "BImage",
                         kernels::BufferType::IN_OUT_HEIGHT);
 
@@ -71,7 +73,7 @@ void MatMulBenchmark(
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -86,6 +88,8 @@ void MatMulTransposeBenchmark(
   // Add input data
   net.AddRandomInput<D, T>("A", {batch, height, channels});
   net.AddRandomInput<D, T>("B", {batch, out_width, channels});
+  net.GetTensor("A")->SetIsWeight(true);
+  net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
     net.GetTensor("A")->SetScale(0.1);
     net.GetTensor("B")->SetScale(0.1);
@@ -116,7 +120,7 @@ void MatMulTransposeBenchmark(
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
   net.Sync();
 }
@@ -154,10 +158,15 @@ void MatMulTransposeBenchmark(
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
+MACE_BM_MATMUL(1, 128, 128, 49);
+MACE_BM_MATMUL(2, 128, 128, 49);
+MACE_BM_MATMUL(3, 128, 128, 49);
+MACE_BM_MATMUL(4, 128, 128, 49);
 MACE_BM_MATMUL(16, 32, 128, 49);
 MACE_BM_MATMUL(16, 32, 128, 961);
 MACE_BM_MATMUL(16, 32, 128, 3969);
 MACE_BM_MATMUL(16, 128, 128, 49);
+MACE_BM_MATMUL(16, 49, 128, 128);
 MACE_BM_MATMUL(16, 128, 128, 961);
 MACE_BM_MATMUL(16, 128, 128, 3969);
 

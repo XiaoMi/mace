@@ -40,7 +40,11 @@ class MatMulOp : public Operator<D, T> {
                "than or equal to 2");
     index_t rank = A->dim_size();
     for (index_t i = 0; i < rank - 2; ++i) {
-      MACE_CHECK(A->dim(i) == B->dim(i), "batch dimensions are not equal");
+      MACE_CHECK(A->dim(i) == B->dim(i),
+                 "batch dimensions are not equal: ",
+                 A->dim(i),
+                 " vs. ",
+                 B->dim(i));
     }
     index_t ak = transpose_a_ ? A->dim(rank - 2) : A->dim(rank - 1);
     index_t bk = transpose_b_ ? B->dim(rank - 1) : B->dim(rank - 2);

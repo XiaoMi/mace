@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
   // config runtime
   mace::MaceStatus status = mace::SetOpenMPThreadsAndAffinityPolicy(
       FLAGS_omp_num_threads,
-      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy));
+      static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy),
+      true);
   if (status != mace::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
   }
