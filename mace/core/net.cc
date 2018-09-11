@@ -87,9 +87,6 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
       } else {
         future.wait_fn(nullptr);
       }
-#ifdef MACE_ENABLE_OPENCL
-      device_->opencl_runtime()->command_queue().finish();
-#endif
     } else if (run_metadata != nullptr) {
       call_stats.start_micros = NowMicros();
       MACE_RETURN_IF_ERROR(op->Run(nullptr));

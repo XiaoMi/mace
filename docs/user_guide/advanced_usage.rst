@@ -180,7 +180,6 @@ There are two common advanced use cases:
 
             // Include the headers
             #include "mace/public/mace.h"
-            #include "mace/public/mace_runtime.h"
             // If the model_graph_format is code
             #include "mace/public/${model_name}.h"
             #include "mace/public/mace_engine_factory.h"
@@ -199,7 +198,7 @@ There are two common advanced use cases:
                                          device_type,
                                          &engine);
             if (create_engine_status != MaceStatus::MACE_SUCCESS) {
-              // Report error
+              // Report error or fallback
             }
 
             // ... Same with the code in basic usage
@@ -271,13 +270,24 @@ There are two common advanced use cases:
 
             // Include the headers
             #include "mace/public/mace.h"
-            #include "mace/public/mace_runtime.h"
+            // 0. Declare the device type (must be same with ``runtime`` in configuration file)
+            DeviceType device_type = DeviceType::GPU;
 
-            // 0. Set pre-compiled OpenCL binary program file paths and OpenCL parameters file path when available
-            if (device_type == DeviceType::GPU) {
-              mace::SetOpenCLBinaryPaths(path/to/opencl_binary_paths);
-              mace::SetOpenCLParameterPath(path/to/opencl_parameter_file);
-            }
+            // 1. configuration
+            MaceStatus status;
+            MaceEngineConfig config(device_type);
+            std::shared_ptr<GPUContext> gpu_context;
+
+            const std::string storage_path ="path/to/storage";
+            gpu_context = GPUContextBuilder()
+                .SetStoragePath(storage_path)
+                .SetOpenCLBinaryPaths(path/to/opencl_binary_paths)
+                .SetOpenCLParameterPath(path/to/opencl_parameter_file)
+                .Finalize();
+            config.SetGPUContext(gpu_context);
+            config.SetGPUHints(
+                static_cast<GPUPerfHint>(GPUPerfHint::PERF_NORMAL),
+                static_cast<GPUPriorityHint>(GPUPriorityHint::PRIORITY_LOW));
 
             // ... Same with the code in basic usage.
 
