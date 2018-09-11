@@ -83,6 +83,8 @@ TEST(GEMMTest, AlignedWithoutBatch) {
   GemmTest(1, 6, 64, 128, false, true);
   GemmTest(1, 7, 64, 128, true, false);
   GemmTest(1, 17, 64, 128, true, true);
+  GemmTest(1, 256, 128, 4096, false, false);
+  GemmTest(1, 256, 128, 4104, false, false);
 }
 
 TEST(GEMMTest, UnalignedWithoutBatch) {

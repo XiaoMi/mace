@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "mace/proto/mace.pb.h"
-#include "mace/public/mace.h"
 
 namespace mace {
 

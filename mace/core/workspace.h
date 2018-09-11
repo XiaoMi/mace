@@ -20,6 +20,7 @@
 #include <vector>
 #include <memory>
 
+#include "mace/core/device.h"
 #include "mace/core/preallocated_pooled_allocator.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
@@ -48,7 +49,7 @@ class Workspace {
   std::vector<std::string> Tensors() const;
 
   MaceStatus LoadModelTensor(const NetDef &net_def,
-                             DeviceType type,
+                             Device *device,
                              const unsigned char *model_data);
 
   ScratchBuffer *GetScratchBuffer(DeviceType device_type);
@@ -56,11 +57,14 @@ class Workspace {
   void RemoveUnusedBuffer();
 
   void RemoveAndReloadBuffer(const NetDef &net_def,
-                             const unsigned char *model_data);
+                             const unsigned char *model_data,
+                             Allocator *alloc);
 
  private:
   MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,
-                                      DeviceType device_type);
+                                      Device *device);
+
+  Device *device_;
 
   TensorMap tensor_map_;
 

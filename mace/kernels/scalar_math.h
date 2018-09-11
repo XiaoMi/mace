@@ -89,12 +89,14 @@ void ScalarEltwise(const T* in0,
 
 
 template <DeviceType D, typename T>
-struct ScalarMathFunctor {
-  explicit ScalarMathFunctor(const EltwiseType type,
-                             const std::vector<float> &coeff,
-                             const float scalar_input,
-                             const int32_t scalar_input_index)
-      : type_(type),
+struct ScalarMathFunctor : OpKernel {
+  ScalarMathFunctor(OpKernelContext *context,
+                    const EltwiseType type,
+                    const std::vector<float> &coeff,
+                    const float scalar_input,
+                    const int32_t scalar_input_index)
+      : OpKernel(context),
+        type_(type),
         coeff_(coeff),
         scalar_input_(scalar_input),
         scalar_input_index_(scalar_input_index) {}

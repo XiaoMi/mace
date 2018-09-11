@@ -24,12 +24,12 @@ namespace kernels {
 template <typename T>
 MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input_tensor, Tensor *output_tensor, StatsFuture *future) {
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name;
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     if (wino_blk_size_ == 4) {
       obfuscated_kernel_name =
@@ -120,7 +120,7 @@ MaceStatus WinogradTransformFunctor<DeviceType::GPU, T>::operator()(
                                   output_tensor->dim(0),
                                   output_tensor->dim(1),
                                   output_tensor->dim(2));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);
@@ -132,7 +132,7 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
     const std::vector<const Tensor*> &inputs,
     Tensor *output_tensor,
     StatsFuture *future) {
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   const Tensor *input_tensor = inputs[0];
   const Tensor *bias = inputs.size() == 3 ? inputs[2] : nullptr;
@@ -140,7 +140,7 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name;
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     if (wino_blk_size_ == 4) {
       obfuscated_kernel_name =
@@ -241,7 +241,7 @@ MaceStatus WinogradInverseTransformFunctor<DeviceType::GPU, T>::operator()(
       Concat("winograd_inverse_transform_kernel", output_tensor->dim(0),
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3), input_tensor->dim(2));
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
 
   OUT_OF_RANGE_VALIDATION(kernel_error_);

@@ -29,9 +29,11 @@ namespace ops {
 template <DeviceType D, typename T>
 class WinogradInverseTransformOp : public Operator<D, T> {
  public:
-  WinogradInverseTransformOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(kernels::StringToActivationType(
+  WinogradInverseTransformOp(const OperatorDef &op_def,
+                             OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),

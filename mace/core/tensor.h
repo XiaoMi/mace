@@ -25,7 +25,6 @@
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
 #endif
-#include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
 #ifdef MACE_ENABLE_NEON
@@ -38,10 +37,10 @@
 namespace mace {
 
 #define MACE_SINGLE_ARG(...) __VA_ARGS__
-#define MACE_CASE(TYPE, STATEMENTS)             \
+#define MACE_CASE(TYPE, STATEMENTS)   \
   case DataTypeToEnum<TYPE>::value: { \
     typedef TYPE T;                   \
-    STATEMENTS;                            \
+    STATEMENTS;                       \
     break;                            \
   }
 
@@ -100,37 +99,44 @@ enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4, OHWI = 5 };
 
 class Tensor {
  public:
-  Tensor(Allocator *alloc, DataType type)
+  Tensor(Allocator *alloc, DataType type,
+         bool is_weight = false)
       : allocator_(alloc),
         dtype_(type),
         buffer_(nullptr),
         is_buffer_owner_(true),
         unused_(false),
         name_(""),
+        is_weight_(is_weight),
         scale_(0.f),
         zero_point_(0) {}
 
-  Tensor(BufferBase *buffer, DataType dtype)
+  Tensor(BufferBase *buffer, DataType dtype,
+         bool is_weight = false)
     : dtype_(dtype),
       buffer_(buffer),
       is_buffer_owner_(false),
       unused_(false),
       name_(""),
+      is_weight_(is_weight),
       scale_(0.f),
       zero_point_(0) {}
 
-  Tensor(const BufferSlice &buffer_slice, DataType dtype)
+  Tensor(const BufferSlice &buffer_slice,
+         DataType dtype,
+         bool is_weight = false)
       : dtype_(dtype),
         buffer_slice_(buffer_slice),
         is_buffer_owner_(false),
         unused_(false),
         name_(""),
+        is_weight_(is_weight),
         scale_(0.f),
         zero_point_(0) {
     buffer_ = &buffer_slice_;
   }
 
-  Tensor() : Tensor(GetDeviceAllocator(CPU), DT_FLOAT) {}
+  Tensor() : Tensor(GetCPUAllocator(), DT_FLOAT) {}
 
   ~Tensor() {
     if (is_buffer_owner_ && buffer_ != nullptr) {
@@ -263,7 +269,7 @@ class Tensor {
     image_shape_ = image_shape;
     if (buffer_ == nullptr) {
       MACE_CHECK(is_buffer_owner_);
-      buffer_ = new Image();
+      buffer_ = new Image(allocator_);
       return buffer_->Allocate(image_shape, dtype_);
     } else {
       MACE_CHECK(has_opencl_image(), "Cannot ResizeImage buffer, use Resize.");
@@ -373,6 +379,10 @@ class Tensor {
     MACE_DISABLE_COPY_AND_ASSIGN(MappingGuard);
   };
 
+  inline bool is_weight() const {
+    return is_weight_;
+  }
+
   inline float scale() const {
     return scale_;
   }
@@ -399,6 +409,7 @@ class Tensor {
   bool is_buffer_owner_;
   bool unused_;
   std::string name_;
+  const bool is_weight_;
   float scale_;
   int32_t zero_point_;
 

@@ -58,7 +58,7 @@ void TestSimpleRelu() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 7, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -106,7 +106,7 @@ void TestUnalignedSimpleRelu() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>({1, 3, 2, 1}, {0, 7, 0, 6, 0, 5});
+  auto expected = net.CreateTensor<float>({1, 3, 2, 1}, {0, 7, 0, 6, 0, 5});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -159,7 +159,7 @@ void TestSimpleRelux() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 6, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -209,7 +209,7 @@ void TestSimpleReluRelux() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 6, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -267,7 +267,7 @@ void TestSimplePrelu() {
   }
 
   if (D == DeviceType::CPU) {
-    auto expected = CreateTensor<float>(
+    auto expected = net.CreateTensor<float>(
         {2, 2, 2, 2},
         {-14, 7, -12, 6, -15, -15, -12, -12, -6, 3, -4, 2, -3, -3, 0, 0});
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -318,7 +318,7 @@ void TestSimpleTanh() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2},
       {-0.99999834, 0.99999834, -0.99998771, 0.99998771, -0.9999092, 0.9999092,
        -0.9993293, 0.9993293, -0.99505475, 0.99505475, -0.96402758, 0.96402758,
@@ -371,7 +371,7 @@ void TestSimpleSigmoid() {
     net.RunOp(D);
   }
 
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2},
       {9.11051194e-04, 9.99088949e-01, 2.47262316e-03, 9.97527377e-01,
        6.69285092e-03, 9.93307149e-01, 1.79862100e-02, 9.82013790e-01,

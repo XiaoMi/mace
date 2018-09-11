@@ -26,16 +26,14 @@
 #include "mace/core/registry.h"
 #include "mace/core/types.h"
 #include "mace/core/runtime_failure_mock.h"
-#include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 
 namespace mace {
 
 #if defined(__hexagon__)
 constexpr size_t kMaceAlignment = 128;
 #elif defined(__ANDROID__)
-// 16 bytes = 128 bits = 32 * 4 (Neon)
-constexpr size_t kMaceAlignment = 16;
+// arm cache line
+constexpr size_t kMaceAlignment = 64;
 #else
 // 32 bytes = 256 bits (AVX512)
 constexpr size_t kMaceAlignment = 32;
@@ -138,26 +136,8 @@ class CPUAllocator : public Allocator {
   bool OnHost() const override { return true; }
 };
 
-std::map<int32_t, Allocator *> *gAllocatorRegistry();
-
-Allocator *GetDeviceAllocator(DeviceType type);
-
-struct AllocatorRegisterer {
-  explicit AllocatorRegisterer(DeviceType type, Allocator *alloc) {
-    if (gAllocatorRegistry()->count(type)) {
-      LOG(ERROR) << "Allocator for device type " << type
-                 << " registered twice. This should not happen."
-                 << gAllocatorRegistry()->count(type);
-      std::exit(1);
-    }
-    gAllocatorRegistry()->emplace(type, alloc);
-  }
-};
-
-#define MACE_REGISTER_ALLOCATOR(type, alloc)                                  \
-  namespace {                                                                 \
-  static AllocatorRegisterer MACE_ANONYMOUS_VARIABLE(Allocator)(type, alloc); \
-  }
+// Global CPU allocator used for CPU/GPU/DSP
+Allocator *GetCPUAllocator();
 
 }  // namespace mace
 

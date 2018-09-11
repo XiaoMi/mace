@@ -26,8 +26,8 @@ namespace ops {
 template<DeviceType D, typename T>
 class SqueezeOp : public Operator<D, T> {
  public:
-  SqueezeOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
+  SqueezeOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
         axis_(OperatorBase::GetRepeatedArgs<int>("axis", {})) {}
 
   MaceStatus Run(StatsFuture *future) override {

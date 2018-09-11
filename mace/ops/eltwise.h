@@ -24,9 +24,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class EltwiseOp : public Operator<D, T> {
  public:
-  EltwiseOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
+  EltwiseOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
         functor_(
+            context,
             static_cast<kernels::EltwiseType>(OperatorBase::GetOptionalArg<int>(
                 "type", static_cast<int>(kernels::EltwiseType::NONE))),
             OperatorBase::GetRepeatedArgs<float>("coeff"),

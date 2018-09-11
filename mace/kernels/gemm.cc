@@ -14,8 +14,10 @@
 
 #include <algorithm>
 #include <cstring>
+#include <vector>
 
 #include "mace/core/tensor.h"
+#include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/kernels/gemm.h"
 
 /**
@@ -327,37 +329,6 @@ inline void Gemm644(const float *a_ptr,
 #else
   GemmBlock(a_ptr, b_ptr, 6, 4, 4, stride_a, stride_b, stride_c, c_ptr);
 #endif
-}
-
-inline void GemmX44(const float *a_ptr,
-                    const float *b_ptr,
-                    const index_t stride_a,
-                    const index_t stride_b,
-                    const index_t stride_c,
-                    float *c_ptr,
-                    int row) {
-  switch (row) {
-    case 1:
-      Gemm144(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 2:
-      Gemm244(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 3:
-      Gemm344(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 4:
-      Gemm444(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 5:
-      Gemm544(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 6:
-      Gemm644(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    default:
-      MACE_NOT_IMPLEMENTED;
-  }
 }
 
 inline void Gemm884(const float *a_ptr,
@@ -770,43 +741,6 @@ inline void Gemm784(const float *a_ptr,
 #endif
 }
 
-inline void GemmX84(const float *a_ptr,
-                    const float *b_ptr,
-                    const index_t stride_a,
-                    const index_t stride_b,
-                    const index_t stride_c,
-                    float *c_ptr,
-                    int row) {
-  switch (row) {
-    case 1:
-      Gemm184(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 2:
-      Gemm284(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 3:
-      Gemm384(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 4:
-      Gemm484(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 5:
-      Gemm584(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 6:
-      Gemm684(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 7:
-      Gemm784(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    case 8:
-      Gemm884(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
-      break;
-    default:
-      MACE_NOT_IMPLEMENTED;
-  }
-}
-
 inline void GemmTile(const float *A,
                      const float *B,
                      const index_t height,
@@ -873,6 +807,8 @@ inline void GemmTile(const float *A,
         float *c_ptr7 = C + (h + 7) * stride_c;
 
         asm volatile(
+            "0:                                 \n"
+
             "prfm   pldl1keep, [%9, #128]       \n"
             "ld1    {v16.4s}, [%9], #16         \n"
 
@@ -881,8 +817,6 @@ inline void GemmTile(const float *A,
 
             "prfm   pldl1keep, [%2, #128]       \n"
             "ld1    {v19.4s}, [%2]              \n"
-
-            "0:                                 \n"
 
             "prfm   pldl1keep, [%3, #128]       \n"
             "ld1    {v20.4s}, [%3]              \n"
@@ -1002,19 +936,13 @@ inline void GemmTile(const float *A,
             "fmla   v24.4s, v17.4s, %48.s[3]    \n"
             "fmla   v25.4s, v17.4s, %49.s[3]    \n"
 
+            "subs   %w0, %w0, #1                \n"
+
             "st1    {v22.4s}, [%5], #16         \n"
             "st1    {v23.4s}, [%6], #16         \n"
             "st1    {v24.4s}, [%7], #16         \n"
             "st1    {v25.4s}, [%8], #16         \n"
 
-            "prfm   pldl1keep, [%9, #128]       \n"
-            "ld1    {v16.4s}, [%9], #16         \n"
-            "prfm   pldl1keep, [%1, #128]       \n"
-            "ld1    {v18.4s}, [%1]              \n"
-            "prfm   pldl1keep, [%2, #128]       \n"
-            "ld1    {v19.4s}, [%2]              \n"
-
-            "subs   %w0, %w0, #1                \n"
             "bne    0b                          \n"
             : "=r"(nw),      // 0
               "=r"(c_ptr0),  // 1
@@ -1102,14 +1030,14 @@ inline void GemmTile(const float *A,
         float *c_ptr5 = C + (h + 5) * stride_c;
 
         asm volatile(
+            "0:                                 \n"
+
             "pld    [%7, #128]                  \n"
             "vld1.f32    {d12-d13}, [%7]!       \n"
             "pld    [%1, #128]                  \n"
             "vld1.f32    {d16-d17}, [%1]        \n"
             "pld    [%2, #128]                  \n"
             "vld1.f32    {d18-d19}, [%2]        \n"
-
-            "0:                                 \n"
 
             "pld    [%3, #128]                  \n"
             "vld1.f32    {d20-d21}, [%3]        \n"
@@ -1159,21 +1087,10 @@ inline void GemmTile(const float *A,
 
             "vst1.f32   {d16-d17}, [%1]!        \n"
             "vst1.f32   {d18-d19}, [%2]!        \n"
-
-            "pld    [%7, #128]                  \n"
-            "vld1.f32    {d12-d13}, [%7]!       \n"
-
             "vst1.f32   {d20-d21}, [%3]!        \n"
             "vst1.f32   {d22-d23}, [%4]!        \n"
-
-            "pld    [%1, #128]                  \n"
-            "vld1.f32    {d16-d17}, [%1]        \n"
-
             "vst1.f32   {d24-d25}, [%5]!        \n"
             "vst1.f32   {d26-d27}, [%6]!        \n"
-
-            "pld    [%2, #128]                  \n"
-            "vld1.f32    {d18-d19}, [%2]        \n"
 
             "subs   %0, #1                      \n"
             "bne    0b                          \n"
@@ -1228,17 +1145,69 @@ inline void GemmTile(const float *A,
   }
   if (h < height) {
     index_t remain_h = height - h;
+
+    auto gemm_fn = Gemm184;
+    switch (remain_h) {
+      case 1:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm184;
+      #else
+        gemm_fn = Gemm144;
+      #endif
+        break;
+      case 2:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm284;
+      #else
+        gemm_fn = Gemm244;
+      #endif
+        break;
+      case 3:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm384;
+      #else
+        gemm_fn = Gemm344;
+      #endif
+        break;
+      case 4:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm484;
+      #else
+        gemm_fn = Gemm444;
+      #endif
+        break;
+      case 5:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm584;
+      #else
+        gemm_fn = Gemm544;
+      #endif
+        break;
+      case 6:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm684;
+      #else
+        LOG(FATAL) << "remain_h should < 6";
+      #endif
+        break;
+      case 7:
+      #if defined(__aarch64__)
+        gemm_fn = Gemm784;
+      #else
+        LOG(FATAL) << "remain_h should < 6";
+      #endif
+        break;
+      default:
+        LOG(FATAL) << "remain_h should < 8";
+    }
+
     for (k = 0; k < K - reg_K_tile; k += reg_K_tile) {
       const float *a_ptr = A + (h * stride_a + k);
       index_t w;
       for (w = 0; w + 3 < width; w += 4) {
         const float *b_ptr = B + (k * stride_b + w);
         float *c_ptr = C + (h * stride_c + w);
-#if defined(__aarch64__)
-        GemmX84(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr, remain_h);
-#else
-        GemmX44(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr, remain_h);
-#endif
+        gemm_fn(a_ptr, b_ptr, stride_a, stride_b, stride_c, c_ptr);
       }
       if (w < width) {
         const float *b_ptr = B + (k * stride_b + w);
@@ -1260,19 +1229,26 @@ inline void GemmTile(const float *A,
 #endif  // MACE_ENABLE_NEON
 }
 
+}  // namespace
+
 void Transpose(const float *src,
                index_t height,
                index_t width,
                index_t stride_w,
                float *dst) {
-  for (index_t h = 0; h < height; ++h) {
-    for (index_t w = 0; w < width; ++w) {
-      dst[w * height + h] = src[h * stride_w + w];
+  index_t tile_size = height > 512 || width > 512 ? 64 : 32;
+  for (index_t i = 0; i < height; i += tile_size) {
+    for (index_t j = 0; j < width; j += tile_size) {
+      index_t end_i = std::min(i + tile_size, height);
+      index_t end_j = std::min(j + tile_size, width);
+      for (index_t tile_i = i; tile_i < end_i; ++tile_i) {
+        for (index_t tile_j = j; tile_j < end_j; ++tile_j) {
+          dst[tile_j * height + tile_i] = src[tile_i * stride_w + tile_j];
+        }
+      }
     }
   }
 }
-
-}  // namespace
 
 // A: height x K, B: K x width, C: height x width
 void Gemm(const float *A,
@@ -1284,7 +1260,7 @@ void Gemm(const float *A,
           float *C,
           const bool transpose_a,
           const bool transpose_b) {
-  if (width == 1) {
+  if (width == 1 && !transpose_a) {
     for (index_t b = 0; b < batch; ++b) {
       Gemv(A + b * height * K, B + b * K, 1, K, height, C + b * height);
     }
@@ -1292,48 +1268,81 @@ void Gemm(const float *A,
   }
   memset(C, 0, sizeof(float) * batch * height * width);
 
-  // It is better to use large block size if it fits for fast cache.
-  // Assume l1 cache size is 32k, we load three blocks at a time (A, B, C),
-  // the block size should be sqrt(32k / sizeof(T) / 3).
-  // As number of input channels of convolution is normally power of 2, and
-  // we have not optimized tiling remains, we use the following magic number
-  const index_t block_size = 64;
-  const index_t block_tile_height = RoundUpDiv(height, block_size);
-  const index_t block_tile_width = RoundUpDiv(width, block_size);
-  const index_t block_tile_k = RoundUpDiv(K, block_size);
-  const index_t block_tile[3] = {block_tile_height, block_tile_width,
-                                 block_tile_k};
-  const index_t remain_height = height % block_size;
-  const index_t remain_width = width % block_size;
-  const index_t remain_k = K % block_size;
-  const index_t remain[3] = {remain_height, remain_width, remain_k};
+  std::vector<index_t> block_size_dims {height, width, K};
+  index_t thread_count = MaceOpenMPThreadCount;
+  MACE_CHECK(thread_count >= 1, "thread should be ge 1");
+  // TODO(liyin): apply gcd ?
+  if (height % thread_count == 0) {
+    block_size_dims[0] = height / thread_count;
+  } else if (thread_count == 4 && (height & 1) == 0 && (width & 1) == 0) {
+    block_size_dims[0] = height >> 1;
+    block_size_dims[1] = width >> 1;
+  } else if (width % thread_count == 0) {
+    block_size_dims[1] = width / thread_count;
+  } else {
+    if (height >= thread_count) {
+      block_size_dims[0] = height / thread_count;
+    } else {
+      thread_count = std::min(thread_count, height * width);
+      index_t thread_h = height;
+      index_t thread_w = RoundUpDiv(thread_count, thread_h);
+      block_size_dims[0] = 1;
+      block_size_dims[1] = std::max(static_cast<index_t>(1), width / thread_w);
+    }
+  }
+
+  const index_t block_tile[3] = {height / block_size_dims[0],
+                                 width / block_size_dims[1],
+                                 K / block_size_dims[2]};
+  block_size_dims[0] = height / block_tile[0];
+  block_size_dims[1] = width / block_tile[1];
+  block_size_dims[2] = K / block_tile[2];
+
+  const index_t remain[3] = {height % block_tile[0],
+                             width % block_tile[1],
+                             K % block_tile[2]};
+
 
 #pragma omp parallel for collapse(3)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t bh = 0; bh < block_tile[0]; ++bh) {
       for (index_t bw = 0; bw < block_tile[1]; ++bw) {
+        const index_t remain_height = remain[0];
+        const index_t remain_width = remain[1];
+        const index_t remain_k = remain[2];
+
+        const index_t block_size_height = block_size_dims[0];
+        const index_t block_size_width = block_size_dims[1];
+        const index_t block_size_k = block_size_dims[2];
+
+        const index_t this_block_size_height =
+            block_size_height + (bh < remain_height ? 1 : 0);
+        const index_t this_block_size_width =
+            block_size_width + (bw < remain_width ? 1 : 0);
+
         const float *a_base = A + n * height * K;
         const float *b_base = B + n * K * width;
         float *c_base = C + n * height * width;
 
-        const index_t ih_begin = bh * block_size;
-        const index_t ih_end =
-            bh * block_size +
-            (bh == block_tile[0] - 1 && remain[0] > 0 ? remain[0] : block_size);
-        const index_t iw_begin = bw * block_size;
-        const index_t iw_end =
-            bw * block_size +
-            (bw == block_tile[1] - 1 && remain[1] > 0 ? remain[1] : block_size);
+        const index_t ih_begin =
+            bh * block_size_height + (bh < remain_height ? bh : remain_height);
+        const index_t
+            ih_end = std::min(height, ih_begin + this_block_size_height);
+        const index_t iw_begin =
+            bw * block_size_width + (bw < remain_width ? bw : remain_width);
+        const index_t
+            iw_end = std::min(width, iw_begin + this_block_size_width);
 
         for (index_t bk = 0; bk < block_tile[2]; ++bk) {
-          const index_t ik_begin = bk * block_size;
-          const index_t ik_end =
-              bk * block_size + (bk == block_tile[2] - 1 && remain[2] > 0
-                                     ? remain[2]
-                                     : block_size);
+          const index_t
+              this_block_size_k = block_size_k + (bk < remain_k ? 1 : 0);
 
-          Tensor trans_a;
-          Tensor trans_b;
+          const index_t
+              ik_begin = bk * block_size_k + (bk < remain_k ? bk : remain_k);
+          const index_t ik_end = std::min(K, ik_begin + this_block_size_k);
+
+          Tensor trans_a(GetCPUAllocator(), DataType::DT_FLOAT);
+          Tensor trans_b(GetCPUAllocator(), DataType::DT_FLOAT);
           const float *real_a = nullptr;
           const float *real_b = nullptr;
           float *real_c = c_base + (ih_begin * width + iw_begin);
@@ -1342,7 +1351,7 @@ void Gemm(const float *A,
           index_t stride_c = width;
 
           if (transpose_a) {
-            trans_a.Resize({block_size, block_size});
+            trans_a.Resize({this_block_size_height, this_block_size_k});
             float *trans_a_data = trans_a.mutable_data<float>();
             // A[K, H] -> A[H, K]
             Transpose(a_base + (ik_begin * height + ih_begin),
@@ -1356,7 +1365,7 @@ void Gemm(const float *A,
           }
 
           if (transpose_b) {
-            trans_b.Resize({block_size, block_size});
+            trans_b.Resize({this_block_size_k, this_block_size_width});
             float *trans_b_data = trans_b.mutable_data<float>();
             // B[W, K] -> B[K, W]
             Transpose(b_base + (iw_begin * K + ik_begin), iw_end - iw_begin,
@@ -1390,8 +1399,8 @@ void GemmRef(const float *A,
              const bool transpose_b) {
   memset(C, 0, sizeof(float) * batch * height * width);
 
-  Tensor trans_a;
-  Tensor trans_b;
+  Tensor trans_a(GetCPUAllocator(), DataType::DT_FLOAT);
+  Tensor trans_b(GetCPUAllocator(), DataType::DT_FLOAT);
   float *trans_a_data = nullptr;
   float *trans_b_data = nullptr;
   if (transpose_a) {
@@ -1449,7 +1458,6 @@ void GemvRef(const float *m_ptr,
   }
 }
 
-// TODO(liyin): batched gemv can be transformed to gemm (w/ transpose)
 void Gemv(const float *m_ptr,
           const float *v_ptr,
           const index_t batch,
@@ -1457,88 +1465,74 @@ void Gemv(const float *m_ptr,
           const index_t height,
           float *out_ptr) {
 #if defined(MACE_ENABLE_NEON)
-// TODO(liyin/wch): try height tiling = 8
+
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch; ++b) {
-    for (index_t h = 0; h < height; h += 4) {
-      if (h + 3 < height) {
-        const float *m_ptr0 = m_ptr + h * width;
-        const float *m_ptr1 = m_ptr0 + width;
-        const float *m_ptr2 = m_ptr1 + width;
-        const float *m_ptr3 = m_ptr2 + width;
-        const float *v_ptr0 = v_ptr + b * width;
-        float *out_ptr0 = out_ptr + b * height + h;
+    for (index_t h = 0; h < height; ++h) {
+      const float *m_ptr0 = m_ptr + h * width;
+      const float *v_ptr0 = v_ptr + b * width;
+      float *out_ptr0 = out_ptr + b * height + h;
 
-        float32x4_t vm0, vm1, vm2, vm3;
-        float32x4_t vv;
+      float32x4_t vm0, vm1, vm2, vm3;
+      float32x4_t vv0, vv1, vv2, vv3;
+      float32x4_t vsum0 = vdupq_n_f32(0.f);
+      float32x4_t vsum1 = vdupq_n_f32(0.f);
+      float32x4_t vsum2 = vdupq_n_f32(0.f);
+      float32x4_t vsum3 = vdupq_n_f32(0.f);
 
-        float32x4_t vsum0 = vdupq_n_f32(0.f);
-        float32x4_t vsum1 = vdupq_n_f32(0.f);
-        float32x4_t vsum2 = vdupq_n_f32(0.f);
-        float32x4_t vsum3 = vdupq_n_f32(0.f);
+      index_t w;
+      for (w = 0; w + 15 < width; w += 16) {
+        vm0 = vld1q_f32(m_ptr0);
+        vv0 = vld1q_f32(v_ptr0);
+        vm1 = vld1q_f32(m_ptr0 + 4);
+        vv1 = vld1q_f32(v_ptr0 + 4);
+        vm2 = vld1q_f32(m_ptr0 + 8);
+        vv2 = vld1q_f32(v_ptr0 + 8);
+        vm3 = vld1q_f32(m_ptr0 + 12);
+        vv3 = vld1q_f32(v_ptr0 + 12);
 
-        index_t w;
-        for (w = 0; w + 3 < width; w += 4) {
-          vm0 = vld1q_f32(m_ptr0);
-          vm1 = vld1q_f32(m_ptr1);
-          vm2 = vld1q_f32(m_ptr2);
-          vm3 = vld1q_f32(m_ptr3);
-          vv = vld1q_f32(v_ptr0);
+        vsum0 = vmlaq_f32(vsum0, vm0, vv0);
+        vsum1 = vmlaq_f32(vsum1, vm1, vv1);
+        vsum2 = vmlaq_f32(vsum2, vm2, vv2);
+        vsum3 = vmlaq_f32(vsum3, vm3, vv3);
 
-          vsum0 = vmlaq_f32(vsum0, vm0, vv);
-          vsum1 = vmlaq_f32(vsum1, vm1, vv);
-          vsum2 = vmlaq_f32(vsum2, vm2, vv);
-          vsum3 = vmlaq_f32(vsum3, vm3, vv);
+        m_ptr0 += 16;
+        v_ptr0 += 16;
+      }
 
-          m_ptr0 += 4;
-          m_ptr1 += 4;
-          m_ptr2 += 4;
-          m_ptr3 += 4;
-          v_ptr0 += 4;
-        }
-        float sum0 = vaddvq_f32(vsum0);
-        float sum1 = vaddvq_f32(vsum1);
-        float sum2 = vaddvq_f32(vsum2);
-        float sum3 = vaddvq_f32(vsum3);
+      for (; w + 7 < width; w += 8) {
+        vm0 = vld1q_f32(m_ptr0);
+        vv0 = vld1q_f32(v_ptr0);
+        vm1 = vld1q_f32(m_ptr0 + 4);
+        vv1 = vld1q_f32(v_ptr0 + 4);
 
-        // handle remaining w
-        for (; w < width; ++w) {
-          sum0 += m_ptr0[0] * v_ptr0[0];
-          sum1 += m_ptr1[0] * v_ptr0[0];
-          sum2 += m_ptr2[0] * v_ptr0[0];
-          sum3 += m_ptr3[0] * v_ptr0[0];
-          m_ptr0++;
-          m_ptr1++;
-          m_ptr2++;
-          m_ptr3++;
-          v_ptr0++;
-        }
-        *out_ptr0++ = sum0;
-        *out_ptr0++ = sum1;
-        *out_ptr0++ = sum2;
-        *out_ptr0++ = sum3;
-      } else {
-        for (index_t hh = h; hh < height; ++hh) {
-          float32x4_t vsum0 = vdupq_n_f32(0.f);
-          const float *m_ptr0 = m_ptr + hh * width;
-          const float *v_ptr0 = v_ptr + b * width;
-          index_t w;
-          for (w = 0; w + 3 < width; w += 4) {
-            float32x4_t vm = vld1q_f32(m_ptr0);
-            float32x4_t vv = vld1q_f32(v_ptr0);
-            vsum0 = vmlaq_f32(vsum0, vm, vv);
-            m_ptr0 += 4;
-            v_ptr0 += 4;
-          }
-          float sum = vaddvq_f32(vsum0);
-          for (; w < width; ++w) {
-            sum += m_ptr0[0] * v_ptr0[0];
-            m_ptr0++;
-            v_ptr0++;
-          }
-          out_ptr[b * height + hh] = sum;
-        }
-      }  // if
+        vsum0 = vmlaq_f32(vsum0, vm0, vv0);
+        vsum1 = vmlaq_f32(vsum1, vm1, vv1);
+
+        m_ptr0 += 8;
+        v_ptr0 += 8;
+      }
+
+      for (; w + 3 < width; w += 4) {
+        vm0 = vld1q_f32(m_ptr0);
+        vv0 = vld1q_f32(v_ptr0);
+        vsum0 = vmlaq_f32(vsum0, vm0, vv0);
+
+        m_ptr0 += 4;
+        v_ptr0 += 4;
+      }
+      vsum0 += vsum1;
+      vsum2 += vsum3;
+      vsum0 += vsum2;
+      float sum0 = vaddvq_f32(vsum0);
+
+      // handle remaining w
+      for (; w < width; ++w) {
+        sum0 += m_ptr0[0] * v_ptr0[0];
+        m_ptr0++;
+        v_ptr0++;
+      }
+      *out_ptr0++ = sum0;
     }    // h
   }      // b
 #else

@@ -75,7 +75,7 @@ void RunCrop(const std::vector<index_t> &input_shape,
                                                     "Output", NHWC);
   }
   // Check
-  auto expected = CreateTensor<float>(expected_shape, expected_data);
+  auto expected = net.CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"));
 }
 }  // namespace

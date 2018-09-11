@@ -26,9 +26,9 @@ namespace ops {
 template <DeviceType D, typename T>
 class SplitOp : public Operator<D, T> {
  public:
-  SplitOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetOptionalArg<int>("axis", 3)) {}
+  SplitOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context, OperatorBase::GetOptionalArg<int>("axis", 3)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     MACE_CHECK(this->OutputSize() >= 2)

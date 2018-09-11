@@ -23,6 +23,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
 
@@ -30,7 +31,8 @@ namespace mace {
 namespace kernels {
 
 template <DeviceType D, typename T>
-struct ArgMaxFunctor {
+struct ArgMaxFunctor : OpKernel {
+  explicit ArgMaxFunctor(OpKernelContext *context) : OpKernel(context) {}
   MaceStatus operator()(const Tensor *input,
                         const Tensor *axis,
                         Tensor *output,

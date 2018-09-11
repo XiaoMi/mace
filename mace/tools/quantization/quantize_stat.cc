@@ -33,7 +33,6 @@
 
 #include "gflags/gflags.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 #include "mace/utils/env_time.h"
 #include "mace/utils/logging.h"
 #include "mace/utils/utils.h"
@@ -122,8 +121,15 @@ bool RunModel(const std::string &model_name,
               const std::vector<std::vector<int64_t>> &input_shapes,
               const std::vector<std::string> &output_names,
               const std::vector<std::vector<int64_t>> &output_shapes) {
-  MACE_RETURN_IF_ERROR(mace::SetOpenMPThreadPolicy(
-      FLAGS_omp_num_threads, CPUAffinityPolicy::AFFINITY_NONE));
+  // config runtime
+  MaceStatus status;
+  MaceEngineConfig config(DeviceType::CPU);
+  status = config.SetCPUThreadPolicy(
+      FLAGS_omp_num_threads,
+      CPUAffinityPolicy::AFFINITY_NONE);
+  if (status != MACE_SUCCESS) {
+    LOG(WARNING) << "Set openmp or cpu affinity failed.";
+  }
 
   std::vector<unsigned char> model_pb_data;
   if (FLAGS_model_file != "") {
@@ -141,7 +147,7 @@ bool RunModel(const std::string &model_name,
                                  FLAGS_model_data_file,
                                  input_names,
                                  output_names,
-                                 DeviceType::CPU,
+                                 config,
                                  &engine));
 #else
   (void) (model_name);
@@ -150,7 +156,7 @@ bool RunModel(const std::string &model_name,
                                 FLAGS_model_data_file,
                                 input_names,
                                 output_names,
-                                DeviceType::CPU,
+                                config,
                                 &engine));
 #endif
 

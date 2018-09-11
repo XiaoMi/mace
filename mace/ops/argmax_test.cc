@@ -47,7 +47,7 @@ void ArgMaxTest(const std::vector<index_t> &input_shape,
   }
 
   // Check
-  auto expected = CreateTensor<int32_t>(output_shape, output);
+  auto expected = net.CreateTensor<int32_t>(output_shape, output);
   ExpectTensorNear<int32_t>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace

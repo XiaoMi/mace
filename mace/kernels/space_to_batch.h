@@ -21,7 +21,7 @@
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-#include "mace/public/mace.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -30,11 +30,13 @@
 namespace mace {
 namespace kernels {
 
-struct SpaceToBatchFunctorBase {
-  SpaceToBatchFunctorBase(const std::vector<int> &paddings,
+struct SpaceToBatchFunctorBase : OpKernel {
+  SpaceToBatchFunctorBase(OpKernelContext *context,
+                          const std::vector<int> &paddings,
                           const std::vector<int> &block_shape,
                           bool b2s)
-    : paddings_(paddings.begin(), paddings.end()),
+    : OpKernel(context),
+      paddings_(paddings.begin(), paddings.end()),
       block_shape_(block_shape.begin(), block_shape.end()),
       b2s_(b2s) {
     MACE_CHECK(
@@ -135,10 +137,11 @@ struct SpaceToBatchFunctor;
 
 template<>
 struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
-  SpaceToBatchFunctor(const std::vector<int> &paddings,
+  SpaceToBatchFunctor(OpKernelContext *context,
+                      const std::vector<int> &paddings,
                       const std::vector<int> &block_shape,
                       bool b2s)
-    : SpaceToBatchFunctorBase(paddings, block_shape, b2s) {}
+    : SpaceToBatchFunctorBase(context, paddings, block_shape, b2s) {}
 
   MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,
@@ -319,10 +322,11 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
 struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
-  SpaceToBatchFunctor(const std::vector<int> &paddings,
+  SpaceToBatchFunctor(OpKernelContext *context,
+                      const std::vector<int> &paddings,
                       const std::vector<int> &block_shape,
                       bool b2s)
-      : SpaceToBatchFunctorBase(paddings, block_shape, b2s) {}
+      : SpaceToBatchFunctorBase(context, paddings, block_shape, b2s) {}
 
   MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,

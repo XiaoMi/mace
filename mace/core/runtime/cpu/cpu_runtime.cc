@@ -30,10 +30,11 @@
 #include "public/gemmlowp.h"
 #include "mace/core/macros.h"
 #include "mace/public/mace.h"
-#include "mace/public/mace_runtime.h"
 #include "mace/utils/logging.h"
 
 namespace mace {
+
+int MaceOpenMPThreadCount = 1;
 
 namespace {
 
@@ -136,6 +137,8 @@ MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
 
 MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
                                            const std::vector<int> &cpu_ids) {
+  MaceOpenMPThreadCount = omp_num_threads;
+
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);

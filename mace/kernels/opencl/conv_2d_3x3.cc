@@ -24,15 +24,17 @@ namespace kernels {
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (5 + 4 + 5) * 4 * 4;
-std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+                              const uint32_t *gws,
+                              const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+        cache_size = runtime->device_global_mem_cache_size();
     uint32_t compute_units = std::max<uint32_t>(
-        OpenCLRuntime::Global()->device_compute_units() / 2, 1);
+        runtime->device_compute_units() / 2, 1);
     const uint32_t base =
         std::max<uint32_t>(
             std::min<uint32_t>(cache_size / kBaseGPUMemCacheSize, 4), 1);
@@ -55,7 +57,8 @@ std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
 
 }  // namespace
 
-extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
+extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
+                                   cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
                                    const Tensor *bias,
@@ -80,11 +83,11 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
   const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const index_t width_blocks = RoundUpDiv<index_t, 5>(width);
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context->device()->opencl_runtime();
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error);
+    OUT_OF_RANGE_CONFIG(*kernel_error, context);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d_3x3");
     built_options.emplace("-Dconv_2d_3x3=" + kernel_name);
@@ -147,11 +150,11 @@ extern MaceStatus Conv2dOpenclK3x3(cl::Kernel *kernel,
     *prev_input_shape = input->shape();
   }
 
-  std::vector<uint32_t> lws = LocalWS(gws, *kwg_size);
+  std::vector<uint32_t> lws = LocalWS(runtime, gws, *kwg_size);
   std::string tuning_key =
       Concat("conv2d_3x3_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(*kernel, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
   OUT_OF_RANGE_VALIDATION(*kernel_error);
   return MACE_SUCCESS;

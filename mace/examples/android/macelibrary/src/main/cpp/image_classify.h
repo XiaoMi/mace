@@ -24,11 +24,13 @@ extern "C" {
 #endif
 /*
  * Class:     com_xiaomi_mace_JniMaceUtils
- * Method:    maceMobilenetSetAttrs
+ * Method:    maceMobilenetCreateGPUContext
  * Signature: (Ljava/lang/String;IIIILjava/lang/String;)I
  */
-JNIEXPORT jint JNICALL Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetSetAttrs
-  (JNIEnv *, jclass, jint, jint, jint, jint, jstring);
+JNIEXPORT jint JNICALL
+Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateGPUContext(JNIEnv *,
+                                                                jclass,
+                                                                jstring);
 
 /*
  * Class:     com_xiaomi_mace_JniMaceUtils
@@ -37,7 +39,7 @@ JNIEXPORT jint JNICALL Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetSetAttrs
  */
 JNIEXPORT jint JNICALL
 Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine
-  (JNIEnv *, jclass, jstring, jstring);
+  (JNIEnv *, jclass, jint, jint, jint, jint, jstring, jstring);
 
 /*
  * Class:     com_xiaomi_mace_JniMaceUtils

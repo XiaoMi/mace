@@ -26,10 +26,10 @@ namespace mace {
 template <DeviceType D, class T>
 class TransposeOp : public Operator<D, T> {
  public:
-  TransposeOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
+  TransposeOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
         dims_(OperatorBase::GetRepeatedArgs<int>("dims")),
-        functor_(dims_) {}
+        functor_(context, dims_) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

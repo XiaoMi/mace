@@ -23,6 +23,7 @@
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/tensor.h"
+#include "mace/kernels/kernel.h"
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -35,9 +36,10 @@ template <DeviceType D, typename T>
 struct LSTMCellFunctor;
 
 template <typename T>
-struct LSTMCellFunctor<DeviceType::GPU, T> {
-  explicit LSTMCellFunctor(T forget_bias) :
-    forget_bias_(static_cast<T>(forget_bias)) {}
+struct LSTMCellFunctor<DeviceType::GPU, T> : OpKernel{
+  LSTMCellFunctor(OpKernelContext *context, T forget_bias)
+      : OpKernel(context),
+        forget_bias_(static_cast<T>(forget_bias)) {}
   MaceStatus operator()(const Tensor *input,
                         const Tensor *pre_output,
                         const Tensor *weight,

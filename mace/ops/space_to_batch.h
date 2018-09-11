@@ -27,9 +27,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class SpaceToBatchNDOp : public Operator<D, T> {
  public:
-  SpaceToBatchNDOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
+  SpaceToBatchNDOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
                  OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
                  false) {}
 

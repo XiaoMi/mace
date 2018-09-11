@@ -23,7 +23,9 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
   input_names.push_back(MakeString("input", 0));
   output_names.push_back(MakeString("output", 0));
 
-  const DeviceType device = DeviceType::GPU;
+  MaceEngineConfig config(DeviceType::GPU);
+  config.SetGPUContext(
+      ops::test::OpTestContext::Get()->gpu_context());
 
   std::shared_ptr<NetDef> net_def(new NetDef());
   for (size_t i = 0; i < input_names.size(); ++i) {
@@ -31,7 +33,7 @@ TEST(MaceAPIExceptionTest, WrongInputTest) {
     info->set_name(input_names[i]);
   }
 
-  MaceEngine engine(device);
+  MaceEngine engine(config);
   ASSERT_DEATH(engine.Init(net_def.get(), {"input"}, output_names, nullptr),
                "");
 }

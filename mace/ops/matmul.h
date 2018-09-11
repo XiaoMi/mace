@@ -24,8 +24,9 @@ namespace ops {
 template <DeviceType D, class T>
 class MatMulOp : public Operator<D, T> {
  public:
-  MatMulOp(const OperatorDef &operator_def, Workspace *ws)
-      : Operator<D, T>(operator_def, ws),
+  MatMulOp(const OperatorDef &operator_def, OpKernelContext *context)
+      : Operator<D, T>(operator_def, context),
+        functor_(context),
         transpose_a_(OperatorBase::GetOptionalArg<bool>("transpose_a", false)),
         transpose_b_(OperatorBase::GetOptionalArg<bool>("transpose_b", false)) {
   }
@@ -46,7 +47,8 @@ class MatMulOp : public Operator<D, T> {
     MACE_CHECK(ak == bk, "the number of A's column ", ak,
                " must be equal to B's row ", bk);
 
-    return functor_(A, B, C, transpose_a_, transpose_b_, future);
+    return functor_(A, B, C,
+                    transpose_a_, transpose_b_, future);
   }
 
  private:

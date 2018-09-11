@@ -60,7 +60,8 @@ TEST_F(ProposalOpTest, CPUSimple) {
   // Run
   net.RunOp();
 
-  auto expected_tensor = CreateTensor<float>({1, 1, 1, 5}, {0, 0, 0, 255, 255});
+  auto expected_tensor = net.CreateTensor<float>({1, 1, 1, 5},
+                                                 {0, 0, 0, 255, 255});
 
   ExpectTensorNear<float>(*expected_tensor, *net.GetTensor("Output"), 1e-5);
 }

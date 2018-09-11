@@ -21,10 +21,12 @@
 #include <memory>
 
 #include "mace/core/net.h"
+#include "mace/core/device_context.h"
 #include "mace/ops/ops_register.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/core/runtime/opencl/gpu_device.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -63,9 +65,9 @@ void UnloadModelData(const unsigned char *model_data,
 }
 
 #ifdef MACE_ENABLE_OPENCL
-MaceStatus CheckGPUAvalibility(const NetDef *net_def) {
+MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
   // Check OpenCL avaliable
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = device->opencl_runtime();
   if (!runtime->is_opencl_avaliable()) {
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   }
@@ -100,6 +102,199 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def) {
 #endif
 
 }  // namespace
+
+class GPUContextBuilder::Impl {
+ public:
+  void SetStoragePath(const std::string &path);
+
+  void SetOpenCLBinaryPaths(const std::vector<std::string> &paths);
+
+  void SetOpenCLParameterPath(const std::string &path);
+
+  std::shared_ptr<GPUContext> Finalize();
+
+ public:
+  std::string storage_path_;
+  std::vector<std::string> opencl_binary_paths_;
+  std::string opencl_parameter_path_;
+};
+
+void GPUContextBuilder::Impl::SetStoragePath(const std::string &path) {
+  storage_path_ = path;
+}
+
+void GPUContextBuilder::Impl::SetOpenCLBinaryPaths(
+    const std::vector<std::string> &paths) {
+  opencl_binary_paths_ = paths;
+}
+
+void GPUContextBuilder::Impl::SetOpenCLParameterPath(
+    const std::string &path) {
+  opencl_parameter_path_ = path;
+}
+
+std::shared_ptr<GPUContext> GPUContextBuilder::Impl::Finalize() {
+  return std::shared_ptr<GPUContext>(new GPUContext(storage_path_,
+                                                    opencl_binary_paths_,
+                                                    opencl_parameter_path_));
+}
+
+GPUContextBuilder::GPUContextBuilder() : impl_(new GPUContextBuilder::Impl) {}
+
+GPUContextBuilder::~GPUContextBuilder() = default;
+
+GPUContextBuilder &GPUContextBuilder::SetStoragePath(const std::string &path) {
+  impl_->SetStoragePath(path);
+  return *this;
+}
+
+GPUContextBuilder &GPUContextBuilder::SetOpenCLBinaryPaths(
+    const std::vector<std::string> &paths) {
+  impl_->SetOpenCLBinaryPaths(paths);
+  return *this;
+}
+
+GPUContextBuilder &GPUContextBuilder::SetOpenCLParameterPath(
+    const std::string &path) {
+  impl_->SetOpenCLParameterPath(path);
+  return *this;
+}
+
+std::shared_ptr<GPUContext> GPUContextBuilder::Finalize() {
+  return impl_->Finalize();
+}
+
+class MaceEngineConfig::Impl {
+ public:
+  explicit Impl(const DeviceType device_type);
+  ~Impl() = default;
+
+  MaceStatus SetGPUContext(std::shared_ptr<GPUContext> context);
+
+  MaceStatus SetGPUHints(GPUPerfHint perf_hint, GPUPriorityHint priority_hint);
+
+  MaceStatus SetCPUThreadPolicy(int num_threads_hint,
+                                CPUAffinityPolicy policy,
+                                bool use_gemmlowp);
+
+  MaceStatus SetOpenMPThreadAffinity(int num_threads,
+                                     const std::vector<int> &cpu_ids);
+
+  inline DeviceType device_type() const {
+    return device_type_;
+  }
+
+  inline int num_threads() const {
+    return num_threads_;
+  }
+
+  inline std::shared_ptr<GPUContext> gpu_context() const {
+    return gpu_context_;
+  }
+
+  inline GPUPriorityHint gpu_priority_hint() const {
+    return gpu_priority_hint_;
+  }
+
+  inline GPUPerfHint gpu_perf_hint() const {
+    return gpu_perf_hint_;
+  }
+
+ private:
+  DeviceType device_type_;
+  int num_threads_;
+  std::shared_ptr<GPUContext> gpu_context_;
+  GPUPriorityHint gpu_priority_hint_;
+  GPUPerfHint gpu_perf_hint_;
+};
+
+MaceEngineConfig::Impl::Impl(const DeviceType device_type)
+    : device_type_(device_type),
+      num_threads_(-1),
+      gpu_context_(new GPUContext),
+      gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
+      gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {}
+
+MaceStatus MaceEngineConfig::Impl::SetGPUContext(
+    std::shared_ptr<GPUContext> context) {
+  gpu_context_ = context;
+  return MACE_SUCCESS;
+}
+
+MaceStatus MaceEngineConfig::Impl::SetGPUHints(
+    GPUPerfHint perf_hint,
+    GPUPriorityHint priority_hint) {
+  gpu_perf_hint_ = perf_hint;
+  gpu_priority_hint_ = priority_hint;
+  return MACE_SUCCESS;
+}
+
+MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
+    int num_threads,
+    CPUAffinityPolicy policy,
+    bool use_gemmlowp) {
+  num_threads_ = num_threads;
+  return mace::SetOpenMPThreadsAndAffinityPolicy(
+      num_threads, policy, use_gemmlowp);
+}
+
+MaceStatus MaceEngineConfig::Impl::SetOpenMPThreadAffinity(
+    int num_threads,
+    const std::vector<int> &cpu_ids) {
+  num_threads_ = num_threads;
+  return mace::SetOpenMPThreadsAndAffinityCPUs(num_threads, cpu_ids);
+}
+
+
+MaceEngineConfig::MaceEngineConfig(
+    const DeviceType device_type)
+    : impl_(new MaceEngineConfig::Impl(device_type)) {}
+
+MaceEngineConfig::~MaceEngineConfig() = default;
+
+MaceStatus MaceEngineConfig::SetGPUContext(
+    std::shared_ptr<GPUContext> context) {
+  return impl_->SetGPUContext(context);
+}
+
+MaceStatus MaceEngineConfig::SetGPUHints(
+    GPUPerfHint perf_hint,
+    GPUPriorityHint priority_hint) {
+  return impl_->SetGPUHints(perf_hint, priority_hint);
+}
+
+MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
+    int num_threads_hint,
+    CPUAffinityPolicy policy,
+    bool use_gemmlowp) {
+  return impl_->SetCPUThreadPolicy(num_threads_hint, policy, use_gemmlowp);
+}
+
+MaceStatus MaceEngineConfig::SetOpenMPThreadAffinity(
+    int num_threads,
+    const std::vector<int> &cpu_ids) {
+  return impl_->SetOpenMPThreadAffinity(num_threads, cpu_ids);
+}
+
+DeviceType MaceEngineConfig::device_type() const {
+  return impl_->device_type();
+}
+
+int MaceEngineConfig::num_threads() const {
+  return impl_->num_threads();
+}
+
+std::shared_ptr<GPUContext> MaceEngineConfig::gpu_context() const {
+  return impl_->gpu_context();
+}
+
+GPUPerfHint MaceEngineConfig::gpu_perf_hint() const {
+  return impl_->gpu_perf_hint();
+}
+
+GPUPriorityHint MaceEngineConfig::gpu_priority_hint() const {
+  return impl_->gpu_priority_hint();
+}
 
 // Mace Tensor
 class MaceTensor::Impl {
@@ -155,7 +350,7 @@ std::shared_ptr<float> MaceTensor::data() { return impl_->data; }
 // Mace Engine
 class MaceEngine::Impl {
  public:
-  explicit Impl(DeviceType device_type);
+  explicit Impl(const MaceEngineConfig &config);
 
   ~Impl();
 
@@ -178,6 +373,7 @@ class MaceEngine::Impl {
   size_t model_data_size_;
   std::shared_ptr<OperatorRegistryBase> op_registry_;
   DeviceType device_type_;
+  std::unique_ptr<Device> device_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
   std::map<std::string, mace::InputInfo> input_info_map_;
@@ -189,11 +385,12 @@ class MaceEngine::Impl {
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
 
-MaceEngine::Impl::Impl(DeviceType device_type)
+MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
       model_data_size_(0),
       op_registry_(new OperatorRegistry()),
-      device_type_(device_type),
+      device_type_(config.device_type()),
+      device_(nullptr),
       ws_(new Workspace()),
       net_(nullptr)
 #ifdef MACE_ENABLE_HEXAGON
@@ -201,6 +398,19 @@ MaceEngine::Impl::Impl(DeviceType device_type)
 #endif
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
+  if (device_type_ == DeviceType::CPU || device_type_ == DeviceType::HEXAGON) {
+    device_.reset(new CPUDevice(config.num_threads()));
+  }
+#ifdef MACE_ENABLE_OPENCL
+  if (device_type_ == DeviceType::GPU) {
+    device_.reset(new GPUDevice(config.gpu_context()->opencl_tuner(),
+                                config.gpu_context()->opencl_cache_storage(),
+                                config.gpu_priority_hint(),
+                                config.gpu_perf_hint(),
+                                config.gpu_context()->opencl_binary_storage(),
+                                config.num_threads()));
+  }
+#endif
 }
 
 MaceStatus MaceEngine::Impl::Init(
@@ -212,7 +422,7 @@ MaceStatus MaceEngine::Impl::Init(
   // Check avalibility
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == DeviceType::GPU) {
-    MACE_RETURN_IF_ERROR(CheckGPUAvalibility(net_def));
+    MACE_RETURN_IF_ERROR(CheckGPUAvalibility(net_def, device_.get()));
   }
 #endif
   // Get input and output information.
@@ -230,7 +440,7 @@ MaceStatus MaceEngine::Impl::Init(
                  << MakeString(MapKeys(input_info_map_));
     }
     ws_->CreateTensor(MakeString("mace_input_node_", input_name),
-                      GetDeviceAllocator(device_type_), DT_FLOAT);
+                      device_->allocator(), DT_FLOAT);
   }
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
@@ -239,7 +449,7 @@ MaceStatus MaceEngine::Impl::Init(
                  << MakeString(MapKeys(output_info_map_));
     }
     ws_->CreateTensor(MakeString("mace_output_node_", output_name),
-                      GetDeviceAllocator(device_type_), DT_FLOAT);
+                      device_->allocator(), DT_FLOAT);
   }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
@@ -255,19 +465,20 @@ MaceStatus MaceEngine::Impl::Init(
     }
   } else {
 #endif
-    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(
-        *net_def, device_type_, model_data));
+    MACE_RETURN_IF_ERROR(ws_->LoadModelTensor(*net_def,
+                                              device_.get(),
+                                              model_data));
 
     // Init model
-    auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_type_,
+    auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_.get(),
                          NetMode::INIT);
     MACE_RETURN_IF_ERROR(net->Run());
-    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_type_);
+    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_.get());
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif
   if (device_type_ == DeviceType::GPU) {
-    ws_->RemoveAndReloadBuffer(*net_def, model_data);
+    ws_->RemoveAndReloadBuffer(*net_def, model_data, device_->allocator());
   }
   return MaceStatus::MACE_SUCCESS;
 }
@@ -360,7 +571,7 @@ MaceStatus MaceEngine::Impl::Run(
 
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == GPU) {
-    OpenCLRuntime::Global()->SaveBuiltCLProgram();
+    device_->opencl_runtime()->SaveBuiltCLProgram();
   }
 #endif
   for (auto &output : *outputs) {
@@ -385,8 +596,8 @@ MaceStatus MaceEngine::Impl::Run(
   return MACE_SUCCESS;
 }
 
-MaceEngine::MaceEngine(DeviceType device_type):
-    impl_(new MaceEngine::Impl(device_type)) {}
+MaceEngine::MaceEngine(const MaceEngineConfig &config):
+    impl_(new MaceEngine::Impl(config)) {}
 
 MaceEngine::~MaceEngine() = default;
 
@@ -421,7 +632,7 @@ MaceStatus CreateMaceEngineFromProto(
     const std::string &model_data_file,
     const std::vector<std::string> &input_nodes,
     const std::vector<std::string> &output_nodes,
-    const DeviceType device_type,
+    const MaceEngineConfig &config,
     std::shared_ptr<MaceEngine> *engine) {
   LOG(INFO) << "Create MaceEngine from model pb";
   // load model
@@ -432,7 +643,7 @@ MaceStatus CreateMaceEngineFromProto(
   std::shared_ptr<NetDef> net_def(new NetDef());
   net_def->ParseFromArray(&model_pb[0], model_pb.size());
 
-  engine->reset(new mace::MaceEngine(device_type));
+  engine->reset(new mace::MaceEngine(config));
   MaceStatus status = (*engine)->Init(
       net_def.get(), input_nodes, output_nodes, model_data_file);
 

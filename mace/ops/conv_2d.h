@@ -28,9 +28,10 @@ namespace ops {
 template <DeviceType D, typename T>
 class Conv2dOp : public ConvPool2dOpBase<D, T> {
  public:
-  Conv2dOp(const OperatorDef &op_def, Workspace *ws)
-      : ConvPool2dOpBase<D, T>(op_def, ws),
-        functor_(this->strides_.data(),
+  Conv2dOp(const OperatorDef &op_def, OpKernelContext *context)
+      : ConvPool2dOpBase<D, T>(op_def, context),
+        functor_(context,
+                 this->strides_.data(),
                  this->padding_type_,
                  this->paddings_,
                  this->dilations_.data(),
@@ -40,7 +41,7 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),
                  static_cast<bool>(OperatorBase::GetOptionalArg<int>(
                      "is_filter_transformed", false)),
-                 ws->GetScratchBuffer(D)) {}
+                 context->workspace()->GetScratchBuffer(D)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

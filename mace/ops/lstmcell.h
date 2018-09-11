@@ -26,10 +26,12 @@ namespace ops {
 template <DeviceType D, class T>
 class LSTMCellOp : public Operator<D, T> {
  public:
-  LSTMCellOp(const OperatorDef &op_def, Workspace *ws)
-      : Operator<D, T>(op_def, ws),
-        functor_(static_cast<T>(
-              OperatorBase::GetOptionalArg<float>("scalar_input", 0.0))) {}
+  LSTMCellOp(const OperatorDef &op_def, OpKernelContext *context)
+      : Operator<D, T>(op_def, context),
+        functor_(context,
+                 static_cast<T>(
+                     OperatorBase::GetOptionalArg<float>("scalar_input",
+                                                         0.0))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

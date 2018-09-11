@@ -46,7 +46,7 @@ void Simple() {
   }
 
   // Check
-  auto expected = CreateTensor<float>(
+  auto expected = net.CreateTensor<float>(
       {1, 1, 2, 6},
       {0.28, 0.28, 0.39, 0.39, 0.51, 0.51, 0.34, 0.34, 0.40, 0.40, 0.47, 0.47});
 

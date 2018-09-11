@@ -22,13 +22,15 @@ namespace mace {
 namespace kernels {
 
 namespace {
-std::vector<uint32_t> LocalWS(const uint32_t *gws, const uint32_t kwg_size) {
+std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
+                              const uint32_t *gws,
+                              const uint32_t kwg_size) {
   std::vector<uint32_t> lws(4, 0);
   if (kwg_size == 0) {
     lws[0] = lws[1] = lws[2] = 1;
   } else {
     uint64_t
-        cache_size = OpenCLRuntime::Global()->device_global_mem_cache_size();
+        cache_size = runtime->device_global_mem_cache_size();
     uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
     lws[1] = std::min<uint32_t>(gws[1], kwg_size);
     lws[0] = std::min<uint32_t>(base, kwg_size / lws[1]);
@@ -132,11 +134,11 @@ MaceStatus CropFunctor<DeviceType::GPU, T>::operator()(
       static_cast<uint32_t>(output->dim(0) * output->dim(1))
   };
 
-  auto runtime = OpenCLRuntime::Global();
+  auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_);
+    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
     NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("crop");
     built_options.emplace("-Dcrop=" + kernel_name);
@@ -167,11 +169,11 @@ MaceStatus CropFunctor<DeviceType::GPU, T>::operator()(
     input_shape_ = input0->shape();
   }
 
-  const std::vector<uint32_t> lws = LocalWS(gws, kwg_size_);
+  const std::vector<uint32_t> lws = LocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
       Concat("crop_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(kernel_, tuning_key,
+  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
   OUT_OF_RANGE_VALIDATION(kernel_error_);
   return MACE_SUCCESS;

@@ -64,9 +64,10 @@ void WinogradConvolution(const index_t batch,
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
-  Tensor expected;
-  expected.Copy(*net.GetOutput("ConvOutput"));
-  auto output_shape = expected.shape();
+
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("ConvOutput"));
+  auto output_shape = expected->shape();
 
   // Winograd convolution
   // transform filter
@@ -124,9 +125,11 @@ void WinogradConvolution(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
+                            1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-5, 1e-4);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
+                            1e-5, 1e-4);
   }
 }
 }  // namespace
@@ -212,9 +215,9 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
-  Tensor expected;
-  expected.Copy(*net.GetOutput("ConvOutput"));
-  auto output_shape = expected.shape();
+  auto expected = net.CreateTensor<float>();
+  expected->Copy(*net.GetOutput("ConvOutput"));
+  auto output_shape = expected->shape();
 
   // Winograd convolution
   // transform filter
@@ -272,9 +275,11 @@ void WinogradConvolutionWithPad(const index_t batch,
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
                           kernels::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
+                            1e-2, 1e-2);
   } else {
-    ExpectTensorNear<float>(expected, *net.GetOutput("WinoOutput"), 1e-5, 1e-4);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
+                            1e-5, 1e-4);
   }
 }
 }  // namespace
