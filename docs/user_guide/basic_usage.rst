@@ -124,7 +124,7 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
                strip_unused_nodes
                sort_by_execution_order'
 
-	Usage for DSP,
+   Usage for DSP,
 
    .. code:: bash
 
