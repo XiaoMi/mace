@@ -20,6 +20,7 @@
 #endif
 
 #include "mace/core/types.h"
+#include "mace/kernels/sgemm.h"
 
 namespace mace {
 namespace kernels {
@@ -42,7 +43,9 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t in_channels,
                        const index_t out_channels,
                        const int out_tile_size,
-                       float *output);
+                       float *output,
+                       SGemm *sgemm,
+                       ScratchBuffer *scratch_buffer);
 
 void WinoGradConv3x3s1(const float *input,
                        const float *transformed_filter,
@@ -54,7 +57,9 @@ void WinoGradConv3x3s1(const float *input,
                        const int out_tile_size,
                        float *transformed_input,
                        float *transformed_output,
-                       float *output);
+                       float *output,
+                       SGemm *sgemm,
+                       ScratchBuffer *scratch_buffer);
 
 void ConvRef3x3s1(const float *input,
                   const float *filter,

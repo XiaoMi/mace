@@ -65,9 +65,10 @@ TEST(ConvWinogradTest, winograd) {
   kernels::ConvRef3x3s1(input_data, filter_data, batch, in_height, in_width,
                         in_channels, out_channels, output_data_ref);
 
+  SGemm sgemm;
   kernels::WinoGradConv3x3s1(input_data, filter_data, batch, in_height,
                              in_width, in_channels, out_channels, 6,
-                             output_data);
+                             output_data, &sgemm, nullptr);
 
   // test
   for (index_t i = 0; i < output_size; ++i) {

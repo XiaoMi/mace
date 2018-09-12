@@ -89,6 +89,9 @@ struct MatMulFunctor : OpKernel {
     const index_t height_b = B->dim(rank - 2);
     const index_t width_b = B->dim(rank - 1);
 
+    auto scratch_buffer = context_->workspace()->GetScratchBuffer(D);
+    scratch_buffer->Rewind();
+
     sgemm_.Run(a_ptr_base,
                b_ptr_base,
                batch,
@@ -101,7 +104,7 @@ struct MatMulFunctor : OpKernel {
                A->is_weight(),
                B->is_weight(),
                c_ptr_base,
-               context_->workspace()->GetScratchBuffer(D));
+               scratch_buffer);
     return MACE_SUCCESS;
   }
 
