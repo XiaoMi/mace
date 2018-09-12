@@ -20,9 +20,9 @@ load(
 cc_library(
     name = "test",
     testonly = 1,
-    hdrs = [
-        "ops_test_util.h",
-    ],
+    hdrs = glob([
+        "*_test_util.h",
+    ]),
     srcs = [
         "ops_test_util.cc",
     ],
@@ -67,7 +67,7 @@ cc_library(
     ),
     hdrs = glob(
         ["*.h"],
-        exclude = ["ops_test_util.h"],
+        exclude = glob(["*_test_util.h"]),
     ),
     copts = [
         "-Werror",

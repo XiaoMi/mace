@@ -31,12 +31,13 @@ MaceStatus LSTMCellFunctor<DeviceType::GPU, T>::operator()(
     Tensor *cell,
     Tensor *output,
     StatsFuture *future) {
-  MACE_CHECK(input->dim_size() == 2 && input->dim(1) % 4 == 0,
-             "LSTM step should be a multiple of 4");
+  MACE_CHECK(pre_output->dim_size() == 2 && pre_output->dim(1) % 4 == 0,
+             "LSTM hidden units should be a multiple of 4");
 
   const index_t height = input->dim(0);
   const index_t width = input->dim(1);
-  const index_t width_blocks = width / 4;
+  const index_t hidden_units = pre_output->dim(1);
+  const index_t w_blocks = hidden_units >> 2;
 
   auto runtime = context_->device()->opencl_runtime();
 
@@ -57,17 +58,18 @@ MaceStatus LSTMCellFunctor<DeviceType::GPU, T>::operator()(
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
   }
 
-  const uint32_t gws[2] = {static_cast<uint32_t>(width_blocks),
+  const uint32_t gws[2] = {static_cast<uint32_t>(w_blocks),
                            static_cast<uint32_t>(height)};
 
   if (!IsVecEqual(input_shape_, input->shape())) {
-    std::vector<index_t> output_shape_padded = {height, 1, 1, width};
+    std::vector<index_t> output_shape_padded = {height, 1, 1, hidden_units};
     std::vector<size_t> output_image_shape;
     CalImage2DShape(output_shape_padded, BufferType::IN_OUT_CHANNEL,
                     &output_image_shape);
-    MACE_RETURN_IF_ERROR(output->ResizeImage(input->shape(),
+    MACE_RETURN_IF_ERROR(output->ResizeImage(pre_output->shape(),
                                              output_image_shape));
-    MACE_RETURN_IF_ERROR(cell->ResizeImage(input->shape(), output_image_shape));
+    MACE_RETURN_IF_ERROR(cell->ResizeImage(pre_cell->shape(),
+                                           output_image_shape));
 
     uint32_t idx = 0;
     OUT_OF_RANGE_SET_ARG;
@@ -79,6 +81,8 @@ MaceStatus LSTMCellFunctor<DeviceType::GPU, T>::operator()(
     kernel_.setArg(idx++, *(pre_cell->opencl_image()));
     kernel_.setArg(idx++, static_cast<float>(forget_bias_));
     kernel_.setArg(idx++, static_cast<int32_t>(width));
+    kernel_.setArg(idx++, static_cast<int32_t>(hidden_units));
+    kernel_.setArg(idx++, static_cast<int32_t>(RoundUpDiv4(width)));
     kernel_.setArg(idx++, *(cell->opencl_image()));
     kernel_.setArg(idx++, *(output->opencl_image()));
 

@@ -14,6 +14,7 @@
 
 #include "mace/core/operator.h"
 #include "mace/kernels/eltwise.h"
+#include "mace/ops/lstmcell_test_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -23,128 +24,20 @@ namespace test {
 class LSTMCellTest : public OpsTestBase {};
 
 namespace {
-
-template <typename T>
-void LSTMCellCPU(OpsTestNet *net,
-                 const std::string &input_name,
-                 const std::string &pre_output_name,
-                 const std::string &weight_name,
-                 const std::string &bias_name,
-                 const std::string &pre_cell_name,
-                 const float &forget_add_name,
-                 const std::string &cell_name,
-                 const std::string &output_name) {
-  OpDefBuilder("Concat", "Concat")
-      .Input(input_name)
-      .Input(pre_output_name)
-      .AddIntArg("axis", 1)
-      .Output("ConcatOutput")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("MatMul", "MatMul")
-      .Input("ConcatOutput")
-      .Input(weight_name)
-      .Output("MatMulOutput")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("BiasAdd", "BiasAdd")
-      .Input("MatMulOutput")
-      .Input(bias_name)
-      .Output("BiasOutput")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Split", "FCSplit")
-      .Input("BiasOutput")
-      .AddIntArg("axis", 1)
-      .Output("SplitOutput0")
-      .Output("SplitOutput1")
-      .Output("SplitOutput2")
-      .Output("SplitOutput3")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Activation", "InputSigmoid")
-      .Input("SplitOutput0")
-      .AddStringArg("activation", "SIGMOID")
-      .Output("InputSigmoid")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Activation", "NewInputTanh")
-      .Input("SplitOutput1")
-      .AddStringArg("activation", "TANH")
-      .Output("NewInputTanh")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Eltwise", "RememberMul")
-      .Input("InputSigmoid")
-      .Input("NewInputTanh")
-      .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
-      .Output("RememberMul")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Eltwise", "ForgetAdd")
-      .Input("SplitOutput2")
-      .AddFloatArg("scalar_input", forget_add_name)
-      .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
-      .Output("ForgetAdd")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Activation", "ForgetSigmoid")
-      .Input("ForgetAdd")
-      .AddStringArg("activation", "SIGMOID")
-      .Output("ForgetSigmoid")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Eltwise", "ForgetMul")
-      .Input("ForgetSigmoid")
-      .Input(pre_cell_name)
-      .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
-      .Output("ForgetMulPreCell")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Eltwise", "Cell")
-      .Input("RememberMul")
-      .Input("ForgetMulPreCell")
-      .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
-      .Output(cell_name)
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Activation", "CellTanh")
-      .Input(cell_name)
-      .AddStringArg("activation", "TANH")
-      .Output("CellTanh")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Activation", "OutputSigmoid")
-      .Input("SplitOutput3")
-      .AddStringArg("activation", "SIGMOID")
-      .Output("OutputSigmoid")
-      .Finalize(net->AddNewOperatorDef());
-
-  OpDefBuilder("Eltwise", "FinalMul")
-      .Input("OutputSigmoid")
-      .Input("CellTanh")
-      .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
-      .Output(output_name)
-      .Finalize(net->AddNewOperatorDef());
-}
-
 template <DeviceType D, typename T>
 void TestLSTMCell(const uint32_t &batch,
-                  const uint32_t &lstm_step,
+                  const uint32_t &input_size,
+                  const uint32_t &hidden_units,
                   const float &forget_add) {
   // Construct graph
   OpsTestNet net;
 
-  net.AddRandomInput<D, float>("Input", {batch, lstm_step});
-  net.AddRandomInput<D, float>("PreOutput", {batch, lstm_step});
-  net.AddRandomInput<D, float>("Weight", {2 * lstm_step, 4 * lstm_step});
-  net.AddRandomInput<D, float>("Bias", {4 * lstm_step});
-  net.AddRandomInput<D, float>("PreCell", {batch, lstm_step});
+  net.AddRandomInput<D, float>("Input", {batch, input_size});
+  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units});
+  net.AddRandomInput<D, float>("Weight", {input_size + hidden_units,
+                                          4 * hidden_units});
+  net.AddRandomInput<D, float>("Bias", {4 * hidden_units});
+  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units});
 
   net.CopyData<DeviceType::CPU, float>("Input", "InputCPU");
   net.CopyData<DeviceType::CPU, float>("PreOutput", "PreOutputCPU");
@@ -205,17 +98,17 @@ void TestLSTMCell(const uint32_t &batch,
 }  // namespace
 
 TEST_F(LSTMCellTest, OPENCLRandomHalf) {
-  TestLSTMCell<GPU, half>(1, 4, 0.0f);
-  TestLSTMCell<GPU, half>(2, 16, 0.0f);
-  TestLSTMCell<GPU, half>(2, 200, 0.5f);
-  TestLSTMCell<GPU, half>(20, 320, 0.5f);
+  TestLSTMCell<GPU, half>(1, 3, 8, 0.0f);
+  TestLSTMCell<GPU, half>(2, 16, 24, 0.0f);
+  TestLSTMCell<GPU, half>(2, 200, 280, 0.5f);
+  TestLSTMCell<GPU, half>(20, 320, 512, 0.5f);
 }
 
 TEST_F(LSTMCellTest, OPENCLRandomFloat) {
-  TestLSTMCell<GPU, float>(1, 4, 0.0f);
-  TestLSTMCell<GPU, float>(2, 16, 0.0f);
-  TestLSTMCell<GPU, float>(2, 200, 0.5f);
-  TestLSTMCell<GPU, float>(20, 320, 0.5f);
+  TestLSTMCell<GPU, float>(1, 3, 8, 0.0f);
+  TestLSTMCell<GPU, float>(2, 16, 24, 0.0f);
+  TestLSTMCell<GPU, float>(2, 200, 280, 0.5f);
+  TestLSTMCell<GPU, float>(20, 320, 512, 0.5f);
 }
 
 }  // namespace test
