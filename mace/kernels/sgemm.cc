@@ -60,7 +60,7 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
           lhs.size() * sizeof(float)), DT_FLOAT));
     }
     if (!rhs.is_const()) {
-      packed_lhs_.reset(new Tensor(scratch_buffer->Scratch(
+      packed_rhs_.reset(new Tensor(scratch_buffer->Scratch(
           rhs.size() * sizeof(float)), DT_FLOAT));
     }
     packed_result_.reset(new Tensor(scratch_buffer->Scratch(
