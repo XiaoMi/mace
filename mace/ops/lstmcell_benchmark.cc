@@ -15,6 +15,7 @@
 #include "mace/core/operator.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
+#include "mace/ops/lstmcell_test_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -23,23 +24,31 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void LSTMCell(int iters, int batch, int lstm_step) {
+void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
 
   // Add input data
-  if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, T>("Input", {batch, lstm_step});
-    net.AddRandomInput<D, T>("PreOutput", {batch, lstm_step});
-    net.AddRandomInput<D, T>("Weight", {2 * lstm_step, 4 * lstm_step});
-    net.AddRandomInput<D, T>("Bias", {4 * lstm_step});
-    net.AddRandomInput<D, T>("PreCell", {batch, lstm_step});
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
+  net.AddRandomInput<D, float>("Input", {batch, input_size});
+  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units});
+  net.AddRandomInput<D, float>("Weight", {input_size + hidden_units,
+                                          4 * hidden_units});
+  net.AddRandomInput<D, float>("Bias", {4 * hidden_units});
+  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units});
 
-  if (D == DeviceType::GPU) {
+  const float &forget_add = 0.0f;
+
+  if (D == DeviceType::CPU) {
+    net.CopyData<DeviceType::CPU, float>("Input", "InputCPU");
+    net.CopyData<DeviceType::CPU, float>("PreOutput", "PreOutputCPU");
+    net.CopyData<DeviceType::CPU, float>("Weight", "WeightCPU");
+    net.CopyData<DeviceType::CPU, float>("Bias", "BiasCPU");
+    net.CopyData<DeviceType::CPU, float>("PreCell", "PreCellCPU");
+
+    LSTMCellCPU<float>(&net, "InputCPU", "PreOutputCPU", "WeightCPU", "BiasCPU",
+                   "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
+  } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "PreOutput", "PreOutputImage",
@@ -49,7 +58,7 @@ void LSTMCell(int iters, int batch, int lstm_step) {
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
                         kernels::BufferType::ARGUMENT);
     BufferToImage<D, T>(&net, "PreCell", "PreCellImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                        kernels::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("LSTMCell", "LSTMCellTest")
         .Input("InputImage")
@@ -57,7 +66,7 @@ void LSTMCell(int iters, int batch, int lstm_step) {
         .Input("WeightImage")
         .Input("BiasImage")
         .Input("PreCellImage")
-        .AddFloatArg("forget_add", 0.0f)
+        .AddFloatArg("scalar_input", forget_add)
         .Output("CellImage")
         .Output("OutputImage")
         .Finalize(net.NewOperatorDef());
@@ -79,27 +88,30 @@ void LSTMCell(int iters, int batch, int lstm_step) {
 }
 }  // namespace
 
-#define MACE_BM_LSTMCELL_MACRO(N, LSTM_STEP, TYPE, DEVICE)                \
-  static void MACE_BM_LSTMCELL_##N##_##LSTM_STEP##_##TYPE##_##DEVICE(     \
-      int iters) {                                                        \
-    const int64_t macc =                                                  \
-        static_cast<int64_t>(iters) * N * 2 * LSTM_STEP * 4 * LSTM_STEP;  \
-    const int64_t tot = static_cast<int64_t>(iters) * N * LSTM_STEP;      \
-    mace::testing::MaccProcessed(macc);                                   \
-    mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                   \
-    LSTMCell<DEVICE, TYPE>(iters, N, LSTM_STEP);                          \
-  }                                                                       \
-  MACE_BENCHMARK(MACE_BM_LSTMCELL_##N##_##LSTM_STEP##_##TYPE##_##DEVICE)
+#define MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, TYPE, DEVICE)      \
+  static void                                                                  \
+      MACE_BM_LSTMCELL_##N##_##INPUT_SIZE##_##HIDDEN_UNITS##_##TYPE##_##DEVICE(\
+        int iters) {                                                           \
+    const int64_t macc =                                                       \
+        static_cast<int64_t>(                                                  \
+            iters) * N * (INPUT_SIZE + HIDDEN_UNITS) * 4 * HIDDEN_UNITS;       \
+    const int64_t tot = static_cast<int64_t>(iters) * N * INPUT_SIZE;          \
+    mace::testing::MaccProcessed(macc);                                        \
+    mace::testing::BytesProcessed(tot * (sizeof(TYPE)));                       \
+    LSTMCell<DEVICE, TYPE>(iters, N, INPUT_SIZE, HIDDEN_UNITS);                \
+  }                                                                            \
+  MACE_BENCHMARK(                                                              \
+      MACE_BM_LSTMCELL_##N##_##INPUT_SIZE##_##HIDDEN_UNITS##_##TYPE##_##DEVICE)
 
-#define MACE_BM_LSTMCELL(N, LSTM_STEP)                 \
-  MACE_BM_LSTMCELL_MACRO(N, LSTM_STEP, float, GPU);    \
-  MACE_BM_LSTMCELL_MACRO(N, LSTM_STEP, half, GPU);
+#define MACE_BM_LSTMCELL(N, INPUT_SIZE, HIDDEN_UNITS)                 \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, CPU);    \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, float, GPU);    \
+  MACE_BM_LSTMCELL_MACRO(N, INPUT_SIZE, HIDDEN_UNITS, half, GPU);
 
-MACE_BM_LSTMCELL(1, 200);
-MACE_BM_LSTMCELL(20, 200);
-MACE_BM_LSTMCELL(20, 320);
-MACE_BM_LSTMCELL(32, 400);
-MACE_BM_LSTMCELL(32, 640);
+MACE_BM_LSTMCELL(1, 64, 256);
+MACE_BM_LSTMCELL(30, 64, 256);
+MACE_BM_LSTMCELL(50, 64, 256);
+MACE_BM_LSTMCELL(80, 64, 256);
 }  // namespace test
 }  // namespace ops
 }  // namespace mace
