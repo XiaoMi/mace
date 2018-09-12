@@ -1797,9 +1797,6 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def add_quantize_tensor_range(self):
-        if not self._option.quantize:
-            return False
-
         # Quantize info from range statistics
         print("Add quantize tensor range")
         range_file = self._option.quantize_range_file
@@ -1829,6 +1826,8 @@ class Transformer(base_converter.ConverterInterface):
                         self._quantize_activation_info[output]
                         for output in op.output])
 
+        if not self._option.quantize:
+            return False
         print ("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
