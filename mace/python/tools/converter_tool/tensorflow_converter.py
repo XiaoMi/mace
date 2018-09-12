@@ -73,6 +73,7 @@ TFSupportedOps = [
     'FusedBatchNorm',
     'AvgPool',
     'MaxPool',
+    'ExpandDims',
     'Squeeze',
     'MatMul',
     'BatchMatMul',
@@ -95,6 +96,7 @@ TFSupportedOps = [
     'Gather',
     'StridedSlice',
     'Slice',
+    'ReverseV2',
     'Stack',
     'Pack',
     'Unstack',
@@ -181,6 +183,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Identity.name: self.convert_identity,
             TFOpType.Reshape.name: self.convert_reshape,
             TFOpType.Shape.name: self.convert_shape,
+            TFOpType.ExpandDims.name: self.convert_expand_dims,
             TFOpType.Squeeze.name: self.convert_squeeze,
             TFOpType.Transpose.name: self.convert_transpose,
             TFOpType.Softmax.name: self.convert_softmax,
@@ -198,6 +201,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             TFOpType.Gather.name: self.convert_gather,
             TFOpType.StridedSlice.name: self.convert_stridedslice,
             TFOpType.Slice.name: self.convert_slice,
+            TFOpType.ReverseV2.name: self.convert_reverse,
             TFOpType.Pack.name: self.convert_stack,
             TFOpType.Stack.name: self.convert_stack,
             TFOpType.Unpack.name: self.convert_unstack,
@@ -225,9 +229,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         self._skip_tensor = set()
 
+        self._output_shape_list = []
+        self._output_shape_op_list = []
+
     def run(self):
         with tf.Session() as session:
-            self.convert_ops()
+            self.convert_ops(session)
 
         self.replace_input_output_tensor_name()
         return self._mace_net_def
@@ -267,12 +274,19 @@ class TensorflowConverter(base_converter.ConverterInterface):
         else:
             return tensor_name[:idx]
 
-    def convert_ops(self):
+    def update_output_shapes(self, sess):
+        output_shapes = sess.run(self._output_shape_op_list,
+                                 feed_dict=self._placeholders)
+        for i in range(len(self._output_shape_list)):
+            self._output_shape_list[i].dims.extend(output_shapes[i])
+
+    def convert_ops(self, sess):
         for tf_op in self._tf_graph.get_operations():
             mace_check(tf_op.type in self._op_converters,
                        "Mace does not support tensorflow op type %s yet"
                        % tf_op.type)
             self._op_converters[tf_op.type](tf_op)
+        self.update_output_shapes(sess)
         self.convert_tensors()
 
     def convert_tensors(self):
@@ -306,7 +320,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     # this function tries to infer tensor shape, but some dimension shape
     # may be undefined due to variance of input length
-    def infer_tensor_shape(self, tensor):
+    def infer_tensor_shape(self, output_shape, tensor):
         inferred_tensor_shape = tensor.shape.as_list()
         inferred_success = True
         for _, dim in enumerate(inferred_tensor_shape):
@@ -314,10 +328,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 inferred_success = False
                 break
         if inferred_success:
-            return inferred_tensor_shape
-
-        tensor_shape = tf.shape(tensor).eval(feed_dict=self._placeholders)
-        return tensor_shape
+            output_shape.dims.extend(inferred_tensor_shape)
+        else:
+            self._output_shape_list.append(output_shape)
+            self._output_shape_op_list.append(tf.shape(tensor))
 
     def convert_nop(self, tf_op):
         pass
@@ -330,7 +344,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.output.extend([tf_output.name for tf_output in tf_op.outputs])
         for tf_output in tf_op.outputs:
             output_shape = op.output_shape.add()
-            output_shape.dims.extend(self.infer_tensor_shape(tf_output))
+            self.infer_tensor_shape(output_shape, tf_output)
 
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
@@ -678,6 +692,21 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Reshape.name
 
+    def convert_expand_dims(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.ExpandDims.name
+
+        axis_arg = op.arg.add()
+        axis_arg.name = MaceKeyword.mace_axis_str
+        try:
+            axis_value = tf_op.get_attr('dim')
+        except ValueError:
+            try:
+                axis_value = tf_op.get_attr('axis')
+            except ValueError:
+                axis_value = 0
+        axis_arg.i = axis_value
+
     def convert_squeeze(self, tf_op):
         op = self.convert_general_op(tf_op)
         op.type = MaceOp.Squeeze.name
@@ -782,6 +811,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
         arg = op.arg.add()
         arg.name = 'slice'
         arg.i = 1
+
+    def convert_reverse(self, tf_op):
+        op = self.convert_general_op(tf_op)
+        op.type = MaceOp.Reverse.name
 
     def convert_stack(self, tf_op):
         op = self.convert_general_op(tf_op)

@@ -332,20 +332,27 @@ Please refer to \ ``mace/examples/example.cc``\ for full usage. The following li
 
     // Include the headers
     #include "mace/public/mace.h"
-    #include "mace/public/mace_runtime.h"
 
-    // 0. Set compiled OpenCL kernel cache, this is used to reduce the
-    // initialization time since the compiling is too slow. It's suggested
-    // to set this even when pre-compiled OpenCL program file is provided
-    // because the OpenCL version upgrade may also leads to kernel
-    // recompilations.
-    const std::string file_path ="path/to/opencl_cache_file";
-    std::shared_ptr<KVStorageFactory> storage_factory(
-        new FileStorageFactory(file_path));
-    ConfigKVStorageFactory(storage_factory);
-
-    // 1. Declare the device type (must be same with ``runtime`` in configuration file)
+    // 0. Declare the device type (must be same with ``runtime`` in configuration file)
     DeviceType device_type = DeviceType::GPU;
+
+    // 1. configuration
+    MaceStatus status;
+    MaceEngineConfig config(device_type);
+    std::shared_ptr<GPUContext> gpu_context;
+    // Set the path to store compiled OpenCL kernel binaries.
+    // please make sure your application have read/write rights of the directory.
+    // this is used to reduce the initialization time since the compiling is too slow.
+    // It's suggested to set this even when pre-compiled OpenCL program file is provided
+    // because the OpenCL version upgrade may also leads to kernel recompilations.
+    const std::string storage_path ="path/to/storage";
+    gpu_context = GPUContextBuilder()
+        .SetStoragePath(storage_path)
+        .Finalize();
+    config.SetGPUContext(gpu_context);
+    config.SetGPUHints(
+        static_cast<GPUPerfHint>(GPUPerfHint::PERF_NORMAL),
+        static_cast<GPUPriorityHint>(GPUPriorityHint::PRIORITY_LOW));
 
     // 2. Define the input and output tensor names.
     std::vector<std::string> input_names = {...};
