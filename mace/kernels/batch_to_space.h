@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_SPACE_TO_BATCH_H_
-#define MACE_KERNELS_SPACE_TO_BATCH_H_
+#ifndef MACE_KERNELS_BATCH_TO_SPACE_H_
+#define MACE_KERNELS_BATCH_TO_SPACE_H_
 
 #include <memory>
 #include <vector>
@@ -22,6 +22,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
+#include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -30,8 +31,8 @@
 namespace mace {
 namespace kernels {
 
-struct SpaceToBatchFunctorBase : OpKernel {
-  SpaceToBatchFunctorBase(OpKernelContext *context,
+struct BatchToSpaceFunctorBase : OpKernel {
+  BatchToSpaceFunctorBase(OpKernelContext *context,
                           const std::vector<int> &paddings,
                           const std::vector<int> &block_shape)
     : OpKernel(context),
@@ -47,7 +48,7 @@ struct SpaceToBatchFunctorBase : OpKernel {
   std::vector<int> block_shape_;
 
  protected:
-  void CalculateSpaceToBatchOutputShape(const Tensor *input_tensor,
+  void CalculateBatchToSpaceOutputShape(const Tensor *input_tensor,
                                         const DataFormat data_format,
                                         index_t *output_shape) {
     MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
@@ -67,16 +68,9 @@ struct SpaceToBatchFunctorBase : OpKernel {
       MACE_NOT_IMPLEMENTED;
     }
 
-    index_t padded_height = height + paddings_[0] + paddings_[1];
-    index_t padded_width = width + paddings_[2] + paddings_[3];
-    MACE_CHECK(padded_height % block_shape_[0] == 0, "padded input height",
-               padded_height, " is not divisible by block height");
-    MACE_CHECK(padded_width % block_shape_[1] == 0, "padded input width",
-               padded_height, " is not divisible by block width");
-
-    index_t new_batch = batch * block_shape_[0] * block_shape_[1];
-    index_t new_height = padded_height / block_shape_[0];
-    index_t new_width = padded_width / block_shape_[1];
+    index_t new_batch = batch / block_shape_[0] / block_shape_[1];
+    index_t new_height = height * block_shape_[0] - paddings_[0] - paddings_[1];
+    index_t new_width = width * block_shape_[1] - paddings_[2] - paddings_[3];
 
     if (data_format == DataFormat::NHWC) {
       output_shape[0] = new_batch;
@@ -93,14 +87,14 @@ struct SpaceToBatchFunctorBase : OpKernel {
 };
 
 template<DeviceType D, typename T>
-struct SpaceToBatchFunctor;
+struct BatchToSpaceFunctor;
 
 template<>
-struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
-  SpaceToBatchFunctor(OpKernelContext *context,
+struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
+  BatchToSpaceFunctor(OpKernelContext *context,
                       const std::vector<int> &paddings,
                       const std::vector<int> &block_shape)
-    : SpaceToBatchFunctorBase(context, paddings, block_shape) {}
+    : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
 
   MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,
@@ -108,11 +102,10 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
     MACE_UNUSED(future);
 
     std::vector<index_t> output_shape(4, 0);
-
-    CalculateSpaceToBatchOutputShape(space_tensor,
+    CalculateBatchToSpaceOutputShape(batch_tensor,
                                      DataFormat::NCHW,
                                      output_shape.data());
-    MACE_RETURN_IF_ERROR(batch_tensor->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
 
     Tensor::MappingGuard input_guard(space_tensor);
     Tensor::MappingGuard output_guard(batch_tensor);
@@ -122,39 +115,41 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
     int block_shape_h = block_shape_[0];
     int block_shape_w = block_shape_[1];
 
-    const float *input_data = space_tensor->data<float>();
-    float *output_data = batch_tensor->mutable_data<float>();
+    const float *input_data = batch_tensor->data<float>();
+    float *output_data = space_tensor->mutable_data<float>();
 
-    index_t in_batches = space_tensor->dim(0);
-    index_t in_height = space_tensor->dim(2);
-    index_t in_width = space_tensor->dim(3);
+    index_t in_batches = batch_tensor->dim(0);
+    index_t in_height = batch_tensor->dim(2);
+    index_t in_width = batch_tensor->dim(3);
 
-    index_t out_batches = batch_tensor->dim(0);
-    index_t channels = batch_tensor->dim(1);
-    index_t out_height = batch_tensor->dim(2);
-    index_t out_width = batch_tensor->dim(3);
+    index_t out_batches = space_tensor->dim(0);
+    index_t channels = space_tensor->dim(1);
+    index_t out_height = space_tensor->dim(2);
+    index_t out_width = space_tensor->dim(3);
 
-    index_t block_h_size =
-      std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / in_width);
+    // 32k/sizeof(float)/out_width/block_shape
+    index_t
+      block_h_size =
+      std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / out_width);
 
     // make channel outter loop so we can make best use of cache
 #pragma omp parallel for collapse(3)
     for (index_t c = 0; c < channels; ++c) {
-      for (index_t block_h = 0; block_h < out_height;
+      for (index_t block_h = 0; block_h < in_height;
            block_h += block_h_size) {
-        for (index_t b = 0; b < out_batches; ++b) {
-          const index_t in_b = b % in_batches;
-          const index_t tile_index = b / in_batches;
+        for (index_t in_b = 0; in_b < in_batches; ++in_b) {
+          const index_t b = in_b % out_batches;
+          const index_t tile_index = in_b / out_batches;
           const index_t tile_h = tile_index / block_shape_w;
           const index_t tile_w = tile_index % block_shape_w;
           const index_t valid_h_start = std::max(block_h,
                                                  (pad_top - tile_h
                                                    + block_shape_h - 1)
                                                    / block_shape_h);
-          const index_t valid_h_end = std::min(out_height,
+          const index_t valid_h_end = std::min(in_height,
                                                std::min(
                                                  block_h + block_h_size,
-                                                 (in_height + pad_top
+                                                 (out_height + pad_top
                                                    - tile_h
                                                    + block_shape_h - 1)
                                                    / block_shape_h));
@@ -162,8 +157,8 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
                                                  (pad_left - tile_w
                                                    + block_shape_w - 1)
                                                    / block_shape_w);
-          const index_t valid_w_end = std::min(out_width,
-                                               (in_width + pad_left - tile_w
+          const index_t valid_w_end = std::min(in_width,
+                                               (out_width + pad_left - tile_w
                                                  + block_shape_w - 1)
                                                  / block_shape_w);
           const float *input_base =
@@ -171,47 +166,31 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
           float *output_base =
             output_data + (b * channels + c) * out_height * out_width;
 
-          memset(output_base + block_h * out_width,
-                 0,
-                 (valid_h_start - block_h) * out_width * sizeof(float));
-
-          index_t in_h = valid_h_start * block_shape_h + tile_h - pad_top;
-          for (index_t h = valid_h_start; h < valid_h_end; ++h) {
-            memset(output_base + h * out_width,
-                   0,
-                   valid_w_start * sizeof(float));
-
-            index_t in_w = valid_w_start * block_shape_w + tile_w - pad_left;
-            for (index_t w = valid_w_start; w < valid_w_end; ++w) {
+          index_t h = valid_h_start * block_shape_h + tile_h - pad_top;
+          for (index_t in_h = valid_h_start; in_h < valid_h_end; ++in_h) {
+            index_t w = valid_w_start * block_shape_w + tile_w - pad_left;
+            for (index_t in_w = valid_w_start; in_w < valid_w_end; ++in_w) {
               output_base[h * out_width + w] =
                 input_base[in_h * in_width + in_w];
-              in_w += block_shape_w;
+              w += block_shape_w;
             }  // w
-            in_h += block_shape_h;
-
-            memset(output_base + h * out_width + valid_w_end,
-                   0,
-                   (out_width - valid_w_end) * sizeof(float));
+            h += block_shape_h;
           }  // h
-
-          memset(output_base + valid_h_end * out_width,
-                 0,
-                 (std::min(out_height, block_h + block_h_size) - valid_h_end)
-                   * out_width * sizeof(float));
         }  // b
       }  // block_h
     }  // c
+
     return MACE_SUCCESS;
   }
 };
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
-  SpaceToBatchFunctor(OpKernelContext *context,
+struct BatchToSpaceFunctor<DeviceType::GPU, T> : BatchToSpaceFunctorBase {
+  BatchToSpaceFunctor(OpKernelContext *context,
                       const std::vector<int> &paddings,
                       const std::vector<int> &block_shape)
-      : SpaceToBatchFunctorBase(context, paddings, block_shape) {}
+      : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
 
   MaceStatus operator()(Tensor *space_tensor,
                   Tensor *batch_tensor,
@@ -227,4 +206,4 @@ struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_SPACE_TO_BATCH_H_
+#endif  // MACE_KERNELS_BATCH_TO_SPACE_H_

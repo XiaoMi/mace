@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/kernels/space_to_batch.h"
+#include "mace/kernels/batch_to_space.h"
 
 namespace mace {
 namespace ops {
@@ -31,8 +31,7 @@ class BatchToSpaceNDOp : public Operator<D, T> {
       : Operator<D, T>(op_def, context),
         functor_(context,
                  OperatorBase::GetRepeatedArgs<int>("crops", {0, 0, 0, 0}),
-                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
-                 true) {}
+                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1})) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *batch_tensor = this->Input(INPUT);
@@ -41,7 +40,7 @@ class BatchToSpaceNDOp : public Operator<D, T> {
   }
 
  private:
-  kernels::SpaceToBatchFunctor<D, T> functor_;
+  kernels::BatchToSpaceFunctor<D, T> functor_;
 
  protected:
   MACE_OP_INPUT_TAGS(INPUT);

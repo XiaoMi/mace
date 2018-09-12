@@ -24,7 +24,7 @@ namespace test {
 
 namespace {
 template <DeviceType D>
-void RunDepthToSpace(const std::vector<index_t> &input_shape,
+void RunSpaceToDepth(const std::vector<index_t> &input_shape,
                      const std::vector<float> &input_data,
                      const int block_size,
                      const std::vector<index_t> &expected_shape,
@@ -35,7 +35,7 @@ void RunDepthToSpace(const std::vector<index_t> &input_shape,
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
-    OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+    OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
         .Input("InputNCHW")
         .Output("OutputNCHW")
         .AddIntArg("block_size", block_size)
@@ -48,7 +48,7 @@ void RunDepthToSpace(const std::vector<index_t> &input_shape,
   } else {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             kernels::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+    OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
         .Input("InputImage")
         .Output("OutputImage")
         .AddIntArg("block_size", block_size)
@@ -66,47 +66,40 @@ void RunDepthToSpace(const std::vector<index_t> &input_shape,
 }
 }  // namespace
 
-class DepthToSpaceOpTest : public OpsTestBase {};
+class SpaceToDepthOpTest : public OpsTestBase {};
 
-TEST_F(DepthToSpaceOpTest, Input1x2x16_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(
-      {1, 1, 2, 16},
-      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-      2, {1, 2, 4, 4},
+TEST_F(SpaceToDepthOpTest, Input2x4x4_B2_CPU) {
+  RunSpaceToDepth<DeviceType::CPU>(
+      {1, 2, 4, 4},
       {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
-       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
+       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31},
+      2, {1, 1, 2, 16},
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
-TEST_F(DepthToSpaceOpTest, Input1x2x16_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(
-      {1, 1, 2, 16},
-      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-      2, {1, 2, 4, 4},
+TEST_F(SpaceToDepthOpTest, Input2x4x4_B2_OPENCL) {
+  RunSpaceToDepth<DeviceType::GPU>(
+      {1, 2, 4, 4},
       {0, 1, 2,  3,  4,  5,  6,  7,  16, 17, 18, 19, 20, 21, 22, 23,
-       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31});
+       8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28, 29, 30, 31},
+      2, {1, 1, 2, 16},
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
 }
 
-TEST_F(DepthToSpaceOpTest, Input1x1x16_B2_CPU) {
-  RunDepthToSpace<DeviceType::CPU>(
-      {1, 1, 1, 16},
-      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 2, 2, 4},
+TEST_F(SpaceToDepthOpTest, Input2x2x4_B2_CPU) {
+  RunSpaceToDepth<DeviceType::CPU>(
+      {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 1, 1, 16},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
 }
 
-TEST_F(DepthToSpaceOpTest, Input1x1x16_B2_OPENCL) {
-  RunDepthToSpace<DeviceType::GPU>(
-      {1, 1, 1, 16},
-      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 2, 2, 4},
+TEST_F(SpaceToDepthOpTest, Input4x4x1_B2_OPENCL) {
+  RunSpaceToDepth<DeviceType::GPU>(
+      {1, 2, 2, 4},
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, 2, {1, 1, 1, 16},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
-}
-
-TEST_F(DepthToSpaceOpTest, InputLarger_B2_OPENCL) {
-  const std::vector<float> in = std::vector<float>(192 * 192 * 128, 1.0);
-
-  RunDepthToSpace<DeviceType::GPU>({1, 192, 192, 128}, in, 2,
-                                   {1, 384, 384, 32}, in);
 }
 
 namespace {
@@ -123,7 +116,7 @@ void RandomTest(const int block_size,
   net.AddRandomInput<D, float>("Input", shape);
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
-  OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+  OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
       .Input("InputNCHW")
       .AddIntArg("block_size", block_size)
       .Output("OutputNCHW")
@@ -138,7 +131,7 @@ void RandomTest(const int block_size,
   BufferToImage<D, T>(&net, "Input", "InputImg",
                       kernels::BufferType::IN_OUT_CHANNEL);
 
-  OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
+  OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
       .Input("InputImg")
       .AddIntArg("block_size", block_size)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
@@ -161,12 +154,12 @@ void RandomTest(const int block_size,
 }
 }  // namespace
 
-TEST_F(DepthToSpaceOpTest, OPENCLRandomFloat) {
-  RandomTest<DeviceType::GPU, float>(2, {1, 192, 192, 128});
+TEST_F(SpaceToDepthOpTest, OPENCLRandomFloat) {
+  RandomTest<DeviceType::GPU, float>(2, {1, 384, 384, 32});
 }
 
-TEST_F(DepthToSpaceOpTest, OPENCLRandomHalf) {
-  RandomTest<DeviceType::GPU, half>(2, {1, 192, 192, 128});
+TEST_F(SpaceToDepthOpTest, OPENCLRandomHalf) {
+  RandomTest<DeviceType::GPU, half>(2, {1, 384, 384, 32});
 }
 
 }  // namespace test
