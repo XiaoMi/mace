@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_
-#define MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_
+#ifndef MACE_KERNELS_OPENCL_BATCH_TO_SPACE_H_
+#define MACE_KERNELS_OPENCL_BATCH_TO_SPACE_H_
 
-#include "mace/kernels/space_to_batch.h"
+#include "mace/kernels/batch_to_space.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/opencl/helper.h"
 #include "mace/utils/tuner.h"
@@ -25,18 +25,21 @@ namespace mace {
 namespace kernels {
 
 template <typename T>
-MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
+MaceStatus BatchToSpaceFunctor<DeviceType::GPU, T>::operator()(
     Tensor *space_tensor, Tensor *batch_tensor, StatsFuture *future) {
   std::vector<index_t> output_shape(4, 0);
-  CalculateSpaceToBatchOutputShape(space_tensor, DataFormat::NHWC,
+  CalculateBatchToSpaceOutputShape(batch_tensor, DataFormat::NHWC,
                                    output_shape.data());
+
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
   MACE_RETURN_IF_ERROR(
-      batch_tensor->ResizeImage(output_shape, output_image_shape));
-  const char *kernel_name = "space_to_batch";
-  const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
+      space_tensor->ResizeImage(output_shape, output_image_shape));
+
+  const uint32_t chan_blk =
+      static_cast<uint32_t>(RoundUpDiv4(batch_tensor->dim(3)));
+
   const uint32_t gws[3] = {
       chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
       static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
@@ -44,6 +47,7 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
   auto runtime = context_->device()->opencl_runtime();
 
   if (kernel_.get() == nullptr) {
+    const char *kernel_name = "batch_to_space";
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::set<std::string> built_options;
     OUT_OF_RANGE_CONFIG(kernel_error_, context_);
@@ -54,7 +58,7 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
     built_options.emplace("-DCMD_DATA_TYPE=" +
                           DtToCLCMDDt(DataTypeToEnum<T>::value));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("space_to_batch",
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("batch_to_space",
                                               obfuscated_kernel_name,
                                               built_options,
                                               &kernel_));
@@ -66,9 +70,8 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
     uint32_t idx = 0;
     OUT_OF_RANGE_SET_ARG;
     SET_3D_GWS_ARGS(kernel_);
-
-    kernel_.setArg(idx++, *(space_tensor->opencl_image()));
     kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
+    kernel_.setArg(idx++, *(space_tensor->opencl_image()));
     kernel_.setArg(idx++, block_shape_[0]);
     kernel_.setArg(idx++, block_shape_[1]);
     kernel_.setArg(idx++, paddings_[0]);
@@ -84,7 +87,7 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
 
   const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
-      Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
+      Concat("batch_to_space", batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, future));
@@ -93,9 +96,9 @@ MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template struct SpaceToBatchFunctor<DeviceType::GPU, float>;
-template struct SpaceToBatchFunctor<DeviceType::GPU, half>;
+template struct BatchToSpaceFunctor<DeviceType::GPU, float>;
+template struct BatchToSpaceFunctor<DeviceType::GPU, half>;
 
 }  // namespace kernels
 }  // namespace mace
-#endif  // MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_
+#endif  // MACE_KERNELS_OPENCL_BATCH_TO_SPACE_H_

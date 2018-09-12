@@ -31,8 +31,7 @@ class SpaceToBatchNDOp : public Operator<D, T> {
       : Operator<D, T>(op_def, context),
         functor_(context,
                  OperatorBase::GetRepeatedArgs<int>("paddings", {0, 0, 0, 0}),
-                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1}),
-                 false) {}
+                 OperatorBase::GetRepeatedArgs<int>("block_shape", {1, 1})) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *space_tensor = this->Input(INPUT);

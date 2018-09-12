@@ -30,26 +30,13 @@ class DepthToSpaceOp : public Operator<D, T> {
   DepthToSpaceOp(const OperatorDef &op_def, OpKernelContext *context)
       : Operator<D, T>(op_def, context),
         block_size_(OperatorBase::GetOptionalArg<int>("block_size", 1)),
-        functor_(context, this->block_size_, true) {}
+        functor_(context, this->block_size_) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
     Tensor *output = this->Output(OUTPUT);
     MACE_CHECK(input->dim_size() == 4, "input dim should be 4");
 
-    int input_depth;
-    if (D == CPU) {
-      input_depth = input->dim(1);
-    } else if (D == GPU) {
-      input_depth = input->dim(3);
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
-    MACE_CHECK(input_depth % (block_size_ * block_size_) == 0,
-               "input depth should be dividable by block_size * block_size",
-               input_depth);
-    MACE_CHECK((input_depth % 4) == 0,
-               "input channel should be dividable by 4");
     return functor_(input, output, future);
   }
 

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_DEPTH_TO_SPACE_H_
-#define MACE_KERNELS_DEPTH_TO_SPACE_H_
+#ifndef MACE_KERNELS_SPACE_TO_DEPTH_H_
+#define MACE_KERNELS_SPACE_TO_DEPTH_H_
 #include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
-#include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
+#include "mace/kernels/kernel.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -30,8 +30,8 @@ namespace mace {
 namespace kernels {
 
 template<DeviceType D, typename T>
-struct DepthToSpaceOpFunctor : OpKernel {
-  DepthToSpaceOpFunctor(OpKernelContext *context,
+struct SpaceToDepthOpFunctor : OpKernel {
+  SpaceToDepthOpFunctor(OpKernelContext *context,
                         const int block_size)
       : OpKernel(context), block_size_(block_size) {}
   MaceStatus operator()(const Tensor *input,
@@ -43,13 +43,13 @@ struct DepthToSpaceOpFunctor : OpKernel {
     const index_t input_height = input->dim(2);
     const index_t input_width = input->dim(3);
 
-    MACE_CHECK(input_depth % (block_size_ * block_size_) == 0,
-               "input depth should be dividable by block_size * block_size",
-               input_depth);
+    MACE_CHECK(
+        (input_width % block_size_ == 0) && (input_height % block_size_ == 0),
+        "input width and height should be dividable by block_size");
 
-    const index_t output_depth = input_depth / (block_size_ * block_size_);
-    const index_t output_width = input_width * block_size_;
-    const index_t output_height = input_height * block_size_;
+    const index_t output_depth = input_depth * block_size_ * block_size_;
+    const index_t output_width = input_width / block_size_;
+    const index_t output_height = input_height / block_size_;
     std::vector<index_t> output_shape = {batch_size, output_depth,
                                          output_height, output_width};
 
@@ -62,29 +62,27 @@ struct DepthToSpaceOpFunctor : OpKernel {
 
 #pragma omp parallel for
     for (index_t b = 0; b < batch_size; ++b) {
-      for (index_t d = 0; d < output_depth; ++d) {
-        for (index_t h = 0; h < output_height; ++h) {
-          const index_t in_h = h / block_size_;
+      for (index_t d = 0; d < input_depth; ++d) {
+        for (index_t h = 0; h < input_height; ++h) {
+          const index_t out_h = h / block_size_;
           const index_t offset_h = (h % block_size_);
-          for (int w = 0; w < output_width; ++w) {
-            const index_t in_w = w / block_size_;
-            const index_t offset_w = w % block_size_;
+          for (index_t w = 0; w < input_width; ++w) {
+            const index_t out_w = w / block_size_;
+            const index_t offset_w = (w % block_size_);
             const index_t offset_d =
-                (offset_h * block_size_ + offset_w) * output_depth;
+                (offset_h * block_size_ + offset_w) * input_depth;
 
-            const index_t in_d = d + offset_d;
+            const index_t out_d = d + offset_d;
             const index_t o_index =
-                ((b * output_depth + d) * output_height + h) * output_width
-                    + w;
+                ((b * output_depth + out_d) * output_height + out_h)
+                    * output_width + out_w;
             const index_t i_index =
-                ((b * input_depth + in_d) * input_height + in_h) * input_width
-                    + in_w;
+                ((b * input_depth + d) * input_height + h) * input_width + w;
             output_ptr[o_index] = input_ptr[i_index];
           }
         }
       }
     }
-
 
     return MACE_SUCCESS;
   }
@@ -94,9 +92,9 @@ struct DepthToSpaceOpFunctor : OpKernel {
 
 #ifdef MACE_ENABLE_OPENCL
 template<typename T>
-struct DepthToSpaceOpFunctor<DeviceType::GPU, T> : OpKernel {
-  DepthToSpaceOpFunctor(OpKernelContext *context,
-                        const int block_size)
+struct SpaceToDepthOpFunctor<DeviceType::GPU, T> : OpKernel {
+  explicit SpaceToDepthOpFunctor(OpKernelContext *context,
+                                 const int block_size)
       : OpKernel(context), block_size_(block_size) {}
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -113,4 +111,4 @@ struct DepthToSpaceOpFunctor<DeviceType::GPU, T> : OpKernel {
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_DEPTH_TO_SPACE_H_
+#endif  // MACE_KERNELS_SPACE_TO_DEPTH_H_
