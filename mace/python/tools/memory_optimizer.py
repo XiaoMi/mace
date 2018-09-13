@@ -80,9 +80,13 @@ class MemoryOptimizer(object):
     def op_need_optimize_memory(self, op):
         return True
 
-    def get_op_mem_block(self, op_type, output_shape):
+    def get_op_mem_block(self, op_type, output_shape, output_type):
+        data_type_size = 4
+        if output_type == mace_pb2.DT_UINT8:
+            data_type_size = 1
         return MemoryBlock(mace_pb2.CPU_BUFFER,
-                           [reduce(operator.mul, output_shape, 1)])
+                           [reduce(operator.mul, output_shape, 1) *
+                            data_type_size])
 
     def mem_size(self, memory_block):
         return memory_block.block[0]
@@ -143,9 +147,13 @@ class MemoryOptimizer(object):
                     # make these ops reuse memory of input tensor
                     mem_id = self.op_mem.get(op.input[0], -1)
                 else:
+                    output_type = mace_pb2.DT_FLOAT
+                    if len(op.output_type) > i:
+                        output_type = op.output_type[i]
                     op_mem_block = self.get_op_mem_block(
                         op.type,
-                        op.output_shape[i].dims)
+                        op.output_shape[i].dims,
+                        output_type)
                     mem_id = -1
                     if len(self.idle_mem) > 0:
                         best_mem_add_size = sys.maxint
@@ -221,7 +229,7 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                     return False
         return op.type != 'ImageToBuffer'
 
-    def get_op_mem_block(self, op_type, output_shape):
+    def get_op_mem_block(self, op_type, output_shape, output_type):
         if op_type == 'WinogradTransform' or op_type == 'MatMul':
             buffer_shape = list(output_shape) + [1]
             mem_block = MemoryBlock(

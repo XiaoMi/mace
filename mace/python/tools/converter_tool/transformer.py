@@ -47,6 +47,8 @@ class Transformer(base_converter.ConverterInterface):
         # Dependencies
         # (TRANSFORM_MATMUL_TO_FC, TRANSFORM_GLOBAL_CONV_TO_FC) -> RESHAPE_FC_WEIGHT  # noqa
         self._registered_transformers = {
+            TransformerRule.TRANSFORM_FAKE_QUANTIZE:
+                self.transform_fake_quantize,
             TransformerRule.REMOVE_IDENTITY_OP: self.remove_identity_op,
             TransformerRule.TRANSFORM_GLOBAL_POOLING:
                 self.transform_global_pooling,
@@ -91,6 +93,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES:
                 self.add_mace_input_and_output_nodes,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
+            TransformerRule.CHECK_QUANTIZE_INFO:
+                self.check_quantize_info,
         }
 
         self._option = option
@@ -774,15 +778,21 @@ class Transformer(base_converter.ConverterInterface):
     def transform_add_to_biasadd(self):
         net = self._model
         for op in net.op:
-            if op.type == 'Add' \
-                    and len(op.input) == 2 \
-                    and op.input[1] in self._consts \
-                    and len(self._consts[op.input[1]].dims) == 1:
+            if (op.type == 'Eltwise'
+                    and ConverterUtil.get_arg(op, MaceKeyword.mace_element_type_str).i == EltwiseType.SUM.value  # noqa
+                    and len(op.input) == 2
+                    and op.input[1] in self._consts
+                    and len(self._consts[op.input[1]].dims) == 1):
                 print("Transform add to biasadd: %s(%s)" % (op.name, op.type))
                 op.type = MaceOp.BiasAdd.name
                 return True
 
         return False
+
+    def replace_quantize_info(self, op, replace_op):
+        if len(replace_op.quantize_info) > 0:
+            del op.quantize_info[:]
+            op.quantize_info.extend(replace_op.quantize_info)
 
     def fold_biasadd(self):
         net = self._model
@@ -799,6 +809,7 @@ class Transformer(base_converter.ConverterInterface):
                 if consumer_op.type == MaceOp.BiasAdd.name:
                     print("Fold biasadd: %s(%s)" % (op.name, op.type))
                     op.input.append(consumer_op.input[1])
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
                     return True
 
@@ -886,6 +897,7 @@ class Transformer(base_converter.ConverterInterface):
                                 or arg.name == MaceKeyword.mace_activation_max_limit_str:  # noqa
                             op.arg.extend([arg])
 
+                    self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
                     return True
 
@@ -1163,7 +1175,8 @@ class Transformer(base_converter.ConverterInterface):
         transposed_filter = set()
         transposed_deconv_filter = set()
 
-        if self._option.quantize:
+        if self._option.quantize and \
+                self._option.device == DeviceType.CPU.value:
             print("Transpose filters to OHWI")
             if filter_format == FilterFormat.HWIO:
                 transpose_order = [3, 0, 1, 2]
@@ -1601,6 +1614,9 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def quantize_nodes(self):
+        if not self._option.quantize:
+            return False
+
         print("Add mace quantize and dequantize nodes")
 
         for op in self._model.op:
@@ -1647,28 +1663,13 @@ class Transformer(base_converter.ConverterInterface):
 
         self._input_output_added = True
 
-    def add_quantize_tensor_range(self):
-        print("Add quantize tensor range")
-        net = self._model
-        range_file = self._option.quantize_range_file
-        if not range_file:
-            return
-
-        with open(range_file) as f:
-            for line in f:
-                tensor_name, minmax = line.split("@@")
-                min_val, max_val = [float(i) for i in
-                                    minmax.strip().split(",")]
-                scale, zero = quantize_util.adjust_range(min_val, max_val,
-                                                         non_zero=False)
-                activation_info = net.quantize_info.activation_info.add()
-                activation_info.tensor_name = tensor_name
-                activation_info.scale = scale
-                activation_info.zero_point = zero
-                self._quantize_activation_info[tensor_name] = activation_info
+        return False
 
     def quantize_tensor(self, tensor):
         """Assume biasadd has been already folded with convolution and fc"""
+        if not self._option.quantize:
+            return False
+
         if tensor.data_type == mace_pb2.DT_FLOAT:
             ops = self._consumers.get(tensor.name, None)
             if len(ops) == 1 and ops[0].type in [MaceOp.Conv2D.name,
@@ -1698,8 +1699,131 @@ class Transformer(base_converter.ConverterInterface):
             tensor.zero_point = quantized_tensor.zero
             self._quantized_tensor.update([tensor.name])
 
+        return False
+
     def quantize_weights(self):
         print("Quantize weights")
         net = self._model
         for tensor in net.tensors:
             self.quantize_tensor(tensor)
+
+        return False
+
+    def add_quantize_info(self, op, minval, maxval):
+        scale, zero = quantize_util.adjust_range(minval, maxval,
+                                                 non_zero=False)
+        quantize_info = op.quantize_info.add()
+        quantize_info.minval = minval
+        quantize_info.maxval = maxval
+        quantize_info.scale = scale
+        quantize_info.zero_point = zero
+
+        return quantize_info
+
+    def transform_fake_quantize(self):
+        if not self._option.quantize:
+            return False
+
+        # Quantize info from fixpoint fine tune
+        print("Transform fake quantize")
+        range_file = self._option.quantize_range_file
+        if range_file:
+            return
+
+        net = self._model
+        for op in net.op:
+            if op.type == 'FakeQuantWithMinMaxVars':
+                producer_op = self._producer[op.input[0]]
+                minval = ConverterUtil.get_arg(op, 'min').f
+                maxval = ConverterUtil.get_arg(op, 'max').f
+                quantize_info = \
+                    self.add_quantize_info(producer_op, minval, maxval)
+                self._quantize_activation_info[op.input[0]] = quantize_info
+                op.type = MaceOp.Identity.name
+
+        return False
+
+    def add_quantize_tensor_range(self):
+        if not self._option.quantize:
+            return False
+
+        # Quantize info from range statistics
+        print("Add quantize tensor range")
+        range_file = self._option.quantize_range_file
+        if range_file:
+            with open(range_file) as f:
+                for line in f:
+                    tensor_name, minmax = line.split("@@")
+                    min_val, max_val = [float(i) for i in
+                                        minmax.strip().split(",")]
+                    scale, zero = quantize_util.adjust_range(min_val, max_val,
+                                                             non_zero=False)
+                    activation_info = mace_pb2.QuantizeActivationInfo()
+                    activation_info.minval = min_val
+                    activation_info.maxval = max_val
+                    activation_info.scale = scale
+                    activation_info.zero_point = zero
+                    self._quantize_activation_info[tensor_name] = activation_info  # noqa
+
+            for op in self._model.op:
+                if op.name.find(MaceKeyword.mace_output_node_name) >= 0:
+                    continue
+                for output in op.output:
+                    mace_check(output in self._quantize_activation_info,
+                               "%s does not have quantize activation info"
+                               % op)
+                    op.quantize_info.extend([
+                        self._quantize_activation_info[output]
+                        for output in op.output])
+
+        print ("Add default quantize info for ops like Pooling, Softmax")
+        for op in self._model.op:
+            if op.type in [MaceOp.Pooling.name,
+                           MaceOp.Squeeze.name,
+                           MaceOp.Concat.name,
+                           MaceOp.ResizeBilinear.name,
+                           MaceOp.BatchToSpaceND.name,
+                           MaceOp.SpaceToBatchND.name]:
+                del op.quantize_info[:]
+                producer_op = self._producer[op.input[0]]
+                quantize_info = op.quantize_info.add()
+                quantize_info.minval = producer_op.quantize_info[0].minval
+                quantize_info.maxval = producer_op.quantize_info[0].maxval
+                quantize_info.scale = producer_op.quantize_info[0].scale
+                quantize_info.zero_point = \
+                    producer_op.quantize_info[0].zero_point
+                self._quantize_activation_info[op.output[0]] = quantize_info
+            elif op.type == MaceOp.Softmax.name:
+                del op.quantize_info[:]
+                quantize_info = \
+                    self.add_quantize_info(op, 0.0, 1.0)
+                self._quantize_activation_info[op.output[0]] = quantize_info
+
+        print ("Add default quantize info for input")
+        for input_node in self._option.input_nodes.values():
+            if input_node.name not in self._quantize_activation_info:
+                print("Input range %s: %s" % (input_node.name,
+                                              str(input_node.range)))
+                scale, zero = quantize_util.adjust_range(input_node.range[0],
+                                                         input_node.range[1],
+                                                         non_zero=False)
+                quantize_info = mace_pb2.QuantizeActivationInfo()
+                quantize_info.minval = input_node.range[0]
+                quantize_info.maxval = input_node.range[1]
+                quantize_info.scale = scale
+                quantize_info.zero_point = zero
+                self._quantize_activation_info[input_node.name] = quantize_info
+
+        return False
+
+    def check_quantize_info(self):
+        if not self._option.quantize:
+            return False
+
+        for op in self._model.op:
+            if (op.name.find(MaceKeyword.mace_input_node_name) == -1
+                and op.name.find(MaceKeyword.mace_output_node_name) == -1
+                and op.type != MaceOp.Quantize.name
+                and op.type != MaceOp.Dequantize.name):  # noqa
+                mace_check(len(op.output) == len(op.quantize_info),
+                           "missing quantize info: %s" % op)

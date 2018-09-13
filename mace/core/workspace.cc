@@ -178,16 +178,19 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
     if (status != MaceStatus::MACE_SUCCESS) return status;
   }
 
-  if (device_type == DeviceType::CPU && net_def.has_quantize_info()) {
-    for (const auto
-          &activation_info: net_def.quantize_info().activation_info()) {
-      if (HasTensor(activation_info.tensor_name())) {
-        Tensor *tensor = GetTensor(activation_info.tensor_name());
-        tensor->SetScale(activation_info.scale());
-        tensor->SetZeroPoint(activation_info.zero_point());
-      } else {
-        LOG(WARNING) << "Quantize info exists for non-existed tensor: "
-            << activation_info.tensor_name();
+  if (device_type == DeviceType::CPU) {
+    for (const auto &op : net_def.op()) {
+      VLOG(2) << "Add quantize info for op: " << op.name();
+      MACE_CHECK(op.quantize_info().empty()
+                     || op.quantize_info().size() == op.output().size(),
+                 "quantize info size must be equal to output size or empty");
+      for (int i = 0; i < op.quantize_info().size(); ++i) {
+        auto &quantize_info = op.quantize_info(i);
+        Tensor *tensor = GetTensor(op.output(i));
+        tensor->SetScale(quantize_info.scale());
+        tensor->SetZeroPoint(quantize_info.zero_point());
+        tensor->SetMinVal(quantize_info.minval());
+        tensor->SetMaxVal(quantize_info.maxval());
       }
     }
   }
@@ -233,8 +236,7 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         std::unique_ptr<BufferBase> tensor_buf(
             new Buffer(GetCPUAllocator()));
         MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-            mem_block.x() * GetEnumTypeSize(dtype)
-                + MACE_EXTRA_BUFFER_PAD_SIZE));
+            mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(tensor_buf));
       } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {

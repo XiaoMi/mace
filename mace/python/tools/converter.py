@@ -64,6 +64,10 @@ def parse_int_array_from_str(ints_str):
     return [int(int_str) for int_str in ints_str.split(',')]
 
 
+def parse_float_array_from_str(ints_str):
+    return [float(int_str) for int_str in ints_str.split(',')]
+
+
 def main(unused_args):
     if not os.path.isfile(FLAGS.model_file):
         print("Input graph file '" + FLAGS.model_file + "' does not exist!")
@@ -105,12 +109,18 @@ def main(unused_args):
 
     input_node_names = FLAGS.input_node.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
+    if FLAGS.input_range:
+        input_node_ranges = FLAGS.input_range.split(':')
+    else:
+        input_node_ranges = []
     if len(input_node_names) != len(input_node_shapes):
         raise Exception('input node count and shape count do not match.')
     for i in xrange(len(input_node_names)):
         input_node = cvt.NodeInfo()
         input_node.name = input_node_names[i]
         input_node.shape = parse_int_array_from_str(input_node_shapes[i])
+        if len(input_node_ranges) > i:
+            input_node.range = parse_float_array_from_str(input_node_ranges[i])
         option.add_input_node(input_node)
 
     output_node_names = FLAGS.output_node.split(',')
@@ -276,6 +286,8 @@ def parse_args():
         "--dsp_mode", type=int, default=0, help="dsp run mode, defalut=0")
     parser.add_argument(
         "--input_shape", type=str, default="", help="input shape.")
+    parser.add_argument(
+        "--input_range", type=str, default="", help="input range.")
     parser.add_argument(
         "--platform", type=str, default="tensorflow", help="tensorflow/caffe")
     parser.add_argument(

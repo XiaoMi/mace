@@ -760,6 +760,7 @@ def convert_model(configs):
             runtime,
             model_name,
             ":".join(subgraphs[0][YAMLKeyword.input_shapes]),
+            ":".join(subgraphs[0][YAMLKeyword.input_ranges]),
             model_config[YAMLKeyword.nnlib_graph_mode],
             embed_model_data,
             model_config[YAMLKeyword.winograd],
