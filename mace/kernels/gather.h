@@ -16,6 +16,7 @@
 #define MACE_KERNELS_GATHER_H_
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <vector>
 

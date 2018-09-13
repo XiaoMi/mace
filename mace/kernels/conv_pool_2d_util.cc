@@ -15,6 +15,7 @@
 #include "mace/kernels/conv_pool_2d_util.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace mace {

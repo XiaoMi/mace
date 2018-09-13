@@ -16,6 +16,7 @@
 #define MACE_KERNELS_LOCAL_RESPONSE_NORM_H_
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 

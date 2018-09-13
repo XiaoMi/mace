@@ -15,6 +15,7 @@
 #ifndef MACE_KERNELS_QUANTIZE_H_
 #define MACE_KERNELS_QUANTIZE_H_
 
+#include <cmath>
 #include <vector>
 #include <algorithm>
 #include <limits>

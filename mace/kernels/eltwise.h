@@ -16,6 +16,7 @@
 #define MACE_KERNELS_ELTWISE_H_
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <utility>
