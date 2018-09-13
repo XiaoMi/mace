@@ -965,7 +965,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
   const index_t width = src.col();
   auto src_data = src.batch_data(batch_index);
 
-  if (src.major() == Major::RowMajor && order == PackOrder::ColMajor) {
+  if (src.map_major() == Major::RowMajor && order == PackOrder::ColMajor) {
     // This is for packing no-transpose lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1011,7 +1011,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     for (index_t ih = h; ih < height; ++ih) {
       std::copy_n(src_data + ih * width, width, packed_data + ih * width);
     }
-  } else if (src.major() == Major::ColMajor && order == PackOrder::ColMajor) {
+  } else if (src.map_major() == Major::ColMajor &&
+             order == PackOrder::ColMajor) {
     // This is for packing transpose-needed lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1052,7 +1053,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
         packed_data_ptr[w] = src_data_ptr[w * height];
       }
     }
-  } else if (src.major() == Major::RowMajor && order == PackOrder::RowMajor) {
+  } else if (src.map_major() == Major::RowMajor &&
+             order == PackOrder::RowMajor) {
     // This is for packing no-transpose rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1077,7 +1079,8 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
         packed_data_ptr[h] = src_data_ptr[h * width];
       }
     }
-  } else if (src.major() == Major::ColMajor && order == PackOrder::RowMajor) {
+  } else if (src.map_major() == Major::ColMajor &&
+             order == PackOrder::RowMajor) {
     // This is for packing transpose-needed rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1113,7 +1116,7 @@ void SGemm::UnPackPerBatch(const float *packed_data,
   const index_t width = matrix_map->col();
   auto unpacked_data = matrix_map->batch_data(batch_index);
 
-  if (matrix_map->major() == Major::RowMajor) {
+  if (matrix_map->map_major() == Major::RowMajor) {
     // This is for non-transposed result
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)

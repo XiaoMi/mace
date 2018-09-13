@@ -16,6 +16,7 @@
 #define MACE_KERNELS_STRIDED_SLICE_H_
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 

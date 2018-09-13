@@ -74,7 +74,7 @@ class MatrixMap {
     return stride_;
   }
 
-  Major major() const {
+  Major map_major() const {
     return major_;
   }
 

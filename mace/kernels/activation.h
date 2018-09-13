@@ -16,6 +16,7 @@
 #define MACE_KERNELS_ACTIVATION_H_
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>

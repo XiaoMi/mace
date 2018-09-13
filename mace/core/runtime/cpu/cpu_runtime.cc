@@ -39,7 +39,7 @@ int MaceOpenMPThreadCount = 1;
 namespace {
 
 int GetCPUCount() {
-  char path[32];
+  char path[64];
   int cpu_count = 0;
   int result = 0;
 
