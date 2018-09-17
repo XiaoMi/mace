@@ -35,12 +35,12 @@ struct BatchToSpaceFunctorBase : OpKernel {
   BatchToSpaceFunctorBase(OpKernelContext *context,
                           const std::vector<int> &paddings,
                           const std::vector<int> &block_shape)
-    : OpKernel(context),
-      paddings_(paddings.begin(), paddings.end()),
-      block_shape_(block_shape.begin(), block_shape.end()) {
+      : OpKernel(context),
+        paddings_(paddings.begin(), paddings.end()),
+        block_shape_(block_shape.begin(), block_shape.end()) {
     MACE_CHECK(
-      block_shape.size() == 2 && block_shape[0] > 1 && block_shape[1] > 1,
-      "Block's shape should be 1D, and greater than 1");
+        block_shape.size() == 2 && block_shape[0] > 1 && block_shape[1] > 1,
+        "Block's shape should be 1D, and greater than 1");
     MACE_CHECK(paddings.size() == 4, "Paddings' shape should be 2D");
   }
 
@@ -94,11 +94,11 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
   BatchToSpaceFunctor(OpKernelContext *context,
                       const std::vector<int> &paddings,
                       const std::vector<int> &block_shape)
-    : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
+      : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
 
   MaceStatus operator()(Tensor *space_tensor,
-                  Tensor *batch_tensor,
-                  StatsFuture *future) {
+                        Tensor *batch_tensor,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
 
     std::vector<index_t> output_shape(4, 0);
@@ -107,8 +107,8 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
                                      output_shape.data());
     MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
 
-    Tensor::MappingGuard input_guard(space_tensor);
-    Tensor::MappingGuard output_guard(batch_tensor);
+    Tensor::MappingGuard input_guard(batch_tensor);
+    Tensor::MappingGuard output_guard(space_tensor);
 
     int pad_top = paddings_[0];
     int pad_left = paddings_[2];
@@ -129,8 +129,8 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
 
     // 32k/sizeof(float)/out_width/block_shape
     index_t
-      block_h_size =
-      std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / out_width);
+        block_h_size =
+        std::max(static_cast<index_t>(1), 8 * 1024 / block_shape_w / out_width);
 
     // make channel outter loop so we can make best use of cache
 #pragma omp parallel for collapse(3)
@@ -144,34 +144,34 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
           const index_t tile_w = tile_index % block_shape_w;
           const index_t valid_h_start = std::max(block_h,
                                                  (pad_top - tile_h
-                                                   + block_shape_h - 1)
-                                                   / block_shape_h);
+                                                     + block_shape_h - 1)
+                                                     / block_shape_h);
           const index_t valid_h_end = std::min(in_height,
                                                std::min(
-                                                 block_h + block_h_size,
-                                                 (out_height + pad_top
-                                                   - tile_h
-                                                   + block_shape_h - 1)
-                                                   / block_shape_h));
+                                                   block_h + block_h_size,
+                                                   (out_height + pad_top
+                                                       - tile_h
+                                                       + block_shape_h - 1)
+                                                       / block_shape_h));
           const index_t valid_w_start = std::max(static_cast<index_t>(0),
                                                  (pad_left - tile_w
-                                                   + block_shape_w - 1)
-                                                   / block_shape_w);
+                                                     + block_shape_w - 1)
+                                                     / block_shape_w);
           const index_t valid_w_end = std::min(in_width,
                                                (out_width + pad_left - tile_w
-                                                 + block_shape_w - 1)
-                                                 / block_shape_w);
+                                                   + block_shape_w - 1)
+                                                   / block_shape_w);
           const float *input_base =
-            input_data + (in_b * channels + c) * in_height * in_width;
+              input_data + (in_b * channels + c) * in_height * in_width;
           float *output_base =
-            output_data + (b * channels + c) * out_height * out_width;
+              output_data + (b * channels + c) * out_height * out_width;
 
           index_t h = valid_h_start * block_shape_h + tile_h - pad_top;
           for (index_t in_h = valid_h_start; in_h < valid_h_end; ++in_h) {
             index_t w = valid_w_start * block_shape_w + tile_w - pad_left;
             for (index_t in_w = valid_w_start; in_w < valid_w_end; ++in_w) {
               output_base[h * out_width + w] =
-                input_base[in_h * in_width + in_w];
+                  input_base[in_h * in_width + in_w];
               w += block_shape_w;
             }  // w
             h += block_shape_h;
@@ -179,6 +179,93 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
         }  // b
       }  // block_h
     }  // c
+
+    return MACE_SUCCESS;
+  }
+};
+
+template<>
+struct BatchToSpaceFunctor<CPU, uint8_t> : BatchToSpaceFunctorBase {
+  BatchToSpaceFunctor(OpKernelContext *context,
+                      const std::vector<int> &paddings,
+                      const std::vector<int> &block_shape)
+      : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
+
+  MaceStatus operator()(Tensor *space_tensor,
+                        Tensor *batch_tensor,
+                        StatsFuture *future) {
+    MACE_UNUSED(future);
+
+    std::vector<index_t> output_shape(4, 0);
+
+    CalculateBatchToSpaceOutputShape(batch_tensor,
+                                     DataFormat::NHWC,
+                                     output_shape.data());
+    MACE_RETURN_IF_ERROR(space_tensor->Resize(output_shape));
+
+    Tensor::MappingGuard input_guard(batch_tensor);
+    Tensor::MappingGuard output_guard(space_tensor);
+
+    int pad_top = paddings_[0];
+    int pad_left = paddings_[2];
+    int block_shape_h = block_shape_[0];
+    int block_shape_w = block_shape_[1];
+
+    space_tensor->SetScale(batch_tensor->scale());
+    space_tensor->SetZeroPoint(batch_tensor->zero_point());
+    const uint8_t *input_data = batch_tensor->data<uint8_t>();
+    uint8_t *output_data = space_tensor->mutable_data<uint8_t>();
+
+    index_t in_batches = batch_tensor->dim(0);
+    index_t in_height = batch_tensor->dim(1);
+    index_t in_width = batch_tensor->dim(2);
+
+    index_t out_batches = space_tensor->dim(0);
+    index_t out_height = space_tensor->dim(1);
+    index_t out_width = space_tensor->dim(2);
+    index_t channels = space_tensor->dim(3);
+
+#pragma omp parallel for
+    for (index_t in_b = 0; in_b < in_batches; ++in_b) {
+      const index_t b = in_b % out_batches;
+      const index_t tile_index = in_b / out_batches;
+      const index_t tile_h = tile_index / block_shape_w;
+      const index_t tile_w = tile_index % block_shape_w;
+      const index_t valid_h_start = std::max(static_cast<index_t>(0),
+                                             (pad_top - tile_h
+                                                 + block_shape_h - 1)
+                                                 / block_shape_h);
+      const index_t valid_h_end = std::min(in_height,
+                                           (out_height + pad_top
+                                               - tile_h
+                                               + block_shape_h - 1)
+                                               / block_shape_h);
+      const index_t valid_w_start = std::max(static_cast<index_t>(0),
+                                             (pad_left - tile_w
+                                                 + block_shape_w - 1)
+                                                 / block_shape_w);
+      const index_t valid_w_end = std::min(in_width,
+                                           (out_width + pad_left
+                                               - tile_w
+                                               + block_shape_w - 1)
+                                               / block_shape_w);
+      const uint8_t *input_base =
+          input_data + in_b * in_height * in_width * channels;
+      uint8_t
+          *output_base = output_data + b * out_height * out_width * channels;
+
+      index_t h = valid_h_start * block_shape_h + tile_h - pad_top;
+      for (index_t in_h = valid_h_start; in_h < valid_h_end; ++in_h) {
+        index_t w = valid_w_start * block_shape_w + tile_w - pad_left;
+        for (index_t in_w = valid_w_start; in_w < valid_w_end; ++in_w) {
+          memcpy(output_base + (h * out_width + w) * channels,
+                 input_base + (in_h * in_width + in_w) * channels,
+                 channels * sizeof(uint8_t));
+          w += block_shape_w;
+        }  // w
+        h += block_shape_h;
+      }  // h
+    }  // b
 
     return MACE_SUCCESS;
   }

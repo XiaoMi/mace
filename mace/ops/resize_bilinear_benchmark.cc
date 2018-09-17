@@ -36,8 +36,15 @@ void ResizeBilinearBenchmark(int iters,
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input",
-                                 {batch, channels, input_height, input_width});
+    if (DataTypeToEnum<T>::value != DT_UINT8) {
+      net.AddRandomInput<D, float>("Input",
+                                   {batch, channels, input_height,
+                                    input_width});
+    } else {
+      net.AddRandomInput<D, uint8_t>("Input",
+                                   {batch, input_height, input_width,
+                                    channels});
+    }
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input",
                                  {batch, input_height, input_width, channels});
@@ -99,6 +106,7 @@ void ResizeBilinearBenchmark(int iters,
 
 #define MACE_BM_RESIZE_BILINEAR(N, C, H0, W0, H1, W1)                 \
   MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, CPU);    \
+  MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, uint8_t, CPU);    \
   MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, float, GPU);    \
   MACE_BM_RESIZE_BILINEAR_MACRO(N, C, H0, W0, H1, W1, half, GPU);
 

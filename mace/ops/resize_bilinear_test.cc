@@ -140,10 +140,87 @@ void TestRandomResizeBilinear() {
                             1e-6);
   }
 }
+
+void TestQuantizedResizeBilinear() {
+  testing::internal::LogToStderr();
+  static unsigned int seed = time(NULL);
+  for (int round = 0; round < 10; ++round) {
+    int batch = 1 + rand_r(&seed) % 5;
+    int channels = 1 + rand_r(&seed) % 100;
+    int height = 1 + rand_r(&seed) % 100;
+    int width = 1 + rand_r(&seed) % 100;
+    int in_height = 1 + rand_r(&seed) % 100;
+    int in_width = 1 + rand_r(&seed) % 100;
+    int align_corners = rand_r(&seed) % 1;
+
+    // Construct graph
+    OpsTestNet net;
+    // Add input data
+    net.AddRandomInput<CPU, float>("Input",
+                                   {batch, in_height, in_width, channels},
+                                   false,
+                                   true,
+                                   -1.f,
+                                   1.f);
+    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+                                                    NCHW);
+
+    OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
+        .Input("InputNCHW")
+        .Output("OutputNCHW")
+        .AddIntArg("align_corners", align_corners)
+        .AddIntsArg("size", {height, width})
+        .Finalize(net.NewOperatorDef());
+    // Run on CPU
+    net.RunOp(DeviceType::CPU);
+    net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
+                                                    "Output", NHWC);
+
+    // run quantize
+    OpDefBuilder("Quantize", "QuantizeInput")
+        .Input("Input")
+        .Output("QuantizedInput")
+        .OutputType({DT_UINT8})
+        .AddIntArg("T", DT_UINT8)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
+    OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
+        .Input("QuantizedInput")
+        .Output("QuantizedOutput")
+        .AddIntArg("align_corners", align_corners)
+        .AddIntsArg("size", {height, width})
+        .OutputType({DT_UINT8})
+        .AddIntArg("T", DT_UINT8)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
+    Tensor *eq_output = net.GetTensor("QuantizedInput");
+    Tensor *q_output = net.GetTensor("QuantizedOutput");
+    q_output->SetScale(eq_output->scale());
+    q_output->SetZeroPoint(eq_output->zero_point());
+    OpDefBuilder("Dequantize", "DeQuantizeTest")
+        .Input("QuantizedOutput")
+        .Output("DequantizedOutput")
+        .OutputType({DT_FLOAT})
+        .AddIntArg("T", DT_UINT8)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+
+    // Check
+    ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                               *net.GetTensor("DequantizedOutput"), 0.01);
+  }
+}
+
 }  // namespace
 
 TEST_F(ResizeBilinearTest, OPENCLRandomResizeBilinear) {
   TestRandomResizeBilinear<DeviceType::GPU>();
+}
+
+TEST_F(ResizeBilinearTest, QuantizedResizeBilinear) {
+  TestQuantizedResizeBilinear();
 }
 
 }  // namespace test

@@ -61,53 +61,117 @@ inline void ComputeInterpolationWeights(
   }
 }
 
-inline float ComputeLerp(const float top_left,
-                         const float top_right,
-                         const float bottom_left,
-                         const float bottom_right,
-                         const float x_lerp,
-                         const float y_lerp) {
+template <typename T>
+inline T ComputeLerp(const T top_left,
+                     const T top_right,
+                     const T bottom_left,
+                     const T bottom_right,
+                     const float x_lerp,
+                     const float y_lerp);
+
+template <>
+inline float ComputeLerp<float>(const float top_left,
+                                const float top_right,
+                                const float bottom_left,
+                                const float bottom_right,
+                                const float x_lerp,
+                                const float y_lerp) {
   const float top = top_left + (top_right - top_left) * x_lerp;
   const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
   return top + (bottom - top) * y_lerp;
 }
 
-inline void ResizeImage(const float *images,
-                        const index_t batch_size,
-                        const index_t in_height,
-                        const index_t in_width,
-                        const index_t out_height,
-                        const index_t out_width,
-                        const index_t channels,
-                        const std::vector<CachedInterpolation> &xs_vec,
-                        const std::vector<CachedInterpolation> &ys,
-                        float *output) {
+template <>
+inline uint8_t ComputeLerp<uint8_t>(const uint8_t top_left,
+                                    const uint8_t top_right,
+                                    const uint8_t bottom_left,
+                                    const uint8_t bottom_right,
+                                    const float x_lerp,
+                                    const float y_lerp) {
+  const float top = top_left + (top_right - top_left) * x_lerp;
+  const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
+  return static_cast<uint8_t>(roundf(top + (bottom - top) * y_lerp));
+}
+
+template <typename T>
+inline void ResizeImageNCHW(const T *images,
+                            const index_t batch_size,
+                            const index_t in_height,
+                            const index_t in_width,
+                            const index_t out_height,
+                            const index_t out_width,
+                            const index_t channels,
+                            const std::vector<CachedInterpolation> &xs_vec,
+                            const std::vector<CachedInterpolation> &ys,
+                            T *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
 #pragma omp parallel for collapse(2)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t c = 0; c < channels; ++c) {
-      const float
+      const T
           *channel_input_ptr =
           images + (b * channels + c) * in_height * in_width;
-      float *channel_output_ptr =
+      T *channel_output_ptr =
           output + (b * channels + c) * out_height * out_width;
       for (index_t y = 0; y < out_height; ++y) {
-        const float *y_lower_input_ptr =
+        const T *y_lower_input_ptr =
             channel_input_ptr + ys[y].lower * in_width;
-        const float *y_upper_input_ptr =
+        const T *y_upper_input_ptr =
             channel_input_ptr + ys[y].upper * in_width;
         const float ys_lerp = ys[y].lerp;
 
         for (index_t x = 0; x < out_width; ++x) {
           const float xs_lerp = xs[x].lerp;
-          const float top_left = y_lower_input_ptr[xs[x].lower];
-          const float top_right = y_lower_input_ptr[xs[x].upper];
-          const float bottom_left = y_upper_input_ptr[xs[x].lower];
-          const float bottom_right = y_upper_input_ptr[xs[x].upper];
+          const T top_left = y_lower_input_ptr[xs[x].lower];
+          const T top_right = y_lower_input_ptr[xs[x].upper];
+          const T bottom_left = y_upper_input_ptr[xs[x].lower];
+          const T bottom_right = y_upper_input_ptr[xs[x].upper];
           channel_output_ptr[y * out_width + x] =
               ComputeLerp(top_left, top_right, bottom_left,
                           bottom_right, xs_lerp, ys_lerp);
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+inline void ResizeImageNHWC(const T *images,
+                            const index_t batch_size,
+                            const index_t in_height,
+                            const index_t in_width,
+                            const index_t out_height,
+                            const index_t out_width,
+                            const index_t channels,
+                            const std::vector<CachedInterpolation> &xs_vec,
+                            const std::vector<CachedInterpolation> &ys,
+                            T *output) {
+  const CachedInterpolation *xs = xs_vec.data();
+
+  for (index_t b = 0; b < batch_size; ++b) {
+    const T *input_base = images + b * channels * in_height * in_width;
+    T *output_base = output + b * channels * out_height * out_width;
+#pragma omp parallel for
+    for (index_t y = 0; y < out_height; ++y) {
+      const T
+          *y_lower_input_ptr = input_base + ys[y].lower * in_width * channels;
+      const T
+          *y_upper_input_ptr = input_base + ys[y].upper * in_width * channels;
+      const float ys_lerp = ys[y].lerp;
+
+      for (index_t x = 0; x < out_width; ++x) {
+        const float xs_lerp = xs[x].lerp;
+        const T *top_left = y_lower_input_ptr + xs[x].lower * channels;
+        const T *top_right = y_lower_input_ptr + xs[x].upper * channels;
+        const T *bottom_left = y_upper_input_ptr + xs[x].lower * channels;
+        const T *bottom_right = y_upper_input_ptr + xs[x].upper * channels;
+
+        T *output_ptr = output_base + (y * out_width + x) * channels;
+        for (index_t c = 0; c < channels; ++c) {
+          output_ptr[c] =
+              ComputeLerp(top_left[c], top_right[c], bottom_left[c],
+                          bottom_right[c], xs_lerp, ys_lerp);
         }
       }
     }
@@ -132,11 +196,7 @@ struct ResizeBilinearFunctorBase : OpKernel {
 };
 
 template<DeviceType D, typename T>
-struct ResizeBilinearFunctor;
-
-template<>
-struct ResizeBilinearFunctor<DeviceType::CPU, float>
-    : ResizeBilinearFunctorBase {
+struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
   ResizeBilinearFunctor(OpKernelContext *context,
                         const std::vector<index_t> &size,
                         bool align_corners)
@@ -159,8 +219,8 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
 
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard output_mapper(output);
-    const float *input_data = input->data<float>();
-    float *output_data = output->mutable_data<float>();
+    const T *input_data = input->data<T>();
+    T *output_data = output->mutable_data<T>();
 
     if (out_height == in_height && out_width == in_width) {
       std::copy(input_data,
@@ -181,8 +241,77 @@ struct ResizeBilinearFunctor<DeviceType::CPU, float>
     ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
     ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
 
-    ResizeImage(input_data, batch, in_height, in_width, out_height, out_width,
-                channels, xs, ys, output_data);
+    ResizeImageNCHW(input_data,
+                    batch,
+                    in_height,
+                    in_width,
+                    out_height,
+                    out_width,
+                    channels,
+                    xs,
+                    ys,
+                    output_data);
+
+    return MACE_SUCCESS;
+  }
+};
+
+template<DeviceType D>
+struct ResizeBilinearFunctor<D, uint8_t> : ResizeBilinearFunctorBase {
+  ResizeBilinearFunctor(OpKernelContext *context,
+                        const std::vector<index_t> &size,
+                        bool align_corners)
+      : ResizeBilinearFunctorBase(context, size, align_corners) {}
+
+  MaceStatus operator()(const Tensor *input,
+                        Tensor *output,
+                        StatsFuture *future) {
+    MACE_UNUSED(future);
+    const index_t batch = input->dim(0);
+    const index_t in_height = input->dim(1);
+    const index_t in_width = input->dim(2);
+    const index_t channels = input->dim(3);
+
+    index_t out_height = out_height_;
+    index_t out_width = out_width_;
+    MACE_CHECK(out_height > 0 && out_width > 0);
+    std::vector<index_t> out_shape{batch, out_height, out_width, channels};
+    MACE_RETURN_IF_ERROR(output->Resize(out_shape));
+
+    Tensor::MappingGuard input_mapper(input);
+    Tensor::MappingGuard output_mapper(output);
+    const uint8_t *input_data = input->data<uint8_t>();
+    uint8_t *output_data = output->mutable_data<uint8_t>();
+
+    if (out_height == in_height && out_width == in_width) {
+      std::copy(input_data,
+                input_data + batch * in_height * in_width * channels ,
+                output_data);
+      return MACE_SUCCESS;
+    }
+
+    float height_scale =
+        CalculateResizeScale(in_height, out_height, align_corners_);
+    float width_scale =
+        CalculateResizeScale(in_width, out_width, align_corners_);
+
+    std::vector<CachedInterpolation> ys(out_height + 1);
+    std::vector<CachedInterpolation> xs(out_width + 1);
+
+    // Compute the cached interpolation weights on the x and y dimensions.
+    ComputeInterpolationWeights(out_height, in_height, height_scale, ys.data());
+    ComputeInterpolationWeights(out_width, in_width, width_scale, xs.data());
+
+    ResizeImageNHWC(input_data,
+                    batch,
+                    in_height,
+                    in_width,
+                    out_height,
+                    out_width,
+                    channels,
+                    xs,
+                    ys,
+                    output_data);
 
     return MACE_SUCCESS;
   }

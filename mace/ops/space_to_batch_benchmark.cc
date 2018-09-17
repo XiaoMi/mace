@@ -28,7 +28,13 @@ void BMSpaceToBatch(
 
   OpsTestNet net;
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    if (DataTypeToEnum<T>::value != DT_UINT8) {
+      net.AddRandomInput<D, float>(
+          "Input", {batch, channels, height, width});
+    } else {
+      net.AddRandomInput<DeviceType::CPU, uint8_t>(
+          "Input", {batch, height, width, channels});
+    }
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
@@ -39,6 +45,7 @@ void BMSpaceToBatch(
         .Output("Output")
         .AddIntsArg("paddings", {shape, shape, shape, shape})
         .AddIntsArg("block_shape", {shape, shape})
+        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
@@ -78,7 +85,8 @@ void BMSpaceToBatch(
 
 #define MACE_BM_SPACE_TO_BATCH(N, H, W, C, SHAPE)              \
   MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, GPU); \
-  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU);
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, float, CPU); \
+  MACE_BM_SPACE_TO_BATCH_MACRO(N, H, W, C, SHAPE, uint8_t, CPU);
 
 MACE_BM_SPACE_TO_BATCH(128, 16, 16, 128, 2);
 MACE_BM_SPACE_TO_BATCH(1, 256, 256, 32, 2);

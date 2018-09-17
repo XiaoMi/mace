@@ -162,11 +162,13 @@ class OpsTestNet {
     std::fill(input_data, input_data + input->size(), data);
   }
 
-  template <DeviceType D, typename T>
+  template<DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
                       bool positive = true,
-                      bool truncate = false) {
+                      bool truncate = false,
+                      const float truncate_min = 0.001f,
+                      const float truncate_max = 100.f) {
     Tensor *input =
         ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
                          DataTypeToEnum<T>::v());
@@ -180,21 +182,22 @@ class OpsTestNet {
     if (DataTypeToEnum<T>::value == DT_HALF) {
       std::generate(
           input_data, input_data + input->size(),
-          [&gen, &nd, positive, truncate] {
+          [&gen, &nd, positive, truncate, truncate_min, truncate_max] {
             float d = nd(gen);
             if (truncate) {
-              if (std::abs(d) > 100.f) d = 100.f;
-              if (std::abs(d) < 0.001f) d = 0.001f;
+              if (std::abs(d) > truncate_max) d = truncate_max;
+              if (std::abs(d) < truncate_min) d = truncate_min;
             }
             return half_float::half_cast<half>(positive ? std::abs(d) : d);
           });
     } else {
       std::generate(input_data, input_data + input->size(),
-                    [&gen, &nd, positive, truncate] {
+                    [&gen, &nd, positive, truncate,
+                        truncate_min, truncate_max] {
                       float d = nd(gen);
                       if (truncate) {
-                        if (std::abs(d) > 100.f) d = 100.f;
-                        if (std::abs(d) < 0.001f) d = 0.001f;
+                        if (std::abs(d) > truncate_max) d = truncate_max;
+                        if (std::abs(d) < truncate_min) d = truncate_min;
                       }
                       return (positive ? std::abs(d) : d);
                     });
