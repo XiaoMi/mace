@@ -119,7 +119,8 @@ struct MatMulFunctor<CPU, uint8_t> : OpKernel {
                   const index_t K,
                   const index_t width,
                   Tensor *C) {
-    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+    auto gemm_context = context_->device()->cpu_runtime()->GetGemmlowpContext();
+    MACE_CHECK_NOTNULL(gemm_context);
 
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);
@@ -146,7 +147,7 @@ struct MatMulFunctor<CPU, uint8_t> : OpKernel {
 
       using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
       gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
-          &gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
+          gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
           -B->zero_point(), output_pipeline);
     }
   }

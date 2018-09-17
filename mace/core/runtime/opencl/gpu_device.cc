@@ -21,8 +21,10 @@ GPUDevice::GPUDevice(Tuner<uint32_t> *tuner,
                      const GPUPriorityHint priority,
                      const GPUPerfHint perf,
                      KVStorage *opencl_binary_storage,
-                     const int num_threads) :
-    CPUDevice(num_threads),
+                     const int num_threads,
+                     CPUAffinityPolicy cpu_affinity_policy,
+                     bool use_gemmlowp) :
+    CPUDevice(num_threads, cpu_affinity_policy, use_gemmlowp),
     runtime_(new OpenCLRuntime(opencl_cache_storage, priority, perf,
                                opencl_binary_storage, tuner)),
     allocator_(new OpenCLAllocator(runtime_.get())) {}

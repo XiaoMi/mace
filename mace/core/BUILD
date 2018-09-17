@@ -104,10 +104,13 @@ cc_library(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ],
+    ] + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]),
     deps = [
         ":core",
         "//external:gflags_nothreads",
+        "//mace/ops:test",
         "//mace/utils",
     ],
 )

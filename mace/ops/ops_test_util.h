@@ -114,11 +114,17 @@ class OpDefBuilder {
 
 class OpTestContext {
  public:
-  static OpTestContext *Get();
+  static OpTestContext *Get(
+      int num_threads = -1,
+      CPUAffinityPolicy cpu_affinity_policy = AFFINITY_BIG_ONLY,
+      bool use_gemmlowp = true);
   std::shared_ptr<GPUContext> gpu_context() const;
   Device *GetDevice(DeviceType device_type);
+
  private:
-  OpTestContext();
+  OpTestContext(int num_threads,
+                CPUAffinityPolicy cpu_affinity_policy,
+                bool use_gemmlowp);
   MACE_DISABLE_COPY_AND_ASSIGN(OpTestContext);
 
   std::shared_ptr<GPUContext> gpu_context_;
@@ -501,8 +507,6 @@ class OpsTestNet {
 class OpsTestBase : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    SetOpenMPThreadsAndAffinityPolicy(-1,
-                                      CPUAffinityPolicy::AFFINITY_BIG_ONLY);
   }
 
   virtual void TearDown() {

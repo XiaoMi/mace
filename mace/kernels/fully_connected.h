@@ -100,7 +100,8 @@ struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
                         Tensor *output,
                         StatsFuture *future) {
     MACE_UNUSED(future);
-    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+    auto gemm_context = context_->device()->cpu_runtime()->GetGemmlowpContext();
+    MACE_CHECK_NOTNULL(gemm_context);
 
     std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
@@ -142,7 +143,7 @@ struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
 
     using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
     gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
-        &gemm_context, weight_matrix, input_matrix, &output_matrix,
+        gemm_context, weight_matrix, input_matrix, &output_matrix,
         -weight->zero_point(), -input->zero_point(), output_pipeline);
 
     return MACE_SUCCESS;

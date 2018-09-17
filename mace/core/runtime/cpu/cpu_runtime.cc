@@ -27,7 +27,6 @@
 #include <utility>
 #include <vector>
 
-#include "public/gemmlowp.h"
 #include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
@@ -90,13 +89,6 @@ MaceStatus SetThreadAffinity(cpu_set_t mask) {
   } else {
     return MACE_SUCCESS;
   }
-}
-
-}  // namespace
-
-gemmlowp::GemmContext& GetGemmlowpContext() {
-  static auto *gemm_context = new gemmlowp::GemmContext;
-  return *gemm_context;
 }
 
 MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
@@ -174,13 +166,15 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 #endif
 }
 
-MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
-                                             CPUAffinityPolicy policy,
-                                             bool use_gemmlowp) {
+}  // namespace
+
+MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
+    int omp_num_threads_hint,
+    CPUAffinityPolicy policy,
+    gemmlowp::GemmContext *gemm_context) {
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
-    if (use_gemmlowp) {
-      gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
-      gemm_context.set_max_num_threads(std::max(0, omp_num_threads_hint));
+    if (gemm_context) {
+      gemm_context->set_max_num_threads(std::max(0, omp_num_threads_hint));
     }
 #ifdef MACE_ENABLE_OPENMP
     if (omp_num_threads_hint > 0) {
@@ -211,9 +205,8 @@ MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
     omp_num_threads_hint = use_cpu_ids.size();
   }
 
-  if (use_gemmlowp) {
-    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
-    gemm_context.set_max_num_threads(omp_num_threads_hint);
+  if (gemm_context) {
+    gemm_context->set_max_num_threads(omp_num_threads_hint);
   }
 
   return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);

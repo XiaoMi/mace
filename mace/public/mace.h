@@ -97,21 +97,6 @@ enum MaceStatus {
     }                                                                      \
   }
 
-/// \brief Get ARM big.LITTLE configuration.
-///
-/// This function will detect the max frequencies of all CPU cores, and assume
-/// the cores with largest max frequencies as big cores, and all the remaining
-/// cores as little. If all cpu core's max frequencies equals, big_core_ids and
-/// little_core_ids will both be filled with all cpu core ids.
-///
-/// \param [out] big_core_ids
-/// \param [out] little_core_ids
-/// \return If successful, it returns MACE_SUCCESS and error if it can't
-///         reliabley detect the frequency of big-LITTLE cores (e.g. MTK).
-
-MACE_API MaceStatus GetBigLittleCoreIDs(std::vector<int> *big_core_ids,
-                                        std::vector<int> *little_core_ids);
-
 /// \brief GPU context contain the status used for GPU device.
 ///
 /// The life cycle of GPUContext object is the same as MaceEngines use it.
@@ -170,6 +155,8 @@ class MACE_API GPUContextBuilder {
 };
 
 class MACE_API MaceEngineConfig {
+  friend class MaceEngine;
+
  public:
   explicit MaceEngineConfig(const DeviceType device_type);
   ~MaceEngineConfig();
@@ -218,32 +205,6 @@ class MACE_API MaceEngineConfig {
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy,
                                 bool use_gemmlowp = false);
-
-  /// \brief Set OpenMP threads number and processor affinity.
-  ///
-  /// Caution: this function may hurt performance
-  /// if improper parameters provided.
-  /// This function may not work well on some chips (e.g. MTK). Setting thread
-  /// affinity to offline cores may run very slow or unexpectedly.
-  /// In such cases, please use SetOpenMPThreadPolicy with default policy
-  /// instead.
-  ///
-  /// \param num_threads
-  /// \param cpu_ids
-  /// \return MACE_SUCCESS for success, other for failed.
-  MaceStatus SetOpenMPThreadAffinity(
-      int num_threads,
-      const std::vector<int> &cpu_ids);
-
-  DeviceType device_type() const;
-
-  int num_threads() const;
-
-  std::shared_ptr<GPUContext> gpu_context() const;
-
-  GPUPriorityHint gpu_priority_hint() const;
-
-  GPUPerfHint gpu_perf_hint() const;
 
  private:
   class Impl;

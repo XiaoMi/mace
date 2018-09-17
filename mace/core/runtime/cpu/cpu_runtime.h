@@ -15,33 +15,55 @@
 #ifndef MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
 #define MACE_CORE_RUNTIME_CPU_CPU_RUNTIME_H_
 
+#include <memory>
 #include <vector>
 
+#include "public/gemmlowp.h"
 #include "mace/public/mace.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 
 extern int MaceOpenMPThreadCount;
 
-MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
-                                  std::vector<int> *little_core_ids);
-
-MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                           const std::vector<int> &cpu_ids);
-
-MaceStatus SetOpenMPThreadsAndAffinityPolicy(int omp_num_threads_hint,
-                                             CPUAffinityPolicy policy,
-                                             bool use_gemmlowp = false);
-
 class CPURuntime {
  public:
-  explicit CPURuntime(const int num_threads) : num_threads_(num_threads) {}
+  CPURuntime(const int num_threads,
+             CPUAffinityPolicy policy,
+             bool use_gemmlowp)
+      : num_threads_(num_threads),
+        policy_(policy),
+        gemm_context_(nullptr) {
+    if (use_gemmlowp) {
+      MACE_CHECK_NOTNULL(GetGemmlowpContext());
+    }
+
+    SetOpenMPThreadsAndAffinityPolicy(num_threads_,
+                                      policy_,
+                                      gemm_context_.get());
+  }
   ~CPURuntime() = default;
-  inline int num_threads() const {
+
+  gemmlowp::GemmContext *GetGemmlowpContext() {
+    if (!gemm_context_) {
+      gemm_context_.reset(new gemmlowp::GemmContext());
+    }
+    return gemm_context_.get();
+  }
+
+  int num_threads() const {
     return num_threads_;
   }
+
  private:
+  MaceStatus SetOpenMPThreadsAndAffinityPolicy(
+      int omp_num_threads_hint,
+      CPUAffinityPolicy policy,
+      gemmlowp::GemmContext *gemm_context);
+
   int num_threads_;
+  CPUAffinityPolicy policy_;
+  std::unique_ptr<gemmlowp::GemmContext> gemm_context_;
 };
 }  // namespace mace
 

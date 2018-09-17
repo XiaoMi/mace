@@ -17,7 +17,7 @@
 #include "gflags/gflags.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/utils/logging.h"
+#include "mace/ops/ops_test_util.h"
 
 DEFINE_string(filter, "all", "op benchmark regex filter, eg:.*CONV.*");
 DEFINE_int32(omp_num_threads, -1, "num of openmp threads");
@@ -31,13 +31,10 @@ int main(int argc, char **argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // config runtime
-  mace::MaceStatus status = mace::SetOpenMPThreadsAndAffinityPolicy(
+  mace::ops::test::OpTestContext::Get(
       FLAGS_omp_num_threads,
       static_cast<mace::CPUAffinityPolicy>(FLAGS_cpu_affinity_policy),
       true);
-  if (status != mace::MACE_SUCCESS) {
-    LOG(WARNING) << "Set openmp or cpu affinity failed.";
-  }
 
   mace::testing::Benchmark::Run(FLAGS_filter.c_str());
   return 0;

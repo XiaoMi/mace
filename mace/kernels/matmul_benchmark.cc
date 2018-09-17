@@ -21,8 +21,8 @@
 #include "public/gemmlowp.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/kernels/gemm.h"
-#include "mace/kernels/gemmlowp_util.h"
 #include "mace/kernels/sgemm.h"
+#include "mace/ops/ops_test_util.h"
 
 namespace gemmlowp {
 
@@ -164,18 +164,22 @@ void MatmulBenchmark_gemmlowp_uint8(int iters, int rows, int depth, int cols) {
   const auto output_pipeline =
       std::make_tuple(quantize_down_stage, saturating_cast_stage);
 
-  gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+  auto gemm_context =
+      mace::ops::test::OpTestContext::Get()
+          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  MACE_CHECK_NOTNULL(gemm_context);
+
   using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
 
   gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::uint8_t, BitDepthParams>(
-      &gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+      gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
       -128, output_pipeline);
 
   mace::testing::StartTiming();
   while (iters--) {
     gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::uint8_t,
                                      BitDepthParams>(
-        &gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+        gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
         -128, output_pipeline);
   }
 }
@@ -195,18 +199,22 @@ void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
 
   const auto output_pipeline = std::make_tuple();
 
-  gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+  auto gemm_context =
+      mace::ops::test::OpTestContext::Get()
+          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  MACE_CHECK_NOTNULL(gemm_context);
+
   using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
 
   gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::int32_t, BitDepthParams>(
-      &gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+      gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
       -128, output_pipeline);
 
   mace::testing::StartTiming();
   while (iters--) {
     gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::int32_t,
                                      BitDepthParams>(
-        &gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+        gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
         -128, output_pipeline);
   }
 }

@@ -177,15 +177,20 @@ class MaceEngineConfig::Impl {
                                 CPUAffinityPolicy policy,
                                 bool use_gemmlowp);
 
-  MaceStatus SetOpenMPThreadAffinity(int num_threads,
-                                     const std::vector<int> &cpu_ids);
-
   inline DeviceType device_type() const {
     return device_type_;
   }
 
   inline int num_threads() const {
     return num_threads_;
+  }
+
+  inline CPUAffinityPolicy cpu_affinity_policy() const {
+    return cpu_affinity_policy_;
+  }
+
+  inline bool use_gemmlowp() const {
+    return use_gemmlowp_;
   }
 
   inline std::shared_ptr<GPUContext> gpu_context() const {
@@ -203,6 +208,8 @@ class MaceEngineConfig::Impl {
  private:
   DeviceType device_type_;
   int num_threads_;
+  CPUAffinityPolicy cpu_affinity_policy_;
+  bool use_gemmlowp_;
   std::shared_ptr<GPUContext> gpu_context_;
   GPUPriorityHint gpu_priority_hint_;
   GPUPerfHint gpu_perf_hint_;
@@ -211,6 +218,8 @@ class MaceEngineConfig::Impl {
 MaceEngineConfig::Impl::Impl(const DeviceType device_type)
     : device_type_(device_type),
       num_threads_(-1),
+      cpu_affinity_policy_(CPUAffinityPolicy::AFFINITY_NONE),
+      use_gemmlowp_(false),
       gpu_context_(new GPUContext),
       gpu_priority_hint_(GPUPriorityHint::PRIORITY_LOW),
       gpu_perf_hint_(GPUPerfHint::PERF_NORMAL) {}
@@ -234,15 +243,9 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
     CPUAffinityPolicy policy,
     bool use_gemmlowp) {
   num_threads_ = num_threads;
-  return mace::SetOpenMPThreadsAndAffinityPolicy(
-      num_threads, policy, use_gemmlowp);
-}
-
-MaceStatus MaceEngineConfig::Impl::SetOpenMPThreadAffinity(
-    int num_threads,
-    const std::vector<int> &cpu_ids) {
-  num_threads_ = num_threads;
-  return mace::SetOpenMPThreadsAndAffinityCPUs(num_threads, cpu_ids);
+  cpu_affinity_policy_ = policy;
+  use_gemmlowp_ = use_gemmlowp;
+  return MACE_SUCCESS;
 }
 
 
@@ -268,32 +271,6 @@ MaceStatus MaceEngineConfig::SetCPUThreadPolicy(
     CPUAffinityPolicy policy,
     bool use_gemmlowp) {
   return impl_->SetCPUThreadPolicy(num_threads_hint, policy, use_gemmlowp);
-}
-
-MaceStatus MaceEngineConfig::SetOpenMPThreadAffinity(
-    int num_threads,
-    const std::vector<int> &cpu_ids) {
-  return impl_->SetOpenMPThreadAffinity(num_threads, cpu_ids);
-}
-
-DeviceType MaceEngineConfig::device_type() const {
-  return impl_->device_type();
-}
-
-int MaceEngineConfig::num_threads() const {
-  return impl_->num_threads();
-}
-
-std::shared_ptr<GPUContext> MaceEngineConfig::gpu_context() const {
-  return impl_->gpu_context();
-}
-
-GPUPerfHint MaceEngineConfig::gpu_perf_hint() const {
-  return impl_->gpu_perf_hint();
-}
-
-GPUPriorityHint MaceEngineConfig::gpu_priority_hint() const {
-  return impl_->gpu_priority_hint();
 }
 
 // Mace Tensor
@@ -389,7 +366,7 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
       model_data_size_(0),
       op_registry_(new OperatorRegistry()),
-      device_type_(config.device_type()),
+      device_type_(config.impl_->device_type()),
       device_(nullptr),
       ws_(new Workspace()),
       net_(nullptr)
@@ -399,16 +376,21 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
 {
   LOG(INFO) << "Creating MaceEngine, MACE version: " << MaceVersion();
   if (device_type_ == DeviceType::CPU || device_type_ == DeviceType::HEXAGON) {
-    device_.reset(new CPUDevice(config.num_threads()));
+    device_.reset(new CPUDevice(config.impl_->num_threads(),
+                                config.impl_->cpu_affinity_policy(),
+                                config.impl_->use_gemmlowp()));
   }
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == DeviceType::GPU) {
-    device_.reset(new GPUDevice(config.gpu_context()->opencl_tuner(),
-                                config.gpu_context()->opencl_cache_storage(),
-                                config.gpu_priority_hint(),
-                                config.gpu_perf_hint(),
-                                config.gpu_context()->opencl_binary_storage(),
-                                config.num_threads()));
+    device_.reset(new GPUDevice(
+        config.impl_->gpu_context()->opencl_tuner(),
+        config.impl_->gpu_context()->opencl_cache_storage(),
+        config.impl_->gpu_priority_hint(),
+        config.impl_->gpu_perf_hint(),
+        config.impl_->gpu_context()->opencl_binary_storage(),
+        config.impl_->num_threads(),
+        config.impl_->cpu_affinity_policy(),
+        config.impl_->use_gemmlowp()));
   }
 #endif
 }

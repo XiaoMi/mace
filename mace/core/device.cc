@@ -16,8 +16,12 @@
 
 namespace mace {
 
-CPUDevice::CPUDevice(const int num_threads)
-    : cpu_runtime_(new CPURuntime(num_threads)) {}
+CPUDevice::CPUDevice(const int num_threads,
+                     const CPUAffinityPolicy policy,
+                     const bool use_gemmlowp)
+    : cpu_runtime_(new CPURuntime(num_threads,
+                                  policy,
+                                  use_gemmlowp)) {}
 
 CPUDevice::~CPUDevice() = default;
 

@@ -30,7 +30,9 @@ class GPUDevice : public CPUDevice {
             const GPUPriorityHint priority = GPUPriorityHint::PRIORITY_LOW,
             const GPUPerfHint perf = GPUPerfHint::PERF_NORMAL,
             KVStorage *opencl_binary_storage = nullptr,
-            const int num_threads = -1);
+            const int num_threads = -1,
+            CPUAffinityPolicy cpu_affinity_policy = AFFINITY_NONE,
+            bool use_gemmlowp = false);
   ~GPUDevice();
   OpenCLRuntime *opencl_runtime() override;
   Allocator *allocator() override;
