@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "mace/kernels/arm/conv_2d_neon.h"
-#include "mace/kernels/gemm.h"
 
 namespace mace {
 namespace kernels {
@@ -25,11 +24,23 @@ void Conv2dNeonK1x1S1(const float *input,
                       const index_t width,
                       const index_t in_channels,
                       const index_t out_channels,
-                      float *output) {
+                      float *output,
+                      SGemm *sgemm,
+                      ScratchBuffer *scratch_buffer) {
   for (index_t b = 0; b < batch; ++b) {
-    Gemm(filter, input + b * in_channels * height * width, 1, out_channels,
-         in_channels, height * width,
-         output + b * out_channels * height * width);
+    sgemm->Run(filter,
+               input + b * in_channels * height * width,
+               1,
+               out_channels,
+               in_channels,
+               in_channels,
+               height * width,
+               false,
+               false,
+               true,
+               false,
+               output + b * out_channels * height * width,
+               scratch_buffer);
   }
 }
 

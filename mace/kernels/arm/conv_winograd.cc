@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
 #include <algorithm>
 
 #include "mace/kernels/arm/conv_winograd.h"
 #include "mace/kernels/gemm.h"
-#include "mace/utils/logging.h"
-#include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
@@ -247,30 +244,38 @@ void BatchGemm(const float *input,
                index_t out_channels,
                index_t tile_count,
                int out_tile_size,
-               float *output) {
-  const index_t filter_stride = out_channels * in_channels;
+               float *output,
+               SGemm *sgemm,
+               ScratchBuffer *scratch_buffer) {
   const int in_tile_area = (out_tile_size + 2) * (out_tile_size + 2);
   const index_t in_batch_size = in_tile_area * in_channels * tile_count;
-  const index_t in_stride = in_channels * tile_count;
   const index_t out_batch_size = in_tile_area * out_channels * tile_count;
-  const index_t out_stride = out_channels * tile_count;
 
-  if (batch == 1) {
-    Gemm(filter, input, in_tile_area, out_channels, in_channels, tile_count,
-         output);
-  } else {
-#pragma omp parallel for collapse(2)
-    for (int b = 0; b < batch; ++b) {
-      for (int i = 0; i < in_tile_area; ++i) {
-        const float *in_ptr = input + b * in_batch_size + i * in_stride;
-        const float *filter_ptr = filter + i * filter_stride;
-        float *out_ptr = output + b * out_batch_size + i * out_stride;
-        Gemm(filter_ptr, in_ptr, 1, out_channels, /* rows */
-             in_channels,                         /* K */
-             tile_count,                          /* cols */
-             out_ptr);
-      }
+  index_t scratch_buffer_offset = 0;
+  if (scratch_buffer) {
+    scratch_buffer_offset = scratch_buffer->offset();
+  }
+  // 'batch' is not gemm batch, 'in_tile_area' is. gemm is not thread safe,
+  // so we loop batch using single thread.
+  // Scratch buffer should be rewind to the initial position to use same
+  // scratch memory for each batch.
+  for (int b = 0; b < batch; ++b) {
+    if (scratch_buffer) {
+      scratch_buffer->Rewind(scratch_buffer_offset);
     }
+    sgemm->Run(filter,
+               input + b * in_batch_size,
+               in_tile_area,
+               out_channels,
+               in_channels,
+               in_channels,
+               tile_count,
+               false,
+               false,
+               true,
+               false,
+               output + b * out_batch_size,
+               scratch_buffer);
   }
 }
 
@@ -613,7 +618,9 @@ void WinoGradConv3x3s1(const float *input,
                        const int out_tile_size,
                        float *transformed_input,
                        float *transformed_output,
-                       float *output) {
+                       float *output,
+                       SGemm *sgemm,
+                       ScratchBuffer *scratch_buffer) {
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
   index_t tile_height_count =
@@ -636,7 +643,8 @@ void WinoGradConv3x3s1(const float *input,
   }
 
   BatchGemm(transformed_input, transformed_filter, batch, in_channels,
-            out_channels, tile_count, out_tile_size, transformed_output);
+            out_channels, tile_count, out_tile_size, transformed_output,
+            sgemm, scratch_buffer);
 
   switch (out_tile_size) {
     case 2:
@@ -660,7 +668,9 @@ void WinoGradConv3x3s1(const float *input,
                        const index_t in_channels,
                        const index_t out_channels,
                        const int out_tile_size,
-                       float *output) {
+                       float *output,
+                       SGemm *sgemm,
+                       ScratchBuffer *scratch_buffer) {
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
   index_t tile_height_count =
@@ -692,7 +702,7 @@ void WinoGradConv3x3s1(const float *input,
 
   WinoGradConv3x3s1(input, transformed_filter, batch, in_height, in_width,
                     in_channels, out_channels, out_tile_size, transformed_input,
-                    transformed_output, output);
+                    transformed_output, output, sgemm, scratch_buffer);
 
   delete[] transformed_input;
   delete[] transformed_filter;

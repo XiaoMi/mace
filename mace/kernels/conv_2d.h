@@ -483,6 +483,16 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
           * sizeof(float);
       total_scratch_size += padded_output_size;
     }
+    // scratch for sgemm
+    if (use_neon_1x1_s1) {
+      total_scratch_size +=
+          (input_batch * input_height * input_width
+              * (input_channels + channels)) * sizeof(float);
+    } else if (use_winograd) {
+      total_scratch_size +=
+          (transformed_input_size + transformed_output_size) * sizeof(float);
+    }
+
     // Init scratch buffer
     scratch_->Rewind();
     scratch_->GrowSize(total_scratch_size);
@@ -547,7 +557,9 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                           winograd_out_tile_size,
                           transformed_input_data,
                           transformed_output_data,
-                          pad_output);
+                          pad_output,
+                          &sgemm_,
+                          scratch_);
       };
     } else if (use_neon_3x3_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
@@ -574,7 +586,9 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          extra_input_width,
                          input_channels,
                          channels,
-                         pad_output);
+                         pad_output,
+                         &sgemm_,
+                         scratch_);
       };
     } else if (use_neon_5x5_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
@@ -722,6 +736,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
   Tensor transformed_filter_;
   bool is_filter_transformed_;
   ScratchBuffer *scratch_;
+  SGemm sgemm_;
 };
 
 template<>

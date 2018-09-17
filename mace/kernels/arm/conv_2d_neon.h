@@ -16,6 +16,7 @@
 #define MACE_KERNELS_ARM_CONV_2D_NEON_H_
 
 #include "mace/core/types.h"
+#include "mace/kernels/sgemm.h"
 
 namespace mace {
 namespace kernels {
@@ -27,7 +28,9 @@ void Conv2dNeonK1x1S1(const float *input,
                       const index_t width,
                       const index_t in_channels,
                       const index_t out_channels,
-                      float *output);
+                      float *output,
+                      SGemm *sgemm,
+                      ScratchBuffer *scratch_buffer);
 
 void Conv2dNeonK3x3S1(const float *input,
                       const float *filter,

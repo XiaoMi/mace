@@ -44,7 +44,6 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
   }
 
   if (scratch_buffer != nullptr) {
-    scratch_buffer->Rewind();
     index_t total_size = result->size();
     if (!lhs.is_const()) {
       total_size += lhs.size();
@@ -54,7 +53,6 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
     }
     scratch_buffer->GrowSize(total_size * sizeof(float));
 
-    scratch_buffer->Rewind();
     if (!lhs.is_const()) {
       packed_lhs_.reset(new Tensor(scratch_buffer->Scratch(
           lhs.size() * sizeof(float)), DT_FLOAT));

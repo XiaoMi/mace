@@ -469,6 +469,7 @@ class ScratchBuffer: public Buffer {
 
   MaceStatus GrowSize(index_t size) {
     if (size > size_) {
+      MACE_CHECK(offset_ == 0, "scratch is being used, cannot grow size");
       return Resize(size);
     }
     return MaceStatus::MACE_SUCCESS;
@@ -487,8 +488,12 @@ class ScratchBuffer: public Buffer {
     return slice;
   }
 
-  void Rewind() {
-    offset_ = 0;
+  void Rewind(index_t offset = 0) {
+    offset_ = offset;
+  }
+
+  index_t offset() const {
+    return offset_;
   }
 
  private:
