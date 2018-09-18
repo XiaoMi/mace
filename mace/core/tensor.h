@@ -142,7 +142,8 @@ class Tensor {
     buffer_ = &buffer_slice_;
   }
 
-  Tensor() : Tensor(GetCPUAllocator(), DT_FLOAT) {}
+  explicit Tensor(bool is_weight = false)
+      : Tensor(GetCPUAllocator(), DT_FLOAT, is_weight) {}
 
   ~Tensor() {
     if (is_buffer_owner_ && buffer_ != nullptr) {

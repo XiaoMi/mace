@@ -459,7 +459,7 @@ void TestQuant(const index_t batch,
   Tensor *bias = net.GetTensor("Bias");
   auto bias_data = bias->data<float>();
   std::vector<int32_t> q_bias(bias->size());
-  kernels::QuantizeWithScaleAndZeropoint(
+  QuantizeWithScaleAndZeropoint(
       bias_data, bias->size(), q_input->scale() * q_filter->scale(), 0,
       q_bias.data());
   net.AddInputFromArray<DeviceType::CPU, int32_t>(

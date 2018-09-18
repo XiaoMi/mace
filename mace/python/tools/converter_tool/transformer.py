@@ -1667,9 +1667,6 @@ class Transformer(base_converter.ConverterInterface):
 
     def quantize_tensor(self, tensor):
         """Assume biasadd has been already folded with convolution and fc"""
-        if not self._option.quantize:
-            return False
-
         if tensor.data_type == mace_pb2.DT_FLOAT:
             ops = self._consumers.get(tensor.name, None)
             if len(ops) == 1 and ops[0].type in [MaceOp.Conv2D.name,
@@ -1697,6 +1694,7 @@ class Transformer(base_converter.ConverterInterface):
             tensor.int32_data.extend(quantized_tensor.data)
             tensor.scale = quantized_tensor.scale
             tensor.zero_point = quantized_tensor.zero
+            tensor.quantized = True
             self._quantized_tensor.update([tensor.name])
 
         return False
