@@ -18,8 +18,12 @@ namespace mace {
 namespace ops {
 namespace test {
 
-OpTestContext *OpTestContext::Get() {
-  static OpTestContext instance;
+OpTestContext *OpTestContext::Get(int num_threads,
+                                  CPUAffinityPolicy cpu_affinity_policy,
+                                  bool use_gemmlowp) {
+  static OpTestContext instance(num_threads,
+                                cpu_affinity_policy,
+                                use_gemmlowp);
   return &instance;
 }
 
@@ -31,8 +35,15 @@ Device *OpTestContext::GetDevice(DeviceType device_type) {
   return device_map_[device_type].get();
 }
 
-OpTestContext::OpTestContext() : gpu_context_(new GPUContext()) {
-  device_map_[DeviceType::CPU] = std::unique_ptr<Device>(new CPUDevice(-1));
+OpTestContext::OpTestContext(int num_threads,
+                             CPUAffinityPolicy cpu_affinity_policy,
+                             bool use_gemmlowp)
+    : gpu_context_(new GPUContext()) {
+  device_map_[DeviceType::CPU] = std::unique_ptr<Device>(
+      new CPUDevice(num_threads,
+                    cpu_affinity_policy,
+                    use_gemmlowp));
+
   device_map_[DeviceType::GPU] = std::unique_ptr<Device>(
       new GPUDevice(gpu_context_->opencl_tuner(),
                     gpu_context_->opencl_cache_storage(),

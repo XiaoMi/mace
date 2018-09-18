@@ -41,7 +41,9 @@ class Device {
 
 class CPUDevice : public Device {
  public:
-  explicit CPUDevice(const int num_threads);
+  CPUDevice(const int num_threads,
+            const CPUAffinityPolicy policy,
+            const bool use_gemmlowp);
   virtual ~CPUDevice();
 
 #ifdef MACE_ENABLE_OPENCL

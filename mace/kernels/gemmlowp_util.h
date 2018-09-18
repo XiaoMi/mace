@@ -22,8 +22,6 @@
 
 namespace mace {
 
-gemmlowp::GemmContext& GetGemmlowpContext();
-
 struct GemmlowpOutputPipeline {
   typedef gemmlowp::VectorMap<const int32_t, gemmlowp::VectorShape::Col>
       ColVectorMap;

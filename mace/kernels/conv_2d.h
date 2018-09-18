@@ -853,7 +853,8 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     MACE_CHECK(dilations_[0] == 1 && dilations_[1] == 1,
                "Quantization convolution does not support dilation > 1 yet.");
 
-    gemmlowp::GemmContext& gemm_context = GetGemmlowpContext();
+    auto gemm_context = context_->device()->cpu_runtime()->GetGemmlowpContext();
+    MACE_CHECK_NOTNULL(gemm_context);
 
     std::vector<index_t> output_shape(4);
     std::vector<int> paddings(2);
@@ -970,7 +971,7 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
 
     using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
     gemmlowp::GemmWithOutputPipeline<uint8_t, uint8_t, BitDepthParams>(
-        &gemm_context, filter_matrix, input_matrix, &output_matrix,
+        gemm_context, filter_matrix, input_matrix, &output_matrix,
         -filter->zero_point(), -input->zero_point(), output_pipeline);
 
     return MACE_SUCCESS;
