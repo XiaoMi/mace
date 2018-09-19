@@ -14,13 +14,12 @@
 
 #include "mace/core/workspace.h"
 
-#include <memory>
-#include <string>
-#include <vector>
 #include <unordered_set>
 #include <utility>
 
 #include "mace/core/arg_helper.h"
+#include "mace/utils/quantize.h"
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #endif
@@ -33,6 +32,15 @@ bool ShouldPreallocateMemoryForOp(const OperatorDef &op) {
       "Reshape", "Identity", "Squeeze"
   };
   return reuse_buffer_ops.find(op.type()) == reuse_buffer_ops.end();
+}
+
+bool HasQuantizeOp(const NetDef &net_def) {
+  for (auto &op : net_def.op()) {
+    if (op.type() == "Quantize") {
+      return true;
+    }
+  }
+  return false;
 }
 }  // namespace
 
@@ -146,6 +154,7 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
                              0, model_data_size);
         tensor_buffer_->UnMap();
       }
+      bool has_quantize_op = HasQuantizeOp(net_def);
       for (auto &const_tensor : net_def.tensors()) {
         MACE_LATENCY_LOGGER(2, "Load tensor ", const_tensor.name());
         VLOG(3) << "Tensor name: " << const_tensor.name()
@@ -163,11 +172,27 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
                 const_tensor.data_size() *
                     GetEnumTypeSize(const_tensor.data_type())),
                        const_tensor.data_type(), true));
-
         tensor->Reshape(dims);
         tensor->SetScale(const_tensor.scale());
         tensor->SetZeroPoint(const_tensor.zero_point());
-        tensor_map_[const_tensor.name()] = std::move(tensor);
+
+        // Only weights are quantized
+        if (const_tensor.quantized() && !has_quantize_op) {
+          std::unique_ptr<Tensor> dequantized_tensor(new Tensor(true));
+          dequantized_tensor->Resize(dims);
+          Tensor::MappingGuard quantize_guard(tensor.get());
+          Tensor::MappingGuard dequantize_guard(dequantized_tensor.get());
+          auto quantized_data = tensor->data<uint8_t>();
+          auto dequantized_data = dequantized_tensor->mutable_data<float>();
+          Dequantize(quantized_data,
+                     tensor->size(),
+                     tensor->scale(),
+                     tensor->zero_point(),
+                     dequantized_data);
+          tensor_map_[const_tensor.name()] = std::move(dequantized_tensor);
+        } else {
+          tensor_map_[const_tensor.name()] = std::move(tensor);
+        }
       }
       fused_buffer_ = true;
     }

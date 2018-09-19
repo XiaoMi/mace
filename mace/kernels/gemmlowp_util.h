@@ -42,8 +42,8 @@ struct GemmlowpOutputPipeline {
     bias_addition_stage.bias_vector = bias_vector;
     int32_t quantized_multiplier;
     int32_t right_shift;
-    kernels::GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
-                                         &quantized_multiplier, &right_shift);
+    GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
+                                &quantized_multiplier, &right_shift);
     gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint
         quantize_down_stage;
     quantize_down_stage.result_offset_after_shift = output_zero_point;
@@ -60,8 +60,8 @@ struct GemmlowpOutputPipeline {
       const int32_t output_zero_point) {
     int32_t quantized_multiplier;
     int32_t right_shift;
-    kernels::GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
-                                         &quantized_multiplier, &right_shift);
+    GetOutputMultiplierAndShift(lhs_scale, rhs_scale, output_scale,
+                                &quantized_multiplier, &right_shift);
     gemmlowp::OutputStageQuantizeDownInt32ToUint8ScaleByFixedPoint
         quantize_down_stage;
     quantize_down_stage.result_offset_after_shift = output_zero_point;

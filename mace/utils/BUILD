@@ -15,20 +15,17 @@ cc_library(
         "logging.cc",
         "string_util.cc",
     ],
-    hdrs = [
-        "env_time.h",
-        "logging.h",
-        "memory_logging.h",
-        "rwlock.h",
-        "string_util.h",
-        "timer.h",
-        "tuner.h",
-        "utils.h",
+    hdrs = glob([
+        "*.h",
+    ]),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
     ],
     linkopts = if_android([
         "-llog",
     ]),
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
     ],
@@ -40,7 +37,11 @@ cc_test(
     srcs = [
         "tuner_test.cc",
     ],
-    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ],
     linkopts = ["-ldl"] + if_android([
         "-pie",
         "-lm",  # Required by unordered_map
