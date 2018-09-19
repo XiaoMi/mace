@@ -518,7 +518,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         op.type = MaceOp.FoldedBatchNorm.name
 
         is_training = tf_op.get_attr(tf_is_training_str)
-        assert is_training is False, 'Only support batch normalization with is_training False, but got %s' % is_training
+        assert is_training is False, 'Only support batch normalization ' \
+                                     'with is_training False, but got %s' % is_training
 
         gamma_value = tf_op.inputs[1].eval().astype(np.float32)
         beta_value = tf_op.inputs[2].eval().astype(np.float32)
