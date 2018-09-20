@@ -91,6 +91,14 @@ struct MatMulFunctor : OpKernel {
 
     auto scratch_buffer = context_->workspace()->GetScratchBuffer(D);
     scratch_buffer->Rewind();
+    index_t scratch_size = C->raw_max_size();
+    if (!A->is_weight()) {
+      scratch_size += A->raw_max_size();
+    }
+    if (!B->is_weight()) {
+      scratch_size += B->raw_max_size();
+    }
+    scratch_buffer->GrowSize(scratch_size);
 
     sgemm_.Run(a_ptr_base,
                b_ptr_base,

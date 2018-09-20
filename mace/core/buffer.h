@@ -469,6 +469,7 @@ class ScratchBuffer: public Buffer {
 
   MaceStatus GrowSize(index_t size) {
     if (size > size_) {
+      VLOG(1) << "Grow scratch size to: " << size;
       MACE_CHECK(offset_ == 0, "scratch is being used, cannot grow size");
       return Resize(size);
     }

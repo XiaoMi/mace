@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <algorithm>
 
 #include "mace/core/buffer.h"
 #include "mace/core/preallocated_pooled_allocator.h"
@@ -158,6 +159,34 @@ class Tensor {
   inline bool unused() const { return unused_; }
 
   inline const std::vector<index_t> &shape() const { return shape_; }
+
+  inline std::vector<index_t> max_shape() const {
+    if (shape_configured_.empty()) {
+      return shape();
+    } else {
+      auto &_shape = shape();
+      std::vector<index_t> max_shape(_shape.size());
+      MACE_CHECK(_shape.size() == shape_configured_.size());
+      for (size_t i = 0; i < shape_configured_.size(); ++i) {
+        max_shape[i] = std::max(_shape[i], shape_configured_[i]);
+      }
+      return max_shape;
+    }
+  }
+
+  inline index_t max_size() const {
+    auto _max_shape = max_shape();
+    return std::accumulate(_max_shape.begin(),
+                           _max_shape.end(),
+                           1,
+                           std::multiplies<index_t>());
+  }
+
+  inline index_t raw_max_size() const { return max_size() * SizeOfType(); }
+
+  inline void SetShapeConfigured(const std::vector<index_t> &shape_configured) {
+    shape_configured_ = shape_configured;
+  }
 
   inline index_t dim_size() const { return shape_.size(); }
 
@@ -431,6 +460,7 @@ class Tensor {
   Allocator *allocator_;
   DataType dtype_;
   std::vector<index_t> shape_;
+  std::vector<index_t> shape_configured_;
   std::vector<size_t> image_shape_;
   BufferBase *buffer_;
   BufferSlice buffer_slice_;

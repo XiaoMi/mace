@@ -340,6 +340,17 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
                        output_type);
         }
       }
+
+      for (int output_idx = 0; output_idx < op.output_shape_size();
+           ++output_idx) {
+        std::vector<index_t>
+            shape_configured(op.output_shape(output_idx).dims_size());
+        for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
+          shape_configured[dim] = op.output_shape(output_idx).dims(dim);
+        }
+        tensor_map_[op.output(output_idx)]->SetShapeConfigured(
+            shape_configured);
+      }
     }
   }
   return MaceStatus::MACE_SUCCESS;

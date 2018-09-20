@@ -117,6 +117,15 @@ class Operator : public OperatorBase {
         }
         outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
           output_str, context->device()->allocator(), output_type)));
+
+        if (i < operator_def.output_shape_size()) {
+          std::vector<index_t>
+              shape_configured(operator_def.output_shape(i).dims_size());
+          for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
+            shape_configured[dim] = operator_def.output_shape(i).dims(dim);
+          }
+          ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
+        }
       }
     }
   }
