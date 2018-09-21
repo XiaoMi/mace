@@ -4,8 +4,9 @@ workspace(name = "mace")
 load("//repository/git:git_configure.bzl", "git_version_repository")
 load("//repository/opencl-kernel:opencl_kernel_configure.bzl", "encrypt_opencl_kernel_repository")
 
-git_version_repository(name="local_version_config")
-encrypt_opencl_kernel_repository(name="local_opencl_kernel_encrypt")
+git_version_repository(name = "local_version_config")
+
+encrypt_opencl_kernel_repository(name = "local_opencl_kernel_encrypt")
 
 # proto_library rules implicitly depend on @com_google_protobuf//:protoc,
 # which is the proto-compiler.
@@ -137,4 +138,27 @@ android_ndk_repository(
     name = "androidndk",
     # Android 5.0
     api_level = 21,
+)
+
+# Set up default cross compilers for arm linux
+new_http_archive(
+    name = "gcc_linaro_7_3_1_arm_linux_gnueabihf",
+    build_file = "third_party/compilers/arm_compiler.BUILD",
+    sha256 = "7248bf105d0d468887a9b8a7120bb281ac8ad0223d9cb3d00dc7c2d498485d91",
+    strip_prefix = "gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/gcc-linaro/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz",
+        "https://releases.linaro.org/components/toolchain/binaries/latest/arm-linux-gnueabihf/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz",
+    ],
+)
+
+new_http_archive(
+    name = "gcc_linaro_7_3_1_aarch64_linux_gnu",
+    build_file = "third_party/compilers/aarch64_compiler.BUILD",
+    sha256 = "73eed74e593e2267504efbcf3678918bb22409ab7afa3dc7c135d2c6790c2345",
+    strip_prefix = "gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu",
+    urls = [
+        "https://cnbj1.fds.api.xiaomi.com/mace/third-party/gcc-linaro/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz",
+        "https://releases.linaro.org/components/toolchain/binaries/latest/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz",
+    ],
 )

@@ -104,7 +104,7 @@ cc_library(
         "-Werror",
         "-Wextra",
         "-Wno-missing-field-initializers",
-    ] + if_opencl_enabled([
+    ] + if_openmp_enabled(["-fopenmp"]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
     ]),
     deps = [

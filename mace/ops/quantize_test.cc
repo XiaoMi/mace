@@ -54,8 +54,6 @@ void TestQuantizeDequantize(const std::vector<float> &input, bool non_zero) {
 
   net.RunOp();
 
-  auto output = net.GetTensor("Output");
-
   ExpectTensorNear<float>(*net.GetTensor("Input"),
                           *net.GetTensor("Output"),
                           0.1);

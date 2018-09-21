@@ -1,0 +1,142 @@
+major_version: "local"
+minor_version: ""
+default_target_cpu: "aarch64"
+
+default_toolchain {
+  cpu: "aarch64"
+  toolchain_identifier: "aarch64-linux-gnu"
+}
+
+toolchain {
+  abi_version: "gcc"
+  abi_libc_version: ""
+  builtin_sysroot: ""
+  compiler: "gcc"
+  host_system_name: "aarch64"
+  needsPic: true
+  supports_gold_linker: false
+  supports_incremental_linker: false
+  supports_fission: false
+  supports_interface_shared_objects: false
+  supports_normalizing_ar: true
+  supports_start_end_lib: false
+  supports_thin_archives: true
+  target_libc: ""
+  target_cpu: "aarch64"
+  target_system_name: ""
+  toolchain_identifier: "aarch64-linux-gnu"
+
+  tool_path { name: "ar" path: "linaro_linux_gcc/aarch64-linux-gnu-ar" }
+  tool_path { name: "compat-ld" path: "linaro_linux_gcc/aarch64-linux-gnu-ld" }
+  tool_path { name: "cpp" path: "linaro_linux_gcc/aarch64-linux-gnu-gcc" }
+  tool_path { name: "dwp" path: "linaro_linux_gcc/aarch64-linux-gnu-dwp" }
+  tool_path { name: "gcc" path: "linaro_linux_gcc/aarch64-linux-gnu-gcc" }
+  tool_path { name: "gcov" path: "linaro_linux_gcc/aarch64-linux-gnu-gcov" }
+  # C(++) compiles invoke the compiler (as that is the one knowing where
+  # to find libraries), but we provide LD so other rules can invoke the linker.
+  tool_path { name: "ld" path: "linaro_linux_gcc/aarch64-linux-gnu-ld" }
+  tool_path { name: "nm" path: "linaro_linux_gcc/aarch64-linux-gnu-nm" }
+  tool_path { name: "objcopy" path: "linaro_linux_gcc/aarch64-linux-gnu-objcopy" }
+  objcopy_embed_flag: "-I"
+  objcopy_embed_flag: "binary"
+  tool_path { name: "objdump" path: "linaro_linux_gcc/aarch64-linux-gnu-objdump" }
+  tool_path { name: "strip" path: "linaro_linux_gcc/aarch64-linux-gnu-strip" }
+
+  compiler_flag: "--sysroot=external/gcc_linaro_7_3_1_aarch64_linux_gnu/aarch64-linux-gnu/libc"
+
+  cxx_flag: "-isystem"
+  cxx_flag: "external/gcc_linaro_7_3_1_aarch64_linux_gnu/aarch64-linux-gnu/include/c++/7.3.1/aarch64-linux-gnu"
+  cxx_flag: "-isystem"
+  cxx_flag: "external/gcc_linaro_7_3_1_aarch64_linux_gnu/aarch64-linux-gnu/include/c++/7.3.1"
+  cxx_flag: "-isystem"
+  cxx_flag: "external/gcc_linaro_7_3_1_aarch64_linux_gnu/include/c++/7.3.1/aarch64-linux-gnu"
+  cxx_flag: "-isystem"
+  cxx_flag: "external/gcc_linaro_7_3_1_aarch64_linux_gnu/include/c++/7.3.1"
+
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//include)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/libc/usr/include)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/libc/usr/lib/include)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/libc/lib/gcc/aarch64-linux-gnu/7.3.1/include-fixed)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//include)%/c++/7.3.1"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/libc/lib/gcc/aarch64-linux-gnu/7.3.1/include)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/libc/lib/gcc/aarch64-linux-gnu/7.3.1/include-fixed)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//lib/gcc/aarch64-linux-gnu/7.3.1/include)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//lib/gcc/aarch64-linux-gnu/7.3.1/include-fixed)%"
+  cxx_builtin_include_directory: "%package(@gcc_linaro_7_3_1_aarch64_linux_gnu//aarch64-linux-gnu/include)%/c++/7.3.1"
+
+  linker_flag: "--sysroot=external/gcc_linaro_7_3_1_aarch64_linux_gnu/aarch64-linux-gnu/libc"
+  linker_flag: "-fuse-ld=gold"
+  linker_flag: "-Wl,-no-as-needed"
+  linker_flag: "-lstdc++"
+  linker_flag: "-latomic"
+  linker_flag: "-lm"
+  linker_flag: "-lpthread"
+
+  # Anticipated future default.
+  # This makes GCC and Clang do what we want when called through symlinks.
+  unfiltered_cxx_flag: "-no-canonical-prefixes"
+  linker_flag: "-no-canonical-prefixes"
+
+  # Make C++ compilation deterministic. Use linkstamping instead of these
+  # compiler symbols.
+  unfiltered_cxx_flag: "-Wno-builtin-macro-redefined"
+  unfiltered_cxx_flag: "-D__DATE__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIMESTAMP__=\"redacted\""
+  unfiltered_cxx_flag: "-D__TIME__=\"redacted\""
+
+  # Security hardening on by default.
+  # Conservative choice; -D_FORTIFY_SOURCE=2 may be unsafe in some cases.
+  # We need to undef it before redefining it as some distributions now have
+  # it enabled by default.
+  compiler_flag: "-U_FORTIFY_SOURCE"
+  compiler_flag: "-fstack-protector"
+  compiler_flag: "-fPIE"
+  linker_flag: "-v"
+  linker_flag: "-pie"
+  linker_flag: "-Wl,-z,relro,-z,now"
+
+  # Enable coloring even if there's no attached terminal. Bazel removes the
+  # escape sequences if --nocolor is specified.
+  compiler_flag: "-fdiagnostics-color=always"
+
+  # All warnings are enabled. Maybe enable -Werror as well?
+  compiler_flag: "-Wall"
+  # Enable a few more warnings that aren't part of -Wall.
+  compiler_flag: "-Wunused-but-set-parameter"
+  # But disable some that are problematic.
+  compiler_flag: "-Wno-free-nonheap-object" # has false positives
+
+  # Keep stack frames for debugging, even in opt mode.
+  compiler_flag: "-fno-omit-frame-pointer"
+
+  # Stamp the binary with a unique identifier.
+  linker_flag: "-Wl,--build-id=md5"
+  linker_flag: "-Wl,--hash-style=gnu"
+
+  compilation_mode_flags {
+    mode: DBG
+    # Enable debug symbols.
+    compiler_flag: "-g"
+  }
+  compilation_mode_flags {
+    mode: OPT
+    # No debug symbols.
+    # Maybe we should enable https://gcc.gnu.org/wiki/DebugFission for opt or
+    # even generally? However, that can't happen here, as it requires special
+    # handling in Bazel.
+    compiler_flag: "-g0"
+
+    # Conservative choice for -O
+    # -O3 can increase binary size and even slow down the resulting binaries.
+    # Profile first and / or use FDO if you need better performance than this.
+    compiler_flag: "-O2"
+
+    # Disable assertions
+    compiler_flag: "-DNDEBUG"
+
+    # Removal of unused code and data at link time (can this increase binary size in some cases?).
+    compiler_flag: "-ffunction-sections"
+    compiler_flag: "-fdata-sections"
+    linker_flag: "-Wl,--gc-sections"
+  }
+}
