@@ -207,6 +207,7 @@ class TransformerRule(Enum):
     TRANSFORM_BASIC_LSTMCELL = 27
     TRANSFORM_FAKE_QUANTIZE = 28
     CHECK_QUANTIZE_INFO = 29
+    REARRANGE_BATCH_TO_SPACE = 30
 
 
 class ConverterInterface(object):
@@ -364,6 +365,7 @@ class ConverterOption(object):
                 TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
                 TransformerRule.TRANSFORM_GPU_WINOGRAD,
                 TransformerRule.TRANSFORM_ADD_TO_BIASADD,
+                TransformerRule.REARRANGE_BATCH_TO_SPACE,
                 TransformerRule.FOLD_BIASADD,
                 TransformerRule.FLATTEN_ATROUS_CONV,
                 TransformerRule.FOLD_ACTIVATION,

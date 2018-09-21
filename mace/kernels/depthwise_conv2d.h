@@ -22,7 +22,10 @@
 #include <memory>
 #include <vector>
 
+// We reuse TensorFlow Lite's optimized depthwiseconv_uint8 and parallelized it
+// using OpenMP for MACE's quantized depthwise_conv2d.
 #include "tensorflow/contrib/lite/kernels/internal/optimized/depthwiseconv_uint8.h"
+
 #include "mace/core/future.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/kernels/activation.h"
