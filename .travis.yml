@@ -1,12 +1,14 @@
 language: cpp
-matrix:
-  include:
-    - os: linux
-      dist: xenial
-      sudo: required
-    - os: osx
-      osx_image: xcode7.2
-      sudo: required
+
+env:
+  - TYPE=Check-Code-Stype
+  - TYPE=Ops-Test
+  - TYPE=Ops-Test-Without-NEON
+  - TYPE=Ops-Benchmark
+  - TYPE=Build-Library
+  - TYPE=API-Test
+  - TYPE=Extra-Test-ARMEABI-v7a
+  - TYPE=Extra-Test-ARM64-v8a
 
 before_install:
   - echo "Start to test on $TRAVIS_OS_NAME";
@@ -31,31 +33,75 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew cask install android-platform-tools; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; sudo apt-get install -y --no-install-recommends android-tools-adb; fi
   - sudo $PIP install setuptools
-  - sudo $PIP install -I "tensorflow==1.8.0" "numpy>=1.14.0" "sh==1.12.14" "pycodestyle==2.4.0" filelock scipy jinja2 pyyaml 
+  - sudo $PIP install -I "tensorflow==1.8.0" "numpy>=1.14.0" "sh==1.12.14" "pycodestyle==2.4.0" filelock scipy jinja2 pyyaml
 
-script:
-  - >
-    echo "MACE_TEST 0: Check cpp code style";
-    curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py || exit 1;
-    echo "MACE_TEST 1: Check python code style";
-    pycodestyle $(find . -name "*.py") || exit 1;
-    echo "MACE_TEST 2: Ops test";
-    python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
-      python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a --enable_neon=false || exit 1;
-    fi;
-    echo "MACE_TEST 3: Ops benchmark";
-    python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    
-    if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
-      echo "MACE_TEST 4: Platform compatible test";
-      mkdir -p mace/codegen/version && bash mace/tools/git/gen_version_source.sh mace/codegen/version/version.cc || exit 1;
-      mkdir -p mace/codegen/tuning && python mace/python/tools/binary_codegen.py --output_path=mace/codegen/tuning/tuning_params.cc || exit 1;
-      bazel build mace/core:core || exit 1;
-      echo "MACE_TEST 5: Api test";
-      python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-      python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-      echo "MACE_TEST 6: Extra test";
-      python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-      python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
-    fi;
+
+jobs:
+  include:
+    - stage: Unit Test
+      script:
+        - echo 'Check Code Style'
+        - curl -o cpplint.py https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py && python cpplint.py --linelength=80 --counting=detailed $(find mace -name "*.h" -or -name "*.cc") && rm -f cpplint.py || exit 1;
+        - pycodestyle $(find . -name "*.py") || exit 1;
+      env: TYPE=Check-Code-Stype
+      matrix:
+        include:
+          - os: linux
+            dist: xenial
+            sudo: required
+          - os: osx
+            osx_image: xcode7.2
+            sudo: require
+    - stage: Unit Test
+      script:
+        - echo "Ops Test"
+        - python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+      env: TYPE=Ops-Test
+      matrix:
+        include:
+          - os: linux
+            dist: xenial
+            sudo: required
+          - os: osx
+            osx_image: xcode7.2
+            sudo: require
+    - stage: Unit Test
+      script:
+        - echo "Ops Test Without NEON"
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/ops:ops_test" --run_target=False --target_abis=armeabi-v7a,arm64-v8a --enable_neon=false || exit 1; fi;
+      env: TYPE=Ops-Test-Without-NEON
+    - stage: Unit Test
+      script:
+        - python tools/bazel_adb_run.py --target="//mace/ops:ops_benchmark" --run_target=False --target_abis=armeabi-v7a,arm64-v8a || exit 1;
+      env: TYPE=Ops-Benchmark
+      matrix:
+        include:
+          - os: linux
+            dist: xenial
+            sudo: required
+          - os: osx
+            osx_image: xcode7.2
+            sudo: require
+    - stage: Extra Test
+      script:
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then bazel build mace/libmace:libmace_static --config optimization --define openmp=true || exit 1; fi
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then bazel build mace/libmace:libmace_dynamic --config optimization --define openmp=true || exit 1; fi
+      env: TYPE=Build-Library
+    - stage: Extra Test
+      script:
+        - echo 'API Test'
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=armeabi-v7a || exit 1; fi
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=armeabi-v7a || exit 1; fi
+        - echo 'Extra Test'
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=False --target_abis=armeabi-v7a || exit 1; fi
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=armeabi-v7a || exit 1; fi;
+      env: TYPE=Extra-Test-ARMEABI-v7a
+    - stage: Extra Test
+      script:
+        - echo 'API Test on ARM64'
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/test:mace_api_test" --run_target=False --target_abis=arm64-v8a || exit 1; fi
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/test:mace_api_mt_test" --run_target=False --target_abis=arm64-v8a || exit 1; fi
+        - echo 'Extra Test on ARM64'
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/kernels:kernels_test" --run_target=False --target_abis=arm64-v8a || exit 1; fi
+        - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then python tools/bazel_adb_run.py --target="//mace/utils:tuner_test" --run_target=False --target_abis=arm64-v8a || exit 1; fi;
+      env: TYPE=Extra-Test-ARM64-v8a
