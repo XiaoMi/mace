@@ -1,0 +1,5 @@
+#!/bin/bash --norc
+
+exec -a aarch64-linux-gnu-objdump \
+    external/gcc_linaro_7_3_1_aarch64_linux_gnu/bin/aarch64-linux-gnu-objdump \
+    "$@"

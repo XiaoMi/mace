@@ -811,7 +811,7 @@ void SGemm::RunPerBatch(const float *lhs_data,
       // d: remain
       for (index_t d = 0; d < remain_d; ++d) {
         // 4.1.1
-        float32x4_t b0, b1;
+        float32x4_t b0;
         float32x2_t a0 = vdup_n_f32(rhs_ptr[0]);
 
         b0 = vld1q_f32(lhs_ptr);

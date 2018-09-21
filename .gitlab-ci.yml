@@ -73,6 +73,7 @@ platform_compatible_tests:
   stage: platform_compatible_tests
   script:
     - bazel build mace/core:core --define openmp=true
+    - bazel build --config aarch64_linux --define openmp=true --define opencl=true --define neon=true //mace/libmace:libmace.so
 
 build_libraries:
   stage: build_libraries

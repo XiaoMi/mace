@@ -291,7 +291,6 @@ void TestComplexDeconvNxNS12(const int batch,
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type, int padding) {
     // generate random input
-    static unsigned int seed = time(NULL);
     int height = shape[0];
     int width = shape[1];
     int input_channels = shape[2];

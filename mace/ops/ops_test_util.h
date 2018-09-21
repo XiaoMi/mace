@@ -245,7 +245,6 @@ class OpsTestNet {
     output->Resize(input_shape);
 
     Tensor::MappingGuard input_guard(input);
-    const T *input_data = input->data<T>();
     output->CopyBytes(input->raw_data(), input->size() * input->SizeOfType());
   }
 

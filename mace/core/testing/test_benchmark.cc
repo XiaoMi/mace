@@ -53,7 +53,6 @@ void Benchmark::Run(const char *pattern) {
 
   // Compute name width.
   int width = 10;
-  char name[100];
   std::smatch match;
   for (auto b : *all_benchmarks) {
     if (!std::regex_match(b->name_, match, regex)) continue;

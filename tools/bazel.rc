@@ -17,9 +17,31 @@ build --copt=-DMACE_USE_NNLIB_CAF
 build:symbol_hidden --copt=-fvisibility=hidden
 
 # Usage example: bazel build --config android
+build:android --config=cross_compile
 build:android --crosstool_top=//external:android/crosstool
 build:android --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
-build:android --config=cross_compile
+
+# Usage example: bazel build --config arm_linux
+build:arm_linux --config=cross_compile
+build:arm_linux --crosstool_top=//tools/arm_compiler:toolchain
+build:arm_linux --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:arm_linux --cpu=armeabi-v7a
+build:arm_linux --copt -mfloat-abi=hard
+build:arm_linux --copt -mfpu=neon 
+build:arm_linux --copt -Wno-ignored-attributes
+build:arm_linux --copt -Wno-unused-function
+build:arm_linux --copt -Wno-sequence-point
+build:arm_linux --copt -Wno-implicit-fallthrough
+
+# Usage example: bazel build --config aarch64_linux
+build:aarch64_linux --config=cross_compile
+build:aarch64_linux --crosstool_top=//tools/aarch64_compiler:toolchain
+build:aarch64_linux --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:aarch64_linux --cpu=aarch64
+build:aarch64_linux --copt -Wno-ignored-attributes
+build:aarch64_linux --copt -Wno-unused-function
+build:aarch64_linux --copt -Wno-sequence-point
+build:aarch64_linux --copt -Wno-implicit-fallthrough
 
 # Usage example: bazel build --config optimization 
 build:optimization -c opt
