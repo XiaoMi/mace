@@ -968,7 +968,8 @@ def build_quantize_stat(configs):
           build_tmp_binary_dir)
 
 
-def build_example(configs, target_abi, enable_openmp, mace_lib_type):
+def build_example(configs, target_abi, enable_openmp, address_sanitizer,
+                  mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
     hexagon_mode = get_hexagon_mode(configs)
 
@@ -988,6 +989,7 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode,
+                            address_sanitizer=address_sanitizer,
                             symbol_hidden=symbol_hidden)
 
     if os.path.exists(LIB_CODEGEN_DIR):
@@ -1016,6 +1018,7 @@ def build_example(configs, target_abi, enable_openmp, mace_lib_type):
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
                             hexagon_mode=hexagon_mode,
+                            address_sanitizer=address_sanitizer,
                             extra_args=build_arg)
 
     target_bin = "/".join(sh_commands.bazel_target_to_bin(example_target))
@@ -1386,6 +1389,7 @@ def run_mace(flags):
         if flags.example:
             build_example(configs, target_abi,
                           not flags.disable_openmp,
+                          flags.address_sanitizer,
                           flags.mace_lib_type)
         else:
             build_mace_run(configs, target_abi,

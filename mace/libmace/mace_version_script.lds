@@ -11,6 +11,8 @@ mace {
     # api for static library of models
     *mace*logging*LogMessage*;
     *mace*NetDef*;
+    *mace*MemoryType*;
+    *mace*DataType*;
     *mace*MemoryArena*;
     *mace*InputInfo*;
     *mace*OutputInfo*;
