@@ -559,6 +559,86 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
     ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
   }
 }
+
+void QuantizedSum(const std::vector<index_t> &shape) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  net.AddRandomInput<DeviceType::CPU, float>("Input0", shape, true, true);
+  net.AddRandomInput<DeviceType::CPU, float>("Input1", shape, true, true);
+
+  net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "TInput0",
+                                                  NCHW);
+  net.TransformDataFormat<DeviceType::CPU, float>("Input1", NHWC, "TInput1",
+                                                  NCHW);
+
+  OpDefBuilder("Eltwise", "EltwiseTest")
+      .Input("TInput0")
+      .Input("TInput1")
+      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("data_format", DataFormat::NCHW)
+      .Output("TOutput")
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp(DeviceType::CPU);
+  net.TransformDataFormat<DeviceType::CPU, float>("TOutput", NCHW, "Output",
+                                                  NHWC);
+
+  OpDefBuilder("Quantize", "QuantizeInput0")
+      .Input("Input0")
+      .Output("QuantizedInput0")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeInput1")
+      .Input("Input1")
+      .Output("QuantizedInput1")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Eltwise", "QuantizeEltwiseTest")
+      .Input("QuantizedInput0")
+      .Input("QuantizedInput1")
+      .Output("QuantizedOutput")
+      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
 }  // namespace
 
 TEST_F(EltwiseOpTest, RandomTensorScalarFloat) {
@@ -692,6 +772,11 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcast) {
   TensorGeneralBroadcastEltwise<DeviceType::CPU, int32_t, int32_t>(
       kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 0, 0, 0, 0, 0});
+}
+
+TEST_F(EltwiseOpTest, QuantizedSum) {
+  QuantizedSum({1, 32, 32, 16});
+  QuantizedSum({1, 31, 31, 17});
 }
 
 }  // namespace test

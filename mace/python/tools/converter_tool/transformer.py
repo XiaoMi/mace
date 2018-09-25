@@ -68,6 +68,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.transform_gpu_winograd,  # data_format related
             TransformerRule.TRANSFORM_ADD_TO_BIASADD:
                 self.transform_add_to_biasadd,
+            TransformerRule.REARRANGE_BATCH_TO_SPACE:
+                self.rearrange_batch_to_space,
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
@@ -793,6 +795,9 @@ class Transformer(base_converter.ConverterInterface):
         if len(replace_op.quantize_info) > 0:
             del op.quantize_info[:]
             op.quantize_info.extend(replace_op.quantize_info)
+            for i in range(len(op.quantize_info)):
+                self._quantize_activation_info[op.output[i]] = \
+                    op.quantize_info[i]
 
     def fold_biasadd(self):
         net = self._model
@@ -1741,6 +1746,56 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
+    def rearrange_batch_to_space(self):
+        if not self._option.quantize:
+            return False
+
+        # Put b2s after biasadd and relu
+        for conv_op in self._model.op:
+            if conv_op.type in [MaceOp.Conv2D.name,
+                                MaceOp.DepthwiseConv2d.name] \
+                    and self.consumer_count(conv_op.output[0]) == 1:
+                b2s_op = self._consumers[conv_op.output[0]][0]
+                if b2s_op.type == MaceOp.BatchToSpaceND.name \
+                        and self.consumer_count(b2s_op.output[0]) == 1:
+                    biasadd_or_act_op = self._consumers[b2s_op.output[0]][0]
+                    if biasadd_or_act_op.type == MaceOp.BiasAdd.name:
+                        biasadd_op = biasadd_or_act_op
+                        if self.consumer_count(biasadd_op.output[0]) == 1 \
+                                and self._consumers[biasadd_op.output[0]][0].type == MaceOp.Activation.name:  # noqa
+                            act_op = self._consumers[biasadd_op.output[0]][0]
+                            biasadd_op.input[0] = conv_op.output[0]
+                            b2s_op.input[0] = act_op.output[0]
+                            for op in self._consumers[act_op.output[0]]:
+                                self.replace(op.input,
+                                             act_op.output[0],
+                                             b2s_op.output[0])
+                        else:
+                            biasadd_op.input[0] = conv_op.output[0]
+                            b2s_op.input[0] = biasadd_op.output[0]
+                            for op in self._consumers[biasadd_op.output[0]]:
+                                self.replace(op.input,
+                                             biasadd_op.output[0],
+                                             b2s_op.output[0])
+
+                        print("Rearrange batch to space: %s(%s)"
+                              % (b2s_op.name, b2s_op.type))
+                        return True
+                    elif biasadd_or_act_op.type == MaceOp.Activation.name:
+                        act_op = biasadd_or_act_op
+                        act_op.input[0] = conv_op.output[0]
+                        b2s_op.input[0] = act_op.output[0]
+                        for op in self._consumers[act_op.output[0]]:
+                            self.replace(op.input,
+                                         act_op.output[0],
+                                         b2s_op.output[0])
+
+                        print("Rearrange batch to space: %s(%s)"
+                              % (b2s_op.name, b2s_op.type))
+                        return True
+
+        return False
+
     def add_quantize_tensor_range(self):
         if not self._option.quantize:
             return False
@@ -1796,6 +1851,26 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info = \
                     self.add_quantize_info(op, 0.0, 1.0)
                 self._quantize_activation_info[op.output[0]] = quantize_info
+            elif (op.type == MaceOp.Eltwise.name
+                  and ConverterUtil.get_arg(op, MaceKeyword.mace_element_type_str).i == EltwiseType.SUM.value  # noqa
+                  and not op.quantize_info
+                  and len(op.input) == 2
+                  and len(op.input[0]) not in self._consts
+                  and len(op.input[1]) not in self._consts):
+                del op.quantize_info[:]
+                producer_op0 = self._producer[op.input[0]]
+                producer_op1 = self._producer[op.input[1]]
+                quantize_info = op.quantize_info.add()
+                quantize_info.minval = producer_op0.quantize_info[0].minval \
+                    + producer_op1.quantize_info[0].minval
+                quantize_info.maxval = producer_op0.quantize_info[0].maxval \
+                    + producer_op1.quantize_info[0].maxval
+                scale, zero = quantize_util.adjust_range(quantize_info.minval,
+                                                         quantize_info.maxval,
+                                                         non_zero=False)
+                quantize_info.scale = scale
+                quantize_info.zero_point = zero
+                self._quantize_activation_info[op.output[0]] = quantize_info
 
         print ("Add default quantize info for input")
         for input_node in self._option.input_nodes.values():
@@ -1818,6 +1893,7 @@ class Transformer(base_converter.ConverterInterface):
         if not self._option.quantize:
             return False
 
+        print("Check quantize info")
         for op in self._model.op:
             if (op.name.find(MaceKeyword.mace_input_node_name) == -1
                 and op.name.find(MaceKeyword.mace_output_node_name) == -1

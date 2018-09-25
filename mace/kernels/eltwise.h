@@ -25,6 +25,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
+#include "mace/utils/quantize.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -957,6 +958,141 @@ struct EltwiseFunctor : EltwiseFunctorBase {
   }
 
   Tensor scalar_tensor_;
+};
+
+template <>
+struct EltwiseFunctor<DeviceType::CPU, uint8_t> : EltwiseFunctorBase {
+  EltwiseFunctor(OpKernelContext *context,
+                 const EltwiseType type,
+                 const std::vector<float> &coeff,
+                 const float scalar_input,  // float as it comes from arg
+                 const int32_t scalar_input_index,
+                 const DataFormat data_format)
+      : EltwiseFunctorBase(context,
+                           type,
+                           coeff,
+                           scalar_input,
+                           scalar_input_index,
+                           data_format) {}
+
+  MaceStatus operator()(const Tensor *input0,
+                        const Tensor *input1,
+                        Tensor *output,
+                        StatsFuture *future) {
+    MACE_UNUSED(future);
+
+    MACE_CHECK(type_ == SUM, "Only support Elementwise SUM now. ");
+    MACE_CHECK(input0->size() == input1->size(),
+               "input0 and input1 must have the same shape.");
+    MACE_CHECK(output->scale() != 0);
+    MACE_RETURN_IF_ERROR(output->Resize(input0->shape()));
+
+    constexpr int left_shift = 20;
+    const double doubled_scale = 2 * std::max(input0->scale(), input1->scale());
+    const double adjusted_input0_scale = input0->scale() / doubled_scale;
+    const double adjusted_input1_scale = input1->scale() / doubled_scale;
+    const double adjusted_output_scale =
+        doubled_scale / ((1 << left_shift) * output->scale());
+
+    int32_t input0_multiplier;
+    int32_t input1_multiplier;
+    int32_t output_multiplier;
+    int32_t input0_shift;
+    int32_t input1_shift;
+    int32_t output_shift;
+    QuantizeMultiplier(adjusted_input0_scale,
+                       &input0_multiplier,
+                       &input0_shift);
+    QuantizeMultiplier(adjusted_input1_scale,
+                       &input1_multiplier,
+                       &input1_shift);
+    QuantizeMultiplier(adjusted_output_scale,
+                       &output_multiplier,
+                       &output_shift);
+
+    Tensor::MappingGuard input0_guard(input0);
+    Tensor::MappingGuard input1_guard(input1);
+    Tensor::MappingGuard output_guard(output);
+
+    auto input0_ptr = input0->data<uint8_t>();
+    auto input1_ptr = input1->data<uint8_t>();
+    auto output_ptr = output->mutable_data<uint8_t>();
+
+    index_t handled_output_size = 0;
+#ifdef MACE_ENABLE_NEON
+#pragma omp parallel for
+    for (index_t i = handled_output_size; i <= output->size() - 8; i += 8) {
+      const auto input0_val = vld1_u8(input0_ptr + i);
+      const auto input1_val = vld1_u8(input1_ptr + i);
+      const auto input0_val_s16 =
+          vreinterpretq_s16_u16(vmovl_u8(input0_val));
+      const auto input1_val_s16 =
+          vreinterpretq_s16_u16(vmovl_u8(input1_val));
+      const auto offset_input0 =
+          vaddq_s16(input0_val_s16, vdupq_n_s16(-input0->zero_point()));
+      const auto offset_input1 =
+          vaddq_s16(input1_val_s16, vdupq_n_s16(-input1->zero_point()));
+      auto input0_low_s32 = vmovl_s16(vget_low_s16(offset_input0));
+      auto input0_high_s32 = vmovl_s16(vget_high_s16(offset_input0));
+      auto input1_low_s32 = vmovl_s16(vget_low_s16(offset_input1));
+      auto input1_high_s32 = vmovl_s16(vget_high_s16(offset_input1));
+      const auto left_shift_dup = vdupq_n_s32(left_shift);
+      input0_low_s32 = vshlq_s32(input0_low_s32, left_shift_dup);
+      input0_high_s32 = vshlq_s32(input0_high_s32, left_shift_dup);
+      input1_low_s32 = vshlq_s32(input1_low_s32, left_shift_dup);
+      input1_high_s32 = vshlq_s32(input1_high_s32, left_shift_dup);
+      input0_low_s32 = vqrdmulhq_n_s32(input0_low_s32, input0_multiplier);
+      input0_high_s32 = vqrdmulhq_n_s32(input0_high_s32, input0_multiplier);
+      input1_low_s32 = vqrdmulhq_n_s32(input1_low_s32, input1_multiplier);
+      input1_high_s32 = vqrdmulhq_n_s32(input1_high_s32, input1_multiplier);
+      const auto input0_shift_dup = vdupq_n_s32(input0_shift);
+      const auto input1_shift_dup = vdupq_n_s32(input1_shift);
+      input0_low_s32 = vshlq_s32(input0_low_s32, input0_shift_dup);
+      input0_high_s32 = vshlq_s32(input0_high_s32, input0_shift_dup);
+      input1_low_s32 = vshlq_s32(input1_low_s32, input1_shift_dup);
+      input1_high_s32 = vshlq_s32(input1_high_s32, input1_shift_dup);
+      auto sum_low = vaddq_s32(input0_low_s32, input1_low_s32);
+      auto sum_high = vaddq_s32(input0_high_s32, input1_high_s32);
+      sum_low = vqrdmulhq_n_s32(sum_low, output_multiplier);
+      sum_high = vqrdmulhq_n_s32(sum_high, output_multiplier);
+      sum_low = gemmlowp::RoundingDivideByPOT(sum_low, -output_shift);
+      sum_high = gemmlowp::RoundingDivideByPOT(sum_high, -output_shift);
+      const auto sum_low_s16 = vmovn_s32(sum_low);
+      const auto sum_high_s16 = vmovn_s32(sum_high);
+      const auto output_val = vaddq_s16(vcombine_s16(sum_low_s16,
+                                                     sum_high_s16),
+                                        vdupq_n_s16(output->zero_point()));
+      vst1_u8(output_ptr + i, vqmovun_s16(output_val));
+    }
+    handled_output_size = output->size() - output->size() % 8;
+#endif  // NEON
+#pragma omp parallel for
+    for (index_t i = handled_output_size; i < output->size(); ++i) {
+      const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
+      const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();
+      const int32_t shifted_input0 = offset_input0 * (1 << left_shift);
+      const int32_t shifted_input1 = offset_input1 * (1 << left_shift);
+      const int32_t multiplied_input0 =
+          gemmlowp::RoundingDivideByPOT(
+              gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input0,
+                                                          input0_multiplier),
+              -input0_shift);
+      const int32_t multiplied_input1 =
+          gemmlowp::RoundingDivideByPOT(
+              gemmlowp::SaturatingRoundingDoublingHighMul(shifted_input1,
+                                                          input1_multiplier),
+              -input1_shift);
+      const int32_t sum = multiplied_input0 + multiplied_input1;
+      const int32_t output_val =
+          gemmlowp::RoundingDivideByPOT(
+              gemmlowp::SaturatingRoundingDoublingHighMul(sum,
+                                                          output_multiplier),
+              -output_shift) + output->zero_point();
+      output_ptr[i] = Saturate<uint8_t>(output_val);
+    }
+
+    return MACE_SUCCESS;
+  }
 };
 
 #ifdef MACE_ENABLE_OPENCL
