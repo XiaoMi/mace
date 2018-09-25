@@ -110,7 +110,6 @@ struct ReduceMeanFunctor : ReduceFunctorBase {
       case 1:
         if (reduce_first_axis_) {
           T sum = 0;
-#pragma omp parallel for reduction(+:sum)
           for (int i = 0; i < data_reshape_[0]; ++i) {
             sum = sum + input_ptr[i];
           }
