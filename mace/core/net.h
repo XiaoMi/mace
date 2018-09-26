@@ -18,8 +18,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <sstream>
 
 #include "mace/core/operator.h"
+#include "mace/utils/string_util.h"
+
+#define kBinSize 2048
 
 namespace mace {
 

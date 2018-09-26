@@ -134,18 +134,40 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
 
     if (EnvEnabled("MACE_LOG_TENSOR_RANGE") && device_type == CPU) {
       for (int i = 0; i < op->OutputSize(); ++i) {
-        int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));
-        if (data_type == static_cast<int>(DT_FLOAT)) {
-          float max_v = std::numeric_limits<float>::lowest();
-          float min_v = std::numeric_limits<float>::max();
-          Tensor::MappingGuard guard(op->Output(i));
-          const float *output_data = op->Output(i)->data<float>();
-          for (index_t j = 0; j < op->Output(i)->size(); ++j) {
-            max_v = std::max(max_v, output_data[j]);
-            min_v = std::min(min_v, output_data[j]);
+        if (op->debug_def().quantize_info_size() == 0) {
+          int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));
+          if (data_type == static_cast<int>(DT_FLOAT)) {
+            float max_v = std::numeric_limits<float>::lowest();
+            float min_v = std::numeric_limits<float>::max();
+            Tensor::MappingGuard guard(op->Output(i));
+            const float *output_data = op->Output(i)->data<float>();
+            for (index_t j = 0; j < op->Output(i)->size(); ++j) {
+              max_v = std::max(max_v, output_data[j]);
+              min_v = std::min(min_v, output_data[j]);
+            }
+            LOG(INFO) << "Tensor range @@" << op->debug_def().output(i)
+                      << "@@" << min_v << "," << max_v;
           }
-          LOG(INFO) << "Tensor range @@" << op->debug_def().output(i)
-                    << "@@" << min_v << "," << max_v;
+        } else {
+          for (int ind = 0; ind < op->debug_def().quantize_info_size(); ++ind) {
+            float min_v = op->debug_def().quantize_info(ind).minval();
+            float max_v = op->debug_def().quantize_info(ind).maxval();
+            std::vector<int> bin_distribution(kBinSize, 0);
+            float bin_v = (max_v - min_v) / kBinSize;
+            Tensor::MappingGuard guard(op->Output(i));
+            const float *output_data = op->Output(i)->data<float>();
+            for (index_t j = 0; j < op->Output(i)->size(); ++j) {
+                int ind = static_cast<int>((output_data[j] - min_v) / bin_v);
+                if (ind < 0)
+                  ind = 0;
+                else if (ind > kBinSize-1)
+                  ind = kBinSize-1;
+                bin_distribution[ind]++;
+            }
+            LOG(INFO) << "Tensor range @@" << op->debug_def().output(i)
+                        << "@@" << min_v << "," << max_v<< "@@"
+                        << MakeString(bin_distribution);
+          }
         }
       }
     }
