@@ -1674,10 +1674,12 @@ class Transformer(base_converter.ConverterInterface):
         """Assume biasadd has been already folded with convolution and fc"""
         if tensor.data_type == mace_pb2.DT_FLOAT:
             ops = self._consumers.get(tensor.name, None)
-            if len(ops) == 1 and ops[0].type in [MaceOp.Conv2D.name,
-                                                 MaceOp.Deconv2D.name,
-                                                 MaceOp.DepthwiseConv2d.name,
-                                                 MaceOp.FullyConnected.name] \
+            if ops is not None \
+                    and len(ops) == 1 \
+                    and ops[0].type in [MaceOp.Conv2D.name,
+                                        MaceOp.Deconv2D.name,
+                                        MaceOp.DepthwiseConv2d.name,
+                                        MaceOp.FullyConnected.name] \
                     and len(ops[0].input) >= 3 \
                     and ops[0].input[2] == tensor.name:
                 conv_op = ops[0]
@@ -1722,6 +1724,13 @@ class Transformer(base_converter.ConverterInterface):
         quantize_info.zero_point = zero
 
         return quantize_info
+
+    def copy_quantize_info(self, op, info):
+        quantize_info = op.quantize_info.add()
+        quantize_info.minval = info.minval
+        quantize_info.maxval = info.maxval
+        quantize_info.scale = info.scale
+        quantize_info.zero_point = info.zero_point
 
     def transform_fake_quantize(self):
         if not self._option.quantize:
@@ -1833,19 +1842,34 @@ class Transformer(base_converter.ConverterInterface):
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
                            MaceOp.Squeeze.name,
-                           MaceOp.Concat.name,
                            MaceOp.ResizeBilinear.name,
                            MaceOp.BatchToSpaceND.name,
                            MaceOp.SpaceToBatchND.name]:
                 del op.quantize_info[:]
                 producer_op = self._producer[op.input[0]]
-                quantize_info = op.quantize_info.add()
-                quantize_info.minval = producer_op.quantize_info[0].minval
-                quantize_info.maxval = producer_op.quantize_info[0].maxval
-                quantize_info.scale = producer_op.quantize_info[0].scale
-                quantize_info.zero_point = \
-                    producer_op.quantize_info[0].zero_point
+                self.copy_quantize_info(op, producer_op.quantize_info[0])
+                self._quantize_activation_info[op.output[0]] = \
+                    op.quantize_info[0]
+            elif op.type == MaceOp.Concat.name:
+                if op.quantize_info:
+                    maxval = op.quantize_info[0].maxval
+                    minval = op.quantize_info[0].minval
+                    del op.quantize_info[:]
+                else:
+                    maxval = float("-inf")
+                    minval = float("inf")
+                for i in range(len(op.input)):
+                    minval = min(minval, self._producer[op.input[i]].quantize_info[0].minval)  # noqa
+                    maxval = max(maxval, self._producer[op.input[i]].quantize_info[0].maxval)  # noqa
+                quantize_info = \
+                    self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
+                for i in range(len(op.input)):
+                    producer_op = self._producer[op.input[i]]
+                    del producer_op.quantize_info[:]
+                    self.copy_quantize_info(producer_op, quantize_info)
+                    self._quantize_activation_info[producer_op.output[0]] = \
+                        producer_op.quantize_info[0]
             elif op.type == MaceOp.Softmax.name:
                 del op.quantize_info[:]
                 quantize_info = \
@@ -1860,16 +1884,12 @@ class Transformer(base_converter.ConverterInterface):
                 del op.quantize_info[:]
                 producer_op0 = self._producer[op.input[0]]
                 producer_op1 = self._producer[op.input[1]]
-                quantize_info = op.quantize_info.add()
-                quantize_info.minval = producer_op0.quantize_info[0].minval \
+                minval = producer_op0.quantize_info[0].minval \
                     + producer_op1.quantize_info[0].minval
-                quantize_info.maxval = producer_op0.quantize_info[0].maxval \
+                maxval = producer_op0.quantize_info[0].maxval \
                     + producer_op1.quantize_info[0].maxval
-                scale, zero = quantize_util.adjust_range(quantize_info.minval,
-                                                         quantize_info.maxval,
-                                                         non_zero=False)
-                quantize_info.scale = scale
-                quantize_info.zero_point = zero
+                quantize_info = \
+                    self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
 
         print ("Add default quantize info for input")

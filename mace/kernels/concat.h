@@ -44,8 +44,8 @@ struct ConcatFunctor : ConcatFunctorBase {
       : ConcatFunctorBase(context, axis) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const Tensor *input0 = input_list.front();
     const size_t inputs_count = input_list.size();
@@ -59,6 +59,9 @@ struct ConcatFunctor : ConcatFunctorBase {
     outer_sizes[0] = input0->size() / inner_size;
     for (size_t i = 1; i < inputs_count; ++i) {
       const Tensor *input = input_list[i];
+      MACE_CHECK(input->scale() == output->scale()
+                     && input->zero_point() == output->zero_point(),
+                 "Inputs and output must have the same scale and zero_point.");
       MACE_CHECK(input->dim_size() == input0->dim_size(),
                  "Ranks of all input tensors must be same.");
       for (int j = 0; j < input->dim_size(); ++j) {
