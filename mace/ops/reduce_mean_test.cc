@@ -388,6 +388,7 @@ TEST_F(ReduceMeanOpTest, GPURandomFloat) {
   RandomTest<DeviceType::GPU, float>({2, 64, 64, 4}, {1, 2});
   RandomTest<DeviceType::GPU, float>({8, 128, 128, 64}, {1, 2});
   RandomTest<DeviceType::GPU, float>({1, 640, 480, 64}, {1, 2});
+  RandomTest<DeviceType::GPU, float>({1, 480, 640, 32}, {1, 2});
   RandomTest<DeviceType::GPU, float>({1, 512, 512, 16}, {1, 2});
   RandomTest<DeviceType::GPU, float>({8, 117, 87, 33}, {1, 2});
   RandomTest<DeviceType::GPU, float>({1, 619, 450, 61}, {1, 2});
@@ -399,6 +400,7 @@ TEST_F(ReduceMeanOpTest, GPURandomHalf) {
   RandomTest<DeviceType::GPU, half>({2, 64, 64, 4}, {1, 2});
   RandomTest<DeviceType::GPU, half>({8, 128, 128, 64}, {1, 2});
   RandomTest<DeviceType::GPU, half>({1, 640, 480, 64}, {1, 2});
+  RandomTest<DeviceType::GPU, half>({1, 480, 640, 32}, {1, 2});
   RandomTest<DeviceType::GPU, half>({1, 512, 512, 16}, {1, 2});
   RandomTest<DeviceType::GPU, half>({8, 117, 87, 33}, {1, 2});
   RandomTest<DeviceType::GPU, half>({1, 619, 450, 61}, {1, 2});

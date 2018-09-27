@@ -54,15 +54,16 @@ extern void Register_ResizeBilinear(OperatorRegistryBase *op_registry);
 extern void Register_Reverse(OperatorRegistryBase *op_registry);
 extern void Register_ScalarMath(OperatorRegistryBase *op_registry);
 extern void Register_Shape(OperatorRegistryBase *op_registry);
-extern void Register_Split(OperatorRegistryBase *op_registry);
 extern void Register_Softmax(OperatorRegistryBase *op_registry);
-extern void Register_Stack(OperatorRegistryBase *op_registry);
-extern void Register_Unstack(OperatorRegistryBase *op_registry);
-extern void Register_StridedSlice(OperatorRegistryBase *op_registry);
 extern void Register_SpaceToBatchND(OperatorRegistryBase *op_registry);
 extern void Register_SpaceToDepth(OperatorRegistryBase *op_registry);
+extern void Register_Split(OperatorRegistryBase *op_registry);
+extern void Register_SqrDiffMean(OperatorRegistryBase *op_registry);
 extern void Register_Squeeze(OperatorRegistryBase *op_registry);
+extern void Register_Stack(OperatorRegistryBase *op_registry);
+extern void Register_StridedSlice(OperatorRegistryBase *op_registry);
 extern void Register_Transpose(OperatorRegistryBase *op_registry);
+extern void Register_Unstack(OperatorRegistryBase *op_registry);
 extern void Register_WinogradInverseTransform(OperatorRegistryBase *op_registry);  // NOLINT(whitespace/line_length)
 extern void Register_WinogradTransform(OperatorRegistryBase *op_registry);
 
@@ -112,15 +113,16 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
   ops::Register_Reverse(this);
   ops::Register_ScalarMath(this);
   ops::Register_Shape(this);
-  ops::Register_Split(this);
   ops::Register_Softmax(this);
-  ops::Register_Stack(this);
-  ops::Register_Unstack(this);
-  ops::Register_StridedSlice(this);
   ops::Register_SpaceToBatchND(this);
   ops::Register_SpaceToDepth(this);
+  ops::Register_Split(this);
+  ops::Register_Stack(this);
+  ops::Register_StridedSlice(this);
+  ops::Register_SqrDiffMean(this);
   ops::Register_Squeeze(this);
   ops::Register_Transpose(this);
+  ops::Register_Unstack(this);
   ops::Register_WinogradInverseTransform(this);
   ops::Register_WinogradTransform(this);
 
