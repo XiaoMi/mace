@@ -268,22 +268,27 @@ bool OpenCLLibrary::Load() {
     return true;
   }
 
+  // Add customized OpenCL search path here
   const std::vector<std::string> paths = {
     "libOpenCL.so",
 #if defined(__aarch64__)
-    // Qualcomm Adreno
+    // Qualcomm Adreno with Android
     "/system/vendor/lib64/libOpenCL.so",
     "/system/lib64/libOpenCL.so",
-    // Mali
+    // Mali with Android
     "/system/vendor/lib64/egl/libGLES_mali.so",
     "/system/lib64/egl/libGLES_mali.so",
+    // Typical Linux board
+    "/usr/lib/aarch64-linux-gnu/libOpenCL.so",
 #else
-    // Qualcomm Adreno
+    // Qualcomm Adreno with Android
     "/system/vendor/lib/libOpenCL.so",
     "/system/lib/libOpenCL.so",
-    // Mali
+    // Mali with Android
     "/system/vendor/lib/egl/libGLES_mali.so",
     "/system/lib/egl/libGLES_mali.so",
+    // Typical Linux board
+    "/usr/lib/arm-linux-gnueabihf/libOpenCL.so",
 #endif
   };
 
