@@ -46,7 +46,11 @@ struct MaceContext {
       {"mobilenet_v1", {"input", "MobilenetV1/Predictions/Reshape_1",
                             {1, 224, 224, 3}, {1, 1001}}},
       {"mobilenet_v2", {"input", "MobilenetV2/Predictions/Reshape_1",
-                            {1, 224, 224, 3}, {1, 1001}}}
+                            {1, 224, 224, 3}, {1, 1001}}},
+      {"mobilenet_v1_quant", {"input", "MobilenetV1/Predictions/Softmax:0",
+                                  {1, 224, 224, 3}, {1, 1001}}},
+      {"mobilenet_v2_quant", {"input", "output",
+                                  {1, 224, 224, 3}, {1, 1001}}}
   };
 };
 
@@ -107,7 +111,8 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
   mace::MaceEngineConfig config(mace_context.device_type);
   status = config.SetCPUThreadPolicy(
       omp_num_threads,
-      static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy));
+      static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy),
+      true);
   if (status != mace::MACE_SUCCESS) {
     __android_log_print(ANDROID_LOG_ERROR,
                         "image_classify attrs",

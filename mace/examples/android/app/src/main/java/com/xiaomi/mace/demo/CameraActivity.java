@@ -180,9 +180,21 @@ public class CameraActivity extends Activity implements View.OnClickListener, Ap
             public void onCLickItem(String content) {
                 mSelectMode.setText(content);
                 initData.setModel(content);
+                handleOnlyCpuSupportByModel(content);
                 AppModel.instance.maceMobilenetCreateEngine(initData, CameraActivity.this);
             }
         });
+    }
+
+    private void handleOnlyCpuSupportByModel(String model) {
+        if (InitData.isOnlySupportCpuByModel(model)) {
+            String device = InitData.getCpuDevice();
+            mSelectPhoneType.setText(device);
+            mSelectPhoneType.setEnabled(false);
+            initData.setDevice(device);
+        } else {
+            mSelectPhoneType.setEnabled(true);
+        }
     }
 
     @Override
