@@ -41,7 +41,7 @@ class InferConv2dShapeOp : public Operator<D, T> {
         OperatorBase::GetOptionalArg<int>("data_format", 0);
     const bool isNCHW = data_format == 1;
 
-    const Padding padding_type =
+    Padding padding_type =
         static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
             "padding", static_cast<int>(SAME)));
     const std::vector<int32_t> paddings =
