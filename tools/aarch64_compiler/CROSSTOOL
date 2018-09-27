@@ -14,7 +14,7 @@ toolchain {
   compiler: "gcc"
   host_system_name: "aarch64"
   needsPic: true
-  supports_gold_linker: false
+  supports_gold_linker: true
   supports_incremental_linker: false
   supports_fission: false
   supports_interface_shared_objects: false
