@@ -73,6 +73,7 @@ platform_compatible_tests:
   stage: platform_compatible_tests
   script:
     - bazel build mace/core:core --define openmp=true
+    - bazel build --config arm_linux --define openmp=true --define opencl=true --define neon=true //mace/libmace:libmace.so
     - bazel build --config aarch64_linux --define openmp=true --define opencl=true --define neon=true //mace/libmace:libmace.so
 
 build_libraries:
@@ -86,7 +87,7 @@ ndk_versions_compatible_tests:
     - DEFAULT_NDK_PATH=$ANDROID_NDK_HOME
     - prefix_path=${DEFAULT_NDK_PATH%android-ndk-*}
     - >
-      for ndk in android-ndk-r15c android-ndk-r16 android-ndk-r17b;
+      for ndk in android-ndk-r12b android-ndk-r15c android-ndk-r16 android-ndk-r17b;
       do
       new_ndk_path=${prefix_path}${ndk};
       if [ "$new_ndk_path" != "$DEFAULT_NDK_PATH" ]; then
