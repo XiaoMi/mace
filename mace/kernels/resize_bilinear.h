@@ -22,6 +22,7 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
+#include "mace/utils/quantize.h"
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/core/runtime/opencl/cl2_header.h"
@@ -90,7 +91,7 @@ inline uint8_t ComputeLerp<uint8_t>(const uint8_t top_left,
                                     const float y_lerp) {
   const float top = top_left + (top_right - top_left) * x_lerp;
   const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
-  return static_cast<uint8_t>(roundf(top + (bottom - top) * y_lerp));
+  return Saturate<uint8_t>(roundf(top + (bottom - top) * y_lerp));
 }
 
 template <typename T>
