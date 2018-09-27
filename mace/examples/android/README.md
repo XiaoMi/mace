@@ -12,3 +12,7 @@ cd mace/exampls/android
 Pre-built APK
 --------------
 Pre-built Android APK can be downloaded [here](https://cnbj1.fds.api.xiaomi.com/mace/demo/mace_android_demo.apk).
+
+Note
+--------------
+We use two big cores for CPU inference.

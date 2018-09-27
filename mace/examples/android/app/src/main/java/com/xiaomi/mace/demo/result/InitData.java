@@ -21,7 +21,8 @@ import java.io.File;
 public class InitData {
 
     public static final String[] DEVICES = new String[]{"CPU", "GPU"};
-    public static final String[] MODELS = new String[]{"mobilenet_v1", "mobilenet_v2"};
+    public static final String[] MODELS = new String[]{"mobilenet_v1", "mobilenet_v2", "mobilenet_v1_quant", "mobilenet_v2_quant"};
+    private static final String[] ONLY_CPU_MODELS = new String[]{"mobilenet_v1_quant", "mobilenet_v2_quant"};
 
     private String model;
     private String device = "";
@@ -34,7 +35,7 @@ public class InitData {
     public InitData() {
         model = MODELS[0];
         ompNumThreads = 2;
-        cpuAffinityPolicy = 0;
+        cpuAffinityPolicy = 1;
         gpuPerfHint = 3;
         gpuPriorityHint = 3;
         device = DEVICES[0];
@@ -100,5 +101,18 @@ public class InitData {
 
     public void setStoragePath(String storagePath) {
         this.storagePath = storagePath;
+    }
+
+    public static String getCpuDevice() {
+        return DEVICES[0];
+    }
+
+    public static boolean isOnlySupportCpuByModel(String model) {
+        for (String m : ONLY_CPU_MODELS) {
+            if (m.equals(model)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
