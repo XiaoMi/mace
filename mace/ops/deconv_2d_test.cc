@@ -380,11 +380,11 @@ void TestComplexDeconvNxNS12(const int batch,
                             1e-4);
   };
 
-  for (int kernel_size : {1, 3, 5, 7}) {
+  for (int kernel_size : {3, 4, 5, 7}) {
     func(kernel_size, kernel_size, stride, stride, VALID, -1);
     func(kernel_size, kernel_size, stride, stride, SAME, -1);
-    func(kernel_size, kernel_size, stride, stride, VALID, 1);
     func(kernel_size, kernel_size, stride, stride, VALID, 2);
+    func(kernel_size, kernel_size, stride, stride, VALID, 3);
   }
 }
 }  // namespace
@@ -410,8 +410,8 @@ TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS34) {
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNMultiBatch) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(3, {17, 13, 5, 7}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(5, {17, 13, 5, 7}, 2);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(3, {17, 113, 5, 7}, 1);
+  TestComplexDeconvNxNS12<DeviceType::GPU, float>(5, {17, 113, 5, 7}, 2);
 }
 
 }  // namespace test

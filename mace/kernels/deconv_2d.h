@@ -15,75 +15,24 @@
 #ifndef MACE_KERNELS_DECONV_2D_H_
 #define MACE_KERNELS_DECONV_2D_H_
 
-#if defined(MACE_ENABLE_NEON) && defined(__aarch64__)
+#if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
 #endif
+
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <vector>
 
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/activation.h"
+#include "mace/kernels/arm/deconv_2d_neon.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
 namespace kernels {
-
-namespace deconv {
-
-template<typename T>
-void Deconv2dNCHW(const T *input,
-                  const T *filter,
-                  const T *bias,
-                  const index_t *in_shape,
-                  const index_t *out_shape,
-                  const index_t *kernel_hw,
-                  const int *strides,
-                  const int *padding,
-                  float *output) {
-#pragma omp parallel for collapse(4)
-  for (index_t b = 0; b < out_shape[0]; ++b) {
-    for (index_t oc = 0; oc < out_shape[1]; ++oc) {
-      for (index_t oh = 0; oh < out_shape[2]; ++oh) {
-        for (index_t ow = 0; ow < out_shape[3]; ++ow) {
-          index_t filter_start_y, filter_start_x;
-          index_t start_x = std::max<int>(0, ow + strides[1] -1 - padding[1]);
-          index_t start_y = std::max<int>(0, oh + strides[0] -1 - padding[0]);
-          start_x /= strides[1];
-          start_y /= strides[0];
-          filter_start_x = padding[1] + strides[1] * start_x - ow;
-          filter_start_y = padding[0] + strides[0] * start_y - oh;
-          filter_start_x = kernel_hw[1] - 1 - filter_start_x;
-          filter_start_y = kernel_hw[0] - 1 - filter_start_y;
-          T out_value = 0;
-          index_t out_pos =
-              ((b * out_shape[1] + oc) * out_shape[2] + oh) * out_shape[3] + ow;
-          for (index_t ic = 0; ic < in_shape[1]; ++ic) {
-            for (index_t f_y = filter_start_y, ih = start_y;
-                 f_y >= 0 && ih < in_shape[2]; f_y -= strides[0], ++ih) {
-              for (index_t f_x = filter_start_x, iw = start_x;
-                  f_x >= 0 && iw < in_shape[3]; f_x -= strides[1], ++iw) {
-                  index_t weight_pos =
-                      ((oc * in_shape[1] + ic) * kernel_hw[0] + f_y)
-                          * kernel_hw[1] + f_x;
-                  index_t in_pos =
-                      ((b * in_shape[1] + ic) * in_shape[2] + ih)
-                          * in_shape[3] + iw;
-                  out_value += input[in_pos] * filter[weight_pos];
-              }
-            }
-          }
-          if (bias != nullptr)
-            out_value += bias[oc];
-          output[out_pos] = out_value;
-        }
-      }
-    }
-  }
-}
-}  // namespace deconv
 
 struct Deconv2dFunctorBase : OpKernel {
   Deconv2dFunctorBase(OpKernelContext *context,
@@ -107,6 +56,7 @@ struct Deconv2dFunctorBase : OpKernel {
       const int *strides,
       index_t *output_shape,
       const int *padding_size,
+      int *input_padding,
       const bool isNCHW = false) {
     MACE_CHECK_NOTNULL(output_shape);
     MACE_CHECK_NOTNULL(padding_size);
@@ -119,13 +69,18 @@ struct Deconv2dFunctorBase : OpKernel {
     const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
     const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
 
-    const index_t filter_h = filter_shape[2];
-    const index_t filter_w = filter_shape[3];
+    const index_t kernel_h = filter_shape[2];
+    const index_t kernel_w = filter_shape[3];
+
+    input_padding[0] = static_cast<int>((kernel_h -1) * 2 - padding_size[0]);
+    input_padding[1] = static_cast<int>((kernel_w -1) * 2 - padding_size[1]);
+    input_padding[0] = std::max<int>(0, input_padding[0]);
+    input_padding[1] = std::max<int>(0, input_padding[1]);
 
     index_t out_height =
-        (in_height - 1) * strides[0] + filter_h -padding_size[0];
+        (in_height - 1) * strides[0] + kernel_h - padding_size[0];
     index_t out_width =
-        (in_width - 1) * strides[1] + filter_w -padding_size[1];
+        (in_width - 1) * strides[1] + kernel_w - padding_size[1];
 
     output_shape[0] = input_shape[0];
     if (isNCHW) {
@@ -206,8 +161,12 @@ struct Deconv2dFunctorBase : OpKernel {
   const float relux_max_limit_;
 };
 
-template <DeviceType D, typename T>
-struct Deconv2dFunctor : Deconv2dFunctorBase {
+
+template<DeviceType D, typename T>
+struct Deconv2dFunctor;
+
+template<>
+struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
   Deconv2dFunctor(OpKernelContext *context,
                   const std::vector<int> &strides,
                   const Padding &padding_type,
@@ -223,6 +182,92 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                             activation,
                             relux_max_limit) {}
 
+  void Deconv2dGeneral(const float *input,
+                       const float *filter,
+                       const float *bias,
+                       const index_t kernel_h,
+                       const index_t kernel_w,
+                       const int *strides,
+                       const index_t *in_shape,
+                       const index_t *out_shape,
+                       float *output) {
+    const index_t kernel_size = kernel_h * kernel_w;
+    std::vector<int> out_map(kernel_size);
+    int p0 = 0;
+    int p1 = 0;
+    index_t gap = out_shape[3] - kernel_w;
+    for (int i = 0; i < kernel_h; ++i) {
+      for (int j = 0; j < kernel_w; ++j) {
+        out_map[p0] = p1;
+        p0++;
+        p1++;
+      }
+      p1 += gap;
+    }
+
+    const index_t out_height = out_shape[2];
+    const index_t out_width = out_shape[3];
+    const index_t in_height = in_shape[2];
+    const index_t in_width = in_shape[3];
+    const index_t out_img_size = out_height * out_width;
+    const index_t in_img_size = in_height * in_width;
+
+#pragma omp parallel for
+    for (int b = 0; b < in_shape[0]; ++b) {
+      for (int oc = 0; oc < out_shape[1]; ++oc) {
+        float *out_base =
+            output + (b * out_shape[1] + oc) * out_img_size;
+        const float bias_value = bias ? bias[oc] : 0.f;
+        std::fill_n(out_base, out_img_size, bias_value);
+        for (int i = 0; i < in_height; ++i) {
+          for (int j = 0; j < in_width; ++j) {
+            const index_t out_offset =
+                i * strides[0] * out_width + j * strides[1];
+            for (int ic = 0; ic < in_shape[1]; ++ic) {
+              const index_t input_idx =
+                  (b * in_shape[1] + ic) * in_img_size + i * in_width + j;
+              const float val = input[input_idx];
+              const index_t kernel_offset =
+                  (oc * in_shape[1] + ic) * kernel_size;
+              for (int k = 0; k < kernel_size; ++k) {
+                const index_t out_idx = out_offset + out_map[k];
+                const index_t kernel_idx = kernel_offset + k;
+                out_base[out_idx] += val * filter[kernel_idx];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void CropPadOut(const float *input,
+                  const index_t *in_shape,
+                  const index_t *out_shape,
+                  const index_t pad_h,
+                  const index_t pad_w,
+                  float *output) {
+    const index_t batch = in_shape[0];
+    const index_t channel = in_shape[1];
+    const index_t in_height = in_shape[2];
+    const index_t in_width = in_shape[3];
+
+    const index_t out_height = out_shape[2];
+    const index_t out_width = out_shape[3];
+#pragma omp parallel for
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < channel; ++j) {
+        for (int k = 0; k < out_height; ++k) {
+          const float *input_base =
+              input + ((i * channel + j) * in_height + (k + pad_h)) * in_width;
+          float *output_base =
+              output + ((i * channel + j) * out_height + k)* out_width;
+          memcpy(output_base, input_base + pad_w, out_width * sizeof(float));
+        }
+      }
+    }
+  }
+
   MaceStatus operator()(const Tensor *input,   // NCHW
                   const Tensor *filter,  // OIHW
                   const Tensor *bias,
@@ -235,6 +280,7 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
     MACE_CHECK_NOTNULL(output);
 
     std::vector<int> paddings(2);
+    std::vector<int> out_paddings(2);
     std::vector<index_t> output_shape(4);
     if (paddings_.empty()) {  // tensorflow
       paddings = std::vector<int>(2, 0);
@@ -261,19 +307,20 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
           output_shape.data(),
           paddings.data(), true);
     } else {  // caffe
-      paddings = paddings_;
+      out_paddings = paddings_;
       output_shape = std::vector<index_t>(4, 0);
       CalcDeconvOutputSize(input->shape().data(),
                            filter->shape().data(),
                            strides_.data(),
                            output_shape.data(),
-                           paddings.data(), true);
+                           out_paddings.data(),
+                           paddings.data(),
+                           true);
     }
     MACE_RETURN_IF_ERROR(output->Resize(output_shape));
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);
     const index_t *in_shape = input->shape().data();
-    const index_t kernel_hw[2] = {kernel_h, kernel_w};
 
     MACE_CHECK(filter->dim(0) == output_shape[1], filter->dim(0), " != ",
                output_shape[1]);
@@ -281,28 +328,144 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
                in_shape[1]);
     MACE_CHECK(in_shape[0] == output_shape[0],
                "Input/Output batch size mismatch");
+    std::function<void(const float *input,
+                       const float *filter,
+                       const float *bias,
+                       const index_t *in_shape,
+                       const index_t *out_shape,
+                       float *output)> deconv_func;
+
     Tensor::MappingGuard input_mapper(input);
     Tensor::MappingGuard filter_mapper(filter);
     Tensor::MappingGuard bias_mapper(bias);
     Tensor::MappingGuard output_mapper(output);
-    auto input_data = input->data<T>();
-    auto filter_data = filter->data<T>();
-    auto bias_data = bias == nullptr ? nullptr : bias->data<T>();
-    auto output_data = output->mutable_data<T>();
-    int padding[2];
-    padding[0] = (paddings[0] + 1) >> 1;
-    padding[1] = (paddings[1] + 1) >> 1;
-    deconv::Deconv2dNCHW(input_data,
-                         filter_data,
-                         bias_data,
-                         in_shape,
-                         output_shape.data(),
-                         kernel_hw,
-                         strides_.data(),
-                         padding,
-                         output_data);
+    auto input_data = input->data<float>();
+    auto filter_data = filter->data<float>();
+    auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
+    auto output_data = output->mutable_data<float>();
 
-    DoActivation(output_data,
+    const index_t padded_out_h = (in_shape[2] - 1) * strides_[0] + kernel_h;
+    const index_t padded_out_w = (in_shape[3] - 1) * strides_[1] + kernel_w;
+    const index_t pad_h = (padded_out_h - output_shape[2]) / 2;
+    const index_t pad_w = (padded_out_w - output_shape[3]) / 2;
+
+    std::vector<index_t> padded_out_shape({output_shape[0], output_shape[1],
+                                           padded_out_h, padded_out_w});
+    index_t padded_out_size =
+        std::accumulate(padded_out_shape.begin(),
+                        padded_out_shape.end(),
+                        1,
+                        std::multiplies<index_t>()) * sizeof(float);
+    ScratchBuffer *scratch = context_->device()->scratch_buffer();
+    scratch->Rewind();
+    scratch->GrowSize(padded_out_size);
+    Tensor padded_out(scratch->Scratch(padded_out_size), DT_FLOAT);
+    auto *padded_out_data = padded_out.mutable_data<float>();
+
+    bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
+        strides_[0] == strides_[1] && strides_[0] == 1;
+    bool use_neon_3x3_s2 = kernel_h == kernel_w && kernel_h == 3 &&
+        strides_[0] == strides_[1] && strides_[0] == 2;
+
+    bool use_neon_4x4_s1 = kernel_h == kernel_w && kernel_h == 4 &&
+        strides_[0] == strides_[1] && strides_[0] == 1;
+    bool use_neon_4x4_s2 = kernel_h == kernel_w && kernel_h == 4 &&
+        strides_[0] == strides_[1] && strides_[0] == 2;
+
+    if (use_neon_3x3_s1) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const float *bias,
+                        const index_t *in_shape,
+                        const index_t *padded_out_shape,
+                        float *padded_output) {
+        Deconv2dNeonK3x3S1(input,
+                           filter,
+                           bias,
+                           in_shape,
+                           padded_out_shape,
+                           padded_output);
+      };
+    } else if (use_neon_3x3_s2) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const float *bias,
+                        const index_t *in_shape,
+                        const index_t *padded_out_shape,
+                        float *padded_output) {
+        Deconv2dNeonK3x3S2(input,
+                           filter,
+                           bias,
+                           in_shape,
+                           padded_out_shape,
+                           padded_output);
+      };
+    } else if (use_neon_4x4_s1) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const float *bias,
+                        const index_t *in_shape,
+                        const index_t *padded_out_shape,
+                        float *padded_output) {
+        Deconv2dNeonK4x4S1(input,
+                           filter,
+                           bias,
+                           in_shape,
+                           padded_out_shape,
+                           padded_output);
+      };
+    } else if (use_neon_4x4_s2) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const float *bias,
+                        const index_t *in_shape,
+                        const index_t *padded_out_shape,
+                        float *padded_output) {
+        Deconv2dNeonK4x4S2(input,
+                           filter,
+                           bias,
+                           in_shape,
+                           padded_out_shape,
+                           padded_output);
+      };
+    } else {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const float *bias,
+                        const index_t *in_shape,
+                        const index_t *padded_out_shape,
+                        float *padded_output) {
+        Deconv2dGeneral(input,
+                        filter,
+                        bias,
+                        kernel_h,
+                        kernel_w,
+                        strides_.data(),
+                        in_shape,
+                        padded_out_shape,
+                        padded_output);
+      };
+    }
+
+    bool no_pad =
+        padded_out_h == output_shape[2] && padded_out_w == output_shape[3];
+    float *out_data = no_pad ? output_data : padded_out_data;
+    deconv_func(input_data,
+                filter_data,
+                bias_data,
+                in_shape,
+                padded_out_shape.data(),
+                out_data);
+    if (!no_pad) {
+      CropPadOut(out_data,
+                 padded_out_shape.data(),
+                 output_shape.data(),
+                 pad_h,
+                 pad_w,
+                 output_data);
+    }
+
+    DoActivation<float>(output_data,
                  output_data,
                  output->size(),
                  activation_,

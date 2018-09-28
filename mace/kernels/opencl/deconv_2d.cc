@@ -53,6 +53,7 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
   MACE_CHECK_NOTNULL(filter);
   MACE_CHECK_NOTNULL(output);
   std::vector<int> paddings(2);
+  std::vector<int> out_paddings(2);
   std::vector<index_t> output_shape(4);
   if (paddings_.empty()) {
     paddings = std::vector<int>(2, 0);
@@ -74,12 +75,14 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
                                   output_shape.data(),
                                   paddings.data());
   } else {
-    paddings = paddings_;
+    out_paddings = paddings_;
+    paddings = std::vector<int>(2, 0);
     output_shape = std::vector<index_t>(4, 0);
     CalcDeconvOutputSize(input->shape().data(),
                          filter->shape().data(),
                          strides_.data(),
                          output_shape.data(),
+                         out_paddings.data(),
                          paddings.data());
   }
 
