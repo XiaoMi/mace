@@ -23,10 +23,6 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -102,7 +98,7 @@ struct SpaceToBatchFunctor<DeviceType::CPU, float> : SpaceToBatchFunctorBase {
                       const std::vector<int> &block_shape)
       : SpaceToBatchFunctorBase(context, paddings, block_shape) {}
 
-  MaceStatus operator()(Tensor *space_tensor,
+  MaceStatus operator()(const Tensor *space_tensor,
                         Tensor *batch_tensor,
                         StatsFuture *future) {
     MACE_UNUSED(future);
@@ -212,7 +208,7 @@ struct SpaceToBatchFunctor<DeviceType::CPU, uint8_t> : SpaceToBatchFunctorBase {
                       const std::vector<int> &block_shape)
       : SpaceToBatchFunctorBase(context, paddings, block_shape) {}
 
-  MaceStatus operator()(Tensor *space_tensor,
+  MaceStatus operator()(const Tensor *space_tensor,
                         Tensor *batch_tensor,
                         StatsFuture *future) {
     MACE_UNUSED(future);
@@ -311,21 +307,29 @@ struct SpaceToBatchFunctor<DeviceType::CPU, uint8_t> : SpaceToBatchFunctorBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLSpaceToBatchKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *space_tensor,
+      const std::vector<int> &paddings,
+      const std::vector<int> &block_shape,
+      const std::vector<index_t> &output_shape,
+      Tensor *batch_tensor,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLSpaceToBatchKernel);
+};
 template <typename T>
 struct SpaceToBatchFunctor<DeviceType::GPU, T> : SpaceToBatchFunctorBase {
   SpaceToBatchFunctor(OpKernelContext *context,
                       const std::vector<int> &paddings,
-                      const std::vector<int> &block_shape)
-      : SpaceToBatchFunctorBase(context, paddings, block_shape) {}
+                      const std::vector<int> &block_shape);
 
-  MaceStatus operator()(Tensor *space_tensor,
-                  Tensor *batch_tensor,
-                  StatsFuture *future);
+  MaceStatus operator()(const Tensor *space_tensor,
+                        Tensor *batch_tensor,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> space_shape_;
+  std::unique_ptr<OpenCLSpaceToBatchKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

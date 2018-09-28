@@ -24,12 +24,42 @@
 #define CMD_TYPE(cmd, type) CMD_TYPE_STR(cmd, type)
 
 #define DATA_TYPE4 VEC_DATA_TYPE(DATA_TYPE, 4)
+#define OUT_DATA_TYPE4 VEC_DATA_TYPE(OUT_DATA_TYPE, 4)
 
+#define CONVERT_STR(value, type) convert_##type((value))
+
+#define CONVERT_TO(value, type) CONVERT_STR(value, type)
+#define CONVERT(value) CONVERT_TO(value, DATA_TYPE)
+#define CONVERT4(value) CONVERT_TO(value, DATA_TYPE4)
+
+#define GLOBAL_WORK_GROUP_SIZE_DIM2       \
+    __private const int global_size_dim0, \
+    __private const int global_size_dim1,
+
+#define GLOBAL_WORK_GROUP_SIZE_DIM3       \
+    __private const int global_size_dim0, \
+    __private const int global_size_dim1, \
+    __private const int global_size_dim2,
+
+// oorc for 'Out Of Range Check'
 #ifdef OUT_OF_RANGE_CHECK
+#define OUT_OF_RANGE_PARAMS \
+  __global int *oorc_flag,
+
+#define BUFFER_OUT_OF_RANGE_PARAMS      \
+  __global int *oorc_flag,              \
+  __private const int oorc_output_length,
+
 #define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord) \
-  check_out_of_range_for_image2d(image, (coord).x, (coord).y, kernel_error);
+  check_out_of_range_for_image2d(image, (coord).x, (coord).y, oorc_flag);
+
+#define CHECK_OUT_OF_RANGE_FOR_BUFFER(idx) \
+  check_out_of_range_for_buffer(oorc_output_length, (idx), oorc_flag);
 #else
+#define OUT_OF_RANGE_PARAMS
+#define BUFFER_OUT_OF_RANGE_PARAMS
 #define CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)
+#define CHECK_OUT_OF_RANGE_FOR_BUFFER(idx)
 #endif
 
 #define READ_IMAGET(image, sampler, coord) \
@@ -38,25 +68,10 @@
   CHECK_OUT_OF_RANGE_FOR_IMAGE2D(image, coord)   \
   CMD_TYPE(write_image, CMD_DATA_TYPE)(image, coord, value);
 
-#define GLOBAL_WORK_GROUP_SIZE_DIM2 \
-    __private const int global_size_dim0,       \
-    __private const int global_size_dim1,
+#define VSTORE4(data, output, offset)         \
+  CHECK_OUT_OF_RANGE_FOR_BUFFER((offset) + 3) \
+  vstore4(data, 0, output + (offset));
 
-#define GLOBAL_WORK_GROUP_SIZE_DIM3 \
-    __private const int global_size_dim0,       \
-    __private const int global_size_dim1,       \
-    __private const int global_size_dim2,
-
-#ifdef OUT_OF_RANGE_CHECK
-
-#define KERNEL_ERROR_PARAMS \
-  __global char *kernel_error,
-
-#else
-
-#define KERNEL_ERROR_PARAMS
-
-#endif
 
 __constant sampler_t SAMPLER =
     CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
@@ -66,6 +81,7 @@ inline float4 do_sigmoid(float4 in) {
   return native_recip(1.0f + native_exp(-in));
 }
 
+#ifdef DATA_TYPE
 inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #ifdef USE_PRELU
                                 DATA_TYPE4 prelu_alpha,
@@ -89,17 +105,25 @@ inline DATA_TYPE4 do_activation(DATA_TYPE4 in,
 #endif
   return out;
 }
+#endif
 
 inline void check_out_of_range_for_image2d(__write_only image2d_t image,
                                            __private const int x,
                                            __private const int y,
-                                           global char *kernel_error) {
-#ifdef OUT_OF_RANGE_CHECK
+                                           __global int *oorc_flag) {
   int2 image_dim = get_image_dim(image);
   if (x >= image_dim.x || y >= image_dim.y) {
-    *kernel_error = 1;
+    *oorc_flag = 1;
   }
-#endif
 }
+
+inline void check_out_of_range_for_buffer(__private const int length,
+                                          __private const int idx,
+                                          __global int *oorc_flag) {
+  if (idx >= length) {
+    *oorc_flag = idx - length + 1;
+  }
+}
+
 
 #endif  // MACE_KERNELS_OPENCL_CL_COMMON_H_

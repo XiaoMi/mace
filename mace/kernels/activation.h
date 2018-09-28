@@ -26,10 +26,6 @@
 #include "mace/core/types.h"
 #include "mace/kernels/kernel.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -164,15 +160,22 @@ class ActivationFunctor<DeviceType::CPU, float> : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLActivationKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *alpha,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLActivationKernel);
+};
 template <typename T>
 class ActivationFunctor<DeviceType::GPU, T> : OpKernel {
  public:
   ActivationFunctor(OpKernelContext *context,
                     ActivationType type,
-                    T relux_max_limit)
-      : OpKernel(context),
-        activation_(type),
-        relux_max_limit_(static_cast<T>(relux_max_limit)) {}
+                    T relux_max_limit);
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *alpha,
@@ -180,13 +183,7 @@ class ActivationFunctor<DeviceType::GPU, T> : OpKernel {
                         StatsFuture *future);
 
  private:
-  ActivationType activation_;
-  T relux_max_limit_;
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::string tuning_key_prefix_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLActivationKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

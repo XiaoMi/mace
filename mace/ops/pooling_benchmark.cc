@@ -111,6 +111,7 @@ void Pooling(int iters,
 #define MACE_BM_POOLING(N, C, H, W, K, S, PA, PO)       \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, CPU); \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, float, GPU); \
+  MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, half, GPU); \
   MACE_BM_POOLING_MACRO(N, C, H, W, K, S, PA, PO, uint8_t, CPU);
 
 

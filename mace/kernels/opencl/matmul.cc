@@ -13,12 +13,20 @@
 // limitations under the License.
 
 #include "mace/kernels/matmul.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
+#include "mace/kernels/opencl/image/matmul.h"
 
 namespace mace {
 namespace kernels {
+
+template <typename T>
+MatMulFunctor<DeviceType::GPU, T>::MatMulFunctor(OpKernelContext *context)
+    : OpKernel(context) {
+  if (context->device()->opencl_runtime()->UseImageMemory()) {
+    kernel_.reset(new opencl::image::MatMulKernel<T>);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+}
 
 template <typename T>
 MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
@@ -27,68 +35,7 @@ MaceStatus MatMulFunctor<DeviceType::GPU, T>::operator()(const Tensor *A,
                                                          bool transpose_a,
                                                          bool transpose_b,
                                                          StatsFuture *future) {
-  MACE_UNUSED(future);
-  MACE_CHECK(!transpose_a && !transpose_b,
-             "GPU does not support transpose matmul");
-
-  index_t rank = A->dim_size();
-  index_t height = A->dim(rank - 2);
-  index_t K = A->dim(rank - 1);
-  index_t width = B->dim(rank - 1);
-  index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
-                                  std::multiplies<index_t>());
-
-  std::vector<index_t> c_shape = A->shape();
-  c_shape[rank - 2] = height;
-  c_shape[rank - 1] = width;
-  std::vector<size_t> c_image_shape;
-  std::vector<index_t> padded_c_shape = {batch, height, width, 1};
-  CalImage2DShape(padded_c_shape, BufferType::IN_OUT_HEIGHT, &c_image_shape);
-  MACE_RETURN_IF_ERROR(C->ResizeImage(c_shape, c_image_shape));
-
-  const index_t height_blocks = RoundUpDiv4(height);
-  const index_t width_blocks = RoundUpDiv4(width);
-  const uint32_t gws[2] = {
-      static_cast<uint32_t>(width_blocks),
-      static_cast<uint32_t>(height_blocks * batch),
-  };
-
-  auto runtime = context_->device()->opencl_runtime();
-
-  if (kernel_.get() == nullptr) {
-    std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
-    NON_UNIFORM_WG_CONFIG;
-    auto dt = DataTypeToEnum<T>::value;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("matmul");
-    built_options.emplace("-Dmatmul=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("matmul", kernel_name,
-                                              built_options, &kernel_));
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  }
-  uint32_t idx = 0;
-  OUT_OF_RANGE_SET_ARG;
-  SET_2D_GWS_ARGS(kernel_);
-  kernel_.setArg(idx++, *(A->opencl_image()));
-  kernel_.setArg(idx++, *(B->opencl_image()));
-  kernel_.setArg(idx++, *(C->opencl_image()));
-  kernel_.setArg(idx++, static_cast<int>(height));
-  kernel_.setArg(idx++, static_cast<int>(width));
-  kernel_.setArg(idx++, static_cast<int>(K));
-  kernel_.setArg(idx++, static_cast<int>(height_blocks));
-  kernel_.setArg(idx++, static_cast<int>(RoundUpDiv4(K)));
-
-  const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
-  std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
-  MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
-
-  OUT_OF_RANGE_VALIDATION(kernel_error_);
-  return MACE_SUCCESS;
+  return kernel_->Compute(context_, A, B, C, transpose_a, transpose_b, future);
 }
 
 template struct MatMulFunctor<DeviceType::GPU, float>;

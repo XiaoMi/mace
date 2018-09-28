@@ -24,10 +24,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -51,7 +47,8 @@ struct BatchToSpaceFunctorBase : OpKernel {
   void CalculateBatchToSpaceOutputShape(const Tensor *input_tensor,
                                         const DataFormat data_format,
                                         index_t *output_shape) {
-    MACE_CHECK(input_tensor->dim_size() == 4, "Input's shape should be 4D");
+    MACE_CHECK(input_tensor->dim_size() == 4,
+               "Input(", input_tensor->name(), ") shape should be 4D");
     index_t batch = input_tensor->dim(0);
     index_t channels = 0;
     index_t height = 0;
@@ -96,8 +93,8 @@ struct BatchToSpaceFunctor<DeviceType::CPU, float> : BatchToSpaceFunctorBase {
                       const std::vector<int> &block_shape)
       : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
 
-  MaceStatus operator()(Tensor *space_tensor,
-                        Tensor *batch_tensor,
+  MaceStatus operator()(const Tensor *batch_tensor,
+                        Tensor *space_tensor,
                         StatsFuture *future) {
     MACE_UNUSED(future);
 
@@ -191,8 +188,8 @@ struct BatchToSpaceFunctor<CPU, uint8_t> : BatchToSpaceFunctorBase {
                       const std::vector<int> &block_shape)
       : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
 
-  MaceStatus operator()(Tensor *space_tensor,
-                        Tensor *batch_tensor,
+  MaceStatus operator()(const Tensor *batch_tensor,
+                        Tensor *space_tensor,
                         StatsFuture *future) {
     MACE_UNUSED(future);
 
@@ -272,21 +269,29 @@ struct BatchToSpaceFunctor<CPU, uint8_t> : BatchToSpaceFunctorBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLBatchToSpaceKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *batch_tensor,
+      const std::vector<int> &paddings,
+      const std::vector<int> &block_shape,
+      const std::vector<index_t> &output_shape,
+      Tensor *space_tensor,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLBatchToSpaceKernel);
+};
 template <typename T>
 struct BatchToSpaceFunctor<DeviceType::GPU, T> : BatchToSpaceFunctorBase {
   BatchToSpaceFunctor(OpKernelContext *context,
                       const std::vector<int> &paddings,
-                      const std::vector<int> &block_shape)
-      : BatchToSpaceFunctorBase(context, paddings, block_shape) {}
+                      const std::vector<int> &block_shape);
 
-  MaceStatus operator()(Tensor *space_tensor,
-                  Tensor *batch_tensor,
-                  StatsFuture *future);
+  MaceStatus operator()(const Tensor *batch_tensor,
+                        Tensor *space_tensor,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> space_shape_;
+  std::unique_ptr<OpenCLBatchToSpaceKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

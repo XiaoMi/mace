@@ -131,8 +131,8 @@ class MaceKeyword(object):
     mace_output_node_name = 'mace_output_node'
     mace_buffer_type = 'buffer_type'
     mace_mode = 'mode'
-    mace_buffer_to_image = 'BufferToImage'
-    mace_image_to_buffer = 'ImageToBuffer'
+    mace_buffer_transform = 'BufferTransform'
+    mace_buffer_inverse_transform = 'BufferInverseTransform'
     # arg related str
     mace_padding_str = 'padding'
     mace_padding_values_str = 'padding_values'
@@ -175,6 +175,7 @@ class MaceKeyword(object):
     mace_opencl_max_image_size = "opencl_max_image_size"
     mace_seperate_buffer_str = 'seperate_buffer'
     mace_scalar_input_index_str = 'scalar_input_index'
+    mace_opencl_mem_type = "opencl_mem_type"
 
 
 class TransformerRule(Enum):
@@ -194,7 +195,7 @@ class TransformerRule(Enum):
     RESHAPE_FC_WEIGHT = 14
     TRANSPOSE_DATA_FORMAT = 15
     TRANSFORM_GLOBAL_CONV_TO_FC = 16
-    TRANSFORM_BUFFER_IMAGE = 17
+    ADD_BUFFER_TRANSFORM = 17
     ADD_DEVICE = 18
     SORT_BY_EXECUTION = 19
     ADD_IN_OUT_TENSOR_INFO = 20
@@ -208,6 +209,7 @@ class TransformerRule(Enum):
     TRANSFORM_FAKE_QUANTIZE = 28
     CHECK_QUANTIZE_INFO = 29
     REARRANGE_BATCH_TO_SPACE = 30
+    ADD_OPENCL_INFORMATIONS = 31
 
 
 class ConverterInterface(object):
@@ -265,6 +267,7 @@ class ConverterOption(object):
         self._quantize = False
         self._quantize_range_file = ""
         self._transformer_option = None
+        self._cl_mem_type = ""
 
     @property
     def input_nodes(self):
@@ -297,6 +300,10 @@ class ConverterOption(object):
     @property
     def transformer_option(self):
         return self._transformer_option
+
+    @property
+    def cl_mem_type(self):
+        return self._cl_mem_type
 
     @input_nodes.setter
     def input_nodes(self, input_nodes):
@@ -338,6 +345,10 @@ class ConverterOption(object):
     def transformer_option(self, transformer_option):
         self._transformer_option = transformer_option
 
+    @cl_mem_type.setter
+    def cl_mem_type(self, cl_mem_type):
+        self._cl_mem_type = cl_mem_type
+
     def disable_transpose_filters(self):
         if TransformerRule.TRANSPOSE_FILTERS in self._transformer_option:
             self._transformer_option.remove(TransformerRule.TRANSPOSE_FILTERS)
@@ -377,11 +388,12 @@ class ConverterOption(object):
                 # Mace model structure related transformation
                 TransformerRule.ADD_IN_OUT_TENSOR_INFO,
                 # Device related transformation
-                TransformerRule.TRANSFORM_BUFFER_IMAGE,
+                TransformerRule.ADD_BUFFER_TRANSFORM,
                 TransformerRule.ADD_DEVICE,
                 # Data type related transformation
                 TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 # Transform finalization
+                TransformerRule.ADD_OPENCL_INFORMATIONS,
                 TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
                 # for quantization entropy calibration use
                 TransformerRule.SORT_BY_EXECUTION,

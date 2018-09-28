@@ -340,7 +340,7 @@ def bazel_build(target,
                 enable_neon=True,
                 enable_opencl=True,
                 address_sanitizer=False,
-                symbol_hidden=False,
+                symbol_hidden=True,
                 extra_args=""):
     print("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
@@ -560,6 +560,7 @@ def gen_model_code(model_codegen_dir,
                    obfuscate,
                    model_graph_format,
                    data_type,
+                   cl_mem_type,
                    graph_optimize_options):
     bazel_build_common("//mace/python/tools:converter")
 
@@ -591,6 +592,7 @@ def gen_model_code(model_codegen_dir,
               "--model_graph_format=%s" % model_graph_format,
               "--data_type=%s" % data_type,
               "--graph_optimize_options=%s" % graph_optimize_options,
+              "--cl_mem_type=%s" % cl_mem_type,
               _fg=True)
 
 

@@ -210,6 +210,20 @@ void CalcOutputSize(const index_t *input_shape,
   }
 }
 
+void CalcNCHWInputShape(const index_t *output_shape,
+                        const index_t *filter_shape,
+                        const int *strides,
+                        const int *dilations,
+                        index_t *input_shape) {
+  MACE_CHECK_NOTNULL(input_shape);
+  input_shape[0] = output_shape[0];
+  input_shape[1] = filter_shape[1];
+  input_shape[2] = (output_shape[2] - 1) * strides[0] +
+      (filter_shape[2] - 1) * dilations[0] + 1;
+  input_shape[3] = (output_shape[3] - 1) * strides[1] +
+      (filter_shape[3] - 1) * dilations[1] + 1;
+}
+
 void CalcOutputSize(const index_t *input_shape,   // NHWC
                     const index_t *filter_shape,  // OIHW
                     const int *padding_size,
@@ -234,8 +248,8 @@ void CalcNCHWOutputSize(const index_t *input_shape,   // NCHW
 
 void CalPaddingSize(const index_t *input_shape,   // NCHW
                     const index_t *filter_shape,  // OIHW
-                    const int *dilations,
                     const int *strides,
+                    const int *dilations,
                     Padding padding,
                     int *padding_size) {
   MACE_CHECK(dilations[0] > 0 && dilations[1] > 0,

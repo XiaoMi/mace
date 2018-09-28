@@ -24,24 +24,13 @@
 #include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
-struct ConcatFunctorBase : OpKernel {
-  ConcatFunctorBase(OpKernelContext *context, const int32_t axis)
-      : OpKernel(context), axis_(axis) {}
-
-  int32_t axis_;
-};
-
 template <DeviceType D, typename T>
-struct ConcatFunctor : ConcatFunctorBase {
+struct ConcatFunctor : OpKernel {
   ConcatFunctor(OpKernelContext *context, const int32_t axis)
-      : ConcatFunctorBase(context, axis) {}
+      : OpKernel(context), axis_(axis) {}
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                         Tensor *output,
@@ -98,21 +87,29 @@ struct ConcatFunctor : ConcatFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  int32_t axis_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLConcatKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const std::vector<const Tensor *> &input_list,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLConcatKernel);
+};
 template <typename T>
-struct ConcatFunctor<DeviceType::GPU, T> : ConcatFunctorBase {
-  ConcatFunctor(OpKernelContext *context, const int32_t axis)
-      : ConcatFunctorBase(context, axis) {}
+struct ConcatFunctor<DeviceType::GPU, T> : OpKernel {
+  ConcatFunctor(OpKernelContext *context, const int32_t axis);
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
-                  Tensor *output,
-                  StatsFuture *future);
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+                        Tensor *output,
+                        StatsFuture *future);
+
+  std::unique_ptr<OpenCLConcatKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

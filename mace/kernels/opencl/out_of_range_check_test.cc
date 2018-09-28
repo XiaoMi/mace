@@ -31,7 +31,7 @@ bool BufferToImageOpImpl(OpKernelContext *context,
                          Tensor *buffer,
                          Tensor *image,
                          const std::vector<size_t> &image_shape) {
-  std::unique_ptr<BufferBase> kernel_error;
+  std::unique_ptr<BufferBase> oorc_flag;
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
 
@@ -43,8 +43,8 @@ bool BufferToImageOpImpl(OpKernelContext *context,
   std::stringstream kernel_name_ss;
   kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
   built_options.emplace(kernel_name_ss.str());
-  OUT_OF_RANGE_CONFIG(kernel_error, context);
-  NON_UNIFORM_WG_CONFIG;
+  MACE_OUT_OF_RANGE_CONFIG;
+  MACE_NON_UNIFORM_WG_CONFIG;
   if (buffer->dtype() == image->dtype()) {
     built_options.emplace("-DDATA_TYPE=" +
                           DtToCLDt(DataTypeToEnum<float>::value));
@@ -67,12 +67,13 @@ bool BufferToImageOpImpl(OpKernelContext *context,
     return false;
   }
 
+  MACE_OUT_OF_RANGE_INIT(kernel);
   uint32_t idx = 0;
   if (runtime->IsOutOfRangeCheckEnabled()) {
     kernel.setArg(idx++,
-                  *(static_cast<cl::Buffer *>(kernel_error->buffer())));
+                  *(static_cast<cl::Buffer *>(oorc_flag->buffer())));
   }
-  SET_2D_GWS_ARGS(kernel);
+  MACE_SET_2D_GWS_ARGS(kernel, gws);
   kernel.setArg(idx++, *(buffer->opencl_buffer()));
   MACE_CHECK(buffer->buffer_offset() % GetEnumTypeSize(buffer->dtype()) == 0,
              "buffer offset not aligned");
@@ -110,9 +111,9 @@ bool BufferToImageOpImpl(OpKernelContext *context,
   runtime->command_queue().finish();
   bool is_out_of_range = false;
   if (runtime->IsOutOfRangeCheckEnabled()) {
-    kernel_error->Map(nullptr);
-    is_out_of_range = *(kernel_error->mutable_data<char>()) == 1 ? true : false;
-    kernel_error->UnMap();
+    oorc_flag->Map(nullptr);
+    is_out_of_range = *(oorc_flag->mutable_data<char>()) == 1 ? true : false;
+    oorc_flag->UnMap();
   }
   return is_out_of_range;
 }

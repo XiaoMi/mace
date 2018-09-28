@@ -40,8 +40,7 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                                                                "NOOP")),
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),
                  static_cast<bool>(OperatorBase::GetOptionalArg<int>(
-                     "is_filter_transformed", false)),
-                 context->workspace()->GetScratchBuffer(D)) {}
+                     "is_filter_transformed", false))) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);

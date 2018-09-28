@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void activation(KERNEL_ERROR_PARAMS
+__kernel void activation(OUT_OF_RANGE_PARAMS
                          GLOBAL_WORK_GROUP_SIZE_DIM3
                          __read_only image2d_t input,
 #ifdef USE_PRELU

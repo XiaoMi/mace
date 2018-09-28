@@ -12,24 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/image_to_buffer.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
+#ifndef MACE_KERNELS_OPENCL_IMAGE_IMAGE_TO_BUFFER_H_
+#define MACE_KERNELS_OPENCL_IMAGE_IMAGE_TO_BUFFER_H_
 
+#include <set>
+#include <string>
+#include <vector>
+
+#include "mace/kernels/buffer_inverse_transform.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
 namespace kernels {
+namespace opencl {
+namespace image {
 
 template <typename T>
-MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *image,
-    const BufferType type,
-    Tensor *buffer,
-    StatsFuture *future) {
-  auto formatted_buffer_shape = FormatBufferShape(image->shape(), type);
+class ImageToBuffer : public OpenCLBufferInverseTransformKernel {
+ public:
+  MaceStatus Compute(OpKernelContext *context,
+                     const Tensor *input,
+                     const BufferType type,
+                     const int wino_blk_size,
+                     Tensor *output,
+                     StatsFuture *future) override;
+
+ private:
+  cl::Kernel kernel_;
+  std::vector<index_t> input_shape_;
+};
+
+template <typename T>
+MaceStatus ImageToBuffer<T>::Compute(OpKernelContext *context,
+                                     const Tensor *input,
+                                     const BufferType type,
+                                     const int wino_blk_size,
+                                     Tensor *output,
+                                     StatsFuture *future) {
+  auto formatted_buffer_shape = FormatBufferShape(input->shape(), type);
   std::vector<size_t> image_shape;
-  CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size_);
-  MACE_RETURN_IF_ERROR(buffer->Resize(image->shape()));
+  CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size);
+  MACE_RETURN_IF_ERROR(output->Resize(input->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -49,9 +72,9 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
       break;
     case WINOGRAD_FILTER: {
       std::stringstream ss_tmp;
-      gws[1] /= (wino_blk_size_ + 2) * (wino_blk_size_ + 2);
+      gws[1] /= (wino_blk_size + 2) * (wino_blk_size + 2);
       ss_tmp << "winograd_filter_image_to_buffer_"
-             << wino_blk_size_ << "x" << wino_blk_size_;
+             << wino_blk_size << "x" << wino_blk_size;
       kernel_name = ss_tmp.str();
       break;
     }
@@ -67,17 +90,18 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
       break;
   }
 
-  auto runtime = context_->device()->opencl_runtime();
+  auto runtime = context->device()->opencl_runtime();
+  MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel_.get() == nullptr) {
     std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
-    NON_UNIFORM_WG_CONFIG;
+    MACE_OUT_OF_RANGE_CONFIG;
+    MACE_NON_UNIFORM_WG_CONFIG;
     std::stringstream kernel_name_ss;
     kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
     built_options.emplace(kernel_name_ss.str());
-    if (buffer->dtype() == image->dtype()) {
+    if (output->dtype() == input->dtype()) {
       built_options.emplace(
           "-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
       built_options.emplace("-DCMD_DATA_TYPE=" +
@@ -94,35 +118,36 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
                                               &kernel_));
   }
 
-  if (!IsVecEqual(input_shape_, image->shape())) {
+  MACE_OUT_OF_RANGE_INIT(kernel_);
+  if (!IsVecEqual(input_shape_, input->shape())) {
     uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG;
-    SET_2D_GWS_ARGS(kernel_);
-    kernel_.setArg(idx++, *(buffer->opencl_buffer()));
+    MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
+    MACE_SET_2D_GWS_ARGS(kernel_, gws);
+    kernel_.setArg(idx++, *(output->opencl_buffer()));
     if (type == CONV2D_FILTER) {
       const index_t
-          inner_size = buffer->dim(1) * buffer->dim(2) * buffer->dim(3);
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+          inner_size = output->dim(1) * output->dim(2) * output->dim(3);
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(0)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(2)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(3)));
       kernel_.setArg(idx++, static_cast<uint32_t>(inner_size));
     } else if (type == ARGUMENT) {
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(0)));
     } else if (type == WEIGHT_HEIGHT) {
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(0)));
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(1)));
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(2)));
-      kernel_.setArg(idx++, static_cast<uint32_t>(buffer->dim(3)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(0)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(1)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(2)));
+      kernel_.setArg(idx++, static_cast<uint32_t>(output->dim(3)));
     } else {
       kernel_.setArg(idx++,
-                        static_cast<uint32_t>(formatted_buffer_shape[1]));
+                     static_cast<uint32_t>(formatted_buffer_shape[1]));
       kernel_.setArg(idx++,
-                        static_cast<uint32_t>(formatted_buffer_shape[2]));
+                     static_cast<uint32_t>(formatted_buffer_shape[2]));
       kernel_.setArg(idx++,
-                        static_cast<uint32_t>(formatted_buffer_shape[3]));
+                     static_cast<uint32_t>(formatted_buffer_shape[3]));
     }
-    kernel_.setArg(idx++, *(image->opencl_image()));
-    input_shape_ = image->shape();
+    kernel_.setArg(idx++, *(input->opencl_image()));
+    input_shape_ = input->shape();
   }
 
   const uint32_t kwg_size =
@@ -146,7 +171,7 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
         cl::NDRange(lws[0], lws[1]), nullptr, &event);
   }
   MACE_CL_RET_STATUS(error);
-  OUT_OF_RANGE_VALIDATION(kernel_error_);
+  MACE_OUT_OF_RANGE_VALIDATION;
   if (future != nullptr) {
     future->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
@@ -159,8 +184,9 @@ MaceStatus ImageToBufferFunctor<DeviceType::GPU, T>::operator()(
   return MACE_SUCCESS;
 }
 
-template struct ImageToBufferFunctor<DeviceType::GPU, float>;
-template struct ImageToBufferFunctor<DeviceType::GPU, half>;
-
+}  // namespace image
+}  // namespace opencl
 }  // namespace kernels
 }  // namespace mace
+
+#endif  // MACE_KERNELS_OPENCL_IMAGE_IMAGE_TO_BUFFER_H_

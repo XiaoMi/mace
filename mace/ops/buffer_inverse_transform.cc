@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/buffer_to_image.h"
+#include "mace/ops/buffer_inverse_transform.h"
 
 namespace mace {
 namespace ops {
 
-void Register_BufferToImage(OperatorRegistryBase *op_registry) {
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferToImage")
+void Register_BufferInverseTransform(OperatorRegistryBase *op_registry) {
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferInverseTransform")
                                           .Device(DeviceType::GPU)
                                           .TypeConstraint<float>("T")
                                           .Build(),
-                         BufferToImageOp<DeviceType::GPU, float>);
+                         BufferInverseTransformOp<DeviceType::GPU, float>);
 
-  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferToImage")
+  MACE_REGISTER_OPERATOR(op_registry, OpKeyBuilder("BufferInverseTransform")
                                           .Device(DeviceType::GPU)
                                           .TypeConstraint<half>("T")
                                           .Build(),
-                         BufferToImageOp<DeviceType::GPU, half>);
+                         BufferInverseTransformOp<DeviceType::GPU, half>);
 }
 
 }  // namespace ops

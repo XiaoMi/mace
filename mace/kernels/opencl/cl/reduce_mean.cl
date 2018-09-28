@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void reduce_mean(KERNEL_ERROR_PARAMS
+__kernel void reduce_mean(OUT_OF_RANGE_PARAMS
                           GLOBAL_WORK_GROUP_SIZE_DIM3
                           __read_only image2d_t input,
                           __local DATA_TYPE4 *group_sum,

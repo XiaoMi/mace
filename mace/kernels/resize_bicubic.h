@@ -25,10 +25,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/utils/logging.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -141,32 +137,20 @@ inline void ResizeImage(const float *images,
   }
 }
 
-struct ResizeBicubicFunctorBase : OpKernel {
-  ResizeBicubicFunctorBase(OpKernelContext *context,
-                           const std::vector<index_t> &size,
-                           bool align_corners)
-      : OpKernel(context), align_corners_(align_corners) {
-    MACE_CHECK(size.size() == 2);
-    out_height_ = size[0];
-    out_width_ = size[1];
-  }
-
- protected:
-  bool align_corners_;
-  index_t out_height_;
-  index_t out_width_;
-};
-
 template<DeviceType D, typename T>
 struct ResizeBicubicFunctor;
 
 template<>
-struct ResizeBicubicFunctor<DeviceType::CPU, float>
-    : ResizeBicubicFunctorBase {
+struct ResizeBicubicFunctor<DeviceType::CPU, float> : OpKernel {
   ResizeBicubicFunctor(OpKernelContext *context,
-                       const std::vector<index_t> &size,
-                       bool align_corners)
-      : ResizeBicubicFunctorBase(context, size, align_corners) {}
+                       const bool align_corners,
+                       const std::vector<index_t> &size)
+      : OpKernel(context),
+        align_corners_(align_corners) {
+    MACE_CHECK(size.size() == 2);
+    out_height_ = size[0];
+    out_width_ = size[1];
+  }
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -205,25 +189,34 @@ struct ResizeBicubicFunctor<DeviceType::CPU, float>
 
     return MACE_SUCCESS;
   }
+
+  bool align_corners_;
+  index_t out_height_;
+  index_t out_width_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLResizeBicubicKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLResizeBicubicKernel);
+};
 template<typename T>
 struct ResizeBicubicFunctor<DeviceType::GPU, T>
-    : ResizeBicubicFunctorBase {
+    : OpKernel {
   ResizeBicubicFunctor(OpKernelContext *context,
-                       const std::vector<index_t> &size,
-                       bool align_corners)
-      : ResizeBicubicFunctorBase(context, size, align_corners) {}
+                       bool align_corners,
+                       const std::vector<index_t> &size);
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLResizeBicubicKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

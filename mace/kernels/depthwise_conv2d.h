@@ -501,6 +501,24 @@ struct DepthwiseConv2dFunctor<DeviceType::CPU, uint8_t>
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLDepthwiseConv2dKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *bias,
+      const int *strides,
+      const Padding &padding_type,
+      const std::vector<int> &padding_data,
+      const int *dilations,
+      const ActivationType activation,
+      const float relux_max_limit,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLDepthwiseConv2dKernel);
+};
+
 template<typename T>
 struct DepthwiseConv2dFunctor<DeviceType::GPU, T>
   : DepthwiseConv2dFunctorBase {
@@ -510,25 +528,15 @@ struct DepthwiseConv2dFunctor<DeviceType::GPU, T>
                          const std::vector<int> &paddings,
                          const int *dilations,
                          const ActivationType activation,
-                         const float relux_max_limit)
-    : DepthwiseConv2dFunctorBase(context,
-                                 strides,
-                                 padding_type,
-                                 paddings,
-                                 dilations,
-                                 activation,
-                                 relux_max_limit) {}
+                         const float relux_max_limit);
 
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *filter,
-                  const Tensor *bias,
-                  Tensor *output,
-                  StatsFuture *future);
+                        const Tensor *filter,
+                        const Tensor *bias,
+                        Tensor *output,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLDepthwiseConv2dKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

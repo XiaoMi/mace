@@ -22,10 +22,6 @@
 #include "mace/public/mace.h"
 #include "mace/kernels/kernel.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -91,20 +87,24 @@ struct SpaceToDepthOpFunctor : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLSpaceToDepthKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLSpaceToDepthKernel);
+};
 template<typename T>
 struct SpaceToDepthOpFunctor<DeviceType::GPU, T> : OpKernel {
   explicit SpaceToDepthOpFunctor(OpKernelContext *context,
-                                 const int block_size)
-      : OpKernel(context), block_size_(block_size) {}
+                                 const int block_size);
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);
 
-  const int block_size_;
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLSpaceToDepthKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

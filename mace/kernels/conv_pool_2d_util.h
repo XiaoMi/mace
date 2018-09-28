@@ -84,12 +84,19 @@ void CalcNCHWOutputSize(const index_t *input_shape,
                     const RoundType round_type,
                     index_t *output_shape);
 
+void CalcNCHWInputShape(const index_t *output_shape,
+                        const index_t *filter_shape,
+                        const int *strides,
+                        const int *dilations,
+                        index_t *input_shape);
+
 void CalPaddingSize(const index_t *input_shape,   // NCHW
                     const index_t *filter_shape,  // OIHW
                     const int *dilations,
                     const int *strides,
                     Padding padding,
                     int *padding_size);
+
 
 MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input,
                                const int pad_top, const int pad_bottom,

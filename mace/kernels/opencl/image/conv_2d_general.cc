@@ -21,6 +21,9 @@
 
 namespace mace {
 namespace kernels {
+namespace opencl {
+namespace image {
+
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
 const uint32_t kernel_cache_size = (4 + 4 + 4) * 4 * 4;
@@ -79,8 +82,7 @@ extern MaceStatus Conv2dOpencl(OpKernelContext *context,
                                std::vector<index_t> *prev_input_shape,
                                Tensor *output,
                                StatsFuture *future,
-                               uint32_t *kwg_size,
-                               std::unique_ptr<BufferBase> *kernel_error) {
+                               uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -92,11 +94,12 @@ extern MaceStatus Conv2dOpencl(OpKernelContext *context,
   const index_t width_blocks = RoundUpDiv4(width);
 
   auto runtime = context->device()->opencl_runtime();
+  MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error, context);
-    NON_UNIFORM_WG_CONFIG;
+    MACE_OUT_OF_RANGE_CONFIG;
+    MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("conv_2d");
     built_options.emplace("-Dconv_2d=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
@@ -131,12 +134,13 @@ extern MaceStatus Conv2dOpencl(OpKernelContext *context,
   const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
                            static_cast<uint32_t>(width_blocks),
                            static_cast<uint32_t>(height * batch)};
+  MACE_OUT_OF_RANGE_INIT(*kernel);
 
   // Support different input size
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG_PTR;
-    SET_3D_GWS_ARGS_PTR(kernel, gws);
+    MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
+    MACE_SET_3D_GWS_ARGS(*kernel, gws);
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -168,9 +172,11 @@ extern MaceStatus Conv2dOpencl(OpKernelContext *context,
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
 
-  OUT_OF_RANGE_VALIDATION(*kernel_error);
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MACE_SUCCESS;
 }
 
+}  // namespace image
+}  // namespace opencl
 }  // namespace kernels
 }  // namespace mace

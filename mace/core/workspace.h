@@ -52,8 +52,6 @@ class Workspace {
                              Device *device,
                              const unsigned char *model_data);
 
-  ScratchBuffer *GetScratchBuffer(DeviceType device_type);
-
   void RemoveUnusedBuffer();
 
   void RemoveAndReloadBuffer(const NetDef &net_def,
@@ -64,15 +62,12 @@ class Workspace {
   MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,
                                       Device *device);
 
-  Device *device_;
-
   TensorMap tensor_map_;
 
   std::unique_ptr<BufferBase> tensor_buffer_;
 
   PreallocatedPooledAllocator preallocated_allocator_;
 
-  std::unique_ptr<ScratchBuffer> host_scratch_buffer_;
   bool fused_buffer_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Workspace);

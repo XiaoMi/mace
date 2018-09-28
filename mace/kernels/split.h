@@ -25,28 +25,17 @@
 #include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
-struct SplitFunctorBase : OpKernel {
-  SplitFunctorBase(OpKernelContext *context, const int32_t axis)
+template<DeviceType D, typename T>
+struct SplitFunctor : OpKernel {
+  SplitFunctor(OpKernelContext *context, const int32_t axis)
       : OpKernel(context), axis_(axis) {}
 
-  int32_t axis_;
-};
-
-template<DeviceType D, typename T>
-struct SplitFunctor : SplitFunctorBase {
-  SplitFunctor(OpKernelContext *context, const int32_t axis)
-      : SplitFunctorBase(context, axis) {}
-
   MaceStatus operator()(const Tensor *input,
-                  const std::vector<Tensor *> &output_list,
-                  StatsFuture *future) {
+                        const std::vector<Tensor *> &output_list,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     const index_t input_channels = input->dim(axis_);
     const size_t outputs_count = output_list.size();
@@ -88,20 +77,28 @@ struct SplitFunctor : SplitFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  int32_t axis_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLSplitKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const std::vector<Tensor *> &output_list,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLSplitKernel);
+};
 template<typename T>
-struct SplitFunctor<DeviceType::GPU, T> : SplitFunctorBase {
-  SplitFunctor(OpKernelContext *context, const int32_t axis)
-      : SplitFunctorBase(context, axis) {}
+struct SplitFunctor<DeviceType::GPU, T> : OpKernel {
+  SplitFunctor(OpKernelContext *context, const int32_t axis);
 
   MaceStatus operator()(const Tensor *input,
                         const std::vector<Tensor *> &output_list,
                         StatsFuture *future);
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
+  std::unique_ptr<OpenCLSplitKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

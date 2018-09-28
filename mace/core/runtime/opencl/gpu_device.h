@@ -37,9 +37,11 @@ class GPUDevice : public CPUDevice {
   OpenCLRuntime *opencl_runtime() override;
   Allocator *allocator() override;
   DeviceType device_type() const override;
+  ScratchBuffer *scratch_buffer() override;
  private:
   std::unique_ptr<OpenCLRuntime> runtime_;
   std::unique_ptr<OpenCLAllocator> allocator_;
+  std::unique_ptr<ScratchBuffer> scratch_buffer_;
 };
 
 }  // namespace mace

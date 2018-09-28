@@ -13,139 +13,33 @@
 // limitations under the License.
 
 #include "mace/kernels/deconv_2d.h"
-#include "mace/kernels/opencl/helper.h"
+#include "mace/kernels/opencl/image/deconv_2d.h"
 
 namespace mace {
 namespace kernels {
 
-namespace {
-
-MaceStatus Deconv2dOpencl(OpKernelContext *context,
-                          cl::Kernel *kernel,
-                          const Tensor *input,
-                          const Tensor *filter,
-                          const Tensor *bias,
-                          const int *strides,
-                          const int *paddings,
-                          const ActivationType activation,
-                          const float relux_max_limit,
-                          const DataType dt,
-                          std::vector<index_t> *prev_input_shape,
-                          Tensor *output,
-                          StatsFuture *future,
-                          uint32_t *kwg_size,
-                          std::unique_ptr<BufferBase> *kernel_error) {
-  const index_t batch = output->dim(0);
-  const index_t height = output->dim(1);
-  const index_t width = output->dim(2);
-  const index_t channels = output->dim(3);
-  const index_t input_channels = input->dim(3);
-
-  const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t input_channel_blocks = RoundUpDiv4(input_channels);
-  const int stride_h = strides[0];
-  const int stride_w = strides[1];
-  MACE_CHECK(stride_w > 0 && stride_h > 0, "strides should be > 0.");
-#define MACE_WIDTH_BLK 5
-  const index_t n_strides = (width + stride_w - 1) / stride_w;
-  const index_t width_blocks =
-      ((n_strides + MACE_WIDTH_BLK - 1) / MACE_WIDTH_BLK) * stride_w;
-  const float stride_h_r = 1.f / static_cast<float>(stride_h);
-  const float stride_w_r = 1.f / static_cast<float>(stride_w);
-  const int padding_h = (paddings[0] + 1) >> 1;
-  const int padding_w = (paddings[1] + 1) >> 1;
-
-  const int align_h = stride_h - 1 - padding_h;
-  const int align_w = stride_w - 1 - padding_w;
-  const int kernel_size = filter->dim(2) * filter->dim(3);
-
-  auto runtime = context->device()->opencl_runtime();
-
-  if (kernel->get() == nullptr) {
-    std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error, context);
-    NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("deconv_2d");
-    built_options.emplace("-Ddeconv_2d=" + kernel_name);
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
-    built_options.emplace(bias != nullptr ? "-DBIAS" : "");
-    switch (activation) {
-      case NOOP:
-        break;
-      case RELU:
-        built_options.emplace("-DUSE_RELU");
-        break;
-      case RELUX:
-        built_options.emplace("-DUSE_RELUX");
-        break;
-      case TANH:
-        built_options.emplace("-DUSE_TANH");
-        break;
-      case SIGMOID:
-        built_options.emplace("-DUSE_SIGMOID");
-        break;
-      default:
-        LOG(FATAL) << "Unknown activation type: " << activation;
-    }
-
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("deconv_2d", kernel_name,
-                                              built_options, kernel));
-
-    *kwg_size =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
+template <typename T>
+Deconv2dFunctor<DeviceType::GPU, T>::Deconv2dFunctor(
+    OpKernelContext *context,
+    const std::vector<int> &strides,
+    const Padding &padding_type,
+    const std::vector<int> &paddings,
+    const std::vector<index_t> &output_shape,
+    const ActivationType activation,
+    const float relux_max_limit)
+    : Deconv2dFunctorBase(context,
+                          strides,
+                          padding_type,
+                          paddings,
+                          output_shape,
+                          activation,
+                          relux_max_limit) {
+  if (context->device()->opencl_runtime()->UseImageMemory()) {
+    kernel_.reset(new opencl::image::Deconv2dKernel<T>);
+  } else {
+    MACE_NOT_IMPLEMENTED;
   }
-
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(width_blocks),
-                           static_cast<uint32_t>(height * batch)};
-
-  if (!IsVecEqual(*prev_input_shape, input->shape())) {
-    uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG_PTR;
-    SET_3D_GWS_ARGS_PTR(kernel, gws);
-    kernel->setArg(idx++, *(input->opencl_image()));
-    kernel->setArg(idx++, *(filter->opencl_image()));
-    if (bias != nullptr) {
-      kernel->setArg(idx++, *(bias->opencl_image()));
-    }
-    kernel->setArg(idx++, *(output->opencl_image()));
-    kernel->setArg(idx++, relux_max_limit);
-    kernel->setArg(idx++, static_cast<int32_t>(input->dim(1)));
-    kernel->setArg(idx++, static_cast<int32_t>(input->dim(2)));
-    kernel->setArg(idx++, static_cast<int32_t>(input->dim(3)));
-    kernel->setArg(idx++, static_cast<int32_t>(height));
-    kernel->setArg(idx++, static_cast<int32_t>(width));
-    kernel->setArg(idx++, static_cast<int32_t>(channels));
-    kernel->setArg(idx++, static_cast<int32_t>(stride_h));
-    kernel->setArg(idx++, static_cast<int32_t>(stride_w));
-    kernel->setArg(idx++, stride_h_r);
-    kernel->setArg(idx++, stride_w_r);
-    kernel->setArg(idx++, static_cast<int32_t>(align_h));
-    kernel->setArg(idx++, static_cast<int32_t>(align_w));
-    kernel->setArg(idx++, static_cast<int32_t>(padding_h));
-    kernel->setArg(idx++, static_cast<int32_t>(padding_w));
-    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(2)));
-    kernel->setArg(idx++, static_cast<int32_t>(filter->dim(3)));
-    kernel->setArg(idx++, static_cast<int32_t>(kernel_size));
-    kernel->setArg(idx++, static_cast<int32_t>(input_channel_blocks));
-    kernel->setArg(idx++, static_cast<int32_t>(channel_blocks));
-
-    *prev_input_shape = input->shape();
-  }
-
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, *kwg_size);
-  std::string tuning_key =
-      Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
-
-  OUT_OF_RANGE_VALIDATION(*kernel_error);
-  return MACE_SUCCESS;
 }
-
-}  // namespace
 
 template <typename T>
 MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
@@ -188,16 +82,10 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
                          output_shape.data(),
                          paddings.data());
   }
-  std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
-  return Deconv2dOpencl(context_, &kernel_, input, filter, bias,
-                        strides_.data(), paddings.data(), activation_,
-                        relux_max_limit_, DataTypeToEnum<T>::value,
-                        &input_shape_, output, future,
-                        &kwg_size_, &kernel_error_);
+  return kernel_->Compute(context_, input, filter, bias,
+                          strides_.data(), paddings.data(), activation_,
+                          relux_max_limit_, output_shape, output, future);
 }
 
 template struct Deconv2dFunctor<DeviceType::GPU, float>;

@@ -33,6 +33,12 @@ namespace mace {
   CLASSNAME &operator=(const CLASSNAME &) = delete
 #endif
 
+#ifndef MACE_VIRTUAL_EMPTY_DESTRUCTOR
+#define MACE_VIRTUAL_EMPTY_DESTRUCTOR(CLASSNAME) \
+ public:                                         \
+  virtual ~CLASSNAME() {}
+#endif
+
 template <typename Integer>
 Integer RoundUp(Integer i, Integer factor) {
   return (i + factor - 1) / factor * factor;

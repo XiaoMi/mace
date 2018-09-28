@@ -120,7 +120,10 @@ class OpTestContext {
       bool use_gemmlowp = true);
   std::shared_ptr<GPUContext> gpu_context() const;
   Device *GetDevice(DeviceType device_type);
-
+  std::vector<MemoryType> opencl_mem_types();
+  void SetOCLBufferTestFlag();
+  void SetOCLImageTestFlag();
+  void SetOCLImageAndBufferTestFlag();
  private:
   OpTestContext(int num_threads,
                 CPUAffinityPolicy cpu_affinity_policy,
@@ -128,6 +131,7 @@ class OpTestContext {
   MACE_DISABLE_COPY_AND_ASSIGN(OpTestContext);
 
   std::shared_ptr<GPUContext> gpu_context_;
+  std::vector<MemoryType> opencl_mem_types_;
   std::map<DeviceType, std::unique_ptr<Device>> device_map_;
 };
 
@@ -459,8 +463,19 @@ class OpsTestNet {
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
   MaceStatus RunOp(DeviceType device) {
-    Setup(device);
-    return Run();
+    if (device == DeviceType::GPU) {
+      auto opencl_mem_types = OpTestContext::Get()->opencl_mem_types();
+      for (auto type : opencl_mem_types) {
+        OpTestContext::Get()->GetDevice(device)
+            ->opencl_runtime()->set_mem_type(type);
+        Setup(device);
+        MACE_RETURN_IF_ERROR(Run());
+      }
+      return MACE_SUCCESS;
+    } else {
+      Setup(device);
+      return Run();
+    }
   }
 
   // DEPRECATED(liyin):
@@ -512,6 +527,7 @@ class OpsTestBase : public ::testing::Test {
   }
 
   virtual void TearDown() {
+    OpTestContext::Get()->SetOCLImageTestFlag();
   }
 };
 
@@ -747,7 +763,7 @@ void BufferToImage(OpsTestNet *net,
                    const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 
-  OpDefBuilder("BufferToImage", "BufferToImageTest")
+  OpDefBuilder("BufferTransform", "BufferTransformTest")
     .Input(input_name)
     .Output(output_name)
     .AddIntArg("buffer_type", type)
@@ -755,7 +771,7 @@ void BufferToImage(OpsTestNet *net,
     .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
     .Finalize(net->NewOperatorDef());
 
-  // Run
+  // TODO(liuqi): Use AddNewOperatorDef, and run all ops with same NetDef.
   net->RunOp(D);
 
   net->Sync();
@@ -769,7 +785,7 @@ void ImageToBuffer(OpsTestNet *net,
                    const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 
-  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
     .Input(input_name)
     .Output(output_name)
     .AddIntArg("buffer_type", type)

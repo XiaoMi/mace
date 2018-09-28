@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/kernels/activation.h"
-#include "mace/kernels/depthwise_conv2d.h"
-#include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
+#include "mace/kernels/opencl/image/depthwise_conv2d.h"
+
+#include <algorithm>
+#include <set>
+#include <string>
 
 namespace mace {
 namespace kernels {
+namespace opencl {
+namespace image {
+namespace depthwise {
 
 namespace {
 // (inputs + weights + outputs) * array_size * sizeof(float)
@@ -60,22 +63,21 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 }  // namespace
 
-static MaceStatus DepthwiseConv2d(OpKernelContext *context,
-                                  cl::Kernel *kernel,
-                                  const Tensor *input,   // NHWC
-                                  const Tensor *filter,  // HWIM
-                                  const Tensor *bias,
-                                  const int stride,
-                                  const int *paddings,
-                                  const int *dilations,
-                                  const ActivationType activation,
-                                  const float relux_max_limit,
-                                  const DataType dt,
-                                  std::vector<index_t> *prev_input_shape,
-                                  Tensor *output,
-                                  StatsFuture *future,
-                                  uint32_t *kwg_size,
-                                  std::unique_ptr<BufferBase> *kernel_error) {
+MaceStatus DepthwiseConv2d(OpKernelContext *context,
+                           cl::Kernel *kernel,
+                           const Tensor *input,   // NHWC
+                           const Tensor *filter,  // HWIM
+                           const Tensor *bias,
+                           const int stride,
+                           const int *paddings,
+                           const int *dilations,
+                           const ActivationType activation,
+                           const float relux_max_limit,
+                           const DataType dt,
+                           std::vector<index_t> *prev_input_shape,
+                           Tensor *output,
+                           StatsFuture *future,
+                           uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);
@@ -93,11 +95,12 @@ static MaceStatus DepthwiseConv2d(OpKernelContext *context,
                            static_cast<uint32_t>(height * batch)};
 
   auto runtime = context->device()->opencl_runtime();
+  MACE_OUT_OF_RANGE_DEFINITION;
 
   if (kernel->get() == nullptr) {
     std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(*kernel_error, context);
-    NON_UNIFORM_WG_CONFIG;
+    MACE_OUT_OF_RANGE_CONFIG;
+    MACE_NON_UNIFORM_WG_CONFIG;
     std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d");
     if (stride == 1 && dilations[0] == 1 && dilations[1] == 1) {
       kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_conv2d_s1");
@@ -135,6 +138,7 @@ static MaceStatus DepthwiseConv2d(OpKernelContext *context,
     *kwg_size =
         static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(*kernel));
   }
+  MACE_OUT_OF_RANGE_INIT(*kernel);
   if (!IsVecEqual(*prev_input_shape, input->shape())) {
     const index_t input_height = input->dim(1);
     const index_t input_width = input->dim(2);
@@ -147,8 +151,8 @@ static MaceStatus DepthwiseConv2d(OpKernelContext *context,
                input_channels);
 
     uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG_PTR;
-    SET_3D_GWS_ARGS_PTR(kernel, gws);
+    MACE_OUT_OF_RANGE_SET_ARGS(*kernel);
+    MACE_SET_3D_GWS_ARGS(*kernel, gws);
     kernel->setArg(idx++, *(input->opencl_image()));
     kernel->setArg(idx++, *(filter->opencl_image()));
     if (bias != nullptr) {
@@ -179,60 +183,12 @@ static MaceStatus DepthwiseConv2d(OpKernelContext *context,
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
 
-  OUT_OF_RANGE_VALIDATION(*kernel_error);
+  MACE_OUT_OF_RANGE_VALIDATION;
   return MACE_SUCCESS;
 }
 
-template <typename T>
-MaceStatus DepthwiseConv2dFunctor<DeviceType::GPU, T>::operator()(
-    const Tensor *input,
-    const Tensor *filter, /* MIHW */
-    const Tensor *bias,
-    Tensor *output,
-    StatsFuture *future) {
-  index_t kernel_h = filter->dim(2);
-  index_t kernel_w = filter->dim(3);
-  if (strides_[0] != strides_[1]) {
-    LOG(FATAL) << "GPU depthwise conv2d kernel with "
-               << "filter" << kernel_h << "x" << kernel_w << ","
-               << " stride " << strides_[0] << "x" << strides_[1]
-               << " is not implemented yet.";
-  }
-
-  // Create a fake conv_2d filter to calculate the paddings and output size
-  std::vector<index_t> fake_filter_shape(4);
-  fake_filter_shape[0] = filter->dim(0) * filter->dim(1);
-  fake_filter_shape[1] = filter->dim(1);
-  fake_filter_shape[2] = filter->dim(2);
-  fake_filter_shape[3] = filter->dim(3);
-
-  std::vector<index_t> output_shape(4);
-  std::vector<int> paddings(2);
-  if (paddings_.empty()) {
-    kernels::CalcNHWCPaddingAndOutputSize(
-        input->shape().data(), fake_filter_shape.data(), dilations_, strides_,
-        padding_type_, output_shape.data(), paddings.data());
-  } else {
-    paddings = paddings_;
-    CalcOutputSize(input->shape().data(), fake_filter_shape.data(),
-                   paddings_.data(), dilations_, strides_, RoundType::FLOOR,
-                   output_shape.data());
-  }
-
-  std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
-  MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
-
-  return DepthwiseConv2d(
-      context_,
-      &kernel_, input, filter, bias, strides_[0], paddings.data(), dilations_,
-      activation_, relux_max_limit_, DataTypeToEnum<T>::value, &input_shape_,
-      output, future, &kwg_size_, &kernel_error_);
-}
-
-template struct DepthwiseConv2dFunctor<DeviceType::GPU, float>;
-template struct DepthwiseConv2dFunctor<DeviceType::GPU, half>;
-
+}  // namespace depthwise
+}  // namespace image
+}  // namespace opencl
 }  // namespace kernels
 }  // namespace mace

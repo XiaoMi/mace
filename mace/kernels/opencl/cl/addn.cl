@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void addn(KERNEL_ERROR_PARAMS
+__kernel void addn(OUT_OF_RANGE_PARAMS
                    GLOBAL_WORK_GROUP_SIZE_DIM2
                    __read_only image2d_t input0, /* [c%4 * w * c/4, h * b] */
                    __read_only image2d_t input1,

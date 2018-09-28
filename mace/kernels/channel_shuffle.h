@@ -71,20 +71,24 @@ struct ChannelShuffleFunctor : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLChannelShuffleKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLChannelShuffleKernel);
+};
 template<typename T>
 struct ChannelShuffleFunctor<DeviceType::GPU, T> : OpKernel {
-  ChannelShuffleFunctor(OpKernelContext *context, const int groups)
-      : OpKernel(context), groups_(groups) {}
+  ChannelShuffleFunctor(OpKernelContext *context, const int groups);
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  const int groups_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLChannelShuffleKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

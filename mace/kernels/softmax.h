@@ -30,10 +30,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/kernels/quantize.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -356,17 +352,23 @@ struct SoftmaxFunctor<DeviceType::CPU, uint8_t> : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLSoftmaxKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *logits,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLSoftmaxKernel);
+};
 template<typename T>
 struct SoftmaxFunctor<DeviceType::GPU, T> : OpKernel {
-  explicit SoftmaxFunctor(OpKernelContext *context) : OpKernel(context) {}
+  explicit SoftmaxFunctor(OpKernelContext *context);
   MaceStatus operator()(const Tensor *logits,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLSoftmaxKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

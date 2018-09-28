@@ -26,41 +26,22 @@
 #include "mace/kernels/activation.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
-
-struct BatchNormFunctorBase : OpKernel {
-  BatchNormFunctorBase(OpKernelContext *context,
-                       bool folded_constant,
-                       const ActivationType activation,
-                       const float relux_max_limit)
-    : OpKernel(context),
-      folded_constant_(folded_constant),
-      activation_(activation),
-      relux_max_limit_(relux_max_limit) {}
-
-  const bool folded_constant_;
-  const ActivationType activation_;
-  const float relux_max_limit_;
-};
 
 template<DeviceType D, typename T>
 struct BatchNormFunctor;
 
 template<>
-struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
+struct BatchNormFunctor<DeviceType::CPU, float> : OpKernel {
   BatchNormFunctor(OpKernelContext *context,
                    const bool folded_constant,
                    const ActivationType activation,
                    const float relux_max_limit)
-      : BatchNormFunctorBase(context,
-                             folded_constant,
-                             activation,
-                             relux_max_limit) {}
+      : OpKernel(context),
+        folded_constant_(folded_constant),
+        activation_(activation),
+        relux_max_limit_(relux_max_limit) {}
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *scale,
@@ -133,31 +114,42 @@ struct BatchNormFunctor<DeviceType::CPU, float> : BatchNormFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  const bool folded_constant_;
+  const ActivationType activation_;
+  const float relux_max_limit_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLBatchNormKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *scale,
+      const Tensor *offset,
+      const Tensor *mean,
+      const Tensor *var,
+      const float epsilon,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLBatchNormKernel);
+};
 template<typename T>
-struct BatchNormFunctor<DeviceType::GPU, T> : BatchNormFunctorBase {
+struct BatchNormFunctor<DeviceType::GPU, T> : OpKernel {
   BatchNormFunctor(OpKernelContext *context,
                    const bool folded_constant,
                    const ActivationType activation,
-                   const float relux_max_limit)
-      : BatchNormFunctorBase(context,
-                             folded_constant,
-                             activation,
-                             relux_max_limit) {}
+                   const float relux_max_limit);
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *scale,
-                  const Tensor *offset,
-                  const Tensor *mean,
-                  const Tensor *var,
-                  const float epsilon,
-                  Tensor *output,
-                  StatsFuture *future);
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+                        const Tensor *scale,
+                        const Tensor *offset,
+                        const Tensor *mean,
+                        const Tensor *var,
+                        const float epsilon,
+                        Tensor *output,
+                        StatsFuture *future);
+  std::unique_ptr<OpenCLBatchNormKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

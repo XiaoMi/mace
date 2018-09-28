@@ -13,122 +13,29 @@
 // limitations under the License.
 
 #include "mace/kernels/resize_bilinear.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/core/tensor.h"
-#include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
-#include "mace/utils/utils.h"
+#include "mace/kernels/opencl/image/resize_bilinear.h"
 
 namespace mace {
 namespace kernels {
 
-namespace {
-std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
-                              const uint32_t *gws,
-                              const uint32_t kwg_size) {
-  std::vector<uint32_t> lws(4, 0);
-  if (kwg_size == 0) {
-    lws[0] = lws[1] = lws[2] = 1;
+template <typename T>
+ResizeBilinearFunctor<DeviceType::GPU, T>::ResizeBilinearFunctor(
+    OpKernelContext *context,
+    const std::vector<index_t> &size,
+    bool align_corners) : OpKernel(context) {
+  MACE_CHECK(size.size() == 2);
+  if (context->device()->opencl_runtime()->UseImageMemory()) {
+    kernel_.reset(new opencl::image::ResizeBilinearKernel<T>(align_corners,
+                                                             size[0],
+                                                             size[1]));
   } else {
-    uint64_t
-        cache_size = runtime->device_global_mem_cache_size();
-    uint32_t base = std::max<uint32_t>(cache_size / kBaseGPUMemCacheSize, 1);
-    lws[1] = std::min<uint32_t>(gws[1], kwg_size);
-    if (lws[1] >= base) {
-      lws[0] = std::min<uint32_t>(gws[0], base);
-    } else {
-      lws[0] = gws[0] / 8;
-      if (lws[0] == 0) {
-        lws[0] = gws[0];
-      }
-    }
-    lws[0] = std::min<uint32_t>(lws[0], kwg_size / lws[1]);
-    const uint32_t lws_size = lws[0] * lws[1];
-    lws[2] = gws[2] / 8;
-    if (lws[2] == 0) {
-      lws[2] = gws[2];
-    }
-    lws[2] = std::max<uint32_t>(std::min<uint32_t>(lws[2], kwg_size / lws_size),
-                                1);
+    MACE_NOT_IMPLEMENTED;
   }
-  return lws;
 }
-
-}  // namespace
-
 template <typename T>
 MaceStatus ResizeBilinearFunctor<DeviceType::GPU, T>::operator()(
     const Tensor *input, Tensor *output, StatsFuture *future) {
-  const index_t batch = input->dim(0);
-  const index_t in_height = input->dim(1);
-  const index_t in_width = input->dim(2);
-  const index_t channels = input->dim(3);
-
-  const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t out_height = out_height_;
-  const index_t out_width = out_width_;
-
-  const uint32_t gws[3] = {static_cast<uint32_t>(channel_blocks),
-                           static_cast<uint32_t>(out_width),
-                           static_cast<uint32_t>(out_height * batch)};
-
-  auto runtime = context_->device()->opencl_runtime();
-
-  if (kernel_.get() == nullptr) {
-    std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
-    NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("resize_bilinear_nocache");
-    built_options.emplace("-Dresize_bilinear_nocache=" + kernel_name);
-    auto dt = DataTypeToEnum<T>::value;
-    built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
-    built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
-    MACE_RETURN_IF_ERROR(
-        runtime->BuildKernel("resize_bilinear",
-                             kernel_name,
-                             built_options,
-                             &kernel_));
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  }
-  if (!IsVecEqual(input_shape_, input->shape())) {
-    MACE_CHECK(out_height > 0 && out_width > 0);
-    std::vector<index_t> output_shape{batch, out_height, out_width, channels};
-
-    std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                    &output_image_shape);
-    MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
-
-    float height_scale =
-        CalculateResizeScale(in_height, out_height, align_corners_);
-    float width_scale =
-        CalculateResizeScale(in_width, out_width, align_corners_);
-
-    uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG;
-    SET_3D_GWS_ARGS(kernel_);
-    kernel_.setArg(idx++, *(input->opencl_image()));
-    kernel_.setArg(idx++, *(output->opencl_image()));
-    kernel_.setArg(idx++, height_scale);
-    kernel_.setArg(idx++, width_scale);
-    kernel_.setArg(idx++, static_cast<int32_t>(in_height));
-    kernel_.setArg(idx++, static_cast<int32_t>(in_width));
-    kernel_.setArg(idx++, static_cast<int32_t>(out_height));
-
-    input_shape_ = input->shape();
-  }
-
-  const std::vector<uint32_t> lws = LocalWS(runtime, gws, kwg_size_);
-  std::string tuning_key =
-      Concat("resize_bilinear_opencl_kernel", output->dim(0), output->dim(1),
-             output->dim(2), output->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
-
-  OUT_OF_RANGE_VALIDATION(kernel_error_);
-  return MACE_SUCCESS;
+  return kernel_->Compute(context_, input, output, future);
 }
 
 template struct ResizeBilinearFunctor<DeviceType::GPU, float>;

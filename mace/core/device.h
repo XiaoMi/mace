@@ -26,6 +26,8 @@
 
 namespace mace {
 
+class ScratchBuffer;
+
 class Device {
  public:
   virtual ~Device() {}
@@ -37,6 +39,7 @@ class Device {
 
   virtual Allocator *allocator() = 0;
   virtual DeviceType device_type() const = 0;
+  virtual ScratchBuffer *scratch_buffer() = 0;
 };
 
 class CPUDevice : public Device {
@@ -53,9 +56,11 @@ class CPUDevice : public Device {
 
   Allocator *allocator() override;
   DeviceType device_type() const override;
+  ScratchBuffer *scratch_buffer() override;
 
  private:
   std::unique_ptr<CPURuntime> cpu_runtime_;
+  std::unique_ptr<ScratchBuffer> scratch_buffer_;
 };
 
 }  // namespace mace

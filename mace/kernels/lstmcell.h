@@ -35,11 +35,23 @@ namespace kernels {
 template <DeviceType D, typename T>
 struct LSTMCellFunctor;
 
+class OpenCLLSTMCellKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *pre_output,
+      const Tensor *weight,
+      const Tensor *bias,
+      const Tensor *pre_cell,
+      Tensor *cell,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLLSTMCellKernel);
+};
 template <typename T>
 struct LSTMCellFunctor<DeviceType::GPU, T> : OpKernel{
-  LSTMCellFunctor(OpKernelContext *context, T forget_bias)
-      : OpKernel(context),
-        forget_bias_(static_cast<T>(forget_bias)) {}
+  LSTMCellFunctor(OpKernelContext *context, T forget_bias);
   MaceStatus operator()(const Tensor *input,
                         const Tensor *pre_output,
                         const Tensor *weight,
@@ -49,11 +61,7 @@ struct LSTMCellFunctor<DeviceType::GPU, T> : OpKernel{
                         Tensor *output,
                         StatsFuture *future);
 
-  T forget_bias_;
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLLSTMCellKernel> kernel_;
 };
 
 }  // namespace kernels

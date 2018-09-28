@@ -24,31 +24,17 @@
 #include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
-struct CropFunctorBase : OpKernel {
-  CropFunctorBase(OpKernelContext *context,
-                  const int axis,
-                  const std::vector<int> &offset)
-      : OpKernel(context),
-        axis_(axis),
-        offset_(offset) {}
-
-  const int axis_;
-  std::vector<int> offset_;
-};
-
 template <DeviceType D, typename T>
-struct CropFunctor : CropFunctorBase {
+struct CropFunctor : OpKernel {
   CropFunctor(OpKernelContext *context,
               const int axis,
               const std::vector<int> &offset)
-      : CropFunctorBase(context, axis, offset) {}
+      : OpKernel(context),
+        axis_(axis),
+        offset_(offset) {}
 
   void crop_copy(const T* input_data, T* output_data,
                  const std::vector<index_t> &input_shape,
@@ -121,23 +107,31 @@ struct CropFunctor : CropFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  const int axis_;
+  std::vector<int> offset_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLCropKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const std::vector<const Tensor *> &input_list,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLCropKernel);
+};
 template <typename T>
-struct CropFunctor<DeviceType::GPU, T> : CropFunctorBase {
+struct CropFunctor<DeviceType::GPU, T> : OpKernel {
   CropFunctor(OpKernelContext *context,
               const int axis,
-              const std::vector<int> &offset)
-      : CropFunctorBase(context, axis, offset) {}
+              const std::vector<int> &offset);
 
   MaceStatus operator()(const std::vector<const Tensor *> &input_list,
                         Tensor *output,
                         StatsFuture *future);
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLCropKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

@@ -1,6 +1,6 @@
 #include <common.h>
 // Supported data types: half/float
-__kernel void bias_add(KERNEL_ERROR_PARAMS
+__kernel void bias_add(OUT_OF_RANGE_PARAMS
                        GLOBAL_WORK_GROUP_SIZE_DIM3
                        __read_only image2d_t input,
                        __read_only image2d_t bias,

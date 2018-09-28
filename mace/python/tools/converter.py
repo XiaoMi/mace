@@ -106,6 +106,7 @@ def main(unused_args):
     option.winograd = FLAGS.winograd
     option.quantize = FLAGS.quantize
     option.quantize_range_file = FLAGS.quantize_range_file
+    option.cl_mem_type = FLAGS.cl_mem_type
 
     input_node_names = FLAGS.input_node.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
@@ -323,6 +324,11 @@ def parse_args():
         type=str,
         default="",
         help="file path of quantize range for each tensor")
+    parser.add_argument(
+        "--cl_mem_type",
+        type=str,
+        default="image",
+        help="which memory type to use.[image|buffer]")
     return parser.parse_known_args()
 
 

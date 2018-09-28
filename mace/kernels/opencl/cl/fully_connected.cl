@@ -1,7 +1,7 @@
 #include <common.h>
 
 // output = weight * input + bias
-__kernel void fully_connected(KERNEL_ERROR_PARAMS
+__kernel void fully_connected(OUT_OF_RANGE_PARAMS
                               GLOBAL_WORK_GROUP_SIZE_DIM2
                               __read_only image2d_t input,
                               __read_only image2d_t weight,
@@ -64,7 +64,7 @@ __kernel void fully_connected(KERNEL_ERROR_PARAMS
 }
 
 // output = weight * input + bias
-__kernel void fully_connected_width(KERNEL_ERROR_PARAMS
+__kernel void fully_connected_width(OUT_OF_RANGE_PARAMS
                                     GLOBAL_WORK_GROUP_SIZE_DIM3
                                     __read_only image2d_t input,
                                     __read_only image2d_t weight,

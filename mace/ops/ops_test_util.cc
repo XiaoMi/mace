@@ -27,18 +27,11 @@ OpTestContext *OpTestContext::Get(int num_threads,
   return &instance;
 }
 
-std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
-  return gpu_context_;
-}
-
-Device *OpTestContext::GetDevice(DeviceType device_type) {
-  return device_map_[device_type].get();
-}
-
 OpTestContext::OpTestContext(int num_threads,
                              CPUAffinityPolicy cpu_affinity_policy,
                              bool use_gemmlowp)
-    : gpu_context_(new GPUContext()) {
+    : gpu_context_(new GPUContext()),
+      opencl_mem_types_({MemoryType::GPU_IMAGE}) {
   device_map_[DeviceType::CPU] = std::unique_ptr<Device>(
       new CPUDevice(num_threads,
                     cpu_affinity_policy,
@@ -48,6 +41,30 @@ OpTestContext::OpTestContext(int num_threads,
       new GPUDevice(gpu_context_->opencl_tuner(),
                     gpu_context_->opencl_cache_storage(),
                     GPUPriorityHint::PRIORITY_NORMAL));
+}
+
+std::shared_ptr<GPUContext> OpTestContext::gpu_context() const {
+  return gpu_context_;
+}
+
+Device *OpTestContext::GetDevice(DeviceType device_type) {
+  return device_map_[device_type].get();
+}
+
+std::vector<MemoryType> OpTestContext::opencl_mem_types() {
+  return opencl_mem_types_;
+}
+
+void OpTestContext::SetOCLBufferTestFlag() {
+  opencl_mem_types_ = {MemoryType::GPU_BUFFER};
+}
+
+void OpTestContext::SetOCLImageTestFlag() {
+  opencl_mem_types_ = {MemoryType::GPU_IMAGE};
+}
+
+void OpTestContext::SetOCLImageAndBufferTestFlag() {
+  opencl_mem_types_ = {MemoryType::GPU_IMAGE, MemoryType::GPU_BUFFER};
 }
 
 }  // namespace test

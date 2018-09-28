@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void split(KERNEL_ERROR_PARAMS
+__kernel void split(OUT_OF_RANGE_PARAMS
                     GLOBAL_WORK_GROUP_SIZE_DIM3
                     __read_only image2d_t input,
                     __private const int chan_blk_offset,

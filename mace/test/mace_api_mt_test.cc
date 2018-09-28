@@ -69,7 +69,7 @@ void BufferToImage(const std::string &input_name,
                    const int mode = NetMode::NORMAL) {
   OperatorDef operator_def;
 
-  ops::test::OpDefBuilder("BufferToImage", "BufferToImageOp")
+  ops::test::OpDefBuilder("BufferTransform", "BufferTransformOp")
       .Input(input_name)
       .Output(output_name)
       .AddIntArg("buffer_type", buffer_type)
@@ -93,7 +93,7 @@ void ImageToBuffer(const std::string &input_name,
                    NetDef *net_def) {
   OperatorDef operator_def;
 
-  ops::test::OpDefBuilder("ImageToBuffer", "ImageToBufferOp")
+  ops::test::OpDefBuilder("BufferInverseTransform", "BufferInverseTransformOp")
       .Input(input_name)
       .Output(output_name)
       .AddIntArg("buffer_type", buffer_type)

@@ -28,10 +28,6 @@
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -317,6 +313,22 @@ struct Deconv2dFunctor : Deconv2dFunctorBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLDeconv2dKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *bias,
+      const int *strides,
+      const int *padding_data,
+      const ActivationType activation,
+      const float relux_max_limit,
+      const std::vector<index_t> &output_shape,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLDeconv2dKernel);
+};
 template <typename T>
 struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
   Deconv2dFunctor(OpKernelContext *context,
@@ -325,14 +337,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                   const std::vector<int> &paddings,
                   const std::vector<index_t> &output_shape,
                   const ActivationType activation,
-                  const float relux_max_limit)
-      : Deconv2dFunctorBase(context,
-                            strides,
-                            padding_type,
-                            paddings,
-                            output_shape,
-                            activation,
-                            relux_max_limit) {}
+                  const float relux_max_limit);
 
   MaceStatus operator()(const Tensor *input,
                   const Tensor *filter,
@@ -341,10 +346,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                   Tensor *output,
                   StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLDeconv2dKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

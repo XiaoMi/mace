@@ -80,8 +80,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC:
                 self.transform_global_conv_to_fc,
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
-            TransformerRule.TRANSFORM_BUFFER_IMAGE:
-                self.transform_buffer_image,
+            TransformerRule.ADD_BUFFER_TRANSFORM:
+                self.add_buffer_transform,
             TransformerRule.QUANTIZE_NODES:
                 self.quantize_nodes,
             TransformerRule.ADD_QUANTIZE_TENSOR_RANGE:
@@ -94,6 +94,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.update_float_op_data_type,
             TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES:
                 self.add_mace_input_and_output_nodes,
+            TransformerRule.ADD_OPENCL_INFORMATIONS:
+                self.add_opencl_informations,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
             TransformerRule.CHECK_QUANTIZE_INFO:
                 self.check_quantize_info,
@@ -1269,13 +1271,13 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
-    def buffer_to_image(self, op, input_idx, input_type):
+    def buffer_transform(self, op, input_idx, input_type):
         net = self._model
         input_name = op.input[input_idx]
         op_def = net.op.add()
         op_def.name = input_name.replace(':', '_') + "_b2i"
         output_name = op_def.name
-        op_def.type = MaceKeyword.mace_buffer_to_image
+        op_def.type = MaceKeyword.mace_buffer_transform
         op_def.input.extend([input_name])
         op_def.output.extend([output_name])
 
@@ -1307,68 +1309,69 @@ class Transformer(base_converter.ConverterInterface):
         self._opencl_max_image_size[1] = max(self._opencl_max_image_size[1],
                                              img_shape[1])
 
-    def transform_buffer_image(self):
+    def add_buffer_transform(self):
         if self._option.device != DeviceType.GPU.value:
             return False
 
-        print("Transform buffer to image")
+        print("Add buffer transform op")
 
         net = self._model
         for op in net.op:
             if op.type == MaceOp.Conv2D.name \
                     or op.type == MaceOp.Deconv2D.name:
-                self.buffer_to_image(op, 1, OpenCLBufferType.CONV2D_FILTER)
+                self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
                 if len(op.input) >= 3 and op.type == MaceOp.Conv2D.name:
-                    self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
                 elif len(op.input) >= 4 and op.type == MaceOp.Deconv2D.name:
-                    self.buffer_to_image(op, 3, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.DepthwiseConv2d.name:
-                self.buffer_to_image(op, 1, OpenCLBufferType.DW_CONV2D_FILTER)
+                self.buffer_transform(op, 1, OpenCLBufferType.DW_CONV2D_FILTER)
                 if len(op.input) >= 3:
-                    self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.BiasAdd.name:
-                self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+                self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.Eltwise.name and len(op.input) == 2:
                 if op.input[0] in self._consts \
                         and len(self._consts[op.input[0]].dims) == 1:
-                    self.buffer_to_image(op, 0, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 0, OpenCLBufferType.ARGUMENT)
                 if op.input[1] in self._consts \
                         and len(self._consts[op.input[1]].dims) == 1:
-                    self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.FoldedBatchNorm.name:
-                self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
-                self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
+                self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
                 if len(op.input) >= 4:
-                    self.buffer_to_image(op, 3, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.MatMul.name and \
                     ConverterUtil.get_arg(op,
                                           MaceKeyword.mace_winograd_filter_transformed) is not None:  # noqa
-                self.buffer_to_image(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
+                self.buffer_transform(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
             elif op.type == MaceOp.WinogradInverseTransform.name \
                     and len(op.input) >= 3:
-                self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.FullyConnected.name:
-                self.buffer_to_image(op, 1, OpenCLBufferType.WEIGHT_WIDTH)
+                self.buffer_transform(op, 1, OpenCLBufferType.WEIGHT_WIDTH)
                 if len(op.input) >= 3:
-                    self.buffer_to_image(op, 2, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.Activation.name:
                 if ConverterUtil.get_arg(op,
                                          MaceKeyword.mace_activation_type_str).s == ActivationType.PRELU.name:  # noqa
-                    self.buffer_to_image(op, 1, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.LSTMCell.name:
                 if op.input[1] in self._consts:
-                    self.buffer_to_image(op, 1,
-                                         OpenCLBufferType.IN_OUT_CHANNEL)
-                self.buffer_to_image(op, 2, OpenCLBufferType.IN_OUT_CHANNEL)
-                self.buffer_to_image(op, 3, OpenCLBufferType.ARGUMENT)
+                    self.buffer_transform(op, 1,
+                                          OpenCLBufferType.IN_OUT_CHANNEL)
+                self.buffer_transform(op, 2, OpenCLBufferType.IN_OUT_CHANNEL)
+                self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
                 if op.input[4] in self._consts:
-                    self.buffer_to_image(op, 4,
-                                         OpenCLBufferType.IN_OUT_CHANNEL)
+                    self.buffer_transform(op, 4,
+                                          OpenCLBufferType.IN_OUT_CHANNEL)
 
         # Add OpenCL max image size
-        arg = net.arg.add()
-        arg.name = MaceKeyword.mace_opencl_max_image_size
-        arg.ints.extend(self._opencl_max_image_size)
+        if self._option.cl_mem_type == "image":
+            arg = net.arg.add()
+            arg.name = MaceKeyword.mace_opencl_max_image_size
+            arg.ints.extend(self._opencl_max_image_size)
 
         for input_node in self._option.input_nodes.values():
             new_input_name = MaceKeyword.mace_input_node_name \
@@ -1376,7 +1379,7 @@ class Transformer(base_converter.ConverterInterface):
             op_def = self._model.op.add()
 
             op_def.name = self.normalize_op_name(input_node.name)
-            op_def.type = MaceKeyword.mace_buffer_to_image
+            op_def.type = MaceKeyword.mace_buffer_transform
             op_def.input.extend([new_input_name])
             op_def.output.extend([input_node.name])
             output_shape = op_def.output_shape.add()
@@ -1394,7 +1397,7 @@ class Transformer(base_converter.ConverterInterface):
                           + '_' + output_node.name
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(output_name)
-            op_def.type = MaceKeyword.mace_image_to_buffer
+            op_def.type = MaceKeyword.mace_buffer_inverse_transform
             op_def.input.extend([output_node.name])
             op_def.output.extend([output_name])
             if output_node.shape:
@@ -1920,3 +1923,16 @@ class Transformer(base_converter.ConverterInterface):
                 and op.type != MaceOp.Dequantize.name):  # noqa
                 mace_check(len(op.output) == len(op.quantize_info),
                            "missing quantize info: %s" % op)
+
+    def add_opencl_informations(self):
+        if self._option.device != DeviceType.GPU.value:
+            return False
+
+        print("Add OpenCL informations")
+
+        net = self._model
+
+        arg = net.arg.add()
+        arg.name = MaceKeyword.mace_opencl_mem_type
+        arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
+            else mace_pb2.GPU_BUFFER

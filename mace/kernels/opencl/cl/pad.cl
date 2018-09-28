@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void pad(KERNEL_ERROR_PARAMS
+__kernel void pad(OUT_OF_RANGE_PARAMS
                   GLOBAL_WORK_GROUP_SIZE_DIM3
                   __read_only image2d_t input,
                   __write_only image2d_t output,
