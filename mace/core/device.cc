@@ -14,6 +14,8 @@
 
 #include "mace/core/device.h"
 
+#include "mace/core/buffer.h"
+
 namespace mace {
 
 CPUDevice::CPUDevice(const int num_threads,
@@ -21,7 +23,8 @@ CPUDevice::CPUDevice(const int num_threads,
                      const bool use_gemmlowp)
     : cpu_runtime_(new CPURuntime(num_threads,
                                   policy,
-                                  use_gemmlowp)) {}
+                                  use_gemmlowp)),
+      scratch_buffer_(new ScratchBuffer(GetCPUAllocator())) {}
 
 CPUDevice::~CPUDevice() = default;
 
@@ -31,6 +34,7 @@ CPURuntime *CPUDevice::cpu_runtime() {
 
 #ifdef MACE_ENABLE_OPENCL
 OpenCLRuntime *CPUDevice::opencl_runtime() {
+  LOG(FATAL) << "CPU device should not call OpenCL Runtime";
   return nullptr;
 }
 #endif
@@ -41,6 +45,10 @@ Allocator *CPUDevice::allocator() {
 
 DeviceType CPUDevice::device_type() const {
   return DeviceType::CPU;
+}
+
+ScratchBuffer *CPUDevice::scratch_buffer() {
+  return scratch_buffer_.get();
 }
 
 }  // namespace mace

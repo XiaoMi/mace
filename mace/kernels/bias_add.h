@@ -24,10 +24,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/public/mace.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -96,18 +92,26 @@ struct BiasAddFunctor<DeviceType::CPU, float> : BiasAddFunctorBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLBiasAddKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *bias,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLBiasAddKernel);
+};
+
 template <typename T>
 struct BiasAddFunctor<DeviceType::GPU, T> : BiasAddFunctorBase {
-  BiasAddFunctor(OpKernelContext *context, const DataFormat data_format)
-      : BiasAddFunctorBase(context, data_format) {}
+  BiasAddFunctor(OpKernelContext *context, const DataFormat data_format);
   MaceStatus operator()(const Tensor *input,
                         const Tensor *bias,
                         Tensor *output,
                         StatsFuture *future);
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+
+  std::unique_ptr<OpenCLBiasAddKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

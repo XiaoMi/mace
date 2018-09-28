@@ -14,6 +14,8 @@
 
 #include "mace/core/runtime/opencl/gpu_device.h"
 
+#include "mace/core/buffer.h"
+
 namespace mace {
 
 GPUDevice::GPUDevice(Tuner<uint32_t> *tuner,
@@ -27,7 +29,8 @@ GPUDevice::GPUDevice(Tuner<uint32_t> *tuner,
     CPUDevice(num_threads, cpu_affinity_policy, use_gemmlowp),
     runtime_(new OpenCLRuntime(opencl_cache_storage, priority, perf,
                                opencl_binary_storage, tuner)),
-    allocator_(new OpenCLAllocator(runtime_.get())) {}
+    allocator_(new OpenCLAllocator(runtime_.get())),
+    scratch_buffer_(new ScratchBuffer(allocator_.get())) {}
 
 GPUDevice::~GPUDevice() = default;
 
@@ -41,6 +44,10 @@ Allocator* GPUDevice::allocator() {
 
 DeviceType GPUDevice::device_type() const {
   return DeviceType::GPU;
+}
+
+ScratchBuffer *GPUDevice::scratch_buffer() {
+  return scratch_buffer_.get();
 }
 
 }  // namespace mace

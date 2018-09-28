@@ -23,21 +23,26 @@ namespace mace {
 namespace ops {
 namespace test {
 
-class Conv2dOpTest : public OpsTestBase {};
+class Conv2dOpTest : public OpsTestBase {
+ protected:
+  virtual void SetUp() {
+    OpTestContext::Get()->SetOCLImageTestFlag();
+  }
+};
 
 namespace {
 template <DeviceType D, typename T>
 void TestNHWCSimple3x3VALID() {
   OpsTestNet net;
   // Add input data
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
 
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
@@ -50,7 +55,6 @@ void TestNHWCSimple3x3VALID() {
         .AddIntsArg("strides", {1, 1})
         .AddIntArg("padding", Padding::VALID)
         .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -77,15 +81,19 @@ void TestNHWCSimple3x3VALID() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     MACE_NOT_IMPLEMENTED;
   }
 
   auto expected = net.CreateTensor<float>({1, 1, 1, 1}, {18.1f});
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
+  if (DataTypeToEnum<T>::value == DataType::DT_FLOAT) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3, 1e-3);
+  }
 }
 
 template <DeviceType D, typename T>
@@ -93,14 +101,14 @@ void TestNHWCSimple3x3SAME() {
   OpsTestNet net;
 
   // Add input data
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
       "Input", {1, 3, 3, 2},
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  net.AddInputFromArray<D, T>(
+  net.AddInputFromArray<D, float>(
       "Filter", {1, 2, 3, 3},
       {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
        1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-  net.AddInputFromArray<D, T>("Bias", {1}, {0.1f});
+  net.AddInputFromArray<D, float>("Bias", {1}, {0.1f});
 
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
@@ -113,7 +121,6 @@ void TestNHWCSimple3x3SAME() {
         .AddIntsArg("strides", {1, 1})
         .AddIntArg("padding", Padding::SAME)
         .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
@@ -140,8 +147,8 @@ void TestNHWCSimple3x3SAME() {
     net.RunOp(D);
 
     // Transfer output
-    ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
 
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -151,7 +158,11 @@ void TestNHWCSimple3x3SAME() {
       {1, 3, 3, 1},
       {8.1f, 12.1f, 8.1f, 12.1f, 18.1f, 12.1f, 8.1f, 12.1f, 8.1f});
 
-  ExpectTensorNear<float, T>(*expected, *net.GetOutput("Output"), 1e-5);
+  if (DataTypeToEnum<T>::value == DataType::DT_FLOAT) {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
+  } else {
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3, 1e-3);
+  }
 }
 }  // namespace
 
@@ -163,6 +174,11 @@ TEST_F(Conv2dOpTest, CPUSimple) {
 TEST_F(Conv2dOpTest, OPENCLSimple) {
   TestNHWCSimple3x3VALID<DeviceType::GPU, float>();
   TestNHWCSimple3x3SAME<DeviceType::GPU, float>();
+}
+
+TEST_F(Conv2dOpTest, OPENCLHalfSimple) {
+  TestNHWCSimple3x3VALID<DeviceType::GPU, half>();
+  TestNHWCSimple3x3SAME<DeviceType::GPU, half>();
 }
 
 namespace {
@@ -638,7 +654,7 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
 
   auto func = [&](int stride_h, int stride_w, Padding padding) {
     // generate random input
-    index_t batch = 3;
+    index_t batch = 1;
     index_t height = input_shape[0];
     index_t width = input_shape[1];
     index_t kernel_h = filter_shape[0];
@@ -713,7 +729,7 @@ void TestHalfComplexConvNxNS12(const std::vector<index_t> &input_shape,
                             kernels::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
-                            1e-1);
+                            1e-2);
   };
 
   func(1, 1, VALID);

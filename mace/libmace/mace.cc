@@ -77,26 +77,36 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
     return MaceStatus::MACE_INVALID_ARGS;
   }
 
-  if (!runtime->IsImageSupport()) {
-    return MaceStatus::MACE_OUT_OF_RESOURCES;
+  const int mem_type_i =
+      ProtoArgHelper::GetOptionalArg<NetDef, int>(
+          *net_def, "opencl_mem_type",
+          static_cast<MemoryType>(MemoryType::GPU_IMAGE));
+  const MemoryType mem_type = static_cast<MemoryType>(mem_type_i);
+
+  runtime->set_mem_type(mem_type);
+  if (mem_type == MemoryType::GPU_IMAGE) {
+    if (!runtime->IsImageSupport()) {
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
+
+    auto opencl_max_image_size = runtime->GetMaxImage2DSize();
+    if (opencl_max_image_size.empty()) {
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
+
+    const std::vector<int64_t> net_max_image_size =
+        ProtoArgHelper::GetRepeatedArgs<NetDef, int64_t>(
+            *net_def, "opencl_max_image_size", {0, 0});
+
+    if (static_cast<uint64_t>(net_max_image_size[0]) > opencl_max_image_size[0]
+        || static_cast<uint64_t>(net_max_image_size[1])
+            > opencl_max_image_size[1]) {
+      LOG(INFO) << "opencl max image size " << MakeString(opencl_max_image_size)
+                << " vs " << MakeString(net_max_image_size);
+      return MaceStatus::MACE_OUT_OF_RESOURCES;
+    }
   }
 
-  auto opencl_max_image_size = runtime->GetMaxImage2DSize();
-  if (opencl_max_image_size.empty()) {
-    return MaceStatus::MACE_OUT_OF_RESOURCES;
-  }
-
-  const std::vector<int64_t> net_max_image_size =
-      ProtoArgHelper::GetRepeatedArgs<NetDef, int64_t>(
-          *net_def, "opencl_max_image_size", {0, 0});
-
-  if (static_cast<uint64_t>(net_max_image_size[0]) > opencl_max_image_size[0]
-      || static_cast<uint64_t>(net_max_image_size[1])
-          > opencl_max_image_size[1]) {
-    LOG(INFO) << "opencl max image size " << MakeString(opencl_max_image_size)
-              << " vs " << MakeString(net_max_image_size);
-    return MaceStatus::MACE_OUT_OF_RESOURCES;
-  }
   return MaceStatus::MACE_SUCCESS;
 }
 #endif

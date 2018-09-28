@@ -26,10 +26,6 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -96,17 +92,23 @@ struct AddNFunctor : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLAddNKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const std::vector<const Tensor *> &input_tensors,
+      Tensor *output_tensor,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLAddNKernel);
+};
 template <typename T>
 struct AddNFunctor<DeviceType::GPU, T> : OpKernel {
-  explicit AddNFunctor(OpKernelContext *context) : OpKernel(context) {}
+  explicit AddNFunctor(OpKernelContext *context);
   MaceStatus operator()(const std::vector<const Tensor *> &input_tensors,
-                  Tensor *output_tensor,
-                  StatsFuture *future);
+                        Tensor *output_tensor,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLAddNKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

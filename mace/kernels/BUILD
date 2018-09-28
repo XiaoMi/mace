@@ -32,6 +32,8 @@ cc_library(
     ) + if_opencl_enabled(glob(
         [
             "opencl/*.cc",
+            "opencl/image/*.cc",
+            "opencl/buffer/*.cc",
         ],
         exclude = [
             "opencl/*_test.cc",
@@ -43,14 +45,16 @@ cc_library(
             "arm/*.h",
         ],
         exclude = [
-            "buffer_to_image.h",
-            "image_to_buffer.h",
+            "buffer_transform.h",
+            "buffer_inverse_transform.h",
             "lstmcell.h",
         ],
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
-        "buffer_to_image.h",
-        "image_to_buffer.h",
+        "opencl/image/*.h",
+        "opencl/buffer/*.h",
+        "buffer_transform.h",
+        "buffer_inverse_transform.h",
         "lstmcell.h",
     ])),
     copts = [

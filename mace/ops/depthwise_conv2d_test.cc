@@ -250,19 +250,19 @@ void TestNxNS12(const index_t height, const index_t width) {
                   Padding type) {
     // generate random input
     static unsigned int seed = time(NULL);
-    index_t batch = 1 + rand_r(&seed) % 5;
-    index_t input_channels = 3 + rand_r(&seed) % 16;
+    index_t batch = 1;
+    index_t channel = 32;
     index_t multiplier = 1;
     // Construct graph
     OpsTestNet net;
 
     // Add input data
     net.AddRandomInput<DeviceType::GPU, float>(
-        "Input", {batch, height, width, input_channels});
+        "Input", {batch, height, width, channel});
     net.AddRandomInput<DeviceType::GPU, float>(
-        "Filter", {multiplier, input_channels, kernel_h, kernel_w});
+        "Filter", {multiplier, channel, kernel_h, kernel_w});
     net.AddRandomInput<DeviceType::GPU, float>("Bias",
-                                               {multiplier * input_channels});
+                                               {multiplier * channel});
 
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
@@ -275,6 +275,8 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
+        .AddStringArg("activation", "RELUX")
+        .AddFloatArg("max_limit", 6.0)
         .Finalize(net.NewOperatorDef());
 
     // Run on cpu
@@ -302,6 +304,8 @@ void TestNxNS12(const index_t height, const index_t width) {
         .AddIntArg("padding", type)
         .AddIntsArg("dilations", {1, 1})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+        .AddStringArg("activation", "RELUX")
+        .AddFloatArg("max_limit", 6.0)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(DeviceType::GPU);

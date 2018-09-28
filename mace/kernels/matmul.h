@@ -34,10 +34,6 @@
 #include "mace/kernels/gemmlowp_util.h"
 #include "mace/kernels/sgemm.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -89,7 +85,7 @@ struct MatMulFunctor : OpKernel {
     const index_t height_b = B->dim(rank - 2);
     const index_t width_b = B->dim(rank - 1);
 
-    auto scratch_buffer = context_->workspace()->GetScratchBuffer(D);
+    auto scratch_buffer = context_->device()->scratch_buffer();
     scratch_buffer->Rewind();
     index_t scratch_size = C->raw_max_size();
     if (!A->is_weight()) {
@@ -112,7 +108,7 @@ struct MatMulFunctor : OpKernel {
                A->is_weight(),
                B->is_weight(),
                c_ptr_base,
-               scratch_buffer);
+               context_->device()->scratch_buffer());
     return MACE_SUCCESS;
   }
 
@@ -218,9 +214,21 @@ struct MatMulFunctor<CPU, uint8_t> : OpKernel {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLMatMulKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *A,
+      const Tensor *B,
+      Tensor *C,
+      bool transpose_a,
+      bool transpose_b,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLMatMulKernel);
+};
 template <typename T>
 struct MatMulFunctor<DeviceType::GPU, T> : OpKernel {
-  explicit MatMulFunctor(OpKernelContext *context) : OpKernel(context) {}
+  explicit MatMulFunctor(OpKernelContext *context);
 
   MaceStatus operator()(const Tensor *A,
                         const Tensor *B,
@@ -229,9 +237,7 @@ struct MatMulFunctor<DeviceType::GPU, T> : OpKernel {
                         bool transpose_b,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
+  std::unique_ptr<OpenCLMatMulKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

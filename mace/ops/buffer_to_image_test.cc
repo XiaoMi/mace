@@ -24,7 +24,7 @@ template <DeviceType D, typename T>
 void TestBidirectionTransform(const int type,
                               const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  OpDefBuilder("BufferToImage", "BufferToImageTest")
+  OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", type)
@@ -37,7 +37,7 @@ void TestBidirectionTransform(const int type,
   // Run
   net.RunOp(D);
 
-  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
       .Input("B2IOutput")
       .Output("I2BOutput")
       .AddIntArg("buffer_type", type)
@@ -159,7 +159,7 @@ template <DeviceType D, typename T>
 void TestDiffTypeBidirectionTransform(const int type,
                                       const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  OpDefBuilder("BufferToImage", "BufferToImageTest")
+  OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", type)
@@ -172,7 +172,7 @@ void TestDiffTypeBidirectionTransform(const int type,
   // Run
   net.RunOp(D);
 
-  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
       .Input("B2IOutput")
       .Output("I2BOutput")
       .AddIntArg("buffer_type", type)
@@ -198,7 +198,7 @@ void TestStringHalfBidirectionTransform(const int type,
                                         const std::vector<index_t> &input_shape,
                                         const unsigned char *input_data) {
   OpsTestNet net;
-  OpDefBuilder("BufferToImage", "BufferToImageTest")
+  OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", type)
@@ -213,7 +213,7 @@ void TestStringHalfBidirectionTransform(const int type,
   // Run
   net.RunOp(D);
 
-  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
       .Input("B2IOutput")
       .Output("I2BOutput")
       .AddIntArg("buffer_type", type)

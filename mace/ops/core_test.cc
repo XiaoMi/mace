@@ -26,7 +26,7 @@ TEST(CoreTest, INIT_MODE) {
   Workspace ws;
 
   op_defs.emplace_back(OperatorDef());
-  OpDefBuilder("BufferToImage", "BufferToImageTest")
+  OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("B2IOutput")
       .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)
@@ -43,7 +43,7 @@ TEST(CoreTest, INIT_MODE) {
   }
 
   op_defs.emplace_back(OperatorDef());
-  OpDefBuilder("ImageToBuffer", "ImageToBufferTest")
+  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
       .Input("B2IOutput")
       .Output("Output")
       .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)

@@ -25,33 +25,15 @@
 #include "mace/core/future.h"
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif
-
 namespace mace {
 namespace kernels {
 
-struct ReduceFunctorBase : OpKernel {
-  ReduceFunctorBase(OpKernelContext *context,
-                    const std::vector<int> &axis,
-                    const bool keep_dims)
-      : OpKernel(context),
-        keep_dims_(keep_dims),
-        axis_(axis) {}
-  bool keep_dims_;
-  bool reduce_first_axis_;
-  const std::vector<int> axis_;
-  std::vector<int> data_reshape_;
-  std::vector<index_t> out_shape_;
-};
-
 template <DeviceType D, typename T>
-struct ReduceMeanFunctor : ReduceFunctorBase {
+struct ReduceMeanFunctor : OpKernel {
   ReduceMeanFunctor(OpKernelContext *context,
                     const std::vector<int> &axis,
                     const bool keep_dims)
-      : ReduceFunctorBase(context, axis, keep_dims) {}
+      : OpKernel(context), axis_(axis), keep_dims_(keep_dims) {}
 
   void Simplify(const Tensor *input) {
     std::vector<bool> bitmap(static_cast<uint32_t>(input->dim_size()), false);
@@ -209,33 +191,43 @@ struct ReduceMeanFunctor : ReduceFunctorBase {
   }
 
   MaceStatus operator()(const Tensor *input,
-                  Tensor *output,
-                  StatsFuture *future) {
+                        Tensor *output,
+                        StatsFuture *future) {
     MACE_UNUSED(future);
     Simplify(input);
     output->Resize(out_shape_);
     Compute(input, output);
     return MACE_SUCCESS;
   }
+
+  const std::vector<int> axis_;
+  bool keep_dims_;
+  bool reduce_first_axis_;
+  std::vector<int> data_reshape_;
+  std::vector<index_t> out_shape_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLReduceMeanKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLReduceMeanKernel);
+};
 template <typename T>
-struct ReduceMeanFunctor<DeviceType::GPU, T>
-    : ReduceFunctorBase {
+struct ReduceMeanFunctor<DeviceType::GPU, T> : OpKernel {
   ReduceMeanFunctor(OpKernelContext *context,
-                    const std::vector<int> axis,
-                    const bool keep_dims)
-      : ReduceFunctorBase(context, axis, keep_dims) {}
+                    const std::vector<int> &axis,
+                    const bool keep_dims);
 
   MaceStatus operator()(const Tensor *input,
-                        Tensor *output_tensor,
+                        Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLReduceMeanKernel> kernel_;
 };
 #endif
 

@@ -67,8 +67,8 @@ extern void Register_WinogradInverseTransform(OperatorRegistryBase *op_registry)
 extern void Register_WinogradTransform(OperatorRegistryBase *op_registry);
 
 #ifdef MACE_ENABLE_OPENCL
-extern void Register_BufferToImage(OperatorRegistryBase *op_registry);
-extern void Register_ImageToBuffer(OperatorRegistryBase *op_registry);
+extern void Register_BufferTransform(OperatorRegistryBase *op_registry);
+extern void Register_BufferInverseTransform(OperatorRegistryBase *op_registry);
 extern void Register_LSTMCell(OperatorRegistryBase *op_registry);
 #endif  // MACE_ENABLE_OPENCL
 }  // namespace ops
@@ -125,8 +125,8 @@ OperatorRegistry::OperatorRegistry() : OperatorRegistryBase() {
   ops::Register_WinogradTransform(this);
 
 #ifdef MACE_ENABLE_OPENCL
-  ops::Register_BufferToImage(this);
-  ops::Register_ImageToBuffer(this);
+  ops::Register_BufferTransform(this);
+  ops::Register_BufferInverseTransform(this);
   ops::Register_LSTMCell(this);
 #endif  // MACE_ENABLE_OPENCL
 }

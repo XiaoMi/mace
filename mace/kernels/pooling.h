@@ -29,10 +29,6 @@
 #include <arm_neon.h>
 #endif
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 
 enum PoolingType {
@@ -84,8 +80,7 @@ struct PoolingFunctor<DeviceType::CPU, float>: PoolingFunctorBase {
                            strides,
                            padding_type,
                            paddings,
-                           dilations) {
-  }
+                           dilations) {}
 
   void MaxPooling(const float *input,
                   const index_t *in_shape,
@@ -455,6 +450,21 @@ struct PoolingFunctor<DeviceType::CPU, uint8_t>: PoolingFunctorBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLPoolingKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const PoolingType pooling_type,
+      const int *kernels,
+      const int *strides,
+      const Padding &padding_type,
+      const std::vector<int> &padding_data,
+      const int *dilations,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLPoolingKernel);
+};
 template <typename T>
 struct PoolingFunctor<DeviceType::GPU, T> : PoolingFunctorBase {
   PoolingFunctor(OpKernelContext *context,
@@ -463,23 +473,13 @@ struct PoolingFunctor<DeviceType::GPU, T> : PoolingFunctorBase {
                  const int *strides,
                  const Padding padding_type,
                  const std::vector<int> &paddings,
-                 const int *dilations)
-      : PoolingFunctorBase(context,
-                           pooling_type,
-                           kernels,
-                           strides,
-                           padding_type,
-                           paddings,
-                           dilations) {
-  }
-  MaceStatus operator()(const Tensor *input_tensor,
-                  Tensor *output_tensor,
-                  StatsFuture *future);
+                 const int *dilations);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  MaceStatus operator()(const Tensor *input_tensor,
+                        Tensor *output_tensor,
+                        StatsFuture *future);
+
+  std::unique_ptr<OpenCLPoolingKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

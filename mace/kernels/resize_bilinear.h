@@ -24,10 +24,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/utils/quantize.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -179,29 +175,16 @@ inline void ResizeImageNHWC(const T *images,
   }
 }
 
-struct ResizeBilinearFunctorBase : OpKernel {
-  ResizeBilinearFunctorBase(OpKernelContext *context,
-                            const std::vector<index_t> &size,
-                            bool align_corners)
-      : OpKernel(context),
-        align_corners_(align_corners) {
+template<DeviceType D, typename T>
+struct ResizeBilinearFunctor : OpKernel {
+  ResizeBilinearFunctor(OpKernelContext *context,
+                        const std::vector<index_t> &size,
+                        bool align_corners)
+      : OpKernel(context), align_corners_(align_corners) {
     MACE_CHECK(size.size() == 2);
     out_height_ = size[0];
     out_width_ = size[1];
   }
-
- protected:
-  bool align_corners_;
-  index_t out_height_;
-  index_t out_width_;
-};
-
-template<DeviceType D, typename T>
-struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
-  ResizeBilinearFunctor(OpKernelContext *context,
-                        const std::vector<index_t> &size,
-                        bool align_corners)
-      : ResizeBilinearFunctorBase(context, size, align_corners) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -255,14 +238,22 @@ struct ResizeBilinearFunctor : ResizeBilinearFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  bool align_corners_;
+  index_t out_height_;
+  index_t out_width_;
 };
 
 template<DeviceType D>
-struct ResizeBilinearFunctor<D, uint8_t> : ResizeBilinearFunctorBase {
+struct ResizeBilinearFunctor<D, uint8_t> : OpKernel {
   ResizeBilinearFunctor(OpKernelContext *context,
                         const std::vector<index_t> &size,
                         bool align_corners)
-      : ResizeBilinearFunctorBase(context, size, align_corners) {}
+      : OpKernel(context), align_corners_(align_corners) {
+    MACE_CHECK(size.size() == 2);
+    out_height_ = size[0];
+    out_width_ = size[1];
+  }
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -316,25 +307,34 @@ struct ResizeBilinearFunctor<D, uint8_t> : ResizeBilinearFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  bool align_corners_;
+  index_t out_height_;
+  index_t out_width_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLResizeBilinearKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLResizeBilinearKernel);
+};
 template<typename T>
 struct ResizeBilinearFunctor<DeviceType::GPU, T>
-    : ResizeBilinearFunctorBase {
+    : OpKernel {
   ResizeBilinearFunctor(OpKernelContext *context,
                         const std::vector<index_t> &size,
-                        bool align_corners)
-      : ResizeBilinearFunctorBase(context, size, align_corners) {}
+                        bool align_corners);
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLResizeBilinearKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

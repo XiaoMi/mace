@@ -27,10 +27,6 @@
 #include "mace/kernels/kernel.h"
 #include "mace/utils/quantize.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -805,41 +801,20 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
   }
 }
 
-struct EltwiseFunctorBase : OpKernel {
-  EltwiseFunctorBase(OpKernelContext *context,
-                     const EltwiseType type,
-                     const std::vector<float> &coeff,
-                     const float scalar_input,
-                     const int32_t scalar_input_index,
-                     const DataFormat data_format)
-      : OpKernel(context),
-        type_(type),
-        coeff_(coeff),
-        scalar_input_(scalar_input),
-        scalar_input_index_(scalar_input_index),
-        data_format_(data_format) {}
-
-  EltwiseType type_;
-  std::vector<float> coeff_;
-  float scalar_input_;
-  int32_t scalar_input_index_;
-  DataFormat data_format_;
-};
-
 template <DeviceType D, typename T>
-struct EltwiseFunctor : EltwiseFunctorBase {
+struct EltwiseFunctor : OpKernel {
   EltwiseFunctor(OpKernelContext *context,
                  const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float scalar_input,  // float as it comes from arg
                  const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(context,
-                           type,
-                           coeff,
-                           scalar_input,
-                           scalar_input_index,
-                           data_format) {}
+      : OpKernel(context),
+        type_(type),
+        coeff_(coeff),
+        scalar_input_(scalar_input),
+        scalar_input_index_(scalar_input_index),
+        data_format_(data_format) {}
 
   template <typename DstType>
   MaceStatus DoEltwise(const Tensor *input0,
@@ -957,23 +932,28 @@ struct EltwiseFunctor : EltwiseFunctorBase {
     }
   }
 
+  EltwiseType type_;
+  std::vector<float> coeff_;
+  float scalar_input_;
+  int32_t scalar_input_index_;
+  DataFormat data_format_;
   Tensor scalar_tensor_;
 };
 
 template <>
-struct EltwiseFunctor<DeviceType::CPU, uint8_t> : EltwiseFunctorBase {
+struct EltwiseFunctor<DeviceType::CPU, uint8_t> : OpKernel {
   EltwiseFunctor(OpKernelContext *context,
                  const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float scalar_input,  // float as it comes from arg
                  const int32_t scalar_input_index,
                  const DataFormat data_format)
-      : EltwiseFunctorBase(context,
-                           type,
-                           coeff,
-                           scalar_input,
-                           scalar_input_index,
-                           data_format) {}
+      : OpKernel(context),
+        type_(type),
+        coeff_(coeff),
+        scalar_input_(scalar_input),
+        scalar_input_index_(scalar_input_index),
+        data_format_(data_format) {}
 
   MaceStatus operator()(const Tensor *input0,
                         const Tensor *input1,
@@ -1093,33 +1073,41 @@ struct EltwiseFunctor<DeviceType::CPU, uint8_t> : EltwiseFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  EltwiseType type_;
+  std::vector<float> coeff_;
+  float scalar_input_;
+  int32_t scalar_input_index_;
+  DataFormat data_format_;
+  Tensor scalar_tensor_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLEltwiseKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input0,
+      const Tensor *input1,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLEltwiseKernel);
+};
 template <typename T>
-struct EltwiseFunctor<DeviceType::GPU, T> : EltwiseFunctorBase {
+struct EltwiseFunctor<DeviceType::GPU, T> : OpKernel {
   EltwiseFunctor(OpKernelContext *context,
                  const EltwiseType type,
                  const std::vector<float> &coeff,
                  const float scalar_input,
                  const int32_t scalar_input_index,
-                 const DataFormat data_format)
-      : EltwiseFunctorBase(context,
-                           type,
-                           coeff,
-                           scalar_input,
-                           scalar_input_index,
-                           data_format) {}
+                 const DataFormat data_format);
 
   MaceStatus operator()(const Tensor *input0,
                         const Tensor *input1,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLEltwiseKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

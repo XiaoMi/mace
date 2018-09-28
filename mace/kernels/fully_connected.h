@@ -151,24 +151,32 @@ struct FullyConnectedFunctor<DeviceType::CPU, uint8_t>: FullyConnectedBase {
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLFullyConnectedKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *weight,
+      const Tensor *bias,
+      const ActivationType activation,
+      const float relux_max_limit,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLFullyConnectedKernel);
+};
 template <typename T>
 struct FullyConnectedFunctor<DeviceType::GPU, T> : FullyConnectedBase {
   FullyConnectedFunctor(OpKernelContext *context,
                         const ActivationType activation,
-                        const float relux_max_limit)
-      : FullyConnectedBase(context, activation, relux_max_limit) {}
+                        const float relux_max_limit);
 
   MaceStatus operator()(const Tensor *input,
-                  const Tensor *weight,
-                  const Tensor *bias,
-                  Tensor *output,
-                  StatsFuture *future);
+                        const Tensor *weight,
+                        const Tensor *bias,
+                        Tensor *output,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  std::vector<uint32_t> gws_;
-  std::vector<uint32_t> lws_;
-  std::vector<index_t> input_shape_;
-  std::unique_ptr<BufferBase> kernel_error_;
+  std::unique_ptr<OpenCLFullyConnectedKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

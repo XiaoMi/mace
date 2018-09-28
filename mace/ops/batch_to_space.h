@@ -36,7 +36,7 @@ class BatchToSpaceNDOp : public Operator<D, T> {
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *batch_tensor = this->Input(INPUT);
     Tensor *space_tensor = this->Output(OUTPUT);
-    return functor_(space_tensor, const_cast<Tensor *>(batch_tensor), future);
+    return functor_(batch_tensor, space_tensor, future);
   }
 
  private:

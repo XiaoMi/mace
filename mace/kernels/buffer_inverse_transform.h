@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_KERNELS_IMAGE_TO_BUFFER_H_
-#define MACE_KERNELS_IMAGE_TO_BUFFER_H_
+#ifndef MACE_KERNELS_BUFFER_INVERSE_TRANSFORM_H_
+#define MACE_KERNELS_BUFFER_INVERSE_TRANSFORM_H_
 
 #include <memory>
 #include <vector>
@@ -26,18 +26,19 @@
 namespace mace {
 namespace kernels {
 
-struct ImageToBufferFunctorBase : OpKernel {
-  ImageToBufferFunctorBase(OpKernelContext *context,
-                           const int wino_blk_size)
+struct BufferInverseTransformFunctorBase : OpKernel {
+  BufferInverseTransformFunctorBase(OpKernelContext *context,
+                                    const int wino_blk_size)
     : OpKernel(context),
       wino_blk_size_(wino_blk_size) {}
   const int wino_blk_size_;
 };
 
 template <DeviceType D, typename T>
-struct ImageToBufferFunctor : ImageToBufferFunctorBase {
-  ImageToBufferFunctor(OpKernelContext *context, const int wino_blk_size)
-    : ImageToBufferFunctorBase(context, wino_blk_size) {}
+struct BufferInverseTransformFunctor : BufferInverseTransformFunctorBase {
+  explicit BufferInverseTransformFunctor(OpKernelContext *context,
+                                         const int wino_blk_size)
+    : BufferInverseTransformFunctorBase(context, wino_blk_size) {}
   MaceStatus operator()(const Tensor *input,
                         const BufferType type,
                         Tensor *output,
@@ -51,22 +52,31 @@ struct ImageToBufferFunctor : ImageToBufferFunctorBase {
   }
 };
 
+class OpenCLBufferInverseTransformKernel {
+ public:
+  virtual MaceStatus Compute(OpKernelContext *context,
+                             const Tensor *input,
+                             const BufferType type,
+                             const int wino_blk_size,
+                             Tensor *output,
+                             StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLBufferInverseTransformKernel)
+};
+
 template <typename T>
-struct ImageToBufferFunctor<DeviceType::GPU, T> : ImageToBufferFunctorBase {
-  ImageToBufferFunctor(OpKernelContext *context,
-                                const int wino_blk_size)
-      : ImageToBufferFunctorBase(context, wino_blk_size) {}
+struct BufferInverseTransformFunctor<DeviceType::GPU, T>
+    : BufferInverseTransformFunctorBase {
+  explicit BufferInverseTransformFunctor(OpKernelContext *context,
+                                         const int wino_blk_size);
   MaceStatus operator()(const Tensor *input,
                         const BufferType type,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLBufferInverseTransformKernel> kernel_;
 };
 
 }  // namespace kernels
 }  // namespace mace
 
-#endif  // MACE_KERNELS_IMAGE_TO_BUFFER_H_
+#endif  // MACE_KERNELS_BUFFER_INVERSE_TRANSFORM_H_

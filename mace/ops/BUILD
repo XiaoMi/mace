@@ -54,14 +54,14 @@ cc_library(
             "*_test.cc",
             "*_benchmark.cc",
             "ops_test_util.cc",
-            "buffer_to_image.cc",
-            "image_to_buffer.cc",
+            "buffer_transform.cc",
+            "buffer_inverse_transform.cc",
             "lstmcell.cc",
         ],
     ) + if_opencl_enabled(
         [
-            "buffer_to_image.cc",
-            "image_to_buffer.cc",
+            "buffer_transform.cc",
+            "buffer_inverse_transform.cc",
             "lstmcell.cc",
         ],
     ),

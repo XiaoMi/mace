@@ -44,8 +44,7 @@ bool HasQuantizeOp(const NetDef &net_def) {
 }
 }  // namespace
 
-Workspace::Workspace() :
-    host_scratch_buffer_(new ScratchBuffer(GetCPUAllocator())) {}
+Workspace::Workspace() = default;
 
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
@@ -54,8 +53,8 @@ Tensor *Workspace::CreateTensor(const std::string &name,
     VLOG(3) << "Tensor " << name << " already exists. Skipping.";
   } else {
     VLOG(3) << "Creating Tensor " << name;
-    tensor_map_[name] = std::unique_ptr<Tensor>(new Tensor(alloc, type));
-    tensor_map_[name]->SetSourceOpName(name);
+    tensor_map_[name] = std::unique_ptr<Tensor>(new Tensor(alloc, type,
+                                                           false, name));
   }
   return GetTensor(name);
 }
@@ -171,7 +170,10 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
                 tensor_buffer_.get(), const_tensor.offset(),
                 const_tensor.data_size() *
                     GetEnumTypeSize(const_tensor.data_type())),
-                       const_tensor.data_type(), true));
+                       const_tensor.data_type(),
+                       true,
+                       const_tensor.name()));
+
         tensor->Reshape(dims);
         tensor->SetScale(const_tensor.scale());
         tensor->SetZeroPoint(const_tensor.zero_point());
@@ -275,7 +277,8 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
         std::unique_ptr<BufferBase> tensor_buf(
             new Buffer(device->allocator()));
         MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-            mem_block.x() * GetEnumTypeSize(dtype)));
+            mem_block.x() * GetEnumTypeSize(dtype)
+                + MACE_EXTRA_BUFFER_PAD_SIZE));
         preallocated_allocator_.SetBuffer(mem_block.mem_id(),
                                           std::move(tensor_buf));
       }
@@ -301,10 +304,9 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
           }
           std::unique_ptr<Tensor> tensor
               (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]),
-                          output_type));
-          tensor->SetSourceOpName(op.name());
-          if (device_type == DeviceType::GPU) {
-            VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
+                          output_type, false, op.output(i)));
+          if (device_type == DeviceType::GPU && tensor->has_opencl_image()) {
+            VLOG(3) << "Tensor: " << op.output(i) << "(" << op.type() << ")"
                     << " Mem: " << mem_ids[i]
                     << " Image shape: "
                     << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
@@ -312,8 +314,8 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
                     << ", "
                     << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
                         ->image_shape()[1];
-          } else if (device_type == DeviceType::CPU) {
-            VLOG(3) << "Tensor: " << op.name() << "(" << op.type() << ")"
+          } else {
+            VLOG(3) << "Tensor: " << op.output(i) << "(" << op.type() << ")"
                     << " Mem: " << mem_ids[i]
                     << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
           }
@@ -354,14 +356,6 @@ MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
     }
   }
   return MaceStatus::MACE_SUCCESS;
-}
-
-ScratchBuffer *Workspace::GetScratchBuffer(DeviceType device_type) {
-  if (device_type == CPU) {
-    return host_scratch_buffer_.get();
-  } else {
-    return nullptr;
-  }
 }
 
 void Workspace::RemoveUnusedBuffer() {

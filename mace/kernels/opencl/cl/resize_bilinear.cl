@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void resize_bilinear_nocache(KERNEL_ERROR_PARAMS
+__kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
                                       GLOBAL_WORK_GROUP_SIZE_DIM3
                                       __read_only image2d_t input, /* [c%4 * w * c/4, h * b] */
                                       __write_only image2d_t output,

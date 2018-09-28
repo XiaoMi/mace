@@ -35,10 +35,6 @@
 #include "mace/kernels/quantize.h"
 #include "mace/utils/utils.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
@@ -78,8 +74,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
-                const bool is_filter_transformed,
-                ScratchBuffer *scratch)
+                const bool is_filter_transformed)
     : Conv2dFunctorBase(context,
                         strides,
                         padding_type,
@@ -88,8 +83,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                         activation,
                         relux_max_limit),
       transformed_filter_(GetCPUAllocator(), DataType::DT_FLOAT),
-      is_filter_transformed_(is_filter_transformed),
-      scratch_(scratch) {}
+      is_filter_transformed_(is_filter_transformed) {}
 
   void Conv2dGeneral(const float *input,
                      const float *filter,
@@ -494,14 +488,15 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     }
 
     // Init scratch buffer
-    scratch_->Rewind();
-    scratch_->GrowSize(total_scratch_size);
+    ScratchBuffer *scratch = context_->device()->scratch_buffer();
+    scratch->Rewind();
+    scratch->GrowSize(total_scratch_size);
     Tensor
-      transformed_input(scratch_->Scratch(transformed_input_size), DT_FLOAT);
+      transformed_input(scratch->Scratch(transformed_input_size), DT_FLOAT);
     Tensor
-      transformed_output(scratch_->Scratch(transformed_output_size), DT_FLOAT);
-    Tensor padded_input(scratch_->Scratch(padded_input_size), DT_FLOAT);
-    Tensor padded_output(scratch_->Scratch(padded_output_size), DT_FLOAT);
+      transformed_output(scratch->Scratch(transformed_output_size), DT_FLOAT);
+    Tensor padded_input(scratch->Scratch(padded_input_size), DT_FLOAT);
+    Tensor padded_output(scratch->Scratch(padded_output_size), DT_FLOAT);
     const index_t extra_input_shape[4] =
         {batch, input_channels, extra_input_height, extra_input_width};
     const index_t extra_output_shape[4] =
@@ -559,7 +554,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                           transformed_output_data,
                           pad_output,
                           &sgemm_,
-                          scratch_);
+                          scratch);
       };
     } else if (use_neon_3x3_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
@@ -588,7 +583,7 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          channels,
                          pad_output,
                          &sgemm_,
-                         scratch_);
+                         scratch);
       };
     } else if (use_neon_5x5_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
@@ -735,7 +730,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
 
   Tensor transformed_filter_;
   bool is_filter_transformed_;
-  ScratchBuffer *scratch_;
   SGemm sgemm_;
 };
 
@@ -748,16 +742,14 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
-                const bool is_filter_transformed,
-                ScratchBuffer *scratch)
+                const bool is_filter_transformed)
       : Conv2dFunctorBase(context,
                           strides,
                           padding_type,
                           paddings,
                           dilations,
                           activation,
-                          relux_max_limit),
-        scratch_(scratch) {
+                          relux_max_limit) {
     MACE_UNUSED(is_filter_transformed);
   }
 
@@ -926,13 +918,14 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     bool im2col_required =
         filter_h != 1 || filter_w != 1 || stride_h != 1 || stride_w != 1;
     total_scratch_size += (im2col_required ? im2col_size : 0);
-    scratch_->Rewind();
-    scratch_->GrowSize(total_scratch_size);
+    ScratchBuffer *scratch = context_->device()->scratch_buffer();
+    scratch->Rewind();
+    scratch->GrowSize(total_scratch_size);
 
     std::unique_ptr<Tensor> zero_bias;
     const int32_t *bias_data = nullptr;
     if (bias == nullptr) {
-      zero_bias.reset(new Tensor(scratch_->Scratch(zero_bias_size), DT_INT32));
+      zero_bias.reset(new Tensor(scratch->Scratch(zero_bias_size), DT_INT32));
       zero_bias->Reshape({channels});
       zero_bias->Clear();
       bias_data = zero_bias->data<int32_t>();
@@ -944,7 +937,7 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
     auto gemm_input_data = input_data;
     if (im2col_required) {
       // prepare im2col
-      im2col.reset(new Tensor(scratch_->Scratch(im2col_size), DT_UINT8));
+      im2col.reset(new Tensor(scratch->Scratch(im2col_size), DT_UINT8));
       uint8_t *im2col_data = im2col->mutable_data<uint8_t>();
       Im2col(input_data, input->shape(), filter_h, filter_w, stride_h,
              stride_w, static_cast<uint8_t>(input->zero_point()),
@@ -976,12 +969,28 @@ struct Conv2dFunctor<DeviceType::CPU, uint8_t> : Conv2dFunctorBase {
 
     return MACE_SUCCESS;
   }
-
-  ScratchBuffer *scratch_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
-template<typename T>
+class OpenCLConv2dKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      const Tensor *filter,
+      const Tensor *bias,
+      const int *strides,
+      const Padding &padding_type,
+      const std::vector<int> &padding_data,
+      const int *dilations,
+      const ActivationType activation,
+      const float relux_max_limit,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLConv2dKernel);
+};
+
+template <typename T>
 struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
   Conv2dFunctor(OpKernelContext *context,
                 const int *strides,
@@ -990,18 +999,7 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
                 const int *dilations,
                 const ActivationType activation,
                 const float relux_max_limit,
-                const bool is_filter_transformed,
-                ScratchBuffer *scratch)
-    : Conv2dFunctorBase(context,
-                        strides,
-                        padding_type,
-                        paddings,
-                        dilations,
-                        activation,
-                        relux_max_limit) {
-    MACE_UNUSED(is_filter_transformed);
-    MACE_UNUSED(scratch);
-  }
+                const bool is_filter_transformed);
 
   MaceStatus operator()(const Tensor *input,
                         const Tensor *filter,
@@ -1009,10 +1007,7 @@ struct Conv2dFunctor<DeviceType::GPU, T> : Conv2dFunctorBase {
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLConv2dKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

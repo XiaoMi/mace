@@ -30,60 +30,61 @@
 
 namespace mace {
 namespace kernels {
+// oorc for 'Out Of Range Check'
+#define MACE_OUT_OF_RANGE_DEFINITION           \
+  std::shared_ptr<BufferBase> oorc_flag;
 
-#define OUT_OF_RANGE_CONFIG(kernel_error, context)          \
-  if (runtime->IsOutOfRangeCheckEnabled()) {                \
-    built_options.emplace("-DOUT_OF_RANGE_CHECK");          \
-    (kernel_error) = std::move(std::unique_ptr<Buffer>(     \
-        new Buffer((context)->device()->allocator())));     \
-    MACE_RETURN_IF_ERROR((kernel_error)->Allocate(1));      \
-    (kernel_error)->Map(nullptr);                           \
-    *((kernel_error)->mutable_data<char>()) = 0;            \
-    (kernel_error)->UnMap();                                \
+#define MACE_OUT_OF_RANGE_CONFIG              \
+  if (runtime->IsOutOfRangeCheckEnabled()) {           \
+    built_options.emplace("-DOUT_OF_RANGE_CHECK");     \
   }
 
-#define OUT_OF_RANGE_SET_ARG                                \
-  if (runtime->IsOutOfRangeCheckEnabled()) {                \
-    kernel_.setArg(idx++,                                   \
-    *(static_cast<cl::Buffer *>(kernel_error_->buffer()))); \
+#define MACE_OUT_OF_RANGE_INIT(kernel)                 \
+  if (runtime->IsOutOfRangeCheckEnabled()) {           \
+    oorc_flag = std::move(std::unique_ptr<Buffer>(     \
+        new Buffer((context)->device()->allocator())));         \
+    MACE_RETURN_IF_ERROR((oorc_flag)->Allocate(sizeof(int)));    \
+    oorc_flag->Map(nullptr);                           \
+    *(oorc_flag->mutable_data<int>()) = 0;            \
+    oorc_flag->UnMap();                                \
+    (kernel).setArg(0,                             \
+    *(static_cast<cl::Buffer *>(oorc_flag->buffer())));\
   }
 
-#define OUT_OF_RANGE_SET_ARG_PTR                              \
-  if (runtime->IsOutOfRangeCheckEnabled()) {                  \
-    kernel->setArg(idx++,                                     \
-    *(static_cast<cl::Buffer *>((*kernel_error)->buffer()))); \
+#define MACE_OUT_OF_RANGE_SET_ARGS(kernel)             \
+  if (runtime->IsOutOfRangeCheckEnabled()) {           \
+    (kernel).setArg(idx++,                             \
+    *(static_cast<cl::Buffer *>(oorc_flag->buffer())));\
   }
 
-#define OUT_OF_RANGE_VALIDATION(kernel_error)                              \
-  if (runtime->IsOutOfRangeCheckEnabled()) {                               \
-    (kernel_error)->Map(nullptr);                                          \
-    char *kerror_code = (kernel_error)->mutable_data<char>();              \
-    MACE_CHECK(*kerror_code == 0, "Kernel error code: ", *kerror_code);\
-    (kernel_error)->UnMap();                                               \
+#define MACE_BUFF_OUT_OF_RANGE_SET_ARGS(kernel, size)     \
+  if (runtime->IsOutOfRangeCheckEnabled()) {              \
+    (kernel).setArg(idx++,                                \
+    *(static_cast<cl::Buffer *>(oorc_flag->buffer())));   \
+    (kernel).setArg(idx++, static_cast<int>(size));       \
   }
 
-#define NON_UNIFORM_WG_CONFIG                           \
+#define MACE_OUT_OF_RANGE_VALIDATION                                    \
+  if (runtime->IsOutOfRangeCheckEnabled()) {                            \
+    oorc_flag->Map(nullptr);                                            \
+    int *kerror_code = oorc_flag->mutable_data<int>();                \
+    MACE_CHECK(*kerror_code == 0, "Kernel error code: ", *kerror_code); \
+    oorc_flag->UnMap();                                                 \
+  }
+
+#define MACE_NON_UNIFORM_WG_CONFIG                      \
   if (runtime->IsNonUniformWorkgroupsSupported()) {     \
     built_options.emplace("-DNON_UNIFORM_WORK_GROUP");  \
   }
 
-#define SET_3D_GWS_ARGS(kernel) \
-  kernel.setArg(idx++, gws[0]); \
-  kernel.setArg(idx++, gws[1]); \
-  kernel.setArg(idx++, gws[2]);
+#define MACE_SET_3D_GWS_ARGS(kernel, gws) \
+  (kernel).setArg(idx++, (gws)[0]);       \
+  (kernel).setArg(idx++, (gws)[1]);       \
+  (kernel).setArg(idx++, (gws)[2]);
 
-#define SET_2D_GWS_ARGS(kernel) \
-  kernel.setArg(idx++, gws[0]); \
-  kernel.setArg(idx++, gws[1]);
-
-#define SET_3D_GWS_ARGS_PTR(kernel, gws)  \
-  kernel->setArg(idx++, (gws)[0]);        \
-  kernel->setArg(idx++, (gws)[1]);        \
-  kernel->setArg(idx++, (gws)[2]);
-
-#define SET_2D_GWS_ARGS_PTR(kernel, gws)  \
-  kernel->setArg(idx++, (gws)[0]);        \
-  kernel->setArg(idx++, (gws)[1]);
+#define MACE_SET_2D_GWS_ARGS(kernel, gws) \
+  (kernel).setArg(idx++, (gws)[0]);       \
+  (kernel).setArg(idx++, (gws)[1]);
 
 // Max execution time of OpenCL kernel for tuning to prevent UI stuck.
 const float kMaxKernelExecTime = 1000.0;  // microseconds
@@ -113,6 +114,10 @@ std::string DtToCLDt(const DataType dt);
 // CPU data type to upward compatible OpenCL data type
 // e.g. half -> float
 std::string DtToUpCompatibleCLDt(const DataType dt);
+
+// CPU data type to OpenCL condition data type used in select
+// e.g. half -> float
+std::string DtToCLCondDt(const DataType dt);
 
 // Tuning or Run OpenCL kernel with 3D work group size
 MaceStatus TuningOrRun3DKernel(OpenCLRuntime *runtime,
@@ -167,6 +172,7 @@ std::string Concat(Args... args) {
 std::vector<uint32_t> Default3DLocalWS(OpenCLRuntime *runtime,
                                        const uint32_t *gws,
                                        const uint32_t kwg_size);
+
 }  // namespace kernels
 }  // namespace mace
 #endif  // MACE_KERNELS_OPENCL_HELPER_H_

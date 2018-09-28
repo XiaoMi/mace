@@ -10,7 +10,7 @@ inline float coeff_odd(float i) {
   return ((-0.75f * x + 3.75f) * x - 6.0f) * x + 3.0f;
 }
 
-__kernel void resize_bicubic_nocache(KERNEL_ERROR_PARAMS
+__kernel void resize_bicubic_nocache(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM3
                                      __read_only image2d_t input,
                                      __write_only image2d_t output,

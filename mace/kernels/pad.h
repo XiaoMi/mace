@@ -23,31 +23,17 @@
 #include "mace/core/tensor.h"
 #include "mace/kernels/kernel.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
-struct PadFunctorBase : OpKernel {
-  PadFunctorBase(OpKernelContext *context,
-                 const std::vector<int> &paddings,
-                 const float constant_value)
-      : OpKernel(context),
-        paddings_(paddings),
-        constant_value_(constant_value) {}
-
-  std::vector<int> paddings_;
-  float constant_value_;
-};
-
 template<DeviceType D, typename T>
-struct PadFunctor : public PadFunctorBase {
+struct PadFunctor : OpKernel {
   PadFunctor(OpKernelContext *context,
              const std::vector<int> &paddings,
              const float constant_value)
-      : PadFunctorBase(context, paddings, constant_value) {}
+      : OpKernel(context),
+        paddings_(paddings),
+        constant_value_(constant_value) {}
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
@@ -93,24 +79,32 @@ struct PadFunctor : public PadFunctorBase {
 
     return MACE_SUCCESS;
   }
+
+  std::vector<int> paddings_;
+  float constant_value_;
 };
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLPadKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLPadKernel);
+};
 template <typename T>
-struct PadFunctor<DeviceType::GPU, T> : PadFunctorBase {
+struct PadFunctor<DeviceType::GPU, T> : OpKernel {
   PadFunctor(OpKernelContext *context,
              const std::vector<int> &paddings,
-             const float constant_value)
-      : PadFunctorBase(context, paddings, constant_value) {}
+             const float constant_value);
 
   MaceStatus operator()(const Tensor *input,
-                  Tensor *output,
-                  StatsFuture *future);
+                        Tensor *output,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLPadKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

@@ -203,6 +203,7 @@ class YAMLKeyword(object):
     validation_inputs_data = 'validation_inputs_data'
     validation_threshold = 'validation_threshold'
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
+    cl_mem_type = 'cl_mem_type'
 
 
 class ModuleName(object):
@@ -692,7 +693,7 @@ def get_model_files(model_file_path,
     return model_file, weight_file
 
 
-def convert_model(configs):
+def convert_model(configs, cl_mem_type):
     # Remove previous output dirs
     library_name = configs[YAMLKeyword.library_name]
     if not os.path.exists(BUILD_OUTPUT_DIR):
@@ -735,6 +736,10 @@ def convert_model(configs):
             StringFormatter.block("Convert %s model" % model_name))
         model_config = configs[YAMLKeyword.models][model_name]
         runtime = model_config[YAMLKeyword.runtime]
+        if cl_mem_type:
+            model_config[YAMLKeyword.cl_mem_type] = cl_mem_type
+        else:
+            model_config[YAMLKeyword.cl_mem_type] = "image"
 
         model_file_path, weight_file_path = get_model_files(
             model_config[YAMLKeyword.model_file_path],
@@ -769,6 +774,7 @@ def convert_model(configs):
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.model_graph_format],
             data_type,
+            model_config[YAMLKeyword.cl_mem_type],
             ",".join(model_config.get(YAMLKeyword.graph_optimize_options, [])))
 
         if configs[YAMLKeyword.model_graph_format] == ModelFormat.file:
@@ -844,7 +850,7 @@ def convert_func(flags):
 
     print_configuration(configs)
 
-    convert_model(configs)
+    convert_model(configs, flags.cl_mem_type)
 
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
         build_model_lib(configs, flags.address_sanitizer)
@@ -1683,6 +1689,11 @@ def parse_args():
         'convert',
         parents=[all_type_parent_parser, convert_run_parent_parser],
         help='convert to mace model (file or code)')
+    convert.add_argument(
+        "--cl_mem_type",
+        type=str,
+        default=None,
+        help="Which type of OpenCL memory type to use [image | buffer].")
     convert.set_defaults(func=convert_func)
     run = subparsers.add_parser(
         'run',

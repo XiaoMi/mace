@@ -23,132 +23,63 @@
 #include "mace/kernels/activation.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 
-#ifdef MACE_ENABLE_OPENCL
-#include "mace/core/runtime/opencl/cl2_header.h"
-#endif  // MACE_ENABLE_OPENCL
-
 namespace mace {
 namespace kernels {
 
-struct WinogradTransformFunctorBase : OpKernel {
-  WinogradTransformFunctorBase(OpKernelContext *context,
-                               const Padding &padding_type,
-                               const std::vector<int> &paddings,
-                               const int block_size)
-      : OpKernel(context),
-        strides_({1, 1}),
-        dilations_({1, 1}),
-        padding_type_(padding_type),
-        paddings_(paddings),
-        wino_blk_size_(block_size) {}
-
-  const std::vector<int> strides_;    // [stride_h, stride_w]
-  const std::vector<int> dilations_;  // [dilation_h, dilation_w]
-  Padding padding_type_;
-  std::vector<int> paddings_;
-  const int wino_blk_size_;
-};
-
-template<DeviceType D, typename T>
-struct WinogradTransformFunctor : WinogradTransformFunctorBase {
-  WinogradTransformFunctor(OpKernelContext *context,
-                           const Padding &padding_type,
-                           const std::vector<int> &paddings,
-                           const int block_size)
-      : WinogradTransformFunctorBase(context,
-                                     padding_type,
-                                     paddings,
-                                     block_size) {}
-
-  MaceStatus operator()(const Tensor *input,
-                        Tensor *output,
-                        StatsFuture *future) {
-    MACE_UNUSED(input);
-    MACE_UNUSED(output);
-    MACE_UNUSED(future);
-    MACE_NOT_IMPLEMENTED;
-    return MACE_SUCCESS;
-  }
-};
+template <DeviceType D, typename T>
+struct WinogradTransformFunctor;
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLWinogradTransformKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const Tensor *input,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLWinogradTransformKernel);
+};
 template<typename T>
-struct WinogradTransformFunctor<DeviceType::GPU, T>
-    : WinogradTransformFunctorBase {
+struct WinogradTransformFunctor<DeviceType::GPU, T> : OpKernel {
   WinogradTransformFunctor(OpKernelContext *context,
                            const Padding &padding_type,
                            const std::vector<int> &paddings,
-                           const int block_size)
-      : WinogradTransformFunctorBase(context,
-                                     padding_type,
-                                     paddings,
-                                     block_size) {}
+                           const int block_size);
 
   MaceStatus operator()(const Tensor *input,
                         Tensor *output,
                         StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLWinogradTransformKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 
-struct WinogradInverseTransformFunctorBase : OpKernel {
-  WinogradInverseTransformFunctorBase(OpKernelContext *context,
-                                      const ActivationType activation,
-                                      const float relux_max_limit,
-                                      const int block_size)
-      : OpKernel(context),
-        wino_blk_size_(block_size),
-        activation_(activation),
-        relux_max_limit_(relux_max_limit) {}
-
-  const int wino_blk_size_;
-  const ActivationType activation_;
-  const float relux_max_limit_;
-};
 
 template<DeviceType D, typename T>
-struct WinogradInverseTransformFunctor : WinogradInverseTransformFunctorBase {
-  WinogradInverseTransformFunctor(OpKernelContext *context,
-                                  const ActivationType activation,
-                                  const float relux_max_limit,
-                                  const int block_size)
-      : WinogradInverseTransformFunctorBase(
-            context, activation, relux_max_limit, block_size) {}
-
-  MaceStatus operator()(const std::vector<const Tensor*> &inputs,
-                        Tensor *output,
-                        StatsFuture *future) {
-    MACE_UNUSED(inputs);
-    MACE_UNUSED(output);
-    MACE_UNUSED(future);
-    MACE_NOT_IMPLEMENTED;
-    return MACE_SUCCESS;
-  }
-};
+struct WinogradInverseTransformFunctor;
 
 #ifdef MACE_ENABLE_OPENCL
+class OpenCLWinogradInverseTransformKernel {
+ public:
+  virtual MaceStatus Compute(
+      OpKernelContext *context,
+      const std::vector<const Tensor*> &inputs,
+      Tensor *output,
+      StatsFuture *future) = 0;
+  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLWinogradInverseTransformKernel);
+};
 template <typename T>
-struct WinogradInverseTransformFunctor<DeviceType::GPU, T>
-    : WinogradInverseTransformFunctorBase {
+struct WinogradInverseTransformFunctor<DeviceType::GPU, T> : OpKernel {
   WinogradInverseTransformFunctor(OpKernelContext *context,
                                   const ActivationType activation,
                                   const float relux_max_limit,
-                                  const int block_size)
-      : WinogradInverseTransformFunctorBase(
-            context, activation, relux_max_limit, block_size) {}
+                                  const int block_size);
 
-  MaceStatus operator()(const std::vector<const Tensor*> &inputs,
-                  Tensor *output,
-                  StatsFuture *future);
+  MaceStatus operator()(const std::vector<const Tensor *> &inputs,
+                        Tensor *output,
+                        StatsFuture *future);
 
-  cl::Kernel kernel_;
-  uint32_t kwg_size_;
-  std::unique_ptr<BufferBase> kernel_error_;
-  std::vector<index_t> input_shape_;
+  std::unique_ptr<OpenCLWinogradInverseTransformKernel> kernel_;
 };
 #endif  // MACE_ENABLE_OPENCL
 

@@ -8,6 +8,7 @@ stages:
   - ops_test
   - api_test
   - python_tools_tests
+  - model_tests
   - build_android_demo
   - ops_benchmark
   - extra_tests
@@ -111,6 +112,18 @@ python_tools_tests:
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2.yml
     - >
       python tools/converter.py convert --config=${CONF_FILE} --target_abis=armeabi-v7a --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --round=1 --target_abis=armeabi-v7a --validate --model_graph_format=file --model_data_format=file || exit 1;
+      python tools/converter.py run --config=${CONF_FILE} --example --target_abis=armeabi-v7a --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+
+model_tests:
+  stage: model_tests
+  script:
+    - pwd
+    - rm -rf mace-models
+    - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
+    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
+    - >
+      python tools/converter.py convert --config=${CONF_FILE} --target_abis=armeabi-v7a --model_graph_format=file --model_data_format=file --cl_mem_type=buffer || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --round=1 --target_abis=armeabi-v7a --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --example --target_abis=armeabi-v7a --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2-host.yml

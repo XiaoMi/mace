@@ -27,8 +27,8 @@ class ResizeBicubicOp : public Operator<D, T> {
   ResizeBicubicOp(const OperatorDef &operator_def, OpKernelContext *context)
       : Operator<D, T>(operator_def, context),
         functor_(context,
-                 OperatorBase::GetRepeatedArgs<index_t>("size", {-1, -1}),
-                 OperatorBase::GetOptionalArg<bool>("align_corners", false)) {}
+                 OperatorBase::GetOptionalArg<bool>("align_corners", false),
+                 OperatorBase::GetRepeatedArgs<index_t>("size", {-1, -1})) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(0);

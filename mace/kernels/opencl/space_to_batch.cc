@@ -16,81 +16,32 @@
 #define MACE_KERNELS_OPENCL_SPACE_TO_BATCH_H_
 
 #include "mace/kernels/space_to_batch.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
-#include "mace/utils/utils.h"
+#include "mace/kernels/opencl/image/space_to_batch.h"
 
 namespace mace {
 namespace kernels {
 
 template <typename T>
+SpaceToBatchFunctor<DeviceType::GPU, T>::SpaceToBatchFunctor(
+    OpKernelContext *context,
+    const std::vector<int> &paddings,
+    const std::vector<int> &block_shape)
+    : SpaceToBatchFunctorBase(context, paddings, block_shape) {
+  if (context->device()->opencl_runtime()->UseImageMemory()) {
+    kernel_.reset(new opencl::image::SpaceToBatchKernel<T>);
+  } else {
+    MACE_NOT_IMPLEMENTED;
+  }
+}
+
+template <typename T>
 MaceStatus SpaceToBatchFunctor<DeviceType::GPU, T>::operator()(
-    Tensor *space_tensor, Tensor *batch_tensor, StatsFuture *future) {
+    const Tensor *space_tensor, Tensor *batch_tensor, StatsFuture *future) {
   std::vector<index_t> output_shape(4, 0);
   CalculateSpaceToBatchOutputShape(space_tensor, DataFormat::NHWC,
                                    output_shape.data());
-  std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
-  MACE_RETURN_IF_ERROR(
-      batch_tensor->ResizeImage(output_shape, output_image_shape));
-  const char *kernel_name = "space_to_batch";
-  const uint32_t chan_blk = RoundUpDiv4<uint32_t>(batch_tensor->dim(3));
-  const uint32_t gws[3] = {
-      chan_blk, static_cast<uint32_t>(batch_tensor->dim(2)),
-      static_cast<uint32_t>(batch_tensor->dim(0) * batch_tensor->dim(1))};
-
-  auto runtime = context_->device()->opencl_runtime();
-
-  if (kernel_.get() == nullptr) {
-    std::string obfuscated_kernel_name = MACE_OBFUSCATE_SYMBOL(kernel_name);
-    std::set<std::string> built_options;
-    OUT_OF_RANGE_CONFIG(kernel_error_, context_);
-    NON_UNIFORM_WG_CONFIG;
-    std::stringstream kernel_name_ss;
-    kernel_name_ss << "-D" << kernel_name << "=" << obfuscated_kernel_name;
-    built_options.emplace(kernel_name_ss.str());
-    built_options.emplace("-DDATA_TYPE=" + DtToCLDt(DataTypeToEnum<T>::value));
-    built_options.emplace("-DCMD_DATA_TYPE=" +
-                          DtToCLCMDDt(DataTypeToEnum<T>::value));
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("space_to_batch",
-                                              obfuscated_kernel_name,
-                                              built_options,
-                                              &kernel_));
-
-    kwg_size_ =
-        static_cast<uint32_t>(runtime->GetKernelMaxWorkGroupSize(kernel_));
-  }
-  if (!IsVecEqual(space_shape_, space_tensor->shape())) {
-    uint32_t idx = 0;
-    OUT_OF_RANGE_SET_ARG;
-    SET_3D_GWS_ARGS(kernel_);
-
-    kernel_.setArg(idx++, *(space_tensor->opencl_image()));
-    kernel_.setArg(idx++, *(batch_tensor->opencl_image()));
-    kernel_.setArg(idx++, block_shape_[0]);
-    kernel_.setArg(idx++, block_shape_[1]);
-    kernel_.setArg(idx++, paddings_[0]);
-    kernel_.setArg(idx++, paddings_[2]);
-    kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(0)));
-    kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(1)));
-    kernel_.setArg(idx++, static_cast<int32_t>(space_tensor->dim(2)));
-    kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(1)));
-    kernel_.setArg(idx++, static_cast<int32_t>(batch_tensor->dim(2)));
-
-    space_shape_ = space_tensor->shape();
-  }
-
-  const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
-  std::string tuning_key =
-      Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
-             batch_tensor->dim(2), batch_tensor->dim(3));
-  MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
-
-  OUT_OF_RANGE_VALIDATION(kernel_error_);
-  return MACE_SUCCESS;
+  return kernel_->Compute(context_, space_tensor, paddings_, block_shape_,
+                          output_shape, batch_tensor, future);
 }
 
 template struct SpaceToBatchFunctor<DeviceType::GPU, float>;

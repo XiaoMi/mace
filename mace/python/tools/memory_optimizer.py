@@ -18,6 +18,8 @@ from mace.proto import mace_pb2
 
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool.base_converter import DeviceType
+from mace.python.tools.converter_tool.base_converter import ConverterUtil
+from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.convert_util import calculate_image_shape
 from mace.python.tools.convert_util import OpenCLBufferType
 
@@ -56,6 +58,10 @@ class MemoryOptimizer(object):
         self.total_mem_count = 0
         self.input_ref_counter = {}
         self.mem_ref_counter = {}
+        ocl_mem_type_arg = ConverterUtil.get_arg(
+            net_def, MaceKeyword.mace_opencl_mem_type)
+        self.cl_mem_type = ocl_mem_type_arg.i if ocl_mem_type_arg is not None\
+            else None
 
         consumers = {}
         for op in net_def.op:
@@ -223,13 +229,13 @@ class MemoryOptimizer(object):
 
 class GPUMemoryOptimizer(MemoryOptimizer):
     def op_need_optimize_memory(self, op):
-        if op.type == 'BufferToImage':
+        if op.type == MaceKeyword.mace_buffer_transform:
             for arg in op.arg:
                 if arg.name == 'mode' and arg.i == 0:
                     return False
-        return op.type != 'ImageToBuffer'
+        return op.type != MaceKeyword.mace_buffer_inverse_transform
 
-    def get_op_mem_block(self, op_type, output_shape, output_type):
+    def get_op_image_mem_block(self, op_type, output_shape):
         if op_type == 'WinogradTransform' or op_type == 'MatMul':
             buffer_shape = list(output_shape) + [1]
             mem_block = MemoryBlock(
@@ -264,6 +270,16 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                                       buffer_shape))
         return mem_block
 
+    def get_op_buffer_mem_block(self, output_shape):
+        return MemoryBlock(mace_pb2.GPU_BUFFER,
+                           [reduce(operator.mul, output_shape, 1), 1])
+
+    def get_op_mem_block(self, op_type, output_shape, output_type):
+        if self.cl_mem_type == mace_pb2.GPU_IMAGE:
+            return self.get_op_image_mem_block(op_type, output_shape)
+        else:
+            return self.get_op_buffer_mem_block(output_shape)
+
     def mem_size(self, memory_block):
         if memory_block.mem_type == mace_pb2.GPU_IMAGE:
             return memory_block.block[0] * memory_block.block[1] * 4
@@ -295,21 +311,22 @@ class GPUMemoryOptimizer(MemoryOptimizer):
                 max_image_size_x = max(max_image_size_x, block.x)
                 max_image_size_y = max(max_image_size_y, block.y)
 
-        # Update OpenCL max image size
-        net_ocl_max_img_size_arg = None
-        for arg in self.net_def.arg:
-            if arg.name == cvt.MaceKeyword.mace_opencl_max_image_size:
-                net_ocl_max_img_size_arg = arg
-                max_image_size_x = max(arg.ints[0], max_image_size_x)
-                max_image_size_y = max(arg.ints[1], max_image_size_y)
-                break
-        if net_ocl_max_img_size_arg is None:
-            net_ocl_max_img_size_arg = self.net_def.arg.add()
-            net_ocl_max_img_size_arg.name = \
-                cvt.MaceKeyword.mace_opencl_max_image_size
+        if self.cl_mem_type == mace_pb2.GPU_IMAGE:
+            # Update OpenCL max image size
+            net_ocl_max_img_size_arg = None
+            for arg in self.net_def.arg:
+                if arg.name == cvt.MaceKeyword.mace_opencl_max_image_size:
+                    net_ocl_max_img_size_arg = arg
+                    max_image_size_x = max(arg.ints[0], max_image_size_x)
+                    max_image_size_y = max(arg.ints[1], max_image_size_y)
+                    break
+            if net_ocl_max_img_size_arg is None:
+                net_ocl_max_img_size_arg = self.net_def.arg.add()
+                net_ocl_max_img_size_arg.name = \
+                    cvt.MaceKeyword.mace_opencl_max_image_size
 
-        net_ocl_max_img_size_arg.ints[:] = [max_image_size_x,
-                                            max_image_size_y]
+            net_ocl_max_img_size_arg.ints[:] = [max_image_size_x,
+                                                max_image_size_y]
 
 
 def optimize_gpu_memory(net_def):

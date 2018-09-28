@@ -22,7 +22,7 @@ DATA_TYPE4 stitch_vector(DATA_TYPE4 left,
 }
 
 // Supported data type: half/float
-__kernel void concat_channel(KERNEL_ERROR_PARAMS
+__kernel void concat_channel(OUT_OF_RANGE_PARAMS
                              GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t input0,
                              __read_only image2d_t input1,
@@ -84,7 +84,7 @@ __kernel void concat_channel(KERNEL_ERROR_PARAMS
 }
 
 // Required: All input channels are divisible by 4
-__kernel void concat_channel_multi(KERNEL_ERROR_PARAMS
+__kernel void concat_channel_multi(OUT_OF_RANGE_PARAMS
                                    GLOBAL_WORK_GROUP_SIZE_DIM3
                                    __read_only image2d_t input,
                                    __private const int chan_blk_offset,

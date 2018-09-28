@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void filter_buffer_to_image(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* OIHW */
                                      __private const int input_offset,
@@ -52,7 +52,7 @@ __kernel void filter_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void filter_image_to_buffer(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* OIHW */
                                      __private const int out_channel,
@@ -102,7 +102,7 @@ __kernel void filter_image_to_buffer(KERNEL_ERROR_PARAMS
 }
 
 // TODO(liuqi): Support multiplier > 1
-__kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void dw_filter_buffer_to_image(OUT_OF_RANGE_PARAMS
                                         GLOBAL_WORK_GROUP_SIZE_DIM2
                                         __global const DATA_TYPE *input, /* MIHW */
                                         __private const int input_offset,
@@ -154,7 +154,7 @@ __kernel void dw_filter_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void in_out_buffer_to_image(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global const DATA_TYPE *input, /* nhwc */
                                      __private const int input_offset,
@@ -196,7 +196,7 @@ __kernel void in_out_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void in_out_image_to_buffer(OUT_OF_RANGE_PARAMS
                                      GLOBAL_WORK_GROUP_SIZE_DIM2
                                      __global DATA_TYPE *output, /* nhwc */
                                      __private const int height,
@@ -236,7 +236,7 @@ __kernel void in_out_image_to_buffer(KERNEL_ERROR_PARAMS
   }
 }
 
-__kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void arg_buffer_to_image(OUT_OF_RANGE_PARAMS
                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global const DATA_TYPE *input,
                                   __private const int input_offset,
@@ -272,7 +272,7 @@ __kernel void arg_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void arg_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void arg_image_to_buffer(OUT_OF_RANGE_PARAMS
                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                   __global DATA_TYPE *output,
                                   __private const int count,
@@ -306,7 +306,7 @@ __kernel void arg_image_to_buffer(KERNEL_ERROR_PARAMS
 }
 
 
-__kernel void in_out_height_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void in_out_height_buffer_to_image(OUT_OF_RANGE_PARAMS
                                             GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global const DATA_TYPE *input, //nhwc
                                             __private const int input_offset,
@@ -349,7 +349,7 @@ __kernel void in_out_height_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void in_out_height_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void in_out_height_image_to_buffer(OUT_OF_RANGE_PARAMS
                                             GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global DATA_TYPE *output, //nhwc
                                             __private const int height,
@@ -387,7 +387,7 @@ __kernel void in_out_height_image_to_buffer(KERNEL_ERROR_PARAMS
   output[offset] = values.w;
 }
 
-__kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void in_out_width_buffer_to_image(OUT_OF_RANGE_PARAMS
                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global const DATA_TYPE *input, /* nhwc */
                                            __private const int input_offset,
@@ -430,7 +430,7 @@ __kernel void in_out_width_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void weight_height_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void weight_height_buffer_to_image(OUT_OF_RANGE_PARAMS
                                             GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global const DATA_TYPE *input, // OIHW
                                             __private const int input_offset,
@@ -475,7 +475,7 @@ __kernel void weight_height_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void weight_height_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void weight_height_image_to_buffer(OUT_OF_RANGE_PARAMS
                                             GLOBAL_WORK_GROUP_SIZE_DIM2
                                             __global DATA_TYPE *output, //OIHW
                                             __private const int out_channels,
@@ -517,7 +517,7 @@ __kernel void weight_height_image_to_buffer(KERNEL_ERROR_PARAMS
 }
 
 
-__kernel void weight_width_buffer_to_image(KERNEL_ERROR_PARAMS
+__kernel void weight_width_buffer_to_image(OUT_OF_RANGE_PARAMS
                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global const DATA_TYPE *input, // OIHW
                                            __private const int input_offset,
@@ -565,7 +565,7 @@ __kernel void weight_width_buffer_to_image(KERNEL_ERROR_PARAMS
   WRITE_IMAGET(output, coord, values);
 }
 
-__kernel void weight_width_image_to_buffer(KERNEL_ERROR_PARAMS
+__kernel void weight_width_image_to_buffer(OUT_OF_RANGE_PARAMS
                                            GLOBAL_WORK_GROUP_SIZE_DIM2
                                            __global DATA_TYPE *output, // OIHW
                                            __private const int in_channels,
@@ -609,7 +609,7 @@ __kernel void weight_width_image_to_buffer(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image_2x2(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_buffer_to_image_2x2(OUT_OF_RANGE_PARAMS
                                               GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global const DATA_TYPE *input, //Oc, Ic, H, W
                                               __private const int input_offset,
@@ -714,7 +714,7 @@ __kernel void winograd_filter_buffer_to_image_2x2(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_image_to_buffer_2x2(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_image_to_buffer_2x2(OUT_OF_RANGE_PARAMS
                                               GLOBAL_WORK_GROUP_SIZE_DIM2
                                               __global DATA_TYPE *output, //Oc, Ic, H, W
                                               __private const int height,
@@ -757,7 +757,7 @@ __kernel void winograd_filter_image_to_buffer_2x2(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image_6x6(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_buffer_to_image_6x6(OUT_OF_RANGE_PARAMS
                                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                                   __global const DATA_TYPE *input, //Oc, Ic, H, W
                                                   __private const int input_offset,
@@ -891,7 +891,7 @@ PROCESS(7);
 #undef PROCESS
 
 }
-__kernel void winograd_filter_image_to_buffer_6x6(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_image_to_buffer_6x6(OUT_OF_RANGE_PARAMS
                                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                                   __global DATA_TYPE *output, //Oc, Ic, H, W
                                                   __private const int height,
@@ -933,7 +933,7 @@ __kernel void winograd_filter_image_to_buffer_6x6(KERNEL_ERROR_PARAMS
 }
 
 // only support 3x3 now
-__kernel void winograd_filter_buffer_to_image_4x4(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_buffer_to_image_4x4(OUT_OF_RANGE_PARAMS
                                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                                   __global const DATA_TYPE *input, //Oc, Ic, H, W
                                                   __private const int input_offset,
@@ -1040,7 +1040,7 @@ __kernel void winograd_filter_buffer_to_image_4x4(KERNEL_ERROR_PARAMS
 #undef PROCESS
 
 }
-__kernel void winograd_filter_image_to_buffer_4x4(KERNEL_ERROR_PARAMS
+__kernel void winograd_filter_image_to_buffer_4x4(OUT_OF_RANGE_PARAMS
                                                   GLOBAL_WORK_GROUP_SIZE_DIM2
                                                   __global DATA_TYPE *output, //Oc, Ic, H, W
                                                   __private const int height,

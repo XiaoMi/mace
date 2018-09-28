@@ -1,6 +1,6 @@
 #include <common.h>
 
-__kernel void space_to_batch(KERNEL_ERROR_PARAMS
+__kernel void space_to_batch(OUT_OF_RANGE_PARAMS
                              GLOBAL_WORK_GROUP_SIZE_DIM3
                              __read_only image2d_t space_data,
                              __write_only image2d_t batch_data,

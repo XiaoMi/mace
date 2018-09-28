@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_IMAGE_TO_BUFFER_H_
-#define MACE_OPS_IMAGE_TO_BUFFER_H_
+#ifndef MACE_OPS_BUFFER_INVERSE_TRANSFORM_H_
+#define MACE_OPS_BUFFER_INVERSE_TRANSFORM_H_
 
 #include "mace/core/operator.h"
-#include "mace/kernels/image_to_buffer.h"
+#include "mace/kernels/buffer_inverse_transform.h"
 
 namespace mace {
 namespace ops {
 
 template <DeviceType D, typename T>
-class ImageToBufferOp : public Operator<D, T> {
+class BufferInverseTransformOp : public Operator<D, T> {
  public:
-  ImageToBufferOp(const OperatorDef &op_def, OpKernelContext *context)
+  BufferInverseTransformOp(const OperatorDef &op_def, OpKernelContext *context)
       : Operator<D, T>(op_def, context),
         functor_(context,
                  OperatorBase::GetOptionalArg<int>("wino_block_size", 2)) {}
@@ -40,7 +40,7 @@ class ImageToBufferOp : public Operator<D, T> {
   }
 
  private:
-  kernels::ImageToBufferFunctor<D, T> functor_;
+  kernels::BufferInverseTransformFunctor<D, T> functor_;
 
  protected:
   MACE_OP_INPUT_TAGS(INPUT);
@@ -50,4 +50,4 @@ class ImageToBufferOp : public Operator<D, T> {
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_IMAGE_TO_BUFFER_H_
+#endif  // MACE_OPS_BUFFER_INVERSE_TRANSFORM_H_

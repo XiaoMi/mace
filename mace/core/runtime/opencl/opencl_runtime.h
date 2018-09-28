@@ -25,6 +25,7 @@
 #include "mace/core/file_storage.h"
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/proto/mace.pb.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
 #include "mace/utils/tuner.h"
@@ -82,6 +83,9 @@ class OpenCLRuntime {
   uint32_t device_compute_units() const;
   Tuner<uint32_t> *tuner();
   bool is_opencl_avaliable();
+  // TODO(liuqi): remove this function in the future, make decision at runtime.
+  bool UseImageMemory();
+  void set_mem_type(MemoryType type);
 
   void GetCallStats(const cl::Event &event, CallStats *stats);
   uint64_t GetDeviceMaxWorkGroupSize();
@@ -129,6 +133,7 @@ class OpenCLRuntime {
   bool is_profiling_enabled_;
   OpenCLVersion opencl_version_;
   GPUType gpu_type_;
+  MemoryType mem_type_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
   std::shared_ptr<cl::Context> context_;
