@@ -11,10 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef MACE_OPS_OPENCL_IMAGE_DECONV_2D_H_
-#define MACE_OPS_OPENCL_IMAGE_DECONV_2D_H_
+#ifndef MACE_OPS_OPENCL_IMAGE_DEPTHWISE_DECONV2D_H_
+#define MACE_OPS_OPENCL_IMAGE_DEPTHWISE_DECONV2D_H_
 
-#include "mace/ops/opencl/deconv_2d.h"
+#include "mace/ops/opencl/depthwise_deconv2d.h"
 
 #include <memory>
 #include <set>
@@ -31,7 +31,7 @@ namespace opencl {
 namespace image {
 
 template <typename T>
-class Deconv2dKernel : public OpenCLDeconv2dKernel {
+class DepthwiseDeconv2dKernel : public OpenCLDepthwiseDeconv2dKernel {
  public:
   MaceStatus Compute(
       OpContext *context,
@@ -40,6 +40,7 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
       const Tensor *bias,
       const int *strides,
       const int *padding_data,
+      const int group,
       const ActivationType activation,
       const float relux_max_limit,
       const std::vector<index_t> &output_shape,
@@ -52,30 +53,35 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
 };
 
 template <typename T>
-MaceStatus Deconv2dKernel<T>::Compute(
-      OpContext *context,
-      const Tensor *input,
-      const Tensor *filter,
-      const Tensor *bias,
-      const int *strides,
-      const int *padding_data,
-      const ActivationType activation,
-      const float relux_max_limit,
-      const std::vector<index_t> &output_shape,
-      Tensor *output) {
+MaceStatus DepthwiseDeconv2dKernel<T>::Compute(
+    OpContext *context,
+    const Tensor *input,
+    const Tensor *filter,
+    const Tensor *bias,
+    const int *strides,
+    const int *padding_data,
+    const int group,
+    const ActivationType activation,
+    const float relux_max_limit,
+    const std::vector<index_t> &output_shape,
+    Tensor *output) {
+  const index_t batch = output_shape[0];
+  const index_t height = output_shape[1];
+  const index_t width = output_shape[2];
+  const index_t channels = output_shape[3];
+  const index_t input_channels = input->dim(3);
+  const index_t multiplier = filter->dim(0);
+
+  MACE_CHECK(group == channels && group == input_channels && multiplier == 1,
+             "opencl image deconv only supports depthwise type group.");
+
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
   const DataType dt = DataTypeToEnum<T>::value;
-  const index_t batch = output->dim(0);
-  const index_t height = output->dim(1);
-  const index_t width = output->dim(2);
-  const index_t channels = output->dim(3);
-  const index_t input_channels = input->dim(3);
 
   const index_t channel_blocks = RoundUpDiv4(channels);
-  const index_t input_channel_blocks = RoundUpDiv4(input_channels);
   const int stride_h = strides[0];
   const int stride_w = strides[1];
   MACE_CHECK(stride_w > 0 && stride_h > 0, "strides should be > 0.");
@@ -99,8 +105,8 @@ MaceStatus Deconv2dKernel<T>::Compute(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("deconv_2d");
-    built_options.emplace("-Ddeconv_2d=" + kernel_name);
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("depthwise_deconv2d");
+    built_options.emplace("-Ddepthwise_deconv2d=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
     built_options.emplace(bias != nullptr ? "-DBIAS" : "");
@@ -123,7 +129,7 @@ MaceStatus Deconv2dKernel<T>::Compute(
         LOG(FATAL) << "Unknown activation type: " << activation;
     }
 
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("deconv_2d", kernel_name,
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("depthwise_deconv2d", kernel_name,
                                               built_options, &kernel_));
 
     kwg_size_ =
@@ -148,7 +154,6 @@ MaceStatus Deconv2dKernel<T>::Compute(
     kernel_.setArg(idx++, relux_max_limit);
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(1)));
     kernel_.setArg(idx++, static_cast<int32_t>(input->dim(2)));
-    kernel_.setArg(idx++, static_cast<int32_t>(input->dim(3)));
     kernel_.setArg(idx++, static_cast<int32_t>(height));
     kernel_.setArg(idx++, static_cast<int32_t>(width));
     kernel_.setArg(idx++, static_cast<int32_t>(channels));
@@ -163,7 +168,6 @@ MaceStatus Deconv2dKernel<T>::Compute(
     kernel_.setArg(idx++, static_cast<int32_t>(filter->dim(2)));
     kernel_.setArg(idx++, static_cast<int32_t>(filter->dim(3)));
     kernel_.setArg(idx++, static_cast<int32_t>(kernel_size));
-    kernel_.setArg(idx++, static_cast<int32_t>(input_channel_blocks));
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blocks));
 
     input_shape_ = input->shape();
@@ -171,8 +175,12 @@ MaceStatus Deconv2dKernel<T>::Compute(
 
   const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
-      Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3));
+      Concat("depthwise_deconv2d_kernel_",
+             activation,
+             output->dim(0),
+             output->dim(1),
+             output->dim(2),
+             output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
                                            gws, lws, context->future()));
 
@@ -185,4 +193,4 @@ MaceStatus Deconv2dKernel<T>::Compute(
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_IMAGE_DECONV_2D_H_
+#endif  // MACE_OPS_OPENCL_IMAGE_DEPTHWISE_DECONV2D_H_
