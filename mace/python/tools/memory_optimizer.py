@@ -148,6 +148,9 @@ class MemoryOptimizer(object):
                     mem_id = self.op_mem.get(op.input[0], -1)
                 else:
                     output_type = mace_pb2.DT_FLOAT
+                    for arg in op.arg:
+                        if arg.name == 'T':
+                            output_type = arg.i
                     if len(op.output_type) > i:
                         output_type = op.output_type[i]
                     op_mem_block = self.get_op_mem_block(
