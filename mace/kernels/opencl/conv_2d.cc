@@ -27,8 +27,7 @@ Conv2dFunctor<DeviceType::GPU, T>::Conv2dFunctor(
     const std::vector<int> &paddings,
     const int *dilations,
     const ActivationType activation,
-    const float relux_max_limit,
-    const bool is_filter_transformed)
+    const float relux_max_limit)
     : Conv2dFunctorBase(context,
                         strides,
                         padding_type,
@@ -36,8 +35,6 @@ Conv2dFunctor<DeviceType::GPU, T>::Conv2dFunctor(
                         dilations,
                         activation,
                         relux_max_limit) {
-  MACE_UNUSED(is_filter_transformed);
-
   if (context->device()->opencl_runtime()->UseImageMemory()) {
     kernel_.reset(new opencl::image::Conv2dKernel<T>);
   } else {

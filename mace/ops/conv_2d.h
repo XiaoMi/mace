@@ -38,9 +38,7 @@ class Conv2dOp : public ConvPool2dOpBase<D, T> {
                  kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
-                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f),
-                 static_cast<bool>(OperatorBase::GetOptionalArg<int>(
-                     "is_filter_transformed", false))) {}
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
