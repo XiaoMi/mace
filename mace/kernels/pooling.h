@@ -277,6 +277,7 @@ struct PoolingFunctor<DeviceType::CPU, uint8_t>: PoolingFunctorBase {
 
           uint8_t *out_ptr =
               output + ((b * out_height + h) * out_width + w) * channels;
+          std::fill_n(out_ptr, channels, 0);
           for (index_t ih = in_h_begin; ih < in_h_end; ++ih) {
             for (index_t iw = in_w_begin; iw < in_w_end; ++iw) {
               const uint8_t *in_ptr = input +

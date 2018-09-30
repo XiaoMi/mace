@@ -200,6 +200,7 @@ class YAMLKeyword(object):
     winograd = 'winograd'
     quantize = 'quantize'
     quantize_range_file = 'quantize_range_file'
+    change_concat_ranges = 'change_concat_ranges'
     validation_inputs_data = 'validation_inputs_data'
     validation_threshold = 'validation_threshold'
     graph_optimize_options = 'graph_optimize_options'  # internal use for now
@@ -518,7 +519,8 @@ def format_model_config(flags):
                     YAMLKeyword.nnlib_graph_mode,
                     YAMLKeyword.obfuscate,
                     YAMLKeyword.winograd,
-                    YAMLKeyword.quantize]:
+                    YAMLKeyword.quantize,
+                    YAMLKeyword.change_concat_ranges]:
             value = model_config.get(key, "")
             if value == "":
                 model_config[key] = 0
@@ -771,6 +773,7 @@ def convert_model(configs, cl_mem_type):
             model_config[YAMLKeyword.winograd],
             model_config[YAMLKeyword.quantize],
             model_config.get(YAMLKeyword.quantize_range_file, ""),
+            model_config[YAMLKeyword.change_concat_ranges],
             model_config[YAMLKeyword.obfuscate],
             configs[YAMLKeyword.model_graph_format],
             data_type,

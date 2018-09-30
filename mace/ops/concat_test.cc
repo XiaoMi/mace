@@ -154,6 +154,95 @@ TEST_F(ConcatOpTest, CPURandom) {
   }
 }
 
+TEST_F(ConcatOpTest, QuantizedCPURandom) {
+  static unsigned int seed = time(NULL);
+  int dim = 4;
+  int num_inputs = 2 + rand_r(&seed) % 10;
+  int axis = rand_r(&seed) % dim;
+  // Construct graph
+  OpsTestNet net;
+
+  std::vector<index_t> shape_data;
+  GenerateRandomIntTypeData<index_t>({dim}, &shape_data, 1, 50);
+  std::vector<std::vector<index_t>> input_shapes(num_inputs, shape_data);
+  std::vector<std::vector<float>> inputs(num_inputs, std::vector<float>());
+  std::vector<float *> input_ptrs(num_inputs, nullptr);
+  index_t concat_axis_size = 0;
+  for (int i = 0; i < num_inputs; ++i) {
+    input_shapes[i][axis] = 1 + rand_r(&seed) % dim;
+    concat_axis_size += input_shapes[i][axis];
+    GenerateRandomRealTypeData(input_shapes[i], &inputs[i]);
+    input_ptrs[i] = inputs[i].data();
+    net.AddInputFromArray<DeviceType::CPU, float>(MakeString("Input", i),
+                                                  input_shapes[i], inputs[i]);
+  }
+  std::vector<index_t> output_shape = input_shapes[0];
+  output_shape[axis] = concat_axis_size;
+  net.AddRandomInput<DeviceType::CPU, float>(
+      "Output", output_shape, true, true);
+
+  auto builder = OpDefBuilder("Concat", "ConcatTest");
+  for (int i = 0; i < num_inputs; ++i) {
+    builder = builder.Input(MakeString("Input", i));
+  }
+  builder.AddIntArg("axis", axis)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+
+  // Run
+  net.RunOp();
+
+  for (int i = 0; i < num_inputs; ++i) {
+    OpDefBuilder("Quantize", MakeString("QuantizeInput", i))
+        .Input(MakeString("Input", i))
+        .Output(MakeString("QuantizedInput", i))
+        .OutputType({DT_UINT8})
+        .AddIntArg("T", DT_UINT8)
+        .AddIntArg("non_zero", true)
+        .Finalize(net.NewOperatorDef());
+    net.RunOp();
+  }
+
+  OpDefBuilder("Quantize", "QuantizeOutput")
+      .Input("Output")
+      .Output("ExpectedQuantizedOutput")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  net.AddRandomInput<DeviceType::CPU, uint8_t>(
+      "QuantizedOutput", output_shape, true, true);
+  auto q_builder = OpDefBuilder("Concat", "QuantizedConcatTest");
+  for (int i = 0; i < num_inputs; ++i) {
+    q_builder = q_builder.Input(MakeString("QuantizedInput", i));
+  }
+  q_builder.AddIntArg("axis", axis)
+      .Output("QuantizedOutput")
+      .AddIntArg("T", static_cast<int>(DT_UINT8))
+      .Finalize(net.NewOperatorDef());
+
+  net.Setup(DeviceType::CPU);
+  Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
+  Tensor *q_output = net.GetTensor("QuantizedOutput");
+  q_output->SetScale(eq_output->scale());
+  q_output->SetZeroPoint(eq_output->zero_point());
+  net.Run();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_UINT8)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
+
 namespace {
 template <typename T>
 void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,

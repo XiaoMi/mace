@@ -22,7 +22,7 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void ConcatHelper(int iters, int concat_dim, int dim1) {
+void ConcatHelper(int iters, int concat_dim, int dim0, int dim1) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -31,37 +31,49 @@ void ConcatHelper(int iters, int concat_dim, int dim1) {
       .Input("Input1")
       .AddIntArg("axis", concat_dim)
       .Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Add input data
-  const int kDim0 = 100;
-  net.AddRandomInput<DeviceType::CPU, T>("Input0", {kDim0, dim1});
-  net.AddRandomInput<DeviceType::CPU, T>("Input1", {kDim0, dim1});
+  net.AddRandomInput<DeviceType::CPU, T>("Input0", {dim0, dim1});
+  net.AddRandomInput<DeviceType::CPU, T>("Input1", {dim0, dim1});
+
+  net.Setup(D);
+  if (DataTypeToEnum<T>::value == DT_UINT8) {
+    net.GetTensor("Input0")->SetScale(0.1);
+    net.GetTensor("Input1")->SetScale(0.2);
+    net.GetTensor("Output")->SetScale(0.3);
+  }
 
   // Warm-up
-  for (int i = 0; i < 5; ++i) {
-    net.RunOp(D);
+  for (int i = 0; i < 2; ++i) {
+    net.Run();
   }
-  const int64_t tot = static_cast<int64_t>(iters) * kDim0 * dim1 * 2;
+  const int64_t tot = static_cast<int64_t>(iters) * dim0 * dim1 * 2;
   mace::testing::MaccProcessed(tot);
   testing::BytesProcessed(tot * sizeof(T));
   mace::testing::StartTiming();
   while (iters--) {
-    net.RunOp(D);
+    net.Run();
   }
 }
 }  // namespace
 
-#define MACE_BM_CONCAT_CPU_MACRO(DIM0, DIM1)                      \
-  static void MACE_BM_CONCAT_CPU_##DIM0##_##DIM1(int iters) {     \
-    ConcatHelper<DeviceType::CPU, float>(iters, DIM0, DIM1);      \
-  }                                                               \
-  MACE_BENCHMARK(MACE_BM_CONCAT_CPU_##DIM0##_##DIM1)
+#define MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, TYPE)                       \
+  static void MACE_BM_CONCAT_CPU_##AXIS##_##DIM0##_##DIM1##_##TYPE(int iters) {\
+    ConcatHelper<DeviceType::CPU, TYPE>(iters, AXIS, DIM0, DIM1);              \
+  }                                                                            \
+  MACE_BENCHMARK(MACE_BM_CONCAT_CPU_##AXIS##_##DIM0##_##DIM1##_##TYPE)
 
-MACE_BM_CONCAT_CPU_MACRO(0, 1000);
-MACE_BM_CONCAT_CPU_MACRO(0, 100000);
-MACE_BM_CONCAT_CPU_MACRO(1, 1000);
-MACE_BM_CONCAT_CPU_MACRO(1, 100000);
+#define MACE_BM_CONCAT_CPU(AXIS, DIM0, DIM1)             \
+  MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, float);     \
+  MACE_BM_CONCAT_CPU_MACRO(AXIS, DIM0, DIM1, uint8_t);   \
+
+MACE_BM_CONCAT_CPU(0, 100, 1000);
+MACE_BM_CONCAT_CPU(0, 100, 100000);
+MACE_BM_CONCAT_CPU(1, 100, 1000);
+MACE_BM_CONCAT_CPU(1, 100, 100000);
+MACE_BM_CONCAT_CPU(1, 1225, 128);
 
 namespace {
 template <typename T>
