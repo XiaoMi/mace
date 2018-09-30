@@ -20,6 +20,7 @@ import hashlib
 from enum import Enum
 
 from mace.proto import mace_pb2
+from mace.python.tools.convert_util import mace_check
 from jinja2 import Environment, FileSystemLoader
 
 GENERATED_NAME = set()
@@ -107,11 +108,9 @@ class TensorInfo:
         self.id = id
         self.data_type = tensor.data_type
         if tensor.data_type == mace_pb2.DT_HALF:
-            self.data_type = mace_pb2.DT_HALF
             self.data = bytearray(
                 np.array(tensor.float_data).astype(np.float16).tobytes())
         elif tensor.data_type == mace_pb2.DT_FLOAT:
-            self.data_type = mace_pb2.DT_FLOAT
             self.data = bytearray(
                 np.array(tensor.float_data).astype(np.float32).tobytes())
         elif tensor.data_type == mace_pb2.DT_INT32:
@@ -139,7 +138,7 @@ def update_tensor_infos(net_def, runtime, data_type):
         tensor_info = TensorInfo(counter, tensor)
         tensor_infos.append(tensor_info)
         # align
-        if tensor_info.data_type != 'DT_UINT8' and offset % 4 != 0:
+        if tensor_info.data_type != mace_pb2.DT_UINT8 and offset % 4 != 0:
             padding = 4 - offset % 4
             offset += padding
 
@@ -162,10 +161,11 @@ def extract_model_data(net_def):
     for tensor in net_def.tensors:
         tensor_info = TensorInfo(counter, tensor)
         # align
-        if tensor_info.data_type != mace_pb2.DT_UINT8 and offset % 4 != 0:
-            padding = 4 - offset % 4
-            model_data.extend(bytearray([0] * padding))
-            offset += padding
+        mace_check(offset <= tensor.offset,
+                   "Current offset should be <= tensor.offset")
+        if offset < tensor.offset:
+            model_data.extend(bytearray([0] * (tensor.offset - offset)))
+            offset = tensor.offset
         model_data.extend(tensor_info.data)
         offset += len(tensor_info.data)
         counter += 1

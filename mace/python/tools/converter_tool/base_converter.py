@@ -40,6 +40,7 @@ class PaddingMode(Enum):
     VALID = 0
     SAME = 1
     FULL = 2
+    NA = 3
 
 
 class PoolingType(Enum):
@@ -270,6 +271,7 @@ class ConverterOption(object):
     def __init__(self):
         self._input_nodes = {}
         self._output_nodes = {}
+        self._check_nodes = {}
         self._data_type = mace_pb2.DT_FLOAT
         self._device = DeviceType.CPU.value
         self._winograd = 0
@@ -286,6 +288,10 @@ class ConverterOption(object):
     @property
     def output_nodes(self):
         return self._output_nodes
+
+    @property
+    def check_nodes(self):
+        return self._check_nodes
 
     @property
     def data_type(self):
@@ -334,6 +340,14 @@ class ConverterOption(object):
 
     def add_output_node(self, output_node):
         self._output_nodes[output_node.name] = output_node
+
+    @check_nodes.setter
+    def check_nodes(self, check_nodes):
+        for node in check_nodes:
+            self.check_nodes[node.name] = node
+
+    def add_check_node(self, check_node):
+        self._check_nodes[check_node.name] = check_node
 
     @data_type.setter
     def data_type(self, data_type):
