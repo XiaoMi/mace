@@ -1852,7 +1852,9 @@ class Transformer(base_converter.ConverterInterface):
                 self.copy_quantize_info(op, producer_op.quantize_info[0])
                 self._quantize_activation_info[op.output[0]] = \
                     op.quantize_info[0]
-            elif op.type == MaceOp.Concat.name:
+            elif (op.type == MaceOp.Concat.name
+                  and (not op.quantize_info
+                       or self._option.change_concat_ranges)):
                 if op.quantize_info:
                     maxval = op.quantize_info[0].maxval
                     minval = op.quantize_info[0].minval
@@ -1866,12 +1868,13 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info = \
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
-                for i in range(len(op.input)):
-                    producer_op = self._producer[op.input[i]]
-                    del producer_op.quantize_info[:]
-                    self.copy_quantize_info(producer_op, quantize_info)
-                    self._quantize_activation_info[producer_op.output[0]] = \
-                        producer_op.quantize_info[0]
+                if self._option.change_concat_ranges:
+                    for i in range(len(op.input)):
+                        producer_op = self._producer[op.input[i]]
+                        del producer_op.quantize_info[:]
+                        self.copy_quantize_info(producer_op, quantize_info)
+                        self._quantize_activation_info[producer_op.output[0]] \
+                            = producer_op.quantize_info[0]
             elif op.type == MaceOp.Softmax.name:
                 del op.quantize_info[:]
                 quantize_info = \

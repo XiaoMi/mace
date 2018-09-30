@@ -578,11 +578,14 @@ void TestQuant(const index_t batch,
                enum Padding padding_type,
                PoolingType pooling) {
   OpsTestNet net;
+  std::vector<index_t> input_shape{batch, in_height, in_width, channels};
   net.AddRandomInput<CPU, float>(
-      "Input", {batch, in_height, in_width, channels}, false);
+      "Input", input_shape, false);
   net.TransformDataFormat<DeviceType::CPU, float>(
       "Input", NHWC, "InputNCHW", NCHW);
 
+  net.AddRandomInput<DeviceType::CPU, float>(
+      "OutputNCHW", input_shape, true, true);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")
@@ -607,6 +610,7 @@ void TestQuant(const index_t batch,
       .Finalize(net.NewOperatorDef());
   net.RunOp();
 
+  net.AddRandomInput<DeviceType::CPU, uint8_t>("QuantizedOutput", input_shape);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("QuantizedInput")
       .Output("QuantizedOutput")

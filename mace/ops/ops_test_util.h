@@ -34,6 +34,7 @@
 #include "mace/kernels/opencl/common.h"
 #include "mace/ops/ops_register.h"
 #include "mace/utils/utils.h"
+#include "mace/utils/quantize.h"
 
 namespace mace {
 namespace ops {
@@ -200,6 +201,11 @@ class OpsTestNet {
             }
             return half_float::half_cast<half>(positive ? std::abs(d) : d);
           });
+    } else if (DataTypeToEnum<T>::value == DT_UINT8) {
+      std::generate(input_data, input_data + input->size(),
+                    [&gen, &nd] {
+                      return Saturate<uint8_t>(roundf((nd(gen) + 1) * 128));
+                    });
     } else {
       std::generate(input_data, input_data + input->size(),
                     [&gen, &nd, positive, truncate,

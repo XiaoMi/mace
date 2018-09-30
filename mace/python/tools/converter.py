@@ -106,6 +106,7 @@ def main(unused_args):
     option.winograd = FLAGS.winograd
     option.quantize = FLAGS.quantize
     option.quantize_range_file = FLAGS.quantize_range_file
+    option.change_concat_ranges = FLAGS.change_concat_ranges
     option.cl_mem_type = FLAGS.cl_mem_type
 
     input_node_names = FLAGS.input_node.split(',')
@@ -324,6 +325,13 @@ def parse_args():
         type=str,
         default="",
         help="file path of quantize range for each tensor")
+    parser.add_argument(
+        "--change_concat_ranges",
+        type=str2bool,
+        nargs='?',
+        const=False,
+        default=False,
+        help="change ranges to use memcpy for quantized concat")
     parser.add_argument(
         "--cl_mem_type",
         type=str,

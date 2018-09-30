@@ -266,6 +266,7 @@ class ConverterOption(object):
         self._winograd = 0
         self._quantize = False
         self._quantize_range_file = ""
+        self._change_concat_ranges = False
         self._transformer_option = None
         self._cl_mem_type = ""
 
@@ -292,6 +293,10 @@ class ConverterOption(object):
     @property
     def quantize(self):
         return self._quantize
+
+    @property
+    def change_concat_ranges(self):
+        return self._change_concat_ranges
 
     @property
     def quantize_range_file(self):
@@ -340,6 +345,10 @@ class ConverterOption(object):
     @quantize_range_file.setter
     def quantize_range_file(self, quantize_range_file):
         self._quantize_range_file = quantize_range_file
+
+    @change_concat_ranges.setter
+    def change_concat_ranges(self, change_concat_ranges):
+        self._change_concat_ranges = change_concat_ranges
 
     @transformer_option.setter
     def transformer_option(self, transformer_option):
