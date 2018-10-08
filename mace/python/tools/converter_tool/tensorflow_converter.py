@@ -403,6 +403,12 @@ class TensorflowConverter(base_converter.ConverterInterface):
                 dilation_val = [1, 1]
             dilation_arg.ints.extend(dilation_val)
         else:
+            try:
+                dilation_val = tf_op.get_attr(tf_dilations_str)[1:3]
+            except ValueError:
+                dilation_val = [1, 1]
+            mace_check(dilation_val[0] == 1 and dilation_val[1] == 1,
+                       "Mace only supports dilation == 1 conv2d_transpose.")
             mace_check(len(tf_op.inputs) >= 3,
                        "deconv should have (>=) 3 inputs.")
             output_shape_arg = op.arg.add()

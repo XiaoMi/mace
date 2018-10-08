@@ -950,13 +950,13 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def reshape_fc_weight(self):
-        print("Reshape fully connected weight shape")
         net = self._model
         filter_format = self.filter_format()
         for op in net.op:
             if op.type == MaceOp.FullyConnected.name:
                 weight = self._consts[op.input[1]]
                 if len(weight.dims) == 2:
+                    print("Reshape fully connected weight shape")
                     input_op = self._producer[op.input[0]]
                     input_shape = list(input_op.output_shape[0].dims)
                     weight.dims[:] = [weight.dims[0]] + input_shape[1:]

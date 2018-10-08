@@ -16,6 +16,7 @@
 #define MACE_OPS_DECONV_2D_H_
 
 #include <memory>
+#include <string>
 
 #include "mace/core/operator.h"
 #include "mace/kernels/deconv_2d.h"
@@ -34,8 +35,10 @@ class Deconv2dOp : public Operator<D, T> {
                      "padding", static_cast<int>(SAME))),
                  OperatorBase::GetRepeatedArgs<int>("padding_values"),
                  OperatorBase::GetRepeatedArgs<index_t>("output_shape"),
-                 kernels::ActivationType::NOOP,
-                 0.0f) {}
+                 kernels::StringToActivationType(
+                     OperatorBase::GetOptionalArg<std::string>("activation",
+                                                               "NOOP")),
+                 OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
     const Tensor *input = this->Input(INPUT);
