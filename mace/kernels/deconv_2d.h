@@ -184,7 +184,6 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
 
   void Deconv2dGeneral(const float *input,
                        const float *filter,
-                       const float *bias,
                        const index_t kernel_h,
                        const index_t kernel_w,
                        const int *strides,
@@ -206,23 +205,25 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
       }
     }
 
-#pragma omp parallel for
-    for (int b = 0; b < in_shape[0]; ++b) {
-      for (int oc = 0; oc < out_shape[1]; ++oc) {
-        float *out_base =
-            output + (b * out_shape[1] + oc) * out_img_size;
-        const float bias_value = bias ? bias[oc] : 0.f;
-        std::fill_n(out_base, out_img_size, bias_value);
+    const index_t batch = in_shape[0];
+    const index_t out_channels = out_shape[1];
+    const index_t in_channels = in_shape[1];
+
+#pragma omp parallel for collapse(4)
+    for (int b = 0; b < batch; ++b) {
+      for (int oc = 0; oc < out_channels; ++oc) {
         for (int i = 0; i < in_height; ++i) {
           for (int j = 0; j < in_width; ++j) {
+            float *out_base =
+                output + (b * out_channels + oc) * out_img_size;
             const index_t out_offset =
                 i * strides[0] * out_width + j * strides[1];
-            for (int ic = 0; ic < in_shape[1]; ++ic) {
+            for (int ic = 0; ic < in_channels; ++ic) {
               const index_t input_idx =
-                  (b * in_shape[1] + ic) * in_img_size + i * in_width + j;
+                  (b * in_channels + ic) * in_img_size + i * in_width + j;
               const float val = input[input_idx];
               const index_t kernel_offset =
-                  (oc * in_shape[1] + ic) * kernel_size;
+                  (oc * in_channels + ic) * kernel_size;
               for (int k = 0; k < kernel_size; ++k) {
                 const index_t out_idx = out_offset + index_map[k];
                 const index_t kernel_idx = kernel_offset + k;
@@ -248,7 +249,7 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
 
     const index_t out_height = out_shape[2];
     const index_t out_width = out_shape[3];
-#pragma omp parallel for
+#pragma omp parallel for collapse(3)
     for (int i = 0; i < batch; ++i) {
       for (int j = 0; j < channel; ++j) {
         for (int k = 0; k < out_height; ++k) {
@@ -324,7 +325,6 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
                "Input/Output batch size mismatch");
     std::function<void(const float *input,
                        const float *filter,
-                       const float *bias,
                        const index_t *in_shape,
                        const index_t *out_shape,
                        float *output)> deconv_func;
@@ -354,6 +354,8 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     scratch->Rewind();
     scratch->GrowSize(padded_out_size);
     Tensor padded_out(scratch->Scratch(padded_out_size), DT_FLOAT);
+    padded_out.Reshape(padded_out_shape);
+    padded_out.Clear();
     auto *padded_out_data = padded_out.mutable_data<float>();
 
     bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
@@ -369,13 +371,11 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     if (use_neon_3x3_s1) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *padded_out_shape,
                         float *padded_output) {
         Deconv2dNeonK3x3S1(input,
                            filter,
-                           bias,
                            in_shape,
                            padded_out_shape,
                            padded_output);
@@ -383,13 +383,11 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     } else if (use_neon_3x3_s2) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *padded_out_shape,
                         float *padded_output) {
         Deconv2dNeonK3x3S2(input,
                            filter,
-                           bias,
                            in_shape,
                            padded_out_shape,
                            padded_output);
@@ -397,13 +395,11 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     } else if (use_neon_4x4_s1) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *padded_out_shape,
                         float *padded_output) {
         Deconv2dNeonK4x4S1(input,
                            filter,
-                           bias,
                            in_shape,
                            padded_out_shape,
                            padded_output);
@@ -411,13 +407,11 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     } else if (use_neon_4x4_s2) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *padded_out_shape,
                         float *padded_output) {
         Deconv2dNeonK4x4S2(input,
                            filter,
-                           bias,
                            in_shape,
                            padded_out_shape,
                            padded_output);
@@ -425,13 +419,11 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     } else {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *padded_out_shape,
                         float *padded_output) {
         Deconv2dGeneral(input,
                         filter,
-                        bias,
                         kernel_h,
                         kernel_w,
                         strides_.data(),
@@ -444,9 +436,24 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     bool no_pad =
         padded_out_h == output_shape[2] && padded_out_w == output_shape[3];
     float *out_data = no_pad ? output_data : padded_out_data;
+
+    if (bias_data != nullptr) {
+      const index_t batch = output_shape[0];
+      const index_t channels = output_shape[1];
+      const index_t img_size = output_shape[2] * output_shape[3];
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channels; ++c) {
+          for (index_t i = 0; i < img_size; ++i) {
+            output_data[(b * channels + c) * img_size + i] +=
+                bias_data[c];
+          }
+        }
+      }
+    }
+
     deconv_func(input_data,
                 filter_data,
-                bias_data,
                 in_shape,
                 padded_out_shape.data(),
                 out_data);
@@ -458,6 +465,8 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
                  pad_w,
                  output_data);
     }
+
+
 
     DoActivation<float>(output_data,
                  output_data,

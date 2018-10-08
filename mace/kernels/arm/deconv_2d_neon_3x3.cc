@@ -20,7 +20,6 @@ namespace kernels {
 
 void Deconv2dNeonK3x3S1(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output) {
@@ -40,12 +39,6 @@ void Deconv2dNeonK3x3S1(const float *input,
       if (oc + 1 < outch) {
         float *out_base0 = output + (b * outch + oc) * out_img_size;
         float *out_base1 = out_base0 + out_img_size;
-
-        const float bias_value0 = bias ? bias[oc] : 0.f;
-        const float bias_value1 = bias ? bias[oc + 1] : 0.f;
-        std::fill_n(out_base0, out_img_size, bias_value0);
-        std::fill_n(out_base1, out_img_size, bias_value1);
-
         for (index_t ic = 0; ic < inch; ++ic) {
           const float *input_base = input + (b * inch + ic) * h * w;
           const float *kernel_base0 = filter + (oc * inch + ic) * 9;
@@ -197,8 +190,6 @@ void Deconv2dNeonK3x3S1(const float *input,
         }
       } else {
         float *out_base0 = output + (b * outch + oc) * outh * outw;
-        const float bias_value0 = bias ? bias[oc] : 0.f;
-        std::fill_n(out_base0, outh * outw, bias_value0);
         for (index_t ic = 0; ic < inch; ++ic) {
           const float *input_base = input + (b * inch + ic) * h * w;
           const float *kernel_base0 = filter + (oc * inch + ic) * 9;
@@ -290,7 +281,6 @@ void Deconv2dNeonK3x3S1(const float *input,
 
 void Deconv2dNeonK3x3S2(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output) {
@@ -303,15 +293,11 @@ void Deconv2dNeonK3x3S2(const float *input,
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(3)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (index_t oc = 0; oc < outch; ++oc) {
-      float *out_base = output + (b * outch + oc) * out_img_size;
-
-      const float bias_value = bias ? bias[oc] : 0.f;
-      std::fill_n(out_base, out_img_size, bias_value);
-
       for (index_t ic = 0; ic < inch; ++ic) {
+        float *out_base = output + (b * outch + oc) * out_img_size;
         const float *input_base = input + (b * inch + ic) * h * w;
         const float *kernel_base = filter + (oc * inch + ic) * 9;
         const float *in = input_base;
