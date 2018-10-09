@@ -14,7 +14,9 @@
 
 
 import math
+
 import numpy as np
+import six
 import google.protobuf.text_format
 
 from mace.proto import mace_pb2
@@ -46,6 +48,7 @@ class CaffeOperator(object):
     Layer records caffe layer proto, while blobs records the weight data in
     format of numpy ndarray.
     """
+
     def __init__(self):
         self._layer = None
         self._blobs = None
@@ -92,6 +95,7 @@ class CaffeNet(object):
     """CaffeNet contains caffe operations. Output of each layer has unique
     name as we replace duplicated output name with unique one, while keep
     mace input/output name which user specifies unchanged."""
+
     def __init__(self):
         self._ops = {}
         self._consumers = {}
@@ -119,7 +123,7 @@ class CaffeNet(object):
         layer.bottom[:] = [self._alias_op_output_name.get(layer_input,
                                                           layer_input) for
                            layer_input in layer.bottom][:]
-        for i in xrange(len(layer.top)):
+        for i in six.moves.range(len(layer.top)):
             old_name = layer.top[i]
             if layer.type == 'Input':
                 new_name = old_name
@@ -218,7 +222,7 @@ class CaffeConverter(base_converter.ConverterInterface):
     @staticmethod
     def replace_input_name(ops, src_name, dst_name):
         for op in ops:
-            for i in xrange(len(op.input)):
+            for i in six.moves.range(len(op.input)):
                 if op.input[i] == src_name:
                     op.input[i] = dst_name
 
@@ -235,7 +239,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         ops.reverse()
         visited = set()
         for op in ops:
-            for i in xrange(len(op.output)):
+            for i in six.moves.range(len(op.output)):
                 original_output_name = op.output[i].split('#')[0]
                 if original_output_name not in visited:
                     self.replace_input_name(
@@ -267,7 +271,7 @@ class CaffeConverter(base_converter.ConverterInterface):
                 if len(layer.exclude):
                     phase = phase_map[layer.exclude[0].phase]
                 if phase != 'test' or layer.type == 'Dropout':
-                    print ("Remove layer %s (%s)" % (layer.name, layer.type))
+                    print("Remove layer %s (%s)" % (layer.name, layer.type))
                     layers.layer.remove(layer)
                     changed = True
                     break
@@ -497,8 +501,8 @@ class CaffeConverter(base_converter.ConverterInterface):
             beta_value = scale_op.blobs[1]
 
         scale_value = (
-            (1.0 / np.vectorize(math.sqrt)(var_value + epsilon_value)) *
-            gamma_value).reshape(-1)
+                (1.0 / np.vectorize(math.sqrt)(var_value + epsilon_value)) *
+                gamma_value).reshape(-1)
         offset_value = ((-mean_value * scale_value) + beta_value).reshape(-1)
 
         input_names = [op.name + '_scale', op.name + '_offset']

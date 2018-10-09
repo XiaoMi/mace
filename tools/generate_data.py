@@ -18,6 +18,8 @@ import numpy as np
 import re
 import common
 
+import six
+
 # Validation Flow:
 # 1. Generate input data
 #    python generate_data.py \
@@ -32,7 +34,7 @@ def generate_data(name, shape, input_file, tensor_range, input_data_type):
     data = np.random.random(shape) * (tensor_range[1] - tensor_range[0]) \
         + tensor_range[0]
     input_file_name = common.formatted_file_name(input_file, name)
-    print 'Generate input file: ', input_file_name
+    six.print_('Generate input file: ', input_file_name)
     if input_data_type == 'float32':
         np_data_type = np.float32
     elif input_data_type == 'int32':
@@ -61,7 +63,7 @@ def generate_input_data(input_file, input_node, input_shape, input_ranges,
         input_range = [float(x) for x in input_ranges[i].split(',')]
         generate_data(input_names[i], shape, input_file, input_range,
                       input_data_types[i])
-    print "Generate input file done."
+    six.print_("Generate input file done.")
 
 
 def parse_args():

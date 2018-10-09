@@ -15,6 +15,8 @@
 import enum
 import re
 
+import six
+
 
 ################################
 # log
@@ -33,24 +35,24 @@ class CMDColors:
 class MaceLogger:
     @staticmethod
     def header(message):
-        print CMDColors.PURPLE + message + CMDColors.ENDC
+        six.print_(CMDColors.PURPLE + message + CMDColors.ENDC)
 
     @staticmethod
     def summary(message):
-        print CMDColors.GREEN + message + CMDColors.ENDC
+        six.print_(CMDColors.GREEN + message + CMDColors.ENDC)
 
     @staticmethod
     def info(message):
-        print message
+        six.print_(message)
 
     @staticmethod
     def warning(message):
-        print CMDColors.YELLOW + 'WARNING:' + message + CMDColors.ENDC
+        six.print_(CMDColors.YELLOW + 'WARNING:' + message + CMDColors.ENDC)
 
     @staticmethod
     def error(module, message):
-        print CMDColors.RED + 'ERROR: [' + module + '] '\
-              + message + CMDColors.ENDC
+        six.print_(CMDColors.RED + 'ERROR: [' + module + '] '
+                   + message + CMDColors.ENDC)
         exit(1)
 
 
@@ -71,7 +73,7 @@ class StringFormatter:
         for row_idx in range(data_size):
             data_tuple = data[row_idx]
             ele_size = len(data_tuple)
-            assert(ele_size == column_size)
+            assert (ele_size == column_size)
             for i in range(ele_size):
                 column_length[i] = max(column_length[i],
                                        len(str(data_tuple[i])) + 1)

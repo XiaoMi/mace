@@ -19,3 +19,5 @@ builds/
 mace/examples/android/macelibrary/src/main/cpp/mace/
 
 \.project/
+*swp
+*~

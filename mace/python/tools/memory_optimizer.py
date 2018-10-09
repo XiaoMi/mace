@@ -14,6 +14,9 @@
 
 import sys
 import operator
+
+import six
+
 from mace.proto import mace_pb2
 
 from mace.python.tools.converter_tool import base_converter as cvt
@@ -60,7 +63,7 @@ class MemoryOptimizer(object):
         self.mem_ref_counter = {}
         ocl_mem_type_arg = ConverterUtil.get_arg(
             net_def, MaceKeyword.mace_opencl_mem_type)
-        self.cl_mem_type = ocl_mem_type_arg.i if ocl_mem_type_arg is not None\
+        self.cl_mem_type = ocl_mem_type_arg.i if ocl_mem_type_arg is not None \
             else None
 
         consumers = {}
@@ -126,8 +129,8 @@ class MemoryOptimizer(object):
     def get_total_optimized_mem_size(self):
         optimized_mem_size = 0
         for mem in self.mem_block:
-            print mem, MemoryTypeToStr(self.mem_block[mem].mem_type), \
-                self.mem_block[mem].block
+            print(mem, MemoryTypeToStr(self.mem_block[mem].mem_type),
+                  self.mem_block[mem].block)
             optimized_mem_size += self.mem_size(self.mem_block[mem])
         return optimized_mem_size
 
@@ -141,12 +144,14 @@ class MemoryOptimizer(object):
             if not self.op_need_optimize_memory(op):
                 continue
             if not op.output_shape:
-                print("WARNING: There is no output shape information to "
-                      "do memory optimization. %s (%s)" % (op.name, op.type))
+                six.print_("WARNING: There is no output shape information to "
+                           "do memory optimization. %s (%s)" %
+                           (op.name, op.type), file=sys.stderr)
                 return
             if len(op.output_shape) != len(op.output):
-                print('WARNING: the number of output shape is not equal to '
-                      'the number of output.')
+                six.print_('WARNING: the number of output shape is '
+                           'not equal to the number of output.',
+                           file=sys.stderr)
                 return
             for i in range(len(op.output)):
                 if self.is_memory_reuse_op(op):
@@ -181,7 +186,7 @@ class MemoryOptimizer(object):
                             # minimize add_mem_size; if best_mem_add_size is 0,
                             # then minimize waste_mem_size
                             if (best_mem_add_size > 0 and
-                                    add_mem_size < best_mem_add_size) \
+                                add_mem_size < best_mem_add_size) \
                                     or (best_mem_add_size == 0 and
                                         waste_mem_size < best_mem_waste_size):
                                 best_mem_id = mid
@@ -209,7 +214,7 @@ class MemoryOptimizer(object):
                         self.mem_ref_counter[mem_id] += 1
 
             # de-ref input tensor mem
-            for idx in xrange(len(op.input)):
+            for idx in six.moves.range(len(op.input)):
                 ipt = op.input[idx]
                 if ipt in self.input_ref_counter:
                     self.input_ref_counter[ipt] -= 1
@@ -226,8 +231,8 @@ class MemoryOptimizer(object):
 
         print("total op: %d" % len(self.net_def.op))
         print("origin mem: %d, optimized mem: %d" % (
-              self.get_total_origin_mem_size(),
-              self.get_total_optimized_mem_size()))
+            self.get_total_origin_mem_size(),
+            self.get_total_optimized_mem_size()))
 
 
 class GPUMemoryOptimizer(MemoryOptimizer):
