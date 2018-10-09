@@ -26,28 +26,24 @@ namespace kernels {
 
 void Deconv2dNeonK3x3S1(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output);
 
 void Deconv2dNeonK3x3S2(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output);
 
 void Deconv2dNeonK4x4S1(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output);
 
 void Deconv2dNeonK4x4S2(const float *input,
                         const float *filter,
-                        const float *bias,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output);
