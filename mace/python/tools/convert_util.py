@@ -21,7 +21,7 @@ def mace_check(condition, msg):
 
 
 def roundup_div4(value):
-    return int((value + 3) / 4)
+    return int((value + 3) // 4)
 
 
 class OpenCLBufferType(enum.Enum):

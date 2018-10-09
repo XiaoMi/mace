@@ -16,8 +16,10 @@ import operator
 import functools
 import argparse
 import sys
-import six
 import copy
+
+import six
+
 import tensorflow as tf
 from tensorflow import gfile
 from tensorflow.core.framework import graph_pb2
@@ -51,7 +53,7 @@ def add_shape_info(input_graph_def, input_nodes, input_shapes):
             else:
                 idx = input_nodes.index(node.name + ':0')
             input_shape = input_shapes[idx]
-            print input_shape
+            print(input_shape)
             placeholder_node = copy.deepcopy(node)
             placeholder_node.attr.clear()
             placeholder_node.attr['shape'].shape.dim.extend([
@@ -215,7 +217,7 @@ def main(unused_args):
 
 
 def parse_args():
-    '''Parses command line arguments.'''
+    """Parses command line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--input',

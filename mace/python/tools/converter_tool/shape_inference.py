@@ -14,7 +14,9 @@
 
 
 import math
+
 import numpy as np
+import six
 
 from mace.python.tools.converter_tool.transformer import Transformer
 from mace.python.tools.converter_tool.base_converter import DataFormat
@@ -68,7 +70,7 @@ class ShapeInference(object):
                    "Op %s (%s) output count is different from "
                    "output shape count" % (
                        op.name, op.type))
-        for i in xrange(len(shapes)):
+        for i in six.moves.range(len(shapes)):
             output_name = op.output[i]
             output_shape = op.output_shape.add()
             output_shape.dims.extend(shapes[i])
@@ -174,8 +176,8 @@ class ShapeInference(object):
             mace_check(False,
                        "Mace can only infer shape for"
                        " NCHW input and OIHW filter")
-        print ("deconv layer %s (%s) input:%s filter:%s output:%s" %
-               (op.name, op.type, input_shape, filter_shape, output_shape))
+        print("deconv layer %s (%s) input:%s filter:%s output:%s" %
+              (op.name, op.type, input_shape, filter_shape, output_shape))
 
         self.add_output_shape(op, [output_shape])
 

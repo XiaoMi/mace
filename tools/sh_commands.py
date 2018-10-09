@@ -27,6 +27,8 @@ import urllib
 import platform
 from enum import Enum
 
+import six
+
 import common
 
 sys.path.insert(0, "mace/python/tools")
@@ -37,8 +39,9 @@ try:
     from validate import validate
     from mace_engine_factory_codegen import gen_mace_engine_factory
 except Exception as e:
-    print("Import error:\n%s" % e)
+    six.print_("Import error:\n%s" % e, file=sys.stderr)
     exit(1)
+
 
 ################################
 # common
@@ -57,7 +60,7 @@ def split_stdout(stdout_str):
 
 def make_output_processor(buff):
     def process_output(line):
-        print(line.rstrip())
+        six.print_(line.rstrip())
         buff.append(line)
 
     return process_output
@@ -95,7 +98,7 @@ def stdout_success(stdout):
     stdout_lines = stdout.split("\n")
     for line in stdout_lines:
         if "Aborted" in line or "FAILED" in line or \
-                        "Segmentation fault" in line:
+                "Segmentation fault" in line:
             return False
     return True
 
@@ -129,7 +132,7 @@ def get_soc_serialnos_map():
     soc_serialnos_map = {}
     for serialno in serialnos:
         props = adb_getprop_by_serialno(serialno)
-        soc_serialnos_map.setdefault(props["ro.board.platform"], [])\
+        soc_serialnos_map.setdefault(props["ro.board.platform"], []) \
             .append(serialno)
 
     return soc_serialnos_map
@@ -178,16 +181,16 @@ def adb_get_all_socs():
 
 
 def adb_push(src_path, dst_path, serialno):
-    print("Push %s to %s" % (src_path, dst_path))
+    six.print_("Push %s to %s" % (src_path, dst_path))
     sh.adb("-s", serialno, "push", src_path, dst_path)
 
 
 def adb_pull(src_path, dst_path, serialno):
-    print("Pull %s to %s" % (src_path, dst_path))
+    six.print_("Pull %s to %s" % (src_path, dst_path))
     try:
         sh.adb("-s", serialno, "pull", src_path, dst_path)
     except Exception as e:
-        print("Error msg: %s" % e.stderr)
+        six.print_("Error msg: %s" % e.stderr)
 
 
 def adb_run(abi,
@@ -204,14 +207,14 @@ def adb_run(abi,
     host_bin_full_path = "%s/%s" % (host_bin_path, bin_name)
     device_bin_full_path = "%s/%s" % (device_bin_path, bin_name)
     props = adb_getprop_by_serialno(serialno)
-    print(
+    six.print_(
         "====================================================================="
     )
-    print("Trying to lock device %s" % serialno)
+    six.print_("Trying to lock device %s" % serialno)
     with device_lock(serialno):
-        print("Run on device: %s, %s, %s" %
-              (serialno, props["ro.board.platform"],
-               props["ro.product.model"]))
+        six.print_("Run on device: %s, %s, %s" %
+                   (serialno, props["ro.board.platform"],
+                    props["ro.product.model"]))
         sh.adb("-s", serialno, "shell", "rm -rf %s" % device_bin_path)
         sh.adb("-s", serialno, "shell", "mkdir -p %s" % device_bin_path)
         adb_push(host_bin_full_path, device_bin_full_path, serialno)
@@ -223,7 +226,7 @@ def adb_run(abi,
 
         opencl_profiling = 1 if opencl_profiling else 0
         out_of_range_check = 1 if out_of_range_check else 0
-        print("Run %s" % device_bin_full_path)
+        six.print_("Run %s" % device_bin_full_path)
 
         stdout_buff = []
         process_output = make_output_processor(stdout_buff)
@@ -342,7 +345,7 @@ def bazel_build(target,
                 address_sanitizer=False,
                 symbol_hidden=True,
                 extra_args=""):
-    print("* Build %s with ABI %s" % (target, abi))
+    six.print_("* Build %s with ABI %s" % (target, abi))
     if abi == "host":
         bazel_args = (
             "build",
@@ -372,12 +375,12 @@ def bazel_build(target,
     if symbol_hidden:
         bazel_args += ("--config", "symbol_hidden")
     if extra_args:
-        bazel_args += (extra_args, )
-        print bazel_args
+        bazel_args += (extra_args,)
+        six.print_(bazel_args)
     sh.bazel(
         _fg=True,
         *bazel_args)
-    print("Build done!\n")
+    six.print_("Build done!\n")
 
 
 def bazel_build_common(target, build_args=""):
@@ -414,7 +417,7 @@ def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
 def gen_mace_engine_factory_source(model_tags,
                                    embed_model_data,
                                    codegen_path="mace/codegen"):
-    print("* Generate mace engine creator source")
+    six.print_("* Generate mace engine creator source")
     codegen_tools_dir = "%s/engine" % codegen_path
     sh.rm("-rf", codegen_tools_dir)
     sh.mkdir("-p", codegen_tools_dir)
@@ -423,7 +426,7 @@ def gen_mace_engine_factory_source(model_tags,
         "mace/python/tools",
         embed_model_data,
         codegen_tools_dir)
-    print("Generate mace engine creator source done!\n")
+    six.print_("Generate mace engine creator source done!\n")
 
 
 def pull_file_from_device(serial_num, file_path, file_name, output_dir):
@@ -452,14 +455,14 @@ def merge_opencl_binaries(binaries_dirs,
         if not os.path.exists(binary_path):
             continue
 
-        print 'generate opencl code from', binary_path
+        six.print_('generate opencl code from', binary_path)
         with open(binary_path, "rb") as f:
             binary_array = np.fromfile(f, dtype=np.uint8)
 
         idx = 0
         size, = struct.unpack("Q", binary_array[idx:idx + 8])
         idx += 8
-        for _ in xrange(size):
+        for _ in six.moves.range(size):
             key_size, = struct.unpack("i", binary_array[idx:idx + 4])
             idx += 4
             key, = struct.unpack(
@@ -481,7 +484,7 @@ def merge_opencl_binaries(binaries_dirs,
     output_byte_array = bytearray()
     data_size = len(kvs)
     output_byte_array.extend(struct.pack("Q", data_size))
-    for key, value in kvs.iteritems():
+    for key, value in six.iteritems(kvs):
         key_size = len(key)
         output_byte_array.extend(struct.pack("i", key_size))
         output_byte_array.extend(struct.pack(str(key_size) + "s", key))
@@ -508,14 +511,14 @@ def merge_opencl_parameters(binaries_dirs,
         if not os.path.exists(binary_path):
             continue
 
-        print 'generate opencl parameter from', binary_path
+        six.print_('generate opencl parameter from', binary_path)
         with open(binary_path, "rb") as f:
             binary_array = np.fromfile(f, dtype=np.uint8)
 
         idx = 0
         size, = struct.unpack("Q", binary_array[idx:idx + 8])
         idx += 8
-        for _ in xrange(size):
+        for _ in six.moves.range(size):
             key_size, = struct.unpack("i", binary_array[idx:idx + 4])
             idx += 4
             key, = struct.unpack(
@@ -529,7 +532,7 @@ def merge_opencl_parameters(binaries_dirs,
     output_byte_array = bytearray()
     data_size = len(kvs)
     output_byte_array.extend(struct.pack("Q", data_size))
-    for key, value in kvs.iteritems():
+    for key, value in six.iteritems(kvs):
         key_size = len(key)
         output_byte_array.extend(struct.pack("i", key_size))
         output_byte_array.extend(struct.pack(str(key_size) + "s", key))
@@ -637,11 +640,12 @@ def gen_random_input(model_output_dir,
         for i in range(len(input_file_list)):
             if input_file_list[i] is not None:
                 dst_input_file = model_output_dir + '/' + \
-                        common.formatted_file_name(input_file_name,
-                                                   input_name_list[i])
+                                 common.formatted_file_name(input_file_name,
+                                                            input_name_list[i])
                 if input_file_list[i].startswith("http://") or \
                         input_file_list[i].startswith("https://"):
-                    urllib.urlretrieve(input_file_list[i], dst_input_file)
+                    six.moves.urllib.request.urlretrieve(input_file_list[i],
+                                                         dst_input_file)
                 else:
                     sh.cp("-f", input_file_list[i], dst_input_file)
 
@@ -701,12 +705,13 @@ def tuning_run(abi,
                runtime_failure_ratio=0.0,
                address_sanitizer=False,
                link_dynamic=False):
-    print("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
-          "out_of_range_check=%s, omp_num_threads=%s, cpu_affinity_policy=%s, "
-          "gpu_perf_hint=%s, gpu_priority_hint=%s" %
-          (model_tag, running_round, restart_round, str(tuning),
-           str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
-           gpu_perf_hint, gpu_priority_hint))
+    six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
+               "out_of_range_check=%s, omp_num_threads=%s, "
+               "cpu_affinity_policy=%s, gpu_perf_hint=%s, "
+               "gpu_priority_hint=%s" %
+               (model_tag, running_round, restart_round, str(tuning),
+                str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
+                gpu_perf_hint, gpu_priority_hint))
     mace_model_path = ""
     if model_graph_format == ModelFormat.file:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
@@ -741,8 +746,8 @@ def tuning_run(abi,
             stdout=subprocess.PIPE)
         out, err = p.communicate()
         stdout = err + out
-        print stdout
-        print("Running finished!\n")
+        six.print_(stdout)
+        six.print_("Running finished!\n")
     else:
         sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
         internal_storage_dir = create_internal_storage_dir(
@@ -853,7 +858,7 @@ def tuning_run(abi,
             adb_cmd_file,
             _fg=True)
 
-        print("Running finished!\n")
+        six.print_("Running finished!\n")
 
     return stdout
 
@@ -875,7 +880,7 @@ def validate_model(abi,
                    input_file_name="model_input",
                    output_file_name="model_out",
                    validation_threshold=0.9):
-    print("* Validate with %s" % platform)
+    six.print_("* Validate with %s" % platform)
     if abi != "host":
         for output_name in output_nodes:
             formatted_name = common.formatted_file_name(
@@ -913,7 +918,7 @@ def validate_model(abi,
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
             if not docker_image_id:
-                print("Build caffe docker")
+                six.print_("Build caffe docker")
                 sh.docker("build", "-t", image_name,
                           "third_party/caffe")
 
@@ -925,31 +930,31 @@ def validate_model(abi,
                 sh.docker("rm", "-f", container_name)
                 container_id = ""
             if not container_id:
-                print("Run caffe container")
+                six.print_("Run caffe container")
                 sh.docker(
-                        "run",
-                        "-d",
-                        "-it",
-                        "--name",
-                        container_name,
-                        image_name,
-                        "/bin/bash")
+                    "run",
+                    "-d",
+                    "-it",
+                    "--name",
+                    container_name,
+                    image_name,
+                    "/bin/bash")
 
             for input_name in input_nodes:
                 formatted_input_name = common.formatted_file_name(
-                        input_file_name, input_name)
+                    input_file_name, input_name)
                 sh.docker(
-                        "cp",
-                        "%s/%s" % (model_output_dir, formatted_input_name),
-                        "%s:/mace" % container_name)
+                    "cp",
+                    "%s/%s" % (model_output_dir, formatted_input_name),
+                    "%s:/mace" % container_name)
 
             for output_name in output_nodes:
                 formatted_output_name = common.formatted_file_name(
-                        output_file_name, output_name)
+                    output_file_name, output_name)
                 sh.docker(
-                        "cp",
-                        "%s/%s" % (model_output_dir, formatted_output_name),
-                        "%s:/mace" % container_name)
+                    "cp",
+                    "%s/%s" % (model_output_dir, formatted_output_name),
+                    "%s:/mace" % container_name)
             model_file_name = os.path.basename(model_file_path)
             weight_file_name = os.path.basename(weight_file_path)
             sh.docker("cp", "tools/common.py", "%s:/mace" % container_name)
@@ -976,22 +981,22 @@ def validate_model(abi,
                 "--validation_threshold=%f" % validation_threshold,
                 _fg=True)
 
-    print("Validation done!\n")
+    six.print_("Validation done!\n")
 
 
 ################################
 # library
 ################################
 def packaging_lib(libmace_output_dir, project_name):
-    print("* Package libs for %s" % project_name)
+    six.print_("* Package libs for %s" % project_name)
     tar_package_name = "libmace_%s.tar.gz" % project_name
     project_dir = "%s/%s" % (libmace_output_dir, project_name)
     tar_package_path = "%s/%s" % (project_dir, tar_package_name)
     if os.path.exists(tar_package_path):
         sh.rm("-rf", tar_package_path)
 
-    print("Start packaging '%s' libs into %s" % (project_name,
-                                                 tar_package_path))
+    six.print_("Start packaging '%s' libs into %s" % (project_name,
+                                                      tar_package_path))
     which_sys = platform.system()
     if which_sys == "Linux":
         sh.tar(
@@ -1009,7 +1014,7 @@ def packaging_lib(libmace_output_dir, project_name):
             "%s" % tar_package_path,
             glob.glob("%s/*" % project_dir),
             _fg=True)
-    print("Packaging Done!\n")
+    six.print_("Packaging Done!\n")
     return tar_package_path
 
 
@@ -1041,7 +1046,7 @@ def benchmark_model(abi,
                     gpu_priority_hint=3,
                     input_file_name="model_input",
                     link_dynamic=False):
-    print("* Benchmark for %s" % model_tag)
+    six.print_("* Benchmark for %s" % model_tag)
 
     mace_model_path = ""
     if model_graph_format == ModelFormat.file:
@@ -1153,7 +1158,7 @@ def benchmark_model(abi,
             adb_cmd_file,
             _fg=True)
 
-    print("Benchmark done!\n")
+    six.print_("Benchmark done!\n")
 
 
 def build_run_throughput_test(abi,
@@ -1173,7 +1178,7 @@ def build_run_throughput_test(abi,
                               phone_data_dir,
                               strip="always",
                               input_file_name="model_input"):
-    print("* Build and run throughput_test")
+    six.print_("* Build and run throughput_test")
 
     model_tag_build_flag = ""
     if cpu_model_tag:
@@ -1260,7 +1265,7 @@ def build_run_throughput_test(abi,
         "--run_seconds=%s" % run_seconds,
         _fg=True)
 
-    print("throughput_test done!\n")
+    six.print_("throughput_test done!\n")
 
 
 ################################

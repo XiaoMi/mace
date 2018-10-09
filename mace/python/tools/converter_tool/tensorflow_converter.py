@@ -15,6 +15,7 @@
 
 import math
 import numpy as np
+import six
 import tensorflow as tf
 from enum import Enum
 

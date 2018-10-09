@@ -18,6 +18,7 @@ from mace.python.tools.converter_tool import base_converter
 from mace.python.tools import graph_util
 from mace.python.tools.convert_util import mace_check
 
+import six
 import tensorflow as tf
 from tensorflow.core.framework import tensor_shape_pb2
 from operator import mul
@@ -506,8 +507,8 @@ def reverse_batch_to_space_and_biasadd(net_def):
                         for follow_op in follow_ops:
                             new_follow_op = mace_pb2.OperatorDef()
                             new_follow_op.CopyFrom(follow_op)
-                            for i in xrange(len(follow_op.input)):
-                                for k in xrange(3):
+                            for i in six.moves.range(len(follow_op.input)):
+                                for k in six.moves.range(3):
                                     if new_follow_op.input[i] == get_tensor_name_from_op(  # noqa
                                         biasadd_requantize_op.name, k):
                                         new_follow_op.input[i] = get_tensor_name_from_op(  # noqa
@@ -560,7 +561,7 @@ def add_input_output_info(net_def, input_node, output_node, graph, dtype):
     input_info.dims.extend(input_tensor.shape.as_list())
     input_info.data_type = dtype
     if dtype == mace_pb2.DT_UINT8:
-        for i in xrange(2):
+        for i in six.moves.range(2):
             input_info = net_def.input_info.add()
             input_info.dims.extend([1, 1, 1, 1])
             input_info.data_type = mace_pb2.DT_FLOAT
@@ -570,7 +571,7 @@ def add_input_output_info(net_def, input_node, output_node, graph, dtype):
     output_info.dims.extend(output_tensor.shape.as_list())
     output_info.data_type = dtype
     if dtype == mace_pb2.DT_UINT8:
-        for i in xrange(2):
+        for i in six.moves.range(2):
             output_info = net_def.output_info.add()
             output_info.dims.extend([1, 1, 1, 1])
             output_info.data_type = mace_pb2.DT_FLOAT

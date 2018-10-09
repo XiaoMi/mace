@@ -19,12 +19,12 @@ import os
 import re
 import sh
 import subprocess
-import six
 import sys
 import urllib
 import yaml
 
 from enum import Enum
+import six
 
 import sh_commands
 from sh_commands import BuildType
@@ -280,7 +280,7 @@ def get_opencl_mode(configs):
 
 def md5sum(str):
     md5 = hashlib.md5()
-    md5.update(str)
+    md5.update(str.encode('utf-8'))
     return md5.hexdigest()
 
 
@@ -670,7 +670,7 @@ def get_model_files(model_file_path,
         if not os.path.exists(model_file) or \
                 sha256_checksum(model_file) != model_sha256_checksum:
             MaceLogger.info("Downloading model, please wait ...")
-            urllib.urlretrieve(model_file_path, model_file)
+            six.moves.urllib.request.urlretrieve(model_file_path, model_file)
             MaceLogger.info("Model downloaded successfully.")
 
     if sha256_checksum(model_file) != model_sha256_checksum:
@@ -684,7 +684,7 @@ def get_model_files(model_file_path,
         if not os.path.exists(weight_file) or \
                 sha256_checksum(weight_file) != weight_sha256_checksum:
             MaceLogger.info("Downloading model weight, please wait ...")
-            urllib.urlretrieve(weight_file_path, weight_file)
+            six.moves.urllib.request.urlretrieve(weight_file_path, weight_file)
             MaceLogger.info("Model weight downloaded successfully.")
 
     if weight_file:
@@ -955,7 +955,7 @@ def build_quantize_stat(configs):
 
     quantize_stat_target = QUANTIZE_STAT_TARGET
     build_arg = ""
-    print (configs[YAMLKeyword.model_graph_format])
+    six.print_(configs[YAMLKeyword.model_graph_format])
     if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
         mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
                    ModuleName.RUN,
@@ -1037,7 +1037,7 @@ def tuning(library_name, model_name, model_config,
            model_graph_format, model_data_format,
            target_abi, target_soc, serial_num,
            mace_lib_type):
-    print('* Tuning, it may take some time...')
+    six.print_('* Tuning, it may take some time...')
 
     build_tmp_binary_dir = get_build_binary_dir(library_name, target_abi)
     mace_run_name = MACE_RUN_STATIC_NAME
@@ -1107,7 +1107,7 @@ def tuning(library_name, model_name, model_config,
         CL_TUNED_PARAMETER_FILE_NAME,
         "%s/%s" % (model_output_dir, BUILD_TMP_OPENCL_BIN_DIR))
 
-    print('Tuning done\n')
+    six.print_('Tuning done\n')
 
 
 def run_specific_target(flags, configs, target_abi,
@@ -1362,8 +1362,8 @@ def run_quantize_stat(flags, configs):
             stdout=subprocess.PIPE)
         out, err = p.communicate()
         stdout = err + out
-        print stdout
-        print("Running finished!\n")
+        six.print_(stdout)
+        six.print_("Running finished!\n")
 
 
 def print_package_summary(package_path):

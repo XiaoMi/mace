@@ -18,13 +18,14 @@ import hashlib
 import os.path
 import copy
 
+import six
+
 from mace.proto import mace_pb2
 from mace.python.tools import memory_optimizer
 from mace.python.tools import model_saver
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import transformer
 from mace.python.tools.convert_util import mace_check
-
 
 # ./bazel-bin/mace/python/tools/tf_converter --model_file quantized_test.pb \
 #                                            --output quantized_test_dsp.pb \
@@ -70,34 +71,39 @@ def parse_float_array_from_str(ints_str):
 
 def main(unused_args):
     if not os.path.isfile(FLAGS.model_file):
-        print("Input graph file '" + FLAGS.model_file + "' does not exist!")
+        six.print_("Input graph file '" +
+                   FLAGS.model_file +
+                   "' does not exist!", file=sys.stderr)
         sys.exit(-1)
 
     model_checksum = file_checksum(FLAGS.model_file)
     if FLAGS.model_checksum != "" and FLAGS.model_checksum != model_checksum:
-        print("Model checksum mismatch: %s != %s" % (model_checksum,
-                                                     FLAGS.model_checksum))
+        six.print_("Model checksum mismatch: %s != %s" %
+                   (model_checksum, FLAGS.model_checksum), file=sys.stderr)
         sys.exit(-1)
 
     weight_checksum = None
     if FLAGS.platform == 'caffe':
         if not os.path.isfile(FLAGS.weight_file):
-            print("Input weight file '" + FLAGS.weight_file +
-                  "' does not exist!")
+            six.print_("Input weight file '" + FLAGS.weight_file +
+                       "' does not exist!", file=sys.stderr)
             sys.exit(-1)
 
         weight_checksum = file_checksum(FLAGS.weight_file)
         if FLAGS.weight_checksum != "" and \
                 FLAGS.weight_checksum != weight_checksum:
-            print("Weight checksum mismatch: %s != %s" %
-                  (weight_checksum, FLAGS.weight_checksum))
+            six.print_("Weight checksum mismatch: %s != %s" %
+                       (weight_checksum, FLAGS.weight_checksum),
+                       file=sys.stderr)
             sys.exit(-1)
 
     if FLAGS.platform not in ['tensorflow', 'caffe']:
-        print ("platform %s is not supported." % FLAGS.platform)
+        six.print_("platform %s is not supported." % FLAGS.platform,
+                   file=sys.stderr)
         sys.exit(-1)
     if FLAGS.runtime not in ['cpu', 'gpu', 'dsp', 'cpu+gpu']:
-        print ("runtime %s is not supported." % FLAGS.runtime)
+        six.print_("runtime %s is not supported." % FLAGS.runtime,
+                   file=sys.stderr)
         sys.exit(-1)
 
     option = cvt.ConverterOption()
@@ -117,7 +123,7 @@ def main(unused_args):
         input_node_ranges = []
     if len(input_node_names) != len(input_node_shapes):
         raise Exception('input node count and shape count do not match.')
-    for i in xrange(len(input_node_names)):
+    for i in six.moves.range(len(input_node_names)):
         input_node = cvt.NodeInfo()
         input_node.name = input_node_names[i]
         input_node.shape = parse_int_array_from_str(input_node_shapes[i])
@@ -126,7 +132,7 @@ def main(unused_args):
         option.add_input_node(input_node)
 
     output_node_names = FLAGS.output_node.split(',')
-    for i in xrange(len(output_node_names)):
+    for i in six.moves.range(len(output_node_names)):
         output_node = cvt.NodeInfo()
         output_node.name = output_node_names[i]
         option.add_output_node(output_node)
@@ -152,7 +158,8 @@ def main(unused_args):
                                                        FLAGS.model_file,
                                                        FLAGS.weight_file)
         else:
-            print("Mace do not support platorm %s yet." & FLAGS.platform)
+            six.print_("Mace do not support platorm %s yet." % FLAGS.platform,
+                       file=sys.stderr)
             exit(1)
 
         output_graph_def = converter.run()
@@ -166,9 +173,9 @@ def main(unused_args):
             mace_gpu_transformer = transformer.Transformer(
                 option, output_graph_def)
             output_graph_def = mace_gpu_transformer.run()
-            print "start optimize gpu memory."
+            six.print_("start optimize gpu memory.")
             memory_optimizer.optimize_gpu_memory(output_graph_def)
-            print "GPU memory optimization done."
+            six.print_("GPU memory optimization done.")
 
             option.device = cvt.DeviceType.CPU.value
             option.data_type = parse_data_type(
@@ -177,11 +184,11 @@ def main(unused_args):
             mace_cpu_transformer = transformer.Transformer(
                 option, cpu_graph_def)
             cpu_graph_def = mace_cpu_transformer.run()
-            print "start optimize cpu memory."
+            print("start optimize cpu memory.")
             memory_optimizer.optimize_cpu_memory(cpu_graph_def)
-            print "CPU memory optimization done."
+            print("CPU memory optimization done.")
 
-            print "Merge cpu and gpu ops together"
+            print("Merge cpu and gpu ops together")
             output_graph_def.op.extend(cpu_graph_def.op)
             output_graph_def.mem_arena.mem_block.extend(
                 cpu_graph_def.mem_arena.mem_block)
@@ -192,7 +199,7 @@ def main(unused_args):
             for arg in cpu_graph_def.arg:
                 if arg.name not in output_graph_arg_names:
                     output_graph_def.arg.extend(arg)
-            print "Merge done"
+            print("Merge done")
         else:
             option.device = device_type_map[FLAGS.runtime]
             option.data_type = parse_data_type(
@@ -201,7 +208,7 @@ def main(unused_args):
                 option, output_graph_def)
             output_graph_def = mace_transformer.run()
 
-            print "start optimize memory."
+            print("start optimize memory.")
             if FLAGS.runtime == 'gpu':
                 memory_optimizer.optimize_gpu_memory(output_graph_def)
             elif FLAGS.runtime == 'cpu':
@@ -209,7 +216,7 @@ def main(unused_args):
             else:
                 mace_check(False, "runtime only support [gpu|cpu|dsp]")
 
-            print "Memory optimization done."
+            print("Memory optimization done.")
 
     model_saver.save_model(
         output_graph_def, model_checksum, weight_checksum,
@@ -238,7 +245,7 @@ def parse_args():
         type=str,
         default="",
         help="TensorFlow \'GraphDef\' file to load, "
-        "Caffe prototxt file to load.")
+             "Caffe prototxt file to load.")
     parser.add_argument(
         "--weight_file", type=str, default="", help="Caffe data file to load.")
     parser.add_argument(
@@ -302,7 +309,7 @@ def parse_args():
         type=str,
         default="file",
         help="[file|code] build models to code" +
-                "or `Protobuf` file.")
+             "or `Protobuf` file.")
     parser.add_argument(
         "--data_type",
         type=str,

@@ -14,8 +14,10 @@
 
 
 import enum
-import numpy as np
 import re
+
+import numpy as np
+import six
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
@@ -191,14 +193,14 @@ class Transformer(base_converter.ConverterInterface):
 
     @staticmethod
     def replace(obj_list, source, target):
-        for i in xrange(len(obj_list)):
+        for i in six.moves.range(len(obj_list)):
             if obj_list[i] == source:
                 obj_list[i] = target
 
     @staticmethod
     def transpose_shape(shape, order):
         transposed_shape = []
-        for i in xrange(len(order)):
+        for i in six.moves.range(len(order)):
             transposed_shape.append(shape[order[i]])
         shape[:] = transposed_shape[:]
 
@@ -208,7 +210,7 @@ class Transformer(base_converter.ConverterInterface):
 
     def get_tensor_shape(self, tensor):
         producer = self._producer[tensor]
-        for i in xrange(len(producer.output)):
+        for i in six.moves.range(len(producer.output)):
             if producer.output[i] == tensor:
                 return list(producer.output_shape[i].dims)
 
@@ -247,7 +249,7 @@ class Transformer(base_converter.ConverterInterface):
                        "cannot remove op since len(op.output) "
                        "!= len(replace_op.output)")
 
-            for i in xrange(len(op.output)):
+            for i in six.moves.range(len(op.output)):
                 for consumer_op in self._consumers.get(op.output[i], []):
                     self.replace(consumer_op.input,
                                  op.output[i],
@@ -255,7 +257,7 @@ class Transformer(base_converter.ConverterInterface):
 
             # if the op is output node, change replace_op output name to the op
             # output name
-            for i in xrange(len(op.output)):
+            for i in six.moves.range(len(op.output)):
                 if op.output[i] in self._option.output_nodes:
                     for consumer in self._consumers.get(
                             replace_op.output[i], []):
@@ -508,15 +510,17 @@ class Transformer(base_converter.ConverterInterface):
                     idx = 0
                     filter_format = self.filter_format()
                     if filter_format == FilterFormat.HWIO:
-                        for hwi in xrange(filter.dims[0] * filter.dims[1]
-                                          * filter.dims[2]):
-                            for o in xrange(filter.dims[3]):
+                        for hwi in six.moves.range(filter.dims[0]
+                                                   * filter.dims[1]
+                                                   * filter.dims[2]):
+                            for o in six.moves.range(filter.dims[3]):
                                 filter.float_data[idx] *= scale.float_data[o]
                                 idx += 1
                     elif filter_format == FilterFormat.OIHW:
-                        for o in xrange(filter.dims[0]):
-                            for hwi in xrange(filter.dims[1] * filter.dims[2]
-                                              * filter.dims[3]):
+                        for o in six.moves.range(filter.dims[0]):
+                            for hwi in six.moves.range(filter.dims[1]
+                                                       * filter.dims[2]
+                                                       * filter.dims[3]):
                                 filter.float_data[idx] *= scale.float_data[o]
                                 idx += 1
                     else:
@@ -548,17 +552,18 @@ class Transformer(base_converter.ConverterInterface):
 
                     filter_format = self.filter_format()
                     if filter_format == FilterFormat.HWIO:
-                        for hw in xrange(filter.dims[0] * filter.dims[1]):
-                            for i in xrange(filter.dims[2]):
-                                for o in xrange(filter.dims[3]):
+                        for hw in six.moves.range(filter.dims[0]
+                                                  * filter.dims[1]):
+                            for i in six.moves.range(filter.dims[2]):
+                                for o in six.moves.range(filter.dims[3]):
                                     filter.float_data[idx] *= scale.float_data[
-                                        i * filter.dims[3] + o]
+                                                        i * filter.dims[3] + o]
                                     idx += 1
                     elif filter_format == FilterFormat.OIHW:
-                        for o in xrange(filter.dims[0]):
-                            for i in xrange(filter.dims[1]):
-                                for hw in xrange(filter.dims[2]
-                                                 * filter.dims[3]):
+                        for o in six.moves.range(filter.dims[0]):
+                            for i in six.moves.range(filter.dims[1]):
+                                for hw in six.moves.range(filter.dims[2]
+                                                          * filter.dims[3]):
                                     filter.float_data[idx] *= scale.float_data[
                                         i * filter.dims[0] + o]
                                     idx += 1
@@ -836,7 +841,7 @@ class Transformer(base_converter.ConverterInterface):
                         and len(self._consumers.get(conv_op.output[0], [])) == 1:  # noqa
                     b2s_op = self._consumers.get(conv_op.output[0])[0]
                     if b2s_op.type == MaceOp.BatchToSpaceND.name:
-                        print "Flatten atrous convolution"
+                        six.print_("Flatten atrous convolution")
                         # Add args.
                         padding_arg_values = ConverterUtil.get_arg(
                             op,
@@ -1167,7 +1172,7 @@ class Transformer(base_converter.ConverterInterface):
                             and len(self._consts[input].dims) == 2:
                         arg = ConverterUtil.get_arg(op, transpose_arg_names[i])
                         if arg is not None and arg.i == 1:
-                            print 'convert matmul'
+                            six.print_('convert matmul')
                             filter = self._consts[input]
                             filter_data = np.array(filter.float_data).reshape(
                                 filter.dims)
@@ -1494,7 +1499,7 @@ class Transformer(base_converter.ConverterInterface):
                                weight.dims[0] != op.output_shape[0].dims[1]:
                                 is_fc = False
                     if is_fc:
-                        print 'convert reshape and matmul to fc'
+                        print('convert reshape and matmul to fc')
                         self.safe_remove_node(op, input_op,
                                               remove_input_tensor=True)
                         for matmul_op in consumers:
@@ -1515,7 +1520,7 @@ class Transformer(base_converter.ConverterInterface):
                         producer.type != MaceOp.Reshape.name and \
                         len(producer.output_shape[0].dims) == 2 and \
                         weight.dims[0] == producer.output_shape[0].dims[1]:
-                    print 'convert matmul to fc'
+                    six.print_('convert matmul to fc')
                     op.type = MaceOp.FullyConnected.name
                     weight_data = np.array(weight.float_data).reshape(
                         weight.dims)
@@ -1840,7 +1845,7 @@ class Transformer(base_converter.ConverterInterface):
 
         if not self._option.quantize:
             return False
-        print ("Add default quantize info for ops like Pooling, Softmax")
+        print("Add default quantize info for ops like Pooling, Softmax")
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
                            MaceOp.Squeeze.name,
@@ -1897,7 +1902,7 @@ class Transformer(base_converter.ConverterInterface):
                     self.add_quantize_info(op, minval, maxval)
                 self._quantize_activation_info[op.output[0]] = quantize_info
 
-        print ("Add default quantize info for input")
+        print("Add default quantize info for input")
         for input_node in self._option.input_nodes.values():
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
