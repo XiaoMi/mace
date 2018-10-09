@@ -25,6 +25,7 @@ from mace.python.tools.converter_tool.base_converter import PoolingType
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
+from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
@@ -372,6 +373,10 @@ class TensorflowConverter(base_converter.ConverterInterface):
             except ValueError:
                 data_type_arg.i = self._option.data_type
 
+        framework_type_arg = op.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = FrameworkType.TENSORFLOW.value
+
         ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
 
         return op
@@ -414,13 +419,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
                        "deconv should have (>=) 3 inputs.")
             output_shape_arg = op.arg.add()
             output_shape_arg.name = MaceKeyword.mace_output_shape_str
-            if tf_op.inputs[0].op.type == TFOpType.Const.name:
-                output_shape_value = \
-                    tf_op.inputs[0].eval().astype(np.int32).flat
-                output_shape_arg.ints.extend(output_shape_value)
-            else:
-                output_shape_value = {}
-                output_shape_arg.ints.extend(output_shape_value)
+            # if tf_op.inputs[0].op.type == TFOpType.Const.name:
+            #     output_shape_value = \
+            #         tf_op.inputs[0].eval().astype(np.int32).flat
+            #     output_shape_arg.ints.extend(output_shape_value)
+            # else:
+            #     output_shape_value = {}
+            #     output_shape_arg.ints.extend(output_shape_value)
             del op.input[:]
             op.input.extend([tf_op.inputs[2].name,
                              tf_op.inputs[1].name,

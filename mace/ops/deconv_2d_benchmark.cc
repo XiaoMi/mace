@@ -49,28 +49,35 @@ static void Deconv2d(int iters,
   net.AddRandomInput<D, float>("Filter",
                                {output_channels, channels, kernel_h,
                                 kernel_w});
+  net.AddRandomInput<D, float>("Bias", {output_channels});
+  net.AddInputFromArray<D, int32_t>("OutputShape", {4},
+                                    {batch, out_h, out_w, output_channels});
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
                         kernels::BufferType::CONV2D_FILTER);
+    BufferToImage<D, T>(&net, "Bias", "BiasImage",
+                        kernels::BufferType::ARGUMENT);
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("InputImage")
         .Input("FilterImage")
+        .Input("OutputShape")
+        .Input("BiasImage")
         .Output("Output")
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("padding", padding)
-        .AddIntsArg("output_shape", {batch, out_h, out_w, output_channels})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   } else {
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("Input")
         .Input("Filter")
+        .Input("OutputShape")
+        .Input("Bias")
         .Output("Output")
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("padding", padding)
-        .AddIntsArg("output_shape", {batch, out_h, out_w, output_channels})
         .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
         .Finalize(net.NewOperatorDef());
   }

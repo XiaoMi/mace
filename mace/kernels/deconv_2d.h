@@ -34,19 +34,24 @@
 namespace mace {
 namespace kernels {
 
+enum FrameworkType {
+  TENSORFLOW = 0,
+  CAFFE = 1,
+};
+
 struct Deconv2dFunctorBase : OpKernel {
   Deconv2dFunctorBase(OpKernelContext *context,
                       const std::vector<int> &strides,
                       const Padding &padding_type,
                       const std::vector<int> &paddings,
-                      const std::vector<index_t> &output_shape,
+                      const FrameworkType model_type,
                       const ActivationType activation,
                       const float relux_max_limit)
       : OpKernel(context),
         strides_(strides),
         padding_type_(padding_type),
         paddings_(paddings),
-        output_shape_(output_shape),
+        model_type_(model_type),
         activation_(activation),
         relux_max_limit_(relux_max_limit) {}
 
@@ -156,7 +161,7 @@ struct Deconv2dFunctorBase : OpKernel {
   std::vector<int> strides_;  // [stride_h, stride_w]
   const Padding padding_type_;
   std::vector<int> paddings_;
-  std::vector<index_t> output_shape_;
+  const FrameworkType model_type_;
   const ActivationType activation_;
   const float relux_max_limit_;
 };
@@ -171,14 +176,14 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
                   const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
-                  const std::vector<index_t> &output_shape,
+                  const FrameworkType model_type,
                   const ActivationType activation,
                   const float relux_max_limit)
       : Deconv2dFunctorBase(context,
                             strides,
                             padding_type,
                             paddings,
-                            output_shape,
+                            model_type,
                             activation,
                             relux_max_limit) {}
 
@@ -277,19 +282,16 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     std::vector<int> paddings(2);
     std::vector<int> out_paddings(2);
     std::vector<index_t> output_shape(4);
-    if (paddings_.empty()) {  // tensorflow
+    if (model_type_ == FrameworkType::TENSORFLOW) {  // tensorflow
       paddings = std::vector<int>(2, 0);
-      if (output_shape_.size() == 4) {
-        output_shape = output_shape_;
-      } else {
-        MACE_CHECK_NOTNULL(output_shape_tensor);
-        MACE_CHECK(output_shape_tensor->size() == 4);
-        Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
-        auto output_shape_data =
-            output_shape_tensor->data<int32_t>();
-        output_shape =
-            std::vector<index_t>(output_shape_data, output_shape_data + 4);
-      }
+      MACE_CHECK_NOTNULL(output_shape_tensor);
+      MACE_CHECK(output_shape_tensor->size() == 4);
+      Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
+      auto output_shape_data =
+          output_shape_tensor->data<int32_t>();
+      output_shape =
+          std::vector<index_t>(output_shape_data, output_shape_data + 4);
+
       const index_t t = output_shape[1];
       output_shape[1] = output_shape[3];
       output_shape[3] = output_shape[2];
@@ -437,21 +439,6 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
         padded_out_h == output_shape[2] && padded_out_w == output_shape[3];
     float *out_data = no_pad ? output_data : padded_out_data;
 
-    if (bias_data != nullptr) {
-      const index_t batch = output_shape[0];
-      const index_t channels = output_shape[1];
-      const index_t img_size = output_shape[2] * output_shape[3];
-#pragma omp parallel for collapse(3)
-      for (index_t b = 0; b < batch; ++b) {
-        for (index_t c = 0; c < channels; ++c) {
-          for (index_t i = 0; i < img_size; ++i) {
-            output_data[(b * channels + c) * img_size + i] +=
-                bias_data[c];
-          }
-        }
-      }
-    }
-
     deconv_func(input_data,
                 filter_data,
                 in_shape,
@@ -466,7 +453,20 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
                  output_data);
     }
 
-
+    if (bias_data != nullptr) {
+      const index_t batch = output_shape[0];
+      const index_t channels = output_shape[1];
+      const index_t img_size = output_shape[2] * output_shape[3];
+#pragma omp parallel for collapse(3)
+      for (index_t b = 0; b < batch; ++b) {
+        for (index_t c = 0; c < channels; ++c) {
+          for (index_t i = 0; i < img_size; ++i) {
+            output_data[(b * channels + c) * img_size + i] +=
+                bias_data[c];
+          }
+        }
+      }
+    }
 
     DoActivation<float>(output_data,
                  output_data,
@@ -501,7 +501,7 @@ struct Deconv2dFunctor<DeviceType::GPU, T> : Deconv2dFunctorBase {
                   const std::vector<int> &strides,
                   const Padding &padding_type,
                   const std::vector<int> &paddings,
-                  const std::vector<index_t> &output_shape,
+                  const FrameworkType model_type,
                   const ActivationType activation,
                   const float relux_max_limit);
 

@@ -26,6 +26,7 @@ from mace.python.tools.converter_tool.base_converter import ConverterUtil
 from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import DeviceType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
+from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
@@ -810,12 +811,22 @@ class Transformer(base_converter.ConverterInterface):
         net = self._model
         for op in net.op:
             if (((op.type == MaceOp.Conv2D.name
-                  or op.type == MaceOp.Deconv2D.name
                   or op.type == MaceOp.DepthwiseConv2d.name
                   or op.type == MaceOp.FullyConnected.name)
                  and len(op.input) == 2)
                 or (op.type == MaceOp.WinogradInverseTransform.name
-                    and len(op.input) == 1)) \
+                    and len(op.input) == 1)
+                or (op.type == MaceOp.Deconv2D.name
+                    and ((ConverterUtil.get_arg(
+                                op,
+                                MaceKeyword.mace_framework_type_str).i ==
+                          FrameworkType.CAFFE.value
+                          and len(op.input) == 2)
+                         or (ConverterUtil.get_arg(
+                                        op,
+                                        MaceKeyword.mace_framework_type_str).i
+                             == FrameworkType.TENSORFLOW.value
+                             and len(op.input) == 3)))) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.BiasAdd.name:
