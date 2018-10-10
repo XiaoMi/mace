@@ -22,7 +22,7 @@ namespace mace {
 
 extern const std::map<std::string, std::vector<{{data_type}}>> {{variable_name}} =
 {
-  {% for key, value in maps.iteritems() %}
+  {% for key, value in maps.items() %}
   {
     "{{key}}",
     {
