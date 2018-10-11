@@ -191,7 +191,7 @@ def save_model_to_proto(net_def, model_tag, output_dir):
     proto_file_path = output_dir + model_tag + '.pb'
     with open(proto_file_path, "wb") as f:
         f.write(net_def.SerializeToString())
-    with open(proto_file_path + '_txt', "wb") as f:
+    with open(proto_file_path + '_txt', "w") as f:
         f.write(str(net_def))
 
 
