@@ -34,28 +34,39 @@ class Deconv2dOp : public Operator<D, T> {
                  static_cast<Padding>(OperatorBase::GetOptionalArg<int>(
                      "padding", static_cast<int>(SAME))),
                  OperatorBase::GetRepeatedArgs<int>("padding_values"),
-                 OperatorBase::GetRepeatedArgs<index_t>("output_shape"),
+                 static_cast<kernels::FrameworkType>(
+                     OperatorBase::GetOptionalArg<int>("framework_type", 0)),
                  kernels::StringToActivationType(
                      OperatorBase::GetOptionalArg<std::string>("activation",
                                                                "NOOP")),
                  OperatorBase::GetOptionalArg<float>("max_limit", 0.0f)) {}
 
   MaceStatus Run(StatsFuture *future) override {
-    const Tensor *input = this->Input(INPUT);
-    const Tensor *filter = this->Input(FILTER);
-    const Tensor *output_shape =
-        this->InputSize() >= 3 ? this->Input(OUTPUT_SHAPE) : nullptr;
-    const Tensor *bias = this->InputSize() >= 4 ? this->Input(BIAS) : nullptr;
-    Tensor *output = this->Output(OUTPUT);
+    MACE_CHECK(this->InputSize() >= 2, "deconv needs >= 2 inputs.");
+    const Tensor *input = this->Input(0);
+    const Tensor *filter = this->Input(1);
+    const kernels::FrameworkType model_type =
+        static_cast<kernels::FrameworkType>(
+            OperatorBase::GetOptionalArg<int>("framework_type", 0));
+    if (model_type == kernels::CAFFE) {
+      const Tensor *bias = this->InputSize() >= 3 ? this->Input(2) : nullptr;
+      Tensor *output = this->Output(OUTPUT);
 
-    return functor_(input, filter, bias, output_shape, output, future);
+      return functor_(input, filter, bias, nullptr, output, future);
+    } else {
+      const Tensor *output_shape =
+          this->InputSize() >= 3 ? this->Input(2) : nullptr;
+      const Tensor *bias = this->InputSize() >= 4 ? this->Input(3) : nullptr;
+      Tensor *output = this->Output(OUTPUT);
+
+      return functor_(input, filter, bias, output_shape, output, future);
+    }
   }
 
  private:
   kernels::Deconv2dFunctor<D, T> functor_;
 
  protected:
-  MACE_OP_INPUT_TAGS(INPUT, FILTER, OUTPUT_SHAPE,  BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 

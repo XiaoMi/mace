@@ -24,14 +24,14 @@ Deconv2dFunctor<DeviceType::GPU, T>::Deconv2dFunctor(
     const std::vector<int> &strides,
     const Padding &padding_type,
     const std::vector<int> &paddings,
-    const std::vector<index_t> &output_shape,
+    const FrameworkType model_type,
     const ActivationType activation,
     const float relux_max_limit)
     : Deconv2dFunctorBase(context,
                           strides,
                           padding_type,
                           paddings,
-                          output_shape,
+                          model_type,
                           activation,
                           relux_max_limit) {
   if (context->device()->opencl_runtime()->UseImageMemory()) {
@@ -55,19 +55,15 @@ MaceStatus Deconv2dFunctor<DeviceType::GPU, T>::operator()(
   std::vector<int> paddings(2);
   std::vector<int> out_paddings(2);
   std::vector<index_t> output_shape(4);
-  if (paddings_.empty()) {
+  if (model_type_ == FrameworkType::TENSORFLOW) {
     paddings = std::vector<int>(2, 0);
-    if (output_shape_.size() != 4) {
-      MACE_CHECK_NOTNULL(output_shape_tensor);
-      MACE_CHECK(output_shape_tensor->size() == 4);
-      Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
-      auto output_shape_data =
-          output_shape_tensor->data<int32_t>();
-      output_shape =
-          std::vector<index_t>(output_shape_data, output_shape_data + 4);
-    } else {
-      output_shape = output_shape_;
-    }
+    MACE_CHECK_NOTNULL(output_shape_tensor);
+    MACE_CHECK(output_shape_tensor->size() == 4);
+    Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
+    auto output_shape_data =
+        output_shape_tensor->data<int32_t>();
+    output_shape =
+        std::vector<index_t>(output_shape_data, output_shape_data + 4);
     CalcDeconvPaddingAndInputSize(input->shape().data(),
                                   filter->shape().data(),
                                   strides_.data(),

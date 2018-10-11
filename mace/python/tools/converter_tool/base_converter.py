@@ -70,6 +70,11 @@ class EltwiseType(Enum):
     EQUAL = 10
 
 
+class FrameworkType(Enum):
+    TENSORFLOW = 0
+    CAFFE = 1
+
+
 MaceSupportedOps = [
     'Activation',
     'AddN',
@@ -176,6 +181,7 @@ class MaceKeyword(object):
     mace_seperate_buffer_str = 'seperate_buffer'
     mace_scalar_input_index_str = 'scalar_input_index'
     mace_opencl_mem_type = "opencl_mem_type"
+    mace_framework_type_str = "framework_type"
 
 
 class TransformerRule(Enum):

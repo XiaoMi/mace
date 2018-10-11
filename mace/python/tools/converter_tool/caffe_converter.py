@@ -25,6 +25,7 @@ from mace.python.tools.converter_tool import shape_inference
 from mace.python.tools.converter_tool.base_converter import PoolingType
 from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import EltwiseType
+from mace.python.tools.converter_tool.base_converter import FrameworkType
 from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import FilterFormat
 from mace.python.tools.converter_tool.base_converter import MaceOp
@@ -350,6 +351,10 @@ class CaffeConverter(base_converter.ConverterInterface):
         data_type_arg = op.arg.add()
         data_type_arg.name = 'T'
         data_type_arg.i = self._option.data_type
+
+        framework_type_arg = op.arg.add()
+        framework_type_arg.name = MaceKeyword.mace_framework_type_str
+        framework_type_arg.i = FrameworkType.CAFFE.value
 
         ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
 
