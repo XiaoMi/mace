@@ -195,7 +195,7 @@ class CaffeConverter(base_converter.ConverterInterface):
         caffe_weights = caffe_pb2.NetParameter()
 
         # parse prototxt
-        with open(src_model_file, 'rb') as f:
+        with open(src_model_file, 'r') as f:
             google.protobuf.text_format.Merge(
                 str(f.read()), self._caffe_layers)
             self.filter_test_layers(self._caffe_layers)
@@ -476,7 +476,7 @@ class CaffeConverter(base_converter.ConverterInterface):
 
         type_arg = op.arg.add()
         type_arg.name = MaceKeyword.mace_activation_type_str
-        type_arg.s = self.activation_type[caffe_op.type].name
+        type_arg.s = six.b(self.activation_type[caffe_op.type].name)
 
         if caffe_op.type == 'PReLU':
             alpha_tensor_name = caffe_op.name + '_alpha'

@@ -14,7 +14,7 @@ Required dependencies
       - Tested version
     * - Python
       -
-      - 2.7
+      - 2.7 or 3.6
     * - Bazel
       - `bazel installation guide <https://docs.bazel.build/versions/master/install.html>`__
       - 0.13.0

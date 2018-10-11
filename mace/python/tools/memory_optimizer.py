@@ -94,7 +94,7 @@ class MemoryOptimizer(object):
         if output_type == mace_pb2.DT_UINT8:
             data_type_size = 1
         return MemoryBlock(mace_pb2.CPU_BUFFER,
-                           [reduce(operator.mul, output_shape, 1) *
+                           [six.moves.reduce(operator.mul, output_shape, 1) *
                             data_type_size])
 
     def mem_size(self, memory_block):
@@ -123,7 +123,9 @@ class MemoryOptimizer(object):
         for op in self.net_def.op:
             if not self.op_need_optimize_memory(op):
                 continue
-            origin_mem_size += reduce(operator.mul, op.output_shape[0].dims, 1)
+            origin_mem_size += six.moves.reduce(operator.mul,
+                                                op.output_shape[0].dims,
+                                                1)
         return origin_mem_size
 
     def get_total_optimized_mem_size(self):
@@ -170,8 +172,8 @@ class MemoryOptimizer(object):
                         output_type)
                     mem_id = -1
                     if len(self.idle_mem) > 0:
-                        best_mem_add_size = sys.maxint
-                        best_mem_waste_size = sys.maxint
+                        best_mem_add_size = six.MAXSIZE
+                        best_mem_waste_size = six.MAXSIZE
                         for mid in self.idle_mem:
                             old_mem_block = self.mem_block[mid]
                             if old_mem_block.mem_type != op_mem_block.mem_type:

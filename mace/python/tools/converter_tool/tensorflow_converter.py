@@ -123,10 +123,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
         'SAME': PaddingMode.SAME,
         'FULL': PaddingMode.FULL
     }
+    padding_mode = {six.b(k): v for k, v in six.iteritems(padding_mode)}
+
     pooling_type_mode = {
         TFOpType.AvgPool.name: PoolingType.AVG,
         TFOpType.MaxPool.name: PoolingType.MAX
     }
+
     eltwise_type = {
         TFOpType.Add.name: EltwiseType.SUM,
         TFOpType.Sub.name: EltwiseType.SUB,
@@ -145,6 +148,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
         TFOpType.Rsqrt.name: EltwiseType.POW,
         TFOpType.Equal.name: EltwiseType.EQUAL,
     }
+
     activation_type = {
         TFOpType.Relu.name: ActivationType.RELU,
         TFOpType.Relu6.name: ActivationType.RELUX,
@@ -246,13 +250,13 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     def replace_input_output_tensor_name(self):
         for op in self._mace_net_def.op:
-            for i in xrange(len(op.input)):
+            for i in six.moves.range(len(op.input)):
                 if op.input[i][-2:] == ':0':
                     op_name = op.input[i][:-2]
                     if op_name in self._option.input_nodes \
                             or op_name in self._option.output_nodes:
                         op.input[i] = op_name
-            for i in xrange(len(op.output)):
+            for i in six.moves.range(len(op.output)):
                 if op.output[i][-2:] == ':0':
                     op_name = op.output[i][:-2]
                     if op_name in self._option.output_nodes:
@@ -443,7 +447,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
             if len(tf_op.inputs) == 1:
                 return len(tf_op.inputs[0].shape) == 0
             elif len(tf_op.inputs) == 2:
-                return len(tf_op.inputs[0].shape) == 0 and\
+                return len(tf_op.inputs[0].shape) == 0 and \
                        len(tf_op.inputs[1].shape) == 0
 
         if check_is_scalar(tf_op):
@@ -467,8 +471,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
                         EltwiseType.SUM, EltwiseType.PROD,
                         EltwiseType.MAX, EltwiseType.MIN]
 
-                if len(tf_op.inputs) > 1 and\
-                        len(tf_op.inputs[1].shape) == 0 and\
+                if len(tf_op.inputs) > 1 and \
+                        len(tf_op.inputs[1].shape) == 0 and \
                         tf_op.inputs[1].op.type == TFOpType.Const.name:
                     scalar = tf_op.inputs[1].eval().astype(np.float32)
                     value_arg = op.arg.add()
@@ -476,20 +480,20 @@ class TensorflowConverter(base_converter.ConverterInterface):
                     value_arg.f = scalar
                     self._skip_tensor.add(tf_op.inputs[1].name)
                     value_index_arg = op.arg.add()
-                    value_index_arg.name =\
+                    value_index_arg.name = \
                         MaceKeyword.mace_scalar_input_index_str
                     value_index_arg.i = 1
                     self._skip_tensor.add(tf_op.inputs[1].name)
                     del op.input[1]
-                elif len(tf_op.inputs[0].shape) == 0 and\
-                        tf_op.inputs[0].op.type == TFOpType.Const.name and\
+                elif len(tf_op.inputs[0].shape) == 0 and \
+                        tf_op.inputs[0].op.type == TFOpType.Const.name and \
                         is_commutative(type_arg.i):
                     scalar = tf_op.inputs[0].eval().astype(np.float32)
                     value_arg = op.arg.add()
                     value_arg.name = MaceKeyword.mace_scalar_input_str
                     value_arg.f = scalar
                     value_index_arg = op.arg.add()
-                    value_index_arg.name =\
+                    value_index_arg.name = \
                         MaceKeyword.mace_scalar_input_index_str
                     value_index_arg.i = 0
                     self._skip_tensor.add(tf_op.inputs[0].name)
@@ -514,7 +518,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         type_arg = op.arg.add()
         type_arg.name = MaceKeyword.mace_activation_type_str
-        type_arg.s = self.activation_type[tf_op.type].name
+        type_arg.s = six.b(self.activation_type[tf_op.type].name)
 
         if tf_op.type == TFOpType.Relu6.name:
             limit_arg = op.arg.add()
@@ -531,7 +535,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
         is_training = tf_op.get_attr(tf_is_training_str)
         assert is_training is False, 'Only support batch normalization ' \
-            'with is_training False, but got %s' % is_training
+                                     'with is_training False, but got %s' % \
+                                     is_training
 
         gamma_value = tf_op.inputs[1].eval().astype(np.float32)
         beta_value = tf_op.inputs[2].eval().astype(np.float32)
@@ -542,8 +547,8 @@ class TensorflowConverter(base_converter.ConverterInterface):
         scale_name = self.get_scope(tf_op.name) + '/scale:0'
         offset_name = self.get_scope(tf_op.name) + '/offset:0'
         scale_value = (
-            (1.0 / np.vectorize(math.sqrt)(
-                var_value + epsilon_value)) * gamma_value)
+                (1.0 / np.vectorize(math.sqrt)(
+                    var_value + epsilon_value)) * gamma_value)
         offset_value = (-mean_value * scale_value) + beta_value
         self.add_tensor(scale_name, scale_value.shape, mace_pb2.DT_FLOAT,
                         scale_value)
