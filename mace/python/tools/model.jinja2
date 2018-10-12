@@ -146,8 +146,6 @@ const std::shared_ptr<NetDef> CreateNet() {
   MACE_LATENCY_LOGGER(1, "Create net {{ net.name }}");
 
   std::shared_ptr<NetDef> net_def(new NetDef());
-  net_def->set_name("{{ net.name}}");
-  net_def->set_version("{{ net.version }}");
 
   CreateOperators(net_def.get());
   CreateTensors(net_def.get());

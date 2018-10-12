@@ -29,7 +29,8 @@ NetBase::NetBase(const std::shared_ptr<const OperatorRegistryBase> op_registry,
                  const std::shared_ptr<const NetDef> net_def,
                  Workspace *ws,
                  Device *device)
-    : name_(net_def->name()), op_registry_(op_registry) {
+    : op_registry_(op_registry) {
+  MACE_UNUSED(net_def);
   MACE_UNUSED(ws);
   MACE_UNUSED(device);
 }
@@ -42,7 +43,7 @@ SerialNet::SerialNet(
     const NetMode mode)
     : NetBase(op_registry, net_def, ws, device), device_(device),
       op_kernel_context_(new OpKernelContext(ws, device)) {
-  MACE_LATENCY_LOGGER(1, "Constructing SerialNet ", net_def->name());
+  MACE_LATENCY_LOGGER(1, "Constructing SerialNet");
   DeviceType device_type = device->device_type();
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
     const auto &operator_def = net_def->op(idx);

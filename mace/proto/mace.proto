@@ -116,11 +116,9 @@ message OutputInfo {
 }
 
 message NetDef {
-  optional string name = 1;
-  repeated OperatorDef op = 2;
-  optional string version = 3;
-  repeated Argument arg = 4;
-  repeated ConstTensor tensors = 5;
+  repeated OperatorDef op = 1;
+  repeated Argument arg = 2;
+  repeated ConstTensor tensors = 3;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;
