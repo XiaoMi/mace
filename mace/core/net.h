@@ -42,10 +42,7 @@ class NetBase {
 
   virtual MaceStatus Run(RunMetadata *run_metadata = nullptr) = 0;
 
-  const std::string &Name() const { return name_; }
-
  protected:
-  std::string name_;
   const std::shared_ptr<const OperatorRegistryBase> op_registry_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(NetBase);
