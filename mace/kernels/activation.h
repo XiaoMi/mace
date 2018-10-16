@@ -25,6 +25,7 @@
 #include "mace/core/tensor.h"
 #include "mace/core/types.h"
 #include "mace/kernels/kernel.h"
+#include "mace/kernels/arm/activation_neon.h"
 
 namespace mace {
 namespace kernels {
@@ -80,6 +81,38 @@ void DoActivation(const T *input_ptr,
         output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)),
                                  static_cast<T>(relux_max_limit));
       }
+      break;
+    case TANH:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output_ptr[i] = std::tanh(input_ptr[i]);
+      }
+      break;
+    case SIGMOID:
+#pragma omp parallel for
+      for (index_t i = 0; i < size; ++i) {
+        output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
+      }
+      break;
+    default:
+      LOG(FATAL) << "Unknown activation type: " << type;
+  }
+}
+
+template<>
+inline void DoActivation(const float *input_ptr,
+                         float *output_ptr,
+                         const index_t size,
+                         const ActivationType type,
+                         const float relux_max_limit) {
+  switch (type) {
+    case NOOP:
+      break;
+    case RELU:
+      ReluNeon(input_ptr, size, output_ptr);
+      break;
+    case RELUX:
+      ReluxNeon(input_ptr, relux_max_limit, size, output_ptr);
       break;
     case TANH:
 #pragma omp parallel for
