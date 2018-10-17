@@ -544,6 +544,19 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                           &sgemm_,
                           scratch);
       };
+    } else if (use_neon_1x1_s1) {
+      conv_func = [=](const float *pad_input, float *pad_output) {
+        Conv2dNeonK1x1S1(pad_input,
+                         filter_data,
+                         batch,
+                         extra_input_height,
+                         extra_input_width,
+                         input_channels,
+                         channels,
+                         pad_output,
+                         &sgemm_,
+                         scratch);
+      };
     } else if (use_neon_3x3_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
         Conv2dNeonK3x3S1(pad_input,
@@ -559,19 +572,6 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
                          extra_input_shape,
                          extra_output_shape,
                          pad_output);
-      };
-    } else if (use_neon_1x1_s1) {
-      conv_func = [=](const float *pad_input, float *pad_output) {
-        Conv2dNeonK1x1S1(pad_input,
-                         filter_data,
-                         batch,
-                         extra_input_height,
-                         extra_input_width,
-                         input_channels,
-                         channels,
-                         pad_output,
-                         &sgemm_,
-                         scratch);
       };
     } else if (use_neon_5x5_s1) {
       conv_func = [=](const float *pad_input, float *pad_output) {
@@ -699,13 +699,27 @@ struct Conv2dFunctor<DeviceType::CPU, float> : Conv2dFunctorBase {
     }
 
     if (bias_data != nullptr) {
+      const index_t image_size = height * width;
 #pragma omp parallel for collapse(2)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channels; ++c) {
-          for (index_t i = 0; i < height * width; ++i) {
-            output_data[(b * channels + c) * height * width + i] +=
-              bias_data[c];
+          float *output_ptr = output_data + (b * channels + c) * image_size;
+          const float bias = bias_data[c];
+#if defined(MACE_ENABLE_NEON)
+          float32x4_t vbias = vdupq_n_f32(bias);
+          for (index_t i = 0; i <= image_size - 4; i += 4) {
+            float32x4_t v = vld1q_f32(output_ptr + i);
+            v = vaddq_f32(v, vbias);
+            vst1q_f32(output_ptr + i, v);
           }
+          for (index_t i = (image_size >> 2) << 2; i < image_size; ++i) {
+            output_ptr[i] += bias;
+          }
+#else
+          for (index_t i = 0; i < image_size; ++i) {
+            output_ptr[i] += bias;
+          }
+#endif
         }
       }
     }
