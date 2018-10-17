@@ -45,7 +45,7 @@ class Deconv2dOp : public Operator<D, T> {
     MACE_CHECK(this->InputSize() >= 2, "deconv needs >= 2 inputs.");
     const Tensor *input = this->Input(0);
     const Tensor *filter = this->Input(1);
-    const kernels::FrameworkType model_type =
+    kernels::FrameworkType model_type =
         static_cast<kernels::FrameworkType>(
             OperatorBase::GetOptionalArg<int>("framework_type", 0));
     if (model_type == kernels::CAFFE) {
