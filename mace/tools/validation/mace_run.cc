@@ -173,6 +173,13 @@ DEFINE_string(input_file,
 DEFINE_string(output_file,
               "",
               "output file name | output file prefix for multiple outputs");
+// TODO(liyin): support batch validation
+DEFINE_string(input_dir,
+              "",
+              "input directory name");
+DEFINE_string(output_dir,
+              "output",
+              "output directory name");
 DEFINE_string(opencl_binary_file,
               "",
               "compiled opencl binary file path");

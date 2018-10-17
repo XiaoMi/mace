@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <dirent.h>
 #include <malloc.h>
 #include <stdint.h>
 #include <cstdlib>
@@ -104,6 +105,12 @@ DEFINE_string(input_file,
 DEFINE_string(output_file,
               "",
               "output file name | output file prefix for multiple outputs");
+DEFINE_string(input_dir,
+              "",
+              "input directory name");
+DEFINE_string(output_dir,
+              "",
+              "output directory name");
 DEFINE_string(opencl_binary_file,
               "",
               "compiled opencl binary file path");
@@ -232,24 +239,14 @@ bool RunModel(const std::vector<std::string> &input_names,
 
   std::map<std::string, mace::MaceTensor> inputs;
   std::map<std::string, mace::MaceTensor> outputs;
+  std::map<std::string, int64_t> inputs_size;
   for (size_t i = 0; i < input_count; ++i) {
-    // Allocate input and output
     int64_t input_size =
         std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 1,
                         std::multiplies<int64_t>());
+    inputs_size[input_names[i]] = input_size;
     auto buffer_in = std::shared_ptr<float>(new float[input_size],
                                             std::default_delete<float[]>());
-    // load input
-    std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
-                          std::ios::in | std::ios::binary);
-    if (in_file.is_open()) {
-      in_file.read(reinterpret_cast<char *>(buffer_in.get()),
-                   input_size * sizeof(float));
-      in_file.close();
-    } else {
-      std::cout << "Open input file failed" << std::endl;
-      return -1;
-    }
     inputs[input_names[i]] = mace::MaceTensor(input_shapes[i], buffer_in);
   }
 
@@ -262,30 +259,99 @@ bool RunModel(const std::vector<std::string> &input_names,
     outputs[output_names[i]] = mace::MaceTensor(output_shapes[i], buffer_out);
   }
 
-  std::cout << "Warm up run" << std::endl;
-  engine->Run(inputs, &outputs);
+  if (!FLAGS_input_dir.empty()) {
+    DIR *dir_parent;
+    struct dirent *entry;
+    dir_parent = opendir(FLAGS_input_dir.c_str());
+    if (dir_parent) {
+      while ((entry = readdir(dir_parent))) {
+        std::string file_name = std::string(entry->d_name);
+        std::string prefix = FormatName(input_names[0]);
+        if (file_name.find(prefix) == 0) {
+          std::string suffix = file_name.substr(prefix.size());
 
-  if (FLAGS_round > 0) {
-    std::cout << "Run model" << std::endl;
-    for (int i = 0; i < FLAGS_round; ++i) {
-      engine->Run(inputs, &outputs);
+          for (size_t i = 0; i < input_count; ++i) {
+            file_name = FLAGS_input_dir + "/" + FormatName(input_names[i])
+                + suffix;
+            std::ifstream in_file(file_name, std::ios::in | std::ios::binary);
+            std::cout << "Read " << file_name << std::endl;
+            if (in_file.is_open()) {
+              in_file.read(reinterpret_cast<char *>(
+                               inputs[input_names[i]].data().get()),
+                           inputs_size[input_names[i]] * sizeof(float));
+              in_file.close();
+            } else {
+              std::cerr << "Open input file failed" << std::endl;
+              return -1;
+            }
+          }
+          engine->Run(inputs, &outputs);
+
+          if (!FLAGS_output_dir.empty()) {
+            for (size_t i = 0; i < output_count; ++i) {
+              std::string output_name =
+                  FLAGS_output_dir + "/" + FormatName(output_names[i]) + suffix;
+              std::ofstream out_file(output_name, std::ios::binary);
+              if (out_file.is_open()) {
+                int64_t output_size =
+                    std::accumulate(output_shapes[i].begin(),
+                                    output_shapes[i].end(),
+                                    1,
+                                    std::multiplies<int64_t>());
+                out_file.write(
+                    reinterpret_cast<char *>(
+                        outputs[output_names[i]].data().get()),
+                    output_size * sizeof(float));
+                out_file.flush();
+                out_file.close();
+              } else {
+                std::cerr << "Open output file failed";
+                return -1;
+              }
+            }
+          }
+        }
+      }
+
+      closedir(dir_parent);
+    } else {
+      std::cerr << "Directory " << FLAGS_input_dir << " does not exist.";
+    }
+  } else {
+    for (size_t i = 0; i < input_count; ++i) {
+      std::ifstream in_file(FLAGS_input_file + "_" + FormatName(input_names[i]),
+                            std::ios::in | std::ios::binary);
+      if (in_file.is_open()) {
+        in_file.read(reinterpret_cast<char *>(
+                         inputs[input_names[i]].data().get()),
+                     inputs_size[input_names[i]] * sizeof(float));
+        in_file.close();
+      } else {
+        std::cerr << "Open input file failed" << std::endl;
+        return -1;
+      }
+    }
+    engine->Run(inputs, &outputs);
+    for (size_t i = 0; i < output_count; ++i) {
+      std::string output_name =
+          FLAGS_output_file + "_" + FormatName(output_names[i]);
+      std::ofstream out_file(output_name, std::ios::binary);
+      int64_t output_size =
+          std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
+                          std::multiplies<int64_t>());
+      if (out_file.is_open()) {
+        out_file.write(
+            reinterpret_cast<char *>(outputs[output_names[i]].data().get()),
+            output_size * sizeof(float));
+        out_file.flush();
+        out_file.close();
+      } else {
+        std::cerr << "Open output file failed";
+        return -1;
+      }
     }
   }
 
-  std::cout << "Write output" << std::endl;
-  for (size_t i = 0; i < output_count; ++i) {
-    std::string output_name =
-        FLAGS_output_file + "_" + FormatName(output_names[i]);
-    std::ofstream out_file(output_name, std::ios::binary);
-    int64_t output_size =
-        std::accumulate(output_shapes[i].begin(), output_shapes[i].end(), 1,
-                        std::multiplies<int64_t>());
-    out_file.write(
-        reinterpret_cast<char *>(outputs[output_names[i]].data().get()),
-        output_size * sizeof(float));
-    out_file.flush();
-    out_file.close();
-  }
   std::cout << "Finished" << std::endl;
 
   return true;
@@ -304,6 +370,8 @@ int Main(int argc, char **argv) {
   std::cout << "output shape: " << FLAGS_output_shape << std::endl;
   std::cout << "input_file: " << FLAGS_input_file << std::endl;
   std::cout << "output_file: " << FLAGS_output_file << std::endl;
+  std::cout << "input_dir: " << FLAGS_input_dir << std::endl;
+  std::cout << "output dir: " << FLAGS_output_dir << std::endl;
   std::cout << "model_data_file: " << FLAGS_model_data_file << std::endl;
   std::cout << "model_file: " << FLAGS_model_file << std::endl;
   std::cout << "device: " << FLAGS_device << std::endl;
