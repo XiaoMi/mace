@@ -35,6 +35,9 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, batch_idx));
 #elif INPUT_TYPE == 3
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(chan_idx, 0));
+#elif INPUT_TYPE == 4
+  DATA_TYPE4 tmp = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
+  DATA_TYPE4 in1 = (DATA_TYPE4)(tmp.x, tmp.x, tmp.x, tmp.x);
 #else
   DATA_TYPE4 in1 = READ_IMAGET(input1, SAMPLER, (int2)(pos, hb));
 #endif
@@ -80,7 +83,7 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   #endif
 #endif
 
-#if INPUT_TYPE == 1
+#if INPUT_TYPE == 1 || INPUT_TYPE == 4
   #if ELTWISE_TYPE == 0 || ELTWISE_TYPE == 1 || ELTWISE_TYPE == 4 ||          \
       ELTWISE_TYPE == 5 || ELTWISE_TYPE == 8 || ELTWISE_TYPE == 9
     const int remain_channel = channel - 4 * chan_idx;

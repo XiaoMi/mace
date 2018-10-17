@@ -77,12 +77,14 @@ MaceStatus EltwiseKernel<T>::Compute(
       }
       if (input1->dim_size() == 1) {
         MACE_CHECK(input0->dim(3) == input1->dim(0))
-          << "Element-Wise op only support channel dimension broadcast";
+          << "Element-Wise op support broadcast on only-channel or non-channel dimension";  // NOLINT(whitespace/line_length)
       } else {
-        MACE_CHECK((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1) &&
-            input0->dim(3) == input1->dim(3) && input1->dim(1) == 1 &&
-            input1->dim(2) == 1)
-          << "Element-Wise op only support channel dimension broadcast";
+        MACE_CHECK(((input0->dim(0) == input1->dim(0) || input1->dim(0) == 1)
+            && input0->dim(3) == input1->dim(3) && input1->dim(1) == 1 &&
+            input1->dim(2) == 1) || (input0->dim(0) == input1->dim(0) &&
+            input0->dim(1) == input1->dim(1) && input0->dim(2) == input1->dim(2)
+            && input1->dim(3) == 1))
+          << "Element-Wise op support broadcast on only-channel or non-channel dimension";  // NOLINT(whitespace/line_length)
       }
     }
   }
@@ -129,10 +131,15 @@ MaceStatus EltwiseKernel<T>::Compute(
     if (input1 == nullptr) {
       built_options.emplace("-DINPUT_TYPE=1");
     } else if (input0->size() != input1->size()) {
-      if (input1->dim(0) == 1 || input1->dim_size() == 1)
+      if (input0->dim(0) == input1->dim(0) && input0->dim(1) == input1->dim(1)
+          && input0->dim(2) == input1->dim(2) && input1->dim(3) == 1) {
+        // only broadcast on channel
+        built_options.emplace("-DINPUT_TYPE=4");
+      } else if (input1->dim(0) == 1 || input1->dim_size() == 1) {
         built_options.emplace("-DINPUT_TYPE=3");
-      else
+      } else {
         built_options.emplace("-DINPUT_TYPE=2");
+      }
       if (swapped) built_options.emplace("-DSWAPPED");
     }
     if (!coeff_.empty()) built_options.emplace("-DCOEFF_SUM");

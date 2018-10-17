@@ -202,6 +202,27 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
 
     // Run
     net.RunOp(D);
+  } else if (D == DeviceType::GPU) {
+    BufferToImage<D, T>(&net, "Input0", "InputImage0",
+                        kernels::BufferType::IN_OUT_CHANNEL);
+    BufferToImage<D, T>(&net, "Input1", "InputImage1",
+                        kernels::BufferType::IN_OUT_CHANNEL);
+    auto op_builder =
+        OpDefBuilder("Eltwise", "EltwiseTest")
+            .AddIntArg("T", DataTypeToEnum<T>::v())
+            .Input("InputImage0")
+            .Input("InputImage1")
+            .AddIntArg("type", static_cast<int>(type))
+            .AddFloatsArg("coeff", coeff)
+            .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+            .Output("OutputImage");
+    op_builder.Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+
+    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
+                            kernels::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -747,7 +768,7 @@ TEST_F(EltwiseOpTest, RandomTensorTensorHalf) {
                             {3, 31, 37, 17});
 }
 
-TEST_F(EltwiseOpTest, TensorGeneralBroadcast) {
+TEST_F(EltwiseOpTest, TensorGeneralBroadcastCPU) {
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
       kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {2, 3, 4, 6, 7, 8});
@@ -772,6 +793,30 @@ TEST_F(EltwiseOpTest, TensorGeneralBroadcast) {
   TensorGeneralBroadcastEltwise<DeviceType::CPU, int32_t, int32_t>(
       kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 0, 0, 0, 0, 0});
+}
+
+TEST_F(EltwiseOpTest, TensorGeneralBroadcastGPU) {
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {2, 3, 4, 6, 7, 8});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {0, 1, 2, 2, 3, 4});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 8, 10, 12});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6});
+  TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
+      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {0, 1, 4, 4, 9, 16});
 }
 
 TEST_F(EltwiseOpTest, QuantizedSum) {
