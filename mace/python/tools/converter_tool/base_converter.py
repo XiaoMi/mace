@@ -216,6 +216,7 @@ class TransformerRule(Enum):
     CHECK_QUANTIZE_INFO = 29
     REARRANGE_BATCH_TO_SPACE = 30
     ADD_OPENCL_INFORMATIONS = 31
+    FOLD_DECONV_AND_BN = 32
 
 
 class ConverterInterface(object):
@@ -388,6 +389,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
                 TransformerRule.FOLD_BATCHNORM,
                 TransformerRule.FOLD_CONV_AND_BN,
+                TransformerRule.FOLD_DECONV_AND_BN,
                 TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
                 TransformerRule.TRANSFORM_GPU_WINOGRAD,
                 TransformerRule.TRANSFORM_ADD_TO_BIASADD,

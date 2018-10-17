@@ -65,6 +65,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BATCHNORM: self.fold_batchnorm,
             TransformerRule.FOLD_CONV_AND_BN:
                 self.fold_conv_and_bn,  # data_format related
+            TransformerRule.FOLD_DECONV_AND_BN:
+                self.fold_deconv_and_bn,  # data_format related
             TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN:
                 self.fold_depthwise_conv_and_bn,  # data_format related
             TransformerRule.TRANSFORM_GPU_WINOGRAD:
@@ -500,8 +502,7 @@ class Transformer(base_converter.ConverterInterface):
     def fold_conv_and_bn(self):
         net = self._model
         for op in net.op:
-            if (op.type == MaceOp.Conv2D.name
-                or op.type == MaceOp.Deconv2D.name) \
+            if (op.type == MaceOp.Conv2D.name) \
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.FoldedBatchNorm.name:
@@ -524,6 +525,49 @@ class Transformer(base_converter.ConverterInterface):
                                                        * filter.dims[3]):
                                 filter.float_data[idx] *= scale.float_data[o]
                                 idx += 1
+                    else:
+                        mace_check(False, "filter format %s not supported" %
+                                   filter_format)
+
+                    # change BN to BiasAdd
+                    consumer_op.type = MaceOp.BiasAdd.name
+                    del consumer_op.input[1]
+
+                    # remove scale tensor
+                    net.tensors.remove(scale)
+                    return True
+
+        return False
+
+    def fold_deconv_and_bn(self):
+        net = self._model
+        for op in net.op:
+            if (op.type == MaceOp.Deconv2D.name) \
+                    and self.consumer_count(op.output[0]) == 1:
+                consumer_op = self._consumers[op.output[0]][0]
+                if consumer_op.type == MaceOp.FoldedBatchNorm.name:
+                    print("Fold deconv and bn: %s(%s)" % (op.name, op.type))
+                    filter = self._consts[op.input[1]]
+                    scale = self._consts[consumer_op.input[1]]
+                    idx = 0
+                    filter_format = self.filter_format()
+                    # in deconv op O and I channel is switched
+                    if filter_format == FilterFormat.HWIO:
+                        for hw in six.moves.range(filter.dims[0]
+                                                  * filter.dims[1]):
+                            for o in six.moves.range(filter.dims[2]):
+                                for i in six.moves.range(filter.dims[3]):
+                                    filter.float_data[idx] *=\
+                                        scale.float_data[o]
+                                    idx += 1
+                    elif filter_format == FilterFormat.OIHW:
+                        for i in six.moves.range(filter.dims[0]):
+                            for o in six.moves.range(filter.dims[1]):
+                                for hw in six.moves.range(filter.dims[2]
+                                                          * filter.dims[3]):
+                                    filter.float_data[idx] *=\
+                                        scale.float_data[o]
+                                    idx += 1
                     else:
                         mace_check(False, "filter format %s not supported" %
                                    filter_format)
@@ -1333,12 +1377,19 @@ class Transformer(base_converter.ConverterInterface):
 
         net = self._model
         for op in net.op:
-            if op.type == MaceOp.Conv2D.name \
-                    or op.type == MaceOp.Deconv2D.name:
+            if op.type == MaceOp.Conv2D.name:
                 self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
-                if len(op.input) >= 3 and op.type == MaceOp.Conv2D.name:
+                if len(op.input) >= 3:
                     self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-                elif len(op.input) >= 4 and op.type == MaceOp.Deconv2D.name:
+            elif op.type == MaceOp.Deconv2D.name:
+                self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
+                if ConverterUtil.get_arg(
+                        op,
+                        MaceKeyword.mace_framework_type_str).i ==\
+                        FrameworkType.CAFFE.value:
+                    if len(op.input) >= 3:
+                        self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
+                elif len(op.input) >= 4:
                     self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.DepthwiseConv2d.name:
                 self.buffer_transform(op, 1, OpenCLBufferType.DW_CONV2D_FILTER)
@@ -1693,14 +1744,28 @@ class Transformer(base_converter.ConverterInterface):
         """Assume biasadd has been already folded with convolution and fc"""
         if tensor.data_type == mace_pb2.DT_FLOAT:
             ops = self._consumers.get(tensor.name, None)
-            if ops is not None \
-                    and len(ops) == 1 \
-                    and ops[0].type in [MaceOp.Conv2D.name,
-                                        MaceOp.Deconv2D.name,
-                                        MaceOp.DepthwiseConv2d.name,
-                                        MaceOp.FullyConnected.name] \
-                    and len(ops[0].input) >= 3 \
-                    and ops[0].input[2] == tensor.name:
+            check_conv = False
+            check_deconv = False
+            if ops is not None and len(ops) == 1:
+                check_conv =\
+                    ops[0].type in [MaceOp.Conv2D.name,
+                                    MaceOp.DepthwiseConv2d.name,
+                                    MaceOp.FullyConnected.name]\
+                    and len(ops[0].input) >= 3\
+                    and ops[0].input[2] == tensor.name
+                # in tensorflow deconv's bias is the forth input
+                if ops[0].type == MaceOp.Deconv2D.name:
+                    from_caffe = ConverterUtil.get_arg(
+                        ops[0],
+                        MaceKeyword.mace_framework_type_str).i ==\
+                                 FrameworkType.CAFFE.value
+                    if from_caffe:
+                        check_deconv = len(ops[0].input) >= 3\
+                                       and ops[0].input[2] == tensor.name
+                    else:
+                        check_deconv = len(ops[0].input) >= 4\
+                                       and ops[0].input[3] == tensor.name
+            if check_conv or check_deconv:
                 conv_op = ops[0]
                 scale_input = self._quantize_activation_info[
                     conv_op.input[0]].scale
