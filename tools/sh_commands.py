@@ -914,7 +914,7 @@ def validate_model(abi,
                      device_type,
                      ":".join(input_shapes), ":".join(output_shapes),
                      ",".join(input_nodes), ",".join(output_nodes),
-                     validation_threshold)
+                     validation_threshold, ",".join(input_data_types))
         elif caffe_env == common.CaffeEnvType.DOCKER:
             docker_image_id = sh.docker("images", "-q", image_name)
             if not docker_image_id:
@@ -979,6 +979,7 @@ def validate_model(abi,
                 "--input_shape=%s" % ":".join(input_shapes),
                 "--output_shape=%s" % ":".join(output_shapes),
                 "--validation_threshold=%f" % validation_threshold,
+                "--input_data_type=%s" % ",".join(input_data_types),
                 _fg=True)
 
     six.print_("Validation done!\n")
