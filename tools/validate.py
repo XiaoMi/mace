@@ -163,12 +163,15 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
                 input_blob_name = net.top_names[input_names[i]][0]
         except ValueError:
             pass
-        net.blobs[input_blob_name].data[0] = input_value
+        new_shape = input_value.shape
+        net.blobs[input_blob_name].reshape(*new_shape)
+        for index in range(input_value.shape[0]):
+            net.blobs[input_blob_name].data[index] = input_value[index]
 
     net.forward()
 
     for i in range(len(output_names)):
-        value = net.blobs[net.top_names[output_names[i]][0]].data
+        value = net.blobs[output_names[i]].data
         out_shape = output_shapes[i]
         if len(out_shape) == 4:
             out_shape[1], out_shape[2], out_shape[3] = \
