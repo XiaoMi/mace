@@ -1925,7 +1925,7 @@ class Transformer(base_converter.ConverterInterface):
         if range_file:
             with open(range_file) as f:
                 for line in f:
-                    tensor_name, minmax = line.split("@@")
+                    tensor_name, minmax = line.split("@@")[:2]
                     min_val, max_val = [float(i) for i in
                                         minmax.strip().split(",")]
                     scale, zero = quantize_util.adjust_range(min_val, max_val,

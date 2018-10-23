@@ -71,7 +71,6 @@ MACE_RUN_STATIC_NAME = "mace_run_static"
 MACE_RUN_DYNAMIC_NAME = "mace_run_dynamic"
 MACE_RUN_STATIC_TARGET = "//mace/tools/validation:" + MACE_RUN_STATIC_NAME
 MACE_RUN_DYNAMIC_TARGET = "//mace/tools/validation:" + MACE_RUN_DYNAMIC_NAME
-QUANTIZE_STAT_TARGET = "//mace/tools/quantization:quantize_stat"
 EXAMPLE_STATIC_NAME = "example_static"
 EXAMPLE_DYNAMIC_NAME = "example_dynamic"
 EXAMPLE_STATIC_TARGET = "//mace/examples/cli:" + EXAMPLE_STATIC_NAME
@@ -969,38 +968,6 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
                                        mace_lib_type == MACELibType.dynamic)
 
 
-def build_quantize_stat(configs):
-    library_name = configs[YAMLKeyword.library_name]
-
-    build_tmp_binary_dir = get_build_binary_dir(library_name, ABIType.host)
-    if os.path.exists(build_tmp_binary_dir):
-        sh.rm("-rf", build_tmp_binary_dir)
-    os.makedirs(build_tmp_binary_dir)
-
-    quantize_stat_target = QUANTIZE_STAT_TARGET
-    build_arg = ""
-    six.print_(configs[YAMLKeyword.model_graph_format])
-    if configs[YAMLKeyword.model_graph_format] == ModelFormat.code:
-        mace_check(os.path.exists(ENGINE_CODEGEN_DIR),
-                   ModuleName.RUN,
-                   "You should convert model first.")
-        build_arg = "--per_file_copt=mace/tools/quantization/quantize_stat.cc@-DMODEL_GRAPH_FORMAT_CODE"  # noqa
-
-    sh_commands.bazel_build(
-        quantize_stat_target,
-        abi=ABIType.host,
-        enable_openmp=True,
-        symbol_hidden=True,
-        extra_args=build_arg
-    )
-
-    quantize_stat_filepath = build_tmp_binary_dir + "/quantize_stat"
-    if os.path.exists(quantize_stat_filepath):
-        sh.rm("-rf", quantize_stat_filepath)
-    sh.cp("-f", "bazel-bin/mace/tools/quantization/quantize_stat",
-          build_tmp_binary_dir)
-
-
 def build_example(configs, target_abi, enable_openmp, address_sanitizer,
                   mace_lib_type):
     library_name = configs[YAMLKeyword.library_name]
@@ -1275,12 +1242,15 @@ def run_specific_target(flags, configs, target_abi,
                 cpu_affinity_policy=flags.cpu_affinity_policy,
                 gpu_perf_hint=flags.gpu_perf_hint,
                 gpu_priority_hint=flags.gpu_priority_hint,
+                input_dir=flags.input_dir,
+                output_dir=flags.output_dir,
                 runtime_failure_ratio=flags.runtime_failure_ratio,
                 address_sanitizer=flags.address_sanitizer,
                 opencl_binary_file=model_opencl_output_bin_path,
                 opencl_parameter_file=model_opencl_parameter_path,
                 libmace_dynamic_library_path=LIBMACE_DYNAMIC_PATH,
                 link_dynamic=link_dynamic,
+                quantize_stat=flags.quantize_stat,
             )
             if flags.validate:
                 model_file_path, weight_file_path = get_model_files(
@@ -1340,59 +1310,6 @@ def run_specific_target(flags, configs, target_abi,
             opencl_parameter_bin_path)
 
 
-def run_quantize_stat(flags, configs):
-    library_name = configs[YAMLKeyword.library_name]
-    build_tmp_binary_dir = get_build_binary_dir(library_name, ABIType.host)
-
-    for model_name in configs[YAMLKeyword.models]:
-        check_model_converted(library_name, model_name,
-                              configs[YAMLKeyword.model_graph_format],
-                              configs[YAMLKeyword.model_data_format],
-                              ABIType.host)
-        MaceLogger.header(
-            StringFormatter.block(
-                "Run model %s on %s" % (model_name, ABIType.host)))
-
-        model_config = configs[YAMLKeyword.models][model_name]
-        subgraphs = model_config[YAMLKeyword.subgraphs]
-
-        _, _, mace_model_dir = \
-            get_build_model_dirs(library_name, model_name, ABIType.host,
-                                 None, None,
-                                 model_config[YAMLKeyword.model_file_path])
-
-        mace_model_path = ""
-        if configs[YAMLKeyword.model_graph_format] == ModelFormat.file:
-            mace_model_path = "%s/%s.pb" % (mace_model_dir, model_name)
-
-        p = subprocess.Popen(
-            [
-                "env",
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % flags.vlog_level,
-                "MACE_LOG_TENSOR_RANGE=1",
-                "%s/%s" % (build_tmp_binary_dir, "quantize_stat"),
-                "--model_name=%s" % model_name,
-                "--input_node=%s" % ",".join(
-                    subgraphs[0][YAMLKeyword.input_tensors]),
-                "--output_node=%s" % ",".join(
-                    subgraphs[0][YAMLKeyword.output_tensors]),
-                "--input_shape=%s" % ":".join(
-                    subgraphs[0][YAMLKeyword.input_shapes]),
-                "--output_shape=%s" % ":".join(
-                    subgraphs[0][YAMLKeyword.output_shapes]),
-                "--input_dir=%s" % flags.input_dir,
-                "--model_data_file=%s/%s.data" % (mace_model_dir, model_name),
-                "--omp_num_threads=%s" % flags.omp_num_threads,
-                "--model_file=%s" % mace_model_path,
-            ],
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE)
-        out, err = p.communicate()
-        stdout = err + out
-        six.print_(stdout)
-        six.print_("Running finished!\n")
-
-
 def print_package_summary(package_path):
     title = "Library"
     header = ["key", "value"]
@@ -1407,11 +1324,6 @@ def run_mace(flags):
     configs = format_model_config(flags)
 
     clear_build_dirs(configs[YAMLKeyword.library_name])
-
-    if flags.quantize_stat:
-        build_quantize_stat(configs)
-        run_quantize_stat(flags, configs)
-        return
 
     target_socs = configs[YAMLKeyword.target_socs]
     if not target_socs or ALL_SOC_TAG in target_socs:
@@ -1793,6 +1705,11 @@ def parse_args():
         type=str,
         default="",
         help="quantize stat input dir.")
+    run.add_argument(
+        "--output_dir",
+        type=str,
+        default="",
+        help="quantize stat output dir.")
     benchmark = subparsers.add_parser(
         'benchmark',
         parents=[all_type_parent_parser, run_bm_parent_parser],

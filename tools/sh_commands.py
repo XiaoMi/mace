@@ -702,9 +702,12 @@ def tuning_run(abi,
                gpu_priority_hint=3,
                input_file_name="model_input",
                output_file_name="model_out",
+               input_dir="",
+               output_dir="",
                runtime_failure_ratio=0.0,
                address_sanitizer=False,
-               link_dynamic=False):
+               link_dynamic=False,
+               quantize_stat=False):
     six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
                "out_of_range_check=%s, omp_num_threads=%s, "
                "cpu_affinity_policy=%s, gpu_perf_hint=%s, "
@@ -718,30 +721,37 @@ def tuning_run(abi,
     if abi == "host":
         libmace_dynamic_lib_path = \
             os.path.dirname(libmace_dynamic_library_path)
+        cmd = [
+            "env",
+            "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
+            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
+            "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
+        ]
+        if quantize_stat:
+            cmd.append("MACE_LOG_TENSOR_RANGE=1")
+        cmd.extend([
+            "%s/%s" % (target_dir, target_name),
+            "--model_name=%s" % model_tag,
+            "--input_node=%s" % ",".join(input_nodes),
+            "--output_node=%s" % ",".join(output_nodes),
+            "--input_shape=%s" % ":".join(input_shapes),
+            "--output_shape=%s" % ":".join(output_shapes),
+            "--input_file=%s/%s" % (model_output_dir, input_file_name),
+            "--output_file=%s/%s" % (model_output_dir, output_file_name),
+            "--input_dir=%s" % input_dir,
+            "--output_dir=%s" % output_dir,
+            "--model_data_file=%s/%s.data" % (mace_model_dir, model_tag),
+            "--device=%s" % device_type,
+            "--round=%s" % running_round,
+            "--restart_round=%s" % restart_round,
+            "--omp_num_threads=%s" % omp_num_threads,
+            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
+            "--gpu_perf_hint=%s" % gpu_perf_hint,
+            "--gpu_priority_hint=%s" % gpu_priority_hint,
+            "--model_file=%s" % mace_model_path,
+        ])
         p = subprocess.Popen(
-            [
-                "env",
-                "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
-                "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-                "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-                "%s/%s" % (target_dir, target_name),
-                "--model_name=%s" % model_tag,
-                "--input_node=%s" % ",".join(input_nodes),
-                "--output_node=%s" % ",".join(output_nodes),
-                "--input_shape=%s" % ":".join(input_shapes),
-                "--output_shape=%s" % ":".join(output_shapes),
-                "--input_file=%s/%s" % (model_output_dir, input_file_name),
-                "--output_file=%s/%s" % (model_output_dir, output_file_name),
-                "--model_data_file=%s/%s.data" % (mace_model_dir, model_tag),
-                "--device=%s" % device_type,
-                "--round=%s" % running_round,
-                "--restart_round=%s" % restart_round,
-                "--omp_num_threads=%s" % omp_num_threads,
-                "--cpu_affinity_policy=%s" % cpu_affinity_policy,
-                "--gpu_perf_hint=%s" % gpu_perf_hint,
-                "--gpu_priority_hint=%s" % gpu_priority_hint,
-                "--model_file=%s" % mace_model_path,
-            ],
+            cmd,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE)
         out, err = p.communicate()
@@ -800,6 +810,8 @@ def tuning_run(abi,
             "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
             "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
         ]
+        if quantize_stat:
+            adb_cmd.append("MACE_LOG_TENSOR_RANGE=1")
         if address_sanitizer:
             adb_cmd.extend([
                 "LD_PRELOAD=%s/%s" % (phone_data_dir,
@@ -814,6 +826,8 @@ def tuning_run(abi,
             "--output_shape=%s" % ":".join(output_shapes),
             "--input_file=%s/%s" % (phone_data_dir, input_file_name),
             "--output_file=%s/%s" % (phone_data_dir, output_file_name),
+            "--input_dir=%s" % input_dir,
+            "--output_dir=%s" % output_dir,
             "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
             "--device=%s" % device_type,
             "--round=%s" % running_round,

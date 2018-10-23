@@ -131,7 +131,6 @@ model_tests:
       python tools/converter.py convert --config=${CONF_FILE} --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --example --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
-    - bazel build --copt=-fopenmp mace/tools/quantization:quantize_stat
     - rm -rf mace-models
 
 build_android_demo:
