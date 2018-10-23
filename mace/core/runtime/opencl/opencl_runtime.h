@@ -65,11 +65,11 @@ const std::string OpenCLErrorToString(cl_int error);
 class OpenCLRuntime {
  public:
   OpenCLRuntime(
-      KVStorage *cache_storage = nullptr,
+      std::shared_ptr<KVStorage> cache_storage = nullptr,
       const GPUPriorityHint priority_hint = GPUPriorityHint::PRIORITY_NORMAL,
       const GPUPerfHint perf_hint = GPUPerfHint::PERF_NORMAL,
-      KVStorage *precompiled_binary_storage = nullptr,
-      Tuner<uint32_t> *tuner = nullptr);
+      std::shared_ptr<KVStorage> precompiled_binary_storage = nullptr,
+      std::shared_ptr<Tuner<uint32_t>> tuner = nullptr);
   ~OpenCLRuntime();
   OpenCLRuntime(const OpenCLRuntime &) = delete;
   OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
@@ -126,9 +126,9 @@ class OpenCLRuntime {
   OpenCLVersion ParseDeviceVersion(const std::string &device_version);
 
  private:
-  KVStorage *cache_storage_;
-  KVStorage *precompiled_binary_storage_;
-  Tuner<uint32_t> *tuner_;
+  std::shared_ptr<KVStorage> cache_storage_;
+  std::shared_ptr<KVStorage> precompiled_binary_storage_;
+  std::shared_ptr<Tuner<uint32_t>> tuner_;
   bool is_opencl_avaliable_;
   bool is_profiling_enabled_;
   OpenCLVersion opencl_version_;

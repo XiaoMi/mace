@@ -32,15 +32,15 @@ class GPUContext {
              const std::string &opencl_parameter_path = "");
   ~GPUContext();
 
-  KVStorage *opencl_binary_storage();
-  KVStorage *opencl_cache_storage();
-  Tuner<uint32_t> *opencl_tuner();
+  std::shared_ptr<KVStorage> opencl_binary_storage();
+  std::shared_ptr<KVStorage> opencl_cache_storage();
+  std::shared_ptr<Tuner<uint32_t>> opencl_tuner();
 
  private:
   std::unique_ptr<KVStorageFactory> storage_factory_;
-  std::unique_ptr<Tuner<uint32_t>> opencl_tuner_;
-  std::unique_ptr<KVStorage> opencl_binary_storage_;
-  std::unique_ptr<KVStorage> opencl_cache_storage_;
+  std::shared_ptr<Tuner<uint32_t>> opencl_tuner_;
+  std::shared_ptr<KVStorage> opencl_binary_storage_;
+  std::shared_ptr<KVStorage> opencl_cache_storage_;
 };
 
 }  // namespace mace

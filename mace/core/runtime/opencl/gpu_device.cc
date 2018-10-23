@@ -18,11 +18,11 @@
 
 namespace mace {
 
-GPUDevice::GPUDevice(Tuner<uint32_t> *tuner,
-                     KVStorage *opencl_cache_storage,
+GPUDevice::GPUDevice(std::shared_ptr<Tuner<uint32_t>> tuner,
+                     std::shared_ptr<KVStorage> opencl_cache_storage,
                      const GPUPriorityHint priority,
                      const GPUPerfHint perf,
-                     KVStorage *opencl_binary_storage,
+                     std::shared_ptr<KVStorage> opencl_binary_storage,
                      const int num_threads,
                      CPUAffinityPolicy cpu_affinity_policy,
                      bool use_gemmlowp) :

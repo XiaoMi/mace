@@ -25,11 +25,11 @@ namespace mace {
 
 class GPUDevice : public CPUDevice {
  public:
-  GPUDevice(Tuner<uint32_t> *tuner,
-            KVStorage *opencl_cache_storage = nullptr,
+  GPUDevice(std::shared_ptr<Tuner<uint32_t>> tuner,
+            std::shared_ptr<KVStorage> opencl_cache_storage = nullptr,
             const GPUPriorityHint priority = GPUPriorityHint::PRIORITY_LOW,
             const GPUPerfHint perf = GPUPerfHint::PERF_NORMAL,
-            KVStorage *opencl_binary_storage = nullptr,
+            std::shared_ptr<KVStorage> opencl_binary_storage = nullptr,
             const int num_threads = -1,
             CPUAffinityPolicy cpu_affinity_policy = AFFINITY_NONE,
             bool use_gemmlowp = false);

@@ -58,16 +58,16 @@ GPUContext::GPUContext(const std::string &storage_path,
 
 GPUContext::~GPUContext() = default;
 
-KVStorage *GPUContext::opencl_binary_storage() {
-  return opencl_binary_storage_.get();
+std::shared_ptr<KVStorage> GPUContext::opencl_binary_storage() {
+  return opencl_binary_storage_;
 }
 
-KVStorage *GPUContext::opencl_cache_storage() {
-  return opencl_cache_storage_.get();
+std::shared_ptr<KVStorage> GPUContext::opencl_cache_storage() {
+  return opencl_cache_storage_;
 }
 
-Tuner<uint32_t> *GPUContext::opencl_tuner() {
-  return opencl_tuner_.get();
+std::shared_ptr<Tuner<uint32_t>> GPUContext::opencl_tuner() {
+  return opencl_tuner_;
 }
 
 }  // namespace mace

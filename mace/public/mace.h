@@ -99,10 +99,8 @@ enum MaceStatus {
 
 /// \brief GPU context contain the status used for GPU device.
 ///
-/// The life cycle of GPUContext object is the same as MaceEngines use it.
-/// Just use one GPUContext for all MaceEngines, which will speed up the
-/// initialization procedure. There are some data in common between different
-/// MaceEngines using GPU, use one GPUContext could avoid duplication.
+/// There are some data in common between different MaceEngines using GPU,
+/// use one GPUContext could avoid duplication.
 class GPUContext;
 
 /// \brief GPUContext builder.

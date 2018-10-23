@@ -41,7 +41,7 @@ class KVStorage {
 
 class KVStorageFactory {
  public:
-  virtual std::unique_ptr<KVStorage> CreateStorage(const std::string &name) = 0;
+  virtual std::shared_ptr<KVStorage> CreateStorage(const std::string &name) = 0;
 
   virtual ~KVStorageFactory() {}
 };
@@ -53,7 +53,7 @@ class FileStorageFactory : public KVStorageFactory {
 
   ~FileStorageFactory();
 
-  std::unique_ptr<KVStorage> CreateStorage(const std::string &name) override;
+  std::shared_ptr<KVStorage> CreateStorage(const std::string &name) override;
 
  private:
   class Impl;
