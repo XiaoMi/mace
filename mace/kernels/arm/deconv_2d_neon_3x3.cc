@@ -293,11 +293,11 @@ void Deconv2dNeonK3x3S2(const float *input,
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(2)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (index_t oc = 0; oc < outch; ++oc) {
+      float *out_base = output + (b * outch + oc) * out_img_size;
       for (index_t ic = 0; ic < inch; ++ic) {
-        float *out_base = output + (b * outch + oc) * out_img_size;
         const float *input_base = input + (b * inch + ic) * h * w;
         const float *kernel_base = filter + (oc * inch + ic) * 9;
         const float *in = input_base;
