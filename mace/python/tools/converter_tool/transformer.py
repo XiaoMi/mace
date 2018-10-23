@@ -78,6 +78,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_BIASADD: self.fold_biasadd,
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
+            TransformerRule.FOLD_SQRDIFF_MEAN: self.fold_squared_diff_mean,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
@@ -348,6 +349,34 @@ class Transformer(base_converter.ConverterInterface):
 
                     self.safe_remove_node(op, None)
                     return True
+
+        return False
+
+    def fold_squared_diff_mean(self):
+        net = self._model
+        for op in net.op:
+            if op.type == MaceOp.Eltwise.name and len(op.input) == 2:
+                elttype = ConverterUtil.get_arg(
+                    op,
+                    MaceKeyword.mace_element_type_str).i
+                if elttype == EltwiseType.SQR_DIFF.value and\
+                        self.consumer_count(op.output[0]) == 1:
+                    consumer_op = self._consumers[op.output[0]][0]
+                    axis = ConverterUtil.get_arg(
+                        consumer_op,
+                        MaceKeyword.mace_axis_str).ints
+                    keep_dims = ConverterUtil.get_arg(
+                        consumer_op,
+                        MaceKeyword.mace_keepdims_str).i
+                    if consumer_op.type == MaceOp.ReduceMean.name and\
+                            len(consumer_op.input) == 1 and \
+                            axis[0] == 1 and axis[1] == 2 and keep_dims != 0:
+                        print("Fold SquaredDiff ReduceMean: %s" % op.name)
+                        op.type = MaceOp.SqrDiffMean.name
+                        op.output[0] = consumer_op.output[0]
+                        self.replace_quantize_info(op, consumer_op)
+                        self.safe_remove_node(consumer_op, op)
+                        return True
 
         return False
 

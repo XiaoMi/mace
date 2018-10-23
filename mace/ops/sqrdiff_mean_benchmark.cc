@@ -23,28 +23,37 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void ReduceMean(int iters, int batch, int channels,
+void SqrDiffMean(int iters, int batch, int channels,
                 int height, int width) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
   // Add input data
   net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+  net.AddRandomInput<D, T>("Input1", {batch, 1, 1, channels});
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
                         kernels::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("ReduceMean", "ReduceMeanBM")
+    BufferToImage<D, T>(&net, "Input1", "InputImage1",
+                        kernels::BufferType::IN_OUT_CHANNEL);
+    OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
         .Input("InputImage")
-        .AddIntsArg("axis", {1, 2})
+        .Input("InputImage1")
         .Output("OutputImage")
         .Finalize(net.NewOperatorDef());
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
+    net.TransformDataFormat<DeviceType::CPU, float>("Input",
+                                                    NHWC,
+                                                    "InputNCHW",
                                                     NCHW);
-    OpDefBuilder("ReduceMean", "ReduceMeanBM")
+    net.TransformDataFormat<DeviceType::CPU, float>("Input1",
+                                                    NHWC,
+                                                    "InputNCHW1",
+                                                    NCHW);
+    OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
         .Input("InputNCHW")
-        .AddIntsArg("axis", {2, 3})
+        .Input("InputNCHW1")
         .Output("Output")
         .Finalize(net.NewOperatorDef());
   }
@@ -63,30 +72,29 @@ void ReduceMean(int iters, int batch, int channels,
 }
 }  // namespace
 
-#define MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, TYPE, DEVICE)       \
+#define MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, TYPE, DEVICE)       \
   static void                                                \
-    MACE_BM_REDUCE_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(\
+    MACE_BM_SQRDIFF_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(\
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
     mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    ReduceMean<DEVICE, TYPE>(iters, N, C, H, W);        \
+    SqrDiffMean<DEVICE, TYPE>(iters, N, C, H, W);        \
   }                                                                  \
-  MACE_BENCHMARK(                                                         \
-    MACE_BM_REDUCE_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
+  MACE_BENCHMARK(                                                    \
+    MACE_BM_SQRDIFF_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define MACE_BM_REDUCE_MEAN(N, C, H, W)                 \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, float, GPU);  \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, half, GPU);   \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, float, CPU);
+#define MACE_BM_SQRDIFF_MEAN(N, C, H, W)                 \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, GPU);  \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, half, GPU);   \
+  MACE_BM_SQRDIFF_MEAN_MACRO(N, C, H, W, float, CPU);
 
 
-MACE_BM_REDUCE_MEAN(1, 1, 512, 512);
-MACE_BM_REDUCE_MEAN(4, 3, 128, 128);
-MACE_BM_REDUCE_MEAN(4, 1, 512, 512);
-MACE_BM_REDUCE_MEAN(16, 32, 112, 112);
-MACE_BM_REDUCE_MEAN(8, 64, 256, 256);
-MACE_BM_REDUCE_MEAN(1, 32, 480, 640);
+MACE_BM_SQRDIFF_MEAN(1, 1, 512, 512);
+MACE_BM_SQRDIFF_MEAN(4, 3, 128, 128);
+MACE_BM_SQRDIFF_MEAN(4, 1, 512, 512);
+MACE_BM_SQRDIFF_MEAN(8, 64, 256, 256);
+MACE_BM_SQRDIFF_MEAN(1, 32, 480, 640);
 
 
 }  // namespace test

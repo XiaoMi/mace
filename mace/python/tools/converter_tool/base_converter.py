@@ -122,6 +122,7 @@ MaceSupportedOps = [
     'Softmax',
     'SpaceToBatchND',
     'SpaceToDepth',
+    'SqrDiffMean',
     'Transpose',
     'WinogradInverseTransform',
     'WinogradTransform',
@@ -217,6 +218,7 @@ class TransformerRule(Enum):
     REARRANGE_BATCH_TO_SPACE = 30
     ADD_OPENCL_INFORMATIONS = 31
     FOLD_DECONV_AND_BN = 32
+    FOLD_SQRDIFF_MEAN = 33
 
 
 class ConverterInterface(object):
@@ -397,6 +399,7 @@ class ConverterOption(object):
                 TransformerRule.FOLD_BIASADD,
                 TransformerRule.FLATTEN_ATROUS_CONV,
                 TransformerRule.FOLD_ACTIVATION,
+                TransformerRule.FOLD_SQRDIFF_MEAN,
                 TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC,
                 TransformerRule.RESHAPE_FC_WEIGHT,
                 # Model data format related transformation
