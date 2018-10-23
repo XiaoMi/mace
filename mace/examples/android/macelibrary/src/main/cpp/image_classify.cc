@@ -67,7 +67,6 @@ mace::DeviceType ParseDeviceType(const std::string &device) {
 }
 
 MaceContext& GetMaceContext() {
-  // stay for the app's life time, only initialize once
   static auto *mace_context = new MaceContext;
 
   return *mace_context;

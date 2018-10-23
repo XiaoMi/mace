@@ -273,11 +273,11 @@ void OpenCLProfilingTimer::ClearTiming() {
 }
 
 OpenCLRuntime::OpenCLRuntime(
-    KVStorage *cache_storage,
+    std::shared_ptr<KVStorage> cache_storage,
     const GPUPriorityHint priority_hint,
     const GPUPerfHint perf_hint,
-    KVStorage *precompiled_binary_storage,
-    Tuner<uint32_t> *tuner):
+    std::shared_ptr<KVStorage> precompiled_binary_storage,
+    std::shared_ptr<Tuner<uint32_t>> tuner):
     cache_storage_(cache_storage),
     precompiled_binary_storage_(precompiled_binary_storage),
     tuner_(tuner),
@@ -460,7 +460,7 @@ cl::Device &OpenCLRuntime::device() { return *device_; }
 
 cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 
-Tuner<uint32_t> *OpenCLRuntime::tuner() { return tuner_; }
+Tuner<uint32_t> *OpenCLRuntime::tuner() { return tuner_.get(); }
 
 uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
   return device_gloabl_mem_cache_size_;

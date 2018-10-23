@@ -32,7 +32,7 @@ class FileStorageFactory::Impl {
  public:
   explicit Impl(const std::string &path);
 
-  std::unique_ptr<KVStorage> CreateStorage(const std::string &name);
+  std::shared_ptr<KVStorage> CreateStorage(const std::string &name);
 
  private:
   std::string path_;
@@ -40,10 +40,9 @@ class FileStorageFactory::Impl {
 
 FileStorageFactory::Impl::Impl(const std::string &path): path_(path) {}
 
-std::unique_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
+std::shared_ptr<KVStorage> FileStorageFactory::Impl::CreateStorage(
     const std::string &name) {
-  return std::move(std::unique_ptr<KVStorage>(
-      new FileStorage(path_ + "/" + name)));
+  return std::shared_ptr<KVStorage>(new FileStorage(path_ + "/" + name));
 }
 
 FileStorageFactory::FileStorageFactory(const std::string &path):
@@ -51,7 +50,7 @@ FileStorageFactory::FileStorageFactory(const std::string &path):
 
 FileStorageFactory::~FileStorageFactory() = default;
 
-std::unique_ptr<KVStorage> FileStorageFactory::CreateStorage(
+std::shared_ptr<KVStorage> FileStorageFactory::CreateStorage(
     const std::string &name) {
   return impl_->CreateStorage(name);
 }
