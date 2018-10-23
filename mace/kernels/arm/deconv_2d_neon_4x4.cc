@@ -386,11 +386,11 @@ void Deconv2dNeonK4x4S2(const float *input,
   const index_t outch = out_shape[1];
   const index_t out_img_size = outh * outw;
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(2)
   for (int b = 0; b < out_shape[0]; ++b) {
     for (int p = 0; p < outch; p++) {
+      float *out_base = output + (b * outch + p) * out_img_size;
       for (int q = 0; q < inch; q++) {
-        float *out_base = output + (b * outch + p) * out_img_size;
         const float *input_base = input + (b * inch + q) * h * w;
         const float *kernel_base = filter + (p * inch + q) * 16;
         const float *in = input_base;

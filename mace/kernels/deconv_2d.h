@@ -214,13 +214,13 @@ struct Deconv2dFunctor<DeviceType::CPU, float>: Deconv2dFunctorBase {
     const index_t out_channels = out_shape[1];
     const index_t in_channels = in_shape[1];
 
-#pragma omp parallel for collapse(4)
+#pragma omp parallel for collapse(2)
     for (int b = 0; b < batch; ++b) {
       for (int oc = 0; oc < out_channels; ++oc) {
+        float *out_base =
+            output + (b * out_channels + oc) * out_img_size;
         for (int i = 0; i < in_height; ++i) {
           for (int j = 0; j < in_width; ++j) {
-            float *out_base =
-                output + (b * out_channels + oc) * out_img_size;
             const index_t out_offset =
                 i * strides[0] * out_width + j * strides[1];
             for (int ic = 0; ic < in_channels; ++ic) {
