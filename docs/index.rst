@@ -28,6 +28,7 @@ The main documentation is organized into the following sections:
    user_guide/basic_usage
    user_guide/advanced_usage
    user_guide/op_lists
+   user_guide/quantization_usage
 
 .. toctree::
    :maxdepth: 1

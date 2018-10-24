@@ -133,7 +133,7 @@ MaceStatus SerialNet::Run(RunMetadata *run_metadata) {
     VLOG(3) << "Operator " << op->debug_def().name()
             << " has shape: " << MakeString(op->Output(0)->shape());
 
-    if (EnvEnabled("MACE_LOG_TENSOR_RANGE") && device_type == CPU) {
+    if (EnvEnabled("MACE_LOG_TENSOR_RANGE")) {
       for (int i = 0; i < op->OutputSize(); ++i) {
         if (op->debug_def().quantize_info_size() == 0) {
           int data_type = op->GetOptionalArg("T", static_cast<int>(DT_FLOAT));

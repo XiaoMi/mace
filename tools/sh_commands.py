@@ -715,6 +715,8 @@ def tuning_run(abi,
                (model_tag, running_round, restart_round, str(tuning),
                 str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
                 gpu_perf_hint, gpu_priority_hint))
+    sys.stdout.flush()
+
     mace_model_path = ""
     if model_graph_format == ModelFormat.file:
         mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
@@ -874,6 +876,7 @@ def tuning_run(abi,
 
         six.print_("Running finished!\n")
 
+    sys.stdout.flush()
     return stdout
 
 
