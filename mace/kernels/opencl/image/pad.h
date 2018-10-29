@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_PAD_H_
 #define MACE_KERNELS_OPENCL_IMAGE_PAD_H_
 
-#include "mace/kernels/pad.h"
+#include "mace/kernels/opencl/pad.h"
 
 #include <memory>
 #include <vector>
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -36,10 +38,9 @@ class PadKernel : public OpenCLPadKernel {
       : paddings_(paddings), constant_value_(constant_value) {}
 
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   std::vector<int> paddings_;
@@ -51,10 +52,9 @@ class PadKernel : public OpenCLPadKernel {
 
 template <typename T>
 MaceStatus PadKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK(this->paddings_.size() ==
       static_cast<size_t>((input->dim_size() * 2)));
   MACE_CHECK((this->paddings_[0] == 0) && (this->paddings_[1] == 0) &&
@@ -122,10 +122,10 @@ MaceStatus PadKernel<T>::Compute(
   std::string tuning_key = Concat("pad", output->dim(0), output->dim(1),
                                   output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

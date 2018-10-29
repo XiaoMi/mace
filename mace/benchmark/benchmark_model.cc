@@ -263,7 +263,7 @@ int Main(int argc, char **argv) {
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy),
       true);
-  if (mace_status != MACE_SUCCESS) {
+  if (mace_status != MaceStatus::MACE_SUCCESS) {
     LOG(INFO) << "Set openmp or cpu affinity failed.";
   }
 #ifdef MACE_ENABLE_OPENCL

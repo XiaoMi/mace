@@ -14,11 +14,13 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_CONCAT_H_
 #define MACE_KERNELS_OPENCL_IMAGE_CONCAT_H_
 
-#include "mace/kernels/concat.h"
+#include "mace/kernels/opencl/concat.h"
 
 #include <memory>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -26,22 +28,20 @@ namespace kernels {
 namespace opencl {
 namespace image {
 namespace concat {
-MaceStatus Concat2(OpKernelContext *context,
+MaceStatus Concat2(OpContext *context,
                    cl::Kernel *kernel,
                    const Tensor *input0,
                    const Tensor *input1,
                    const DataType dt,
                    std::vector<index_t> *prev_input_shape,
                    Tensor *output,
-                   StatsFuture *future,
                    uint32_t *kwg_size);
 
-MaceStatus ConcatN(OpKernelContext *context,
+MaceStatus ConcatN(OpContext *context,
                    cl::Kernel *kernel,
                    const std::vector<const Tensor *> &input_list,
                    const DataType dt,
                    Tensor *output,
-                   StatsFuture *future,
                    uint32_t *kwg_size);
 }  // namespace concat
 
@@ -50,10 +50,9 @@ class ConcatKernel : public OpenCLConcatKernel {
  public:
   explicit ConcatKernel(const int32_t axis) : axis_(axis) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const std::vector<const Tensor *> &input_list,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   int32_t axis_;
@@ -64,10 +63,9 @@ class ConcatKernel : public OpenCLConcatKernel {
 
 template <typename T>
 MaceStatus ConcatKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const std::vector<const Tensor *> &input_list,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const int inputs_count = input_list.size();
   MACE_CHECK(inputs_count >= 2 && axis_ == 3)
     << "Concat opencl kernel only support >=2 elements with axis == 3";
@@ -101,18 +99,17 @@ MaceStatus ConcatKernel<T>::Compute(
     case 2:
       return concat::Concat2(
           context, &kernel_, input_list[0], input_list[1],
-          DataTypeToEnum<T>::value, &input_shape_, output, future, &kwg_size_);
+          DataTypeToEnum<T>::value, &input_shape_, output, &kwg_size_);
     default:
       if (divisible_four) {
         return concat::ConcatN(context, &kernel_, input_list,
-                               DataTypeToEnum<T>::value, output, future,
-                               &kwg_size_);
+                               DataTypeToEnum<T>::value, output, &kwg_size_);
       } else {
         MACE_NOT_IMPLEMENTED;
       }
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

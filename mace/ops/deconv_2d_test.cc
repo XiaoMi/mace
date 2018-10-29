@@ -15,7 +15,8 @@
 #include <fstream>
 #include <vector>
 
-#include "mace/ops/deconv_2d.h"
+#include "mace/kernels/deconv_2d.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

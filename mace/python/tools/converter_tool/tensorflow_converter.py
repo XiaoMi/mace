@@ -531,7 +531,7 @@ class TensorflowConverter(base_converter.ConverterInterface):
 
     def convert_fused_batchnorm(self, tf_op):
         op = self.convert_general_op(tf_op)
-        op.type = MaceOp.FoldedBatchNorm.name
+        op.type = MaceOp.BatchNorm.name
 
         is_training = tf_op.get_attr(tf_is_training_str)
         assert is_training is False, 'Only support batch normalization ' \

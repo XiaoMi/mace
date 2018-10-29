@@ -14,11 +14,13 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_DEPTHWISE_CONV2D_H_
 #define MACE_KERNELS_OPENCL_IMAGE_DEPTHWISE_CONV2D_H_
 
-#include "mace/kernels/depthwise_conv2d.h"
+#include "mace/kernels/opencl/depthwise_conv2d.h"
 
 #include <memory>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -27,7 +29,7 @@ namespace opencl {
 namespace image {
 namespace depthwise {
 
-MaceStatus DepthwiseConv2d(OpKernelContext *context,
+MaceStatus DepthwiseConv2d(OpContext *context,
                            cl::Kernel *kernel,
                            const Tensor *input,   // NHWC
                            const Tensor *filter,  // HWIM
@@ -40,7 +42,6 @@ MaceStatus DepthwiseConv2d(OpKernelContext *context,
                            const DataType dt,
                            std::vector<index_t> *prev_input_shape,
                            Tensor *output,
-                           StatsFuture *future,
                            uint32_t *kwg_size);
 }  // namespace depthwise
 
@@ -49,7 +50,7 @@ template <typename T>
 class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -59,8 +60,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -70,7 +70,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
 
 template <typename T>
 MaceStatus DepthwiseConv2dKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
@@ -80,8 +80,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   index_t kernel_h = filter->dim(2);
   index_t kernel_w = filter->dim(3);
   if (strides[0] != strides[1]) {
@@ -120,7 +119,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
   return depthwise::DepthwiseConv2d(
       context, &kernel_, input, filter, bias, strides[0], paddings.data(),
       dilations, activation, relux_max_limit, DataTypeToEnum<T>::value,
-      &input_shape_, output, future, &kwg_size_);
+      &input_shape_, output, &kwg_size_);
 }
 
 }  // namespace image

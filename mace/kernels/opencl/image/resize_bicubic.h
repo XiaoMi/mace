@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_RESIZE_BICUBIC_H_
 #define MACE_KERNELS_OPENCL_IMAGE_RESIZE_BICUBIC_H_
 
-#include "mace/kernels/resize_bicubic.h"
+#include "mace/kernels/opencl/resize_bicubic.h"
 
 #include <algorithm>
 #include <memory>
@@ -22,7 +22,10 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
+#include "mace/kernels/resize_bicubic.h"
 
 namespace mace {
 namespace kernels {
@@ -68,10 +71,9 @@ class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
         out_width_(out_width) {}
 
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   bool align_corners_;
@@ -84,10 +86,9 @@ class ResizeBicubicKernel : public OpenCLResizeBicubicKernel {
 
 template <typename T>
 MaceStatus ResizeBicubicKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);
@@ -113,7 +114,9 @@ MaceStatus ResizeBicubicKernel<T>::Compute(
     built_options.emplace("-Dresize_bicubic_nocache=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
-    built_options.emplace(MakeString("-DTABLE_SIZE=", kTableSize));
+    built_options.emplace(
+        MakeString("-DTABLE_SIZE=",
+                   mace::kernels::resize_bicubic::kTableSize));
     MACE_RETURN_IF_ERROR(
         runtime->BuildKernel("resize_bicubic",
                              kernel_name,
@@ -135,9 +138,11 @@ MaceStatus ResizeBicubicKernel<T>::Compute(
     MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
     float height_scale =
-        CalculateResizeScale(in_height, out_height, align_corners_);
+        mace::kernels::resize_bicubic::CalculateResizeScale(
+            in_height, out_height, align_corners_);
     float width_scale =
-        CalculateResizeScale(in_width, out_width, align_corners_);
+        mace::kernels::resize_bicubic::CalculateResizeScale(
+            in_width, out_width, align_corners_);
 
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
@@ -159,10 +164,10 @@ MaceStatus ResizeBicubicKernel<T>::Compute(
       Concat("resize_bicubic_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

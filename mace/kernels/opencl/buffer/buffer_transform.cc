@@ -24,12 +24,11 @@ namespace opencl {
 namespace buffer {
 
 MaceStatus TransformConv2DFilter(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t out_chan = input->dim(0);
   const index_t in_chan = input->dim(1);
   const index_t filter_height = input->dim(2);
@@ -90,20 +89,19 @@ MaceStatus TransformConv2DFilter(
              transformed_shape[3]);
   std::vector<uint32_t> lws = {4, 4, 4, 0};
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION
   // Mark the buffer unused.
   const_cast<Tensor *>(input)->MarkUnused();
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus TransformDWConv2DFilter(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t multiplier = input->dim(0);
   const index_t in_chan = input->dim(1);
   const index_t filter_height = input->dim(2);
@@ -159,20 +157,19 @@ MaceStatus TransformDWConv2DFilter(
              transformed_shape[3]);
   std::vector<uint32_t> lws = {4, 4, 4, 0};
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION
   // Mark the buffer unused.
   const_cast<Tensor *>(input)->MarkUnused();
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus TransformArgument(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t size = input->dim(0);
 
   std::vector<index_t> transformed_shape = {RoundUp<index_t>(size, 4)};
@@ -225,8 +222,8 @@ MaceStatus TransformArgument(
   }
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -235,7 +232,7 @@ MaceStatus TransformArgument(
   }
   // Mark the buffer unused.
   const_cast<Tensor *>(input)->MarkUnused();
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace buffer

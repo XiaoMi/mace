@@ -16,7 +16,6 @@
 #include <string>
 
 #include "gmock/gmock.h"
-#include "mace/ops/concat.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_POOLING_H_
 #define MACE_KERNELS_OPENCL_IMAGE_POOLING_H_
 
-#include "mace/kernels/pooling.h"
+#include "mace/kernels/opencl/pooling.h"
 
 #include <algorithm>
 #include <memory>
@@ -22,6 +22,8 @@
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -59,7 +61,7 @@ template <typename T>
 class PoolingKernel : public OpenCLPoolingKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const PoolingType pooling_type,
       const int *kernels,
@@ -67,8 +69,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
       const Padding &padding_type,
       const std::vector<int> &padding_data,
       const int *dilations,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -78,7 +79,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
 
 template <typename T>
 MaceStatus PoolingKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const PoolingType pooling_type,
     const int *kernels,
@@ -86,8 +87,7 @@ MaceStatus PoolingKernel<T>::Compute(
     const Padding &padding_type,
     const std::vector<int> &padding_data,
     const int *dilations,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK(dilations[0] == 1 && dilations[1] == 1)
     << "Pooling opencl kernel not support dilation yet";
 
@@ -173,10 +173,10 @@ MaceStatus PoolingKernel<T>::Compute(
       Concat("pooling_opencl_kernel_", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

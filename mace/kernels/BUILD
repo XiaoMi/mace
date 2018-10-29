@@ -28,12 +28,20 @@ cc_library(
             "*_test.cc",
             "*_benchmark.cc",
             "arm/*_test.cc",
+            "buffer_inverse_transform.cc",
+            "buffer_transform.cc",
+            "lstm_cell.cc",
+            "winograd_transform.cc",
         ],
     ) + if_opencl_enabled(glob(
         [
             "opencl/*.cc",
             "opencl/image/*.cc",
             "opencl/buffer/*.cc",
+            "buffer_inverse_transform.cc",
+            "buffer_transform.cc",
+            "lstm_cell.cc",
+            "winograd_transform.cc",
         ],
         exclude = [
             "opencl/*_test.cc",
@@ -44,18 +52,10 @@ cc_library(
             "*.h",
             "arm/*.h",
         ],
-        exclude = [
-            "buffer_transform.h",
-            "buffer_inverse_transform.h",
-            "lstmcell.h",
-        ],
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
         "opencl/image/*.h",
         "opencl/buffer/*.h",
-        "buffer_transform.h",
-        "buffer_inverse_transform.h",
-        "lstmcell.h",
     ])),
     copts = [
         "-Werror",
@@ -77,7 +77,6 @@ cc_library(
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
-        "//mace/utils",
         "@gemmlowp",
         "@tflite",
     ],

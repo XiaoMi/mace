@@ -40,6 +40,7 @@ cc_library(
     deps = [
         "//mace/public",
         "//mace/ops",
+        "//mace/kernels",
     ],
     alwayslink = 1,
 )
@@ -49,15 +50,21 @@ cc_binary(
     linkopts = [
         "-Wl,-soname,libmace.so",
         "-Wl,--version-script",
-        "mace_version_script.lds",
+        "$(location //mace/libmace:mace_version_script.lds)",
     ] + if_openmp_enabled([
         "-fopenmp",
     ]),
     linkshared = 1,
     linkstatic = 1,
     deps = [
-        ":mace_version_script.lds",
+        "//mace/libmace:mace_version_script.lds",
         "//mace/libmace",
+    ],
+)
+
+exports_files(
+    [
+        "mace_version_script.lds",
     ],
 )
 

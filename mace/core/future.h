@@ -27,7 +27,12 @@ struct CallStats;
 
 // Wait the call to finish and get the stats if param is not nullptr
 struct StatsFuture {
-  std::function<void(CallStats *)> wait_fn;
+  std::function<void(CallStats *)> wait_fn = [](CallStats *stats) {
+    if (stats != nullptr) {
+      stats->start_micros = NowMicros();
+      stats->end_micros = stats->start_micros;
+    }
+  };
 };
 
 inline void SetFutureDefaultWaitFn(StatsFuture *future) {

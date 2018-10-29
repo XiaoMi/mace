@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <string>
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 

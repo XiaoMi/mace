@@ -21,63 +21,50 @@
 #include <unordered_map>
 #include <sstream>
 
-#include "mace/core/operator.h"
-#include "mace/utils/string_util.h"
+#include "mace/core/op_def_registry.h"
 
-#define kBinSize 2048
+#include "mace/core/operator.h"
 
 namespace mace {
 
 class RunMetadata;
-class OperatorBase;
 class Workspace;
 
 class NetBase {
  public:
-  NetBase(const std::shared_ptr<const OperatorRegistryBase> op_registry,
-          const std::shared_ptr<const NetDef> net_def,
-          Workspace *ws,
-          Device *device);
-  virtual ~NetBase() noexcept {}
+  NetBase() noexcept = default;
+  virtual ~NetBase() = default;
+
+  virtual MaceStatus Init() = 0;
 
   virtual MaceStatus Run(RunMetadata *run_metadata = nullptr) = 0;
 
  protected:
-  const std::shared_ptr<const OperatorRegistryBase> op_registry_;
-
   MACE_DISABLE_COPY_AND_ASSIGN(NetBase);
 };
 
 class SerialNet : public NetBase {
  public:
-  SerialNet(const std::shared_ptr<const OperatorRegistryBase> op_registry,
-            const std::shared_ptr<const NetDef> net_def,
+  SerialNet(OpDefRegistryBase *op_def_registry,
+            const OpRegistryBase *op_registry,
+            const NetDef *net_def,
             Workspace *ws,
-            Device *device,
+            Device *target_device,
             const NetMode mode = NetMode::NORMAL);
+
+  MaceStatus Init() override;
 
   MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
 
  protected:
-  std::vector<std::unique_ptr<OperatorBase> > operators_;
-  Device *device_;
-  std::unique_ptr<OpKernelContext> op_kernel_context_;
+  Workspace *ws_;
+  Device *target_device_;
+  // CPU is base device.
+  Device *cpu_device_;
+  std::vector<std::unique_ptr<Operation> > operators_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(SerialNet);
 };
-
-std::unique_ptr<NetBase> CreateNet(
-    const std::shared_ptr<const OperatorRegistryBase> op_registry,
-    const NetDef &net_def,
-    Workspace *ws,
-    Device *device,
-    const NetMode mode = NetMode::NORMAL);
-std::unique_ptr<NetBase> CreateNet(
-    const std::shared_ptr<const OperatorRegistryBase> op_registry,
-    const std::shared_ptr<const NetDef> net_def,
-    Workspace *ws,
-    Device *device,
-    const NetMode mode = NetMode::NORMAL);
 
 }  // namespace mace
 

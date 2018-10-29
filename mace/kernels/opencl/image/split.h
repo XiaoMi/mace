@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_SPLIT_H_
 #define MACE_KERNELS_OPENCL_IMAGE_SPLIT_H_
 
-#include "mace/kernels/split.h"
+#include "mace/kernels/opencl/split.h"
 
 #include <algorithm>
 #include <memory>
@@ -22,6 +22,8 @@
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -34,10 +36,9 @@ class SplitKernel : public OpenCLSplitKernel {
  public:
   explicit SplitKernel(const int32_t axis) : axis_(axis) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      const std::vector<Tensor *> &output_list,
-      StatsFuture *future) override;
+      const std::vector<Tensor *> &output_list) override;
 
  private:
   int32_t axis_;
@@ -47,10 +48,9 @@ class SplitKernel : public OpenCLSplitKernel {
 
 template <typename T>
 MaceStatus SplitKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    const std::vector<Tensor *> &output_list,
-    StatsFuture *future) {
+    const std::vector<Tensor *> &output_list) {
   const index_t input_channels = input->dim(3);
   const size_t outputs_count = output_list.size();
   const index_t output_channels = input_channels / outputs_count;
@@ -123,7 +123,7 @@ MaceStatus SplitKernel<T>::Compute(
     }
     MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
-    if (future != nullptr && runtime->is_profiling_enabled()) {
+    if (context->future() != nullptr && runtime->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);
@@ -132,8 +132,8 @@ MaceStatus SplitKernel<T>::Compute(
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
     }
   }
-  if (future != nullptr) {
-    future->wait_fn = [runtime, call_stats](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, call_stats](CallStats *stats) {
       if (stats != nullptr) {
         stats->start_micros = call_stats.start_micros;
         stats->end_micros = stats->start_micros + call_stats.end_micros;
@@ -141,7 +141,7 @@ MaceStatus SplitKernel<T>::Compute(
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

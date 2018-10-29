@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_SPACE_TO_DEPTH_H_
 #define MACE_KERNELS_OPENCL_IMAGE_SPACE_TO_DEPTH_H_
 
-#include "mace/kernels/space_to_depth.h"
+#include "mace/kernels/opencl/space_to_depth.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -34,10 +36,9 @@ class SpaceToDepthKernel : public OpenCLSpaceToDepthKernel {
   explicit SpaceToDepthKernel(const int block_size)
       : block_size_(block_size) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   const int block_size_;
@@ -48,10 +49,9 @@ class SpaceToDepthKernel : public OpenCLSpaceToDepthKernel {
 
 template <typename T>
 MaceStatus SpaceToDepthKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t input_height = input->dim(1);
   const index_t input_width = input->dim(2);
@@ -124,10 +124,10 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
   std::string tuning_key = Concat("space_to_depth_opencl_kernel", input->dim(0),
                                   input->dim(1), input->dim(2), input->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

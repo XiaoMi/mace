@@ -82,17 +82,42 @@ class RunMetadata {
 
 const char *MaceVersion();
 
-enum MaceStatus {
-  MACE_SUCCESS = 0,
-  MACE_INVALID_ARGS = 1,
-  MACE_OUT_OF_RESOURCES = 2
+class MaceStatus {
+ public:
+  enum Code {
+    MACE_SUCCESS = 0,
+    MACE_INVALID_ARGS = 1,
+    MACE_OUT_OF_RESOURCES = 2
+  };
+
+ public:
+  MaceStatus();
+  MaceStatus(const Code code);  // NOLINT(runtime/explicit)
+  MaceStatus(const Code code, const std::string &information);
+  MaceStatus(const MaceStatus &);
+  MaceStatus(MaceStatus &&);
+  MaceStatus &operator=(const MaceStatus &);
+  MaceStatus &operator=(const MaceStatus &&);
+  ~MaceStatus();
+  Code code() const;
+  std::string information() const;
+
+  bool operator==(const MaceStatus &other) const;
+  bool operator!=(const MaceStatus &other) const;
+
+ private:
+  class Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
-#define MACE_RETURN_IF_ERROR(stmt)                                          \
+
+#define MACE_RETURN_IF_ERROR(stmt)                                         \
   {                                                                        \
     MaceStatus status = (stmt);                                            \
-    if (status != MACE_SUCCESS) {                                          \
-      VLOG(0) << "Mace runtime failure: " << __FILE__ << ":" << __LINE__;  \
+    if (status != MaceStatus::MACE_SUCCESS) {                              \
+      VLOG(0) << "Mace runtime failure: "                                  \
+              << __FILE__ << ":" << __LINE__ << ". "                       \
+              << status.information();                                     \
       return status;                                                       \
     }                                                                      \
   }
@@ -112,9 +137,9 @@ class MACE_API GPUContextBuilder {
   GPUContextBuilder();
   ~GPUContextBuilder();
   GPUContextBuilder(const GPUContextBuilder &) = delete;
-  GPUContextBuilder(const GPUContextBuilder &&) = delete;
+  GPUContextBuilder(GPUContextBuilder &&) = delete;
   GPUContextBuilder &operator=(const GPUContextBuilder &) = delete;
-  GPUContextBuilder &operator=(const GPUContextBuilder &&) = delete;
+  GPUContextBuilder &operator=(GPUContextBuilder &&) = delete;
 
   /// \brief Set internal storage factory to store internal data.
   ///
@@ -167,7 +192,7 @@ class MACE_API MaceEngineConfig {
   ///
   /// Just use one GPUContext for multiple models run on GPU.
   /// \param context created use GPUContextBuilder
-  /// \return MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
   MaceStatus SetGPUContext(std::shared_ptr<GPUContext> context);
 
   /// \brief Set GPU hints, currently only supports Adreno GPU.
@@ -177,7 +202,7 @@ class MACE_API MaceEngineConfig {
   ///
   /// \param perf_hint  performance hint
   /// \param priority_hint  priority hint
-  /// \return MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
   MaceStatus SetGPUHints(GPUPerfHint perf_hint,
                          GPUPriorityHint priority_hint);
 
@@ -199,7 +224,7 @@ class MACE_API MaceEngineConfig {
   /// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
   /// suggested to use AFFINITY_NONE to use all cores.
   /// \param use_gemmlowp use gemmlowp for quantized inference
-  /// \return MACE_SUCCESS for success, other for failed.
+  /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy,
                                 bool use_gemmlowp = false);
@@ -273,8 +298,9 @@ class MACE_API MaceEngine {
 /// \param output_nodes[in]: the array of output nodes' name
 /// \param config[in]: configurations for MaceEngine.
 /// \param engine[out]: output MaceEngine object
-/// \return MACE_SUCCESS for success, MACE_INVALID_ARGS for wrong arguments,
-///         MACE_OUT_OF_RESOURCES for resources is out of range.
+/// \return MaceStatus::MACE_SUCCESS for success,
+///         MaceStatus::MACE_INVALID_ARGS for wrong arguments,
+///         MaceStatus::MACE_OUT_OF_RESOURCES for resources is out of range.
 MACE_API MaceStatus CreateMaceEngineFromProto(
     const std::vector<unsigned char> &model_pb,
     const std::string &model_data_file,

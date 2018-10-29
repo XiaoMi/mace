@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_MATMUL_H_
 #define MACE_KERNELS_OPENCL_IMAGE_MATMUL_H_
 
-#include "mace/kernels/matmul.h"
+#include "mace/kernels/opencl/matmul.h"
 
 #include <functional>
 #include <memory>
@@ -22,6 +22,8 @@
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -33,13 +35,12 @@ template <typename T>
 class MatMulKernel : public OpenCLMatMulKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *A,
       const Tensor *B,
       Tensor *C,
       bool transpose_a,
-      bool transpose_b,
-      StatsFuture *future) override;
+      bool transpose_b) override;
 
  private:
   cl::Kernel kernel_;
@@ -48,14 +49,12 @@ class MatMulKernel : public OpenCLMatMulKernel {
 
 template <typename T>
 MaceStatus MatMulKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *A,
     const Tensor *B,
     Tensor *C,
     bool transpose_a,
-    bool transpose_b,
-    StatsFuture *future) {
-  MACE_UNUSED(future);
+    bool transpose_b) {
   MACE_CHECK(!transpose_a && !transpose_b,
              "GPU does not support transpose matmul");
 
@@ -115,10 +114,10 @@ MaceStatus MatMulKernel<T>::Compute(
   const std::vector<uint32_t> lws = {kwg_size_ / 64, 64, 0};
   std::string tuning_key = Concat("matmul_opencl_kernel", batch, height, width);
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

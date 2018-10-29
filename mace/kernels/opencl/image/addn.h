@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_ADDN_H_
 #define MACE_KERNELS_OPENCL_IMAGE_ADDN_H_
 
-#include "mace/kernels/addn.h"
+#include "mace/kernels/opencl/addn.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,10 +34,9 @@ template <typename T>
 class AddNKernel : public OpenCLAddNKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const std::vector<const Tensor *> &input_tensors,
-      Tensor *output_tensor,
-      StatsFuture *future) override;
+      Tensor *output_tensor) override;
 
  private:
   cl::Kernel kernel_;
@@ -45,10 +46,9 @@ class AddNKernel : public OpenCLAddNKernel {
 
 template <typename T>
 MaceStatus AddNKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const std::vector<const Tensor *> &input_tensors,
-    Tensor *output_tensor,
-    StatsFuture *future) {
+    Tensor *output_tensor) {
   size_t size = input_tensors.size();
   MACE_CHECK(size >= 2 && input_tensors[0] != nullptr);
 
@@ -122,9 +122,9 @@ MaceStatus AddNKernel<T>::Compute(
       Concat("addn_opencl_kernel", output_tensor->dim(0), output_tensor->dim(1),
              output_tensor->dim(2), output_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

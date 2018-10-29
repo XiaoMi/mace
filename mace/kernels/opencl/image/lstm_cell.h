@@ -14,12 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_LSTM_CELL_H_
 #define MACE_KERNELS_OPENCL_IMAGE_LSTM_CELL_H_
 
+#include "mace/kernels/opencl/lstm_cell.h"
+
 #include <memory>
 #include <vector>
 #include <set>
 #include <string>
 
-#include "mace/kernels/lstmcell.h"
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -34,15 +37,14 @@ class LSTMCellKernel : public OpenCLLSTMCellKernel {
        const T forget_bias)
       : forget_bias_(forget_bias) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *pre_output,
       const Tensor *weight,
       const Tensor *bias,
       const Tensor *pre_cell,
       Tensor *cell,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   T forget_bias_;
@@ -53,15 +55,14 @@ class LSTMCellKernel : public OpenCLLSTMCellKernel {
 
 template <typename T>
 MaceStatus LSTMCellKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *pre_output,
     const Tensor *weight,
     const Tensor *bias,
     const Tensor *pre_cell,
     Tensor *cell,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK(pre_output->dim_size() == 2 && pre_output->dim(1) % 4 == 0,
              "LSTM hidden units should be a multiple of 4");
 
@@ -126,10 +127,10 @@ MaceStatus LSTMCellKernel<T>::Compute(
   std::string tuning_key =
       Concat("lstmcell_opencl_kernel", output->dim(0), output->dim(1));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

@@ -72,10 +72,11 @@ message OperatorDef {
   repeated string output = 2;
   optional string name = 3;
   optional string type = 4;
-  repeated Argument arg = 5;
-  repeated OutputShape output_shape = 6;
-  repeated DataType output_type = 7;
-  repeated QuantizeActivationInfo quantize_info = 8;
+  optional int32 device_type = 5;
+  repeated Argument arg = 6;
+  repeated OutputShape output_shape = 7;
+  repeated DataType output_type = 8;
+  repeated QuantizeActivationInfo quantize_info = 9;
 
   repeated int32 mem_id = 10;
 
@@ -119,6 +120,7 @@ message NetDef {
   repeated OperatorDef op = 1;
   repeated Argument arg = 2;
   repeated ConstTensor tensors = 3;
+  repeated string op_types = 4;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;

@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/activation.h"
-#include "mace/kernels/conv_2d.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
@@ -60,7 +59,7 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 }  // namespace
 
-extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
+extern MaceStatus Conv2dOpenclK3x3(OpContext *context,
                                    cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
@@ -73,7 +72,6 @@ extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
                                    const DataType dt,
                                    std::vector<index_t> *prev_input_shape,
                                    Tensor *output,
-                                   StatsFuture *future,
                                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -158,9 +156,9 @@ extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
       Concat("conv2d_3x3_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

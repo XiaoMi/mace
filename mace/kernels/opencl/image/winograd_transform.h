@@ -14,13 +14,17 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_WINOGRAD_TRANSFORM_H_
 #define MACE_KERNELS_OPENCL_IMAGE_WINOGRAD_TRANSFORM_H_
 
-#include "mace/kernels/winograd_transform.h"
+#include "mace/kernels/opencl/winograd_transform.h"
 
 #include <memory>
 #include <vector>
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
+#include "mace/kernels/activation.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,7 +36,7 @@ template <typename T>
 class WinogradTransformKernel : public OpenCLWinogradTransformKernel {
  public:
   WinogradTransformKernel(
-      const Padding &padding_type,
+      Padding padding_type,
       const std::vector<int> &paddings,
       const int block_size)
       : strides_({1, 1}),
@@ -41,10 +45,9 @@ class WinogradTransformKernel : public OpenCLWinogradTransformKernel {
         paddings_(paddings),
         wino_blk_size_(block_size) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input_tensor,
-      Tensor *output_tensor,
-      StatsFuture *future) override;
+      Tensor *output_tensor) override;
 
  private:
   const std::vector<int> strides_;    // [stride_h, stride_w]
@@ -59,10 +62,9 @@ class WinogradTransformKernel : public OpenCLWinogradTransformKernel {
 
 template <typename T>
 MaceStatus WinogradTransformKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input_tensor,
-    Tensor *output_tensor,
-    StatsFuture *future) {
+    Tensor *output_tensor) {
   auto runtime = context->device()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
@@ -83,7 +85,7 @@ MaceStatus WinogradTransformKernel<T>::Compute(
                                 + obfuscated_kernel_name);
     } else {
       MACE_CHECK(false, "mace only supports 4x4 and 2x2 gpu winograd.");
-      return MACE_SUCCESS;
+      return MaceStatus::MACE_SUCCESS;
     }
     built_options.emplace("-DDATA_TYPE=" +
         DtToUpCompatibleCLDt(DataTypeToEnum<T>::value));
@@ -162,10 +164,10 @@ MaceStatus WinogradTransformKernel<T>::Compute(
                                   output_tensor->dim(1),
                                   output_tensor->dim(2));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 template <typename T>
@@ -173,17 +175,16 @@ class WinogradInverseTransformKernel
     : public OpenCLWinogradInverseTransformKernel {
  public:
   WinogradInverseTransformKernel(
-      const ActivationType activation,
+      ActivationType activation,
       const float relux_max_limit,
       const int block_size)
       : wino_blk_size_(block_size),
         activation_(activation),
         relux_max_limit_(relux_max_limit) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const std::vector<const Tensor*> &inputs,
-      Tensor *output_tensor,
-      StatsFuture *future) override;
+      Tensor *output_tensor) override;
 
  private:
   const int wino_blk_size_;
@@ -196,10 +197,9 @@ class WinogradInverseTransformKernel
 
 template <typename T>
 MaceStatus WinogradInverseTransformKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const std::vector<const Tensor*> &inputs,
-    Tensor *output_tensor,
-    StatsFuture *future) {
+    Tensor *output_tensor) {
   auto runtime = context->device()->opencl_runtime();
   MACE_OUT_OF_RANGE_DEFINITION;
 
@@ -223,7 +223,7 @@ MaceStatus WinogradInverseTransformKernel<T>::Compute(
                                 + obfuscated_kernel_name);
     } else {
       MACE_CHECK(false, "mace only supports 4x4 and 2x2 gpu winograd.");
-      return MACE_SUCCESS;
+      return MaceStatus::MACE_SUCCESS;
     }
 
     built_options.emplace("-DDATA_TYPE=" +
@@ -312,10 +312,10 @@ MaceStatus WinogradInverseTransformKernel<T>::Compute(
              output_tensor->dim(1), output_tensor->dim(2),
              output_tensor->dim(3), input_tensor->dim(2));
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 }  // namespace image
 }  // namespace opencl

@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_REDUCE_MEAN_H_
 #define MACE_KERNELS_OPENCL_IMAGE_REDUCE_MEAN_H_
 
-#include "mace/kernels/reduce_mean.h"
+#include "mace/kernels/opencl/reduce_mean.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -36,10 +38,9 @@ class ReduceMeanKernel : public OpenCLReduceMeanKernel {
       : axis_(axis), keep_dims_(keep_dims) {}
 
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   const std::vector<int> axis_;
@@ -51,10 +52,9 @@ class ReduceMeanKernel : public OpenCLReduceMeanKernel {
 
 template <typename T>
 MaceStatus ReduceMeanKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK_NOTNULL(input);
 //  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
   MACE_CHECK(input->dim_size() == 4,
@@ -157,8 +157,8 @@ MaceStatus ReduceMeanKernel<T>::Compute(
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
 
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -166,7 +166,7 @@ MaceStatus ReduceMeanKernel<T>::Compute(
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

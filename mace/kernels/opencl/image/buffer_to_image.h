@@ -15,11 +15,14 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 #define MACE_KERNELS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 
+#include "mace/kernels/opencl/buffer_transform.h"
+
 #include <set>
 #include <string>
 #include <vector>
 
-#include "mace/kernels/buffer_transform.h"
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -31,12 +34,11 @@ template <typename T>
 class BufferToImage : public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const BufferType type,
       const int wino_blk_size,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -45,12 +47,11 @@ class BufferToImage : public OpenCLBufferTransformKernel {
 
 template <typename T>
 MaceStatus BufferToImage<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const BufferType type,
     const int wino_blk_size,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   auto formatted_buffer_shape = FormatBufferShape(input->shape(), type);
   std::vector<size_t> image_shape;
   CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size);
@@ -186,8 +187,8 @@ MaceStatus BufferToImage<T>::Compute(
   }
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -198,7 +199,7 @@ MaceStatus BufferToImage<T>::Compute(
   // Mark the buffer unused.
   const_cast<Tensor *>(input)->MarkUnused();
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

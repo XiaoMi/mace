@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_SOFTMAX_H_
 #define MACE_KERNELS_OPENCL_BUFFER_SOFTMAX_H_
 
-#include "mace/kernels/softmax.h"
+#include "mace/kernels/opencl/softmax.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -31,10 +33,9 @@ template <typename T>
 class SoftmaxKernel : public OpenCLSoftmaxKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *logits,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -44,10 +45,9 @@ class SoftmaxKernel : public OpenCLSoftmaxKernel {
 
 template <typename T>
 MaceStatus SoftmaxKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *logits,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   index_t batch = 0;
   index_t height = 0;
   index_t width = 0;
@@ -112,9 +112,9 @@ MaceStatus SoftmaxKernel<T>::Compute(
   std::string tuning_key =
       Concat("softmax_opencl_kernel", batch, height, width, channels);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace buffer

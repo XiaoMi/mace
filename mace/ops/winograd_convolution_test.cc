@@ -14,7 +14,7 @@
 
 #include <fstream>
 
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -22,7 +22,7 @@ namespace mace {
 namespace ops {
 namespace test {
 
-class WinogradConvlutionTest : public OpsTestBase {};
+class WinogradConvolutionTest : public OpsTestBase {};
 
 namespace {
 
@@ -134,42 +134,42 @@ void WinogradConvolution(const index_t batch,
 }
 }  // namespace
 
-TEST_F(WinogradConvlutionTest, AlignedConvolutionM2) {
+TEST_F(WinogradConvolutionTest, AlignedConvolutionM2) {
   WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 3, 3,
                                                  Padding::VALID, 2);
   WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 3, 3,
                                                  Padding::SAME, 2);
 }
 
-TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM2) {
+TEST_F(WinogradConvolutionTest, UnAlignedConvolutionM2) {
   WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                  Padding::VALID, 2);
   WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                  Padding::SAME, 2);
 }
 
-TEST_F(WinogradConvlutionTest, BatchConvolutionM2) {
+TEST_F(WinogradConvolutionTest, BatchConvolutionM2) {
   WinogradConvolution<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                  Padding::VALID, 2);
   WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31,
                                                  Padding::SAME, 2);
 }
 
-TEST_F(WinogradConvlutionTest, AlignedConvolutionM4) {
+TEST_F(WinogradConvolutionTest, AlignedConvolutionM4) {
   WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 3, 3,
                                               Padding::VALID, 4);
   WinogradConvolution<DeviceType::GPU, float>(1, 32, 32, 3, 3,
                                               Padding::SAME, 4);
 }
 
-TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM4) {
+TEST_F(WinogradConvolutionTest, UnAlignedConvolutionM4) {
   WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                               Padding::VALID, 4);
   WinogradConvolution<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                               Padding::SAME, 4);
 }
 
-TEST_F(WinogradConvlutionTest, BatchConvolutionM4) {
+TEST_F(WinogradConvolutionTest, BatchConvolutionM4) {
   WinogradConvolution<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                               Padding::VALID, 4);
   WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31,
@@ -284,42 +284,42 @@ void WinogradConvolutionWithPad(const index_t batch,
 }
 }  // namespace
 
-TEST_F(WinogradConvlutionTest, AlignedConvolutionM2WithPad) {
+TEST_F(WinogradConvolutionTest, AlignedConvolutionM2WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                      1, 2);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                     2, 2);
 }
 
-TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM2WithPad) {
+TEST_F(WinogradConvolutionTest, UnAlignedConvolutionM2WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                      1, 2);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                     2, 2);
 }
 
-TEST_F(WinogradConvlutionTest, BatchConvolutionWithM2Pad) {
+TEST_F(WinogradConvolutionTest, BatchConvolutionWithM2Pad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                      1, 2);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(5, 61, 67, 37, 31,
                                                     2, 2);
 }
 
-TEST_F(WinogradConvlutionTest, AlignedConvolutionM4WithPad) {
+TEST_F(WinogradConvolutionTest, AlignedConvolutionM4WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                      1, 4);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 32, 32, 32, 16,
                                                     2, 4);
 }
 
-TEST_F(WinogradConvlutionTest, UnAlignedConvolutionM4WithPad) {
+TEST_F(WinogradConvolutionTest, UnAlignedConvolutionM4WithPad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 31, 37,
                                                      1, 4);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(1, 61, 67, 37, 31,
                                                     2, 4);
 }
 
-TEST_F(WinogradConvlutionTest, BatchConvolutionWithM4Pad) {
+TEST_F(WinogradConvolutionTest, BatchConvolutionWithM4Pad) {
   WinogradConvolutionWithPad<DeviceType::GPU, float>(3, 64, 64, 32, 32,
                                                      1, 4);
   WinogradConvolutionWithPad<DeviceType::GPU, float>(5, 61, 67, 37, 31,

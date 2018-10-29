@@ -17,7 +17,6 @@
 
 #include "gmock/gmock.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/split.h"
 
 namespace mace {
 namespace ops {

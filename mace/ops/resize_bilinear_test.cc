@@ -14,9 +14,8 @@
 
 #include <vector>
 
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
-#include "mace/ops/resize_bilinear.h"
 
 namespace mace {
 namespace ops {

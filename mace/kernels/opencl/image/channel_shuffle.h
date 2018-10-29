@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_CHANNEL_SHUFFLE_H_
 #define MACE_KERNELS_OPENCL_IMAGE_CHANNEL_SHUFFLE_H_
 
-#include "mace/kernels/channel_shuffle.h"
+#include "mace/kernels/opencl/channel_shuffle.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -33,10 +35,9 @@ class ChannelShuffleKernel : public OpenCLChannelShuffleKernel {
  public:
   explicit ChannelShuffleKernel(const int groups) : groups_(groups) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   const int groups_;
@@ -47,10 +48,12 @@ class ChannelShuffleKernel : public OpenCLChannelShuffleKernel {
 
 template <typename T>
 MaceStatus ChannelShuffleKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
+  MACE_CHECK(input->dim(3) % groups_ == 0,
+             "input channels must be an integral multiple of group. ",
+             input->dim(3));
   MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
   const index_t batch = input->dim(0);
@@ -105,9 +108,9 @@ MaceStatus ChannelShuffleKernel<T>::Compute(
       Concat("channel_shuffle_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

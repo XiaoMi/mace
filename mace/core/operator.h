@@ -21,8 +21,7 @@
 #include <map>
 
 #include "mace/core/arg_helper.h"
-#include "mace/core/future.h"
-#include "mace/core/op_kernel_context.h"
+#include "mace/core/op_context.h"
 #include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
@@ -30,10 +29,66 @@
 
 namespace mace {
 
-class OperatorBase {
+// memory_optimizer, device
+class OpConstructContext {
  public:
-  explicit OperatorBase(const OperatorDef &operator_def, OpKernelContext *);
-  virtual ~OperatorBase() noexcept {}
+  explicit OpConstructContext(Workspace *ws);
+  OpConstructContext(OperatorDef *operator_def, Workspace *ws, Device *device);
+  ~OpConstructContext() = default;
+
+  inline void set_operator_def(OperatorDef *operator_def) {
+    operator_def_ = operator_def;
+  }
+
+  inline OperatorDef *operator_def() const {
+    return operator_def_;
+  }
+
+  inline Workspace *workspace() const {
+    return ws_;
+  }
+
+  inline void set_device(Device* device) {
+    device_ = device;
+  }
+
+  inline Device *device() const {
+    return device_;
+  }
+
+ private:
+  OperatorDef *operator_def_;
+  Workspace *ws_;
+  Device *device_;
+};
+
+// memory_optimizer, device
+class OpInitContext {
+ public:
+  explicit OpInitContext(Workspace *ws, Device *device = nullptr);
+  ~OpInitContext() = default;
+
+  inline Workspace *workspace() const {
+    return ws_;
+  }
+
+  inline void set_device(Device *device) {
+    device_ = device;
+  }
+
+  inline Device *device() const {
+    return device_;
+  }
+
+ private:
+  Workspace *ws_;
+  Device *device_;
+};
+
+class Operation {
+ public:
+  explicit Operation(OpConstructContext *context);
+  virtual ~Operation() = default;
 
   template <typename T>
   inline T GetOptionalArg(const std::string &name,
@@ -50,6 +105,10 @@ class OperatorBase {
         *operator_def_, name, default_value);
   }
 
+  inline DeviceType device_type() const {
+    return static_cast<DeviceType>(operator_def_->device_type());
+  }
+
   inline const Tensor *Input(unsigned int idx) {
     MACE_CHECK(idx < inputs_.size());
     return inputs_[idx];
@@ -63,7 +122,8 @@ class OperatorBase {
   inline const std::vector<Tensor *> &Outputs() { return outputs_; }
 
   // Run Op asynchronously (depends on device), return a future if not nullptr.
-  virtual MaceStatus Run(StatsFuture *future) = 0;
+  virtual MaceStatus Init(OpInitContext *);
+  virtual MaceStatus Run(OpContext *) = 0;
 
   inline const OperatorDef &debug_def() const {
     MACE_CHECK(has_debug_def(), "operator_def was null!");
@@ -82,55 +142,7 @@ class OperatorBase {
   std::vector<const Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
 
-  MACE_DISABLE_COPY_AND_ASSIGN(OperatorBase);
-};
-
-template <DeviceType D, class T>
-class Operator : public OperatorBase {
- public:
-  explicit Operator(const OperatorDef &operator_def, OpKernelContext *context)
-      : OperatorBase(operator_def, context) {
-    Workspace *ws = context->workspace();
-    for (const std::string &input_str : operator_def.input()) {
-      const Tensor *tensor = ws->GetTensor(input_str);
-      MACE_CHECK(tensor != nullptr, "op ", operator_def.type(),
-                 ": Encountered a non-existing input tensor: ", input_str);
-      inputs_.push_back(tensor);
-    }
-
-    for (int i = 0; i < operator_def.output_size(); ++i) {
-      const std::string output_str = operator_def.output(i);
-      if (ws->HasTensor(output_str)) {
-        outputs_.push_back(ws->GetTensor(output_str));
-      } else {
-        MACE_CHECK(
-          operator_def.output_type_size() == 0
-          || operator_def.output_size() == operator_def.output_type_size(),
-          "operator output size != operator output type size",
-          operator_def.output_size(),
-          operator_def.output_type_size());
-        DataType output_type;
-        if (i < operator_def.output_type_size()) {
-          output_type = operator_def.output_type(i);
-        } else {
-          output_type = DataTypeToEnum<T>::v();
-        }
-        outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
-          output_str, context->device()->allocator(), output_type)));
-
-        if (i < operator_def.output_shape_size()) {
-          std::vector<index_t>
-              shape_configured(operator_def.output_shape(i).dims_size());
-          for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
-            shape_configured[dim] = operator_def.output_shape(i).dims(dim);
-          }
-          ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
-        }
-      }
-    }
-  }
-  MaceStatus Run(StatsFuture *future) override = 0;
-  ~Operator() noexcept override {}
+  MACE_DISABLE_COPY_AND_ASSIGN(Operation);
 };
 
 // MACE_OP_INPUT_TAGS and MACE_OP_OUTPUT_TAGS are optional features to name the
@@ -154,7 +166,8 @@ class OpKeyBuilder {
 
   OpKeyBuilder &Device(DeviceType device);
 
-  OpKeyBuilder &TypeConstraint(const char *attr_name, const DataType allowed);
+  OpKeyBuilder &TypeConstraint(const char *attr_name,
+                               DataType allowed);
 
   template <typename T>
   OpKeyBuilder &TypeConstraint(const char *attr_name);
@@ -172,33 +185,37 @@ OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
   return this->TypeConstraint(attr_name, DataTypeToEnum<T>::value);
 }
 
-class OperatorRegistryBase {
+class OpRegistryBase {
  public:
   typedef Registry<std::string,
-                   OperatorBase,
-                   const OperatorDef &,
-                   OpKernelContext *>
+                   Operation,
+                   OpConstructContext *>
       RegistryType;
-  OperatorRegistryBase() = default;
-  virtual ~OperatorRegistryBase();
+  OpRegistryBase() = default;
+  virtual ~OpRegistryBase();
   RegistryType *registry() { return &registry_; }
-  std::unique_ptr<OperatorBase> CreateOperator(const OperatorDef &operator_def,
-                                               OpKernelContext *context,
-                                               DeviceType type,
-                                               const NetMode mode) const;
+  std::unique_ptr<Operation> CreateOperation(
+      OpConstructContext *context,
+      DeviceType device_type,
+      const NetMode mode) const;
 
  private:
   RegistryType registry_;
-  MACE_DISABLE_COPY_AND_ASSIGN(OperatorRegistryBase);
+  MACE_DISABLE_COPY_AND_ASSIGN(OpRegistryBase);
 };
 
 MACE_DECLARE_REGISTRY(OpRegistry,
-                      OperatorBase,
-                      const OperatorDef &,
-                      OpKernelContext *);
+                      Operation,
+                      OpConstructContext *);
 
-#define MACE_REGISTER_OPERATOR(op_registry, name, ...) \
-  MACE_REGISTER_CLASS(OpRegistry, op_registry->registry(), name, __VA_ARGS__)
+#define MACE_REGISTER_OP(op_registry, op_type, class_name, device, dt) \
+  MACE_REGISTER_CLASS(OpRegistry,                                      \
+                      op_registry->registry(),                         \
+                      OpKeyBuilder(op_type)                            \
+                        .Device(device)                                \
+                        .TypeConstraint<dt>("T")                       \
+                        .Build(),                                      \
+                      class_name<device, dt>)
 
 }  // namespace mace
 

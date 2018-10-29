@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_SPACE_TO_BATCH_H_
 #define MACE_KERNELS_OPENCL_IMAGE_SPACE_TO_BATCH_H_
 
-#include "mace/kernels/space_to_batch.h"
+#include "mace/kernels/opencl/space_to_batch.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,13 +34,12 @@ template <typename T>
 class SpaceToBatchKernel : public OpenCLSpaceToBatchKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *space_tensor,
       const std::vector<int> &paddings,
       const std::vector<int> &block_shape,
       const std::vector<index_t> &output_shape,
-      Tensor *batch_tensor,
-      StatsFuture *future) override;
+      Tensor *batch_tensor) override;
 
  private:
   cl::Kernel kernel_;
@@ -48,13 +49,12 @@ class SpaceToBatchKernel : public OpenCLSpaceToBatchKernel {
 
 template <typename T>
 MaceStatus SpaceToBatchKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *space_tensor,
     const std::vector<int> &paddings,
     const std::vector<int> &block_shape,
     const std::vector<index_t> &output_shape,
-    Tensor *batch_tensor,
-    StatsFuture *future) {
+    Tensor *batch_tensor) {
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
@@ -114,10 +114,10 @@ MaceStatus SpaceToBatchKernel<T>::Compute(
       Concat(kernel_name, batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

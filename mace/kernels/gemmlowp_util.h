@@ -18,7 +18,8 @@
 #include <tuple>
 
 #include "public/gemmlowp.h"
-#include "mace/kernels/quantize.h"
+#include "mace/core/types.h"
+#include "mace/utils/quantize.h"
 
 namespace mace {
 

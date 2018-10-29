@@ -38,7 +38,7 @@ OpenCLRuntime* GPUDevice::opencl_runtime() {
   return runtime_.get();
 }
 
-Allocator* GPUDevice::allocator() {
+Allocator *GPUDevice::allocator() {
   return allocator_.get();
 }
 

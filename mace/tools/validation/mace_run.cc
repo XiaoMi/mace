@@ -215,7 +215,7 @@ bool RunModel(const std::string &model_name,
           FLAGS_omp_num_threads,
           static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy),
           true);
-  if (status != MACE_SUCCESS) {
+  if (status != MaceStatus::MACE_SUCCESS) {
     LOG(WARNING) << "Set openmp or cpu affinity failed.";
   }
 #ifdef MACE_ENABLE_OPENCL
@@ -274,9 +274,9 @@ bool RunModel(const std::string &model_name,
 #endif
     int64_t t1 = NowMicros();
 
-    if (create_engine_status != MACE_SUCCESS) {
+    if (create_engine_status != MaceStatus::MACE_SUCCESS) {
       LOG(ERROR) << "Create engine runtime error, retry ... errcode: "
-                 << create_engine_status;
+                 << create_engine_status.information();
     } else {
       init_millis = (t1 - t0) / 1000.0;
       LOG(INFO) << "Total init latency: " << init_millis << " ms";
@@ -324,9 +324,9 @@ bool RunModel(const std::string &model_name,
   while (true) {
     int64_t t3 = NowMicros();
     MaceStatus warmup_status = engine->Run(inputs, &outputs);
-    if (warmup_status != MACE_SUCCESS) {
+    if (warmup_status != MaceStatus::MACE_SUCCESS) {
       LOG(ERROR) << "Warmup runtime error, retry ... errcode: "
-                 << warmup_status;
+                 << warmup_status.information();
       do {
 #ifdef MODEL_GRAPH_FORMAT_CODE
         create_engine_status =
@@ -345,7 +345,7 @@ bool RunModel(const std::string &model_name,
                                       config,
                                       &engine);
 #endif
-      } while (create_engine_status != MACE_SUCCESS);
+      } while (create_engine_status != MaceStatus::MACE_SUCCESS);
     } else {
       int64_t t4 = NowMicros();
       warmup_millis = (t4 - t3) / 1000.0;
@@ -364,9 +364,9 @@ bool RunModel(const std::string &model_name,
       while (true) {
         int64_t t0 = NowMicros();
         run_status = engine->Run(inputs, &outputs);
-        if (run_status != MACE_SUCCESS) {
+        if (run_status != MaceStatus::MACE_SUCCESS) {
           LOG(ERROR) << "Mace run model runtime error, retry ... errcode: "
-                     << run_status;
+                     << run_status.information();
           do {
 #ifdef MODEL_GRAPH_FORMAT_CODE
             create_engine_status =
@@ -385,7 +385,7 @@ bool RunModel(const std::string &model_name,
                                           config,
                                           &engine);
 #endif
-          } while (create_engine_status != MACE_SUCCESS);
+          } while (create_engine_status != MaceStatus::MACE_SUCCESS);
         } else {
           int64_t t1 = NowMicros();
           total_run_duration += (t1 - t0);
