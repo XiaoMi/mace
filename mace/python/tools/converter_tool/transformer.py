@@ -134,7 +134,9 @@ class Transformer(base_converter.ConverterInterface):
                 changed = transformer()
                 if not changed:
                         break
-        return self._model
+
+        self.add_check_nodes()
+        return self._model, self._quantize_activation_info
 
     def filter_format(self):
         filter_format_value = ConverterUtil.get_arg(self._model,
@@ -284,12 +286,20 @@ class Transformer(base_converter.ConverterInterface):
             input_info = net.input_info.add()
             input_info.name = input_node.name
             input_info.dims.extend(input_node.shape)
+            if self._option.quantize:
+                input_info.data_type = mace_pb2.DT_FLOAT
+            else:
+                input_info.data_type = self._option.data_type
 
         for output_node in self._option.output_nodes.values():
             output_info = net.output_info.add()
             output_info.name = output_node.name
             output_info.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
+            if self._option.quantize:
+                output_info.data_type = mace_pb2.DT_FLOAT
+            else:
+                output_info.data_type = self._option.data_type
 
         return False
 
@@ -904,6 +914,8 @@ class Transformer(base_converter.ConverterInterface):
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.BiasAdd.name:
                     print("Fold biasadd: %s(%s)" % (op.name, op.type))
+                    op.name = consumer_op.name
+                    op.output[0] = consumer_op.output[0]
                     op.input.append(consumer_op.input[1])
                     self.replace_quantize_info(op, consumer_op)
                     self.safe_remove_node(consumer_op, op)
@@ -1306,6 +1318,11 @@ class Transformer(base_converter.ConverterInterface):
                     transposed_deconv_filter.add(op.input[1])
 
             self.set_filter_format(FilterFormat.OHWI)
+        elif self._option.quantize and \
+                self._option.device == DeviceType.HEXAGON.value:
+            print("Transpose filters to HWIO/HWIM")
+            mace_check(filter_format == FilterFormat.HWIO,
+                       "HEXAGON only support HWIO/HWIM filter format.")
         else:
             print("Transpose filters to OIHW/MIHW")
             # transpose filter to OIHW/MIHW for tensorflow (HWIO/HWIM)
@@ -1795,16 +1812,23 @@ class Transformer(base_converter.ConverterInterface):
                         check_deconv = len(ops[0].input) >= 4\
                                        and ops[0].input[3] == tensor.name
             if check_conv or check_deconv:
-                conv_op = ops[0]
-                scale_input = self._quantize_activation_info[
-                    conv_op.input[0]].scale
-                if conv_op.input[1] not in self._quantized_tensor:
-                    self.quantize_tensor(self._consts[conv_op.input[1]])
-                scale_filter = self._consts[conv_op.input[1]].scale
-                scale = scale_input * scale_filter
-
-                quantized_tensor = quantize_util.quantize_with_scale_and_zero(
-                    tensor.float_data, scale, 0)
+                if self._option.device == DeviceType.CPU.value:
+                    conv_op = ops[0]
+                    scale_input = self._quantize_activation_info[
+                        conv_op.input[0]].scale
+                    if conv_op.input[1] not in self._quantized_tensor:
+                        self.quantize_tensor(self._consts[conv_op.input[1]])
+                    scale_filter = self._consts[conv_op.input[1]].scale
+                    scale = scale_input * scale_filter
+                    quantized_tensor = \
+                        quantize_util.quantize_with_scale_and_zero(
+                            tensor.float_data, scale, 0)
+                elif self._option.device == DeviceType.HEXAGON.value:
+                    quantized_tensor = \
+                        quantize_util.quantize_bias_for_hexagon(
+                            tensor.float_data)
+                else:
+                    mace_check(False, "wrong device.")
                 tensor.data_type = mace_pb2.DT_INT32
             else:
                 quantized_tensor = quantize_util.quantize(tensor.float_data)
@@ -1814,6 +1838,8 @@ class Transformer(base_converter.ConverterInterface):
             tensor.int32_data.extend(quantized_tensor.data)
             tensor.scale = quantized_tensor.scale
             tensor.zero_point = quantized_tensor.zero
+            tensor.minval = quantized_tensor.minval
+            tensor.maxval = quantized_tensor.maxval
             tensor.quantized = True
             self._quantized_tensor.update([tensor.name])
 
@@ -1828,8 +1854,8 @@ class Transformer(base_converter.ConverterInterface):
         return False
 
     def add_quantize_info(self, op, minval, maxval):
-        scale, zero = quantize_util.adjust_range(minval, maxval,
-                                                 non_zero=False)
+        scale, zero, minval, maxval = \
+            quantize_util.adjust_range(minval, maxval, non_zero=False)
         quantize_info = op.quantize_info.add()
         quantize_info.minval = minval
         quantize_info.maxval = maxval
@@ -1928,8 +1954,9 @@ class Transformer(base_converter.ConverterInterface):
                     tensor_name, minmax = line.split("@@")[:2]
                     min_val, max_val = [float(i) for i in
                                         minmax.strip().split(",")]
-                    scale, zero = quantize_util.adjust_range(min_val, max_val,
-                                                             non_zero=False)
+                    scale, zero, min_val, max_val = \
+                        quantize_util.adjust_range(
+                            min_val, max_val, non_zero=False)
                     activation_info = mace_pb2.QuantizeActivationInfo()
                     activation_info.minval = min_val
                     activation_info.maxval = max_val
@@ -1954,6 +1981,7 @@ class Transformer(base_converter.ConverterInterface):
         for op in self._model.op:
             if op.type in [MaceOp.Pooling.name,
                            MaceOp.Squeeze.name,
+                           MaceOp.Reshape.name,
                            MaceOp.ResizeBilinear.name,
                            MaceOp.BatchToSpaceND.name,
                            MaceOp.SpaceToBatchND.name]:
@@ -2012,12 +2040,13 @@ class Transformer(base_converter.ConverterInterface):
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))
-                scale, zero = quantize_util.adjust_range(input_node.range[0],
-                                                         input_node.range[1],
-                                                         non_zero=False)
+                scale, zero, minval, maxval = \
+                    quantize_util.adjust_range(input_node.range[0],
+                                               input_node.range[1],
+                                               non_zero=False)
                 quantize_info = mace_pb2.QuantizeActivationInfo()
-                quantize_info.minval = input_node.range[0]
-                quantize_info.maxval = input_node.range[1]
+                quantize_info.minval = minval
+                quantize_info.maxval = maxval
                 quantize_info.scale = scale
                 quantize_info.zero_point = zero
                 self._quantize_activation_info[input_node.name] = quantize_info
@@ -2049,3 +2078,32 @@ class Transformer(base_converter.ConverterInterface):
         arg.name = MaceKeyword.mace_opencl_mem_type
         arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
             else mace_pb2.GPU_BUFFER
+
+    def add_check_nodes(self):
+        if self._option.check_nodes:
+            mace_check(len(self._option.check_nodes) == 1,
+                       "Only support one check node now.")
+            check_node = None
+            for i in six.moves.range(len(self._model.op)):
+                if self._model.op[i].name in self._option.check_nodes:
+                    check_node = self._model.op[i]
+                    del self._model.op[i+1:]
+                    break
+            mace_check(check_node is not None, "check node not found.")
+            output_name = \
+                MaceKeyword.mace_output_node_name + '_' + check_node.name
+            op_def = self._model.op.add()
+            op_def.name = self.normalize_op_name(output_name)
+            op_def.type = MaceOp.Dequantize.name
+            op_def.input.extend([check_node.output[0]])
+            op_def.output.extend([output_name])
+            output_shape = op_def.output_shape.add()
+            output_shape.dims.extend(check_node.output_shape[0].dims)
+            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
+            op_def.output_type.extend([mace_pb2.DT_FLOAT])
+
+            del self._model.output_info[:]
+            output_info = self._model.output_info.add()
+            output_info.name = check_node.name
+            output_info.dims.extend(check_node.output_shape[0].dims)
+            output_info.data_type = mace_pb2.DT_FLOAT

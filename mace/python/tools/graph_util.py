@@ -63,7 +63,6 @@ def sort_mace_graph(graph_def, output_name):
     for node in graph_def.op:
         nodes_map[node.name] = node
     sort_mace_node(nodes_map[output_name], nodes_map, ordered_nodes_map)
-    sorted_graph = mace_pb2.NetDef()
-    sorted_graph.tensors.extend(graph_def.tensors)
-    sorted_graph.op.extend([node for node in ordered_nodes_map.values()])
-    return sorted_graph
+    del graph_def.op[:]
+    graph_def.op.extend([node for node in ordered_nodes_map.values()])
+    return graph_def

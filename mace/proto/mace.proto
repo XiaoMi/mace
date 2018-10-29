@@ -36,7 +36,9 @@ message ConstTensor {
   optional int64 data_size = 7;
   optional float scale = 8;
   optional int32 zero_point = 9;
-  optional bool quantized = 10 [default = false];
+  optional float minval = 10;
+  optional float maxval = 11;
+  optional bool quantized = 12 [default = false];
 
   optional uint32 node_id = 100;
 }

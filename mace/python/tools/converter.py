@@ -132,15 +132,30 @@ def main(unused_args):
         option.add_input_node(input_node)
 
     output_node_names = FLAGS.output_node.split(',')
+    output_node_shapes = FLAGS.output_shape.split(':')
+    if len(output_node_names) != len(output_node_shapes):
+        raise Exception('output node count and shape count do not match.')
     for i in six.moves.range(len(output_node_names)):
         output_node = cvt.NodeInfo()
         output_node.name = output_node_names[i]
+        output_node.shape = parse_int_array_from_str(output_node_shapes[i])
         option.add_output_node(output_node)
+
+    if FLAGS.check_node != '':
+        check_node_names = FLAGS.check_node.split(',')
+        check_node_shapes = FLAGS.check_shape.split(':')
+        if len(check_node_names) != len(check_node_shapes):
+            raise Exception('check node count and shape count do not match.')
+        for i in six.moves.range(len(check_node_names)):
+            check_node = cvt.NodeInfo()
+            check_node.name = check_node_names[i]
+            check_node.shape = parse_int_array_from_str(check_node_shapes[i])
+            option.add_check_node(check_node)
 
     option.build()
 
     print("Transform model to one that can better run on device")
-    if FLAGS.runtime == 'dsp':
+    if FLAGS.runtime == 'dsp' and not option.quantize:
         mace_check(FLAGS.platform == 'tensorflow',
                    'DSP only supports tensorflow')
         from mace.python.tools.converter_tool import tf_dsp_converter
@@ -172,7 +187,7 @@ def main(unused_args):
                 FLAGS.data_type, cvt.DeviceType.GPU.value)
             mace_gpu_transformer = transformer.Transformer(
                 option, output_graph_def)
-            output_graph_def = mace_gpu_transformer.run()
+            output_graph_def, _ = mace_gpu_transformer.run()
             six.print_("start optimize gpu memory.")
             memory_optimizer.optimize_gpu_memory(output_graph_def)
             six.print_("GPU memory optimization done.")
@@ -183,7 +198,7 @@ def main(unused_args):
             option.disable_transpose_filters()
             mace_cpu_transformer = transformer.Transformer(
                 option, cpu_graph_def)
-            cpu_graph_def = mace_cpu_transformer.run()
+            cpu_graph_def, _ = mace_cpu_transformer.run()
             print("start optimize cpu memory.")
             memory_optimizer.optimize_cpu_memory(cpu_graph_def)
             print("CPU memory optimization done.")
@@ -206,13 +221,21 @@ def main(unused_args):
                 FLAGS.data_type, option.device)
             mace_transformer = transformer.Transformer(
                 option, output_graph_def)
-            output_graph_def = mace_transformer.run()
+            output_graph_def, quantize_activation_info = mace_transformer.run()
+
+            if FLAGS.runtime == 'dsp':
+                from mace.python.tools.converter_tool import hexagon_converter
+                converter = hexagon_converter.HexagonConverter(
+                    option, output_graph_def, quantize_activation_info)
+                output_graph_def = converter.run()
 
             print("start optimize memory.")
             if FLAGS.runtime == 'gpu':
                 memory_optimizer.optimize_gpu_memory(output_graph_def)
             elif FLAGS.runtime == 'cpu':
                 memory_optimizer.optimize_cpu_memory(output_graph_def)
+            elif FLAGS.runtime == 'dsp':
+                pass
             else:
                 mace_check(False, "runtime only support [gpu|cpu|dsp]")
 
@@ -273,6 +296,8 @@ def parse_args():
     parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
     parser.add_argument(
+        "--check_node", type=str, default="softmax", help="e.g., softmax")
+    parser.add_argument(
         "--template_dir", type=str, default="", help="template path")
     parser.add_argument(
         "--obfuscate",
@@ -297,6 +322,10 @@ def parse_args():
         "--input_shape", type=str, default="", help="input shape.")
     parser.add_argument(
         "--input_range", type=str, default="", help="input range.")
+    parser.add_argument(
+        "--output_shape", type=str, default="", help="output shape.")
+    parser.add_argument(
+        "--check_shape", type=str, default="", help="check shape.")
     parser.add_argument(
         "--platform", type=str, default="tensorflow", help="tensorflow/caffe")
     parser.add_argument(

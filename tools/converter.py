@@ -190,6 +190,8 @@ class YAMLKeyword(object):
     input_ranges = 'input_ranges'
     output_tensors = 'output_tensors'
     output_shapes = 'output_shapes'
+    check_tensors = 'check_tensors'
+    check_shapes = 'check_shapes'
     runtime = 'runtime'
     data_type = 'data_type'
     input_data_types = 'input_data_types'
@@ -459,6 +461,16 @@ def format_model_config(flags):
                 if not isinstance(value, list):
                     subgraph[key] = [value]
                 subgraph[key] = [str(v) for v in subgraph[key]]
+
+            for key in [YAMLKeyword.check_tensors,
+                        YAMLKeyword.check_shapes]:
+                value = subgraph.get(key, "")
+                if value != "":
+                    if not isinstance(value, list):
+                        subgraph[key] = [value]
+                    subgraph[key] = [str(v) for v in subgraph[key]]
+                else:
+                    subgraph[key] = []
 
             input_data_types = subgraph.get(YAMLKeyword.input_data_types, "")
             if input_data_types:
@@ -787,10 +799,13 @@ def convert_model(configs, cl_mem_type):
             model_config[YAMLKeyword.weight_sha256_checksum],
             ",".join(subgraphs[0][YAMLKeyword.input_tensors]),
             ",".join(subgraphs[0][YAMLKeyword.output_tensors]),
+            ",".join(subgraphs[0][YAMLKeyword.check_tensors]),
             runtime,
             model_name,
             ":".join(subgraphs[0][YAMLKeyword.input_shapes]),
             ":".join(subgraphs[0][YAMLKeyword.input_ranges]),
+            ":".join(subgraphs[0][YAMLKeyword.output_shapes]),
+            ":".join(subgraphs[0][YAMLKeyword.check_shapes]),
             model_config[YAMLKeyword.nnlib_graph_mode],
             embed_model_data,
             model_config[YAMLKeyword.winograd],
@@ -1216,6 +1231,12 @@ def run_specific_target(flags, configs, target_abi,
         for runtime in runtime_list:
             device_type = parse_device_type(runtime)
             # run for specified soc
+            if not subgraphs[0][YAMLKeyword.check_tensors]:
+                output_nodes = subgraphs[0][YAMLKeyword.output_tensors]
+                output_shapes = subgraphs[0][YAMLKeyword.output_shapes]
+            else:
+                output_nodes = subgraphs[0][YAMLKeyword.check_tensors]
+                output_shapes = subgraphs[0][YAMLKeyword.check_shapes]
             run_output = sh_commands.tuning_run(
                 abi=target_abi,
                 serialno=serial_num,
@@ -1225,9 +1246,9 @@ def run_specific_target(flags, configs, target_abi,
                 embed_model_data=embed_model_data,
                 model_output_dir=model_output_dir,
                 input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                output_nodes=output_nodes,
                 input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                output_shapes=output_shapes,
                 mace_model_dir=mace_model_dir,
                 model_tag=model_name,
                 device_type=device_type,
@@ -1261,7 +1282,8 @@ def run_specific_target(flags, configs, target_abi,
                     model_config[YAMLKeyword.weight_sha256_checksum])
 
                 validate_type = device_type
-                if model_config[YAMLKeyword.quantize] == 1:
+                if model_config[YAMLKeyword.quantize] == 1 \
+                        and device_type == DeviceType.CPU:
                     validate_type = device_type + "_QUANTIZE"
 
                 sh_commands.validate_model(
@@ -1272,9 +1294,9 @@ def run_specific_target(flags, configs, target_abi,
                     platform=model_config[YAMLKeyword.platform],
                     device_type=device_type,
                     input_nodes=subgraphs[0][YAMLKeyword.input_tensors],
-                    output_nodes=subgraphs[0][YAMLKeyword.output_tensors],
+                    output_nodes=output_nodes,
                     input_shapes=subgraphs[0][YAMLKeyword.input_shapes],
-                    output_shapes=subgraphs[0][YAMLKeyword.output_shapes],
+                    output_shapes=output_shapes,
                     model_output_dir=model_output_dir,
                     phone_data_dir=PHONE_DATA_DIR,
                     input_data_types=subgraphs[0][YAMLKeyword.input_data_types],  # noqa

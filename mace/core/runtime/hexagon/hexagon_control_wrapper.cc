@@ -324,7 +324,9 @@ void HexagonControlWrapper::GetPerfInfo() {
     }
     ++node_type_counters[node_type].first;
     node_type_counters[node_type].second += node_id_counters[node_id];
-    total_duration += node_id_counters[node_id];
+    if (node_type.compare("Const") != 0) {
+      total_duration += node_id_counters[node_id];
+    }
   }
 
   for (auto &node_type_counter : node_type_counters) {
@@ -332,7 +334,7 @@ void HexagonControlWrapper::GetPerfInfo() {
               << ", time: " << node_type_counter.second.first
               << ", duration: " << node_type_counter.second.second;
   }
-  LOG(INFO) << "total duration: " << total_duration;
+  LOG(INFO) << "total duration: " << std::fixed << total_duration;
 }
 
 void HexagonControlWrapper::ResetPerfInfo() {

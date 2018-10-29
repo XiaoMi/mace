@@ -7,6 +7,8 @@ class QuantizedData(object):
         self._data = None
         self._scale = 0
         self._zero = 0
+        self._minval = 0.0
+        self._maxval = 0.0
 
     @property
     def data(self):
@@ -20,6 +22,14 @@ class QuantizedData(object):
     def zero(self):
         return self._zero
 
+    @property
+    def minval(self):
+        return self._minval
+
+    @property
+    def maxval(self):
+        return self._maxval
+
     @data.setter
     def data(self, data):
         self._data = data
@@ -31,6 +41,14 @@ class QuantizedData(object):
     @zero.setter
     def zero(self, zero):
         self._zero = zero
+
+    @minval.setter
+    def minval(self, minval):
+        self._minval = minval
+
+    @maxval.setter
+    def maxval(self, maxval):
+        self._maxval = maxval
 
 
 def adjust_range(in_min, in_max, non_zero):
@@ -54,7 +72,7 @@ def adjust_range(in_min, in_max, non_zero):
     else:
         zero_int = 255
 
-    return scale, zero_int
+    return scale, zero_int, -zero_int*scale, (255-zero_int)*scale
 
 
 def cal_multiplier_and_shift(scale):
@@ -94,13 +112,34 @@ def quantize(data):
     np_data = np.array(data).astype(float)
     in_min = np_data.min()
     in_max = np_data.max()
-    scale, zero = adjust_range(in_min, in_max, non_zero=True)
+    scale, zero, out_min, out_max = adjust_range(in_min, in_max, non_zero=True)
     output = np.clip((np.round(zero + data / scale).astype(int)), 0, 255)
 
     quantized_data = QuantizedData()
     quantized_data.data = output
     quantized_data.scale = scale
     quantized_data.zero = zero
+    quantized_data.minval = out_min
+    quantized_data.maxval = out_max
+    return quantized_data
+
+
+def quantize_bias_for_hexagon(data):
+    np_data = np.array(data).astype(float)
+    max_val = max(abs(np_data.min()), abs(np_data.max()))
+    in_min = -max_val
+    in_max = max_val
+    scale = (in_max - in_min) / 2**32
+    zero = 0
+    output = np.clip((np.round(zero + data / scale).astype(long)),
+                     -2**31, 2**31 - 1)
+
+    quantized_data = QuantizedData()
+    quantized_data.data = output
+    quantized_data.scale = scale
+    quantized_data.zero = zero
+    quantized_data.minval = in_min
+    quantized_data.maxval = in_max
     return quantized_data
 
 
