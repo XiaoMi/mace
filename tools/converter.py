@@ -670,15 +670,8 @@ def print_configuration(configs):
 def download_file(url, dst, num_retries=3):
     from six.moves import urllib
 
-    def _progress(block_num, block_size, total_size):
-        sys.stdout.write(
-            '\r>> Downloading %s %.1f%%' % (url,
-                                            float(block_num * block_size) /
-                                            float(total_size) * 100.0))
-        sys.stdout.flush()
-
     try:
-        urllib.request.urlretrieve(url, dst, _progress)
+        urllib.request.urlretrieve(url, dst)
         MaceLogger.info('\nDownloaded successfully.')
     except (urllib.URLError, urllib.ContentTooShortError) as e:
         MaceLogger.warning('Download error:', e.reason)
