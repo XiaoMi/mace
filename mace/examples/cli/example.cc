@@ -305,7 +305,7 @@ bool RunModel(const std::vector<std::string> &input_names,
                 out_file.flush();
                 out_file.close();
               } else {
-                std::cerr << "Open output file failed";
+                std::cerr << "Open output file failed" << std::endl;
                 return -1;
               }
             }
@@ -315,7 +315,8 @@ bool RunModel(const std::vector<std::string> &input_names,
 
       closedir(dir_parent);
     } else {
-      std::cerr << "Directory " << FLAGS_input_dir << " does not exist.";
+      std::cerr << "Directory " << FLAGS_input_dir << " does not exist."
+                << std::endl;
     }
   } else {
     for (size_t i = 0; i < input_count; ++i) {
@@ -346,7 +347,7 @@ bool RunModel(const std::vector<std::string> &input_names,
         out_file.flush();
         out_file.close();
       } else {
-        std::cerr << "Open output file failed";
+        std::cerr << "Open output file failed" << std::endl;
         return -1;
       }
     }

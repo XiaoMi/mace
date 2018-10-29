@@ -28,7 +28,7 @@ Here we use the mobilenet-v2 model as an example.
 
     .. note::
 
-        It's highly recommanded to use a release version instead of master branch.
+        It's highly recommended to use a release version instead of master branch.
 
 
     2. Pull `MACE Model Zoo <https://github.com/XiaoMi/mace-models>`__ project.
