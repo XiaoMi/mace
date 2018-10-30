@@ -672,6 +672,25 @@ def create_internal_storage_dir(serialno, phone_data_dir):
     return internal_storage_dir
 
 
+def push_depended_so_libs(libmace_dynamic_library_path,
+                          abi, phone_data_dir, serialno):
+    dep_so_libs = sh.bash("/opt/android-ndk/ndk-depends",
+                          libmace_dynamic_library_path)
+    for dep in split_stdout(dep_so_libs):
+        if dep == "libgnustl_shared.so":
+            adb_push(
+                    "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so"  # noqa
+                    % (os.environ["ANDROID_NDK_HOME"], abi),
+                    phone_data_dir,
+                    serialno)
+        elif dep == "libc++_shared.so":
+            adb_push(
+                    "%s/sources/cxx-stl/llvm-libc++/libs/%s/libc++_shared.so"  # noqa
+                    % (os.environ["ANDROID_NDK_HOME"], abi),
+                    phone_data_dir,
+                    serialno)
+
+
 def tuning_run(abi,
                serialno,
                target_dir,
@@ -794,6 +813,8 @@ def tuning_run(abi,
         if link_dynamic:
             adb_push(libmace_dynamic_library_path, phone_data_dir,
                      serialno)
+            push_depended_so_libs(libmace_dynamic_library_path, abi,
+                                  phone_data_dir, serialno)
 
         adb_push("%s/%s" % (target_dir, target_name), phone_data_dir,
                  serialno)
@@ -1118,6 +1139,9 @@ def benchmark_model(abi,
         if link_dynamic:
             adb_push(libmace_dynamic_library_path, phone_data_dir,
                      serialno)
+            push_depended_so_lib(libmace_dynamic_library_path, abi,
+                                 phone_data_dir, serialno)
+
         adb_push("%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
                  phone_data_dir,
                  serialno)

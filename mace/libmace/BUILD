@@ -54,7 +54,7 @@ cc_binary(
         "-fopenmp",
     ]),
     linkshared = 1,
-    linkstatic = 1,
+    linkstatic = 0,
     deps = [
         ":mace_version_script.lds",
         "//mace/libmace",
