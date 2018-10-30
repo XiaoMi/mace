@@ -60,7 +60,7 @@ cc_binary(
         "-pie",
         "-llog",
     ]),
-    linkstatic = 1,
+    linkstatic = 0,
     deps = [
         ":statistics",
         "//external:gflags_nothreads",
