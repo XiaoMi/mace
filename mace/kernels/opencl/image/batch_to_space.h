@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_BATCH_TO_SPACE_H_
 #define MACE_KERNELS_OPENCL_IMAGE_BATCH_TO_SPACE_H_
 
-#include "mace/kernels/batch_to_space.h"
+#include "mace/kernels/opencl/batch_to_space.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,13 +34,12 @@ template <typename T>
 class BatchToSpaceKernel : public OpenCLBatchToSpaceKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *batch_tensor,
       const std::vector<int> &paddings,
       const std::vector<int> &block_shape,
       const std::vector<index_t> &output_shape,
-      Tensor *space_tensor,
-      StatsFuture *future) override;
+      Tensor *space_tensor) override;
 
  private:
   cl::Kernel kernel_;
@@ -48,13 +49,12 @@ class BatchToSpaceKernel : public OpenCLBatchToSpaceKernel {
 
 template <typename T>
 MaceStatus BatchToSpaceKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *batch_tensor,
     const std::vector<int> &paddings,
     const std::vector<int> &block_shape,
     const std::vector<index_t> &output_shape,
-    Tensor *space_tensor,
-    StatsFuture *future) {
+    Tensor *space_tensor) {
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
@@ -116,10 +116,10 @@ MaceStatus BatchToSpaceKernel<T>::Compute(
       Concat("batch_to_space", batch_tensor->dim(0), batch_tensor->dim(1),
              batch_tensor->dim(2), batch_tensor->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

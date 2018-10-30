@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_POOLING_H_
 #define MACE_KERNELS_OPENCL_BUFFER_POOLING_H_
 
-#include "mace/kernels/pooling.h"
+#include "mace/kernels/opencl/pooling.h"
 
 #include <functional>
 #include <memory>
@@ -35,7 +35,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
  public:
   PoolingKernel() : old_scratch_size_(0) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const PoolingType pooling_type,
       const int *kernels,
@@ -43,8 +43,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
       const Padding &padding_type,
       const std::vector<int> &padding_data,
       const int *dilations,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   index_t old_scratch_size_;
@@ -55,7 +54,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
 
 template <typename T>
 MaceStatus PoolingKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const PoolingType pooling_type,
     const int *kernels,
@@ -63,8 +62,7 @@ MaceStatus PoolingKernel<T>::Compute(
     const Padding &padding_type,
     const std::vector<int> &padding_data,
     const int *dilations,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK(dilations[0] == 1 && dilations[1] == 1)
     << "Pooling opencl kernel not support dilation yet";
 
@@ -200,9 +198,9 @@ MaceStatus PoolingKernel<T>::Compute(
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, &pooling_future));
   MACE_OUT_OF_RANGE_VALIDATION
-  MergeMultipleFutureWaitFn({pad_future, pooling_future}, future);
+  MergeMultipleFutureWaitFn({pad_future, pooling_future}, context->future());
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace buffer

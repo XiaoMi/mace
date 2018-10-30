@@ -94,7 +94,6 @@ MaceSupportedOps = [
     'Dequantize',
     'Eltwise',
     'ExpandDims',
-    'FoldedBatchNorm',
     'Fill',
     'FullyConnected',
     'Gather',

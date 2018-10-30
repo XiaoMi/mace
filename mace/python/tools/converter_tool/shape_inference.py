@@ -37,7 +37,7 @@ class ShapeInference(object):
             MaceOp.Deconv2D.name: self.infer_shape_deconv,
             MaceOp.DepthwiseConv2d.name: self.infer_shape_conv_pool_shape,
             MaceOp.Eltwise.name: self.infer_shape_general,
-            MaceOp.FoldedBatchNorm.name: self.infer_shape_general,
+            MaceOp.BatchNorm.name: self.infer_shape_general,
             MaceOp.AddN.name: self.infer_shape_general,
             MaceOp.Activation.name: self.infer_shape_general,
             MaceOp.Pooling.name: self.infer_shape_conv_pool_shape,

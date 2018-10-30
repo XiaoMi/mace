@@ -27,6 +27,7 @@
 
 #include "src/main/cpp/include/mace/public/mace.h"
 #include "src/main/cpp/include/mace/public/mace_engine_factory.h"
+#include "mace/public/mace.h"
 
 namespace {
 
@@ -112,11 +113,12 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
       omp_num_threads,
       static_cast<mace::CPUAffinityPolicy>(cpu_affinity_policy),
       true);
-  if (status != mace::MACE_SUCCESS) {
+  if (status != mace::MaceStatus::MACE_SUCCESS) {
     __android_log_print(ANDROID_LOG_ERROR,
                         "image_classify attrs",
-                        "openmp result: %d, threads: %d, cpu: %d",
-                        status, omp_num_threads, cpu_affinity_policy);
+                        "openmp result: %s, threads: %d, cpu: %d",
+                        status.information().c_str(), omp_num_threads,
+                        cpu_affinity_policy);
   }
   if (mace_context.device_type == mace::DeviceType::GPU) {
     config.SetGPUContext(mace_context.gpu_context);
@@ -163,8 +165,8 @@ Java_com_xiaomi_mace_JniMaceUtils_maceMobilenetCreateEngine(
 
   __android_log_print(ANDROID_LOG_INFO,
                       "image_classify attrs",
-                      "create result: %d",
-                      create_engine_status);
+                      "create result: %s",
+                      create_engine_status.information().c_str());
 
   return create_engine_status == mace::MaceStatus::MACE_SUCCESS ?
          JNI_OK : JNI_ERR;

@@ -55,6 +55,14 @@ class CPURuntime {
     return num_threads_;
   }
 
+  CPUAffinityPolicy policy() const {
+    return policy_;
+  }
+
+  bool use_gemmlowp() const {
+    return gemm_context_ != nullptr;
+  }
+
  private:
   MaceStatus SetOpenMPThreadsAndAffinityPolicy(
       int omp_num_threads_hint,

@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_ELTWISE_H_
 #define MACE_KERNELS_OPENCL_IMAGE_ELTWISE_H_
 
-#include "mace/kernels/eltwise.h"
+#include "mace/kernels/opencl/eltwise.h"
 
 #include <memory>
 #include <utility>
@@ -22,6 +22,9 @@
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
+#include "mace/kernels/eltwise.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -42,11 +45,10 @@ class EltwiseKernel : public OpenCLEltwiseKernel {
         scalar_input_(scalar_input),
         scalar_input_index_(scalar_input_index) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input0,
       const Tensor *input1,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   EltwiseType type_;
@@ -60,11 +62,10 @@ class EltwiseKernel : public OpenCLEltwiseKernel {
 
 template <typename T>
 MaceStatus EltwiseKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input0,
     const Tensor *input1,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   bool swapped = false;
   if (input1 != nullptr) {
     MACE_CHECK(input0->dim_size() == input1->dim_size() ||
@@ -177,9 +178,9 @@ MaceStatus EltwiseKernel<T>::Compute(
       Concat("eltwise_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

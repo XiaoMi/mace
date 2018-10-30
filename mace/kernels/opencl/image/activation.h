@@ -14,13 +14,16 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_ACTIVATION_H_
 #define MACE_KERNELS_OPENCL_IMAGE_ACTIVATION_H_
 
-#include "mace/kernels/activation.h"
+#include "mace/kernels/opencl/activation.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
+#include "mace/kernels/activation.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -36,11 +39,10 @@ class ActivationKernel : public OpenCLActivationKernel {
       : activation_(type), relux_max_limit_(relux_max_limit) {}
 
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *alpha,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   ActivationType activation_;
@@ -53,11 +55,10 @@ class ActivationKernel : public OpenCLActivationKernel {
 
 template <typename T>
 MaceStatus ActivationKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *alpha,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
   const index_t width = input->dim(2);
@@ -133,10 +134,10 @@ MaceStatus ActivationKernel<T>::Compute(
       Concat(tuning_key_prefix_, output->dim(0), output->dim(1), output->dim(2),
              output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

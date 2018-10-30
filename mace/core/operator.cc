@@ -14,18 +14,69 @@
 
 #include <sstream>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "mace/core/operator.h"
-#include "mace/core/op_kernel_context.h"
 
 namespace mace {
 
-OperatorBase::OperatorBase(const OperatorDef &operator_def,
-                           OpKernelContext *context)
-    : operator_def_(std::make_shared<OperatorDef>(operator_def)) {
-  MACE_UNUSED(context);
+OpConstructContext::OpConstructContext(Workspace *ws)
+    : operator_def_(nullptr), ws_(ws), device_(nullptr) {}
+OpConstructContext::OpConstructContext(OperatorDef *operator_def,
+                                       Workspace *ws,
+                                       Device *device)
+    : operator_def_(operator_def), ws_(ws), device_(device) {}
+
+OpInitContext::OpInitContext(Workspace *ws, Device *device)
+    : ws_(ws), device_(device) {}
+
+Operation::Operation(OpConstructContext *context)
+    : operator_def_(std::make_shared<OperatorDef>(*(context->operator_def())))
+{}
+
+MaceStatus Operation::Init(OpInitContext *context) {
+  Workspace *ws = context->workspace();
+  for (const std::string &input_str : operator_def_->input()) {
+    const Tensor *tensor = ws->GetTensor(input_str);
+    MACE_CHECK(tensor != nullptr, "op ", operator_def_->type(),
+               ": Encountered a non-existing input tensor: ", input_str);
+    inputs_.push_back(tensor);
+  }
+  // TODO(liuqi): filter transform
+  for (int i = 0; i < operator_def_->output_size(); ++i) {
+    const std::string output_str = operator_def_->output(i);
+    if (ws->HasTensor(output_str)) {
+      // TODO(liuqi): Workspace should pre-allocate all of the output tensors
+      outputs_.push_back(ws->GetTensor(output_str));
+    } else {
+      MACE_CHECK(
+          operator_def_->output_type_size() == 0 ||
+              operator_def_->output_size() == operator_def_->output_type_size(),
+          "operator output size != operator output type size",
+          operator_def_->output_size(),
+          operator_def_->output_type_size());
+      DataType output_type;
+      if (i < operator_def_->output_type_size()) {
+        output_type = operator_def_->output_type(i);
+      } else {
+        output_type = static_cast<DataType>(
+            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+            *operator_def_, "T", static_cast<int>(DT_FLOAT)));
+      }
+      outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
+          output_str, context->device()->allocator(), output_type)));
+
+      if (i < operator_def_->output_shape_size()) {
+        std::vector<index_t>
+            shape_configured(operator_def_->output_shape(i).dims_size());
+        for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
+          shape_configured[dim] = operator_def_->output_shape(i).dims(dim);
+        }
+        ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
+      }
+    }
+  }
+  return MaceStatus::MACE_SUCCESS;
 }
 
 OpKeyBuilder::OpKeyBuilder(const char *op_name) : op_name_(op_name) {}
@@ -36,7 +87,7 @@ OpKeyBuilder &OpKeyBuilder::Device(DeviceType device) {
 }
 
 OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name,
-                                           const DataType allowed) {
+                                           DataType allowed) {
   type_constraint_[attr_name] = allowed;
   return *this;
 }
@@ -53,27 +104,28 @@ const std::string OpKeyBuilder::Build() {
   return ss.str();
 }
 
-OperatorRegistryBase::~OperatorRegistryBase() {}
+OpRegistryBase::~OpRegistryBase() = default;
 
-std::unique_ptr<OperatorBase> OperatorRegistryBase::CreateOperator(
-    const OperatorDef &operator_def,
-    OpKernelContext *context,
-    DeviceType type,
+std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
+    OpConstructContext *context,
+    DeviceType device_type,
     const NetMode mode) const {
+  OperatorDef *operator_def = context->operator_def();
   const int dtype = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-      operator_def, "T", static_cast<int>(DT_FLOAT));
+      *operator_def, "T", static_cast<int>(DT_FLOAT));
   const int op_mode_i = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-      operator_def, "mode", static_cast<int>(NetMode::NORMAL));
+      *operator_def, "mode", static_cast<int>(NetMode::NORMAL));
   const NetMode op_mode = static_cast<NetMode>(op_mode_i);
-  VLOG(3) << "Creating operator " << operator_def.name() << "("
-          << operator_def.type() << "<" << dtype << ">" << ")";
+  VLOG(3) << "Creating operator " << operator_def->name() << "("
+          << operator_def->type() << "<" << dtype << ">" << ") on "
+          << device_type;
   if (op_mode == mode) {
     return registry_.Create(
-        OpKeyBuilder(operator_def.type().data())
-            .Device(type)
+        OpKeyBuilder(operator_def->type().data())
+            .Device(device_type)
             .TypeConstraint("T", static_cast<DataType>(dtype))
             .Build(),
-        operator_def, context);
+        context);
   } else {
     return nullptr;
   }

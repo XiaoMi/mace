@@ -15,9 +15,12 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_BUFFER_TRANSFORM_H_
 #define MACE_KERNELS_OPENCL_BUFFER_BUFFER_TRANSFORM_H_
 
+#include "mace/kernels/opencl/buffer_transform.h"
+
 #include <vector>
 
-#include "mace/kernels/buffer_transform.h"
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -26,48 +29,43 @@ namespace opencl {
 namespace buffer {
 
 MaceStatus BufferTypeTransform(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future);
+    Tensor *output);
 
 MaceStatus TransformConv2DFilter(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future);
+    Tensor *output);
 
 MaceStatus TransformDWConv2DFilter(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future);
+    Tensor *output);
 
 MaceStatus TransformArgument(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future);
+    Tensor *output);
 
 
 template <typename T>
 class BufferTransform: public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const BufferType type,
       const int wino_blk_size,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -75,30 +73,26 @@ class BufferTransform: public OpenCLBufferTransformKernel {
 };
 
 template <typename T>
-MaceStatus BufferTransform<T>::Compute(OpKernelContext *context,
+MaceStatus BufferTransform<T>::Compute(OpContext *context,
                                        const Tensor *input,
                                        const BufferType type,
                                        const int wino_blk_size,
-                                       Tensor *output,
-                                       StatsFuture *future) {
+                                       Tensor *output) {
   MACE_UNUSED(type);
   MACE_UNUSED(wino_blk_size);
   const DataType dt = DataTypeToEnum<T>::value;
   switch (type) {
     case CONV2D_FILTER:
-      return TransformConv2DFilter(context, &kernel_, input,
-                                   dt, output, future);
+      return TransformConv2DFilter(context, &kernel_, input, dt, output);
     case DW_CONV2D_FILTER:
-      return TransformDWConv2DFilter(context, &kernel_, input,
-                                     dt, output, future);
+      return TransformDWConv2DFilter(context, &kernel_, input, dt, output);
     case ARGUMENT:
-      return TransformArgument(context, &kernel_, input, dt, output, future);
+      return TransformArgument(context, &kernel_, input, dt, output);
     default:
       if (input->dtype() != dt) {
-        return BufferTypeTransform(context, &kernel_, input,
-                                   dt, output, future);
+        return BufferTypeTransform(context, &kernel_, input, dt, output);
       } else {
-        SetFutureDefaultWaitFn(future);
+        SetFutureDefaultWaitFn(context->future());
         output->ReuseTensorBuffer(*input);
         return MaceStatus::MACE_SUCCESS;
       }

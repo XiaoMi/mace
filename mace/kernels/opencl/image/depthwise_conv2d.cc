@@ -63,7 +63,7 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 }  // namespace
 
-MaceStatus DepthwiseConv2d(OpKernelContext *context,
+MaceStatus DepthwiseConv2d(OpContext *context,
                            cl::Kernel *kernel,
                            const Tensor *input,   // NHWC
                            const Tensor *filter,  // HWIM
@@ -76,7 +76,6 @@ MaceStatus DepthwiseConv2d(OpKernelContext *context,
                            const DataType dt,
                            std::vector<index_t> *prev_input_shape,
                            Tensor *output,
-                           StatsFuture *future,
                            uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -181,10 +180,10 @@ MaceStatus DepthwiseConv2d(OpKernelContext *context,
   std::string tuning_key =
       Concat("depthwise_conv2d_ocl_kernel", gws[0], gws[1], gws[2], multiplier);
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace depthwise

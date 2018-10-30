@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_CROP_H_
 #define MACE_KERNELS_OPENCL_IMAGE_CROP_H_
 
-#include "mace/kernels/crop.h"
+#include "mace/kernels/opencl/crop.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -36,10 +38,9 @@ class CropKernel : public OpenCLCropKernel {
       const std::vector<int> &offset)
       : axis_(axis), offset_(offset) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const std::vector<const Tensor *> &input_list,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   const int axis_;
@@ -51,10 +52,9 @@ class CropKernel : public OpenCLCropKernel {
 
 template <typename T>
 MaceStatus CropKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const std::vector<const Tensor *> &input_list,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   const int32_t inputs_count = static_cast<int32_t>(input_list.size());
   MACE_CHECK(inputs_count >= 2)
     << "Crop opencl kernel only support 2 elements input";
@@ -181,9 +181,9 @@ MaceStatus CropKernel<T>::Compute(
       Concat("crop_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

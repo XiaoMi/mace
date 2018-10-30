@@ -17,15 +17,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <memory>
 #include <string>
-#include <vector>
 
-#include "mace/core/future.h"
-#include "mace/core/tensor.h"
 #include "mace/core/types.h"
-#include "mace/kernels/kernel.h"
 #include "mace/kernels/arm/activation_neon.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 namespace kernels {
@@ -152,73 +148,6 @@ void PReLUActivation(const T *input_ptr,
     }
   }
 }
-
-template <DeviceType D, typename T>
-class ActivationFunctor;
-
-template <>
-class ActivationFunctor<DeviceType::CPU, float> : OpKernel {
- public:
-  ActivationFunctor(OpKernelContext *context,
-                    ActivationType type,
-                    float relux_max_limit)
-      : OpKernel(context),
-        activation_(type),
-        relux_max_limit_(relux_max_limit) {}
-
-  MaceStatus operator()(const Tensor *input,
-                        const Tensor *alpha,
-                        Tensor *output,
-                        StatsFuture *future) {
-    MACE_UNUSED(future);
-    const float *input_ptr = input->data<float>();
-    float *output_ptr = output->mutable_data<float>();
-    if (activation_ == PRELU) {
-      MACE_CHECK_NOTNULL(alpha);
-      const float *alpha_ptr = alpha->data<float>();
-      const index_t outer_size = output->dim(0);
-      const index_t inner_size = output->dim(2) * output->dim(3);
-      PReLUActivation(input_ptr, outer_size, input->dim(1), inner_size,
-                      alpha_ptr, output_ptr);
-    } else {
-      DoActivation(input_ptr, output_ptr, output->size(), activation_,
-                   relux_max_limit_);
-    }
-    return MACE_SUCCESS;
-  }
-
- private:
-  ActivationType activation_;
-  float relux_max_limit_;
-};
-
-#ifdef MACE_ENABLE_OPENCL
-class OpenCLActivationKernel {
- public:
-  virtual MaceStatus Compute(
-      OpKernelContext *context,
-      const Tensor *input,
-      const Tensor *alpha,
-      Tensor *output,
-      StatsFuture *future) = 0;
-  MACE_VIRTUAL_EMPTY_DESTRUCTOR(OpenCLActivationKernel);
-};
-template <typename T>
-class ActivationFunctor<DeviceType::GPU, T> : OpKernel {
- public:
-  ActivationFunctor(OpKernelContext *context,
-                    ActivationType type,
-                    T relux_max_limit);
-
-  MaceStatus operator()(const Tensor *input,
-                        const Tensor *alpha,
-                        Tensor *output,
-                        StatsFuture *future);
-
- private:
-  std::unique_ptr<OpenCLActivationKernel> kernel_;
-};
-#endif  // MACE_ENABLE_OPENCL
 
 }  // namespace kernels
 }  // namespace mace

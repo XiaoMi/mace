@@ -50,6 +50,7 @@ cc_library(
     copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
     deps = [
         "//mace/public",
+        "//mace/utils",
     ],
 )
 

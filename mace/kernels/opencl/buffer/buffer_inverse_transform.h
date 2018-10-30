@@ -15,7 +15,10 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_BUFFER_INVERSE_TRANSFORM_H_
 #define MACE_KERNELS_OPENCL_BUFFER_BUFFER_INVERSE_TRANSFORM_H_
 
-#include "mace/kernels/buffer_inverse_transform.h"
+#include "mace/kernels/opencl/buffer_inverse_transform.h"
+
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -24,40 +27,37 @@ namespace opencl {
 namespace buffer {
 
 MaceStatus BufferTypeTransform(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future);
+    Tensor *output);
 
 template <typename T>
 class BufferInverseTransform: public OpenCLBufferInverseTransformKernel {
  public:
-  MaceStatus Compute(OpKernelContext *context,
+  MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const BufferType type,
                      const int wino_blk_size,
-                     Tensor *output,
-                     StatsFuture *future) override;
+                     Tensor *output) override;
  private:
   cl::Kernel kernel_;
 };
 
 template <typename T>
-MaceStatus BufferInverseTransform<T>::Compute(OpKernelContext *context,
+MaceStatus BufferInverseTransform<T>::Compute(OpContext *context,
                                               const Tensor *input,
                                               const BufferType type,
                                               const int wino_blk_size,
-                                              Tensor *output,
-                                              StatsFuture *future) {
+                                              Tensor *output) {
   MACE_UNUSED(type);
   MACE_UNUSED(wino_blk_size);
   const DataType dt = DataTypeToEnum<T>::value;
   if (input->dtype() != output->dtype()) {
-    return BufferTypeTransform(context, &kernel_, input, dt, output, future);
+    return BufferTypeTransform(context, &kernel_, input, dt, output);
   } else {
-    SetFutureDefaultWaitFn(future);
+    SetFutureDefaultWaitFn(context->future());
     output->ReuseTensorBuffer(*input);
     return MaceStatus::MACE_SUCCESS;
   }

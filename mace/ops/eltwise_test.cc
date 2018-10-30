@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "mace/kernels/eltwise.h"
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

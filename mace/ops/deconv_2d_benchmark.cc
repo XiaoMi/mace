@@ -14,9 +14,9 @@
 
 #include <algorithm>
 
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/ops/deconv_2d.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

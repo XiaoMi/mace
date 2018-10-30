@@ -14,11 +14,13 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_CONV_2D_H_
 #define MACE_KERNELS_OPENCL_IMAGE_CONV_2D_H_
 
-#include "mace/kernels/conv_2d.h"
+#include "mace/kernels/opencl/conv_2d.h"
 
 #include <memory>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -26,7 +28,7 @@ namespace kernels {
 namespace opencl {
 namespace image {
 
-extern MaceStatus Conv2dOpenclK1x1(OpKernelContext *context,
+extern MaceStatus Conv2dOpenclK1x1(OpContext *context,
                                    cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
@@ -39,10 +41,9 @@ extern MaceStatus Conv2dOpenclK1x1(OpKernelContext *context,
                                    const DataType dt,
                                    std::vector<index_t> *prev_input_shape,
                                    Tensor *output,
-                                   StatsFuture *future,
                                    uint32_t *kwg_size);
 
-extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
+extern MaceStatus Conv2dOpenclK3x3(OpContext *context,
                                    cl::Kernel *kernel,
                                    const Tensor *input,
                                    const Tensor *filter,
@@ -55,10 +56,9 @@ extern MaceStatus Conv2dOpenclK3x3(OpKernelContext *context,
                                    const DataType dt,
                                    std::vector<index_t> *prev_input_shape,
                                    Tensor *output,
-                                   StatsFuture *future,
                                    uint32_t *kwg_size);
 
-extern MaceStatus Conv2dOpencl(OpKernelContext *context,
+extern MaceStatus Conv2dOpencl(OpContext *context,
                                cl::Kernel *kernel,
                                const Tensor *input,
                                const Tensor *filter,
@@ -71,7 +71,6 @@ extern MaceStatus Conv2dOpencl(OpKernelContext *context,
                                const DataType dt,
                                std::vector<index_t> *prev_input_shape,
                                Tensor *output,
-                               StatsFuture *future,
                                uint32_t *kwg_size);
 
 
@@ -79,7 +78,7 @@ template <typename T>
 class Conv2dKernel : public OpenCLConv2dKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -89,8 +88,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -100,7 +98,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
 
 template <typename T>
 MaceStatus Conv2dKernel<T>::Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -110,15 +108,14 @@ MaceStatus Conv2dKernel<T>::Compute(
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) {
+      Tensor *output) {
   typedef MaceStatus (*Conv2dOpenclFunction)(
-      OpKernelContext *context,
-      cl::Kernel * kernel, const Tensor *input, const Tensor *filter,
+      OpContext *context,
+      cl::Kernel *kernel, const Tensor *input, const Tensor *filter,
       const Tensor *bias, const int stride, const int *padding,
       const int *dilations, const ActivationType activation,
       const float relux_max_limit, const DataType dt,
-      std::vector<index_t> *input_shape, Tensor *output, StatsFuture *future,
+      std::vector<index_t> *input_shape, Tensor *output,
       uint32_t *kwg_size);
   // Selection matrix: kernel_size x stride_size
   static const Conv2dOpenclFunction selector[3] = {
@@ -161,13 +158,13 @@ MaceStatus Conv2dKernel<T>::Compute(
     return conv2d_func(context,
         &kernel_, input, filter, bias, strides[0], paddings.data(), dilations,
         activation, relux_max_limit, DataTypeToEnum<T>::value, &input_shape_,
-        output, future, &kwg_size_);
+        output, &kwg_size_);
   } else {
     return Conv2dOpencl(
         context, &kernel_, input, filter, bias,
         strides[0], paddings.data(), dilations,
         activation, relux_max_limit, DataTypeToEnum<T>::value, &input_shape_,
-        output, future, &kwg_size_);
+        output, &kwg_size_);
   }
 }
 

@@ -40,6 +40,7 @@ cc_library(
     deps = [
         "//mace/public",
         "//mace/ops",
+        "//mace/kernels",
     ],
     alwayslink = 1,
 )

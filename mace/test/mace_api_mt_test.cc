@@ -15,7 +15,7 @@
 #include <fstream>
 #include <thread>  // NOLINT(build/c++11)
 
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -332,6 +332,10 @@ void MaceRunFunc(const int in_out_size) {
     OutputInfo *info = net_def->add_output_info();
     info->set_name(output_names[i]);
   }
+  for (int i = 0; i < net_def->op_size(); ++i) {
+    net_def->add_op_types(net_def->op(i).type());
+  }
+
   MaceEngineConfig config(DeviceType::GPU);
 
   MaceEngine engine(config);

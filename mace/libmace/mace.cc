@@ -22,7 +22,8 @@
 
 #include "mace/core/net.h"
 #include "mace/core/device_context.h"
-#include "mace/ops/ops_register.h"
+#include "mace/kernels/ops_register.h"
+#include "mace/ops/ops_def_register.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -237,7 +238,7 @@ MaceEngineConfig::Impl::Impl(const DeviceType device_type)
 MaceStatus MaceEngineConfig::Impl::SetGPUContext(
     std::shared_ptr<GPUContext> context) {
   gpu_context_ = context;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MaceEngineConfig::Impl::SetGPUHints(
@@ -245,7 +246,7 @@ MaceStatus MaceEngineConfig::Impl::SetGPUHints(
     GPUPriorityHint priority_hint) {
   gpu_perf_hint_ = perf_hint;
   gpu_priority_hint_ = priority_hint;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
@@ -255,7 +256,7 @@ MaceStatus MaceEngineConfig::Impl::SetCPUThreadPolicy(
   num_threads_ = num_threads;
   cpu_affinity_policy_ = policy;
   use_gemmlowp_ = use_gemmlowp;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 
@@ -358,7 +359,8 @@ class MaceEngine::Impl {
  private:
   const unsigned char *model_data_;
   size_t model_data_size_;
-  std::shared_ptr<OperatorRegistryBase> op_registry_;
+  std::unique_ptr<OpDefRegistryBase> op_def_registry_;
+  std::unique_ptr<OpRegistryBase> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Device> device_;
   std::unique_ptr<Workspace> ws_;
@@ -375,7 +377,8 @@ class MaceEngine::Impl {
 MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
       model_data_size_(0),
-      op_registry_(new OperatorRegistry()),
+      op_def_registry_(new OpDefRegistry()),
+      op_registry_(new OpRegistry),
       device_type_(config.impl_->device_type()),
       device_(nullptr),
       ws_(new Workspace()),
@@ -462,10 +465,21 @@ MaceStatus MaceEngine::Impl::Init(
                                               model_data));
 
     // Init model
-    auto net = CreateNet(op_registry_, *net_def, ws_.get(), device_.get(),
-                         NetMode::INIT);
+    auto net = std::unique_ptr<NetBase>(new SerialNet(
+        op_def_registry_.get(),
+        op_registry_.get(),
+        net_def,
+        ws_.get(),
+        device_.get(),
+        NetMode::INIT));
+    MACE_RETURN_IF_ERROR(net->Init());
     MACE_RETURN_IF_ERROR(net->Run());
-    net_ = CreateNet(op_registry_, *net_def, ws_.get(), device_.get());
+    net_ = std::unique_ptr<NetBase>(new SerialNet(op_def_registry_.get(),
+                                                  op_registry_.get(),
+                                                  net_def,
+                                                  ws_.get(),
+                                                  device_.get()));
+    MACE_RETURN_IF_ERROR(net_->Init());
 #ifdef MACE_ENABLE_HEXAGON
   }
 #endif
@@ -563,6 +577,7 @@ MaceStatus MaceEngine::Impl::Run(
 
 #ifdef MACE_ENABLE_OPENCL
   if (device_type_ == GPU) {
+    device_->opencl_runtime()->command_queue().finish();
     device_->opencl_runtime()->SaveBuiltCLProgram();
   }
 #endif
@@ -582,10 +597,10 @@ MaceStatus MaceEngine::Impl::Run(
       std::memcpy(output.second.data().get(), output_tensor->data<float>(),
                   output_size * sizeof(float));
     } else {
-      return MACE_INVALID_ARGS;
+      return MaceStatus::MACE_INVALID_ARGS;
     }
   }
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceEngine::MaceEngine(const MaceEngineConfig &config):

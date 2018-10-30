@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_DEPTHWISE_CONV2D_H_
 #define MACE_KERNELS_OPENCL_BUFFER_DEPTHWISE_CONV2D_H_
 
-#include "mace/kernels/depthwise_conv2d.h"
+#include "mace/kernels/opencl/depthwise_conv2d.h"
 
 #include <functional>
 #include <memory>
@@ -29,7 +29,7 @@ namespace opencl {
 namespace buffer {
 namespace depthwise {
 
-MaceStatus DepthwiseConv2d(OpKernelContext *context,
+MaceStatus DepthwiseConv2d(OpContext *context,
                            cl::Kernel *kernel,
                            const Tensor *padded_input,   // NHWC
                            const Tensor *filter,  // HWIM
@@ -50,7 +50,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
  public:
   DepthwiseConv2dKernel() : old_scratch_size_(0) {}
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -60,8 +60,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   index_t old_scratch_size_;
@@ -72,7 +71,7 @@ class DepthwiseConv2dKernel : public OpenCLDepthwiseConv2dKernel {
 
 template <typename T>
 MaceStatus DepthwiseConv2dKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *filter,
     const Tensor *bias,
@@ -82,8 +81,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
     const int *dilations,
     const ActivationType activation,
     const float relux_max_limit,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   StatsFuture pad_future, dw_conv_future;
   index_t filter_w = filter->dim(3);
 
@@ -178,7 +176,7 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
           context, &kernels_[1], padded_input_ptr, filter, bias, strides,
           dilations, DataTypeToEnum<T>::v(), activation, relux_max_limit,
           input_changed, output, &dw_conv_future));
-  MergeMultipleFutureWaitFn({pad_future, dw_conv_future}, future);
+  MergeMultipleFutureWaitFn({pad_future, dw_conv_future}, context->future());
   return MaceStatus::MACE_SUCCESS;
 }
 

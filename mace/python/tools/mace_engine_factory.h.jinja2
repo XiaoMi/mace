@@ -60,7 +60,7 @@ std::map<std::string, int> model_name_map {
 /// \param output_nodes[in]: the array of output nodes' name
 /// \param config[in]: configurations for MaceEngine.
 /// \param engine[out]: output MaceEngine object
-/// \return MACE_SUCCESS for success, MACE_INVALID_ARGS for wrong arguments,
+/// \return MaceStatus::MACE_SUCCESS for success, MACE_INVALID_ARGS for wrong arguments,
 ///         MACE_OUT_OF_RESOURCES for resources is out of range.
 MaceStatus CreateMaceEngineFromCode(
     const std::string &model_name,

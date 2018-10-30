@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/kernels/activation.h"
-#include "mace/kernels/conv_2d.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -24,7 +23,7 @@ namespace opencl {
 namespace buffer {
 namespace conv2d {
 
-MaceStatus Conv2dGeneral(OpKernelContext *context,
+MaceStatus Conv2dGeneral(OpContext *context,
                          cl::Kernel *kernel,
                          const Tensor *padded_input,
                          const Tensor *filter,
@@ -131,7 +130,7 @@ MaceStatus Conv2dGeneral(OpKernelContext *context,
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key, gws,
                                            lws, future));
   MACE_OUT_OF_RANGE_VALIDATION
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace conv2d

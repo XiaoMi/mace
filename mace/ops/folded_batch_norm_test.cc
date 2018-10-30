@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -51,7 +51,7 @@ void Simple() {
 
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
-    OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+    OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
         .Input("InputNCHW")
         .Input("Scale")
         .Input("Offset")
@@ -68,7 +68,7 @@ void Simple() {
     BufferToImage<D, float>(&net, "Offset", "OffsetImage",
                             kernels::BufferType::ARGUMENT);
 
-    OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+    OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
         .Input("InputImage")
         .Input("ScaleImage")
         .Input("OffsetImage")
@@ -115,7 +115,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
       .Input("Scale")
       .Input("Offset")
@@ -140,7 +140,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
                                         kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputImage")
       .Input("ScaleImage")
       .Input("OffsetImage")
@@ -177,7 +177,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
       .Input("Scale")
       .Input("Offset")
@@ -202,7 +202,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
                                        kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputImage")
       .Input("ScaleImage")
       .Input("OffsetImage")
@@ -240,7 +240,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
       .Input("Scale")
       .Input("Offset")
@@ -265,7 +265,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
                                         kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputImage")
       .Input("ScaleImage")
       .Input("OffsetImage")
@@ -301,7 +301,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputNCHW")
       .Input("Scale")
       .Input("Offset")
@@ -326,7 +326,7 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
   BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
                                        kernels::BufferType::ARGUMENT);
 
-  OpDefBuilder("FoldedBatchNorm", "FoldedBatchNormTest")
+  OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
       .Input("InputImage")
       .Input("ScaleImage")
       .Input("OffsetImage")

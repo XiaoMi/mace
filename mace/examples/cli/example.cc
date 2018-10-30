@@ -170,7 +170,7 @@ bool RunModel(const std::vector<std::string> &input_names,
   status = config.SetCPUThreadPolicy(
       FLAGS_omp_num_threads,
       static_cast<CPUAffinityPolicy >(FLAGS_cpu_affinity_policy));
-  if (status != MACE_SUCCESS) {
+  if (status != MaceStatus::MACE_SUCCESS) {
     std::cerr << "Set openmp or cpu affinity failed." << std::endl;
   }
 #ifdef MACE_ENABLE_OPENCL

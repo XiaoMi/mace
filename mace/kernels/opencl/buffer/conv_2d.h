@@ -14,7 +14,7 @@
 #ifndef MACE_KERNELS_OPENCL_BUFFER_CONV_2D_H_
 #define MACE_KERNELS_OPENCL_BUFFER_CONV_2D_H_
 
-#include "mace/kernels/conv_2d.h"
+#include "mace/kernels/opencl/conv_2d.h"
 
 #include <functional>
 #include <memory>
@@ -29,7 +29,7 @@ namespace opencl {
 namespace buffer {
 namespace conv2d {
 
-extern MaceStatus Conv2d1x1(OpKernelContext *context,
+extern MaceStatus Conv2d1x1(OpContext *context,
                             cl::Kernel *kernel,
                             const Tensor *padded_input,
                             const Tensor *filter,
@@ -42,7 +42,7 @@ extern MaceStatus Conv2d1x1(OpKernelContext *context,
                             Tensor *output,
                             StatsFuture *future);
 
-extern MaceStatus Conv2dGeneral(OpKernelContext *context,
+extern MaceStatus Conv2dGeneral(OpContext *context,
                                 cl::Kernel *kernel,
                                 const Tensor *input,
                                 const Tensor *filter,
@@ -63,7 +63,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
   Conv2dKernel() : old_scratch_size_(0) {}
 
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -73,8 +73,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   index_t old_scratch_size_;
@@ -85,7 +84,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
 
 template <typename T>
 MaceStatus Conv2dKernel<T>::Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -95,8 +94,7 @@ MaceStatus Conv2dKernel<T>::Compute(
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) {
+      Tensor *output) {
   StatsFuture pad_future, conv_future;
   index_t filter_h = filter->dim(2);
   index_t filter_w = filter->dim(3);
@@ -206,7 +204,7 @@ MaceStatus Conv2dKernel<T>::Compute(
     };
   }
   MACE_RETURN_IF_ERROR(conv_func(padded_input_ptr, output));
-  MergeMultipleFutureWaitFn({pad_future, conv_future}, future);
+  MergeMultipleFutureWaitFn({pad_future, conv_future}, context->future());
 
   return MaceStatus::MACE_SUCCESS;
 }

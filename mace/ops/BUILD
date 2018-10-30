@@ -41,34 +41,20 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]),
     deps = [
-        "//mace/ops",
+        "ops",
+        "//mace/kernels",
         "@gtest",
     ],
 )
 
 cc_library(
     name = "ops",
-    srcs = glob(
-        ["*.cc"],
-        exclude = [
-            "*_test.cc",
-            "*_benchmark.cc",
-            "ops_test_util.cc",
-            "buffer_transform.cc",
-            "buffer_inverse_transform.cc",
-            "lstmcell.cc",
-        ],
-    ) + if_opencl_enabled(
-        [
-            "buffer_transform.cc",
-            "buffer_inverse_transform.cc",
-            "lstmcell.cc",
-        ],
-    ),
-    hdrs = glob(
-        ["*.h"],
-        exclude = glob(["*_test_util.h"]),
-    ),
+    srcs = [
+        "ops_def_register.cc",
+    ],
+    hdrs = [
+        "ops_def_register.h",
+    ],
     copts = [
         "-Werror",
         "-Wextra",
@@ -84,7 +70,7 @@ cc_library(
         "-DMACE_ENABLE_HEXAGON",
     ]),
     deps = [
-        "//mace/kernels",
+        "//mace/core",
     ],
 )
 

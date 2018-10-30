@@ -26,7 +26,7 @@ namespace kernels {
 namespace opencl {
 namespace buffer {
 
-MaceStatus PadInput(OpKernelContext *context,
+MaceStatus PadInput(OpContext *context,
                     cl::Kernel *kernel,
                     const Tensor *input,
                     const int pad_top,
@@ -88,7 +88,7 @@ MaceStatus PadInput(OpKernelContext *context,
   MACE_RETURN_IF_ERROR(TuningOrRun2DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, future));
   MACE_OUT_OF_RANGE_VALIDATION
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace buffer

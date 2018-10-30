@@ -487,7 +487,7 @@ class CaffeConverter(base_converter.ConverterInterface):
 
     def convert_folded_batchnorm(self, caffe_op):
         op = self.convert_general_op(caffe_op)
-        op.type = MaceOp.FoldedBatchNorm.name
+        op.type = MaceOp.BatchNorm.name
 
         scale_op = None
         for consumer in self._caffe_net.get_consumers(caffe_op.layer.top[0]):

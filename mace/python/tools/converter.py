@@ -214,6 +214,9 @@ def main(unused_args):
             for arg in cpu_graph_def.arg:
                 if arg.name not in output_graph_arg_names:
                     output_graph_def.arg.extend(arg)
+            for op_type in cpu_graph_def.op_types:
+                if op_type not in output_graph_def.op_types:
+                    output_graph_def.op_types.extend([op_type])
             print("Merge done")
         else:
             option.device = device_type_map[FLAGS.runtime]

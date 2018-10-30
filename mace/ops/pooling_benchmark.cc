@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/pooling.h"
-#include "mace/core/operator.h"
+#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/kernels/pooling.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_SQRDIFF_MEAN_H_
 #define MACE_KERNELS_OPENCL_IMAGE_SQRDIFF_MEAN_H_
 
-#include "mace/kernels/sqrdiff_mean.h"
+#include "mace/kernels/opencl/sqrdiff_mean.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -31,14 +33,11 @@ namespace image {
 template <typename T>
 class SqrDiffMeanKernel : public OpenCLSqrDiffMeanKernel {
  public:
-  SqrDiffMeanKernel() {}
-
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *input1,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -48,11 +47,10 @@ class SqrDiffMeanKernel : public OpenCLSqrDiffMeanKernel {
 
 template <typename T>
 MaceStatus SqrDiffMeanKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input0,
     const Tensor *input1,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_CHECK_NOTNULL(input0);
   MACE_CHECK_NOTNULL(input1);
   MACE_CHECK(input0->dim(0) == input1->dim(0) &&
@@ -156,8 +154,8 @@ MaceStatus SqrDiffMeanKernel<T>::Compute(
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
 
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -165,7 +163,7 @@ MaceStatus SqrDiffMeanKernel<T>::Compute(
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

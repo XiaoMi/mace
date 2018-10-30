@@ -46,14 +46,13 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 }  // namespace
 
 
-MaceStatus Concat2(OpKernelContext *context,
+MaceStatus Concat2(OpContext *context,
                    cl::Kernel *kernel,
                    const Tensor *input0,
                    const Tensor *input1,
                    const DataType dt,
                    std::vector<index_t> *prev_input_shape,
                    Tensor *output,
-                   StatsFuture *future,
                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -112,17 +111,16 @@ MaceStatus Concat2(OpKernelContext *context,
       Concat("concat_opencl_kernel", output->dim(0), output->dim(1),
              output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
-MaceStatus ConcatN(OpKernelContext *context,
+MaceStatus ConcatN(OpContext *context,
                    cl::Kernel *kernel,
                    const std::vector<const Tensor *> &input_list,
                    const DataType dt,
                    Tensor *output,
-                   StatsFuture *future,
                    uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
@@ -185,7 +183,7 @@ MaceStatus ConcatN(OpKernelContext *context,
     }
     MACE_CL_RET_STATUS(error);
     MACE_OUT_OF_RANGE_VALIDATION;
-    if (future != nullptr && runtime->is_profiling_enabled()) {
+    if (context->future() != nullptr && runtime->is_profiling_enabled()) {
       event.wait();
       CallStats tmp_stats;
       runtime->GetCallStats(event, &tmp_stats);
@@ -194,8 +192,8 @@ MaceStatus ConcatN(OpKernelContext *context,
       call_stats.end_micros += tmp_stats.end_micros - tmp_stats.start_micros;
     }
   }
-  if (future != nullptr) {
-    future->wait_fn = [call_stats](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [call_stats](CallStats *stats) {
       if (stats != nullptr) {
         stats->start_micros = call_stats.start_micros;
         stats->end_micros = stats->start_micros + call_stats.end_micros;
@@ -203,7 +201,7 @@ MaceStatus ConcatN(OpKernelContext *context,
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace concat

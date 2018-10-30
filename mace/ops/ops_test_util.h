@@ -32,7 +32,9 @@
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/kernels/opencl/common.h"
-#include "mace/ops/ops_register.h"
+#include "mace/kernels/ops_register.h"
+#include "mace/ops/ops_def_register.h"
+#include "mace/public/mace.h"
 #include "mace/utils/utils.h"
 #include "mace/utils/quantize.h"
 
@@ -139,8 +141,8 @@ class OpTestContext {
 class OpsTestNet {
  public:
   OpsTestNet() :
-    op_registry_(new OperatorRegistry()) {
-  }
+    op_def_registry_(new OpDefRegistry()),
+    op_registry_(new OpRegistry()) {}
 
   template <DeviceType D, typename T>
   void AddInputFromArray(const std::string &name,
@@ -453,16 +455,24 @@ class OpsTestNet {
     NetDef net_def;
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
+      net_def.add_op_types(op_def_.type());
     }
-    net_ = CreateNet(op_registry_, net_def, &ws_,
-                     OpTestContext::Get()->GetDevice(device));
+    net_ = std::unique_ptr<NetBase>(new SerialNet(
+        op_def_registry_.get(),
+        op_registry_.get(),
+        &net_def,
+        &ws_,
+        OpTestContext::Get()->GetDevice(device)));
+    MaceStatus status = net_->Init();
     device_type_ = device;
-    return net_ != nullptr;
+    return status == MaceStatus::MACE_SUCCESS;
   }
 
   MaceStatus Run() {
     MACE_CHECK_NOTNULL(net_);
-    return net_->Run();
+    MACE_RETURN_IF_ERROR(net_->Run());
+    Sync();
+    return MaceStatus::MACE_SUCCESS;
   }
 
   // DEPRECATED(liyin):
@@ -477,7 +487,7 @@ class OpsTestNet {
         Setup(device);
         MACE_RETURN_IF_ERROR(Run());
       }
-      return MACE_SUCCESS;
+      return MaceStatus::MACE_SUCCESS;
     } else {
       Setup(device);
       return Run();
@@ -491,14 +501,22 @@ class OpsTestNet {
 
   MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
     device_type_ = device;
-    net_ = CreateNet(op_registry_,
-                     net_def,
-                     &ws_,
-                     OpTestContext::Get()->GetDevice(device),
-                     NetMode::INIT);
-    MACE_RETURN_IF_ERROR(net_->Run());
-    net_ = CreateNet(op_registry_, net_def, &ws_,
-                     OpTestContext::Get()->GetDevice(device));
+    auto net = std::unique_ptr<NetBase>(new SerialNet(
+        op_def_registry_.get(),
+        op_registry_.get(),
+        &net_def,
+        &ws_,
+        OpTestContext::Get()->GetDevice(device),
+        NetMode::INIT));
+    MACE_RETURN_IF_ERROR(net->Init());
+    MACE_RETURN_IF_ERROR(net->Run());
+    net_ = std::unique_ptr<NetBase>(new SerialNet(
+        op_def_registry_.get(),
+        op_registry_.get(),
+        &net_def,
+        &ws_,
+        OpTestContext::Get()->GetDevice(device)));
+    MACE_RETURN_IF_ERROR(net_->Init());
     return net_->Run();
   }
 
@@ -520,7 +538,8 @@ class OpsTestNet {
   }
 
  public:
-  std::shared_ptr<OperatorRegistryBase> op_registry_;
+  std::shared_ptr<OpDefRegistryBase> op_def_registry_;
+  std::shared_ptr<OpRegistryBase> op_registry_;
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
   std::unique_ptr<NetBase> net_;

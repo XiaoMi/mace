@@ -353,7 +353,7 @@ class Transformer(base_converter.ConverterInterface):
                         and consumer_op.input[1] in self._consts \
                         and len(self._consts[consumer_op.input[1]].dims) == 1:
                     print("Fold batchnorm: %s(%s)" % (op.name, op.type))
-                    consumer_op.type = MaceOp.FoldedBatchNorm.name
+                    consumer_op.type = MaceOp.BatchNorm.name
                     consumer_op.input[:] = [op.input[0], op.input[1],
                                             consumer_op.input[1]]
 
@@ -544,7 +544,7 @@ class Transformer(base_converter.ConverterInterface):
             if (op.type == MaceOp.Conv2D.name) \
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
-                if consumer_op.type == MaceOp.FoldedBatchNorm.name:
+                if consumer_op.type == MaceOp.BatchNorm.name:
                     print("Fold conv and bn: %s(%s)" % (op.name, op.type))
                     filter = self._consts[op.input[1]]
                     scale = self._consts[consumer_op.input[1]]
@@ -584,7 +584,7 @@ class Transformer(base_converter.ConverterInterface):
             if (op.type == MaceOp.Deconv2D.name) \
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
-                if consumer_op.type == MaceOp.FoldedBatchNorm.name:
+                if consumer_op.type == MaceOp.BatchNorm.name:
                     print("Fold deconv and bn: %s(%s)" % (op.name, op.type))
                     filter = self._consts[op.input[1]]
                     scale = self._consts[consumer_op.input[1]]
@@ -627,7 +627,7 @@ class Transformer(base_converter.ConverterInterface):
             if op.type == MaceOp.DepthwiseConv2d.name \
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
-                if consumer_op.type == MaceOp.FoldedBatchNorm.name:
+                if consumer_op.type == MaceOp.BatchNorm.name:
                     print("Fold depthwise conv and bn: %s(%s)"
                           % (op.name, op.type))
                     filter = self._consts[op.input[1]]
@@ -989,7 +989,7 @@ class Transformer(base_converter.ConverterInterface):
                 or op.type == MaceOp.Deconv2D.name
                 or op.type == MaceOp.DepthwiseConv2d.name
                 or op.type == MaceOp.FullyConnected.name
-                or op.type == MaceOp.FoldedBatchNorm.name
+                or op.type == MaceOp.BatchNorm.name
                 or op.type == MaceOp.WinogradInverseTransform.name) \
                     and len(self._consumers.get(op.output[0], [])) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
@@ -1450,7 +1450,7 @@ class Transformer(base_converter.ConverterInterface):
                 if op.input[1] in self._consts \
                         and len(self._consts[op.input[1]].dims) == 1:
                     self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.FoldedBatchNorm.name:
+            elif op.type == MaceOp.BatchNorm.name:
                 self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
                 self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
                 if len(op.input) >= 4:
@@ -1712,6 +1712,14 @@ class Transformer(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
 
+    def add_op_types(self):
+        net = self._model
+        op_types = set()
+        for op in net.op:
+            op_types.add(op.type)
+        for op_type in op_types:
+            net.op_types.extend([op_type])
+
     def sort_by_execution(self):
         print("Sort by execution")
         net = self._model
@@ -1727,6 +1735,8 @@ class Transformer(base_converter.ConverterInterface):
 
         del net.op[:]
         net.op.extend(sorted_nodes)
+
+        self.add_op_types()
 
         print("Final ops:")
         for op in net.op:

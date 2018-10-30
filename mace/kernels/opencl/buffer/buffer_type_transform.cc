@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mace/core/op_context.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
-#include "mace/kernels/activation.h"
-#include "mace/kernels/conv_2d.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
-#include "mace/utils/tuner.h"
 
 namespace mace {
 namespace kernels {
@@ -25,12 +24,11 @@ namespace buffer {
 
 
 MaceStatus BufferTypeTransform(
-    OpKernelContext *context,
+    OpContext *context,
     cl::Kernel *kernel,
     const Tensor *input,
     const DataType dt,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   MACE_RETURN_IF_ERROR(output->ResizeLike(input));
 
   auto runtime = context->device()->opencl_runtime();
@@ -80,8 +78,8 @@ MaceStatus BufferTypeTransform(
   }
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -90,7 +88,7 @@ MaceStatus BufferTypeTransform(
   }
   // Mark the buffer unused.
   const_cast<Tensor *>(input)->MarkUnused();
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace buffer

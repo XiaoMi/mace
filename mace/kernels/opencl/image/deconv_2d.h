@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_DECONV_2D_H_
 #define MACE_KERNELS_OPENCL_IMAGE_DECONV_2D_H_
 
-#include "mace/kernels/deconv_2d.h"
+#include "mace/kernels/opencl/deconv_2d.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,7 +34,7 @@ template <typename T>
 class Deconv2dKernel : public OpenCLDeconv2dKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -41,8 +43,7 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
       const ActivationType activation,
       const float relux_max_limit,
       const std::vector<index_t> &output_shape,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -52,7 +53,7 @@ class Deconv2dKernel : public OpenCLDeconv2dKernel {
 
 template <typename T>
 MaceStatus Deconv2dKernel<T>::Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *filter,
       const Tensor *bias,
@@ -61,8 +62,7 @@ MaceStatus Deconv2dKernel<T>::Compute(
       const ActivationType activation,
       const float relux_max_limit,
       const std::vector<index_t> &output_shape,
-      Tensor *output,
-      StatsFuture *future) {
+      Tensor *output) {
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
                   &output_image_shape);
@@ -174,10 +174,10 @@ MaceStatus Deconv2dKernel<T>::Compute(
       Concat("deconv2d_opencl_kernel_", activation, output->dim(0),
              output->dim(1), output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
 
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

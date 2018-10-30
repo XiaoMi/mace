@@ -33,8 +33,8 @@ namespace mace {
   CLASSNAME &operator=(const CLASSNAME &) = delete
 #endif
 
-#ifndef MACE_VIRTUAL_EMPTY_DESTRUCTOR
-#define MACE_VIRTUAL_EMPTY_DESTRUCTOR(CLASSNAME) \
+#ifndef MACE_EMPTY_VIRTUAL_DESTRUCTOR
+#define MACE_EMPTY_VIRTUAL_DESTRUCTOR(CLASSNAME) \
  public:                                         \
   virtual ~CLASSNAME() {}
 #endif

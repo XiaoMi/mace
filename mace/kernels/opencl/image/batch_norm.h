@@ -14,13 +14,16 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_BATCH_NORM_H_
 #define MACE_KERNELS_OPENCL_IMAGE_BATCH_NORM_H_
 
-#include "mace/kernels/batch_norm.h"
+#include "mace/kernels/opencl/batch_norm.h"
 
 #include <memory>
 #include <vector>
 #include <set>
 #include <string>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
+#include "mace/kernels/activation.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,21 +35,19 @@ template <typename T>
 class BatchNormKernel : public OpenCLBatchNormKernel {
  public:
   BatchNormKernel(
-      const bool folded_constant,
+      const float epsilon,
       const ActivationType activation,
       const float relux_max_limit);
-  MaceStatus Compute(OpKernelContext *context,
+  MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const Tensor *scale,
                      const Tensor *offset,
                      const Tensor *mean,
                      const Tensor *var,
-                     const float epsilon,
-                     Tensor *output,
-                     StatsFuture *future) override;
+                     Tensor *output) override;
 
  private:
-  const bool folded_constant_;
+  const float epsilon_;
   const ActivationType activation_;
   const float relux_max_limit_;
   cl::Kernel kernel_;
@@ -55,25 +56,23 @@ class BatchNormKernel : public OpenCLBatchNormKernel {
 };
 
 template <typename T>
-BatchNormKernel<T>::BatchNormKernel(const bool folded_constant,
+BatchNormKernel<T>::BatchNormKernel(const float epsilon,
                                     const ActivationType activation,
                                     const float relux_max_limit)
-    : folded_constant_(folded_constant),
+    : epsilon_(epsilon),
       activation_(activation),
       relux_max_limit_(relux_max_limit) {}
 
 template <typename T>
 MaceStatus BatchNormKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *scale,
     const Tensor *offset,
     const Tensor *mean,
     const Tensor *var,
-    const float epsilon,
-    Tensor *output,
-    StatsFuture *future) {
-  MACE_CHECK(folded_constant_ || (mean != nullptr && var != nullptr));
+    Tensor *output) {
+  bool not_folded = (mean != nullptr && var != nullptr);
 
   const index_t batch = input->dim(0);
   const index_t height = input->dim(1);
@@ -98,7 +97,7 @@ MaceStatus BatchNormKernel<T>::Compute(
     built_options.emplace("-Dbatch_norm=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
-    if (folded_constant_) {
+    if (!not_folded) {
       built_options.emplace("-DFOLDED_CONSTANT");
     }
     switch (activation_) {
@@ -134,10 +133,10 @@ MaceStatus BatchNormKernel<T>::Compute(
     kernel_.setArg(idx++, *(input->opencl_image()));
     kernel_.setArg(idx++, *(scale->opencl_image()));
     kernel_.setArg(idx++, *(offset->opencl_image()));
-    if (!folded_constant_) {
+    if (not_folded) {
       kernel_.setArg(idx++, *(mean->opencl_image()));
       kernel_.setArg(idx++, *(var->opencl_image()));
-      kernel_.setArg(idx++, epsilon);
+      kernel_.setArg(idx++, epsilon_);
     }
     kernel_.setArg(idx++, *(output->opencl_image()));
     kernel_.setArg(idx++, relux_max_limit_);
@@ -148,11 +147,11 @@ MaceStatus BatchNormKernel<T>::Compute(
   const std::vector<uint32_t> lws = Default3DLocalWS(runtime, gws, kwg_size_);
   std::string tuning_key =
       Concat("batch_norm_opencl_kernel", activation_, output->dim(0),
-             output->dim(1), output->dim(2), output->dim(3), folded_constant_);
+             output->dim(1), output->dim(2), output->dim(3));
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, kernel_, tuning_key,
-                                           gws, lws, future));
+                                           gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION;
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

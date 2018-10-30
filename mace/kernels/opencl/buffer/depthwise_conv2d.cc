@@ -23,7 +23,7 @@ namespace opencl {
 namespace buffer {
 namespace depthwise {
 
-MaceStatus DepthwiseConv2d(OpKernelContext *context,
+MaceStatus DepthwiseConv2d(OpContext *context,
                            cl::Kernel *kernel,
                            const Tensor *padded_input,   // NHWC
                            const Tensor *filter,  // HWIM
@@ -127,7 +127,7 @@ MaceStatus DepthwiseConv2d(OpKernelContext *context,
                                            gws, lws, future));
 
   MACE_OUT_OF_RANGE_VALIDATION
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace depthwise

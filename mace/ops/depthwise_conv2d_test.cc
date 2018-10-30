@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/ops/conv_2d.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

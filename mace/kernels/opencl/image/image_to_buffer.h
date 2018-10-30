@@ -19,7 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "mace/kernels/buffer_inverse_transform.h"
+#include "mace/core/op_context.h"
+#include "mace/kernels/opencl/buffer_inverse_transform.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -30,12 +31,11 @@ namespace image {
 template <typename T>
 class ImageToBuffer : public OpenCLBufferInverseTransformKernel {
  public:
-  MaceStatus Compute(OpKernelContext *context,
+  MaceStatus Compute(OpContext *context,
                      const Tensor *input,
                      const BufferType type,
                      const int wino_blk_size,
-                     Tensor *output,
-                     StatsFuture *future) override;
+                     Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -43,12 +43,11 @@ class ImageToBuffer : public OpenCLBufferInverseTransformKernel {
 };
 
 template <typename T>
-MaceStatus ImageToBuffer<T>::Compute(OpKernelContext *context,
+MaceStatus ImageToBuffer<T>::Compute(OpContext *context,
                                      const Tensor *input,
                                      const BufferType type,
                                      const int wino_blk_size,
-                                     Tensor *output,
-                                     StatsFuture *future) {
+                                     Tensor *output) {
   auto formatted_buffer_shape = FormatBufferShape(input->shape(), type);
   std::vector<size_t> image_shape;
   CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size);
@@ -172,8 +171,8 @@ MaceStatus ImageToBuffer<T>::Compute(OpKernelContext *context,
   }
   MACE_CL_RET_STATUS(error);
   MACE_OUT_OF_RANGE_VALIDATION;
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -181,7 +180,7 @@ MaceStatus ImageToBuffer<T>::Compute(OpKernelContext *context,
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

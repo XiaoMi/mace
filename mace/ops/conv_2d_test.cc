@@ -15,8 +15,7 @@
 #include <fstream>
 #include <vector>
 
-#include "mace/kernels/quantize.h"
-#include "mace/ops/conv_2d.h"
+#include "mace/kernels/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {

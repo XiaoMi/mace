@@ -14,13 +14,15 @@
 #ifndef MACE_KERNELS_OPENCL_IMAGE_FULLY_CONNECTED_H_
 #define MACE_KERNELS_OPENCL_IMAGE_FULLY_CONNECTED_H_
 
-#include "mace/kernels/fully_connected.h"
+#include "mace/kernels/opencl/fully_connected.h"
 
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "mace/core/op_context.h"
+#include "mace/core/tensor.h"
 #include "mace/kernels/opencl/helper.h"
 
 namespace mace {
@@ -32,14 +34,13 @@ template <typename T>
 class FullyConnectedKernel : public OpenCLFullyConnectedKernel {
  public:
   MaceStatus Compute(
-      OpKernelContext *context,
+      OpContext *context,
       const Tensor *input,
       const Tensor *weight,
       const Tensor *bias,
       const ActivationType activation,
       const float relux_max_limit,
-      Tensor *output,
-      StatsFuture *future) override;
+      Tensor *output) override;
 
  private:
   cl::Kernel kernel_;
@@ -50,14 +51,13 @@ class FullyConnectedKernel : public OpenCLFullyConnectedKernel {
 
 template <typename T>
 MaceStatus FullyConnectedKernel<T>::Compute(
-    OpKernelContext *context,
+    OpContext *context,
     const Tensor *input,
     const Tensor *weight,
     const Tensor *bias,
     const ActivationType activation,
     const float relux_max_limit,
-    Tensor *output,
-    StatsFuture *future) {
+    Tensor *output) {
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
   std::vector<size_t> output_image_shape;
   CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
@@ -170,8 +170,8 @@ MaceStatus FullyConnectedKernel<T>::Compute(
   MACE_OUT_OF_RANGE_VALIDATION;
   MACE_CL_RET_STATUS(error);
 
-  if (future != nullptr) {
-    future->wait_fn = [runtime, event](CallStats *stats) {
+  if (context->future() != nullptr) {
+    context->future()->wait_fn = [runtime, event](CallStats *stats) {
       event.wait();
       if (stats != nullptr) {
         runtime->GetCallStats(event, stats);
@@ -179,7 +179,7 @@ MaceStatus FullyConnectedKernel<T>::Compute(
     };
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace image

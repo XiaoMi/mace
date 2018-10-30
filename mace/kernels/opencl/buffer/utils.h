@@ -16,7 +16,7 @@
 #define MACE_KERNELS_OPENCL_BUFFER_UTILS_H_
 
 #include "mace/core/future.h"
-#include "mace/core/op_kernel_context.h"
+#include "mace/core/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/public/mace.h"
 
@@ -25,7 +25,7 @@ namespace kernels {
 namespace opencl {
 namespace buffer {
 
-MaceStatus PadInput(OpKernelContext *context,
+MaceStatus PadInput(OpContext *context,
                     cl::Kernel *kernel,
                     const Tensor *input,
                     const int pad_top,

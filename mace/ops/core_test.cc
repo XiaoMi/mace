@@ -52,17 +52,26 @@ TEST(CoreTest, INIT_MODE) {
   NetDef net_def;
   for (auto &op_def : op_defs) {
     net_def.add_op()->CopyFrom(op_def);
+    net_def.add_op_types(op_def.type());
   }
-  std::shared_ptr<OperatorRegistryBase> op_registry(new OperatorRegistry());
-  auto net =
-      CreateNet(op_registry, net_def, &ws, device, NetMode::INIT);
-  net->Run();
+  std::shared_ptr<OpDefRegistryBase> op_def_registry(new OpDefRegistry());
+  std::shared_ptr<OpRegistryBase> op_registry(new OpRegistry());
+  auto net = std::unique_ptr<NetBase>(new SerialNet(
+      op_def_registry.get(), op_registry.get(), &net_def, &ws, device,
+      NetMode::INIT));
+  MaceStatus status = net->Init();
+  MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
+  status = net->Run();
+  MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
 
   EXPECT_TRUE(ws.GetTensor("B2IOutput") != nullptr);
   EXPECT_TRUE(ws.GetTensor("Output") == nullptr);
-
-  net = CreateNet(op_registry, net_def, &ws, device);
-  net->Run();
+  net = std::unique_ptr<NetBase>(new SerialNet(
+      op_def_registry.get(), op_registry.get(), &net_def, &ws, device));
+  status = net->Init();
+  MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
+  status = net->Run();
+  MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
   EXPECT_TRUE(ws.GetTensor("Output") != nullptr);
 
   ExpectTensorNear<float>(*ws.GetTensor("Input"), *ws.GetTensor("Output"),

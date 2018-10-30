@@ -362,7 +362,7 @@ MaceStatus ConstructNCHWInputWithPadding(const Tensor *input_tensor,
     }
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
@@ -408,7 +408,7 @@ MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
     }
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 
@@ -460,7 +460,7 @@ MaceStatus ConstructNHWCInputWithPadding(const Tensor *input_tensor,
     }
   }
 
-  return MACE_SUCCESS;
+  return MaceStatus::MACE_SUCCESS;
 }
 
 }  // namespace kernels
