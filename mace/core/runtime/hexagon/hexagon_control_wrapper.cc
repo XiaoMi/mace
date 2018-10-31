@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <sys/time.h>
+#include <algorithm>
+#include <iomanip>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
 #include <unordered_map>
@@ -42,6 +44,53 @@ enum {
   NN_GRAPH_PERFEVENT_HWPMU = 3,
   NN_GRAPH_PERFEVENT_UTIME = 5,
 };
+
+namespace {
+struct InputOutputMetadata{
+  void Init(float min_val, float max_val, int needs_quantization) {
+    this->min_val = min_val;
+    this->max_val = max_val;
+    this->needs_quantization = needs_quantization;
+  }
+  float min_val;
+  float max_val;
+  int needs_quantization;
+};
+
+template <typename T>
+void AddInputMetadata(const T &data, hexagon_nn_tensordef *tensor) {
+  tensor->batches = 1;
+  tensor->height = 1;
+  tensor->width = 1;
+  tensor->depth = 1;
+  tensor->data = const_cast<unsigned char *>(
+      reinterpret_cast<const unsigned char *>(&data));
+  tensor->dataLen = sizeof(data);
+  tensor->data_valid_len = sizeof(data);
+  tensor->unused = 0;
+}
+
+template <typename T>
+void AddOutputMetadata(const T &data, hexagon_nn_tensordef *tensor) {
+  tensor->data = const_cast<unsigned char *>(
+      reinterpret_cast<const unsigned char *>(&data));
+  tensor->dataLen = sizeof(data);
+}
+
+template <typename IntType>
+std::string IntToString(const IntType v) {
+  std::stringstream stream;
+  stream << v;
+  return stream.str();
+}
+
+template <typename FloatType>
+std::string FloatToString(const FloatType v, const int32_t precision) {
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(precision) << v;
+  return stream.str();
+}
+}  // namespace
 
 int HexagonControlWrapper::GetVersion() {
   int version;
@@ -299,9 +348,15 @@ void HexagonControlWrapper::GetPerfInfo() {
 
   std::unordered_map<uint32_t, float> node_id_counters;
   std::unordered_map<std::string, std::pair<int, float>> node_type_counters;
+  std::vector<std::string> node_types;
   float total_duration = 0.0;
 
   VLOG(1) << "items: " << n_items;
+  std::string run_order_title = "Sort by Run Order";
+  const std::vector<std::string> run_order_header = {
+      "Node Id", "Node Type", "Node Type Id", "Executions", "Duration(ms)"
+  };
+  std::vector<std::vector<std::string>> run_order_data;
   for (unsigned int i = 0; i < n_items; ++i) {
     unsigned int node_id = perf_info[i].node_id;
     unsigned int node_type_id = perf_info[i].node_type;
@@ -313,27 +368,48 @@ void HexagonControlWrapper::GetPerfInfo() {
     char node_type_buf[MACE_MAX_NODE];
     hexagon_nn_op_id_to_name(node_type_id, node_type_buf, MACE_MAX_NODE);
     std::string node_type(node_type_buf);
-    LOG(INFO) << "node id: " << perf_info[i].node_id
-              << ", node type: " << node_type
-              << ", node type id: " << node_type_id
-              << ", executions: " << perf_info[i].executions
-              << ", duration: " << node_id_counters[node_id];
+    if (node_type.compare("Const") == 0) continue;
+    std::vector<std::string> tuple;
+    tuple.push_back(IntToString(perf_info[i].node_id));
+    tuple.push_back(node_type);
+    tuple.push_back(IntToString(node_type_id));
+    tuple.push_back(IntToString(perf_info[i].executions));
+    tuple.push_back(FloatToString(node_id_counters[node_id] / 1000.0f, 3));
+    run_order_data.emplace_back(tuple);
 
     if (node_type_counters.find(node_type) == node_type_counters.end()) {
       node_type_counters[node_type] = {0, 0.0};
+      node_types.push_back(node_type);
     }
     ++node_type_counters[node_type].first;
     node_type_counters[node_type].second += node_id_counters[node_id];
-    if (node_type.compare("Const") != 0) {
-      total_duration += node_id_counters[node_id];
-    }
+    total_duration += node_id_counters[node_id];
   }
 
-  for (auto &node_type_counter : node_type_counters) {
-    LOG(INFO) << "node type: " << node_type_counter.first
-              << ", time: " << node_type_counter.second.first
-              << ", duration: " << node_type_counter.second.second;
+  std::sort(node_types.begin(), node_types.end(),
+            [&](const std::string &lhs, const std::string &rhs) {
+              return node_type_counters[lhs].second
+                  > node_type_counters[rhs].second;
+            });
+
+  std::string duration_title = "Sort by Duration";
+  const std::vector<std::string> duration_header = {
+      "Node Type", "Times", "Duration(ms)"
+  };
+  std::vector<std::vector<std::string>> duration_data;
+  for (auto &node_type : node_types) {
+    auto node_type_counter = node_type_counters[node_type];
+    std::vector<std::string> tuple;
+    tuple.push_back(node_type);
+    tuple.push_back(IntToString(node_type_counter.first));
+    tuple.push_back(FloatToString(node_type_counter.second / 1000.0f, 3));
+    duration_data.emplace_back(tuple);
   }
+
+  LOG(INFO) << mace::string_util::StringFormatter::Table(
+      run_order_title, run_order_header, run_order_data);
+  LOG(INFO) << mace::string_util::StringFormatter::Table(
+      duration_title, duration_header, duration_data);
   LOG(INFO) << "total duration: " << std::fixed << total_duration;
 }
 
@@ -382,45 +458,64 @@ bool HexagonControlWrapper::ExecuteGraph(const Tensor &input_tensor,
 }
 
 bool HexagonControlWrapper::ExecuteGraphNew(
-    const std::vector<Tensor> &input_tensors,
-    std::vector<Tensor> *output_tensors) {
+    const std::vector<Tensor *> &input_tensors,
+    std::vector<Tensor *> *output_tensors) {
   LOG(INFO) << "Execute graph new: " << nn_id_;
   uint32_t num_inputs = static_cast<uint32_t>(input_tensors.size());
   uint32_t num_outputs = static_cast<uint32_t>(output_tensors->size());
   MACE_ASSERT(num_inputs_ == num_inputs, "Wrong inputs num");
   MACE_ASSERT(num_outputs_ == num_outputs, "Wrong outputs num");
 
-  hexagon_nn_tensordef *inputs = new hexagon_nn_tensordef[num_inputs];
-  hexagon_nn_tensordef *outputs = new hexagon_nn_tensordef[num_outputs];
+  std::vector<hexagon_nn_tensordef> inputs(num_inputs * NUM_METADATA);
+  std::vector<hexagon_nn_tensordef> outputs(num_outputs * NUM_METADATA);
+  std::vector<InputOutputMetadata> input_metadata(num_inputs);
+  std::vector<InputOutputMetadata> output_metadata(num_outputs);
 
   for (size_t i = 0; i < num_inputs; ++i) {
-    std::vector<index_t> input_shape = input_tensors[i].shape();
-    inputs[i].batches = static_cast<uint32_t>(input_shape[0]);
-    inputs[i].height = static_cast<uint32_t>(input_shape[1]);
-    inputs[i].width = static_cast<uint32_t>(input_shape[2]);
-    inputs[i].depth = static_cast<uint32_t>(input_shape[3]);
-    inputs[i].data = const_cast<unsigned char *>(
-        reinterpret_cast<const unsigned char *>(input_tensors[i].raw_data()));
-    inputs[i].dataLen = static_cast<int>(input_tensors[i].raw_size());
-    inputs[i].data_valid_len = static_cast<uint32_t>(
-        input_tensors[i].raw_size());
-    inputs[i].unused = 0;
+    std::vector<index_t> input_shape = input_tensors[i]->shape();
+    size_t index = i * NUM_METADATA;
+    inputs[index].batches = static_cast<uint32_t>(input_shape[0]);
+    inputs[index].height = static_cast<uint32_t>(input_shape[1]);
+    inputs[index].width = static_cast<uint32_t>(input_shape[2]);
+    inputs[index].depth = static_cast<uint32_t>(input_shape[3]);
+    inputs[index].data = const_cast<unsigned char *>(
+        reinterpret_cast<const unsigned char *>(input_tensors[i]->raw_data()));
+    inputs[index].dataLen = static_cast<int>(input_tensors[i]->raw_size());
+    inputs[index].data_valid_len = static_cast<uint32_t>(
+        input_tensors[i]->raw_size());
+    inputs[index].unused = 0;
+    input_metadata[i].Init(.0f, .0f, 1);
+    AddInputMetadata(input_metadata[i].min_val, &inputs[index + 1]);
+    AddInputMetadata(input_metadata[i].max_val, &inputs[index + 2]);
+    AddInputMetadata(input_metadata[i].needs_quantization, &inputs[index + 3]);
   }
 
   for (size_t i = 0; i < num_outputs; ++i) {
-    (*output_tensors)[i].SetDtype(output_data_types_[i]);
-    (*output_tensors)[i].Resize(output_shapes_[i]);
-    outputs[i].data = reinterpret_cast<unsigned char *>(
-        (*output_tensors)[i].raw_mutable_data());
-    outputs[i].dataLen = static_cast<int>((*output_tensors)[i].raw_size());
+    size_t index = i * NUM_METADATA;
+    (*output_tensors)[i]->SetDtype(output_data_types_[i]);
+    (*output_tensors)[i]->Resize(output_shapes_[i]);
+    outputs[index].data = reinterpret_cast<unsigned char *>(
+        (*output_tensors)[i]->raw_mutable_data());
+    outputs[index].dataLen = static_cast<int>((*output_tensors)[i]->raw_size());
+    output_metadata[i].Init(.0f, .0f, 1);
+    AddOutputMetadata(output_metadata[i].min_val, &outputs[index + 1]);
+    AddOutputMetadata(output_metadata[i].max_val, &outputs[index + 2]);
+    AddOutputMetadata(output_metadata[i].needs_quantization,
+                      &outputs[index + 3]);
   }
 
   int res =
-      hexagon_nn_execute_new(nn_id_, inputs, num_inputs, outputs, num_outputs);
+      hexagon_nn_execute_new(nn_id_,
+                             inputs.data(),
+                             num_inputs * NUM_METADATA,
+                             outputs.data(),
+                             num_outputs * NUM_METADATA);
 
   for (size_t i = 0; i < num_outputs; ++i) {
-    std::vector<uint32_t> output_shape{outputs[i].batches, outputs[i].height,
-                                       outputs[i].width, outputs[i].depth};
+    size_t index = i * NUM_METADATA;
+    std::vector<uint32_t> output_shape{
+        outputs[index].batches, outputs[index].height, outputs[index].width,
+        outputs[index].depth};
     MACE_ASSERT(output_shape.size() == output_shapes_[i].size(),
                 "wrong output shape inferred");
     for (size_t j = 0; j < output_shape.size(); ++j) {
@@ -428,40 +523,12 @@ bool HexagonControlWrapper::ExecuteGraphNew(
                       == output_shapes_[i][j],
                   "wrong output shape inferred");
     }
-    MACE_ASSERT(static_cast<index_t>(outputs[i].data_valid_len)
-                    == (*output_tensors)[i].raw_size(),
+    MACE_ASSERT(static_cast<index_t>(outputs[index].data_valid_len)
+                    == (*output_tensors)[i]->raw_size(),
                 "wrong output bytes inferred.");
   }
 
-  delete[] inputs;
-  delete[] outputs;
   return res == 0;
-}
-
-bool HexagonControlWrapper::ExecuteGraphPreQuantize(const Tensor &input_tensor,
-                                                    Tensor *output_tensor) {
-  std::vector<Tensor> input_tensors(3);
-  std::vector<Tensor> output_tensors(3);
-  input_tensors[0].SetDtype(DT_UINT8);
-  output_tensors[0].SetDtype(DT_UINT8);
-  input_tensors[0].ResizeLike(input_tensor);
-  input_tensors[1].Resize({1, 1, 1, 1});
-  float *min_in_data = input_tensors[1].mutable_data<float>();
-  input_tensors[2].Resize({1, 1, 1, 1});
-  float *max_in_data = input_tensors[2].mutable_data<float>();
-  quantizer_.Quantize(input_tensor, &input_tensors[0], min_in_data,
-                      max_in_data);
-  if (!ExecuteGraphNew(input_tensors, &output_tensors)) {
-    return false;
-  }
-
-  output_tensor->ResizeLike(output_tensors[0]);
-
-  const float *min_out_data = output_tensors[1].data<float>();
-  const float *max_out_data = output_tensors[2].data<float>();
-  quantizer_.DeQuantize(output_tensors[0], *min_out_data, *max_out_data,
-                        output_tensor);
-  return true;
 }
 
 }  // namespace mace
