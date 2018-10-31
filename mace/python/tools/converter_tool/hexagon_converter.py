@@ -31,10 +31,8 @@ from operator import mul
 class HexagonOps(object):
     def __init__(self):
         self.hexagon_ops = {
-            'INPUT': 'INPUT',
-            'OUTPUT': 'OUTPUT',
-            'Quantize': 'Quantize',
-            'Dequantize': 'Dequantize',
+            'Quantize': 'QuantizeINPUT_f_to_8',
+            'Dequantize': 'DequantizeOUTPUT_8tof',
             'Concat': 'QuantizedConcat_8',
             'Conv2D': 'Supernode_8x8p32to8',
             'DepthwiseConv2d': 'DepthwiseSupernode_8x8p32to8',
@@ -78,6 +76,10 @@ def get_op_and_port_from_tensor(tensor_name):
     return op, port
 
 
+def normalize_name(name):
+    return name.replace(':', '_')
+
+
 class HexagonConverter(base_converter.ConverterInterface):
     def __init__(self, option, model, quantize_activation_info):
         self._option = option
@@ -99,7 +101,10 @@ class HexagonConverter(base_converter.ConverterInterface):
 
         self.add_input_output_node()
 
-        self._model = graph_util.sort_mace_graph(self._model, '__output__')
+        output_name = MaceKeyword.mace_output_node_name + '_' \
+            + self._option.output_nodes.values()[0].name
+        output_name = normalize_name(output_name)
+        self._model = graph_util.sort_mace_graph(self._model, output_name)
 
         self.add_node_id()
 
@@ -293,23 +298,9 @@ class HexagonConverter(base_converter.ConverterInterface):
 
     def add_input_output_node(self):
         input_node = self._option.input_nodes.values()[0]
-        op_def = self._model.op.add()
-        op_def.name = '__input__'
-        op_def.type = 'INPUT'
-        shape = op_def.output_shape.add()
-        shape.dims.extend(input_node.shape)
-        op_def.output_type.extend([mace_pb2.DT_FLOAT])
-        out_max_byte_size = reduce(mul, shape.dims)
-        op_def.out_max_byte_size.extend([out_max_byte_size])
         for op in self._model.op:
             if op.name == input_node.name:
                 del op.input[0]
-                input_name = op_def.name + ':0'
-                op.input.extend([input_name])
-                self._consts[input_name] = \
-                    self._quantize_activation_info[input_node.name]
-                self.add_min_max_const_node(op, input_name)
-                del self._consts[input_name]
                 break
 
         output_node = None
@@ -317,6 +308,7 @@ class HexagonConverter(base_converter.ConverterInterface):
             output_name = self._option.output_nodes.values()[0].name
         else:
             output_name = self._option.check_nodes.values()[0].name
+        output_name = normalize_name(output_name)
         for op in self._model.op:
             if op.name.startswith(MaceKeyword.mace_output_node_name) \
                     and op.name.find(output_name) != -1:
@@ -324,10 +316,9 @@ class HexagonConverter(base_converter.ConverterInterface):
                 break
         mace_check(output_node is not None,
                    "mace_output_node_* not found.")
-        op_def = self._model.op.add()
-        op_def.name = '__output__'
-        op_def.type = 'OUTPUT'
-        op_def.input.extend([get_tensor_name_from_op(output_node.name, 0)])
+        del output_node.output_shape[:]
+        del output_node.output_type[:]
+        del output_node.out_max_byte_size[:]
 
     def add_node_id(self):
         node_id_counter = 0

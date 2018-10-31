@@ -33,10 +33,8 @@ class HexagonControlWrapper {
   bool Finalize();
   bool SetupGraph(const NetDef &net_def, const unsigned char *model_data);
   bool ExecuteGraph(const Tensor &input_tensor, Tensor *output_tensor);
-  bool ExecuteGraphNew(const std::vector<Tensor> &input_tensors,
-                       std::vector<Tensor> *output_tensors);
-  bool ExecuteGraphPreQuantize(const Tensor &input_tensor,
-                               Tensor *output_tensor);
+  bool ExecuteGraphNew(const std::vector<Tensor *> &input_tensors,
+                       std::vector<Tensor *> *output_tensors);
 
   bool TeardownGraph();
   void PrintLog();
@@ -47,6 +45,7 @@ class HexagonControlWrapper {
 
  private:
   static constexpr int NODE_ID_OFFSET = 10000;
+  static constexpr int NUM_METADATA = 4;
 
   inline uint32_t node_id(uint32_t nodeid) { return NODE_ID_OFFSET + nodeid; }
 

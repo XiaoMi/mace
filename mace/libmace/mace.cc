@@ -567,7 +567,7 @@ MaceStatus MaceEngine::Impl::Run(
   if (device_type_ == HEXAGON) {
     MACE_CHECK(input_tensors.size() == 1 && output_tensors.size() == 1,
                "HEXAGON not support multiple inputs and outputs yet.");
-    hexagon_controller_->ExecuteGraph(*input_tensors[0], output_tensors[0]);
+    hexagon_controller_->ExecuteGraphNew(input_tensors, &output_tensors);
   } else {
 #endif
     MACE_RETURN_IF_ERROR(net_->Run(run_metadata));
