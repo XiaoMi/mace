@@ -100,9 +100,11 @@ class HexagonConverter(base_converter.ConverterInterface):
         self.convert_ops()
 
         self.add_input_output_node()
-
-        output_name = MaceKeyword.mace_output_node_name + '_' \
-            + self._option.output_nodes.values()[0].name
+        if not self._option.check_nodes:
+            output_name = self._option.output_nodes.values()[0].name
+        else:
+            output_name = self._option.check_nodes.values()[0].name
+        output_name = MaceKeyword.mace_output_node_name + '_' + output_name
         output_name = normalize_name(output_name)
         self._model = graph_util.sort_mace_graph(self._model, output_name)
 
@@ -126,9 +128,21 @@ class HexagonConverter(base_converter.ConverterInterface):
 
             if op.type == MaceOp.Conv2D.name \
                     or op.type == MaceOp.DepthwiseConv2d.name:
-                mace_check(len(op.input) == 3,
-                           "Missing bias of Conv or Depthwise Conv.")
-                bias = op.input.pop()
+                channels = op.output_shape[0].dims[3]
+
+                if len(op.input) < 3:
+                    print('Supernode requires biasadd, we add it.')
+                    bias_data = np.zeros(channels, dtype=int)
+                    bias_tensor = self._model.tensors.add()
+                    bias_tensor.int32_data.extend(bias_data)
+                    bias_tensor.minval = 0
+                    bias_tensor.maxval = 0
+                    bias_tensor.name = op.name + "/bias:0"
+                    bias = bias_tensor.name
+                    self._consts[bias] = bias_tensor
+                else:
+                    bias = op.input.pop()
+
                 self.add_min_max_const_node(op, op.input[0])
                 self.add_min_max_const_node(op, op.input[1])
                 strides_arg = ConverterUtil.get_arg(op, 'strides')
