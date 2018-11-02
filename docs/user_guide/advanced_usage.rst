@@ -78,6 +78,8 @@ in one deployment file.
       - [optional] Specify Numpy validation inputs. When not provided, [-1, 1] random values will be used.
     * - validation_threshold
       - [optional] Specify the similarity threshold for validation. A dict with key in 'CPU', 'GPU' and/or 'HEXAGON' and value <= 1.0.
+    * - backend
+      - The onnx backend framework for validation, could be [tensorflow, caffe2, pytorch], default is tensorflow.
     * - runtime
       - The running device, one of [cpu, gpu, dsp, cpu_gpu]. cpu_gpu contains CPU and GPU model definition so you can run the model on both CPU and GPU.
     * - data_type

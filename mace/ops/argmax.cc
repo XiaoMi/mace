@@ -27,18 +27,29 @@ template <DeviceType D, class T>
 class ArgMaxOp : public Operation {
  public:
   explicit ArgMaxOp(OpConstructContext *context)
-      : Operation(context) {}
+      : Operation(context),
+        axis_(Operation::GetOptionalArg<int>("axis", 0)),
+        keep_dims_(Operation::GetOptionalArg<bool>("keepdims", true)),
+        argmin_(Operation::GetOptionalArg<bool>("argmin", false)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(0);
-    const Tensor *axis = this->Input(1);
+    const Tensor *axis = this->InputSize() == 2 ?
+                         this->Input(1) : nullptr;
     Tensor *output = this->Output(0);
 
+    MACE_CHECK(keep_dims_, "Mace only supports keep_dims ArgMax.");
     MACE_CHECK(input->dim_size() > 0, "ArgMax input should not be a scalar");
-    MACE_CHECK(axis->dim_size() == 0, "Mace argmax only supports scalar axis");
-    Tensor::MappingGuard axis_guard(axis);
-    int axis_value = axis->data<int32_t>()[0];
+    int axis_value = 0;
+    if (axis != nullptr) {
+      MACE_CHECK(axis->dim_size() == 0,
+                 "Mace argmax only supports scalar axis");
+      Tensor::MappingGuard axis_guard(axis);
+      axis_value = axis->data<int32_t>()[0];
+    } else {
+      axis_value = axis_;
+    }
     if (axis_value < 0) {
       axis_value += input->dim_size();
     }
@@ -59,22 +70,43 @@ class ArgMaxOp : public Operation {
     index_t outer_size = output->size();
     index_t inner_size = input->dim(axis_value);
 
+    if (argmin_) {
 #pragma omp parallel for schedule(runtime)
-    for (index_t i = 0; i < outer_size; ++i) {
-      int idx = 0;
-      T max_value = std::numeric_limits<T>::lowest();
-      const T *input_ptr = input_data + i * inner_size;
-      for (index_t j = 0; j < inner_size; ++j) {
-        if (input_ptr[j] > max_value) {
-          max_value = input_ptr[j];
-          idx = j;
+      for (index_t i = 0; i < outer_size; ++i) {
+        int idx = 0;
+        T min_value = std::numeric_limits<T>::max();
+        const T *input_ptr = input_data + i * inner_size;
+        for (index_t j = 0; j < inner_size; ++j) {
+          if (input_ptr[j] < min_value) {
+            min_value = input_ptr[j];
+            idx = j;
+          }
         }
+        output_data[i] = idx;
       }
-      output_data[i] = idx;
+    } else {
+#pragma omp parallel for schedule(runtime)
+      for (index_t i = 0; i < outer_size; ++i) {
+        int idx = 0;
+        T max_value = std::numeric_limits<T>::lowest();
+        const T *input_ptr = input_data + i * inner_size;
+        for (index_t j = 0; j < inner_size; ++j) {
+          if (input_ptr[j] > max_value) {
+            max_value = input_ptr[j];
+            idx = j;
+          }
+        }
+        output_data[i] = idx;
+      }
     }
 
     return MaceStatus::MACE_SUCCESS;
   }
+
+ protected:
+  const int axis_;
+  bool keep_dims_;
+  bool argmin_;
 };
 
 

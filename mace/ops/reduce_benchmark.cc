@@ -21,7 +21,7 @@ namespace test {
 
 namespace {
 template <DeviceType D, typename T>
-void ReduceMean(int iters, int batch, int channels,
+void Reduce(int iters, int batch, int channels,
                 int height, int width) {
   mace::testing::StopTiming();
 
@@ -34,7 +34,7 @@ void ReduceMean(int iters, int batch, int channels,
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   }
 
-  OpDefBuilder("ReduceMean", "ReduceMeanBM")
+  OpDefBuilder("Reduce", "ReduceBM")
       .Input("Input")
       .AddIntsArg("axis", axis)
       .Output("OutputImage")
@@ -55,30 +55,30 @@ void ReduceMean(int iters, int batch, int channels,
 }
 }  // namespace
 
-#define MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, TYPE, DEVICE)       \
+#define MACE_BM_REDUCE_MACRO(N, C, H, W, TYPE, DEVICE)       \
   static void                                                \
-    MACE_BM_REDUCE_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(\
+    MACE_BM_REDUCE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE(\
       int iters) {                                                   \
     const int64_t tot = static_cast<int64_t>(iters) * N * C * H * W; \
     mace::testing::MaccProcessed(tot);                               \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));              \
-    ReduceMean<DEVICE, TYPE>(iters, N, C, H, W);        \
+    Reduce<DEVICE, TYPE>(iters, N, C, H, W);        \
   }                                                                  \
   MACE_BENCHMARK(                                                         \
-    MACE_BM_REDUCE_MEAN_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
+    MACE_BM_REDUCE_##N##_##C##_##H##_##W##_##TYPE##_##DEVICE)
 
-#define MACE_BM_REDUCE_MEAN(N, C, H, W)                 \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, float, GPU);  \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, half, GPU);   \
-  MACE_BM_REDUCE_MEAN_MACRO(N, C, H, W, float, CPU);
+#define MACE_BM_REDUCE(N, C, H, W)                 \
+  MACE_BM_REDUCE_MACRO(N, C, H, W, float, GPU);  \
+  MACE_BM_REDUCE_MACRO(N, C, H, W, half, GPU);   \
+  MACE_BM_REDUCE_MACRO(N, C, H, W, float, CPU);
 
 
-MACE_BM_REDUCE_MEAN(1, 1, 512, 512);
-MACE_BM_REDUCE_MEAN(4, 3, 128, 128);
-MACE_BM_REDUCE_MEAN(4, 1, 512, 512);
-MACE_BM_REDUCE_MEAN(16, 32, 112, 112);
-MACE_BM_REDUCE_MEAN(8, 64, 256, 256);
-MACE_BM_REDUCE_MEAN(1, 32, 480, 640);
+MACE_BM_REDUCE(1, 1, 512, 512);
+MACE_BM_REDUCE(4, 3, 128, 128);
+MACE_BM_REDUCE(4, 1, 512, 512);
+MACE_BM_REDUCE(16, 32, 112, 112);
+MACE_BM_REDUCE(8, 64, 256, 256);
+MACE_BM_REDUCE(1, 32, 480, 640);
 
 
 }  // namespace test

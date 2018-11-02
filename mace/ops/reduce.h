@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_ARM_ACTIVATION_NEON_H_
-#define MACE_OPS_ARM_ACTIVATION_NEON_H_
+#ifndef MACE_OPS_REDUCE_H_
+#define MACE_OPS_REDUCE_H_
 
-#include "mace/core/types.h"
 
 namespace mace {
-namespace ops {
-
-void ReluNeon(const float *input, const index_t size, float *output);
-
-void ReluxNeon(const float *input, const float limit,
-               const index_t size, float *output);
-
-void LeakyReluNeon(const float *input, const float alpha,
-                   const index_t size, float *output);
-
-}  // namespace ops
+enum ReduceType {
+//  SUM = 0,
+  MEAN = 0,
+  MIN = 1,
+  MAX = 2,
+  PROD = 3,
+//  SUM_SQR = 4,
+//  SQR_MEAN = 5,
+};
 }  // namespace mace
 
-#endif  // MACE_OPS_ARM_ACTIVATION_NEON_H_
+#endif  // MACE_OPS_REDUCE_H_

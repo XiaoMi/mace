@@ -572,7 +572,8 @@ class DeviceWrapper:
                             YAMLKeyword.input_data_types],
                         caffe_env=flags.caffe_env,
                         validation_threshold=subgraphs[0][
-                            YAMLKeyword.validation_threshold][validate_type]
+                            YAMLKeyword.validation_threshold][validate_type],
+                        backend=subgraphs[0][YAMLKeyword.backend]
                     )
                 if flags.report and flags.round > 0:
                     tuned = is_tuned and device_type == DeviceType.GPU

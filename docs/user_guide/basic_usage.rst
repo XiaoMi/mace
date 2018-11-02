@@ -114,6 +114,19 @@ MACE now supports models from TensorFlow and Caffe (more frameworks will be supp
        # Upgrade caffemodel
        $CAFFE_ROOT/build/tools/upgrade_net_proto_binary MODEL.caffemodel MODEL.new.caffemodel
 
+-  ONNX
+
+   Prepare your ONNX model.onnx file.
+
+   Use `ONNX Optimizer Tool <https://github.com/XiaoMi/mace/tree/master/tools/onnx_optimizer.py>`__ to optimize your model for inference.
+   This tool will improve the efficiency of inference like the `Graph Transform Tool <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/tools/graph_transforms/README.md>`__
+   in TensorFlow.
+
+   .. code:: bash
+
+       # Optimize your model
+       $python MACE_ROOT/tools/onnx_optimizer.py model.onnx model_opt.onnx
+
 
 ===========================================
 2. Create a deployment file for your model
@@ -136,6 +149,12 @@ Modify one of them and use it for your own case.
 
    .. literalinclude:: models/demo_models_caffe.yml
       :language: yaml
+
+-  ONNX
+
+   .. literalinclude:: models/demo_models_onnx.yml
+      :language: yaml
+
 
 More details about model deployment file are in :doc:`advanced_usage`.
 

@@ -36,6 +36,7 @@ class ReshapeOp : public Operation {
     int unknown_idx = -1;
     index_t product = 1;
     std::vector<index_t> out_shape;
+    index_t n = 0;
 
     for (int i = 0; i < num_dims; ++i) {
       if (shape_data[i] == -1) {
@@ -45,8 +46,15 @@ class ReshapeOp : public Operation {
       } else {
         MACE_CHECK(shape_data[i] >= 0, "Shape must be non-negative: ",
                    shape_data[i]);
-        out_shape.push_back(shape_data[i]);
-        product *= shape_data[i];
+        if (shape_data[i] == 0) {
+          MACE_CHECK(i < input->dim_size(),
+                     "dims:0 out of input dims' range.");
+          n = input->dim(i);
+        } else {
+          n = shape_data[i];
+        }
+        out_shape.push_back(n);
+        product *= n;
       }
     }
 

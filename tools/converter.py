@@ -55,6 +55,7 @@ ModelFormatStrs = [
 PlatformTypeStrs = [
     "tensorflow",
     "caffe",
+    "onnx",
 ]
 PlatformType = Enum('PlatformType', [(ele, ele) for ele in PlatformTypeStrs],
                     type=str)
@@ -469,6 +470,10 @@ def format_model_config(flags):
             else:
                 subgraph[YAMLKeyword.validation_inputs_data] = \
                     validation_inputs_data
+
+            onnx_backend = subgraph.get(
+                YAMLKeyword.backend, "tensorflow")
+            subgraph[YAMLKeyword.backend] = onnx_backend
             input_ranges = subgraph.get(
                 YAMLKeyword.input_ranges, [])
             if not isinstance(input_ranges, list):

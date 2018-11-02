@@ -72,3 +72,9 @@ Install Caffe (Optional)
 -------------------------
 
 Please follow the installation instruction of `Caffe <http://caffe.berkeleyvision.org/installation.html>`__.
+
+
+Install ONNX (Optional)
+-------------------------
+
+Please follow the installation instruction of `ONNX <https://github.com/onnx/onnx#source>`__.

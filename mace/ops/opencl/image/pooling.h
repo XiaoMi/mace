@@ -69,6 +69,7 @@ class PoolingKernel : public OpenCLPoolingKernel {
       const Padding &padding_type,
       const std::vector<int> &padding_data,
       const int *dilations,
+      const RoundType round_type,
       Tensor *output) override;
 
  private:
@@ -87,6 +88,7 @@ MaceStatus PoolingKernel<T>::Compute(
     const Padding &padding_type,
     const std::vector<int> &padding_data,
     const int *dilations,
+    const RoundType round_type,
     Tensor *output) {
   MACE_CHECK(dilations[0] == 1 && dilations[1] == 1)
     << "Pooling opencl kernel not support dilation yet";
@@ -103,7 +105,7 @@ MaceStatus PoolingKernel<T>::Compute(
   } else {
     paddings = padding_data;
     CalcOutputSize(input->shape().data(), filter_shape.data(),
-                   padding_data.data(), dilations, strides, RoundType::CEIL,
+                   padding_data.data(), dilations, strides, round_type,
                    output_shape.data());
   }
 

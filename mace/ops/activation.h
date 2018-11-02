@@ -32,7 +32,8 @@ enum ActivationType {
   RELUX = 2,
   PRELU = 3,
   TANH = 4,
-  SIGMOID = 5
+  SIGMOID = 5,
+  LEAKYRELU = 6,
 };
 
 inline ActivationType StringToActivationType(const std::string type) {
@@ -48,6 +49,8 @@ inline ActivationType StringToActivationType(const std::string type) {
     return ActivationType::SIGMOID;
   } else if (type == "NOOP") {
     return ActivationType::NOOP;
+  } else if (type == "LEAKYRELU") {
+    return ActivationType ::LEAKYRELU;
   } else {
     LOG(FATAL) << "Unknown activation type: " << type;
   }
@@ -90,6 +93,13 @@ void DoActivation(const T *input_ptr,
         output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
       }
       break;
+    case LEAKYRELU:
+#pragma omp parallel for schedule(runtime)
+      for (index_t i = 0; i < size; ++i) {
+        output_ptr[i] = std::max(input_ptr[i],
+                                 static_cast<T>(0)) * relux_max_limit;
+      }
+      break;
     default:
       LOG(FATAL) << "Unknown activation type: " << type;
   }
@@ -121,6 +131,9 @@ inline void DoActivation(const float *input_ptr,
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
       }
+      break;
+    case LEAKYRELU:
+      LeakyReluNeon(input_ptr, relux_max_limit, size, output_ptr);
       break;
     default:
       LOG(FATAL) << "Unknown activation type: " << type;

@@ -11,10 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef MACE_OPS_OPENCL_IMAGE_REDUCE_MEAN_H_
-#define MACE_OPS_OPENCL_IMAGE_REDUCE_MEAN_H_
+#ifndef MACE_OPS_OPENCL_IMAGE_REDUCE_H_
+#define MACE_OPS_OPENCL_IMAGE_REDUCE_H_
 
-#include "mace/ops/opencl/reduce_mean.h"
+#include "mace/ops/opencl/reduce.h"
 
 #include <memory>
 #include <set>
@@ -24,6 +24,7 @@
 #include "mace/core/op_context.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/opencl/helper.h"
+#include "mace/ops/reduce.h"
 
 namespace mace {
 namespace ops {
@@ -31,11 +32,12 @@ namespace opencl {
 namespace image {
 
 template <typename T>
-class ReduceMeanKernel : public OpenCLReduceMeanKernel {
+class ReduceKernel : public OpenCLReduceKernel {
  public:
-  ReduceMeanKernel(const std::vector<int> axis,
-                   const bool keep_dims)
-      : axis_(axis), keep_dims_(keep_dims) {}
+  ReduceKernel(ReduceType type,
+               const std::vector<int> axis,
+               const bool keep_dims)
+      : reduce_type_(type), axis_(axis), keep_dims_(keep_dims) {}
 
   MaceStatus Compute(
       OpContext *context,
@@ -43,6 +45,7 @@ class ReduceMeanKernel : public OpenCLReduceMeanKernel {
       Tensor *output) override;
 
  private:
+  ReduceType reduce_type_;
   const std::vector<int> axis_;
   bool keep_dims_;
   cl::Kernel kernel_;
@@ -51,16 +54,16 @@ class ReduceMeanKernel : public OpenCLReduceMeanKernel {
 };
 
 template <typename T>
-MaceStatus ReduceMeanKernel<T>::Compute(
+MaceStatus ReduceKernel<T>::Compute(
     OpContext *context,
     const Tensor *input,
     Tensor *output) {
   MACE_CHECK_NOTNULL(input);
   MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
   MACE_CHECK(input->dim_size() == 4,
-             "reduce mean gpu only support 4-dim input");
+             "reduce gpu only support 4-dim input");
   MACE_CHECK(axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2,
-             "reduce mean gpu only support 1,2-axis reduce");
+             "reduce gpu only support 1,2-axis reduce");
   index_t batch = input->dim(0);
   const index_t in_height = input->dim(1);
   const index_t in_width = input->dim(2);
@@ -84,14 +87,15 @@ MaceStatus ReduceMeanKernel<T>::Compute(
     std::set<std::string> built_options;
     MACE_OUT_OF_RANGE_CONFIG;
     MACE_NON_UNIFORM_WG_CONFIG;
-    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce_mean");
-    built_options.emplace("-Dreduce_mean=" + kernel_name);
+    std::string kernel_name = MACE_OBFUSCATE_SYMBOL("reduce");
+    built_options.emplace("-Dreduce=" + kernel_name);
     built_options.emplace("-DDATA_TYPE=" + DtToUpCompatibleCLDt(dt));
     built_options.emplace("-DCMD_DATA_TYPE=" + DtToUpCompatibleCLCMDDt(dt));
+    built_options.emplace(MakeString("-DREDUCE_TYPE=", reduce_type_));
     if (runtime->gpu_type() != GPUType::QUALCOMM_ADRENO) {
       built_options.emplace("-DNON_QUALCOMM_ADRENO");
     }
-    MACE_RETURN_IF_ERROR(runtime->BuildKernel("reduce_mean",
+    MACE_RETURN_IF_ERROR(runtime->BuildKernel("reduce",
                                               kernel_name,
                                               built_options,
                                               &kernel_));
@@ -170,4 +174,4 @@ MaceStatus ReduceMeanKernel<T>::Compute(
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_IMAGE_REDUCE_MEAN_H_
+#endif  // MACE_OPS_OPENCL_IMAGE_REDUCE_H_

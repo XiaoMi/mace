@@ -1,0 +1,42 @@
+# The name of library
+library_name: mobilenet
+target_abis: [arm64-v8a]
+model_graph_format: file
+model_data_format: file
+models:
+  mobilenet_v1: # model tag, which will be used in model loading and must be specific.
+    platform: onnx
+    # path to your onnx model file. Support local path, http:// and https://
+    model_file_path: https://cnbj1.fds.api.xiaomi.com/mace/miai-models/mobilenet-v1/mobilenet-v1-1.0.pb
+    # sha256_checksum of your model's onnx file.
+    # use this command to get the sha256_checksum: sha256sum path/to/your/pb/file
+    model_sha256_checksum: 71b10f540ece33c49a7b51f5d4095fc9bd78ce46ebf0300487b2ee23d71294e6
+    # define your model's interface
+    # if there multiple inputs or outputs, write like blow:
+    # subgraphs:
+    # - input_tensors:
+    #     - input0
+    #     - input1
+    #   input_shapes:
+    #     - 1,224,224,3
+    #     - 1,224,224,3
+    #    output_tensors:
+    #      - output0
+    #      - output1
+    #    output_shapes:
+    #      - 1,1001
+    #      - 1,1001
+    subgraphs:
+      - input_tensors:
+          - input
+        input_shapes:
+          - 1,224,224,3
+        output_tensors:
+          - MobilenetV1/Predictions/Reshape_1
+        output_shapes:
+          - 1,1001
+        # onnx backend framwork for validation. Suppport pytorch/caffe/tensorflow. Default is tensorflow.
+        backend: tensorflow
+    # cpu, gpu or cpu+gpu
+    runtime: cpu+gpu
+    winograd: 0

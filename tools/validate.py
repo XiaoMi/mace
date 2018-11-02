@@ -21,6 +21,10 @@ import re
 
 import common
 
+import onnx
+from onnx import helper
+from onnx import TensorProto
+
 # Validation Flow:
 # 1. Generate input data
 # 2. Use mace_run to run model on phone.
@@ -190,9 +194,64 @@ def validate_caffe_model(platform, device_type, model_file, input_file,
                        value, validation_threshold)
 
 
+def validate_onnx_model(platform, device_type, model_file, input_file,
+                        mace_out_file, input_names, input_shapes,
+                        output_names, output_shapes, validation_threshold,
+                        input_data_types, backend):
+    if backend == "tensorflow":
+        from onnx_tf.backend import prepare
+        print "valivate on onnx tensorflow backend."
+    elif backend == "caffe2" or backend == "pytorch":
+        from caffe2.python.onnx.backend import prepare
+        print "valivate on onnx caffe2 backend."
+    else:
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "onnx backend framwork '" + backend + "' is invalid.")
+    if not os.path.isfile(model_file):
+        common.MaceLogger.error(
+            VALIDATION_MODULE,
+            "Input graph file '" + model_file + "' does not exist!")
+    model = onnx.load(model_file)
+    input_dict = {}
+    for i in range(len(input_names)):
+        input_value = load_data(common.formatted_file_name(input_file,
+                                                           input_names[i]),
+                                input_data_types[i])
+        input_value = input_value.reshape(input_shapes[i]).transpose((0, 3, 1,
+                                                                      2))
+        input_dict[input_names[i]] = input_value
+    onnx_outputs = []
+    for i in range(len(output_names)):
+        out_shape = output_shapes[i]
+        if len(out_shape) == 4:
+            out_shape[1], out_shape[2], out_shape[3] = \
+                out_shape[3], out_shape[1], out_shape[2]
+        onnx_outputs.append(
+            helper.make_tensor_value_info(output_names[i],
+                                          TensorProto.FLOAT,
+                                          out_shape))
+    model.graph.output.extend(onnx_outputs)
+    rep = prepare(model)
+
+    output_values = rep.run(input_dict)
+    for i in range(len(output_names)):
+        out_name = output_names[i]
+        value = output_values[out_name].flatten()
+        out_shape = output_shapes[i]
+        if len(out_shape) == 4:
+            value = value.reshape(out_shape).transpose((0, 2, 3, 1))
+        output_file_name = common.formatted_file_name(mace_out_file,
+                                                      output_names[i])
+        mace_out_value = load_data(output_file_name)
+        compare_output(platform, device_type, output_names[i],
+                       mace_out_value, value,
+                       validation_threshold)
+
+
 def validate(platform, model_file, weight_file, input_file, mace_out_file,
              device_type, input_shape, output_shape, input_node, output_node,
-             validation_threshold, input_data_type):
+             validation_threshold, input_data_type, backend):
     input_names = [name for name in input_node.split(',')]
     input_shape_strs = [shape for shape in input_shape.split(':')]
     input_shapes = [[int(x) for x in shape.split(',')]
@@ -217,6 +276,15 @@ def validate(platform, model_file, weight_file, input_file, mace_out_file,
                              mace_out_file, weight_file, input_names,
                              input_shapes, output_names, output_shapes,
                              validation_threshold)
+    elif platform == 'onnx':
+        output_shape_strs = [shape for shape in output_shape.split(':')]
+        output_shapes = [[int(x) for x in shape.split(',')]
+                         for shape in output_shape_strs]
+        validate_onnx_model(platform, device_type, model_file, input_file,
+                            mace_out_file, input_names, input_shapes,
+                            output_names, output_shapes,
+                            validation_threshold,
+                            input_data_types, backend)
 
 
 def parse_args():
@@ -259,6 +327,11 @@ def parse_args():
     parser.add_argument(
         "--validation_threshold", type=float, default=0.995,
         help="validation similarity threshold")
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default="tensorflow",
+        help="onnx backend framwork")
 
     return parser.parse_known_args()
 
@@ -276,4 +349,5 @@ if __name__ == '__main__':
              FLAGS.input_node,
              FLAGS.output_node,
              FLAGS.validation_threshold,
-             FLAGS.input_data_type)
+             FLAGS.input_data_type,
+             FLAGS.backend)

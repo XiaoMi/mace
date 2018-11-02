@@ -48,7 +48,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/pad.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/pooling.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/pooling_buffer.cl"))
-    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/reduce_mean.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/reduce.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/resize_bicubic.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/resize_bilinear.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/split.cl"))

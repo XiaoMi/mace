@@ -99,6 +99,10 @@ MaceStatus ActivationKernel<T>::Compute(
         tuning_key_prefix_ = "sigmoid_opencl_kernel";
         built_options.emplace("-DUSE_SIGMOID");
         break;
+      case LEAKYRELU:
+        tuning_key_prefix_ = "leakyrelu_opencl_kernel";
+        built_options.emplace("-DUSE_LEAKYRELU");
+        break;
       default:
         LOG(FATAL) << "Unknown activation type: " << activation_;
     }
