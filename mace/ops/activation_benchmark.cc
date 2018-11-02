@@ -14,7 +14,6 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -46,7 +45,7 @@ void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
         .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluBM")
         .Input("InputImage")
@@ -108,7 +107,7 @@ void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxBM")
         .Input("InputImage")
@@ -186,9 +185,9 @@ void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
         .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("Activation", "PreluBM")
         .Input("InputImage")
@@ -251,7 +250,7 @@ void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "TanhBM")
         .Input("InputImage")
@@ -318,7 +317,7 @@ void SigmoidBenchmark(
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "SigmoidBM")
         .Input("InputImage")

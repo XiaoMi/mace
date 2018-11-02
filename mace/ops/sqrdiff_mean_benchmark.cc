@@ -34,9 +34,9 @@ void SqrDiffMean(int iters, int batch, int channels,
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Input1", "InputImage1",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
         .Input("InputImage")
         .Input("InputImage1")

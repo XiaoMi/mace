@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -61,7 +60,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
       .Input("InputImage")
@@ -74,7 +73,7 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
 
   // Transfer output
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto expected = net.CreateTensor<float>(

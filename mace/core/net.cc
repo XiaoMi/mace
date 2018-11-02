@@ -27,8 +27,7 @@
 
 namespace mace {
 
-SerialNet::SerialNet(OpDefRegistryBase *op_def_registry,
-                     const OpRegistryBase *op_registry,
+SerialNet::SerialNet(const OpRegistryBase *op_registry,
                      const NetDef *net_def,
                      Workspace *ws,
                      Device *target_device,
@@ -41,15 +40,7 @@ SerialNet::SerialNet(OpDefRegistryBase *op_def_registry,
                         target_device->cpu_runtime()->policy(),
                         target_device->cpu_runtime()->use_gemmlowp())) {
   MACE_LATENCY_LOGGER(1, "Constructing SerialNet");
-  // Register Operations
-  MaceStatus status;
-  for (int idx = 0; idx < net_def->op_types_size(); ++idx) {
-    status = op_def_registry->Register(net_def->op_types(idx));
-    MACE_CHECK(status == MaceStatus::MACE_SUCCESS, status.information());
-  }
   // Create Operations
-  operators_.clear();
-  const OpRegistrationInfo *info;
   DeviceType target_device_type = target_device_->device_type();
   OpConstructContext construct_context(ws_);
   for (int idx = 0; idx < net_def->op_size(); ++idx) {
@@ -59,16 +50,13 @@ SerialNet::SerialNet(OpDefRegistryBase *op_def_registry,
         ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
             operator_def, "device", static_cast<int>(target_device_type));
     if (op_device == target_device_type) {
-      // Find op registration information
-      status = op_def_registry->Find(operator_def.type(), &info);
-      MACE_CHECK(status == MaceStatus::MACE_SUCCESS, status.information());
       // Get available devices (sorted based on priority)
       OperatorDef temp_def(operator_def);
-      auto available_devices = info->device_place_func_();
+      auto available_devices = op_registry->AvailableDevices(temp_def.type());
       // Find the device type to run the op.
       // If the target_device_type in available devices, use target_device_type,
-      // otherwise, fallback to the first device (top priority).
-      DeviceType device_type = available_devices[0];
+      // otherwise, fallback to CPU device.
+      DeviceType device_type = DeviceType::CPU;
       construct_context.set_device(cpu_device_);
       for (auto device : available_devices) {
         if (device == target_device_type) {

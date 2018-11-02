@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -69,7 +68,7 @@ void SimpleAdd3() {
     for (int i = 0; i < input_num; ++i) {
       BufferToImage<D, half>(&net, MakeString("Input", i),
                              MakeString("InputImage", i),
-                             kernels::BufferType::IN_OUT_CHANNEL);
+                             ops::BufferType::IN_OUT_CHANNEL);
     }
 
     auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
@@ -84,7 +83,7 @@ void SimpleAdd3() {
     net.RunOp(D);
 
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("AddN", "AddNTest")
         .Input("Input0")
@@ -143,7 +142,7 @@ void RandomTest() {
     for (int i = 0; i < input_num; ++i) {
       BufferToImage<D, half>(&net, MakeString("Input", i),
                              MakeString("InputImage", i),
-                             kernels::BufferType::IN_OUT_CHANNEL);
+                             ops::BufferType::IN_OUT_CHANNEL);
     }
 
     auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
@@ -158,7 +157,7 @@ void RandomTest() {
     net.RunOp(D);
 
     ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
                             1e-2);

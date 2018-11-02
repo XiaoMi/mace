@@ -32,6 +32,7 @@ build:arm_linux --copt -Wno-ignored-attributes
 build:arm_linux --copt -Wno-unused-function
 build:arm_linux --copt -Wno-sequence-point
 build:arm_linux --copt -Wno-implicit-fallthrough
+build:arm_linux --copt -Wno-psabi
 
 # Usage example: bazel build --config aarch64_linux
 build:aarch64_linux --config=cross_compile

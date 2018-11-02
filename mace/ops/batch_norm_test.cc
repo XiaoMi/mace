@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -51,15 +50,15 @@ void Simple() {
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Scale", "ScaleImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
     BufferToImage<D, float>(&net, "Offset", "OffsetImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
     BufferToImage<D, float>(&net, "Mean", "MeanImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
     BufferToImage<D, float>(&net, "Var", "VarImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("BatchNorm", "BatchNormTest")
         .Input("InputImage")
@@ -75,7 +74,7 @@ void Simple() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   }
 
   // Check
@@ -135,15 +134,15 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, float>(&net, "Scale", "ScaleImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Mean", "MeanImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Var", "VarImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("InputImage")
@@ -165,7 +164,7 @@ TEST_F(BatchNormOpTest, SimpleRandomOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
                           1e-5, 1e-4);
 }
@@ -214,15 +213,15 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
-                                       kernels::BufferType::IN_OUT_CHANNEL);
+                                       ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, half>(&net, "Scale", "ScaleImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Mean", "MeanImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Var", "VarImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("InputImage")
@@ -245,7 +244,7 @@ TEST_F(BatchNormOpTest, SimpleRandomHalfOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
                           1e-1, 1e-2);
 }
@@ -294,15 +293,15 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, float>(&net, "Scale", "ScaleImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Mean", "MeanImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, float>(&net, "Var", "VarImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("InputImage")
@@ -324,7 +323,7 @@ TEST_F(BatchNormOpTest, ComplexRandomOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
                           1e-5, 1e-4);
 }
@@ -373,15 +372,15 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
-                                       kernels::BufferType::IN_OUT_CHANNEL);
+                                       ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, half>(&net, "Scale", "ScaleImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Mean", "MeanImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
   BufferToImage<DeviceType::GPU, half>(&net, "Var", "VarImage",
-                                       kernels::BufferType::ARGUMENT);
+                                       ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BatchNorm", "BatchNormTest")
       .Input("InputImage")
@@ -404,7 +403,7 @@ TEST_F(BatchNormOpTest, ComplexRandomHalfOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
                           1e-1, 1e-2);
 }

@@ -1,5 +1,4 @@
 # Description:
-# Mace operators.
 #
 package(
     default_visibility = ["//visibility:public"],
@@ -15,6 +14,109 @@ load(
     "if_android_armv7",
     "if_hexagon_enabled",
     "if_opencl_enabled",
+)
+
+cc_library(
+    name = "internal_ops",
+    srcs = glob(
+        [
+            "*.cc",
+            "arm/*.cc",
+        ],
+        exclude = [
+            "*_test.cc",
+            "*_benchmark.cc",
+            "arm/*_test.cc",
+            "ops_registry.cc",
+            "ops_test_util.cc",
+            "buffer_inverse_transform.cc",
+            "buffer_transform.cc",
+            "lstm_cell.cc",
+            "winograd_transform.cc",
+        ],
+    ) + if_opencl_enabled(glob(
+        [
+            "opencl/*.cc",
+            "opencl/image/*.cc",
+            "opencl/buffer/*.cc",
+            "buffer_inverse_transform.cc",
+            "buffer_transform.cc",
+            "lstm_cell.cc",
+            "winograd_transform.cc",
+        ],
+        exclude = [
+            "opencl/*_test.cc",
+        ],
+    )),
+    hdrs = glob(
+        [
+            "*.h",
+            "arm/*.h",
+        ],
+        exclude = [
+            "ops_registry.h",
+            "ops_test_util.h",
+        ]
+    ) + if_opencl_enabled(glob([
+        "opencl/*.h",
+        "opencl/image/*.h",
+        "opencl/buffer/*.h",
+    ])),
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    linkopts = if_android(["-lm"]),
+    deps = [
+        "//mace/core",
+        "@gemmlowp",
+        "@tflite",
+    ],
+)
+
+
+cc_library(
+    name = "ops",
+    srcs = [
+        "ops_registry.cc"
+    ],
+    hdrs = [
+        "ops_registry.h",
+    ],
+    copts = [
+        "-Werror",
+        "-Wextra",
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
+        "-DMACE_ENABLE_NEON",
+    ]) + if_android_armv7([
+        "-mfpu=neon",
+    ]) + if_android_armv7([
+        "-mfloat-abi=softfp",
+    ]) + if_opencl_enabled([
+        "-DMACE_ENABLE_OPENCL",
+    ]) + if_hexagon_enabled([
+        "-DMACE_ENABLE_HEXAGON",
+    ]),
+    linkopts = if_android(["-lm"]),
+    deps = [
+        "internal_ops",
+    ],
 )
 
 cc_library(
@@ -42,35 +144,7 @@ cc_library(
     ]),
     deps = [
         "ops",
-        "//mace/kernels",
         "@gtest",
-    ],
-)
-
-cc_library(
-    name = "ops",
-    srcs = [
-        "ops_def_register.cc",
-    ],
-    hdrs = [
-        "ops_def_register.h",
-    ],
-    copts = [
-        "-Werror",
-        "-Wextra",
-    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
-        "-DMACE_ENABLE_NEON",
-    ]) + if_android_armv7([
-        "-mfpu=neon",
-    ]) + if_android_armv7([
-        "-mfloat-abi=softfp",
-    ]) + if_opencl_enabled([
-        "-DMACE_ENABLE_OPENCL",
-    ]) + if_hexagon_enabled([
-        "-DMACE_ENABLE_HEXAGON",
-    ]),
-    deps = [
-        "//mace/core",
     ],
 )
 
@@ -78,16 +152,22 @@ cc_test(
     name = "ops_test",
     testonly = 1,
     srcs = glob(
-        ["*_test.cc"],
+        [
+            "*_test.cc",
+            "arm/*_test.cc",
+            "opencl/*_test.cc",
+        ],
     ),
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon",
-    ]) + if_android_armv7([
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -97,8 +177,7 @@ cc_test(
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
-        ":ops",
-        ":test",
+        "test",
         "@gtest//:gtest_main",
     ],
 )
@@ -110,11 +189,13 @@ cc_test(
     copts = [
         "-Werror",
         "-Wextra",
-    ] + if_openmp_enabled(["-fopenmp"]) + if_neon_enabled([
+        "-Wno-missing-field-initializers",
+    ] + if_openmp_enabled([
+        "-fopenmp",
+    ]) + if_neon_enabled([
         "-DMACE_ENABLE_NEON",
     ]) + if_android_armv7([
         "-mfpu=neon",
-    ]) + if_android_armv7([
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
@@ -124,8 +205,9 @@ cc_test(
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
-        ":ops",
-        ":test",
+        "test",
         "//mace/core:test_benchmark_main",
+        "//third_party/eigen3",
+        "@gemmlowp",
     ],
 )

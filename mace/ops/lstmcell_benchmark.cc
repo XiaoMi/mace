@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
-#include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/lstmcell_test_util.h"
 #include "mace/ops/ops_test_util.h"
@@ -50,15 +48,15 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
                    "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "PreOutput", "PreOutputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Weight", "WeightImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     BufferToImage<D, T>(&net, "PreCell", "PreCellImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("LSTMCell", "LSTMCellTest")
         .Input("InputImage")

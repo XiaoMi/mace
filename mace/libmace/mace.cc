@@ -22,8 +22,7 @@
 
 #include "mace/core/net.h"
 #include "mace/core/device_context.h"
-#include "mace/kernels/ops_register.h"
-#include "mace/ops/ops_def_register.h"
+#include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -359,7 +358,6 @@ class MaceEngine::Impl {
  private:
   const unsigned char *model_data_;
   size_t model_data_size_;
-  std::unique_ptr<OpDefRegistryBase> op_def_registry_;
   std::unique_ptr<OpRegistryBase> op_registry_;
   DeviceType device_type_;
   std::unique_ptr<Device> device_;
@@ -377,7 +375,6 @@ class MaceEngine::Impl {
 MaceEngine::Impl::Impl(const MaceEngineConfig &config)
     : model_data_(nullptr),
       model_data_size_(0),
-      op_def_registry_(new OpDefRegistry()),
       op_registry_(new OpRegistry),
       device_type_(config.impl_->device_type()),
       device_(nullptr),
@@ -466,7 +463,6 @@ MaceStatus MaceEngine::Impl::Init(
 
     // Init model
     auto net = std::unique_ptr<NetBase>(new SerialNet(
-        op_def_registry_.get(),
         op_registry_.get(),
         net_def,
         ws_.get(),
@@ -474,8 +470,7 @@ MaceStatus MaceEngine::Impl::Init(
         NetMode::INIT));
     MACE_RETURN_IF_ERROR(net->Init());
     MACE_RETURN_IF_ERROR(net->Run());
-    net_ = std::unique_ptr<NetBase>(new SerialNet(op_def_registry_.get(),
-                                                  op_registry_.get(),
+    net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
                                                   net_def,
                                                   ws_.get(),
                                                   device_.get()));

@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gtest/gtest.h"
+#include <vector>
 
-#include "mace/core/op_def_registry.h"
-#include "mace/kernels/pooling.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/pooling.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -192,7 +191,7 @@ void SimpleMaxPooling3S2() {
                                                     "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pooling", "PoolingTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -204,7 +203,7 @@ void SimpleMaxPooling3S2() {
         .Finalize(net.NewOperatorDef());
     net.RunOp(D);
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   }
 
   // Check
@@ -252,7 +251,7 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -265,7 +264,7 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,
@@ -351,7 +350,7 @@ void SimpleAvgPoolingTest() {
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   BufferToImage<D, float>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -364,7 +363,7 @@ void SimpleAvgPoolingTest() {
   // Run
   net.RunOp(D);
   ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
@@ -410,7 +409,7 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -423,7 +422,7 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
   ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,

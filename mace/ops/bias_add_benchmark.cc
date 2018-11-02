@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
@@ -47,9 +46,9 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     OpDefBuilder("BiasAdd", "BiasAddBM")
         .Input("InputImage")
         .Input("BiasImage")

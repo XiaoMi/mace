@@ -14,7 +14,6 @@
 
 #include <fstream>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -39,9 +38,9 @@ void Simple(const std::vector<index_t> &A_shape,
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "A", "AImage",
-                            kernels::BufferType::IN_OUT_WIDTH);
+                            ops::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, float>(&net, "B", "BImage",
-                            kernels::BufferType::IN_OUT_HEIGHT);
+                            ops::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulTest")
         .Input("AImage")
@@ -53,7 +52,7 @@ void Simple(const std::vector<index_t> &A_shape,
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_HEIGHT);
+                            ops::BufferType::IN_OUT_HEIGHT);
   } else {
     OpDefBuilder("MatMul", "MatMulTest")
         .Input("A")
@@ -130,9 +129,9 @@ void Complex(const std::vector<index_t> &batch,
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, T>(&net, "A", "AImage",
-                                    kernels::BufferType::IN_OUT_WIDTH);
+                                    ops::BufferType::IN_OUT_WIDTH);
   BufferToImage<DeviceType::GPU, T>(&net, "B", "BImage",
-                                    kernels::BufferType::IN_OUT_HEIGHT);
+                                    ops::BufferType::IN_OUT_HEIGHT);
 
   OpDefBuilder("MatMul", "MatMulTest")
       .Input("AImage")
@@ -144,7 +143,7 @@ void Complex(const std::vector<index_t> &batch,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_HEIGHT);
+                                        ops::BufferType::IN_OUT_HEIGHT);
 
   // run cpu
   std::vector<index_t> shape_a = batch;

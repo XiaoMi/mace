@@ -40,7 +40,6 @@ cc_library(
     deps = [
         "//mace/public",
         "//mace/ops",
-        "//mace/kernels",
     ],
     alwayslink = 1,
 )
@@ -79,7 +78,7 @@ genrule(
     srcs = [
         "//mace/codegen:generated_version",
         "//mace/core",
-        "//mace/kernels",
+        "//mace/ops:internal_ops",
         "//mace/ops",
         "//mace/libmace",
         "//mace/utils",
@@ -93,7 +92,7 @@ genrule(
           "mri_stream=$$(python $(location //mace/python/tools:archive_static_lib) " +
           "$(locations //mace/codegen:generated_version) " +
           "$(locations //mace/core:core) " +
-          "$(locations //mace/kernels:kernels) " +
+          "$(locations //mace/ops:internal_ops) " +
           "$(locations //mace/ops:ops) " +
           "$(locations //mace/libmace:libmace) " +
           "$(locations //mace/utils:utils) " +

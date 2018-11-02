@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -40,7 +39,7 @@ void BMSplitHelper(int iters,
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
 
     auto builder = OpDefBuilder("Split", "SplitTest");
     builder.Input("InputImage");

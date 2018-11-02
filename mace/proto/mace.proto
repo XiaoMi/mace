@@ -122,7 +122,6 @@ message NetDef {
   repeated OperatorDef op = 1;
   repeated Argument arg = 2;
   repeated ConstTensor tensors = 3;
-  repeated string op_types = 4;
 
   // for mem optimization
   optional MemoryArena mem_arena = 10;

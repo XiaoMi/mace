@@ -21,8 +21,6 @@
 #include <unordered_map>
 #include <sstream>
 
-#include "mace/core/op_def_registry.h"
-
 #include "mace/core/operator.h"
 
 namespace mace {
@@ -45,8 +43,7 @@ class NetBase {
 
 class SerialNet : public NetBase {
  public:
-  SerialNet(OpDefRegistryBase *op_def_registry,
-            const OpRegistryBase *op_registry,
+  SerialNet(const OpRegistryBase *op_registry,
             const NetDef *net_def,
             Workspace *ws,
             Device *target_device,

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -31,7 +30,7 @@ void Simple() {
   net.AddRepeatedInput<D, float>("Input", {1, 2, 3, 1}, 2);
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pad", "PadTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -43,7 +42,7 @@ void Simple() {
     net.RunOp(D);
 
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
                                                     NCHW);
@@ -138,7 +137,7 @@ void Complex(const std::vector<index_t> &input_shape,
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                                    kernels::BufferType::IN_OUT_CHANNEL);
+                                    ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pad", "PadTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -150,7 +149,7 @@ void Complex(const std::vector<index_t> &input_shape,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OpenCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   auto output = net.GetTensor("OpenCLOutput");
 

@@ -14,8 +14,7 @@
 
 #include <fstream>
 
-#include "mace/core/op_def_registry.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -44,10 +43,10 @@ void WinogradConvolution(const index_t batch,
   net.AddRandomInput<D, T>("Bias", {out_channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                      kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(&net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+                      ops::BufferType::CONV2D_FILTER);
+  BufferToImage<D, T>(&net, "Bias", "BiasImage", ops::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
@@ -63,7 +62,7 @@ void WinogradConvolution(const index_t batch,
 
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("ConvOutput"));
@@ -72,7 +71,7 @@ void WinogradConvolution(const index_t batch,
   // Winograd convolution
   // transform filter
   BufferToImage<D, T>(&net, "Filter", "WinoFilter",
-                      kernels::BufferType::WINOGRAD_FILTER, block_size);
+                      ops::BufferType::WINOGRAD_FILTER, block_size);
   // transform input
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
@@ -123,7 +122,7 @@ void WinogradConvolution(const index_t batch,
   net.Sync();
 
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
                             1e-2, 1e-2);
@@ -195,10 +194,10 @@ void WinogradConvolutionWithPad(const index_t batch,
   net.AddRandomInput<D, float>("Bias", {out_channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                      kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(&net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+                      ops::BufferType::CONV2D_FILTER);
+  BufferToImage<D, T>(&net, "Bias", "BiasImage", ops::BufferType::ARGUMENT);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("InputImage")
       .Input("FilterImage")
@@ -214,7 +213,7 @@ void WinogradConvolutionWithPad(const index_t batch,
 
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "ConvOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("ConvOutput"));
   auto output_shape = expected->shape();
@@ -222,7 +221,7 @@ void WinogradConvolutionWithPad(const index_t batch,
   // Winograd convolution
   // transform filter
   BufferToImage<D, T>(&net, "Filter", "WinoFilter",
-                      kernels::BufferType::WINOGRAD_FILTER, block_size);
+                      ops::BufferType::WINOGRAD_FILTER, block_size);
   // transform input
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
@@ -273,7 +272,7 @@ void WinogradConvolutionWithPad(const index_t batch,
   net.Sync();
 
   ImageToBuffer<D, float>(&net, "WinoOutputImage", "WinoOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("WinoOutput"),
                             1e-2, 1e-2);

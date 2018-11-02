@@ -122,12 +122,6 @@ void CreateTensors(NetDef *net_def) {
   {% endfor %}
 }
 
-void CreateOpTypes(NetDef *net_def) {
-  {% for op_type in net.op_types %}
-  net_def->add_op_types({{ op_type|tojson }});
-  {% endfor %}
-}
-
 {% if net.mem_arena.mem_block|length != 0 %}
 void CreateMemoryArena(mace::MemoryArena *mem_arena) {
   mem_arena->mutable_mem_block()->Reserve({{ net.mem_arena.mem_block|length }});
@@ -167,9 +161,6 @@ const std::shared_ptr<NetDef> CreateNet() {
   {% endif %}
   {% if net.output_info | length > 0 %}
   CreateOutputInfo(net_def.get());
-  {% endif %}
-  {% if net.op_types|length > 0 %}
-  CreateOpTypes(net_def.get());
   {% endif %}
 
   return net_def;

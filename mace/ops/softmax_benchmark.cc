@@ -14,7 +14,6 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -46,7 +45,7 @@ void SoftmaxBenchmark(
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Softmax", "SoftmaxBM")
         .Input("InputImage")

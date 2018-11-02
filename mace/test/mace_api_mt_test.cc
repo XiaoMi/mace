@@ -15,8 +15,8 @@
 #include <fstream>
 #include <thread>  // NOLINT(build/c++11)
 
-#include "mace/core/op_def_registry.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/core/operator.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -306,7 +306,7 @@ void MaceRunFunc(const int in_out_size) {
     std::string input_name = MakeString("mace_input_node_",
                                         input_names[i]);
     BufferToImage<half>(input_name, input_names[i],
-                        mace::kernels::IN_OUT_CHANNEL,
+                        mace::ops::IN_OUT_CHANNEL,
                         {mem_map[input_names[i]]},
                         device,
                         net_def.get());
@@ -314,7 +314,7 @@ void MaceRunFunc(const int in_out_size) {
     info->set_name(input_names[i]);
   }
   BufferToImage<half>(filter_tensor_name, filter_tensor_img_name,
-                      mace::kernels::CONV2D_FILTER, {}, device,
+                      mace::ops::CONV2D_FILTER, {}, device,
                       net_def.get(), NetMode::INIT);
   for (size_t i = 0; i < output_names.size(); ++i) {
     Conv3x3<half>(input_names[i], filter_tensor_img_name,
@@ -326,14 +326,11 @@ void MaceRunFunc(const int in_out_size) {
     std::string output_name = MakeString("mace_output_node_",
                                          output_names[i]);
     ImageToBuffer<float>(output_names[i], output_name,
-                         mace::kernels::IN_OUT_CHANNEL,
+                         mace::ops::IN_OUT_CHANNEL,
                          device,
                          net_def.get());
     OutputInfo *info = net_def->add_output_info();
     info->set_name(output_names[i]);
-  }
-  for (int i = 0; i < net_def->op_size(); ++i) {
-    net_def->add_op_types(net_def->op(i).type());
   }
 
   MaceEngineConfig config(DeviceType::GPU);

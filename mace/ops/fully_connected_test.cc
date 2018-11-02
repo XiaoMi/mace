@@ -14,7 +14,6 @@
 
 #include <fstream>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -52,11 +51,11 @@ void Simple(const std::vector<index_t> &input_shape,
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Weight", "WeightImage",
-                            kernels::BufferType::WEIGHT_WIDTH);
+                            ops::BufferType::WEIGHT_WIDTH);
     BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("InputImage")
@@ -69,7 +68,7 @@ void Simple(const std::vector<index_t> &input_shape,
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -160,11 +159,11 @@ void Random(const index_t batch,
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                                    kernels::BufferType::IN_OUT_CHANNEL);
+                                    ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, T>(&net, "Weight", "WeightImage",
-                                    kernels::BufferType::WEIGHT_WIDTH);
+                                    ops::BufferType::WEIGHT_WIDTH);
   BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
-                                    kernels::BufferType::ARGUMENT);
+                                    ops::BufferType::ARGUMENT);
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputImage")
@@ -178,7 +177,7 @@ void Random(const index_t batch,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-1,
                             1e-1);

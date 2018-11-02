@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -46,9 +45,9 @@ void BiasAddSimple() {
                                                     "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("BiasAdd", "BiasAddTest")
         .Input("InputImage")
@@ -60,7 +59,7 @@ void BiasAddSimple() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -116,9 +115,9 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, float>(&net, "Bias", "BiasImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("InputImage")
@@ -131,7 +130,7 @@ TEST_F(BiasAddOpTest, SimpleRandomOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
 
@@ -172,9 +171,9 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
 
   // Run on opencl
   BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, float>(&net, "Bias", "BiasImage",
-                                        kernels::BufferType::ARGUMENT);
+                                        ops::BufferType::ARGUMENT);
 
   OpDefBuilder("BiasAdd", "BiasAddTest")
       .Input("InputImage")
@@ -187,7 +186,7 @@ TEST_F(BiasAddOpTest, ComplexRandomOPENCL) {
   net.Sync();
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }
 

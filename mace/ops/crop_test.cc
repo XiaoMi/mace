@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -36,9 +35,9 @@ void RunCrop(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     BufferToImage<D, float>(&net, "Input0", "InputImage0",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Input1", "InputImage1",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Crop", "CropTest")
         .Input("InputImage0")
         .Input("InputImage1")
@@ -69,7 +68,7 @@ void RunCrop(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);

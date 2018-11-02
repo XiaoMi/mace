@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -90,9 +89,9 @@ void OpenclConcatHelper(int iters,
   net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImage0",
-                                       kernels::BufferType::IN_OUT_CHANNEL);
+                                       ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImage1",
-                                       kernels::BufferType::IN_OUT_CHANNEL);
+                                       ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Concat", "ConcatBM")
       .Input("InputImage0")
       .Input("InputImage1")

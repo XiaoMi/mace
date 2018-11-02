@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -53,11 +53,11 @@ void SimpleValidTest() {
                                                     "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::DW_CONV2D_FILTER);
+                        ops::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputImage")
         .Input("FilterImage")
@@ -73,7 +73,7 @@ void SimpleValidTest() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -150,11 +150,11 @@ void ComplexValidTest(index_t batch,
                                                     "Output", NHWC);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::DW_CONV2D_FILTER);
+                        ops::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputImage")
         .Input("FilterImage")
@@ -170,7 +170,7 @@ void ComplexValidTest(index_t batch,
 
     // Transfer output
     ImageToBuffer<D, T>(&net, "OutputImage", "Output",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
 
   } else {
     MACE_NOT_IMPLEMENTED;
@@ -290,11 +290,11 @@ void TestNxNS12(const index_t height, const index_t width) {
     expected->Copy(*net.GetOutput("Output"));
 
     BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                                      kernels::BufferType::IN_OUT_CHANNEL);
+                                      ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<DeviceType::GPU, T>(&net, "Filter", "FilterImage",
-                                      kernels::BufferType::DW_CONV2D_FILTER);
+                                      ops::BufferType::DW_CONV2D_FILTER);
     BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
-                                      kernels::BufferType::ARGUMENT);
+                                      ops::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2DTest")
         .Input("InputImage")
         .Input("FilterImage")
@@ -312,7 +312,7 @@ void TestNxNS12(const index_t height, const index_t width) {
 
     // Transfer output
     ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "DeviceOutput",
-                                          kernels::BufferType::IN_OUT_CHANNEL);
+                                          ops::BufferType::IN_OUT_CHANNEL);
 
     // Check
     if (DataTypeToEnum<T>::value == DT_FLOAT) {

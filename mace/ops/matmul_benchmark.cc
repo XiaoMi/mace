@@ -12,15 +12,277 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <Eigen/Dense>
+#include <algorithm>
 #include <string>
+#include <tuple>
+#include <vector>
 
-#include "mace/core/op_def_registry.h"
+#include "public/gemmlowp.h"
 #include "mace/core/testing/test_benchmark.h"
+#include "mace/ops/gemm.h"
+#include "mace/ops/sgemm.h"
 #include "mace/ops/ops_test_util.h"
+
+namespace gemmlowp {
+
+template<typename tScalar, MapOrder tOrder>
+class Matrix : public MatrixMap<tScalar, tOrder> {
+ public:
+  typedef MatrixMap<tScalar, tOrder> Map;
+  typedef MatrixMap<const tScalar, tOrder> ConstMap;
+  typedef typename Map::Scalar Scalar;
+  static const MapOrder Order = tOrder;
+  using Map::cols_;
+  using Map::data_;
+  using Map::kOrder;
+  using Map::rows_;
+  using Map::stride_;
+
+ public:
+  Matrix() : Map(nullptr, 0, 0, 0) {}
+
+  Matrix(int rows, int cols) : Map(nullptr, 0, 0, 0) { Resize(rows, cols); }
+
+  Matrix(const Matrix &other) : Map(nullptr, 0, 0, 0) { *this = other; }
+
+  Matrix &operator=(const Matrix &other) {
+    Resize(other.rows_, other.cols_);
+    std::memcpy(data_, other.data_, size() * sizeof(Scalar));
+    return *this;
+  }
+
+  friend bool operator==(const Matrix &a, const Matrix &b) {
+    return a.rows_ == b.rows_ && a.cols_ == b.cols_ &&
+        !std::memcmp(a.data_, b.data_, a.size());
+  }
+
+  void Resize(int rows, int cols) {
+    rows_ = rows;
+    cols_ = cols;
+    stride_ = kOrder == gemmlowp::MapOrder::ColMajor ? rows : cols;
+    storage.resize(size());
+    data_ = storage.data();
+  }
+
+  int size() const { return rows_ * cols_; }
+
+  Map &map() { return *static_cast<Map *>(this); }
+
+  ConstMap const_map() const { return ConstMap(data_, rows_, cols_, stride_); }
+
+ protected:
+  std::vector<Scalar> storage;
+};
+
+template<typename MatrixType>
+void MakeZero(MatrixType *m) {
+  for (int c = 0; c < m->cols(); c++) {
+    for (int r = 0; r < m->rows(); r++) {
+      (*m)(r, c) = 128;
+    }
+  }
+}
+
+}  // namespace gemmlowp
 
 namespace mace {
 namespace ops {
 namespace test {
+
+// Test the speed of different access order of a NHWC buffer
+
+namespace {
+
+// Matmul with (m, k) x (k, n)
+void MatmulBenchmark_Mace(int iters, int m, int k, int n) {
+  mace::testing::StopTiming();
+  std::vector<float> lhs(m * k);
+  std::vector<float> rhs(k * n);
+  std::vector<float> result(m * n);
+  // warm up
+  Gemm(lhs.data(), rhs.data(), 1, m, k, n, result.data());
+  mace::testing::StartTiming();
+  while (iters--) {
+    Gemm(lhs.data(), rhs.data(), 1, m, k, n, result.data());
+  }
+}
+
+void MatmulBenchmark_Mace_SGemm(int iters, int m, int k, int n) {
+  mace::testing::StopTiming();
+  std::vector<float> lhs(m * k);
+  std::vector<float> rhs(k * n);
+  std::vector<float> result(m * n);
+
+  ops::MatrixMap<const float> matrix_lhs(1, m, k, RowMajor, lhs.data(),
+                                             true);
+  ops::MatrixMap<const float> matrix_rhs(1, k, n, RowMajor, rhs.data(),
+                                             true);
+  ops::MatrixMap<float> matrix_result(1, m, n, RowMajor, result.data());
+
+  ops::SGemm sgemm;
+
+  sgemm(matrix_lhs, matrix_rhs, &matrix_result);
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    sgemm(matrix_lhs, matrix_rhs, &matrix_result);
+  }
+}
+
+void MatmulBenchmark_Eigen(int iters, int m, int k, int n) {
+  mace::testing::StopTiming();
+  Eigen::MatrixXf lhs = Eigen::MatrixXf::Random(m, k);
+  Eigen::MatrixXf rhs = Eigen::MatrixXf::Random(k, n);
+  Eigen::MatrixXf result = Eigen::MatrixXf::Zero(m, n);
+  // warm up
+  result = lhs * rhs;
+  mace::testing::StartTiming();
+  while (iters--) {
+    result = lhs * rhs;
+  }
+}
+
+void MatmulBenchmark_gemmlowp_uint8(int iters, int rows, int depth, int cols) {
+  mace::testing::StopTiming();
+
+  gemmlowp::Matrix<std::uint8_t, gemmlowp::MapOrder::RowMajor> lhs;
+  gemmlowp::Matrix<std::uint8_t, gemmlowp::MapOrder::ColMajor> rhs;
+  gemmlowp::Matrix<std::uint8_t, gemmlowp::MapOrder::ColMajor> result;
+  lhs.Resize(rows, depth);
+  rhs.Resize(depth, cols);
+  result.Resize(rows, cols);
+  gemmlowp::MakeZero(&lhs);
+  gemmlowp::MakeZero(&rhs);
+  gemmlowp::MakeZero(&result);
+
+  gemmlowp::OutputStageQuantizeDownInt32ByFixedPoint quantize_down_stage;
+  quantize_down_stage.result_offset_after_shift = 128;
+  quantize_down_stage.result_fixedpoint_multiplier = 1234567890;
+  quantize_down_stage.result_shift = 16;
+  gemmlowp::OutputStageSaturatingCastToUint8 saturating_cast_stage;
+  const auto output_pipeline =
+      std::make_tuple(quantize_down_stage, saturating_cast_stage);
+
+  auto gemm_context =
+      mace::ops::test::OpTestContext::Get()
+          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  MACE_CHECK_NOTNULL(gemm_context);
+
+  using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
+
+  gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::uint8_t, BitDepthParams>(
+      gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+      -128, output_pipeline);
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::uint8_t,
+                                     BitDepthParams>(
+        gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+        -128, output_pipeline);
+  }
+}
+
+void MatmulBenchmark_gemmlowp_int32(int iters, int rows, int depth, int cols) {
+  mace::testing::StopTiming();
+
+  gemmlowp::Matrix<std::uint8_t, gemmlowp::MapOrder::RowMajor> lhs;
+  gemmlowp::Matrix<std::uint8_t, gemmlowp::MapOrder::ColMajor> rhs;
+  gemmlowp::Matrix<std::int32_t, gemmlowp::MapOrder::ColMajor> result;
+  lhs.Resize(rows, depth);
+  rhs.Resize(depth, cols);
+  result.Resize(rows, cols);
+  gemmlowp::MakeZero(&lhs);
+  gemmlowp::MakeZero(&rhs);
+  gemmlowp::MakeZero(&result);
+
+  const auto output_pipeline = std::make_tuple();
+
+  auto gemm_context =
+      mace::ops::test::OpTestContext::Get()
+          ->GetDevice(CPU)->cpu_runtime()->GetGemmlowpContext();
+  MACE_CHECK_NOTNULL(gemm_context);
+
+  using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
+
+  gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::int32_t, BitDepthParams>(
+      gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+      -128, output_pipeline);
+
+  mace::testing::StartTiming();
+  while (iters--) {
+    gemmlowp::GemmWithOutputPipeline<std::uint8_t, std::int32_t,
+                                     BitDepthParams>(
+        gemm_context, lhs.const_map(), rhs.const_map(), &result.map(), -128,
+        -128, output_pipeline);
+  }
+}
+
+}  // namespace
+
+#define MACE_BM_MATMUL_FUNC(M, K, N, FUNC, TYPE)                   \
+  static void MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC(int iters) { \
+    const int64_t macc = static_cast<int64_t>(iters) * M * K * N;  \
+    const int64_t tot = static_cast<int64_t>(iters) * (M + N) * K; \
+    mace::testing::MaccProcessed(macc);                            \
+    mace::testing::BytesProcessed(tot * sizeof(TYPE));             \
+    MatmulBenchmark_##FUNC(iters, M, K, N);                        \
+  }                                                                \
+  MACE_BENCHMARK(MACE_BM_MATMUL_##M##_##K##_##N##_##FUNC)
+
+#define MACE_BM_MATMUL(M, K, N)                          \
+  MACE_BM_MATMUL_FUNC(M, K, N, Mace, float);             \
+  MACE_BM_MATMUL_FUNC(M, K, N, Mace_SGemm, float);       \
+  MACE_BM_MATMUL_FUNC(M, K, N, Eigen, float);            \
+  MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_uint8, uint8_t); \
+  MACE_BM_MATMUL_FUNC(M, K, N, gemmlowp_int32, uint8_t);
+
+// Embedding size 384
+MACE_BM_MATMUL(7, 384, 384);
+MACE_BM_MATMUL(7, 384, 1536);
+MACE_BM_MATMUL(7, 1536, 384);
+
+MACE_BM_MATMUL(15, 384, 384);
+MACE_BM_MATMUL(15, 384, 1536);
+MACE_BM_MATMUL(15, 1536, 384);
+
+MACE_BM_MATMUL(1, 256, 256);
+MACE_BM_MATMUL(1, 256, 1536);
+MACE_BM_MATMUL(1, 1536, 256);
+MACE_BM_MATMUL(256, 256, 1);
+MACE_BM_MATMUL(1536, 256, 1);
+MACE_BM_MATMUL(256, 1536, 1);
+MACE_BM_MATMUL(29792, 256, 1);
+MACE_BM_MATMUL(1, 256, 29792);
+MACE_BM_MATMUL(2, 256, 256);
+MACE_BM_MATMUL(2, 256, 1536);
+MACE_BM_MATMUL(2, 1536, 256);
+MACE_BM_MATMUL(3, 256, 256);
+MACE_BM_MATMUL(3, 256, 1536);
+MACE_BM_MATMUL(3, 1536, 256);
+MACE_BM_MATMUL(4, 256, 256);
+MACE_BM_MATMUL(4, 256, 1536);
+MACE_BM_MATMUL(4, 1536, 256);
+MACE_BM_MATMUL(8, 256, 256);
+MACE_BM_MATMUL(8, 256, 1536);
+MACE_BM_MATMUL(8, 1536, 256);
+MACE_BM_MATMUL(10, 256, 256);
+MACE_BM_MATMUL(10, 256, 1536);
+MACE_BM_MATMUL(10, 1536, 256);
+MACE_BM_MATMUL(15, 256, 256);
+MACE_BM_MATMUL(15, 256, 1536);
+MACE_BM_MATMUL(15, 1536, 256);
+
+// Embedding size 128
+MACE_BM_MATMUL(1, 128, 1536);
+MACE_BM_MATMUL(1, 128, 44678);
+
+// MobileNet
+MACE_BM_MATMUL(128, 128, 3136);
+MACE_BM_MATMUL(256, 256, 784);
+MACE_BM_MATMUL(512, 512, 196);
+MACE_BM_MATMUL(1024, 1024, 49);
 
 namespace {
 template <DeviceType D, typename T>
@@ -41,9 +303,9 @@ void MatMulBenchmark(
   }
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "A", "AImage",
-                        kernels::BufferType::IN_OUT_WIDTH);
+                        ops::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, T>(&net, "B", "BImage",
-                        kernels::BufferType::IN_OUT_HEIGHT);
+                        ops::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulBM")
         .Input("AImage")
@@ -137,7 +399,7 @@ void MatMulTransposeBenchmark(
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_MATMUL_##N##_##H##_##C##_##W##_##TYPE##_##DEVICE)
 
-#define MACE_BM_MATMUL(N, H, C, W)                 \
+#define MACE_BM_MATMUL_OP(N, H, C, W)              \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, GPU);    \
   MACE_BM_MATMUL_MACRO(N, H, C, W, half, GPU);     \
@@ -158,17 +420,17 @@ void MatMulTransposeBenchmark(
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
-MACE_BM_MATMUL(1, 128, 128, 49);
-MACE_BM_MATMUL(2, 128, 128, 49);
-MACE_BM_MATMUL(3, 128, 128, 49);
-MACE_BM_MATMUL(4, 128, 128, 49);
-MACE_BM_MATMUL(16, 32, 128, 49);
-MACE_BM_MATMUL(16, 32, 128, 961);
-MACE_BM_MATMUL(16, 32, 128, 3969);
-MACE_BM_MATMUL(16, 128, 128, 49);
-MACE_BM_MATMUL(16, 49, 128, 128);
-MACE_BM_MATMUL(16, 128, 128, 961);
-MACE_BM_MATMUL(16, 128, 128, 3969);
+MACE_BM_MATMUL_OP(1, 128, 128, 49);
+MACE_BM_MATMUL_OP(2, 128, 128, 49);
+MACE_BM_MATMUL_OP(3, 128, 128, 49);
+MACE_BM_MATMUL_OP(4, 128, 128, 49);
+MACE_BM_MATMUL_OP(16, 32, 128, 49);
+MACE_BM_MATMUL_OP(16, 32, 128, 961);
+MACE_BM_MATMUL_OP(16, 32, 128, 3969);
+MACE_BM_MATMUL_OP(16, 128, 128, 49);
+MACE_BM_MATMUL_OP(16, 49, 128, 128);
+MACE_BM_MATMUL_OP(16, 128, 128, 961);
+MACE_BM_MATMUL_OP(16, 128, 128, 3969);
 
 MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 49);
 MACE_BM_MATMUL_TRANPOSE(16, 32, 128, 961);

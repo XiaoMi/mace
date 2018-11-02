@@ -15,8 +15,8 @@
 #include <fstream>
 #include <vector>
 
-#include "mace/kernels/deconv_2d.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/deconv_2d.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -38,7 +38,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
                    const std::vector<float> &filter_data,
                    const std::vector<index_t> &expected_shape,
                    const std::vector<float> &expected_data,
-                   kernels::FrameworkType model_type) {
+                   ops::FrameworkType model_type) {
   OpsTestNet net;
   // Add input data
   const index_t batch = input_shape[0];
@@ -50,12 +50,12 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
   net.TransformDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
     BufferToImage<D, float>(&net, "FilterOIHW", "FilterImage",
-                            kernels::BufferType::CONV2D_FILTER);
-    if (model_type == kernels::FrameworkType::CAFFE) {
+                            ops::BufferType::CONV2D_FILTER);
+    if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("InputImage")
           .Input("FilterImage")
@@ -85,12 +85,12 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
 
-    if (model_type == kernels::FrameworkType::CAFFE) {
+    if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("InputNCHW")
           .Input("FilterOIHW")
@@ -138,7 +138,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    {4.5, 4.6, 4.7, 6.5, 6.6, 6.7, 4.5, 4.6, 4.7,
                     6.5, 6.6, 6.7, 9.5, 9.6, 9.7, 6.5, 6.6, 6.7,
                     4.5, 4.6, 4.7, 6.5, 6.6, 6.7, 4.5, 4.6, 4.7},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0},
                    1, Padding::VALID, {2, 2},
                    {0}, {3, 3, 3, 1},
@@ -147,7 +147,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    {1, 3, 3, 3},
                    {4, 4, 4, 6, 6, 6, 4, 4, 4, 6, 6, 6, 9, 9,
                     9, 6, 6, 6, 4, 4, 4, 6, 6, 6, 4, 4, 4},
-                   kernels::FrameworkType::CAFFE);
+                   ops::FrameworkType::CAFFE);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0},
                    1, Padding::SAME, {},
                    {1, 3, 3, 3}, {3, 3, 3, 1},
@@ -157,7 +157,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    {54,  66,  78,  126, 147, 168, 130, 146, 162,
                     198, 225, 252, 405, 450, 495, 366, 399, 432,
                     354, 378, 402, 630, 669, 708, 502, 530, 558},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0},
                    1, Padding::SAME, {2, 2},
                    {0}, {3, 3, 3, 1},
@@ -167,7 +167,7 @@ void TestNHWCSimple3x3SAME_S1() {
                    {54,  66,  78,  126, 147, 168, 130, 146, 162,
                     198, 225, 252, 405, 450, 495, 366, 399, 432,
                     354, 378, 402, 630, 669, 708, 502, 530, 558},
-                   kernels::FrameworkType::CAFFE);
+                   ops::FrameworkType::CAFFE);
 }
 
 template <DeviceType D>
@@ -185,7 +185,7 @@ void TestNHWCSimple3x3SAME_S2() {
                     1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1,
                     2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2, 2, 4, 4, 4, 2, 2, 2,
                     1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0},
                    2, Padding::SAME, {2, 2},
                    {0}, {3, 3, 3, 1},
@@ -198,7 +198,7 @@ void TestNHWCSimple3x3SAME_S2() {
                     1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1,
                     2, 2, 2, 4, 4, 4, 2, 2, 2, 4, 4, 4, 2, 2, 2,
                     1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1},
-                   kernels::FrameworkType::CAFFE);
+                   ops::FrameworkType::CAFFE);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0},
                    2, Padding::SAME, {},
                    {1, 6, 6, 3}, {3, 3, 3, 1},
@@ -216,7 +216,7 @@ void TestNHWCSimple3x3SAME_S2() {
                     83, 94, 105, 116, 127, 138, 252, 276, 300, 142, 155, 168,
                     304, 332, 360, 168, 183, 198, 70, 77, 84, 91, 98, 105, 192,
                     207, 222, 104, 112, 120, 218, 235, 252, 117, 126, 135},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
   RunTestSimple<D>({1, 3, 3, 1}, {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0},
                    2, Padding::SAME, {2, 2},
                    {0}, {3, 3, 3, 1},
@@ -229,7 +229,7 @@ void TestNHWCSimple3x3SAME_S2() {
                     140, 151, 162, 78, 84, 90, 116, 127, 138, 252, 276, 300,
                     142, 155, 168, 304, 332, 360, 168, 183, 198, 91, 98, 105,
                     192, 207, 222, 104, 112, 120, 218, 235, 252, 117, 126, 135},
-                   kernels::FrameworkType::CAFFE);
+                   ops::FrameworkType::CAFFE);
 }
 
 template <DeviceType D>
@@ -246,7 +246,7 @@ void TestNHWCSimple3x3SAME_S2_1() {
                     18, 18, 18, 45, 45, 45, 27, 27, 27, 45, 45, 45, 18, 18, 18,
                     30, 30, 30, 75, 75, 75, 45, 45, 45, 75, 75, 75, 30, 30, 30,
                     12, 12, 12, 30, 30, 30, 18, 18, 18, 30, 30, 30, 12, 12, 12},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
 }
 
 template <DeviceType D>
@@ -271,7 +271,7 @@ void TestNHWCSimple3x3VALID_S2() {
                     1, 1, 1,
                     1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1,
                     1, 1, 1},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
 }
 
 template <DeviceType D>
@@ -288,7 +288,7 @@ void TestNHWCSimple3x3VALID_S1() {
                     366, 399, 432, 234, 252, 270, 146, 157, 168, 354, 378, 402,
                     630, 669, 708, 502, 530, 558, 294, 309, 324, 133, 140, 147,
                     306, 321, 336, 522, 546, 570, 398, 415, 432, 225, 234, 243},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
 }
 
 template <DeviceType D>
@@ -297,7 +297,7 @@ void TestNHWCSimple2x2SAME() {
                    {1, 2, 2, 1}, {3, 3, 1, 1},
                    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
                    {1, 2, 2, 1}, {4.f, 4.f, 4.f, 4.f},
-                   kernels::FrameworkType::TENSORFLOW);
+                   ops::FrameworkType::TENSORFLOW);
 }
 
 template <DeviceType D>
@@ -308,7 +308,7 @@ void TestNHWCSimple2x2VALID() {
       {1, 5, 5, 1},
       {1.f, 1.f, 2.f, 1.f, 1.f, 1.f, 1.f, 2.f, 1.f, 1.f, 2.f, 2.f, 4.f,
        2.f, 2.f, 1.f, 1.f, 2.f, 1.f, 1.f, 1.f, 1.f, 2.f, 1.f, 1.f},
-      kernels::FrameworkType::TENSORFLOW);
+      ops::FrameworkType::TENSORFLOW);
 }
 }  // namespace
 
@@ -397,11 +397,11 @@ void TestComplexDeconvNxNS12(const int batch,
     std::vector<int> paddings;
     std::vector<int> output_shape;
 
-    kernels::FrameworkType model_type =
+    ops::FrameworkType model_type =
         padding < 0 ?
-        kernels::FrameworkType::TENSORFLOW : kernels::FrameworkType::CAFFE;
+        ops::FrameworkType::TENSORFLOW : ops::FrameworkType::CAFFE;
 
-    if (model_type == kernels::FrameworkType::TENSORFLOW) {
+    if (model_type == ops::FrameworkType::TENSORFLOW) {
       if (type == Padding::SAME) {
         out_h = (height - 1) * stride_h + 1;
         out_w = (width - 1) * stride_w + 1;
@@ -421,7 +421,7 @@ void TestComplexDeconvNxNS12(const int batch,
       paddings.push_back(padding);
     }
 
-    if (model_type == kernels::FrameworkType::CAFFE) {
+    if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("InputNCHW")
           .Input("Filter")
@@ -458,13 +458,13 @@ void TestComplexDeconvNxNS12(const int batch,
 
     // run on gpu
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::CONV2D_FILTER);
+                        ops::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
 
-    if (model_type == kernels::FrameworkType::CAFFE) {
+    if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("InputImage")
           .Input("FilterImage")
@@ -492,7 +492,7 @@ void TestComplexDeconvNxNS12(const int batch,
     net.RunOp(D);
 
     ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-4,
                             1e-4);
   };

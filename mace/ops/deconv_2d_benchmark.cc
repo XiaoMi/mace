@@ -14,9 +14,8 @@
 
 #include <algorithm>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -54,11 +53,11 @@ static void Deconv2d(int iters,
                                     {batch, out_h, out_w, output_channels});
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::CONV2D_FILTER);
+                        ops::BufferType::CONV2D_FILTER);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     OpDefBuilder("Deconv2D", "Deconv2dTest")
         .Input("InputImage")
         .Input("FilterImage")

@@ -14,9 +14,8 @@
 
 #include <algorithm>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -81,11 +80,11 @@ void DepthwiseConv2d(int iters,
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        kernels::BufferType::DW_CONV2D_FILTER);
+                        ops::BufferType::DW_CONV2D_FILTER);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
         .Input("InputImage")
         .Input("FilterImage")

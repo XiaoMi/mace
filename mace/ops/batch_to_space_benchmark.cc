@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -42,7 +41,7 @@ void BMBatchToSpace(
         .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
         .Input("InputImage")
         .Output("OutputImage")

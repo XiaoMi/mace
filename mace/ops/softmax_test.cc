@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -61,7 +60,7 @@ void Simple() {
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Softmax", "SoftmaxTest")
         .Input("InputImage")
@@ -73,7 +72,7 @@ void Simple() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
@@ -117,7 +116,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<D, float>(&net, "Input", "InputImage",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
       .Input("InputImage")
@@ -129,7 +128,7 @@ void Complex(const std::vector<index_t> &logits_shape) {
 
   // Transfer output
   ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
 }

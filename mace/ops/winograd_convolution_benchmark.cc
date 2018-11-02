@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/conv_pool_2d_util.h"
+#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -34,15 +33,15 @@ void BMWinogradConvolution(
   net.AddRandomInput<D, T>("Bias", {out_channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                      kernels::BufferType::CONV2D_FILTER);
-  BufferToImage<D, T>(&net, "Bias", "BiasImage", kernels::BufferType::ARGUMENT);
+                      ops::BufferType::CONV2D_FILTER);
+  BufferToImage<D, T>(&net, "Bias", "BiasImage", ops::BufferType::ARGUMENT);
 
   // Winograd convolution
   // transform filter
     BufferToImage<D, T>(&net, "Filter", "WinoFilter",
-                        kernels::BufferType::WINOGRAD_FILTER, block_size);
+                        ops::BufferType::WINOGRAD_FILTER, block_size);
 
   // Inference convolution output shape
   OpDefBuilder("InferConv2dShape", "InferConv2dShapeTest")

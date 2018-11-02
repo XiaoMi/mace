@@ -112,7 +112,8 @@ There are two common advanced use cases:
   - converting model to C++ code.
   - tuning GPU kernels for a specific SoC.
 
-* **Convert model(s) to C++ code**
+Convert model(s) to C++ code
+--------------------------------
 
     * **1. Change the model deployment file(.yml)**
 
@@ -204,7 +205,8 @@ There are two common advanced use cases:
             // ... Same with the code in basic usage
 
 
-* **Tuning for specific SoC's GPU**
+Tuning for specific SoC's GPU
+---------------------------------
 
     If you want to use the GPU of a specific device, you can just specify the ``target_socs`` in your YAML file and
     then tune the MACE lib for it (OpenCL kernels), which may get 1~10% performance improvement.
@@ -375,25 +377,52 @@ Use ``-h`` to get detailed help.
 
 Reduce Library Size
 -------------------
-* **dynamic library**
+* Build for your own usage purpose.
+    * **dynamic library**
 
-    The generated dynamic library by script ``tools/build-standalone-lib.sh`` is about ``1.6M`` for
-    ``armeabi-v7a`` and ``2.1M`` for ``arm64-v8a``. It can be reduced by modifying some build options.
+        - If the models don't need to run on device ``dsp``, change the build option ``--define hexagon=true``
+          to ``false``. And the library will be decreased about ``100KB``.
 
-    - If the models don't need to run on device ``dsp``, change the build option ``--define hexagon=true``
-      to ``false``. And the library will be decreased about ``100KB``.
+        - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
+          will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
 
-    - Futher more, if only ``cpu`` device needed, change ``--define opencl=true`` to ``false``. This way
-      will reduce half of library size to about ``700KB`` for ``armeabi-v7a`` and ``1000KB`` for ``arm64-v8a``
+        - About ``300KB`` can be reduced when add ``--config symbol_hidden`` building option. It will change
+          the visibility of inner apis in libmace.so and lead to linking error when load model(s) in ``code``
+          but no effection for ``file`` mode.
 
-    - About ``300KB`` can be reduced when add ``--config symbol_hidden`` building option. It will change
-      the visibility of inner apis in libmace.so and lead to linking error when load model(s) in ``code``
-      but no effection for ``file`` mode.
+    * **static library**
 
-* **static library**
+        - The methods in dynamic library can be useful for static library too. In additional, the static
+          library may also contain model graph and model datas if the configs ``model_graph_format`` and
+          ``model_data_format`` in deployment file are set to ``code``.
 
-    - The methods in dynamic library can be useful for static library too. In additional, the static
-      library may also contain model graph and model datas if the configs ``model_graph_format`` and
-      ``model_data_format`` in deployment file are set to ``code``.
+        - It is recommended to use ``version script`` and ``strip`` feature when linking mace static library. The effect is remarkable.
 
-    - It is recommended to use ``version script`` and ``strip`` feature when linking mace static library. The effect is remarkable.
+* Remove the unused ops.
+Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
+which will reduce the library size significantly. the final binary just link the registered ops' code.
+```
+#include "mace/ops/ops_register.h"
+
+namespace mace {
+namespace ops {
+// Just leave the ops used in your models
+
+...
+
+}  // namespace ops
+
+
+OpRegistry::OpRegistry() : OpRegistryBase() {
+// Just leave the ops used in your models
+
+  ...
+
+  ops::RegisterMyCustomOp(this);
+
+  ...
+
+}
+
+}  // namespace mace
+```
