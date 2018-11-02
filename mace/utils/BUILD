@@ -13,7 +13,6 @@ cc_library(
     name = "utils",
     srcs = [
         "logging.cc",
-        "status.cc",
         "string_util.cc",
     ],
     hdrs = glob([

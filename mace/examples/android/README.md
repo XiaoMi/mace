@@ -6,7 +6,16 @@ How to build
 
 ```sh
 cd mace/exampls/android
-./build.sh
+./build.sh dynamic
+# if libmace.a is needed, update `macelibrary/CMakeLists.txt` and run with `./build.sh static`.
+```
+
+Install
+---------------
+
+```sh
+# running after build step and in `mace/exampls/android` directory
+adb install ./app/build/outputs/apk/app/release/app-app-release.apk
 ```
 
 Pre-built APK

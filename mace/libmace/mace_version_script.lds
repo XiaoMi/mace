@@ -10,6 +10,7 @@ mace {
 
     # api for static library of models
     *mace*logging*LogMessage*;
+    *mace*MaceStatus*;
     *mace*NetDef*;
     *mace*MemoryType*;
     *mace*DataType*;

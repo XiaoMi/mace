@@ -2,12 +2,47 @@
 
 set -e -u -o pipefail
 
+Usage() {
+  echo "Usage: ./build.sh [dynamic|static]"
+  echo "|==============|====================|"
+  echo "|   parameter  |  lib will linked   |"
+  echo "|==============|====================|"
+  echo "|   dynamic    |    libmace.so      |"
+  echo "|--------------|--------------------|"
+  echo "|   static     |    libmace.a       |"
+  echo "|--------------|--------------------|"
+}
+
+if [ $# -lt 1 ]; then
+  Usage
+  exit 1
+fi
+
+MACE_LINK_TYPE=$1
+
 pushd ../../../
 
 TARGET_ABI=arm64-v8a
-LIBRARY_DIR=mace/examples/android/macelibrary/src/main/cpp/
+ANDROID_DEMO_DIR=mace/examples/android/
+LIBRARY_DIR=$ANDROID_DEMO_DIR/macelibrary/src/main/cpp/
 INCLUDE_DIR=$LIBRARY_DIR/include/mace/public/
 LIBMACE_DIR=$LIBRARY_DIR/lib/$TARGET_ABI/
+LIBGNUSTL_SHARED_SO=libgnustl_shared.so
+LIBCPP_SHARED_SO=libc++_shared.so
+
+JNILIBS_DIR=$ANDROID_DEMO_DIR/macelibrary/src/main/jniLibs/$TARGET_ABI
+rm -rf $JNILIBS_DIR
+
+if [ $MACE_LINK_TYPE == "dynamic" ]; then
+  BAZEL_LIBMACE_TARGET=mace/libmace:libmace.so
+  BAZEL_GEN_LIBMACE_PATH=bazel-bin/mace/libmace/libmace.so
+elif [ $MACE_LINK_TYPE == "static" ]; then
+  BAZEL_LIBMACE_TARGET=mace/libmace:libmace_static
+  BAZEL_GEN_LIBMACE_PATH=bazel-genfiles/mace/libmace/libmace.a
+else
+  Usage
+  exit 1
+fi
 
 rm -rf $LIBRARY_DIR/include/
 mkdir -p $INCLUDE_DIR
@@ -21,14 +56,25 @@ python tools/converter.py convert --config=mace/examples/android/mobilenet.yml -
 cp -rf builds/mobilenet/include/mace/public/*.h $INCLUDE_DIR
 cp -rf builds/mobilenet/model $LIBRARY_DIR
 
-bazel build --config android --config optimization mace/libmace:libmace_static --define neon=true --define openmp=true --define opencl=true --cpu=$TARGET_ABI
+bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define neon=true --define openmp=true --define opencl=true --cpu=$TARGET_ABI
 cp -rf mace/public/*.h $INCLUDE_DIR
-cp -rf bazel-genfiles/mace/libmace/libmace.a $LIBMACE_DIR
+cp -rf $BAZEL_GEN_LIBMACE_PATH $LIBMACE_DIR
+
+if [ $MACE_LINK_TYPE == "dynamic" ]; then
+  mkdir -p $JNILIBS_DIR
+  cp -rf $BAZEL_GEN_LIBMACE_PATH $JNILIBS_DIR
+
+  if [[ "" != `$ANDROID_NDK_HOME/ndk-depends $BAZEL_GEN_LIBMACE_PATH | grep $LIBGNUSTL_SHARED_SO` ]]; then
+    cp -rf $ANDROID_NDK_HOME/sources/cxx-stl/gnu-libstdc++/4.9/libs/$TARGET_ABI/$LIBGNUSTL_SHARED_SO $JNILIBS_DIR
+  fi
+
+  if [[ "" != `$ANDROID_NDK_HOME/ndk-depends $BAZEL_GEN_LIBMACE_PATH | grep $LIBCPP_SHARED_SO` ]]; then
+    cp -rf $ANDROID_NDK_HOME/sources/cxx-stl/llvm-libc++/libs/$TARGET_ABI/$LIBCPP_SHARED_SO $JNILIBS_DIR
+  fi
+fi
 
 popd
 
-if [ $# -eq 1 ] && [ $1 == "build" ]; then
-    ./gradlew build
-else
-    ./gradlew installAppRelease
-fi
+# Build demo
+./gradlew clean
+./gradlew build
