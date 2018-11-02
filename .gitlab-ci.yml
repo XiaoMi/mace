@@ -136,4 +136,4 @@ model_tests:
 build_android_demo:
   stage: build_android_demo
   script:
-    - pushd mace/examples/android/ && bash build.sh build && popd
+    - pushd mace/examples/android/ && bash build.sh static && bash build.sh dynamic && popd

@@ -105,12 +105,11 @@ public class CameraApiLessM extends CameraEngage implements Camera.AutoFocusCall
         Camera.Parameters parameters = mCamera.getParameters();
         parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
         Camera.Size size = getOptimalSize(parameters.getSupportedPreviewSizes(), width, height);
-        mPreviewWidth = size.width;
-        mPreviewHeight = size.height;
+        mPreviewWidth = size.height;
+        mPreviewHeight = size.width;
         parameters.setPreviewSize(size.width, size.height);
-        parameters.setPictureSize(size.width, size.height);
         mCamera.setParameters(parameters);
-        mTextureView.setRatio(size.height, size.width);
+        mTextureView.setRatio(mPreviewWidth, mPreviewHeight);
     }
 
     private Camera.Size getOptimalSize(List<Camera.Size> sizes, int w, int h) {
