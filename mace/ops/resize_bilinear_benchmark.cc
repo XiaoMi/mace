@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <string>
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -64,7 +63,7 @@ void ResizeBilinearBenchmark(int iters,
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
         .Input("InputImage")
         .Input("OutSize")

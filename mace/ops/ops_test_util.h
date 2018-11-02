@@ -31,9 +31,8 @@
 #include "mace/core/runtime/opencl/gpu_device.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/kernels/opencl/common.h"
-#include "mace/kernels/ops_register.h"
-#include "mace/ops/ops_def_register.h"
+#include "mace/ops/opencl/common.h"
+#include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
 #include "mace/utils/quantize.h"
@@ -141,7 +140,6 @@ class OpTestContext {
 class OpsTestNet {
  public:
   OpsTestNet() :
-    op_def_registry_(new OpDefRegistry()),
     op_registry_(new OpRegistry()) {}
 
   template <DeviceType D, typename T>
@@ -455,10 +453,8 @@ class OpsTestNet {
     NetDef net_def;
     for (auto &op_def_ : op_defs_) {
       net_def.add_op()->CopyFrom(op_def_);
-      net_def.add_op_types(op_def_.type());
     }
     net_ = std::unique_ptr<NetBase>(new SerialNet(
-        op_def_registry_.get(),
         op_registry_.get(),
         &net_def,
         &ws_,
@@ -502,7 +498,6 @@ class OpsTestNet {
   MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
     device_type_ = device;
     auto net = std::unique_ptr<NetBase>(new SerialNet(
-        op_def_registry_.get(),
         op_registry_.get(),
         &net_def,
         &ws_,
@@ -511,7 +506,6 @@ class OpsTestNet {
     MACE_RETURN_IF_ERROR(net->Init());
     MACE_RETURN_IF_ERROR(net->Run());
     net_ = std::unique_ptr<NetBase>(new SerialNet(
-        op_def_registry_.get(),
         op_registry_.get(),
         &net_def,
         &ws_,
@@ -538,7 +532,6 @@ class OpsTestNet {
   }
 
  public:
-  std::shared_ptr<OpDefRegistryBase> op_def_registry_;
   std::shared_ptr<OpRegistryBase> op_registry_;
   Workspace ws_;
   std::vector<OperatorDef> op_defs_;
@@ -784,7 +777,7 @@ template <DeviceType D, typename T>
 void BufferToImage(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
-                   const kernels::BufferType type,
+                   const ops::BufferType type,
                    const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 
@@ -806,7 +799,7 @@ template <DeviceType D, typename T>
 void ImageToBuffer(OpsTestNet *net,
                    const std::string &input_name,
                    const std::string &output_name,
-                   const kernels::BufferType type,
+                   const ops::BufferType type,
                    const int wino_block_size = 2) {
   MACE_CHECK_NOTNULL(net);
 

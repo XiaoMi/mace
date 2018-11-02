@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sstream>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -79,7 +80,26 @@ MaceStatus Operation::Init(OpInitContext *context) {
   return MaceStatus::MACE_SUCCESS;
 }
 
-OpKeyBuilder::OpKeyBuilder(const char *op_name) : op_name_(op_name) {}
+// op registry
+namespace {
+class OpKeyBuilder {
+ public:
+  explicit OpKeyBuilder(const std::string &op_name);
+
+  OpKeyBuilder &Device(DeviceType device);
+
+  OpKeyBuilder &TypeConstraint(const char *attr_name,
+                               DataType allowed);
+
+  const std::string Build();
+
+ private:
+  std::string op_name_;
+  DeviceType device_type_;
+  std::map<std::string, DataType> type_constraint_;
+};
+
+OpKeyBuilder::OpKeyBuilder(const std::string &op_name) : op_name_(op_name) {}
 
 OpKeyBuilder &OpKeyBuilder::Device(DeviceType device) {
   device_type_ = device;
@@ -103,16 +123,53 @@ const std::string OpKeyBuilder::Build() {
 
   return ss.str();
 }
+}  // namespace
 
-OpRegistryBase::~OpRegistryBase() = default;
+void OpRegistrationInfo::AddDevice(mace::DeviceType device) {
+  devices.insert(device);
+}
+
+void OpRegistrationInfo::Register(const std::string &key, OpCreator creator) {
+  VLOG(3) << "Registering: " << key;
+  MACE_CHECK(creators.count(key) == 0, "Key already registered: ", key);
+  creators[key] = creator;
+}
+
+MaceStatus OpRegistryBase::Register(const std::string &op_type,
+                                const mace::DeviceType device_type,
+                                const mace::DataType dt,
+                                mace::OpRegistrationInfo::OpCreator creator) {
+  if (registry_.count(op_type) == 0) {
+    registry_[op_type] = std::unique_ptr<OpRegistrationInfo>(
+        new OpRegistrationInfo);
+  }
+  registry_[op_type]->AddDevice(device_type);
+
+  std::string op_key = OpKeyBuilder(op_type)
+      .Device(device_type)
+      .TypeConstraint("T", dt)
+      .Build();
+  registry_.at(op_type)->Register(op_key, creator);
+  return MaceStatus::MACE_SUCCESS;
+}
+
+const std::set<DeviceType> OpRegistryBase::AvailableDevices(
+    const std::string &op_type) const {
+  MACE_CHECK(registry_.count(op_type) != 0,
+             op_type, " operation is not registered.");
+
+  return registry_.at(op_type)->devices;
+}
+
 
 std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
     OpConstructContext *context,
     DeviceType device_type,
     const NetMode mode) const {
   OperatorDef *operator_def = context->operator_def();
-  const int dtype = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-      *operator_def, "T", static_cast<int>(DT_FLOAT));
+  const DataType dtype = static_cast<DataType>(
+      ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
+          *operator_def, "T", static_cast<int>(DT_FLOAT)));
   const int op_mode_i = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
       *operator_def, "mode", static_cast<int>(NetMode::NORMAL));
   const NetMode op_mode = static_cast<NetMode>(op_mode_i);
@@ -120,15 +177,20 @@ std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
           << operator_def->type() << "<" << dtype << ">" << ") on "
           << device_type;
   if (op_mode == mode) {
-    return registry_.Create(
-        OpKeyBuilder(operator_def->type().data())
-            .Device(device_type)
-            .TypeConstraint("T", static_cast<DataType>(dtype))
-            .Build(),
-        context);
+    const std::string op_type = context->operator_def()->type();
+    MACE_CHECK(registry_.count(op_type) != 0,
+               op_type, " operation is not registered.");
+
+    std::string key = OpKeyBuilder(op_type)
+        .Device(device_type)
+        .TypeConstraint("T", dtype)
+        .Build();
+    if (registry_.at(op_type)->creators.count(key) == 0) {
+      LOG(FATAL) << "Key not registered: " << key;
+    }
+    return registry_.at(op_type)->creators.at(key)(context);
   } else {
     return nullptr;
   }
 }
-
 }  // namespace mace

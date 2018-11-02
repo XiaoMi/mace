@@ -15,10 +15,11 @@
 #ifndef MACE_CORE_TENSOR_H_
 #define MACE_CORE_TENSOR_H_
 
+#include <algorithm>
+#include <functional>
+#include <numeric>
 #include <string>
 #include <vector>
-#include <functional>
-#include <algorithm>
 
 #include "mace/core/buffer.h"
 #include "mace/core/preallocated_pooled_allocator.h"

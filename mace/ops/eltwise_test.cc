@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/kernels/eltwise.h"
-#include "mace/core/op_def_registry.h"
+#include <vector>
+
+#include "mace/ops/eltwise.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -24,7 +25,7 @@ class EltwiseOpTest : public OpsTestBase {};
 
 namespace {
 template <DeviceType D, typename T, typename DstType>
-void SimpleScalarScalar(const kernels::EltwiseType type,
+void SimpleScalarScalar(const ops::EltwiseType type,
                         const T input,
                         const float x,
                         const DstType output) {
@@ -40,7 +41,7 @@ void SimpleScalarScalar(const kernels::EltwiseType type,
         .AddIntArg("T", DataTypeToEnum<T>::v())
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("scalar_input", x)
-        .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+        .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -55,7 +56,7 @@ void SimpleScalarScalar(const kernels::EltwiseType type,
 }
 
 template <DeviceType D, typename T, typename DstType>
-void SimpleTensorScalar(const kernels::EltwiseType type,
+void SimpleTensorScalar(const ops::EltwiseType type,
                         const std::vector<index_t> &shape,
                         const std::vector<T> &input,
                         const float x,
@@ -74,7 +75,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("scalar_input", x)
         .AddIntArg("data_format", DataFormat::NCHW)
-        .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+        .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
         .Output("TOutput")
         .Finalize(net.NewOperatorDef());
     // Run
@@ -82,7 +83,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
     net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
   } else {
     BufferToImage<D, T>(&net, "Input", "InputImg",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg")
         .AddIntArg("type", static_cast<int>(type))
@@ -94,7 +95,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
     net.RunOp(D);
 
     ImageToBuffer<D, DstType>(&net, "OutputImg", "Output",
-                              kernels::BufferType::IN_OUT_CHANNEL);
+                              ops::BufferType::IN_OUT_CHANNEL);
   }
 
   auto expected = net.CreateTensor<DstType>(shape, output);
@@ -103,7 +104,7 @@ void SimpleTensorScalar(const kernels::EltwiseType type,
 }
 
 template <DeviceType D, typename T, typename DstType>
-void SimpleTensorEltwise(const kernels::EltwiseType type,
+void SimpleTensorEltwise(const ops::EltwiseType type,
                          const std::vector<index_t> &shape0,
                          const std::vector<T> &input0,
                          const std::vector<index_t> &shape1,
@@ -124,7 +125,7 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
             .AddIntArg("data_format", DataFormat::NCHW)
-            .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+            .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("TOutput");
     if (shape0.size() > 1) {
       net.TransformDataFormat<D, T>("Input0", NHWC, "TInput0", NCHW);
@@ -145,9 +146,9 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
     net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
   } else {
     BufferToImage<D, T>(&net, "Input0", "InputImg0",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Input1", "InputImg1",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -160,7 +161,7 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
     net.RunOp(D);
 
     ImageToBuffer<D, DstType>(&net, "OutputImg", "Output",
-                              kernels::BufferType::IN_OUT_CHANNEL);
+                              ops::BufferType::IN_OUT_CHANNEL);
   }
 
   std::vector<index_t> output_shape = shape0;
@@ -173,7 +174,7 @@ void SimpleTensorEltwise(const kernels::EltwiseType type,
 }
 
 template <DeviceType D, typename T, typename DstType>
-void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
+void TensorGeneralBroadcastEltwise(const ops::EltwiseType type,
                                    const std::vector<index_t> &shape0,
                                    const std::vector<T> &input0,
                                    const std::vector<index_t> &shape1,
@@ -196,7 +197,7 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
             .Input("Input1")
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
-            .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+            .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("Output");
     op_builder.Finalize(net.NewOperatorDef());
 
@@ -204,9 +205,9 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
     net.RunOp(D);
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input0", "InputImage0",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Input1", "InputImage1",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     auto op_builder =
         OpDefBuilder("Eltwise", "EltwiseTest")
             .AddIntArg("T", DataTypeToEnum<T>::v())
@@ -214,7 +215,7 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
             .Input("InputImage1")
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
-            .OutputType({kernels::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
+            .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
             .Output("OutputImage");
     op_builder.Finalize(net.NewOperatorDef());
 
@@ -222,7 +223,7 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
     net.RunOp(D);
 
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -234,249 +235,249 @@ void TensorGeneralBroadcastEltwise(const kernels::EltwiseType type,
 
 TEST_F(EltwiseOpTest, CPUSimpleScalarScalar) {
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, 1, 2, 3);
+      ops::EltwiseType::SUM, 1, 2, 3);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, 1, 2, -1);
+      ops::EltwiseType::SUB, 1, 2, -1);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, 1, 2, 2);
+      ops::EltwiseType::PROD, 1, 2, 2);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, 1, 2, 0.5);
+      ops::EltwiseType::DIV, 1, 2, 0.5);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, 1, 2, 1);
+      ops::EltwiseType::MIN, 1, 2, 1);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, 1, 2, 2);
+      ops::EltwiseType::MAX, 1, 2, 2);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::NEG, 1, 2, -1);
+      ops::EltwiseType::NEG, 1, 2, -1);
   SimpleScalarScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::ABS, -1, 3, 1);
+      ops::EltwiseType::ABS, -1, 3, 1);
   SimpleScalarScalar<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, 1, 3, 0);
+      ops::EltwiseType::EQUAL, 1, 3, 0);
   SimpleScalarScalar<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, 3, 3, 1);
+      ops::EltwiseType::EQUAL, 3, 3, 1);
 }
 
 TEST_F(EltwiseOpTest, CPUSimpleTensorScalar) {
-  SimpleTensorScalar<DeviceType::CPU, float, float>(kernels::EltwiseType::SUM,
+  SimpleTensorScalar<DeviceType::CPU, float, float>(ops::EltwiseType::SUM,
                                                     {1, 1, 1, 1}, {1}, 1, {2});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {0, 1, 2, 3, 4, 5});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 2,
+      ops::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 2,
       {2, 4, 6, 8, 10, 12});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
+      ops::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
       {1, 2, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {1, 1, 1, 1, 1, 1});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
+      ops::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {3, 3, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::NEG, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
+      ops::EltwiseType::NEG, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {-1, -2, -3, -4, -5, -6});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::ABS, {1, 1, 2, 3}, {-1, -2, -3, -4, -5, -6}, 3,
+      ops::EltwiseType::ABS, {1, 1, 2, 3}, {-1, -2, -3, -4, -5, -6}, 3,
       {1, 2, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {0, 1, 4, 9, 16, 25});
   SimpleTensorScalar<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
+      ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {0, 0, 1, 0, 0, 0});
 }
 
 TEST_F(EltwiseOpTest, GPUSimpleTensorScalar) {
-  SimpleTensorScalar<DeviceType::GPU, float, float>(kernels::EltwiseType::SUM,
+  SimpleTensorScalar<DeviceType::GPU, float, float>(ops::EltwiseType::SUM,
                                                     {1, 1, 1, 1}, {1}, 1, {2});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {0, 1, 2, 3, 4, 5});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 2,
+      ops::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 2,
       {2, 4, 6, 8, 10, 12});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
+      ops::EltwiseType::DIV, {1, 1, 2, 3}, {2, 4, 6, 8, 10, 12}, 2,
       {1, 2, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {1, 1, 1, 1, 1, 1});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
+      ops::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {3, 3, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::NEG, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
+      ops::EltwiseType::NEG, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 3,
       {-1, -2, -3, -4, -5, -6});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::ABS, {1, 1, 2, 3}, {-1, -2, -3, -4, -5, -6}, 3,
+      ops::EltwiseType::ABS, {1, 1, 2, 3}, {-1, -2, -3, -4, -5, -6}, 3,
       {1, 2, 3, 4, 5, 6});
   SimpleTensorScalar<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
+      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, 1,
       {0, 1, 4, 9, 16, 25});
 }
 
 TEST_F(EltwiseOpTest, CPUSimpleTensorVector) {
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 3},
       {1, 2, 3}, {2, 4, 6, 5, 7, 9});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, -5, -5, -5, -5, -5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 1, 3}, {1, 2, 3}, {1, 2, 1, 3},
+      ops::EltwiseType::PROD, {1, 1, 1, 3}, {1, 2, 3}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 4, 9, 4, 10, 18});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
       {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 1, 5}, {1, 2, 3, 4, 5},
+      ops::EltwiseType::SQR_DIFF, {1, 1, 1, 5}, {1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
   SimpleTensorEltwise<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 1, 3}, {1, 2, 3}, {1, 1, 1, 0, 0, 0});
 
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {3},
       {1, 2, 3}, {2, 4, 6, 5, 7, 9});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {5}, {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::SUB, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, -5, -5, -5, -5, -5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, {3}, {1, 2, 3}, {1, 2, 1, 3},
+      ops::EltwiseType::PROD, {3}, {1, 2, 3}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 4, 9, 4, 10, 18});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      ops::EltwiseType::DIV, {5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
       {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::MIN, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::SQR_DIFF, {5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
   SimpleTensorEltwise<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {3},
+      ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {3},
       {1, 2, 3}, {1, 1, 1, 0, 0, 0});
 }
 
 TEST_F(EltwiseOpTest, GPUSimpleTensorVector) {
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 3},
       {1, 2, 3}, {2, 4, 6, 5, 7, 9});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::SUB, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0, 5, 5, 5, 5, 5});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, -5, -5, -5, -5, -5});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 1, 3}, {1, 2, 3}, {1, 2, 1, 3},
+      ops::EltwiseType::PROD, {1, 1, 1, 3}, {1, 2, 3}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 4, 9, 4, 10, 18});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::DIV, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 1, 1, 1, 5}, {1, 2, 3, 4, 1, 6, 7, 8, 9, 2});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
+      ops::EltwiseType::DIV, {1, 1, 1, 5}, {1, 1, 1, 2, 4}, {1, 2, 1, 5},
       {1, 1, 1, 2, 2, 1, 1, 1, 1, 1}, {1, 1, 1, 1, 2, 1, 1, 1, 2, 4});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
+      ops::EltwiseType::MIN, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 1, 5}, {1, 2, 3, 4, 5},
+      ops::EltwiseType::SQR_DIFF, {1, 1, 1, 5}, {1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
 }
 
 TEST_F(EltwiseOpTest, CPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
       {1, 2, 3, 4, 5, 6}, {2, 4, 6, 8, 10, 12});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
       {1, 2, 3, 4, 5, 6}, {0.2, 0.4, 0.6, 0.8, 1, 1.2}, {0.1, 0.1});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5},
+      ops::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5},
       {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::PROD, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
       {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 4, 9, 16, 25, 36});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
+      ops::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
+      ops::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   SimpleTensorEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
+      ops::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
   SimpleTensorEltwise<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
 }
 TEST_F(EltwiseOpTest, GPUSimpleTensorTensor) {
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
       {1, 2, 3, 4, 5, 6}, {2, 4, 6, 8, 10, 12});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 3},
       {1, 2, 3, 4, 5, 6}, {0.2, 0.4, 0.6, 0.8, 1, 1.2}, {0.1, 0.1});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5},
+      ops::EltwiseType::SUB, {1, 1, 1, 5}, {1, 2, 3, 4, 5}, {1, 1, 1, 5},
       {1, 2, 3, 4, 5}, {0, 0, 0, 0, 0});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::PROD, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6},
       {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 4, 9, 16, 25, 36});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
+      ops::EltwiseType::DIV, {1, 2, 1, 3}, {1, 2, 3, 4, 5, 6}, {1, 2, 1, 3},
       {1, 2, 3, 4, 5, 6}, {1, 1, 1, 1, 1, 1});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
+      ops::EltwiseType::MIN, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+      ops::EltwiseType::MAX, {1, 2, 1, 5}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
       {1, 2, 1, 5}, {1, 2, 3, 4, 5, 1, 2, 3, 4, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   SimpleTensorEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
+      ops::EltwiseType::SQR_DIFF, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 1, 2, 3, 4, 5}, {1, 2, 1, 5},
       {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, {0, 0, 0, 0, 0, 25, 25, 25, 25, 25});
 }
 
 namespace {
 template <typename T>
-void RandomTensorScalar(const kernels::EltwiseType type,
+void RandomTensorScalar(const ops::EltwiseType type,
                         const std::vector<index_t> &shape) {
   // Construct graph
   OpsTestNet net;
@@ -501,7 +502,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImg",
-                                    kernels::BufferType::IN_OUT_CHANNEL);
+                                    ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg")
       .AddIntArg("type", static_cast<int>(type))
@@ -514,7 +515,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImg", "GPUOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
@@ -524,7 +525,7 @@ void RandomTensorScalar(const kernels::EltwiseType type,
 }
 
 template <typename T>
-void RandomTensorEltwise(const kernels::EltwiseType type,
+void RandomTensorEltwise(const ops::EltwiseType type,
                          const std::vector<index_t> &shape0,
                          const std::vector<index_t> &shape1,
                          const std::vector<float> &coeff = {}) {
@@ -556,9 +557,9 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
   expected->Copy(*net.GetOutput("Output"));
 
   BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImg0",
-                                    kernels::BufferType::IN_OUT_CHANNEL);
+                                    ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImg1",
-                                    kernels::BufferType::IN_OUT_CHANNEL);
+                                    ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("InputImg0")
       .Input("InputImg1")
@@ -572,7 +573,7 @@ void RandomTensorEltwise(const kernels::EltwiseType type,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImg", "GPUOutput",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
@@ -597,7 +598,7 @@ void QuantizedSum(const std::vector<index_t> &shape) {
   OpDefBuilder("Eltwise", "EltwiseTest")
       .Input("TInput0")
       .Input("TInput1")
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
       .AddIntArg("data_format", DataFormat::NCHW)
       .Output("TOutput")
       .Finalize(net.NewOperatorDef());
@@ -638,7 +639,7 @@ void QuantizedSum(const std::vector<index_t> &shape) {
       .Input("QuantizedInput0")
       .Input("QuantizedInput1")
       .Output("QuantizedOutput")
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
       .AddIntArg("T", static_cast<int>(DT_UINT8))
       .Finalize(net.NewOperatorDef());
   net.Setup(DeviceType::CPU);
@@ -663,159 +664,159 @@ void QuantizedSum(const std::vector<index_t> &shape) {
 }  // namespace
 
 TEST_F(EltwiseOpTest, RandomTensorScalarFloat) {
-  RandomTensorScalar<float>(kernels::EltwiseType::SUM, {1, 32, 32, 16});
-  RandomTensorScalar<float>(kernels::EltwiseType::SUB, {3, 32, 32, 16});
-  RandomTensorScalar<float>(kernels::EltwiseType::PROD, {1, 31, 37, 17});
-  RandomTensorScalar<float>(kernels::EltwiseType::DIV, {3, 31, 37, 17});
-  RandomTensorScalar<float>(kernels::EltwiseType::MIN, {1, 32, 32, 16});
-  RandomTensorScalar<float>(kernels::EltwiseType::MAX, {3, 31, 37, 17});
-  RandomTensorScalar<float>(kernels::EltwiseType::NEG, {1, 32, 32, 32});
-  RandomTensorScalar<float>(kernels::EltwiseType::ABS, {3, 31, 37, 17});
-  RandomTensorScalar<float>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::SUM, {1, 32, 32, 16});
+  RandomTensorScalar<float>(ops::EltwiseType::SUB, {3, 32, 32, 16});
+  RandomTensorScalar<float>(ops::EltwiseType::PROD, {1, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::DIV, {3, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::MIN, {1, 32, 32, 16});
+  RandomTensorScalar<float>(ops::EltwiseType::MAX, {3, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::NEG, {1, 32, 32, 32});
+  RandomTensorScalar<float>(ops::EltwiseType::ABS, {3, 31, 37, 17});
+  RandomTensorScalar<float>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorScalarHalf) {
-  RandomTensorScalar<half>(kernels::EltwiseType::SUM, {1, 32, 32, 16});
-  RandomTensorScalar<half>(kernels::EltwiseType::SUB, {3, 32, 32, 16});
-  RandomTensorScalar<half>(kernels::EltwiseType::PROD, {1, 31, 37, 17});
-  RandomTensorScalar<half>(kernels::EltwiseType::DIV, {3, 31, 37, 17});
-  RandomTensorScalar<half>(kernels::EltwiseType::MIN, {1, 32, 32, 16});
-  RandomTensorScalar<half>(kernels::EltwiseType::MAX, {3, 31, 37, 17});
-  RandomTensorScalar<half>(kernels::EltwiseType::NEG, {1, 32, 32, 32});
-  RandomTensorScalar<half>(kernels::EltwiseType::ABS, {3, 31, 37, 17});
-  RandomTensorScalar<half>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::SUM, {1, 32, 32, 16});
+  RandomTensorScalar<half>(ops::EltwiseType::SUB, {3, 32, 32, 16});
+  RandomTensorScalar<half>(ops::EltwiseType::PROD, {1, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::DIV, {3, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::MIN, {1, 32, 32, 16});
+  RandomTensorScalar<half>(ops::EltwiseType::MAX, {3, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::NEG, {1, 32, 32, 32});
+  RandomTensorScalar<half>(ops::EltwiseType::ABS, {3, 31, 37, 17});
+  RandomTensorScalar<half>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorVecFloat) {
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUM, {1, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUM, {1, 32, 32, 16},
                              {1, 1, 1, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUB, {5, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUB, {5, 32, 32, 16},
                              {5, 1, 1, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUB, {5, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUB, {5, 32, 32, 16},
                              {1, 1, 1, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUB, {5, 1, 1, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUB, {5, 1, 1, 16},
                              {5, 32, 32, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::PROD, {1, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::PROD, {1, 31, 37, 17},
                              {1, 1, 1, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::PROD, {1, 1, 1, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::PROD, {1, 1, 1, 17},
                              {1, 31, 37, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::DIV, {3, 1, 1, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::DIV, {3, 1, 1, 17},
                              {3, 31, 37, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::MIN, {1, 1, 1, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::MIN, {1, 1, 1, 16},
                              {1, 32, 32, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::MAX, {5, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::MAX, {5, 31, 37, 17},
                              {5, 1, 1, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SQR_DIFF, {5, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::SQR_DIFF, {5, 31, 37, 17},
                              {5, 1, 1, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorVecHalf) {
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUM, {1, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUM, {1, 32, 32, 16},
                             {1, 1, 1, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUB, {3, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUB, {3, 32, 32, 16},
                             {3, 1, 1, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUB, {3, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUB, {3, 32, 32, 16},
                             {1, 1, 1, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUB, {3, 1, 1, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUB, {3, 1, 1, 16},
                             {3, 32, 32, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::PROD, {1, 1, 1, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::PROD, {1, 1, 1, 17},
                             {1, 31, 37, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::DIV, {5, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::DIV, {5, 31, 37, 17},
                             {5, 1, 1, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::DIV, {5, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::DIV, {5, 31, 37, 17},
                             {1, 1, 1, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::DIV, {5, 1, 1, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::DIV, {5, 1, 1, 17},
                             {5, 31, 37, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::MIN, {1, 1, 1, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::MIN, {1, 1, 1, 16},
                             {1, 32, 32, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::MAX, {3, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::MAX, {3, 31, 37, 17},
                             {3, 1, 1, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                             {3, 1, 1, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorTensorFloat) {
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUM, {1, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUM, {1, 32, 32, 16},
                              {1, 32, 32, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SUB, {3, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::SUB, {3, 32, 32, 16},
                              {3, 32, 32, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::PROD, {1, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::PROD, {1, 31, 37, 17},
                              {1, 31, 37, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::DIV, {5, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::DIV, {5, 31, 37, 17},
                              {5, 31, 37, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::MIN, {1, 32, 32, 16},
+  RandomTensorEltwise<float>(ops::EltwiseType::MIN, {1, 32, 32, 16},
                              {1, 32, 32, 16});
-  RandomTensorEltwise<float>(kernels::EltwiseType::MAX, {3, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::MAX, {3, 31, 37, 17},
                              {3, 31, 37, 17});
-  RandomTensorEltwise<float>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
+  RandomTensorEltwise<float>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                              {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, RandomTensorTensorHalf) {
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUM, {1, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUM, {1, 32, 32, 16},
                             {1, 32, 32, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SUB, {3, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::SUB, {3, 32, 32, 16},
                             {3, 32, 32, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::PROD, {1, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::PROD, {1, 31, 37, 17},
                             {1, 31, 37, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::DIV, {5, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::DIV, {5, 31, 37, 17},
                             {5, 31, 37, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::MIN, {1, 32, 32, 16},
+  RandomTensorEltwise<half>(ops::EltwiseType::MIN, {1, 32, 32, 16},
                             {1, 32, 32, 16});
-  RandomTensorEltwise<half>(kernels::EltwiseType::MAX, {3, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::MAX, {3, 31, 37, 17},
                             {3, 31, 37, 17});
-  RandomTensorEltwise<half>(kernels::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
+  RandomTensorEltwise<half>(ops::EltwiseType::SQR_DIFF, {3, 31, 37, 17},
                             {3, 31, 37, 17});
 }
 
 TEST_F(EltwiseOpTest, TensorGeneralBroadcastCPU) {
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {2, 3, 4, 6, 7, 8});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {0, 1, 2, 2, 3, 4});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 8, 10, 12});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {0, 1, 4, 4, 9, 16});
   TensorGeneralBroadcastEltwise<DeviceType::CPU, int32_t, int32_t>(
-      kernels::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::EQUAL, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 0, 0, 0, 0, 0});
 }
 
 TEST_F(EltwiseOpTest, TensorGeneralBroadcastGPU) {
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::SUM, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {2, 3, 4, 6, 7, 8});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::SUB, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {0, 1, 2, 2, 3, 4});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::PROD, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 8, 10, 12});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::DIV, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 2, 2.5, 3});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::MIN, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 1, 1, 2, 2, 2});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
+      ops::EltwiseType::MAX, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6}, {1, 1, 2, 1},
       {1, 2}, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6});
   TensorGeneralBroadcastEltwise<DeviceType::GPU, float, float>(
-      kernels::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
+      ops::EltwiseType::SQR_DIFF, {1, 1, 2, 3}, {1, 2, 3, 4, 5, 6},
       {1, 1, 2, 1}, {1, 2}, {1, 1, 2, 3}, {0, 1, 4, 4, 9, 16});
 }
 

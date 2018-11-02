@@ -29,7 +29,7 @@ TEST(CoreTest, INIT_MODE) {
   OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("B2IOutput")
-      .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)
+      .AddIntArg("buffer_type", ops::BufferType::CONV2D_FILTER)
       .AddIntArg("mode", static_cast<int>(NetMode::INIT))
       .Finalize(&op_defs[op_defs.size() - 1]);
 
@@ -46,18 +46,16 @@ TEST(CoreTest, INIT_MODE) {
   OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
       .Input("B2IOutput")
       .Output("Output")
-      .AddIntArg("buffer_type", kernels::BufferType::CONV2D_FILTER)
+      .AddIntArg("buffer_type", ops::BufferType::CONV2D_FILTER)
       .Finalize(&op_defs[op_defs.size() - 1]);
 
   NetDef net_def;
   for (auto &op_def : op_defs) {
     net_def.add_op()->CopyFrom(op_def);
-    net_def.add_op_types(op_def.type());
   }
-  std::shared_ptr<OpDefRegistryBase> op_def_registry(new OpDefRegistry());
-  std::shared_ptr<OpRegistryBase> op_registry(new OpRegistry());
+  std::shared_ptr<OpRegistry> op_registry(new OpRegistry());
   auto net = std::unique_ptr<NetBase>(new SerialNet(
-      op_def_registry.get(), op_registry.get(), &net_def, &ws, device,
+      op_registry.get(), &net_def, &ws, device,
       NetMode::INIT));
   MaceStatus status = net->Init();
   MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
@@ -67,7 +65,7 @@ TEST(CoreTest, INIT_MODE) {
   EXPECT_TRUE(ws.GetTensor("B2IOutput") != nullptr);
   EXPECT_TRUE(ws.GetTensor("Output") == nullptr);
   net = std::unique_ptr<NetBase>(new SerialNet(
-      op_def_registry.get(), op_registry.get(), &net_def, &ws, device));
+      op_registry.get(), &net_def, &ws, device));
   status = net->Init();
   MACE_CHECK(status == MaceStatus::MACE_SUCCESS);
   status = net->Run();

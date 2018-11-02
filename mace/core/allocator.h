@@ -23,9 +23,10 @@
 #include <cstring>
 
 #include "mace/core/macros.h"
-#include "mace/core/registry.h"
 #include "mace/core/types.h"
 #include "mace/core/runtime_failure_mock.h"
+#include "mace/public/mace.h"
+#include "mace/utils/logging.h"
 
 namespace mace {
 

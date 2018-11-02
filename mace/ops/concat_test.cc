@@ -262,7 +262,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
     net.AddInputFromArray<DeviceType::GPU, float>(input_name, shapes[i],
                                                   inputs[i]);
     BufferToImage<DeviceType::GPU, T>(&net, input_name, image_name,
-                                      kernels::BufferType::IN_OUT_CHANNEL);
+                                      ops::BufferType::IN_OUT_CHANNEL);
   }
 
   auto builder = OpDefBuilder("Concat", "ConcatTest");
@@ -279,7 +279,7 @@ void OpenclRandomTest(const std::vector<std::vector<index_t>> &shapes,
   net.RunOp(DeviceType::GPU);
 
   ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                        kernels::BufferType::IN_OUT_CHANNEL);
+                                        ops::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto output = net.GetOutput("Output");

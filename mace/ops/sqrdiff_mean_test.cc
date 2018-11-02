@@ -59,9 +59,9 @@ void Simple(const std::vector<index_t> &input_shape0,
                                                     NHWC);
   } else {
     BufferToImage<D, float>(&net, "Input0", "InputImg0",
-                           kernels::BufferType::IN_OUT_CHANNEL);
+                           ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Input1", "InputImg1",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -70,7 +70,7 @@ void Simple(const std::vector<index_t> &input_shape0,
     // Run
     net.RunOp(D);
     ImageToBuffer<D, float>(&net, "OutputImg", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   }
   auto expected = net.CreateTensor<float>(output_shape, output);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
@@ -127,9 +127,9 @@ void RandomTest(const std::vector<index_t> &input_shape0,
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                   "Output", NHWC);
   BufferToImage<D, T>(&net, "Input0", "InputImg0",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Input1", "InputImg1",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
       .Input("InputImg0")
       .Input("InputImg1")
@@ -138,7 +138,7 @@ void RandomTest(const std::vector<index_t> &input_shape0,
   // Run
   net.RunOp(D);
   ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
                             *net.GetOutput("OPENCLOutput"), 1e-4, 1e-3);

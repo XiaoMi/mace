@@ -19,7 +19,7 @@ import sys
 
 import jinja2
 
-# python encrypt_opencl_codegen.py --cl_kernel_dir=./mace/kernels/opencl/cl/  \
+# python encrypt_opencl_codegen.py --cl_kernel_dir=./mace/ops/opencl/cl/  \
 #     --output_path=./mace/codegen/opencl_encrypt/opencl_encrypted_program.cc
 
 FLAGS = None
@@ -96,7 +96,7 @@ def parse_args():
     parser.add_argument(
         "--cl_kernel_dir",
         type=str,
-        default="./mace/kernels/opencl/cl/",
+        default="./mace/ops/opencl/cl/",
         help="The cl kernels directory.")
     parser.add_argument(
         "--output_path",

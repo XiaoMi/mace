@@ -14,9 +14,8 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/eltwise.h"
+#include "mace/ops/eltwise.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -26,7 +25,7 @@ namespace test {
 namespace {
 template <DeviceType D, typename T>
 void EltwiseBenchmark(
-    int iters, kernels::EltwiseType type, int n, int h, int w, int c) {
+    int iters, ops::EltwiseType type, int n, int h, int w, int c) {
   mace::testing::StopTiming();
 
   OpsTestNet net;
@@ -36,9 +35,9 @@ void EltwiseBenchmark(
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, half>(&net, "Input0", "InputImg0",
-                           kernels::BufferType::IN_OUT_CHANNEL);
+                           ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, half>(&net, "Input1", "InputImg1",
-                           kernels::BufferType::IN_OUT_CHANNEL);
+                           ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
         .Input("InputImg0")
         .Input("InputImg1")
@@ -84,7 +83,7 @@ void EltwiseBenchmark(
     mace::testing::MaccProcessed(tot);                                        \
     mace::testing::BytesProcessed(tot *(sizeof(TYPE)));                       \
     EltwiseBenchmark<DEVICE, TYPE>(                                           \
-        iters, static_cast<kernels::EltwiseType>(ELT_TYPE), N, H, W, C);      \
+        iters, static_cast<ops::EltwiseType>(ELT_TYPE), N, H, W, C);      \
   }                                                                           \
   MACE_BENCHMARK(                                                             \
       MACE_BM_ELTWISE_##ELT_TYPE##_##N##_##H##_##W##_##C##_##TYPE##_##DEVICE)

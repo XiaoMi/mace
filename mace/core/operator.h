@@ -16,13 +16,13 @@
 #define MACE_CORE_OPERATOR_H_
 
 #include <memory>
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include <map>
 
 #include "mace/core/arg_helper.h"
 #include "mace/core/op_context.h"
-#include "mace/core/registry.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
 #include "mace/proto/mace.pb.h"
@@ -160,62 +160,57 @@ class Operation {
 #define MACE_OP_OUTPUT_TAGS(first_input, ...) \
   enum _OutputTags { first_input = 0, __VA_ARGS__ }
 
-class OpKeyBuilder {
+
+struct OpRegistrationInfo {
  public:
-  explicit OpKeyBuilder(const char *op_name);
+  typedef std::function<std::unique_ptr<Operation>(OpConstructContext *)>
+      OpCreator;
 
-  OpKeyBuilder &Device(DeviceType device);
+  OpRegistrationInfo() = default;
 
-  OpKeyBuilder &TypeConstraint(const char *attr_name,
-                               DataType allowed);
+  void AddDevice(DeviceType);
 
-  template <typename T>
-  OpKeyBuilder &TypeConstraint(const char *attr_name);
+  void Register(const std::string &key, OpCreator creator);
 
-  const std::string Build();
-
- private:
-  std::string op_name_;
-  DeviceType device_type_;
-  std::map<std::string, DataType> type_constraint_;
+  std::set<DeviceType> devices;
+  std::unordered_map<std::string, OpCreator> creators;
 };
-
-template <typename T>
-OpKeyBuilder &OpKeyBuilder::TypeConstraint(const char *attr_name) {
-  return this->TypeConstraint(attr_name, DataTypeToEnum<T>::value);
-}
 
 class OpRegistryBase {
  public:
-  typedef Registry<std::string,
-                   Operation,
-                   OpConstructContext *>
-      RegistryType;
   OpRegistryBase() = default;
-  virtual ~OpRegistryBase();
-  RegistryType *registry() { return &registry_; }
+  virtual ~OpRegistryBase() = default;
+  MaceStatus Register(const std::string &op_type,
+                      const DeviceType device_type,
+                      const DataType dt,
+                      OpRegistrationInfo::OpCreator creator);
+
+  const std::set<DeviceType> AvailableDevices(
+      const std::string &op_type) const;
+
   std::unique_ptr<Operation> CreateOperation(
       OpConstructContext *context,
       DeviceType device_type,
       const NetMode mode) const;
 
+  template <class DerivedType>
+  static std::unique_ptr<Operation> DefaultCreator(
+      OpConstructContext *context) {
+    return std::unique_ptr<Operation>(new DerivedType(context));
+  }
+
  private:
-  RegistryType registry_;
+  std::unordered_map<
+      std::string,
+      std::unique_ptr<OpRegistrationInfo>> registry_;
   MACE_DISABLE_COPY_AND_ASSIGN(OpRegistryBase);
 };
 
-MACE_DECLARE_REGISTRY(OpRegistry,
-                      Operation,
-                      OpConstructContext *);
-
 #define MACE_REGISTER_OP(op_registry, op_type, class_name, device, dt) \
-  MACE_REGISTER_CLASS(OpRegistry,                                      \
-                      op_registry->registry(),                         \
-                      OpKeyBuilder(op_type)                            \
-                        .Device(device)                                \
-                        .TypeConstraint<dt>("T")                       \
-                        .Build(),                                      \
-                      class_name<device, dt>)
+  op_registry->Register(op_type,                                       \
+                        device,                                        \
+                        DataTypeToEnum<dt>::value,                     \
+                        OpRegistryBase::DefaultCreator<class_name<device, dt>>)
 
 }  // namespace mace
 

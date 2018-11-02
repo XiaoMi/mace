@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
-#include "mace/kernels/conv_pool_2d_util.h"
-#include "mace/kernels/pooling.h"
+#include "mace/ops/conv_pool_2d_util.h"
+#include "mace/ops/pooling.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -66,7 +65,7 @@ void Pooling(int iters,
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputImage")

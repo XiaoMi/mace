@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -30,7 +29,7 @@ void BMWinogradTransform(
   net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("WinogradTransform", "WinogradTransformTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -88,7 +87,7 @@ void BMWinogradInverseTransform(
       (block_size + 2), channels, p, 1});
 
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_HEIGHT);
+                      ops::BufferType::IN_OUT_HEIGHT);
   OpDefBuilder("WinogradInverseTransform", "WinogradInverseTransformTest")
       .Input("InputImage")
       .AddIntArg("batch", batch)
@@ -155,7 +154,7 @@ void WinoFilterBufferToImage(int iters,
   OpDefBuilder("BufferToImage", "BufferToImageTest")
       .Input("Input")
       .Output("Output")
-      .AddIntArg("buffer_type", kernels::BufferType::WINOGRAD_FILTER)
+      .AddIntArg("buffer_type", ops::BufferType::WINOGRAD_FILTER)
       .AddIntArg("wino_block_size", wino_block_size)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
@@ -215,9 +214,9 @@ void WinoMatMulBenchmark(
   net.AddRandomInput<D, float>("B", {batch, in_channels, out_width});
 
   if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "A", "AImage", kernels::BufferType::IN_OUT_WIDTH);
+    BufferToImage<D, T>(&net, "A", "AImage", ops::BufferType::IN_OUT_WIDTH);
     BufferToImage<D, T>(&net, "B", "BImage",
-                        kernels::BufferType::IN_OUT_HEIGHT);
+                        ops::BufferType::IN_OUT_HEIGHT);
 
     OpDefBuilder("MatMul", "MatMulBM")
         .Input("AImage")

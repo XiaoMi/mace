@@ -410,7 +410,7 @@ def bazel_target_to_bin(target):
 ################################
 def gen_encrypted_opencl_source(codegen_path="mace/codegen"):
     sh.mkdir("-p", "%s/opencl" % codegen_path)
-    encrypt_opencl_codegen("./mace/kernels/opencl/cl/",
+    encrypt_opencl_codegen("./mace/ops/opencl/cl/",
                            "mace/codegen/opencl/opencl_encrypt_program.cc")
 
 
@@ -680,7 +680,7 @@ def create_internal_storage_dir(serialno, phone_data_dir):
 
 def push_depended_so_libs(libmace_dynamic_library_path,
                           abi, phone_data_dir, serialno):
-    dep_so_libs = sh.bash("/opt/android-ndk/ndk-depends",
+    dep_so_libs = sh.bash(os.environ["ANDROID_NDK_HOME"] + "/ndk-depends",
                           libmace_dynamic_library_path)
     for dep in split_stdout(dep_so_libs):
         if dep == "libgnustl_shared.so":

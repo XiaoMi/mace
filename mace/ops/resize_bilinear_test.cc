@@ -14,7 +14,6 @@
 
 #include <vector>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -120,7 +119,7 @@ void TestRandomResizeBilinear() {
 
     if (D == DeviceType::GPU) {
       BufferToImage<D, float>(&net, "Input", "InputImage",
-                              kernels::BufferType::IN_OUT_CHANNEL);
+                              ops::BufferType::IN_OUT_CHANNEL);
 
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
           .Input("InputImage")
@@ -132,7 +131,7 @@ void TestRandomResizeBilinear() {
       net.RunOp(D);
 
       ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
-                              kernels::BufferType::IN_OUT_CHANNEL);
+                              ops::BufferType::IN_OUT_CHANNEL);
     }
     // Check
     ExpectTensorNear<float>(*expected, *net.GetOutput("DeviceOutput"), 1e-5,

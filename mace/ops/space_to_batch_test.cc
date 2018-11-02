@@ -33,7 +33,7 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -56,7 +56,7 @@ void RunSpaceToBatch(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);
@@ -77,7 +77,7 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -100,7 +100,7 @@ void RunBatchToSpace(const std::vector<index_t> &input_shape,
 
   if (D == GPU) {
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);
@@ -157,7 +157,7 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
 
   // run gpu
   BufferToImage<GPU, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("SpaceToBatchND", "SpaceToBatchNDTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -166,7 +166,7 @@ void TestSpaceToBatchLargeInput(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(GPU);
   ImageToBuffer<GPU, float>(&net, "OutputImage", "OutputGPU",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
   // run cpu
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
@@ -194,7 +194,7 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
 
   // run gpu
   BufferToImage<GPU, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
       .Input("InputImage")
       .Output("OutputImage")
@@ -203,7 +203,7 @@ void TestoBatchToSpaceLargeInput(const std::vector<index_t> &input_shape,
       .Finalize(net.NewOperatorDef());
   net.RunOp(GPU);
   ImageToBuffer<GPU, float>(&net, "OutputImage", "OutputGPU",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
   // run cpu
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",

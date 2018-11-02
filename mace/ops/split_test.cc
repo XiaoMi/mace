@@ -50,7 +50,7 @@ void RandomTest(const int num_outputs, const int axis) {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
 
     auto builder = OpDefBuilder("Split", "SplitTest");
     builder.Input("InputImage");
@@ -75,7 +75,7 @@ void RandomTest(const int num_outputs, const int axis) {
     for (int i = 0; i < num_outputs; ++i) {
       ImageToBuffer<D, float>(&net, MakeString("OutputImage", i),
                               MakeString("Output", i),
-                              kernels::BufferType::IN_OUT_CHANNEL);
+                              ops::BufferType::IN_OUT_CHANNEL);
     }
   }
 

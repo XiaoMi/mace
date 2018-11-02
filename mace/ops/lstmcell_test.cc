@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
-#include "mace/kernels/eltwise.h"
+#include "mace/ops/eltwise.h"
 #include "mace/ops/lstmcell_test_util.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -53,15 +52,15 @@ void TestLSTMCell(const uint32_t &batch,
 
   // Run on GPU
   BufferToImage<D, T>(&net, "Input", "InputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "PreOutput", "PreOutputImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Weight", "WeightImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                      kernels::BufferType::ARGUMENT);
+                      ops::BufferType::ARGUMENT);
   BufferToImage<D, T>(&net, "PreCell", "PreCellImage",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("LSTMCell", "LSTMCellTest")
       .Input("InputImage")
@@ -78,9 +77,9 @@ void TestLSTMCell(const uint32_t &batch,
   net.RunOp(D);
 
   ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
   ImageToBuffer<D, float>(&net, "CellImage", "Cell",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
 
 
   Tensor expected_cell, expected_output;

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -33,7 +32,7 @@ void TestSimpleRelu() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluTest")
         .Input("InputImage")
@@ -46,7 +45,7 @@ void TestSimpleRelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluTest")
         .Input("Input")
@@ -81,7 +80,7 @@ void TestUnalignedSimpleRelu() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluTest")
         .Input("InputImage")
@@ -94,7 +93,7 @@ void TestUnalignedSimpleRelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluTest")
         .Input("Input")
@@ -132,7 +131,7 @@ void TestSimpleRelux() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxTest")
         .Input("InputImage")
@@ -146,7 +145,7 @@ void TestSimpleRelux() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluxTest")
         .Input("Input")
@@ -182,7 +181,7 @@ void TestSimpleReluRelux() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "ReluxTest")
         .Input("InputImage")
@@ -196,7 +195,7 @@ void TestSimpleReluRelux() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "ReluxTest")
         .Input("Input")
@@ -237,9 +236,9 @@ void TestSimplePrelu() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
-                            kernels::BufferType::ARGUMENT);
+                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("Activation", "PreluTest")
         .Input("InputImage")
@@ -253,7 +252,7 @@ void TestSimplePrelu() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "PreluTest")
         .Input("Input")
@@ -293,7 +292,7 @@ void TestSimpleTanh() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "TanhTest")
         .Input("InputImage")
@@ -306,7 +305,7 @@ void TestSimpleTanh() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "TanhTest")
         .Input("Input")
@@ -346,7 +345,7 @@ void TestSimpleSigmoid() {
 
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
 
     OpDefBuilder("Activation", "SigmoidTest")
         .Input("InputImage")
@@ -359,7 +358,7 @@ void TestSimpleSigmoid() {
 
     // Transfer output
     ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     OpDefBuilder("Activation", "SigmoidTest")
         .Input("Input")

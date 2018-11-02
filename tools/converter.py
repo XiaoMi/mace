@@ -673,7 +673,7 @@ def download_file(url, dst, num_retries=3):
     try:
         urllib.request.urlretrieve(url, dst)
         MaceLogger.info('\nDownloaded successfully.')
-    except (urllib.URLError, urllib.ContentTooShortError) as e:
+    except urllib.ContentTooShortError as e:
         MaceLogger.warning('Download error:', e.reason)
         if num_retries > 0:
             return download_file(url, dst, num_retries - 1)

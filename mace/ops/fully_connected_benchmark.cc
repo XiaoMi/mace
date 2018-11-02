@@ -14,7 +14,6 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -48,13 +47,13 @@ void FCBenchmark(
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   } else if (D == DeviceType::GPU) {
-    kernels::BufferType weight_type = kernels::BufferType::WEIGHT_WIDTH;
+    ops::BufferType weight_type = ops::BufferType::WEIGHT_WIDTH;
     BufferToImage<D, T>(&net, "Weight", "WeightImage",
                         weight_type);
     BufferToImage<D, T>(&net, "Input", "InputImage",
-                        kernels::BufferType::IN_OUT_CHANNEL);
+                        ops::BufferType::IN_OUT_CHANNEL);
     BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        kernels::BufferType::ARGUMENT);
+                        ops::BufferType::ARGUMENT);
 
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
         .Input("InputImage")

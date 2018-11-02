@@ -17,8 +17,7 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
-#include "mace/kernels/eltwise.h"
+#include "mace/ops/eltwise.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -79,7 +78,7 @@ void LSTMCellCPU(OpsTestNet *net,
       .Input("InputSigmoid")
       .Input("NewInputTanh")
       .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::PROD))
       .Output("RememberMul")
       .Finalize(net->AddNewOperatorDef());
 
@@ -87,7 +86,7 @@ void LSTMCellCPU(OpsTestNet *net,
       .Input("SplitOutput2")
       .AddFloatArg("scalar_input", forget_add_name)
       .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
       .Output("ForgetAdd")
       .Finalize(net->AddNewOperatorDef());
 
@@ -101,7 +100,7 @@ void LSTMCellCPU(OpsTestNet *net,
       .Input("ForgetSigmoid")
       .Input(pre_cell_name)
       .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::PROD))
       .Output("ForgetMulPreCell")
       .Finalize(net->AddNewOperatorDef());
 
@@ -109,7 +108,7 @@ void LSTMCellCPU(OpsTestNet *net,
       .Input("RememberMul")
       .Input("ForgetMulPreCell")
       .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::SUM))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::SUM))
       .Output(cell_name)
       .Finalize(net->AddNewOperatorDef());
 
@@ -129,7 +128,7 @@ void LSTMCellCPU(OpsTestNet *net,
       .Input("OutputSigmoid")
       .Input("CellTanh")
       .AddIntArg("T", DataTypeToEnum<T>::v())
-      .AddIntArg("type", static_cast<int>(kernels::EltwiseType::PROD))
+      .AddIntArg("type", static_cast<int>(ops::EltwiseType::PROD))
       .Output(output_name)
       .Finalize(net->AddNewOperatorDef());
 }

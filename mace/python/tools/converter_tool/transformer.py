@@ -1712,14 +1712,6 @@ class Transformer(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
 
-    def add_op_types(self):
-        net = self._model
-        op_types = set()
-        for op in net.op:
-            op_types.add(op.type)
-        for op_type in op_types:
-            net.op_types.extend([op_type])
-
     def sort_by_execution(self):
         print("Sort by execution")
         net = self._model
@@ -1735,8 +1727,6 @@ class Transformer(base_converter.ConverterInterface):
 
         del net.op[:]
         net.op.extend(sorted_nodes)
-
-        self.add_op_types()
 
         print("Final ops:")
         for op in net.op:

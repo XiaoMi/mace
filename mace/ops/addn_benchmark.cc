@@ -14,7 +14,6 @@
 
 #include <string>
 
-#include "mace/core/op_def_registry.h"
 #include "mace/core/testing/test_benchmark.h"
 #include "mace/ops/ops_test_util.h"
 
@@ -37,7 +36,7 @@ void AddNBenchmark(int iters, int inputs, int n, int h, int w, int c) {
     for (int i = 0; i < inputs; ++i) {
       BufferToImage<D, T>(&net, MakeString("Input", i).c_str(),
                           MakeString("InputImage", i).c_str(),
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
     }
     OpDefBuilder op_def_builder("AddN", "AddNBM");
     for (int i = 0; i < inputs; ++i) {

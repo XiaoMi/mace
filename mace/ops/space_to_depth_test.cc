@@ -15,7 +15,6 @@
 #include <fstream>
 
 #include <vector>
-#include "mace/core/op_def_registry.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -47,7 +46,7 @@ void RunSpaceToDepth(const std::vector<index_t> &input_shape,
 
   } else {
     BufferToImage<D, float>(&net, "Input", "InputImage",
-                            kernels::BufferType::IN_OUT_CHANNEL);
+                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
         .Input("InputImage")
         .Output("OutputImage")
@@ -59,7 +58,7 @@ void RunSpaceToDepth(const std::vector<index_t> &input_shape,
 
   if (D == DeviceType::GPU) {
     ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                          kernels::BufferType::IN_OUT_CHANNEL);
+                                          ops::BufferType::IN_OUT_CHANNEL);
   }
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
@@ -129,7 +128,7 @@ void RandomTest(const int block_size,
                                                   NHWC);
 
   BufferToImage<D, T>(&net, "Input", "InputImg",
-                      kernels::BufferType::IN_OUT_CHANNEL);
+                      ops::BufferType::IN_OUT_CHANNEL);
 
   OpDefBuilder("SpaceToDepth", "SpaceToDepthTest")
       .Input("InputImg")
@@ -142,7 +141,7 @@ void RandomTest(const int block_size,
   net.RunOp(D);
 
   ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
-                          kernels::BufferType::IN_OUT_CHANNEL);
+                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),

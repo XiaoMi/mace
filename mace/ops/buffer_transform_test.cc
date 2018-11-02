@@ -69,12 +69,12 @@ void TestBidirectionTransform(const int type,
 }  // namespace
 
 TEST_F(BufferTransformTest, FloatToHalf) {
-  TestBidirectionTransform<float, half>(kernels::BufferType::IN_OUT_CHANNEL,
+  TestBidirectionTransform<float, half>(ops::BufferType::IN_OUT_CHANNEL,
                                         {1, 2, 3, 4});
 }
 
 TEST_F(BufferTransformTest, HalfToHalf) {
-  TestBidirectionTransform<half, half>(kernels::BufferType::IN_OUT_CHANNEL,
+  TestBidirectionTransform<half, half>(ops::BufferType::IN_OUT_CHANNEL,
                                        {1, 2, 3, 4});
 }
 
@@ -85,7 +85,7 @@ void TestArgumentTransform(const index_t input_size) {
   OpDefBuilder("BufferTransform", "BufferTransformTest")
       .Input("Input")
       .Output("Output")
-      .AddIntArg("buffer_type", kernels::BufferType::ARGUMENT)
+      .AddIntArg("buffer_type", ops::BufferType::ARGUMENT)
       .AddIntArg("T", DataTypeToEnum<T>::value)
       .Finalize(net.NewOperatorDef());
 
