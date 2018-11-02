@@ -219,6 +219,7 @@ class TransformerRule(Enum):
     ADD_OPENCL_INFORMATIONS = 31
     FOLD_DECONV_AND_BN = 32
     FOLD_SQRDIFF_MEAN = 33
+    TRANSPOSE_MATMUL_WEIGHT = 34
 
 
 class ConverterInterface(object):

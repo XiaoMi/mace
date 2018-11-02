@@ -72,8 +72,8 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
 template <DeviceType D, class T>
 class DequantizeOp;
 
-template <>
-class DequantizeOp<DeviceType::CPU, uint8_t> : public Operation {
+template <typename T>
+class DequantizeOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit DequantizeOp(OpConstructContext *context)
       : Operation(context) {}
@@ -85,9 +85,9 @@ class DequantizeOp<DeviceType::CPU, uint8_t> : public Operation {
     MACE_RETURN_IF_ERROR(output->ResizeLike(input));
     Tensor::MappingGuard input_guard(input);
     Tensor::MappingGuard output_guard(output);
-    const uint8_t *input_data = input->data<uint8_t>();
+    const T *input_data = input->data<T>();
     float *output_data = output->mutable_data<float>();
-    Dequantize(input_data,
+    Dequantize<T>(input_data,
                input->size(),
                input->scale(),
                input->zero_point(),
@@ -104,6 +104,8 @@ void RegisterQuantize(OpRegistryBase *op_registry) {
 void RegisterDequantize(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Dequantize", DequantizeOp,
                    DeviceType::CPU, uint8_t);
+  MACE_REGISTER_OP(op_registry, "Dequantize", DequantizeOp,
+                   DeviceType::CPU, int32_t);
 }
 }  // namespace kernels
 }  // namespace mace

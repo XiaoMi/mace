@@ -80,6 +80,8 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
             TransformerRule.FOLD_SQRDIFF_MEAN: self.fold_squared_diff_mean,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
+            TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
+                self.transpose_matmul_weight,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
                 self.add_in_out_tensor_info,
@@ -1258,24 +1260,24 @@ class Transformer(base_converter.ConverterInterface):
         if self._option.device != DeviceType.CPU.value:
             return False
         net = self._model
-        transpose_arg_names = [MaceKeyword.mace_transpose_a_str,
-                               MaceKeyword.mace_transpose_b_str]
         for op in net.op:
             if op.type == MaceOp.MatMul.name:  # noqa
-                for i in range(len(op.input)):
-                    input = op.input[i]
-                    if input in self._consts \
-                            and len(self._consts[input].dims) == 2:
-                        arg = ConverterUtil.get_arg(op, transpose_arg_names[i])
-                        if arg is not None and arg.i == 1:
-                            six.print_('convert matmul')
-                            filter = self._consts[input]
-                            filter_data = np.array(filter.float_data).reshape(
-                                filter.dims)
-                            filter_data = filter_data.transpose(1, 0)
-                            filter.float_data[:] = filter_data.flat
-                            filter.dims[:] = filter_data.shape
-                            arg.i = 0
+                rhs = op.input[1]
+                if rhs in self._consts and len(self._consts[rhs].dims) == 2:
+                    arg = ConverterUtil.get_arg(op, MaceKeyword.mace_transpose_b_str)  # noqa
+                    six.print_('transpose matmul weight')
+                    if arg is None:
+                        arg = op.arg.add()
+                        arg.name = MaceKeyword.mace_transpose_b_str
+                        arg.i = 0
+                    if arg.i == 0:
+                        filter = self._consts[rhs]
+                        filter_data = np.array(filter.float_data).reshape(
+                            filter.dims)
+                        filter_data = filter_data.transpose(1, 0)
+                        filter.float_data[:] = filter_data.flat
+                        filter.dims[:] = filter_data.shape
+                        arg.i = 1
 
     def transpose_filters(self):
         net = self._model
@@ -1372,8 +1374,6 @@ class Transformer(base_converter.ConverterInterface):
                     filter.float_data[:] = filter_data.flat
                     filter.dims[:] = filter_data.shape
                     transposed_deconv_filter.add(op.input[1])
-
-            self.transpose_matmul_weight()
 
         return False
 

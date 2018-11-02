@@ -214,12 +214,12 @@ TEST_F(MatMulOpTest, OPENCLHalfUnAlignedWithBatch) {
 }
 
 namespace {
-void Quant(const std::vector<index_t> &batch,
-           const index_t height,
-           const index_t channels,
-           const index_t out_width,
-           const bool transpose_a,
-           const bool transpose_b) {
+void QuantOutputUint8(const std::vector<index_t> &batch,
+                      const index_t height,
+                      const index_t channels,
+                      const index_t out_width,
+                      const bool transpose_a,
+                      const bool transpose_b) {
   // Construct graph
   OpsTestNet net;
 
@@ -281,6 +281,7 @@ void Quant(const std::vector<index_t> &batch,
       .AddIntArg("transpose_b", transpose_b ? 1 : 0)
       .Output("QuantizedOutput")
       .AddIntArg("T", DT_UINT8)
+      .OutputType({DT_UINT8})
       .Finalize(net.NewOperatorDef());
   net.Setup(DeviceType::CPU);
   Tensor *eq_output = net.GetTensor("ExpectedQuantizedOutput");
@@ -301,26 +302,121 @@ void Quant(const std::vector<index_t> &batch,
   ExpectTensorSimilar<float>(*net.GetOutput("Output"),
                              *net.GetTensor("DequantizedOutput"), 0.01);
 }
+
+void QuantOutputInt32(const std::vector<index_t> &batch,
+                      const index_t height,
+                      const index_t channels,
+                      const index_t out_width,
+                      const bool transpose_a,
+                      const bool transpose_b) {
+  // Construct graph
+  OpsTestNet net;
+
+  // Add input data
+  index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
+                                        std::multiplies<index_t>());
+  if (transpose_a) {
+    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height});
+  } else {
+    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels});
+  }
+  if (transpose_b) {
+    net.AddRandomInput<CPU, float>("B", {batch_count, out_width, channels});
+  } else {
+    net.AddRandomInput<CPU, float>("B", {batch_count, channels, out_width});
+  }
+
+  OpDefBuilder("MatMul", "MatMulTest")
+      .Input("A")
+      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .Input("B")
+      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .Output("Output")
+      .AddIntArg("T", DT_FLOAT)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp(CPU);
+
+  OpDefBuilder("Quantize", "QuantizeA")
+      .Input("A")
+      .Output("QuantizedA")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Quantize", "QuantizeB")
+      .Input("B")
+      .Output("QuantizedB")
+      .OutputType({DT_UINT8})
+      .AddIntArg("T", DT_UINT8)
+      .AddIntArg("non_zero", true)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("MatMul", "QuantizeMatMulTest")
+      .Input("QuantizedA")
+      .AddIntArg("transpose_a", transpose_a ? 1 : 0)
+      .Input("QuantizedB")
+      .AddIntArg("transpose_b", transpose_b ? 1 : 0)
+      .Output("QuantizedOutput")
+      .AddIntArg("T", DT_UINT8)
+      .OutputType({DT_INT32})
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  OpDefBuilder("Dequantize", "DeQuantizeTest")
+      .Input("QuantizedOutput")
+      .Output("DequantizedOutput")
+      .OutputType({DT_FLOAT})
+      .AddIntArg("T", DT_INT32)
+      .Finalize(net.NewOperatorDef());
+  net.RunOp();
+
+  // Check
+  ExpectTensorSimilar<float>(*net.GetOutput("Output"),
+                             *net.GetTensor("DequantizedOutput"), 0.01);
+}
 }  // namespace
 
-TEST_F(MatMulOpTest, Quant) {
-  Quant({1}, 64, 128, 32, false, false);
-  Quant({1}, 64, 32, 128, false, false);
-  Quant({2, 3}, 64, 32, 128, false, false);
-  Quant({1}, 64, 128, 32, false, true);
-  Quant({1}, 64, 32, 128, false, true);
-  Quant({2, 3}, 64, 32, 128, false, true);
-  Quant({1}, 64, 128, 32, true, false);
-  Quant({1}, 64, 32, 128, true, false);
-  Quant({2, 3}, 64, 32, 128, true, false);
-  Quant({1}, 64, 128, 32, true, true);
-  Quant({1}, 64, 32, 128, true, true);
-  Quant({2, 3}, 64, 32, 128, true, true);
+TEST_F(MatMulOpTest, QuantOutputUint8) {
+  QuantOutputUint8({1}, 64, 128, 32, false, false);
+  QuantOutputUint8({1}, 64, 32, 128, false, false);
+  QuantOutputUint8({2, 3}, 64, 32, 128, false, false);
+  QuantOutputUint8({1}, 64, 128, 32, false, true);
+  QuantOutputUint8({1}, 64, 32, 128, false, true);
+  QuantOutputUint8({2, 3}, 64, 32, 128, false, true);
+  QuantOutputUint8({1}, 64, 128, 32, true, false);
+  QuantOutputUint8({1}, 64, 32, 128, true, false);
+  QuantOutputUint8({2, 3}, 64, 32, 128, true, false);
+  QuantOutputUint8({1}, 64, 128, 32, true, true);
+  QuantOutputUint8({1}, 64, 32, 128, true, true);
+  QuantOutputUint8({2, 3}, 64, 32, 128, true, true);
   // UnAligned
-  Quant({2}, 3, 3, 3, false, false);
-  Quant({16}, 31, 61, 67, false, true);
-  Quant({31}, 31, 61, 67, true, false);
-  Quant({2, 3}, 31, 61, 67, true, true);
+  QuantOutputUint8({2}, 3, 3, 3, false, false);
+  QuantOutputUint8({16}, 31, 61, 67, false, true);
+  QuantOutputUint8({31}, 31, 61, 67, true, false);
+  QuantOutputUint8({2, 3}, 31, 61, 67, true, true);
+}
+
+TEST_F(MatMulOpTest, QuantOutputInt32) {
+  QuantOutputInt32({1}, 64, 128, 32, false, false);
+  QuantOutputInt32({1}, 64, 32, 128, false, false);
+  QuantOutputInt32({2, 3}, 64, 32, 128, false, false);
+  QuantOutputInt32({1}, 64, 128, 32, false, true);
+  QuantOutputInt32({1}, 64, 32, 128, false, true);
+  QuantOutputInt32({2, 3}, 64, 32, 128, false, true);
+  QuantOutputInt32({1}, 64, 128, 32, true, false);
+  QuantOutputInt32({1}, 64, 32, 128, true, false);
+  QuantOutputInt32({2, 3}, 64, 32, 128, true, false);
+  QuantOutputInt32({1}, 64, 128, 32, true, true);
+  QuantOutputInt32({1}, 64, 32, 128, true, true);
+  QuantOutputInt32({2, 3}, 64, 32, 128, true, true);
+  // UnAligned
+  QuantOutputInt32({2}, 3, 3, 3, false, false);
+  QuantOutputInt32({16}, 31, 61, 67, false, true);
+  QuantOutputInt32({31}, 31, 61, 67, true, false);
+  QuantOutputInt32({2, 3}, 31, 61, 67, true, true);
 }
 
 // TODO(liyin): test transpose after implementing gpu runtime
