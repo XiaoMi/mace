@@ -28,6 +28,11 @@ class ReshapeOp : public Operation {
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
     const Tensor *input = this->Input(INPUT);
+    const std::vector<index_t> &input_shape = input->shape();
+    int axis = Operation::GetOptionalArg<int>("reshape_axis", 0);
+    int num_axes = Operation::GetOptionalArg<int>("num_axes", -1);
+    MACE_CHECK(axis == 0 && num_axes == -1,
+               "Only support axis = 0 and num_axes = -1");
     const Tensor *shape = this->Input(SHAPE);
     const index_t num_dims = shape->dim_size() == 0 ? 0 : shape->dim(0);
     Tensor::MappingGuard shape_guard(shape);
@@ -43,8 +48,12 @@ class ReshapeOp : public Operation {
         MACE_CHECK(unknown_idx == -1, "Only one input size may be -1");
         unknown_idx = i;
         out_shape.push_back(1);
+      } else if (shape_data[i] == 0) {
+        MACE_CHECK(shape_data[i] == 0, "Shape should be 0");
+        out_shape.push_back(input_shape[i]);
+        product *= input_shape[i];
       } else {
-        MACE_CHECK(shape_data[i] >= 0, "Shape must be non-negative: ",
+        MACE_CHECK(shape_data[i] > 0, "Shape must be non-negative: ",
                    shape_data[i]);
         if (shape_data[i] == 0) {
           MACE_CHECK(i < input->dim_size(),

@@ -49,6 +49,9 @@ class ShapeInference(object):
             MaceOp.Crop.name: self.infer_shape_crop,
             MaceOp.BiasAdd.name: self.infer_shape_general,
             MaceOp.ChannelShuffle.name: self.infer_shape_channel_shuffle,
+            MaceOp.Transpose.name: self.infer_shape_permute,
+            MaceOp.PriorBox.name: self.infer_shape_prior_box,
+            MaceOp.Reshape.name: self.infer_shape_reshape,
         }
 
         self._net = net
@@ -190,12 +193,14 @@ class ShapeInference(object):
         self.add_output_shape(op, [output_shape])
 
     def infer_shape_concat(self, op):
-        output_shape = self._output_shape_cache[op.input[0]]
+        output_shape = list(self._output_shape_cache[op.input[0]])
         axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
+        if axis < 0:
+            axis = len(output_shape) + axis
+        output_shape[axis] = 0
         for input_node in op.input:
-            input_shape = self._output_shape_cache[input_node]
-            output_shape[axis] += input_shape[axis]
-
+            input_shape = list(self._output_shape_cache[input_node])
+            output_shape[axis] = output_shape[axis] + input_shape[axis]
         self.add_output_shape(op, [output_shape])
 
     def infer_shape_slice(self, op):
@@ -225,3 +230,64 @@ class ShapeInference(object):
     def infer_shape_channel_shuffle(self, op):
         output_shape = self._output_shape_cache[op.input[0]]
         self.add_output_shape(op, [output_shape])
+
+    def infer_shape_permute(self, op):
+        output_shape = list(self._output_shape_cache[op.input[0]])
+        dims = ConverterUtil.get_arg(op, MaceKeyword.mace_dims_str).ints
+        for i in xrange(len(dims)):
+            output_shape[i] = self._output_shape_cache[op.input[0]][dims[i]]
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_prior_box(self, op):
+        output_shape = [1, 2, 1]
+        input_shape = list(self._output_shape_cache[op.input[0]])
+        input_w = input_shape[3]
+        input_h = input_shape[2]
+        min_size = ConverterUtil.get_arg(op, MaceKeyword.mace_min_size_str).floats  # noqa
+        max_size = ConverterUtil.get_arg(op, MaceKeyword.mace_max_size_str).floats  # noqa
+        aspect_ratio = ConverterUtil.get_arg(op, MaceKeyword.mace_aspect_ratio_str).floats  # noqa
+        flip = ConverterUtil.get_arg(op, MaceKeyword.mace_flip_str).i  # noqa
+        num_prior = (len(min_size) * len(aspect_ratio) +
+                     len(min_size) + len(max_size))
+        if flip:
+            num_prior = num_prior + len(min_size) * len(aspect_ratio)
+        output_shape[2] = num_prior * input_h * input_w * 4
+        self.add_output_shape(op, [output_shape])
+
+    def infer_shape_reshape(self, op):
+        if ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str) is not None:
+            dim = ConverterUtil.get_arg(op, MaceKeyword.mace_dim_str).ints
+            output_shape = list(dim)
+            product = input_size = 1
+            idx = -1
+            for i in range(len(self._output_shape_cache[op.input[0]])):
+                input_size *= self._output_shape_cache[op.input[0]][i]
+            for i in range(len(dim)):
+                if dim[i] == 0:
+                    output_shape[i] = self._output_shape_cache[op.input[0]][i]
+                    product *= self._output_shape_cache[op.input[0]][i]
+                elif dim[i] == -1:
+                    idx = i
+                    output_shape[i] = 1
+                else:
+                    output_shape[i] = dim[i]
+                    product *= dim[i]
+            if idx != -1:
+                output_shape[idx] = input_size / product
+            self.add_output_shape(op, [output_shape])
+        else:
+            output_shape = list(self._output_shape_cache[op.input[0]])
+            axis = ConverterUtil.get_arg(op, MaceKeyword.mace_axis_str).i
+            end_axis = ConverterUtil.get_arg(op, MaceKeyword.mace_end_axis_str).i  # noqa
+            if end_axis < 0:
+                end_axis = len(output_shape) + end_axis
+            dim = 1
+            for i in range(0, axis):
+                output_shape[i] = self._output_shape_cache[op.input[0]][i]
+            for i in range(axis, end_axis + 1):
+                dim *= self._output_shape_cache[op.input[0]][i]
+                output_shape[i] = 1
+            for i in range(end_axis + 1, len(output_shape)):
+                output_shape[i] = self._output_shape_cache[op.input[0]][i]
+            output_shape[axis] = dim
+            self.add_output_shape(op, [output_shape])

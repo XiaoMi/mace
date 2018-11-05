@@ -92,9 +92,17 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
           }
         }  // k
       }  // b
-    } else if (input->dim_size() == 2) {  // normal 2d softmax
-      const index_t class_size = input->dim(0);
-      const index_t class_count = input->dim(1);
+    } else if (input->dim_size() == 2 || input->dim_size() == 3) {
+      // normal 2d softmax and 3d softmax (dim(0) is batch)
+      index_t class_size = 0;
+      index_t class_count = 0;
+      if (input->dim_size() == 2) {
+        class_size = input->dim(0);
+        class_count = input->dim(1);
+      } else {
+        class_size = input->dim(0) * input->dim(1);
+        class_count = input->dim(2);
+      }
 #pragma omp parallel for schedule(runtime)
       for (index_t k = 0; k < class_size; ++k) {
         const float *input_ptr = input_data + k * class_count;

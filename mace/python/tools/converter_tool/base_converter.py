@@ -123,6 +123,7 @@ MaceSupportedOps = [
     'MatMul',
     'Pad',
     'Pooling',
+    'PriorBox',
     'Proposal',
     'Quantize',
     'Reduce',
@@ -174,8 +175,11 @@ class MaceKeyword(object):
     mace_space_batch_block_shape_str = 'block_shape'
     mace_space_depth_block_size_str = 'block_size'
     mace_constant_value_str = 'constant_value'
+    mace_dim_str = 'dim'
     mace_dims_str = 'dims'
     mace_axis_str = 'axis'
+    mace_end_axis_str = 'end_axis'
+    mace_num_axes_str = 'num_axes'
     mace_num_split_str = 'num_split'
     mace_keepdims_str = 'keepdims'
     mace_shape_str = 'shape'
@@ -205,6 +209,14 @@ class MaceKeyword(object):
     mace_reduce_type_str = 'reduce_type'
     mace_argmin_str = 'argmin'
     mace_round_mode_str = 'round_mode'
+    mace_min_size_str = 'min_size'
+    mace_max_size_str = 'max_size'
+    mace_aspect_ratio_str = 'aspect_ratio'
+    mace_flip_str = 'flip'
+    mace_clip_str = 'clip'
+    mace_variance_str = 'variance'
+    mace_step_h_str = 'step_h'
+    mace_step_w_str = 'step_w'
 
 
 class TransformerRule(Enum):
@@ -243,6 +255,7 @@ class TransformerRule(Enum):
     FOLD_SQRDIFF_MEAN = 33
     TRANSPOSE_MATMUL_WEIGHT = 34
     FOLD_EMBEDDING_LOOKUP = 35
+    TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN = 36
 
 
 class ConverterInterface(object):
@@ -433,6 +446,7 @@ class ConverterOption(object):
                 TransformerRule.TRANSFORM_GLOBAL_POOLING,
                 TransformerRule.TRANSFORM_LSTMCELL_ZEROSTATE,
                 TransformerRule.TRANSFORM_BASIC_LSTMCELL,
+                TransformerRule.TRANSPOSE_CAFFE_RESHAPE_AND_FLATTEN,
                 TransformerRule.FOLD_RESHAPE,
                 TransformerRule.TRANSFORM_MATMUL_TO_FC,
                 TransformerRule.FOLD_BATCHNORM,
