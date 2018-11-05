@@ -33,7 +33,10 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
   explicit QuantizeOp(OpConstructContext *context)
       : Operation(context),
         non_zero_(
-            static_cast<bool>(Operation::GetOptionalArg<int>("non_zero", 0))) {}
+            static_cast<bool>(Operation::GetOptionalArg<int>("non_zero", 0))),
+        find_range_every_time_(static_cast<bool>(Operation::GetOptionalArg<int>(
+            "find_range_every_time",
+            0))) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -44,7 +47,7 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
     Tensor::MappingGuard output_guard(output);
     const float *input_data = input->data<float>();
     uint8_t *output_data = output->mutable_data<uint8_t>();
-    if (output->scale() > 0.f) {
+    if (!find_range_every_time_ && output->scale() > 0.f) {
       QuantizeWithScaleAndZeropoint(input_data,
                                     input->size(),
                                     output->scale(),
@@ -67,6 +70,7 @@ class QuantizeOp<DeviceType::CPU, uint8_t> : public Operation {
 
  private:
   bool non_zero_;
+  bool find_range_every_time_;
 };
 
 template <DeviceType D, class T>
