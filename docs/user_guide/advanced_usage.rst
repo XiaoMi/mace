@@ -401,28 +401,29 @@ Reduce Library Size
 * Remove the unused ops.
 Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
 which will reduce the library size significantly. the final binary just link the registered ops' code.
-```
-#include "mace/ops/ops_register.h"
 
-namespace mace {
-namespace ops {
-// Just leave the ops used in your models
+.. code:: cpp
 
-...
+    #include "mace/ops/ops_register.h"
 
-}  // namespace ops
+    namespace mace {
+    namespace ops {
+    // Just leave the ops used in your models
+
+    ...
+
+    }  // namespace ops
 
 
-OpRegistry::OpRegistry() : OpRegistryBase() {
-// Just leave the ops used in your models
+    OpRegistry::OpRegistry() : OpRegistryBase() {
+    // Just leave the ops used in your models
 
-  ...
+      ...
 
-  ops::RegisterMyCustomOp(this);
+      ops::RegisterMyCustomOp(this);
 
-  ...
+      ...
 
-}
+    }
 
-}  // namespace mace
-```
+    }  // namespace mace

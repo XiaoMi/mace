@@ -29,6 +29,10 @@ avoiding C++ iostream, hidden internal functions etc.
 In most cases, the expected overhead should be less than
 {model weights size in float32}/2 + 3MB.
 
+How to set the input shape in your model deployment file(.yml) when your model support multiple input shape?
+------------------------------------------------------------------------------------------------------------
+Set the largest input shape of your model. The input shape is used for memory optimization.
+
 OpenCL allocator failed with CL_OUT_OF_RESOURCES
 ------------------------------------------------
 OpenCL runtime usually requires continuous virtual memory for its image buffer,
