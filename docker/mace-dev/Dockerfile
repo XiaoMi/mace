@@ -7,6 +7,7 @@ RUN apt-get install -y --no-install-recommends \
     inetutils-ping \
     screen \
     htop
+RUN pip install --upgrade pip
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
     sphinx \
     sphinx-autobuild \
