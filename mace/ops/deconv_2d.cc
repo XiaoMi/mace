@@ -359,12 +359,12 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
                 padded_out_shape.data(),
                 out_data);
     if (!no_pad) {
-      CropPadOut(out_data,
-                 padded_out_shape.data(),
-                 output_shape.data(),
-                 pad_h,
-                 pad_w,
-                 output_data);
+      CropPadOut<float>(out_data,
+                        padded_out_shape.data(),
+                        output_shape.data(),
+                        pad_h,
+                        pad_w,
+                        output_data);
     }
 
     if (bias_data != nullptr) {
@@ -441,33 +441,6 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
               }
             }
           }
-        }
-      }
-    }
-  }
-
-  void CropPadOut(const float *input,
-                  const index_t *in_shape,
-                  const index_t *out_shape,
-                  const index_t pad_h,
-                  const index_t pad_w,
-                  float *output) {
-    const index_t batch = in_shape[0];
-    const index_t channel = in_shape[1];
-    const index_t in_height = in_shape[2];
-    const index_t in_width = in_shape[3];
-
-    const index_t out_height = out_shape[2];
-    const index_t out_width = out_shape[3];
-#pragma omp parallel for collapse(3)
-    for (int i = 0; i < batch; ++i) {
-      for (int j = 0; j < channel; ++j) {
-        for (int k = 0; k < out_height; ++k) {
-          const float *input_base =
-              input + ((i * channel + j) * in_height + (k + pad_h)) * in_width;
-          float *output_base =
-              output + ((i * channel + j) * out_height + k)* out_width;
-          memcpy(output_base, input_base + pad_w, out_width * sizeof(float));
         }
       }
     }

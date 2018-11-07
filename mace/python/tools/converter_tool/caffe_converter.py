@@ -411,17 +411,14 @@ class CaffeConverter(base_converter.ConverterInterface):
     def convert_deconv2d(self, caffe_op):
         op = self.convert_general_op(caffe_op)
         param = caffe_op.layer.convolution_param
-        is_depthwise = False
-        if param.HasField(caffe_group_str) and param.group > 1:
-            filter_data = caffe_op.blobs[0]
-            mace_check(param.group == filter_data.shape[0] and
-                       filter_data.shape[1] == 1,
-                       "Mace does not support group deconvolution yet")
-            is_depthwise = True
-        mace_check(is_depthwise is False,
-                   "Mace do not support depthwise deconvolution yet")
 
-        op.type = MaceOp.Deconv2D.name
+        if param.HasField(caffe_group_str) and param.group > 1:
+            group_arg = op.arg.add()
+            group_arg.name = MaceKeyword.mace_group_str
+            group_arg.i = param.group
+            op.type = MaceOp.DepthwiseDeconv2d.name
+        else:
+            op.type = MaceOp.Deconv2D.name
 
         self.add_stride_pad_kernel_arg(param, op)
         # dilation is specific for convolution in caffe

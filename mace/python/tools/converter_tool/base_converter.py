@@ -91,6 +91,7 @@ MaceSupportedOps = [
     'Deconv2D',
     'DepthToSpace',
     'DepthwiseConv2d',
+    'DepthwiseDeconv2d',
     'Dequantize',
     'Eltwise',
     'ExpandDims',
@@ -183,6 +184,7 @@ class MaceKeyword(object):
     mace_scalar_input_index_str = 'scalar_input_index'
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"
+    mace_group_str = "group"
 
 
 class TransformerRule(Enum):

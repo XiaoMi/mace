@@ -583,7 +583,7 @@ class Transformer(base_converter.ConverterInterface):
     def fold_deconv_and_bn(self):
         net = self._model
         for op in net.op:
-            if (op.type == MaceOp.Deconv2D.name) \
+            if (op.type in [MaceOp.Deconv2D.name, MaceOp.DepthwiseDeconv2d]) \
                     and self.consumer_count(op.output[0]) == 1:
                 consumer_op = self._consumers[op.output[0]][0]
                 if consumer_op.type == MaceOp.BatchNorm.name:
@@ -1365,7 +1365,8 @@ class Transformer(base_converter.ConverterInterface):
                 self.set_filter_format(FilterFormat.OIHW)
             # deconv's filter's output channel and input channel is reversed
             for op in net.op:
-                if op.type == MaceOp.Deconv2D.name \
+                if op.type in [MaceOp.Deconv2D.name,
+                               MaceOp.DepthwiseDeconv2d] \
                         and op.input[1] not in transposed_deconv_filter:
                     filter = self._consts[op.input[1]]
                     filter_data = np.array(filter.float_data).reshape(
@@ -1427,11 +1428,17 @@ class Transformer(base_converter.ConverterInterface):
                 self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
                 if len(op.input) >= 3:
                     self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.Deconv2D.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
+            elif op.type == MaceOp.Deconv2D.name\
+                    or op.type == MaceOp.DepthwiseDeconv2d.name:
+                if op.type == MaceOp.Deconv2D.name:
+                    self.buffer_transform(op, 1,
+                                          OpenCLBufferType.CONV2D_FILTER)
+                elif op.type == MaceOp.DepthwiseDeconv2d.name:
+                    self.buffer_transform(op, 1,
+                                          OpenCLBufferType.DW_CONV2D_FILTER)
                 if ConverterUtil.get_arg(
                         op,
-                        MaceKeyword.mace_framework_type_str).i ==\
+                        MaceKeyword.mace_framework_type_str).i == \
                         FrameworkType.CAFFE.value:
                     if len(op.input) >= 3:
                         self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
@@ -1456,8 +1463,10 @@ class Transformer(base_converter.ConverterInterface):
                 if len(op.input) >= 4:
                     self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.MatMul.name and \
-                    ConverterUtil.get_arg(op,
-                                          MaceKeyword.mace_winograd_filter_transformed) is not None:  # noqa
+                    ConverterUtil.get_arg(
+                        op,
+                        MaceKeyword.mace_winograd_filter_transformed
+                    ) is not None:  # noqa
                 self.buffer_transform(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
             elif op.type == MaceOp.WinogradInverseTransform.name \
                     and len(op.input) >= 3:
@@ -1467,8 +1476,10 @@ class Transformer(base_converter.ConverterInterface):
                 if len(op.input) >= 3:
                     self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.Activation.name:
-                if ConverterUtil.get_arg(op,
-                                         MaceKeyword.mace_activation_type_str).s == ActivationType.PRELU.name:  # noqa
+                if ConverterUtil.get_arg(
+                        op,
+                        MaceKeyword.mace_activation_type_str
+                ).s == ActivationType.PRELU.name:  # noqa
                     self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
             elif op.type == MaceOp.LSTMCell.name:
                 if op.input[1] in self._consts:
@@ -1793,24 +1804,24 @@ class Transformer(base_converter.ConverterInterface):
             check_conv = False
             check_deconv = False
             if ops is not None and len(ops) == 1:
-                check_conv =\
-                    ops[0].type in [MaceOp.Conv2D.name,
-                                    MaceOp.DepthwiseConv2d.name,
-                                    MaceOp.FullyConnected.name]\
-                    and len(ops[0].input) >= 3\
-                    and ops[0].input[2] == tensor.name
+                if len(ops[0].input) >= 3:
+                    check_conv =\
+                        ops[0].type in [MaceOp.Conv2D.name,
+                                        MaceOp.DepthwiseConv2d.name,
+                                        MaceOp.FullyConnected.name]\
+                        and ops[0].input[2] == tensor.name
                 # in tensorflow deconv's bias is the forth input
-                if ops[0].type == MaceOp.Deconv2D.name:
+                if ops[0].type in [MaceOp.Deconv2D.name,
+                                   MaceOp.DepthwiseDeconv2d]:
                     from_caffe = ConverterUtil.get_arg(
                         ops[0],
                         MaceKeyword.mace_framework_type_str).i ==\
                                  FrameworkType.CAFFE.value
-                    if from_caffe:
-                        check_deconv = len(ops[0].input) >= 3\
-                                       and ops[0].input[2] == tensor.name
+                    if from_caffe and len(ops[0].input) >= 3:
+                        check_deconv = ops[0].input[2] == tensor.name
                     else:
-                        check_deconv = len(ops[0].input) >= 4\
-                                       and ops[0].input[3] == tensor.name
+                        if len(ops[0].input) >= 4:
+                            check_deconv = ops[0].input[3] == tensor.name
             if check_conv or check_deconv:
                 if self._option.device == DeviceType.CPU.value:
                     conv_op = ops[0]

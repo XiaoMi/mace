@@ -15,11 +15,8 @@
 #ifndef MACE_OPS_ARM_DECONV_2D_NEON_H_
 #define MACE_OPS_ARM_DECONV_2D_NEON_H_
 
-#if defined(MACE_ENABLE_NEON)
-#include <arm_neon.h>
-#endif
-
 #include "mace/core/types.h"
+#include "mace/ops/arm/common_neon.h"
 
 namespace mace {
 namespace ops {
@@ -47,48 +44,6 @@ void Deconv2dNeonK4x4S2(const float *input,
                         const index_t *in_shape,
                         const index_t *out_shape,
                         float *output);
-
-#ifdef MACE_ENABLE_NEON
-inline float32x4_t neon_vfma_lane_0(float32x4_t a,
-                          float32x4_t b,
-                          float32x4_t c) {
-#ifdef __aarch64__
-  return vfmaq_laneq_f32(a, b, c, 0);
-#else
-  return vmlaq_lane_f32(a, b, vget_low_f32(c), 0);
-#endif
-}
-
-inline float32x4_t neon_vfma_lane_1(float32x4_t a,
-                          float32x4_t b,
-                          float32x4_t c) {
-#ifdef __aarch64__
-  return vfmaq_laneq_f32(a, b, c, 1);
-#else
-  return vmlaq_lane_f32(a, b, vget_low_f32(c), 1);
-#endif
-}
-
-inline float32x4_t neon_vfma_lane_2(float32x4_t a,
-                          float32x4_t b,
-                          float32x4_t c) {
-#ifdef __aarch64__
-  return vfmaq_laneq_f32(a, b, c, 2);
-#else
-  return vmlaq_lane_f32(a, b, vget_high_f32(c), 0);
-#endif
-}
-
-inline float32x4_t neon_vfma_lane_3(float32x4_t a,
-                          float32x4_t b,
-                          float32x4_t c) {
-#ifdef __aarch64__
-  return vfmaq_laneq_f32(a, b, c, 3);
-#else
-  return vmlaq_lane_f32(a, b, vget_high_f32(c), 1);
-#endif
-}
-#endif
 
 }  // namespace ops
 }  // namespace mace
