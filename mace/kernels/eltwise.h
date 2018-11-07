@@ -859,7 +859,7 @@ struct EltwiseFunctor : EltwiseFunctorBase {
     const T *input1_ptr = input1->data<T>();
 
     if (data_format_ == NCHW && input1->dim_size() > 0 &&
-        input1->size() < input0->size()) {
+        input1->size() <= input0->size()) {
       MACE_RETURN_IF_ERROR(output->ResizeLike(input0));
       Tensor::MappingGuard output_guard(output);
       DstType *output_ptr = output->mutable_data<DstType>();
