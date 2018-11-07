@@ -131,14 +131,14 @@ class Operation {
   }
 
   inline void set_debug_def(
-      const std::shared_ptr<const OperatorDef> &operator_def) {
+      const std::shared_ptr<OperatorDef> &operator_def) {
     operator_def_ = operator_def;
   }
 
   inline bool has_debug_def() const { return operator_def_ != nullptr; }
 
  protected:
-  std::shared_ptr<const OperatorDef> operator_def_;
+  std::shared_ptr<OperatorDef> operator_def_;
   std::vector<const Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
 

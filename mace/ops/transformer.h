@@ -12,23 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_COMMON_H_
-#define MACE_OPS_OPENCL_COMMON_H_
+#ifndef MACE_KERNELS_TRANSFORMER_H_
+#define MACE_KERNELS_TRANSFORMER_H_
+
+#include "mace/core/transformer.h"
+#include "mace/ops/opencl/common.h"
 
 namespace mace {
+class OpContext;
 namespace ops {
 
-enum BufferType {
-  CONV2D_FILTER = 0,
-  IN_OUT_CHANNEL = 1,
-  ARGUMENT = 2,
-  IN_OUT_HEIGHT = 3,
-  IN_OUT_WIDTH = 4,
-  WINOGRAD_FILTER = 5,
-  DW_CONV2D_FILTER = 6,
-  WEIGHT_HEIGHT = 7,
-  WEIGHT_WIDTH = 8,
+class Transformer : public TransformerBase {
+ public:
+  // Transform source tensor to target.
+  std::vector<std::unique_ptr<OperatorDef>> ConstructTranformOp(
+      OperatorDef *op_def,
+      bool transform_filter = true) override;
+ private:
+  std::unique_ptr<OperatorDef> DoTransform(
+      mace::OperatorDef *op_def,
+      const int input_idx,
+      const mace::DataType dt,
+      const BufferType buffer_type,
+      const MemoryType mem_type);
 };
+
+
 }  // namespace ops
 }  // namespace mace
-#endif  // MACE_OPS_OPENCL_COMMON_H_
+
+#endif  // MACE_KERNELS_TENSOR_TRANSFORMER_H_

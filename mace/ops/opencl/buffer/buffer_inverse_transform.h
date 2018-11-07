@@ -15,7 +15,7 @@
 #ifndef MACE_OPS_OPENCL_BUFFER_BUFFER_INVERSE_TRANSFORM_H_
 #define MACE_OPS_OPENCL_BUFFER_BUFFER_INVERSE_TRANSFORM_H_
 
-#include "mace/ops/opencl/buffer_inverse_transform.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 
 #include "mace/core/op_context.h"
 #include "mace/core/tensor.h"
@@ -34,7 +34,7 @@ MaceStatus BufferTypeTransform(
     Tensor *output);
 
 template <typename T>
-class BufferInverseTransform: public OpenCLBufferInverseTransformKernel {
+class BufferInverseTransform: public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,

@@ -12,30 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_BUFFER_TRANSFORM_H_
-#define MACE_OPS_OPENCL_BUFFER_TRANSFORM_H_
+#ifndef MACE_CORE_TRANSFORMER_H_
+#define MACE_CORE_TRANSFORMER_H_
 
-#include "mace/ops/opencl/common.h"
-#include "mace/public/mace.h"
-#include "mace/utils/utils.h"
+#include "mace/proto/mace.pb.h"
 
 namespace mace {
 
-class OpContext;
-class Tensor;
-
-namespace ops {
-class OpenCLBufferTransformKernel {
+class TransformerBase {
  public:
-  virtual MaceStatus Compute(OpContext *context,
-                             const Tensor *input,
-                             const BufferType type,
-                             const int wino_blk_size,
-                             Tensor *output) = 0;
-  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLBufferTransformKernel)
+  // Construct transform operation.
+  virtual std::vector<std::unique_ptr<OperatorDef>> ConstructTranformOp(
+      OperatorDef *op_def,
+      bool transform_filter = true) = 0;
 };
 
-}  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_BUFFER_TRANSFORM_H_
+#endif  // MACE_CORE_TRANSFORMER_H_

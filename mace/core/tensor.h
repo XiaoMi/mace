@@ -222,6 +222,17 @@ class Tensor {
     return buffer_ != nullptr && !buffer_->OnHost() && !has_opencl_image();
   }
 
+  inline MemoryType memory_type() const {
+    MACE_CHECK(buffer_ != nullptr, "Tensor ", name_, " is empty" );
+    if (buffer_->OnHost()) {
+      return MemoryType::CPU_BUFFER;
+    } else if (typeid(*buffer_) == typeid(Image)) {
+      return MemoryType::GPU_IMAGE;
+    } else {
+      return MemoryType::GPU_BUFFER;
+    }
+  }
+
 #ifdef MACE_ENABLE_OPENCL
   inline cl::Image *opencl_image() const {
     MACE_CHECK(has_opencl_image(), name_, " do not have image");

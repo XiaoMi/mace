@@ -15,7 +15,7 @@
 #ifndef MACE_OPS_OPENCL_BUFFER_BUFFER_TRANSFORM_H_
 #define MACE_OPS_OPENCL_BUFFER_BUFFER_TRANSFORM_H_
 
-#include "mace/ops/opencl/buffer_transform.h"
+#include "mace/ops/opencl/buffer_transform_kernel.h"
 
 #include <vector>
 

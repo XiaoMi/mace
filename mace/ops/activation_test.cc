@@ -237,12 +237,10 @@ void TestSimplePrelu() {
   if (D == DeviceType::GPU) {
     BufferToImage<D, float>(&net, "Input", "InputImage",
                             ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
-                            ops::BufferType::ARGUMENT);
 
     OpDefBuilder("Activation", "PreluTest")
         .Input("InputImage")
-        .Input("AlphaImage")
+        .Input("Alpha")
         .Output("OutputImage")
         .AddStringArg("activation", "PRELU")
         .Finalize(net.NewOperatorDef());

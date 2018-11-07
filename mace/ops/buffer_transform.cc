@@ -15,8 +15,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
-#include "mace/ops/opencl/buffer/buffer_transform.h"
-#include "mace/ops/opencl/image/buffer_to_image.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 
 namespace mace {
 namespace ops {
@@ -29,12 +28,16 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit BufferTransformOp(OpConstructContext *context)
       : Operation(context),
-        wino_blk_size_(Operation::GetOptionalArg<int>("wino_block_size", 2)) {
+        wino_blk_size_(Operation::GetOptionalArg<int>("wino_block_size", 2)),
+        out_mem_type_(MemoryType::GPU_BUFFER),
+        transformer_(nullptr) {
+    MemoryType in_mem_type = context->workspace()->GetTensor(
+        operator_def_->input(0))->memory_type();
     if (context->device()->opencl_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::BufferToImage<T>);
-    } else {
-      kernel_.reset(new opencl::buffer::BufferTransform<T>);
+      out_mem_type_ = MemoryType::GPU_IMAGE;
     }
+    transformer_.reset(new OpenCLBufferTransformer<T>(in_mem_type,
+                                                      out_mem_type_));
   }
 
   MaceStatus Run(OpContext *context) override {
@@ -45,13 +48,14 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
         static_cast<ops::BufferType>(Operation::GetOptionalArg<int>(
             "buffer_type", static_cast<int>(ops::CONV2D_FILTER)));
 
-    return kernel_->Compute(context, input, type,
-                            wino_blk_size_, output);
+    return transformer_->Transform(
+        context, input, type, wino_blk_size_, out_mem_type_, output);
   }
 
  private:
   const int wino_blk_size_;
-  std::unique_ptr<OpenCLBufferTransformKernel> kernel_;
+  MemoryType out_mem_type_;
+  std::unique_ptr<OpenCLBufferTransformer<T>> transformer_;
 };
 
 

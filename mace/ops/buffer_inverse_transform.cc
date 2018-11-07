@@ -51,7 +51,7 @@ class BufferInverseTransformOp<DeviceType::GPU, T> : public Operation {
 
  private:
   const int wino_blk_size_;
-  std::unique_ptr<OpenCLBufferInverseTransformKernel> kernel_;
+  std::unique_ptr<OpenCLBufferTransformKernel> kernel_;
 };
 
 

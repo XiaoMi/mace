@@ -34,8 +34,9 @@
 #include "mace/public/mace.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/image/depthwise_conv2d.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/buffer/depthwise_conv2d.h"
+#include "mace/ops/opencl/image/depthwise_conv2d.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -490,10 +491,22 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
  public:
   explicit DepthwiseConv2dOp(OpConstructContext *context)
       : DepthwiseConv2dOpBase(context) {
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::DepthwiseConv2dKernel<T>);
     } else {
+      mem_type = MemoryType::GPU_BUFFER;
       kernel_.reset(new opencl::buffer::DepthwiseConv2dKernel<T>);
+    }
+    // Transform filter tensor to target format
+    MACE_CHECK(TransformFilter<T>(
+        context, operator_def_.get(), 1, BufferType::DW_CONV2D_FILTER, mem_type)
+                   == MaceStatus::MACE_SUCCESS);
+    if (operator_def_->input_size() > 2) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 2, BufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {

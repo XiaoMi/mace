@@ -77,9 +77,12 @@ SerialNet::SerialNet(const OpRegistryBase *op_registry,
 }
 
 MaceStatus SerialNet::Init() {
-  // TODO(liuqi): where to do memory reuse.
   MACE_LATENCY_LOGGER(1, "Initializing SerialNet");
   OpInitContext init_context(ws_);
+  // TODO(liuqi): where to do memory reuse.
+  if (target_device_->device_type() == DeviceType::GPU) {
+
+  }
   for (auto iter = operators_.begin(); iter != operators_.end(); ++iter) {
     auto &op = *iter;
     DeviceType device_type = op->device_type();

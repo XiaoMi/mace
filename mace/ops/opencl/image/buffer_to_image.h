@@ -15,7 +15,7 @@
 #ifndef MACE_OPS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 #define MACE_OPS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 
-#include "mace/ops/opencl/buffer_transform.h"
+#include "mace/ops/opencl/buffer_transform_kernel.h"
 
 #include <set>
 #include <string>

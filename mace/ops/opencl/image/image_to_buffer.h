@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "mace/core/op_context.h"
-#include "mace/ops/opencl/buffer_inverse_transform.h"
+#include "mace/ops/opencl/buffer_transform_kernel.h"
 #include "mace/ops/opencl/helper.h"
 
 namespace mace {
@@ -29,7 +29,7 @@ namespace opencl {
 namespace image {
 
 template <typename T>
-class ImageToBuffer : public OpenCLBufferInverseTransformKernel {
+class ImageToBuffer : public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,

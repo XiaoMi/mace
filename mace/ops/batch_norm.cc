@@ -19,6 +19,7 @@
 #include "mace/core/operator.h"
 #include "mace/ops/activation.h"
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/batch_norm.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -147,11 +148,24 @@ class BatchNormOp<DeviceType::GPU, T> : public Operation {
     ActivationType activation = ops::StringToActivationType(
         Operation::GetOptionalArg<std::string>("activation", "NOOP"));
     float relux_max_limit = Operation::GetOptionalArg<float>("max_limit", 0.0f);
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::BatchNormKernel<T>(
           epsilon, activation, relux_max_limit));
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    // Transform filters
+    int input_size = operator_def_->input_size();
+    for (int i = 0; i < input_size; ++i) {
+      const Tensor *input_tensor = context->workspace()->GetTensor(
+          operator_def_->input(i));
+      if (input_tensor != nullptr && input_tensor->is_weight()) {
+        MACE_CHECK(TransformFilter<T>(
+            context, operator_def_.get(), i, BufferType::ARGUMENT, mem_type)
+                       == MaceStatus::MACE_SUCCESS);
+      }
     }
   }
   MaceStatus Run(OpContext *context) override {

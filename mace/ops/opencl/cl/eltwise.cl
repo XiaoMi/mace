@@ -45,7 +45,7 @@ __kernel void eltwise(OUT_OF_RANGE_PARAMS
   DATA_TYPE4 out;
 #if ELTWISE_TYPE == 0
   #ifdef COEFF_SUM
-    out = mad(coeff1, in0, mad(coeff0, in1, 0));
+    out = mad(coeff0, in0, mad(coeff1, in1, 0));
   #else
     out = in0 + in1;
   #endif

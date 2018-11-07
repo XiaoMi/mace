@@ -38,8 +38,9 @@
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
-#include "mace/ops/opencl/image/conv_2d.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/buffer/conv_2d.h"
+#include "mace/ops/opencl/image/conv_2d.h"
 #endif  // MACE_ENABLE_OPENCL
 
 namespace mace {
@@ -960,10 +961,22 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
             Operation::GetOptionalArg<std::string>("activation",
                                                   "NOOP"))),
         relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::Conv2dKernel<T>);
     } else {
+      mem_type = MemoryType::GPU_BUFFER;
       kernel_.reset(new opencl::buffer::Conv2dKernel<T>);
+    }
+    // Transform filter tensor to target format
+    MACE_CHECK(TransformFilter<T>(
+        context, operator_def_.get(), 1, BufferType::CONV2D_FILTER, mem_type)
+                   == MaceStatus::MACE_SUCCESS);
+    if (operator_def_->input_size() > 2) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 2, BufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {
