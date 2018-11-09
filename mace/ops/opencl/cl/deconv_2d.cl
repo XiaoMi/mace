@@ -164,3 +164,4 @@ __kernel void deconv_2d(OUT_OF_RANGE_PARAMS
     WRITE_IMAGET(output, out_pos, out4);
   }
 }
+

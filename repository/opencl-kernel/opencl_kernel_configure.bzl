@@ -37,6 +37,7 @@ def _opencl_encrypt_kernel_impl(repository_ctx):
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/conv_2d_buffer.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/crop.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/deconv_2d.cl"))
+    unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/depthwise_deconv2d.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/depth_to_space.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/depthwise_conv2d.cl"))
     unused_var = repository_ctx.path(Label("//:mace/ops/opencl/cl/depthwise_conv2d_buffer.cl"))

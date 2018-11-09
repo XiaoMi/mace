@@ -32,6 +32,7 @@ extern void RegisterCrop(OpRegistryBase *op_registry);
 extern void RegisterDeconv2D(OpRegistryBase *op_registry);
 extern void RegisterDepthToSpace(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseConv2d(OpRegistryBase *op_registry);
+extern void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry);
 extern void RegisterDequantize(OpRegistryBase *op_registry);
 extern void RegisterEltwise(OpRegistryBase *op_registry);
 extern void RegisterExpandDims(OpRegistryBase *op_registry);
@@ -89,6 +90,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterDeconv2D(this);
   ops::RegisterDepthToSpace(this);
   ops::RegisterDepthwiseConv2d(this);
+  ops::RegisterDepthwiseDeconv2d(this);
   ops::RegisterDequantize(this);
   ops::RegisterEltwise(this);
   ops::RegisterExpandDims(this);

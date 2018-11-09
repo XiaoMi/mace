@@ -1,0 +1,3 @@
+# To support new bazelrc file list:
+# https://github.com/bazelbuild/bazel/issues/4502 
+import %workspace%/tools/bazel.rc

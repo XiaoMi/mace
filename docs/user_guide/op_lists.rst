@@ -16,6 +16,7 @@ Operator lists
     "CONV_2D","Y","Fusion with BN and activation layer is supported."
     "CROP","Y","Only Caffe's crop layer is supported (in GPU, offset on channel-dim should be dividable by 4)."
     "DECONV_2D","Y","Supports Caffe's Deconvolution and TensorFlow's tf.layers.conv2d_transpose."
+    "DEPTHWISE_DECONV2D","Y","Supports Caffe's Group and Depthwise Deconvolution. For GPU only supports depthwise mode(multiplier = 1)."
     "DEPTHWISE_CONV_2D","Y","Only multiplier = 1 is supported; Fusion is supported."
     "DEPTH_TO_SPACE","Y",""
     "DEQUANTIZE","Y","Model quantization will be supported later."

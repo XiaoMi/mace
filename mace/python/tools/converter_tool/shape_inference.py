@@ -36,6 +36,7 @@ class ShapeInference(object):
             MaceOp.Conv2D.name: self.infer_shape_conv_pool_shape,
             MaceOp.Deconv2D.name: self.infer_shape_deconv,
             MaceOp.DepthwiseConv2d.name: self.infer_shape_conv_pool_shape,
+            MaceOp.DepthwiseDeconv2d.name: self.infer_shape_deconv,
             MaceOp.Eltwise.name: self.infer_shape_general,
             MaceOp.BatchNorm.name: self.infer_shape_general,
             MaceOp.AddN.name: self.infer_shape_general,
@@ -159,11 +160,15 @@ class ShapeInference(object):
             dilations = [1, 1]
         round_func = math.floor
 
+        group_arg = ConverterUtil.get_arg(op,
+                                          MaceKeyword.mace_group_str)
         output_shape[0] = input_shape[0]
         if ConverterUtil.data_format(op) == DataFormat.NCHW \
                 and ConverterUtil.filter_format(self._net) == FilterFormat.OIHW:  # noqa
             # filter format: IOHW
             output_shape[1] = filter_shape[1]
+            if group_arg is not None and group_arg.i > 1:
+                output_shape[1] = group_arg.i * filter_shape[1]
             output_shape[2] = int(
                 round_func((input_shape[2] - 1) * strides[0] +
                            (filter_shape[2] - 1) * (dilations[0] - 1) +
