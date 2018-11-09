@@ -370,9 +370,9 @@ TEST_F(Deconv2dOpTest, OPENCLSimple3X3PaddingValid_S2) {
 
 namespace {
 template <DeviceType D, typename T>
-void TestComplexDeconvNxNS12(const int batch,
-                             const std::vector<int> &shape,
-                             const int stride) {
+void TestComplexDeconvNxN(const int batch,
+                          const std::vector<int> &shape,
+                          const int stride) {
   testing::internal::LogToStderr();
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type, int padding) {
@@ -415,8 +415,6 @@ void TestComplexDeconvNxNS12(const int batch,
       output_shape.push_back(output_channels);
       net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape);
     } else {
-      //      out_h = (height - 1) * stride + 1 + padding - kernel_h + 1;
-      //      out_w = (width -1) * stride + 1 + padding - kernel_w + 1;
       paddings.push_back(padding);
       paddings.push_back(padding);
     }
@@ -497,38 +495,42 @@ void TestComplexDeconvNxNS12(const int batch,
                             1e-4);
   };
 
-  for (int kernel_size : {3, 4, 5, 7}) {
-    func(kernel_size, kernel_size, stride, stride, VALID, -1);
-    func(kernel_size, kernel_size, stride, stride, SAME, -1);
-    func(kernel_size, kernel_size, stride, stride, VALID, 2);
-    func(kernel_size, kernel_size, stride, stride, VALID, 3);
+  for (int kernel_size : {2, 3, 4, 5, 7}) {
+    if (kernel_size >= stride) {
+      func(kernel_size, kernel_size, stride, stride, VALID, -1);
+      func(kernel_size, kernel_size, stride, stride, SAME, -1);
+      func(kernel_size, kernel_size, stride, stride, VALID, 1);
+      func(kernel_size, kernel_size, stride, stride, VALID, 2);
+      func(kernel_size, kernel_size, stride, stride, VALID, 3);
+    }
   }
 }
 }  // namespace
 
+
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS12) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 2);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 1);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLAlignedDeconvNxNS34) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 3);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 4);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 3);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {32, 16, 16, 32}, 4);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS12) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 2);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 1);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 2);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNS34) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 3);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 4);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 3);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(1, {17, 113, 5, 7}, 4);
 }
 
 TEST_F(Deconv2dOpTest, OPENCLUnalignedDeconvNxNMultiBatch) {
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(3, {17, 113, 5, 7}, 1);
-  TestComplexDeconvNxNS12<DeviceType::GPU, float>(5, {17, 113, 5, 7}, 2);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(3, {17, 113, 5, 7}, 1);
+  TestComplexDeconvNxN<DeviceType::GPU, float>(5, {17, 113, 5, 7}, 2);
 }
 
 }  // namespace test

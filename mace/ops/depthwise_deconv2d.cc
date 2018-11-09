@@ -24,11 +24,8 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
 #include "mace/core/tensor.h"
-#include "mace/ops/activation.h"
 #include "mace/ops/arm/depthwise_deconv2d_neon.h"
-#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
 #include "mace/public/mace.h"
 #ifdef MACE_ENABLE_OPENCL
@@ -38,90 +35,15 @@
 namespace mace {
 namespace ops {
 
-class DepthwiseDeconv2dOpBase : public Operation {
- public:
-  explicit DepthwiseDeconv2dOpBase(OpConstructContext *context)
-      : Operation(context),
-        strides_(Operation::GetRepeatedArgs<int>("strides")),
-        paddings_(Operation::GetRepeatedArgs<int>("padding_values")),
-        group_(Operation::GetOptionalArg<int>("group", 1)),
-        activation_(ops::StringToActivationType(
-            Operation::GetOptionalArg<std::string>("activation",
-                                                      "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit",
-                                                             0.0f)) {}
-
-  static void CalcGroupDeconvOutputSize(
-      const index_t *input_shape,   // NHWC
-      const index_t *filter_shape,  // OIHW
-      const int group,
-      const int *strides,
-      const int *paddings,
-      int *pre_paddings,
-      index_t *out_shape,
-      index_t *padded_out_shape,
-      const bool isNCHW = false) {
-    MACE_CHECK_NOTNULL(paddings);
-    MACE_CHECK_NOTNULL(input_shape);
-    MACE_CHECK_NOTNULL(filter_shape);
-    MACE_CHECK_NOTNULL(strides);
-
-    const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
-    const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
-
-    const index_t output_channel = filter_shape[0] * group;
-
-    const index_t kernel_h = filter_shape[2];
-    const index_t kernel_w = filter_shape[3];
-
-    index_t padded_out_height =
-        (in_height - 1) * strides[0] + kernel_h;
-    index_t padded_out_width =
-        (in_width - 1) * strides[1] + kernel_w;
-
-    if (pre_paddings != nullptr) {
-      pre_paddings[0] = static_cast<int>((kernel_h - 1) * 2 - paddings[0]);
-      pre_paddings[1] = static_cast<int>((kernel_w - 1) * 2 - paddings[1]);
-      pre_paddings[0] = std::max<int>(0, pre_paddings[0]);
-      pre_paddings[1] = std::max<int>(0, pre_paddings[1]);
-    }
-
-    if (padded_out_shape != nullptr) {
-      padded_out_shape[0] = input_shape[0];
-      padded_out_shape[1] = isNCHW ? output_channel : padded_out_height;
-      padded_out_shape[2] = isNCHW ? padded_out_height : padded_out_width;
-      padded_out_shape[3] = isNCHW ? padded_out_width : output_channel;
-    }
-
-    if (out_shape != nullptr) {
-      index_t out_height = padded_out_height - paddings[0];
-      index_t out_width = padded_out_width - paddings[1];
-      out_shape[0] = input_shape[0];
-      out_shape[1] = isNCHW ? output_channel : out_height;
-      out_shape[2] = isNCHW ? out_height : out_width;
-      out_shape[3] = isNCHW ? out_width : output_channel;
-    }
-  }
-
- protected:
-  std::vector<int> strides_;  // [stride_h, stride_w]
-  std::vector<int> paddings_;
-  const int group_;
-  const ActivationType activation_;
-  const float relux_max_limit_;
-};
-
-
-
 template <DeviceType D, class T>
 class DepthwiseDeconv2dOp;
 
 template<>
 class DepthwiseDeconv2dOp<DeviceType::CPU, float>
-    : public DepthwiseDeconv2dOpBase {
+    : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
-      : DepthwiseDeconv2dOpBase(context) {}
+      : Deconv2dOpBase(context) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
@@ -138,15 +60,17 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
     std::vector<index_t> padded_out_shape(4, 0);
 
     if (!paddings_.empty()) out_paddings = paddings_;
-    CalcGroupDeconvOutputSize(input->shape().data(),
-                              filter->shape().data(),
-                              group_,
-                              strides_.data(),
-                              out_paddings.data(),
-                              nullptr,
-                              out_shape.data(),
-                              padded_out_shape.data(),
-                              true);
+    CalcDeconvShape_Caffe(
+        input->shape().data(),
+        filter->shape().data(),
+        strides_.data(),
+        out_paddings.data(),
+        group_,
+        nullptr,
+        out_shape.data(),
+        padded_out_shape.data(),
+        true);
+
     MACE_RETURN_IF_ERROR(output->Resize(out_shape));
     output->Clear();
     index_t kernel_h = filter->dim(2);
@@ -480,10 +404,10 @@ class DepthwiseDeconv2dOp<DeviceType::CPU, float>
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
-class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public DepthwiseDeconv2dOpBase {
+class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
-      : DepthwiseDeconv2dOpBase(context) {
+      : Deconv2dOpBase(context) {
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::DepthwiseDeconv2dKernel<T>);
     } else {
@@ -501,16 +425,18 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public DepthwiseDeconv2dOpBase {
     MACE_CHECK_NOTNULL(output);
 
     std::vector<int> in_paddings(2, 0);
+    std::vector<int> out_paddings(2, 0);
     std::vector<index_t> out_shape(4, 0);
 
-    CalcGroupDeconvOutputSize(input->shape().data(),
-                              filter->shape().data(),
-                              group_,
-                              strides_.data(),
-                              paddings_.data(),
-                              in_paddings.data(),
-                              out_shape.data(),
-                              nullptr);
+    if (!paddings_.empty()) out_paddings = paddings_;
+    CalcDeconvShape_Caffe(input->shape().data(),
+                          filter->shape().data(),
+                          strides_.data(),
+                          out_paddings.data(),
+                          group_,
+                          in_paddings.data(),
+                          out_shape.data(),
+                          nullptr);
 
     return kernel_->Compute(context,
                             input,
