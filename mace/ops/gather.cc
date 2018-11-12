@@ -20,15 +20,11 @@ namespace mace {
 namespace ops {
 
 template <DeviceType D, class T>
-class GatherOp;
-
-template <>
-class GatherOp<DeviceType::CPU, float> : public Operation {
+class GatherOp : public Operation {
  public:
   explicit GatherOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 0)),
-        y_(Operation::GetOptionalArg<float>("y", 1.0)) {}
+        axis_(Operation::GetOptionalArg<int>("axis", 0)) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -54,8 +50,8 @@ class GatherOp<DeviceType::CPU, float> : public Operation {
     Tensor::MappingGuard params_guard(params);
     Tensor::MappingGuard output_guard(output);
     const int32_t *indices_data = indices->data<int32_t>();
-    const float *params_data = params->data<float>();
-    float *output_data = output->mutable_data<float>();
+    const T *params_data = params->data<T>();
+    T *output_data = output->mutable_data<T>();
 
     index_t axis_dim_size = params->dim(axis_);
     index_t lhs_size = std::accumulate(params->shape().begin(),
@@ -74,23 +70,18 @@ class GatherOp<DeviceType::CPU, float> : public Operation {
         memcpy(
             output_data + ((l * index_size) + idx) * rhs_size,
             params_data + ((l * axis_dim_size) + indices_data[idx]) * rhs_size,
-            sizeof(float) * rhs_size);
+            sizeof(T) * rhs_size);
       }
     }
 
-    if (std::fabs(y_ - 1.0) > 1e-6) {
-#pragma omp parallel for
-      for (index_t i = 0; i < output->size(); ++i) {
-        output_data[i] *= y_;
-      }
-    }
+    output->SetScale(params->scale());
+    output->SetZeroPoint(params->zero_point());
 
     return MaceStatus::MACE_SUCCESS;
   }
 
  private:
   int axis_;
-  float y_;
   MACE_OP_INPUT_TAGS(PARAMS, INDICES);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
@@ -98,6 +89,8 @@ class GatherOp<DeviceType::CPU, float> : public Operation {
 void RegisterGather(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
                    DeviceType::CPU, float);
+  MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
+                   DeviceType::CPU, uint8_t);
 }
 
 }  // namespace ops

@@ -79,6 +79,7 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.FLATTEN_ATROUS_CONV: self.flatten_atrous_conv,
             TransformerRule.FOLD_ACTIVATION: self.fold_activation,
             TransformerRule.FOLD_SQRDIFF_MEAN: self.fold_squared_diff_mean,
+            TransformerRule.FOLD_EMBEDDING_LOOKUP: self.fold_embedding_lookup,
             TransformerRule.TRANSPOSE_FILTERS: self.transpose_filters,
             TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
                 self.transpose_matmul_weight,
@@ -391,6 +392,27 @@ class Transformer(base_converter.ConverterInterface):
                         return True
 
         return False
+
+    def fold_embedding_lookup(self):
+        net = self._model
+        for op in net.op:
+            # gather -> mul
+            if (op.type == MaceOp.Gather.name and
+                    self.consumer_count(op.output[0]) == 1):
+                consumer_op = self._consumers[op.output[0]][0]
+                if (consumer_op.type == MaceOp.Eltwise.name and
+                    ConverterUtil.get_arg(consumer_op,
+                                          MaceKeyword.mace_element_type_str).i == EltwiseType.PROD.value and  # noqa
+                            len(consumer_op.input) == 1 and
+                            op.input[0] in self._consts and
+                            self.consumer_count(op.input[0]) == 1):
+                    print("Fold Gather and Mul: %s" % op.name)
+                    gather_weights = self._consts[op.input[0]]
+                    mul_weight = ConverterUtil.get_arg(consumer_op,
+                                                       MaceKeyword.mace_scalar_input_str).f  # noqa
+                    gather_weights.float_data[:] = gather_weights.float_data * mul_weight  # noqa
+                    self.safe_remove_node(consumer_op, None,
+                                          remove_input_tensor=True)
 
     def transform_lstmcell_zerostate(self):
         net = self._model

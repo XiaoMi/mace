@@ -28,7 +28,6 @@ void TestGather(const std::vector<index_t> &weight_shape,
                 const std::vector<index_t> &input_shape,
                 const std::vector<int32_t> &input,
                 const int axis,
-                const float y,
                 const std::vector<index_t> &output_shape,
                 const std::vector<float> &output) {
   OpsTestNet net;
@@ -40,7 +39,6 @@ void TestGather(const std::vector<index_t> &weight_shape,
       .Input("Params")
       .Input("Indices")
       .AddIntArg("axis", axis)
-      .AddFloatArg("y", y)
       .Output("Output")
       .Finalize(net.NewOperatorDef());
   // Run
@@ -55,25 +53,25 @@ void TestGather(const std::vector<index_t> &weight_shape,
 TEST_F(GatherOpTest, CPUScalarIndex) {
   TestGather({10, 2}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-             {}, {5}, 0, 2.0, {2}, {20, 22});
+             {}, {5}, 0, {2}, {10, 11});
 }
 
 TEST_F(GatherOpTest, CPURank1Index) {
   TestGather({10, 2}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-             {3}, {2, 4, 6}, 0, 1.0, {3, 2}, {4, 5, 8, 9, 12, 13});
+             {3}, {2, 4, 6}, 0, {3, 2}, {4, 5, 8, 9, 12, 13});
 }
 
 TEST_F(GatherOpTest, CPURank1IndexWithAxis1) {
   TestGather({10, 2}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-             {1}, {1}, 1, 1.0, {10, 1}, {1, 3, 5, 7, 9, 11, 13, 15, 17, 19});
+             {1}, {1}, 1, {10, 1}, {1, 3, 5, 7, 9, 11, 13, 15, 17, 19});
 }
 
 TEST_F(GatherOpTest, CPURankHighIndex) {
   TestGather({10, 2}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
-             {1, 3}, {2, 4, 6}, 0, 1.0, {1, 3, 2}, {4, 5, 8, 9, 12, 13});
+             {1, 3}, {2, 4, 6}, 0, {1, 3, 2}, {4, 5, 8, 9, 12, 13});
 }
 
 }  // namespace test
