@@ -16,7 +16,6 @@ py_library(
         "converter_tool/onnx_converter.py",
         "converter_tool/shape_inference.py",
         "converter_tool/tensorflow_converter.py",
-        "converter_tool/tf_dsp_converter.py",
         "converter_tool/transformer.py",
         "graph_util.py",
     ],

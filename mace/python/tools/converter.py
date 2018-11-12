@@ -45,14 +45,14 @@ data_format_map = {
 
 
 def parse_data_type(data_type, device_type):
-    if device_type == cvt.DeviceType.CPU.value or\
+    if device_type == cvt.DeviceType.CPU.value or \
             device_type == cvt.DeviceType.GPU.value:
         if data_type == 'fp32_fp32':
             return mace_pb2.DT_FLOAT
         else:
             return mace_pb2.DT_HALF
     elif device_type == cvt.DeviceType.HEXAGON.value:
-        return mace_pb2.DT_UINT8
+        return mace_pb2.DT_FLOAT
     else:
         print("Invalid device type: " + device_type)
 
@@ -167,45 +167,39 @@ def main(unused_args):
             check_node.name = check_node_names[i]
             check_node.shape = parse_int_array_from_str(check_node_shapes[i])
             option.add_check_node(check_node)
+    else:
+        option.check_nodes = option.output_nodes
 
     option.build()
 
     print("Transform model to one that can better run on device")
-    if FLAGS.runtime == 'dsp' and not option.quantize:
-        mace_check(FLAGS.platform == 'tensorflow',
-                   'DSP only supports tensorflow')
-        from mace.python.tools.converter_tool import tf_dsp_converter
-        converter = tf_dsp_converter.TensorflowDspConverter(
+    if FLAGS.platform == 'tensorflow':
+        from mace.python.tools.converter_tool import tensorflow_converter
+        converter = tensorflow_converter.TensorflowConverter(
             option, FLAGS.model_file)
-        output_graph_def = converter.run()
+    elif FLAGS.platform == 'caffe':
+        from mace.python.tools.converter_tool import caffe_converter
+        converter = caffe_converter.CaffeConverter(option,
+                                                   FLAGS.model_file,
+                                                   FLAGS.weight_file)
+    elif FLAGS.platform == 'onnx':
+        from mace.python.tools.converter_tool import onnx_converter
+        converter = onnx_converter.OnnxConverter(option, FLAGS.model_file)
     else:
-        if FLAGS.platform == 'tensorflow':
-            from mace.python.tools.converter_tool import tensorflow_converter
-            converter = tensorflow_converter.TensorflowConverter(
-                option, FLAGS.model_file)
-        elif FLAGS.platform == 'caffe':
-            from mace.python.tools.converter_tool import caffe_converter
-            converter = caffe_converter.CaffeConverter(option,
-                                                       FLAGS.model_file,
-                                                       FLAGS.weight_file)
-        elif FLAGS.platform == 'onnx':
-            from mace.python.tools.converter_tool import onnx_converter
-            converter = onnx_converter.OnnxConverter(option, FLAGS.model_file)
-        else:
-            six.print_("Mace do not support platorm %s yet." % FLAGS.platform,
-                       file=sys.stderr)
-            exit(1)
+        six.print_("Mace do not support platorm %s yet." % FLAGS.platform,
+                   file=sys.stderr)
+        exit(1)
 
+    output_graph_def = converter.run()
+    mace_transformer = transformer.Transformer(
+        option, output_graph_def)
+    output_graph_def, quantize_activation_info = mace_transformer.run()
+
+    if FLAGS.runtime == 'dsp':
+        from mace.python.tools.converter_tool import hexagon_converter
+        converter = hexagon_converter.HexagonConverter(
+            option, output_graph_def, quantize_activation_info)
         output_graph_def = converter.run()
-        mace_transformer = transformer.Transformer(
-            option, output_graph_def)
-        output_graph_def, quantize_activation_info = mace_transformer.run()
-
-        if FLAGS.runtime == 'dsp':
-            from mace.python.tools.converter_tool import hexagon_converter
-            converter = hexagon_converter.HexagonConverter(
-                option, output_graph_def, quantize_activation_info)
-            output_graph_def = converter.run()
 
     model_saver.save_model(
         option, output_graph_def, model_checksum, weight_checksum,

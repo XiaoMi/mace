@@ -119,8 +119,7 @@ class Transformer(base_converter.ConverterInterface):
                 changed = transformer()
                 if not changed:
                         break
-
-        self.add_check_nodes()
+        self.delete_after_check_nodes()
         return self._model, self._quantize_activation_info
 
     def filter_format(self):
@@ -275,7 +274,8 @@ class Transformer(base_converter.ConverterInterface):
             input_info.dims.extend(input_node.shape)
             input_info.data_type = mace_pb2.DT_FLOAT
 
-        for output_node in self._option.output_nodes.values():
+        output_nodes = self._option.check_nodes.values()
+        for output_node in output_nodes:
             output_info = net.output_info.add()
             output_info.name = output_node.name
             output_info.data_format = output_node.data_format.value
@@ -1336,7 +1336,8 @@ class Transformer(base_converter.ConverterInterface):
                              + '_' + input_node.name
             input_name_map[input_node.name] = new_input_name
 
-        for output_node in self._option.output_nodes.values():
+        output_nodes = self._option.check_nodes.values()
+        for output_node in output_nodes:
             new_output_name = MaceKeyword.mace_output_node_name \
                               + '_' + output_node.name
             output_name_map[output_node.name] = new_output_name
@@ -1347,7 +1348,12 @@ class Transformer(base_converter.ConverterInterface):
                     op.input[i] = input_name_map[op.input[i]]
             for i in range(len(op.output)):
                 if op.output[i] in output_name_map:
-                    op.output[i] = output_name_map[op.output[i]]
+                    op.name = MaceKeyword.mace_output_node_name \
+                              + '_' + op.name
+                    new_output_name = output_name_map[op.output[i]]
+                    self._quantize_activation_info[new_output_name] = \
+                        self._quantize_activation_info[op.output[i]]
+                    op.output[i] = new_output_name
 
             data_type_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_op_data_type_str)
@@ -1368,7 +1374,8 @@ class Transformer(base_converter.ConverterInterface):
 
         for input_node in self._option.input_nodes.values():
             op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(input_node.name)
+            op_def.name = \
+                self.normalize_op_name(input_name_map[input_node.name])
             op_def.type = MaceOp.Quantize.name
             op_def.input.extend([input_node.name])
             op_def.output.extend([input_name_map[input_node.name]])
@@ -1378,10 +1385,9 @@ class Transformer(base_converter.ConverterInterface):
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
-        for output_node in self._option.output_nodes.values():
+        for output_node in output_nodes:
             op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(
-                output_name_map[output_node.name])
+            op_def.name = self.normalize_op_name(output_node.name)
             op_def.type = MaceOp.Dequantize.name
             op_def.input.extend([output_name_map[output_node.name]])
             op_def.output.extend([output_node.name])
@@ -1690,34 +1696,17 @@ class Transformer(base_converter.ConverterInterface):
         arg.i = mace_pb2.GPU_IMAGE if self._option.cl_mem_type == "image"\
             else mace_pb2.GPU_BUFFER
 
-    def add_check_nodes(self):
-        if self._option.check_nodes:
+    def delete_after_check_nodes(self):
+        if self._option.check_nodes != self._option.output_nodes:
             mace_check(len(self._option.check_nodes) == 1,
                        "Only support one check node now.")
             check_node = None
             for i in six.moves.range(len(self._model.op)):
-                if self._model.op[i].name in self._option.check_nodes:
+                if self._model.op[i].output[0] in self._option.check_nodes:
                     check_node = self._model.op[i]
                     del self._model.op[i+1:]
                     break
             mace_check(check_node is not None, "check node not found.")
-            output_name = \
-                MaceKeyword.mace_output_node_name + '_' + check_node.name
-            op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(output_name)
-            op_def.type = MaceOp.Dequantize.name
-            op_def.input.extend([check_node.output[0]])
-            op_def.output.extend([output_name])
-            output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(check_node.output_shape[0].dims)
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
-            op_def.output_type.extend([mace_pb2.DT_FLOAT])
-
-            del self._model.output_info[:]
-            output_info = self._model.output_info.add()
-            output_info.name = check_node.name
-            output_info.dims.extend(check_node.output_shape[0].dims)
-            output_info.data_type = mace_pb2.DT_FLOAT
 
     def transform_caffe_reshape_and_flatten(self):
         net = self._model

@@ -445,7 +445,8 @@ def format_model_config(flags):
             threshold_dict = {
                 DeviceType.CPU: ValidationThreshold.cpu_threshold,
                 DeviceType.GPU: ValidationThreshold.gpu_threshold,
-                DeviceType.HEXAGON: ValidationThreshold.hexagon_threshold,
+                DeviceType.HEXAGON + "_QUANTIZE":
+                    ValidationThreshold.hexagon_threshold,
                 DeviceType.CPU + "_QUANTIZE":
                     ValidationThreshold.cpu_quantize_threshold,
             }

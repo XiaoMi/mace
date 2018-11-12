@@ -76,7 +76,7 @@ please refer to [the contribution guide](https://mace.readthedocs.io/en/latest/d
 MACE depends on several open source projects located in the
 [third_party](third_party) directory. Particularly, we learned a lot from
 the following projects during the development:
-* [Qualcomm Hexagon NN Offload Framework](https://source.codeaurora.org/quic/hexagon_nn/nnlib): the Hexagon DSP runtime
+* [Qualcomm Hexagon NN Offload Framework](https://developer.qualcomm.com/software/hexagon-dsp-sdk): the Hexagon DSP runtime
   depends on this library.
 * [TensorFlow](https://github.com/tensorflow/tensorflow),
   [Caffe](https://github.com/BVLC/caffe),
