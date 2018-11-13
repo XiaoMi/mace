@@ -21,6 +21,18 @@
 namespace mace {
 namespace ops {
 
+void Deconv2dNeonK2x2S1(const float *input,
+                        const float *filter,
+                        const index_t *in_shape,
+                        const index_t *out_shape,
+                        float *output);
+
+void Deconv2dNeonK2x2S2(const float *input,
+                        const float *filter,
+                        const index_t *in_shape,
+                        const index_t *out_shape,
+                        float *output);
+
 void Deconv2dNeonK3x3S1(const float *input,
                         const float *filter,
                         const index_t *in_shape,

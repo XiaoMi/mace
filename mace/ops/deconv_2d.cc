@@ -25,11 +25,9 @@
 #include <vector>
 
 #include "mace/core/future.h"
-#include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/arm/deconv_2d_neon.h"
-#include "mace/ops/conv_pool_2d_util.h"
 #include "mace/utils/utils.h"
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/deconv_2d.h"
@@ -37,134 +35,6 @@
 
 namespace mace {
 namespace ops {
-
-class Deconv2dOpBase : public Operation {
- public:
-  explicit Deconv2dOpBase(OpConstructContext *context)
-      : Operation(context),
-        strides_(Operation::GetRepeatedArgs<int>("strides")),
-        padding_type_(static_cast<Padding>(Operation::GetOptionalArg<int>(
-            "padding", static_cast<int>(SAME)))),
-        paddings_(Operation::GetRepeatedArgs<int>("padding_values")),
-        model_type_(static_cast<ops::FrameworkType>(
-                        Operation::GetOptionalArg<int>("framework_type", 0))),
-        activation_(ops::StringToActivationType(
-            Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {}
-
-
-  static void CalcDeconvOutputSize(
-      const index_t *input_shape,   // NHWC
-      const index_t *filter_shape,  // OIHW
-      const int *strides,
-      index_t *output_shape,
-      const int *padding_size,
-      int *input_padding,
-      const bool isNCHW = false) {
-    MACE_CHECK_NOTNULL(output_shape);
-    MACE_CHECK_NOTNULL(padding_size);
-    MACE_CHECK_NOTNULL(input_shape);
-    MACE_CHECK_NOTNULL(filter_shape);
-    MACE_CHECK_NOTNULL(strides);
-
-    const index_t output_channel = filter_shape[0];
-
-    const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
-    const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
-
-    const index_t kernel_h = filter_shape[2];
-    const index_t kernel_w = filter_shape[3];
-
-    input_padding[0] = static_cast<int>((kernel_h -1) * 2 - padding_size[0]);
-    input_padding[1] = static_cast<int>((kernel_w -1) * 2 - padding_size[1]);
-    input_padding[0] = std::max<int>(0, input_padding[0]);
-    input_padding[1] = std::max<int>(0, input_padding[1]);
-
-    index_t out_height =
-        (in_height - 1) * strides[0] + kernel_h - padding_size[0];
-    index_t out_width =
-        (in_width - 1) * strides[1] + kernel_w - padding_size[1];
-
-    output_shape[0] = input_shape[0];
-    if (isNCHW) {
-      output_shape[1] = output_channel;
-      output_shape[2] = out_height;
-      output_shape[3] = out_width;
-    } else {
-      output_shape[1] = out_height;
-      output_shape[2] = out_width;
-      output_shape[3] = output_channel;
-    }
-  }
-
-  static void CalcDeconvPaddingAndInputSize(
-      const index_t *input_shape,   // NHWC
-      const index_t *filter_shape,  // OIHW
-      const int *strides,
-      Padding padding,
-      const index_t *output_shape,
-      int *padding_size,
-      const bool isNCHW = false) {
-    MACE_CHECK_NOTNULL(output_shape);
-    MACE_CHECK_NOTNULL(padding_size);
-    MACE_CHECK_NOTNULL(input_shape);
-    MACE_CHECK_NOTNULL(filter_shape);
-    MACE_CHECK_NOTNULL(strides);
-
-    const index_t in_height = isNCHW ? input_shape[2] : input_shape[1];
-    const index_t in_width = isNCHW ? input_shape[3] : input_shape[2];
-
-    const index_t out_height = isNCHW ? output_shape[2] : output_shape[1];
-    const index_t out_width = isNCHW ? output_shape[3] : output_shape[2];
-
-    const index_t extended_input_height = (in_height - 1) * strides[0] + 1;
-    const index_t extended_input_width = (in_width - 1) * strides[1] + 1;
-
-    const index_t filter_h = filter_shape[2];
-    const index_t filter_w = filter_shape[3];
-
-    index_t expected_input_height = 0, expected_input_width = 0;
-
-    switch (padding) {
-      case VALID:
-        expected_input_height =
-            (out_height - filter_h + strides[0]) / strides[0];
-        expected_input_width =
-            (out_width - filter_w + strides[1]) / strides[1];
-        break;
-      case SAME:
-        expected_input_height =
-            (out_height + strides[0] - 1) / strides[0];
-        expected_input_width =
-            (out_width + strides[1] - 1) / strides[1];
-        break;
-      default:
-        MACE_CHECK(false, "Unsupported padding type: ", padding);
-    }
-
-    MACE_CHECK(expected_input_height == in_height,
-               expected_input_height, "!=", in_height);
-    MACE_CHECK(expected_input_width == in_width,
-               expected_input_width, "!=", in_width);
-
-    const int p_h = static_cast<int>(out_height +
-        filter_h - 1 - extended_input_height);
-    const int p_w = static_cast<int>(out_width +
-        filter_w - 1 - extended_input_width);
-
-    padding_size[0] = std::max<int>(0, p_h);
-    padding_size[1] = std::max<int>(0, p_w);
-  }
-
- protected:
-  std::vector<int> strides_;  // [stride_h, stride_w]
-  const Padding padding_type_;
-  std::vector<int> paddings_;
-  const FrameworkType model_type_;
-  const ActivationType activation_;
-  const float relux_max_limit_;
-};
 
 template <DeviceType D, class T>
 class Deconv2dOp;
@@ -193,56 +63,65 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
 
-    std::vector<int> paddings(2);
-    std::vector<int> out_paddings(2);
-    std::vector<index_t> output_shape(4);
+    std::vector<int> in_paddings(2, 0);
+    std::vector<int> out_paddings(2, 0);
+    std::vector<index_t> out_shape(4, 0);
+    std::vector<index_t> padded_out_shape(4, 0);
+
     if (model_type_ == FrameworkType::TENSORFLOW) {  // tensorflow
-      paddings = std::vector<int>(2, 0);
       MACE_CHECK_NOTNULL(output_shape_tensor);
       MACE_CHECK(output_shape_tensor->size() == 4);
       Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
       auto output_shape_data =
           output_shape_tensor->data<int32_t>();
-      output_shape =
+      out_shape =
           std::vector<index_t>(output_shape_data, output_shape_data + 4);
 
-      const index_t t = output_shape[1];
-      output_shape[1] = output_shape[3];
-      output_shape[3] = output_shape[2];
-      output_shape[2] = t;
+      const index_t t = out_shape[1];
+      out_shape[1] = out_shape[3];
+      out_shape[3] = out_shape[2];
+      out_shape[2] = t;
 
-      CalcDeconvPaddingAndInputSize(
+      CalcDeconvShape_TF(
           input->shape().data(),
           filter->shape().data(),
-          strides_.data(), padding_type_,
-          output_shape.data(),
-          paddings.data(), true);
+          out_shape.data(),
+          strides_.data(),
+          1,
+          padding_type_,
+          in_paddings.data(),
+          out_paddings.data(),
+          padded_out_shape.data(),
+          true);
     } else {  // caffe
-      out_paddings = paddings_;
-      output_shape = std::vector<index_t>(4, 0);
-      CalcDeconvOutputSize(input->shape().data(),
-                           filter->shape().data(),
-                           strides_.data(),
-                           output_shape.data(),
-                           out_paddings.data(),
-                           paddings.data(),
-                           true);
+      if (!paddings_.empty()) out_paddings = paddings_;
+      CalcDeconvShape_Caffe(
+          input->shape().data(),
+          filter->shape().data(),
+          strides_.data(),
+          out_paddings.data(),
+          1,
+          in_paddings.data(),
+          out_shape.data(),
+          padded_out_shape.data(),
+          true);
     }
-    MACE_RETURN_IF_ERROR(output->Resize(output_shape));
+    MACE_RETURN_IF_ERROR(output->Resize(out_shape));
+    output->Clear();
     index_t kernel_h = filter->dim(2);
     index_t kernel_w = filter->dim(3);
     const index_t *in_shape = input->shape().data();
 
-    MACE_CHECK(filter->dim(0) == output_shape[1], filter->dim(0), " != ",
-               output_shape[1]);
+    MACE_CHECK(filter->dim(0) == out_shape[1], filter->dim(0), " != ",
+               out_shape[1]);
     MACE_CHECK(filter->dim(1) == in_shape[1], filter->dim(1), " != ",
                in_shape[1]);
-    MACE_CHECK(in_shape[0] == output_shape[0],
+    MACE_CHECK(in_shape[0] == out_shape[0],
                "Input/Output batch size mismatch");
     std::function<void(const float *input,
                        const float *filter,
                        const index_t *in_shape,
-                       const index_t *out_shape,
+                       const index_t *output_shape,
                        float *output)> deconv_func;
 
     Tensor::MappingGuard input_mapper(input);
@@ -254,13 +133,9 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     auto bias_data = bias == nullptr ? nullptr : bias->data<float>();
     auto output_data = output->mutable_data<float>();
 
-    const index_t padded_out_h = (in_shape[2] - 1) * strides_[0] + kernel_h;
-    const index_t padded_out_w = (in_shape[3] - 1) * strides_[1] + kernel_w;
-    const index_t pad_h = (padded_out_h - output_shape[2]) / 2;
-    const index_t pad_w = (padded_out_w - output_shape[3]) / 2;
+    const index_t pad_h = out_paddings[0] / 2;
+    const index_t pad_w = out_paddings[1] / 2;
 
-    std::vector<index_t> padded_out_shape({output_shape[0], output_shape[1],
-                                           padded_out_h, padded_out_w});
     index_t padded_out_size =
         std::accumulate(padded_out_shape.begin(),
                         padded_out_shape.end(),
@@ -274,6 +149,11 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     padded_out.Clear();
     auto *padded_out_data = padded_out.mutable_data<float>();
 
+    bool use_neon_2x2_s1 = kernel_h == kernel_w && kernel_h == 2 &&
+        strides_[0] == strides_[1] && strides_[0] == 1;
+    bool use_neon_2x2_s2 = kernel_h == kernel_w && kernel_h == 2 &&
+        strides_[0] == strides_[1] && strides_[0] == 2;
+
     bool use_neon_3x3_s1 = kernel_h == kernel_w && kernel_h == 3 &&
         strides_[0] == strides_[1] && strides_[0] == 1;
     bool use_neon_3x3_s2 = kernel_h == kernel_w && kernel_h == 3 &&
@@ -284,73 +164,98 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     bool use_neon_4x4_s2 = kernel_h == kernel_w && kernel_h == 4 &&
         strides_[0] == strides_[1] && strides_[0] == 2;
 
-    if (use_neon_3x3_s1) {
+    if (use_neon_2x2_s1) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const index_t *in_shape,
-                        const index_t *padded_out_shape,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
+                        float *padded_output) {
+        Deconv2dNeonK2x2S1(input,
+                           filter,
+                           input_shape,
+                           padded_output_shape,
+                           padded_output);
+      };
+    } else if (use_neon_2x2_s2) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
+                        float *padded_output) {
+        Deconv2dNeonK2x2S2(input,
+                           filter,
+                           input_shape,
+                           padded_output_shape,
+                           padded_output);
+      };
+    } else if (use_neon_3x3_s1) {
+      deconv_func = [=](const float *input,
+                        const float *filter,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
                         float *padded_output) {
         Deconv2dNeonK3x3S1(input,
                            filter,
-                           in_shape,
-                           padded_out_shape,
+                           input_shape,
+                           padded_output_shape,
                            padded_output);
       };
     } else if (use_neon_3x3_s2) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const index_t *in_shape,
-                        const index_t *padded_out_shape,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
                         float *padded_output) {
         Deconv2dNeonK3x3S2(input,
                            filter,
-                           in_shape,
-                           padded_out_shape,
+                           input_shape,
+                           padded_output_shape,
                            padded_output);
       };
     } else if (use_neon_4x4_s1) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const index_t *in_shape,
-                        const index_t *padded_out_shape,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
                         float *padded_output) {
         Deconv2dNeonK4x4S1(input,
                            filter,
-                           in_shape,
-                           padded_out_shape,
+                           input_shape,
+                           padded_output_shape,
                            padded_output);
       };
     } else if (use_neon_4x4_s2) {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const index_t *in_shape,
-                        const index_t *padded_out_shape,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
                         float *padded_output) {
         Deconv2dNeonK4x4S2(input,
                            filter,
-                           in_shape,
-                           padded_out_shape,
+                           input_shape,
+                           padded_output_shape,
                            padded_output);
       };
     } else {
       deconv_func = [=](const float *input,
                         const float *filter,
-                        const index_t *in_shape,
-                        const index_t *padded_out_shape,
+                        const index_t *input_shape,
+                        const index_t *padded_output_shape,
                         float *padded_output) {
         Deconv2dGeneral(input,
                         filter,
                         kernel_h,
                         kernel_w,
                         strides_.data(),
-                        in_shape,
-                        padded_out_shape,
+                        input_shape,
+                        padded_output_shape,
                         padded_output);
       };
     }
 
     bool no_pad =
-        padded_out_h == output_shape[2] && padded_out_w == output_shape[3];
+        (padded_out_shape[2] == out_shape[2]) &&
+            (padded_out_shape[3] == out_shape[3]);
     float *out_data = no_pad ? output_data : padded_out_data;
 
     deconv_func(input_data,
@@ -361,16 +266,16 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     if (!no_pad) {
       CropPadOut<float>(out_data,
                         padded_out_shape.data(),
-                        output_shape.data(),
+                        out_shape.data(),
                         pad_h,
                         pad_w,
                         output_data);
     }
 
     if (bias_data != nullptr) {
-      const index_t batch = output_shape[0];
-      const index_t channels = output_shape[1];
-      const index_t img_size = output_shape[2] * output_shape[3];
+      const index_t batch = out_shape[0];
+      const index_t channels = out_shape[1];
+      const index_t img_size = out_shape[2] * out_shape[3];
 #pragma omp parallel for collapse(3)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channels; ++c) {
@@ -476,39 +381,46 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
     MACE_CHECK_NOTNULL(input);
     MACE_CHECK_NOTNULL(filter);
     MACE_CHECK_NOTNULL(output);
-    std::vector<int> paddings(2);
-    std::vector<int> out_paddings(2);
-    std::vector<index_t> output_shape(4);
+
+    std::vector<int> in_paddings(2, 0);
+    std::vector<index_t> out_shape(4, 0);
+
     if (model_type_ == FrameworkType::TENSORFLOW) {
-      paddings = std::vector<int>(2, 0);
       MACE_CHECK_NOTNULL(output_shape_tensor);
       MACE_CHECK(output_shape_tensor->size() == 4);
       Tensor::MappingGuard output_shape_mapper(output_shape_tensor);
       auto output_shape_data =
           output_shape_tensor->data<int32_t>();
-      output_shape =
+      out_shape =
           std::vector<index_t>(output_shape_data, output_shape_data + 4);
-      CalcDeconvPaddingAndInputSize(input->shape().data(),
-                                    filter->shape().data(),
-                                    strides_.data(),
-                                    padding_type_,
-                                    output_shape.data(),
-                                    paddings.data());
+
+      CalcDeconvShape_TF(
+          input->shape().data(),
+          filter->shape().data(),
+          out_shape.data(),
+          strides_.data(),
+          1,
+          padding_type_,
+          in_paddings.data(),
+          nullptr,
+          nullptr);
     } else {
-      out_paddings = paddings_;
-      paddings = std::vector<int>(2, 0);
-      output_shape = std::vector<index_t>(4, 0);
-      CalcDeconvOutputSize(input->shape().data(),
-                           filter->shape().data(),
-                           strides_.data(),
-                           output_shape.data(),
-                           out_paddings.data(),
-                           paddings.data());
+      std::vector<int> out_paddings(2, 0);
+      if (!paddings_.empty()) out_paddings = paddings_;
+      CalcDeconvShape_Caffe(
+          input->shape().data(),
+          filter->shape().data(),
+          strides_.data(),
+          out_paddings.data(),
+          1,
+          in_paddings.data(),
+          out_shape.data(),
+          nullptr);
     }
 
     return kernel_->Compute(context, input, filter, bias,
-                            strides_.data(), paddings.data(), activation_,
-                            relux_max_limit_, output_shape, output);
+                            strides_.data(), in_paddings.data(), activation_,
+                            relux_max_limit_, out_shape, output);
   }
 
  private:

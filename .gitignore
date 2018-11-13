@@ -22,3 +22,9 @@ mace/examples/android/macelibrary/src/main/cpp/mace/
 *swp
 *~
 .python-version
+
+mace/examples/android/macelibrary/src/main/cpp/include/mace/public/
+
+mace/examples/android/macelibrary/src/main/cpp/lib/arm64-v8a/
+
+mace/examples/android/macelibrary/src/main/jniLibs/arm64-v8a/
