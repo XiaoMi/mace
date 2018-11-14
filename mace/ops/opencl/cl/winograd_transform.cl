@@ -8,9 +8,7 @@ __kernel void winograd_transform_2x2(OUT_OF_RANGE_PARAMS
                                      __private const int in_width,
                                      __private const int in_channel,
                                      __private const int round_hw,
-                                     __private const float round_hw_r,
                                      __private const int round_w,
-                                     __private const float round_w_r,
                                      __private const int padding_top,
                                      __private const int padding_left) {
   int out_width_idx = get_global_id(0);
@@ -23,10 +21,10 @@ __kernel void winograd_transform_2x2(OUT_OF_RANGE_PARAMS
 #endif
   const int chan_blk_size = global_size_dim1;
 
-  const int batch_idx = out_width_idx * round_hw_r;
-  const int t_idx = mad24(batch_idx, -round_hw, out_width_idx);
-  const int n_round_w = t_idx * round_w_r;
-  const int mod_round_w = mad24(n_round_w, -round_w, t_idx);
+  const int batch_idx = out_width_idx / round_hw;
+  const int t_idx = out_width_idx - mul24(batch_idx, round_hw);
+  const int n_round_w = t_idx / round_w;
+  const int mod_round_w = t_idx - mul24(n_round_w, round_w);
   const int height_idx = (n_round_w << 1) - padding_top;
   const int width_idx = (mod_round_w << 1) - padding_left;
 
@@ -128,9 +126,7 @@ __kernel void winograd_inverse_transform_2x2(OUT_OF_RANGE_PARAMS
                                              __private const int out_height,
                                              __private const int out_width,
                                              __private const int round_hw,
-                                             __private const float round_hw_r,
                                              __private const int round_w,
-                                             __private const float round_w_r,
                                              __private const float relux_max_limit) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
@@ -145,10 +141,10 @@ __kernel void winograd_inverse_transform_2x2(OUT_OF_RANGE_PARAMS
   int width = width_idx;
   int height = height_idx;
 
-  const int batch = width_idx * round_hw_r;
-  int t = mad24(batch, -round_hw, width_idx);
-  const int n_round_w = t * round_w_r;
-  const int mod_round_w = mad24(n_round_w, -round_w, t);
+  const int batch = width_idx / round_hw;
+  int t = width_idx - mul24(batch, round_hw);
+  const int n_round_w = t / round_w;
+  const int mod_round_w = t - mul24(n_round_w, round_w);
   const int out_height_idx = n_round_w << 1;
   const int out_width_idx = mod_round_w << 1;
   const int out_chan_idx = height_idx;
@@ -239,9 +235,7 @@ __kernel void winograd_transform_4x4(OUT_OF_RANGE_PARAMS
                                      __private const int in_width,
                                      __private const int in_channel,
                                      __private const int round_hw,
-                                     __private const float round_hw_r,
                                      __private const int round_w,
-                                     __private const float round_w_r,
                                      __private const int padding_top,
                                      __private const int padding_left) {
   int out_width_idx = get_global_id(0);
@@ -254,10 +248,10 @@ __kernel void winograd_transform_4x4(OUT_OF_RANGE_PARAMS
 #endif
   const int chan_blk_size = global_size_dim1;
 
-  const int batch_idx = out_width_idx * round_hw_r;
-  const int t_idx = mad24(batch_idx, -round_hw, out_width_idx);
-  const int n_round_w = t_idx * round_w_r;
-  const int mod_round_w = mad24(n_round_w, -round_w, t_idx);
+  const int batch_idx = out_width_idx / round_hw;
+  const int t_idx = out_width_idx - mul24(batch_idx, round_hw);
+  const int n_round_w = t_idx / round_w;
+  const int mod_round_w = t_idx - mul24(n_round_w, round_w);
   const int height_idx = (n_round_w << 2) - padding_top;
   const int width_idx = (mod_round_w << 2) - padding_left;
 
@@ -400,9 +394,7 @@ __kernel void winograd_inverse_transform_4x4(OUT_OF_RANGE_PARAMS
                                              __private const int out_height,
                                              __private const int out_width,
                                              __private const int round_hw,
-                                             __private const float round_hw_r,
                                              __private const int round_w,
-                                             __private const float round_w_r,
                                              __private const float relux_max_limit) {
   const int width_idx = get_global_id(0);
   const int height_idx = get_global_id(1);
@@ -414,10 +406,10 @@ __kernel void winograd_inverse_transform_4x4(OUT_OF_RANGE_PARAMS
 #endif
   const int out_channel = global_size_dim1;
 
-  const int batch = width_idx * round_hw_r;
-  int h = mad24(batch, -round_hw, width_idx);
-  int n_round_w = h * round_w_r;
-  int mod_round_w = mad24(n_round_w, -round_w, h);
+  const int batch = width_idx / round_hw;
+  int h = width_idx - mul24(batch, round_hw);
+  int n_round_w = h / round_w;
+  int mod_round_w = h - mul24(n_round_w, round_w);
   const int out_height_idx = n_round_w << 2;
   const int out_width_idx = mod_round_w << 2;
   const int coord_x = mad24(height_idx, out_width, out_width_idx);

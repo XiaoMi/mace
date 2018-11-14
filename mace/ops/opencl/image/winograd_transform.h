@@ -118,8 +118,6 @@ MaceStatus WinogradTransformKernel<T>::Compute(
       (output_shape[2] + wino_blk_size_ - 1) / wino_blk_size_;
   const index_t out_width = input_tensor->dim(0) * round_h * round_w;
 
-  const float round_hw_r = 1.f / static_cast<float>(round_h * round_w);
-  const float round_w_r = 1.f / static_cast<float>(round_w);
   const index_t blk_sqr = (wino_blk_size_ + 2) * (wino_blk_size_ + 2);
 
   const uint32_t gws[2] = {
@@ -148,9 +146,7 @@ MaceStatus WinogradTransformKernel<T>::Compute(
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(2)));
     kernel_.setArg(idx++, static_cast<uint32_t>(input_tensor->dim(3)));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
-    kernel_.setArg(idx++, round_hw_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
-    kernel_.setArg(idx++, round_w_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[0] / 2));
     kernel_.setArg(idx++, static_cast<uint32_t>(paddings[1] / 2));
 
@@ -281,9 +277,6 @@ MaceStatus WinogradInverseTransformKernel<T>::Compute(
     const index_t round_h = (height + wino_blk_size_ - 1) / wino_blk_size_;
     const index_t round_w = (width + wino_blk_size_ - 1) / wino_blk_size_;
 
-    const float round_hw_r = 1.f / static_cast<float>(round_h * round_w);
-    const float round_w_r = 1.f / static_cast<float>(round_w);
-
     uint32_t idx = 0;
     MACE_OUT_OF_RANGE_SET_ARGS(kernel_);
     MACE_SET_2D_GWS_ARGS(kernel_, gws);
@@ -299,9 +292,7 @@ MaceStatus WinogradInverseTransformKernel<T>::Compute(
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[1]));
     kernel_.setArg(idx++, static_cast<uint32_t>(output_shape[2]));
     kernel_.setArg(idx++, static_cast<uint32_t>(round_h * round_w));
-    kernel_.setArg(idx++, round_hw_r);
     kernel_.setArg(idx++, static_cast<uint32_t>(round_w));
-    kernel_.setArg(idx++, round_w_r);
     kernel_.setArg(idx++, relux_max_limit_);
 
     input_shape_ = input_tensor->shape();

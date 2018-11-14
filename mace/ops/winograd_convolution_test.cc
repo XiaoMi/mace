@@ -169,9 +169,9 @@ TEST_F(WinogradConvolutionTest, UnAlignedConvolutionM4) {
 }
 
 TEST_F(WinogradConvolutionTest, BatchConvolutionM4) {
-  WinogradConvolution<DeviceType::GPU, float>(3, 64, 64, 32, 32,
+  WinogradConvolution<DeviceType::GPU, float>(3, 107, 113, 5, 7,
                                               Padding::VALID, 4);
-  WinogradConvolution<DeviceType::GPU, float>(5, 61, 67, 37, 31,
+  WinogradConvolution<DeviceType::GPU, float>(5, 107, 113, 5, 7,
                                               Padding::SAME, 4);
 }
 
