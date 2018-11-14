@@ -19,10 +19,10 @@ __kernel void channel_shuffle(OUT_OF_RANGE_PARAMS
 #endif
   const int width = global_size_dim1;
 
-  const int group_blks = groups / 4;
-  const int groups_blks_width = group_blks * width;
-  const int channels_per_group_blks = channels_per_group / 4;
-  const int channels_per_group_blks_width = channels_per_group_blks * width;
+  const int group_blks = groups >> 2;
+  const int groups_blks_width = mul24(group_blks, width);
+  const int channels_per_group_blks = channels_per_group >> 2;
+  const int channels_per_group_blks_width = mul24(channels_per_group_blks, width);
 
   DATA_TYPE4 in_chan_data0, in_chan_data1, in_chan_data2, in_chan_data3;
   DATA_TYPE4 out_chan_data0, out_chan_data1, out_chan_data2, out_chan_data3;

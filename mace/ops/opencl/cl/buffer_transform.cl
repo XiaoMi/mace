@@ -23,9 +23,11 @@ __kernel void pad_input(BUFFER_OUT_OF_RANGE_PARAMS
 #endif
   const int padded_chan_blk = (padded_chan + 3) >> 2;
   const int padded_width_idx = padded_wc_blk_idx / padded_chan_blk;
-  const int padded_chan_blk_idx = padded_wc_blk_idx % padded_chan_blk;
+  const int padded_chan_blk_idx =
+      padded_wc_blk_idx - mul24(padded_width_idx, padded_chan_blk);
   const int batch_idx = padded_hb_idx / padded_height;
-  const int padded_height_idx = padded_hb_idx % padded_height;
+  const int padded_height_idx =
+      padded_hb_idx - mul24(batch_idx, padded_height);
   const int padded_chan_idx = padded_chan_blk_idx << 2;
   const int in_height_idx = padded_height_idx - pad_top;
   const int in_width_idx = padded_width_idx - pad_left;
@@ -81,7 +83,7 @@ __kernel void transform_conv_filter(BUFFER_OUT_OF_RANGE_PARAMS
   const int out_chan_blk = global_size_dim1;
 
   const int h_idx = hw_idx / width;
-  const int w_idx = hw_idx % width;
+  const int w_idx = hw_idx - mul24(h_idx, width);
   const int out_chan_idx = out_chan_blk_idx << 2;
   const int in_offset = mad24(mad24(mad24(out_chan_idx, in_chan, in_chan_idx),
       height, h_idx), width, w_idx) + input_offset;

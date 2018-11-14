@@ -24,10 +24,10 @@ __kernel void depth_to_space(OUT_OF_RANGE_PARAMS
   const int out_pos = mad24(out_d, output_width, out_w);
 
   const int in_hb = out_hb / block_size;
-  const int offset_h = out_hb % block_size;
+  const int offset_h = out_hb - mul24(in_hb, block_size);
   const int in_w = out_w / block_size;
-  const int offset_w = out_w % block_size;
-  const int offset_d = (offset_h * block_size + offset_w) * output_depth_blocks;
+  const int offset_w = out_w - mul24(in_w, block_size);
+  const int offset_d = mul24(mad24(offset_h, block_size, offset_w), output_depth_blocks);
   const int in_d = out_d + offset_d;
 
   if (in_hb >= input_hb || in_w >= input_width || in_d >= input_depth_blocks) {

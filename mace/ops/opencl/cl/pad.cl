@@ -14,7 +14,7 @@ __kernel void pad(OUT_OF_RANGE_PARAMS
   const int width_idx = get_global_id(1);
   const int hb_idx = get_global_id(2);
   const int batch_idx = hb_idx / output_height;
-  const int height_idx = hb_idx % output_height;
+  const int height_idx = hb_idx - mul24(batch_idx, output_height);
   const int input_padded_height = input_height + height_padding;
   const int input_padded_width = input_width + width_padding;
 

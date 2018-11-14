@@ -20,7 +20,7 @@ __kernel void softmax(BUFFER_OUT_OF_RANGE_PARAMS
   const int chan_blks = global_size_dim0 - 1;
   const int width = global_size_dim1;
   const int batch_idx = hb_idx / height;
-  const int height_idx = hb_idx % height;
+  const int height_idx = hb_idx - mul24(batch_idx, height);
   const int chan_idx = chan_blk_idx << 2;
 
   const int offset_base = mul24(mad24(mad24(batch_idx, height, height_idx),

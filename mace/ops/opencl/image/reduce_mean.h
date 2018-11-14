@@ -111,9 +111,7 @@ MaceStatus ReduceMeanKernel<T>::Compute(
   const int group_size = lws[0] * lws[1] * lws[2];
   const int partial_len = (image_size + group_size - 1) / group_size;
   const int remain_index = image_size % group_size;
-  const float in_width_reciprocal = 1.f / in_width;
   const float img_size_reciprocal = 1.f / (in_width * in_height);
-  const float channel_blk_reciprocal = 1.f / channel_blocks;
 
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (!IsVecEqual(input_shape_, input->shape())) {
@@ -130,9 +128,7 @@ MaceStatus ReduceMeanKernel<T>::Compute(
     kernel_.setArg(idx++, static_cast<int32_t>(in_height));
     kernel_.setArg(idx++, static_cast<int32_t>(in_width));
     kernel_.setArg(idx++, img_size_reciprocal);
-    kernel_.setArg(idx++, in_width_reciprocal);
     kernel_.setArg(idx++, static_cast<int32_t>(channel_blocks));
-    kernel_.setArg(idx++, channel_blk_reciprocal);
     kernel_.setArg(idx++, *(output->opencl_image()));
 
     input_shape_ = input->shape();

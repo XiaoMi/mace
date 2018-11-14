@@ -47,7 +47,7 @@ __kernel void pooling(BUFFER_OUT_OF_RANGE_PARAMS
   const int in_wc_size = mul24(in_width, in_chan);
 
   const int batch_idx = out_hb_idx / out_height;
-  const int out_height_idx = out_hb_idx % out_height;
+  const int out_height_idx = out_hb_idx - mul24(batch_idx, out_height);
   const int chan_idx = out_chan_blk_idx << 2;
   const int in_height_start = mul24(out_height_idx, stride_h) - pad_top;
   const int in_width_start = mul24(out_width_idx, stride_w) - pad_left;

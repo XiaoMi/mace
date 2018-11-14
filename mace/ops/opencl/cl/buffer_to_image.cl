@@ -19,11 +19,12 @@ __kernel void filter_buffer_to_image(OUT_OF_RANGE_PARAMS
 #endif
 
   const int in_channel_idx = w;
-  const int hw_size = filter_w * filter_h;
-  const int out_channel_idx = h / hw_size * 4;
-  const int hw_idx = h % hw_size;
+  const int hw_size = mul24(filter_w, filter_h);
+  int out_channel_idx = h / hw_size;
+  const int hw_idx = h - mul24(out_channel_idx, hw_size);
+  out_channel_idx = out_channel_idx << 2;
   const int h_idx = hw_idx / filter_w;
-  const int w_idx = hw_idx % filter_w;
+  const int w_idx = hw_idx - mul24(h_idx, filter_w);
   const int offset = input_offset +
       mad24(out_channel_idx, inner_size,
           mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx));
@@ -70,11 +71,12 @@ __kernel void filter_image_to_buffer(OUT_OF_RANGE_PARAMS
 #endif
 
   const int in_channel_idx = w;
-  const int hw_size = filter_w * filter_h;
-  const int out_channel_idx = h / hw_size * 4;
-  const int hw_idx = h % hw_size;
+  const int hw_size = mul24(filter_w, filter_h);
+  int out_channel_idx = h / hw_size;
+  const int hw_idx = h - mul24(out_channel_idx, hw_size);
+  out_channel_idx = out_channel_idx << 2;
   const int h_idx = hw_idx / filter_w;
-  const int w_idx = hw_idx % filter_w;
+  const int w_idx = hw_idx - mul24(h_idx, filter_w);
   const int offset =
       mad24(out_channel_idx, inner_size,
             mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx));
@@ -86,16 +88,16 @@ __kernel void filter_image_to_buffer(OUT_OF_RANGE_PARAMS
     if (size < 4) {
       switch (size) {
         case 3:
-          output[offset + 2 * inner_size] = values.z;
+          output[offset + (inner_size << 1)] = values.z;
         case 2:
-          output[offset + 1 * inner_size] = values.y;
+          output[offset + inner_size] = values.y;
         case 1:
           output[offset] = values.x;
       }
     } else {
       output[offset + 3 * inner_size] = values.w;
       output[offset + 2 * inner_size] = values.z;
-      output[offset + 1 * inner_size] = values.y;
+      output[offset + inner_size] = values.y;
       output[offset] = values.x;
     }
   }
@@ -124,7 +126,7 @@ __kernel void dw_filter_buffer_to_image(OUT_OF_RANGE_PARAMS
   if (multiplier == 1) {
     const int in_channel_idx = h << 2;
     const int h_idx = w / filter_w;
-    const int w_idx = w % filter_w;
+    const int w_idx = w - mul24(h_idx, filter_w);
 
     const int offset = input_offset
         + mad24(mad24(in_channel_idx, filter_h, h_idx), filter_w, w_idx);
@@ -137,14 +139,14 @@ __kernel void dw_filter_buffer_to_image(OUT_OF_RANGE_PARAMS
           case 3:
             values.z = *(input + offset + 2 * hw_size);
           case 2:
-            values.y = *(input + offset + 1 * hw_size);
+            values.y = *(input + offset + hw_size);
           case 1:
             values.x = *(input + offset);
         }
       } else {
         values.x = *(input + offset);
-        values.y = *(input + offset + 1 * hw_size);
-        values.z = *(input + offset + 2 * hw_size);
+        values.y = *(input + offset + hw_size);
+        values.z = *(input + offset + (hw_size << 1));
         values.w = *(input + offset + 3 * hw_size);
       }
     }
@@ -172,11 +174,14 @@ __kernel void in_out_buffer_to_image(OUT_OF_RANGE_PARAMS
 #endif
 
   const int batch_idx = h / height;
-  const int height_idx = h % height;
-  const int width_idx = w % width;
-  const int channel_idx = w / width * 4;
-  const int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
-                           + channel_idx;
+  const int height_idx = h - mul24(batch_idx, height);
+  int channel_idx = w / width;
+  const int width_idx = w - mul24(channel_idx, width);
+  channel_idx = channel_idx << 2;
+  const int offset =
+      mad24(mad24(mad24(batch_idx, height, height_idx), width, width_idx),
+            channels,
+            input_offset + channel_idx);
 
   const int size = channels - channel_idx;
   DATA_TYPE4 values = 0;
@@ -213,11 +218,13 @@ __kernel void in_out_image_to_buffer(OUT_OF_RANGE_PARAMS
 #endif
 
   const int batch_idx = h / height;
-  const int height_idx = h % height;
-  const int width_idx = w % width;
-  const int channel_idx = w / width * 4;
-  const int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
-                           + channel_idx;
+  const int height_idx = h - mul24(batch_idx, height);
+  int channel_idx = w / width;
+  const int width_idx = w - mul24(channel_idx, width);
+  channel_idx = channel_idx << 2;
+  const int offset = mad24(mad24(mad24(batch_idx, height, height_idx), width, width_idx),
+                           channels,
+                           channel_idx);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
@@ -251,8 +258,8 @@ __kernel void arg_buffer_to_image(OUT_OF_RANGE_PARAMS
   }
 #endif
 
-  const int offset = input_offset + w * 4;
-  const int size = count - w * 4;
+  const int offset = input_offset + (w << 2);
+  const int size = count - (w << 2);
 
 
   DATA_TYPE4 values = 0;
@@ -286,7 +293,7 @@ __kernel void arg_image_to_buffer(OUT_OF_RANGE_PARAMS
   }
 #endif
 
-  const int offset = w * 4;
+  const int offset = (w << 2);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
@@ -323,14 +330,15 @@ __kernel void in_out_height_buffer_to_image(OUT_OF_RANGE_PARAMS
   }
 #endif
 
-  const int wc = width * channels;
-  const int height_blks = (height + 3) / 4;
+  const int wc = mul24(width, channels);
+  const int height_blks = (height + 3) >> 2;
   const int batch_idx = h / height_blks;
-  const int height_idx = (h % height_blks) << 2;
-  const int width_idx = w % width;
+  const int height_idx = (h - mul24(batch_idx, height_blks)) << 2;
   const int channel_idx = w / width;
-  int offset = input_offset + ((batch_idx * height + height_idx) * width + width_idx) * channels
-      + channel_idx;
+  const int width_idx = w - mul24(channel_idx, width);
+  int offset = mad24(mad24(mad24(batch_idx, height, height_idx), width, width_idx),
+                     channels,
+                     input_offset+ channel_idx);
 
   int size = height - height_idx;
   size = size >= 4 ? 0 : size;
@@ -365,25 +373,26 @@ __kernel void in_out_height_image_to_buffer(OUT_OF_RANGE_PARAMS
   }
   #endif
 
-  const int height_blks = (height + 3) / 4;
+  const int height_blks = (height + 3) >> 2;
   const int batch_idx = h / height_blks;
-  const int height_idx = (h % height_blks) << 2;
-  const int width_idx = w % width;
+  const int height_idx = (h - mul24(batch_idx, height_blks)) << 2;
   const int channel_idx = w / width;
-  int offset = ((batch_idx * height + height_idx) * width + width_idx) * channels
-      + channel_idx;
+  const int width_idx = w - mul24(channel_idx, width);
+  int offset = mad24(mad24(mad24(batch_idx, height, height_idx), width, width_idx),
+                     channels,
+                     channel_idx);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values = READ_IMAGET(input, SAMPLER, coord);
   output[offset] = values.x;
   if (height_idx + 1 >= height) return;
-  offset += width * channels;
+  offset = mad24(width, channels, offset);
   output[offset] = values.y;
   if (height_idx + 2 >= height) return;
-  offset += width * channels;
+  offset = mad24(width, channels, offset);
   output[offset] = values.z;
   if (height_idx + 3 >= height) return;
-  offset += width * channels;
+  offset = mad24(width, channels, offset);
   output[offset] = values.w;
 }
 
@@ -404,14 +413,15 @@ __kernel void in_out_width_buffer_to_image(OUT_OF_RANGE_PARAMS
   }
   #endif
 
-  const int width_blks = (width + 3) / 4;
+  const int width_blks = (width + 3) >> 2;
   const int batch_idx = h / height;
-  const int height_idx = h % height;
-  const int width_idx = (w % width_blks) << 2;
+  const int height_idx = h - mul24(batch_idx, height);
   const int channel_idx = w / width_blks;
-  const int offset = input_offset
-      + ((batch_idx * height + height_idx) * width + width_idx) * channels
-      + channel_idx;
+  const int width_idx = (w - mul24(channel_idx, width_blks)) << 2;
+  const int offset =
+      mad24(mad24(mad24(batch_idx, height, height_idx), width, width_idx),
+            channels,
+            channel_idx + input_offset);
 
   int size = width - width_idx;
   size = size >= 4 ? 0 : size;
@@ -450,13 +460,13 @@ __kernel void weight_height_buffer_to_image(OUT_OF_RANGE_PARAMS
   const int inner_size = global_size_dim0;
 
   const int out_chan_idx = h << 2;
-  const int in_chan_idx = w % in_channels;
   const int hw_idx = w / in_channels;
+  const int in_chan_idx = w - mul24(hw_idx, in_channels);
   const int height_idx = hw_idx / width;
-  const int width_idx = hw_idx % width;
-  int offset = input_offset +
+  const int width_idx = hw_idx - mul24(height_idx, width);
+  int offset =
       mad24(out_chan_idx, inner_size,
-            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx + input_offset));
 
   int size = out_channels - out_chan_idx;
   size = size >= 4 ? 0 : size;
@@ -494,10 +504,10 @@ __kernel void weight_height_image_to_buffer(OUT_OF_RANGE_PARAMS
   const int inner_size = global_size_dim0;
 
   const int out_chan_idx = h << 2;
-  const int in_chan_idx = w % in_channels;
   const int hw_idx = w / in_channels;
+  const int in_chan_idx = w - mul24(hw_idx, in_channels);
   const int height_idx = hw_idx / width;
-  const int width_idx = hw_idx % width;
+  const int width_idx = hw_idx - mul24(height_idx, width);
   int offset =
       mad24(out_chan_idx, inner_size,
             mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
@@ -535,17 +545,17 @@ __kernel void weight_width_buffer_to_image(OUT_OF_RANGE_PARAMS
 #endif
   const int out_channels = global_size_dim1;
   const int in_chan_blks = (in_channels + 3) >> 2;
-  const int hw_size = height * width;
-  const int inner_size = in_channels * hw_size;
+  const int hw_size = mul24(height, width);
+  const int inner_size = mul24(in_channels, hw_size);
 
   const int out_chan_idx = h;
-  const int in_chan_idx = (w % in_chan_blks) << 2;
   const int hw_idx = w / in_chan_blks;
+  const int in_chan_idx = (w - mul24(hw_idx, in_chan_blks)) << 2;
   const int height_idx = hw_idx / width;
-  const int width_idx = hw_idx % width;
-  int offset = input_offset +
+  const int width_idx = hw_idx - mul24(height_idx, width);
+  int offset =
       mad24(out_chan_idx, inner_size,
-            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
+            mad24(mad24(in_chan_idx, height, height_idx), width, width_idx + input_offset));
 
 
   int size = in_channels - in_chan_idx;
@@ -582,14 +592,14 @@ __kernel void weight_width_image_to_buffer(OUT_OF_RANGE_PARAMS
 #endif
   const int out_channels = global_size_dim1;
   const int in_chan_blks = (in_channels + 3) >> 2;
-  const int hw_size = height * width;
-  const int inner_size = in_channels * hw_size;
+  const int hw_size = mul24(height, width);
+  const int inner_size = mul24(in_channels, hw_size);
 
   const int out_chan_idx = h;
-  const int in_chan_idx = (w % in_chan_blks) << 2;
   const int hw_idx = w / in_chan_blks;
+  const int in_chan_idx = (w - mul24(hw_idx, in_chan_blks)) << 2;
   const int height_idx = hw_idx / width;
-  const int width_idx = hw_idx % width;
+  const int width_idx = hw_idx - mul24(height_idx, width);
   int offset =
       mad24(out_chan_idx, inner_size,
             mad24(mad24(in_chan_idx, height, height_idx), width, width_idx));
@@ -629,7 +639,11 @@ __kernel void winograd_filter_buffer_to_image_2x2(OUT_OF_RANGE_PARAMS
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
-  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int hw = mul24(height, width);
+  const int offset =
+      mad24(mad24(out_channel_idx, in_channels, in_channel_idx),
+            hw,
+            input_offset);
   const int length = min((in_channels - in_channel_idx) * 9, 36);
   DATA_TYPE in[36] = {0};
   DATA_TYPE4 tt;
@@ -732,7 +746,7 @@ __kernel void winograd_filter_image_to_buffer_2x2(OUT_OF_RANGE_PARAMS
 
   const int width_idx = w << 2;
   const int size = width - width_idx;
-  int offset = h * width + width_idx;
+  int offset = mad24(h, width, width_idx);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values;
@@ -752,7 +766,7 @@ __kernel void winograd_filter_image_to_buffer_2x2(OUT_OF_RANGE_PARAMS
     }
 
     coord.y += height;
-    offset += height * width;
+    offset = mad24(height, width, offset);
   }
 }
 
@@ -777,7 +791,9 @@ __kernel void winograd_filter_buffer_to_image_6x6(OUT_OF_RANGE_PARAMS
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
-  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int offset =mad24(mad24(out_channel_idx, in_channels, in_channel_idx),
+                          mul24(height, width),
+                          input_offset);
   const int length = min((in_channels - in_channel_idx) * 9, 36);
   DATA_TYPE in[36] = {0};
   DATA_TYPE4 tt0, tt1, t1;
@@ -909,7 +925,7 @@ __kernel void winograd_filter_image_to_buffer_6x6(OUT_OF_RANGE_PARAMS
 
   const int width_idx = w << 2;
   const int size = width - width_idx;
-  int offset = h * width + width_idx;
+  int offset = mad24(h, width, width_idx);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values;
@@ -928,7 +944,7 @@ __kernel void winograd_filter_image_to_buffer_6x6(OUT_OF_RANGE_PARAMS
       vstore4(values, 0, output + offset);
     }
     coord.y += height;
-    offset += height * width;
+    offset = mad24(height, width, offset);
   }
 }
 
@@ -953,7 +969,9 @@ __kernel void winograd_filter_buffer_to_image_4x4(OUT_OF_RANGE_PARAMS
 
   const int out_channel_idx = h;
   const int in_channel_idx = w << 2;
-  const int offset = input_offset + (out_channel_idx * in_channels + in_channel_idx) * height * width;
+  const int offset = mad24(mad24(out_channel_idx, in_channels, in_channel_idx),
+                           mul24(height, width),
+                           input_offset);
   const int length = min((in_channels - in_channel_idx) * 9, 36);
   DATA_TYPE in[36] = {0};
   DATA_TYPE4 tt0, tt1, tt2;
@@ -1058,7 +1076,7 @@ __kernel void winograd_filter_image_to_buffer_4x4(OUT_OF_RANGE_PARAMS
 
   const int width_idx = w << 2;
   const int size = width - width_idx;
-  int offset = h * width + width_idx;
+  int offset = mad24(h, width, width_idx);
 
   int2 coord = (int2)(w, h);
   DATA_TYPE4 values;
@@ -1077,6 +1095,6 @@ __kernel void winograd_filter_image_to_buffer_4x4(OUT_OF_RANGE_PARAMS
       vstore4(values, 0, output + offset);
     }
     coord.y += height;
-    offset += height * width;
+    offset = mad24(height, width, offset);
   }
 }

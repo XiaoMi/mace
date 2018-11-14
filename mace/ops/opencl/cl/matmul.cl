@@ -19,7 +19,7 @@ __kernel void matmul(OUT_OF_RANGE_PARAMS
 #endif
 
   const int batch = hb / height_blocks;
-  const int ty = (hb % height_blocks);
+  const int ty = hb - mul24(batch, height_blocks);
   const int gy = mad24(batch, height_blocks, ty);
   const int bm = mad24(batch, M, ty << 2);
   const int bk = mul24(batch, k_blocks);
