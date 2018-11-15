@@ -216,7 +216,7 @@ def save_model_to_code(net_def, model_tag, runtime,
             tensor=tensor,
             tag=model_tag,
         )
-        with open(output_dir + 'tensor' + str(counter) + '.cc', "wb") as f:
+        with open(output_dir + 'tensor' + str(counter) + '.cc', "w") as f:
             f.write(source)
         counter += 1
 
@@ -228,7 +228,7 @@ def save_model_to_code(net_def, model_tag, runtime,
             tag=model_tag,
             model_data_size=len(model_data),
             model_data=model_data)
-        with open(output_dir + 'tensor_data' + '.cc', "wb") as f:
+        with open(output_dir + 'tensor_data' + '.cc', "w") as f:
             f.write(source)
 
     # generate op source files
@@ -243,7 +243,7 @@ def save_model_to_code(net_def, model_tag, runtime,
             tag=model_tag,
             runtime=runtime,
         )
-        with open(output_dir + 'op' + str(counter) + '.cc', "wb") as f:
+        with open(output_dir + 'op' + str(counter) + '.cc', "w") as f:
             f.write(source)
         counter += 1
 
@@ -262,13 +262,13 @@ def save_model_to_code(net_def, model_tag, runtime,
         winograd_conv=winograd_conv,
         checksum=checksum,
         build_time=build_time)
-    with open(output_dir + 'model.cc', "wb") as f:
+    with open(output_dir + 'model.cc', "w") as f:
         f.write(source)
 
     # generate model header file
     template_name = 'model_header.jinja2'
     source = j2_env.get_template(template_name).render(tag=model_tag, )
-    with open(output_dir + model_tag + '.h', "wb") as f:
+    with open(output_dir + model_tag + '.h', "w") as f:
         f.write(source)
 
 

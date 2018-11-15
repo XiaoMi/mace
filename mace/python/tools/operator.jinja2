@@ -80,7 +80,7 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
   arg->set_i({{ arg.i }});
   {%- endif %}
   {%- if arg.HasField('s') %}
-  arg->set_s({{ arg.s|tojson }});
+  arg->set_s({{ arg.s.decode('utf-8')|tojson }});
   {%- endif %}
 
   arg->mutable_floats()->Reserve({{ arg.floats|length }});
@@ -161,4 +161,3 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
 
 }  // namespace {{tag}}
 }  // namespace mace
-

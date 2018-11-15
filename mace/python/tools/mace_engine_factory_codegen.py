@@ -27,9 +27,10 @@ def gen_mace_engine_factory(model_tags, template_dir,
         loader=FileSystemLoader(template_dir), trim_blocks=True)
     # generate mace_run BUILD file
     template_name = 'mace_engine_factory.h.jinja2'
+    model_tags = list(model_tags)
     source = j2_env.get_template(template_name).render(
         model_tags=model_tags,
         embed_model_data=embed_model_data,
     )
-    with open(output_dir + '/mace_engine_factory.h', "wb") as f:
+    with open(output_dir + '/mace_engine_factory.h', "w") as f:
         f.write(source)
