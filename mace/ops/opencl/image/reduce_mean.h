@@ -56,7 +56,7 @@ MaceStatus ReduceMeanKernel<T>::Compute(
     const Tensor *input,
     Tensor *output) {
   MACE_CHECK_NOTNULL(input);
-//  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
+  MACE_CHECK(keep_dims_, "reduce mean gpu only support keep dims.");
   MACE_CHECK(input->dim_size() == 4,
              "reduce mean gpu only support 4-dim input");
   MACE_CHECK(axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2,
