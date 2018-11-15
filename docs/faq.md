@@ -46,7 +46,7 @@ due to high memory usage or fragmentation. Several solutions can be tried:
 
 Why is the performance worse than the official result for the same model?
 -------------------------------------------------------------------------
-The power options may not set properly, see `mace/public/mace_runtime.h` for
+The power options may not set properly, see `mace/public/mace.h` for
 details.
 
 Why is the UI getting poor responsiveness when running model with GPU runtime?
