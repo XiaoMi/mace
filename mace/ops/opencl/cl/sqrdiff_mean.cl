@@ -12,9 +12,7 @@ __kernel void sqrdiff_mean(OUT_OF_RANGE_PARAMS
                            __private const int in_height,
                            __private const int in_width,
                            __private const float image_size_reciprocal,
-                           __private const float in_width_reciprocal,
                            __private const int channel_blocks,
-                           __private const float channel_blocks_reciprocal,
                            __write_only image2d_t output) {
   const int i = get_local_id(0);
   const int j = get_local_id(1);
@@ -27,7 +25,7 @@ __kernel void sqrdiff_mean(OUT_OF_RANGE_PARAMS
   const int dim0_size = get_local_size(0);
   float4 tmp = (float4){0, 0, 0, 0};
   const int index = mad24(j, dim0_size, i);
-  const int b = floor(k * channel_blocks_reciprocal);
+  const int b = k / channel_blocks;
   const int ch = mad24(b, -channel_blocks, k);
 
   DATA_TYPE4 in;
@@ -43,7 +41,7 @@ __kernel void sqrdiff_mean(OUT_OF_RANGE_PARAMS
 #pragma unroll
   for (int l = 0; l < valid_part_len; ++l) {
     int offset = base_offset + l;
-    int h_id = floor(offset * in_width_reciprocal);
+    int h_id = offset / in_width;
     int w_id = mad24(h_id, -in_width, offset);
     int pos_x = mad24(ch, in_width, w_id);
     int pos_y = mad24(b, in_height, h_id);

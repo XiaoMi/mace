@@ -24,7 +24,7 @@ __kernel void resize_bilinear_nocache(OUT_OF_RANGE_PARAMS
   const int out_width = global_size_dim1;
 
   const int b = hb / out_height;
-  const int h = hb % out_height;
+  const int h = hb - mul24(b, out_height);
 
   const float h_in = h * height_scale;
   const float w_in = w * width_scale;

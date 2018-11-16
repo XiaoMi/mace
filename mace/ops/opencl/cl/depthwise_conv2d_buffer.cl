@@ -35,10 +35,10 @@ __kernel void depthwise_conv2d(BUFFER_OUT_OF_RANGE_PARAMS
   const int out_chan_blk = (out_chan + 3) >> 2;
 
   const int out_width_blk_idx = out_wc_blk_idx / out_chan_blk;
-  const int out_chan_blk_idx = out_wc_blk_idx % out_chan_blk;
+  const int out_chan_blk_idx = out_wc_blk_idx - mul24(out_width_blk_idx, out_chan_blk);
 
   const int batch_idx = out_hb_idx / out_height;
-  const int out_height_idx = out_hb_idx % out_height;
+  const int out_height_idx = out_hb_idx - mul24(batch_idx, out_height);
   const int out_width_idx = out_width_blk_idx << 2;
   const int out_chan_idx = out_chan_blk_idx << 2;
   const int in_chan_idx = out_chan_idx;

@@ -45,14 +45,16 @@ __kernel void conv_2d_1x1(OUT_OF_RANGE_PARAMS
   w.y = w.x + in_width_stride;
   w.z = w.y + in_width_stride;
   w.w = w.z + in_width_stride;
-  int out_hb_idx = mul24((out_hb % height), stride);
+  int batch = out_hb / height;
+  int h_idx = out_hb - mul24(batch, height);
+  int out_hb_idx = mul24(h_idx, stride);
 
   w.x = select(w.x, INT_MIN, w.x >= in_width);
   w.y = select(w.y, INT_MIN, w.y >= in_width);
   w.z = select(w.z, INT_MIN, w.z >= in_width);
   w.w = select(w.w, INT_MIN, w.w >= in_width);
 
-  out_hb_idx = select(mad24((out_hb / height), in_height, out_hb_idx),
+  out_hb_idx = select(mad24(batch, in_height, out_hb_idx),
                       -1,
                       out_hb_idx >= in_height);
 

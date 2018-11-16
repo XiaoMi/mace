@@ -35,7 +35,7 @@ __kernel void fully_connected(OUT_OF_RANGE_PARAMS
   for (short h_idx = 0; h_idx < input_height; ++h_idx) {
     for (short w_idx = 0; w_idx < input_width; ++w_idx) {
       input_coord.x = w_idx;
-      weight_x = (h_idx * input_width + w_idx) * input_channel;
+      weight_x = mul24(mad24(h_idx, input_width, w_idx), input_channel);
 #pragma unroll
       for (short chan_idx = 0; chan_idx < input_chan_blk; ++chan_idx) {
         input_value = READ_IMAGET(input, SAMPLER, input_coord);
@@ -84,7 +84,7 @@ __kernel void fully_connected_width(OUT_OF_RANGE_PARAMS
   const int batch_out_blk_idx = get_global_id(2);
 
   const int batch_idx = batch_out_blk_idx / out_blks;
-  const int out_blk_idx = batch_out_blk_idx % out_blks;
+  const int out_blk_idx = batch_out_blk_idx - mul24(batch_idx, out_blks);
 
   const short in_outer_size = mul24(input_width, in_chan_blks);
   const short weight_y = mad24(out_blk_idx, 4, inter_out_idx);

@@ -42,9 +42,11 @@ __kernel void pooling(OUT_OF_RANGE_PARAMS
 #endif
   const int out_width = global_size_dim1;
 
-  const int batch_idx = mul24((out_hb_idx / out_height), in_height);
-  const int in_height_start = mul24((out_hb_idx % out_height), stride_h) - pad_top;
-  const int in_width_start = mul24(out_width_idx, stride_w) - pad_left;
+  const int n_b = out_hb_idx / out_height;
+  const int mod_b = out_hb_idx - mul24(n_b, out_height);
+  const int batch_idx = mul24(n_b, in_height);
+  const int in_height_start = mad24(mod_b, stride_h, -pad_top);
+  const int in_width_start = mad24(out_width_idx, stride_w, -pad_left);
   const int in_channel_offset = mul24(out_chan_idx, in_width);
 
 

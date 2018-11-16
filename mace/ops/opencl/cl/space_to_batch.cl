@@ -25,14 +25,19 @@ __kernel void space_to_batch(OUT_OF_RANGE_PARAMS
 #endif
 
   const int batch_b_idx = batch_hb_idx / batch_height;
-  const int batch_h_idx = batch_hb_idx % batch_height;
+  const int batch_h_idx = batch_hb_idx - mul24(batch_b_idx, batch_height);
 
   const int block_size = mul24(block_height, block_width);
-  const int space_b_idx = batch_b_idx % batch_size;
   const int remaining_batch_idx = batch_b_idx / batch_size;
-  const int space_h_idx = (remaining_batch_idx / block_width) +
+  const int space_b_idx =
+      batch_b_idx - mul24(remaining_batch_idx, batch_size);
+
+  const int n_remain_blk_w = remaining_batch_idx / block_width;
+  const int mod_remain_blk_w =
+      remaining_batch_idx - mul24(n_remain_blk_w, block_width);
+  const int space_h_idx = n_remain_blk_w +
       mul24(batch_h_idx, block_height) - padding_height;
-  const int space_w_idx = (remaining_batch_idx % block_width) +
+  const int space_w_idx = mod_remain_blk_w +
       mul24(batch_w_idx, block_width) - padding_width;
 
   const int space_coord_x = select(mul24(chan_idx, space_width) + space_w_idx,

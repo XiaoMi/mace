@@ -27,7 +27,7 @@ __kernel void crop(OUT_OF_RANGE_PARAMS
 #endif
 
   const int b = hb_idx / out_height;
-  const int h = hb_idx % out_height;
+  const int h = hb_idx - mul24(b, out_height);
   const int in_chan_blk_idx = chan_blk_idx + offset_chan_blk;
   const int in_width_idx = width_idx + offset_w;
   const int in_h = h + offset_h;
