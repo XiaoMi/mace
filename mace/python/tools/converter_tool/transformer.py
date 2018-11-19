@@ -344,12 +344,14 @@ class Transformer(base_converter.ConverterInterface):
                     == EltwiseType.PROD.value) \
                     and len(op.input) == 2 \
                     and op.input[1] in self._consts \
+                    and op.output_shape[0].dims[-1:] == \
+                    self._consts[op.input[1]].dims \
                     and self.consumer_count(op.output[0]) == 1 \
                     and not self.is_op_output_node(op):
                 consumer_op = self._consumers[op.output[0]][0]
                 if (consumer_op.type == MaceOp.Eltwise.name
                     and ConverterUtil.get_arg(
-                        op, MaceKeyword.mace_element_type_str).i
+                        consumer_op, MaceKeyword.mace_element_type_str).i
                         == EltwiseType.SUM.value
                     or consumer_op.type == MaceOp.BiasAdd.name) \
                         and len(consumer_op.input) == 2 \
@@ -359,10 +361,8 @@ class Transformer(base_converter.ConverterInterface):
                     consumer_op.type = MaceOp.BatchNorm.name
                     consumer_op.input[:] = [op.input[0], op.input[1],
                                             consumer_op.input[1]]
-
-                    self.safe_remove_node(op, None)
+                    net.op.remove(op)
                     return True
-
         return False
 
     def fold_squared_diff_mean(self):

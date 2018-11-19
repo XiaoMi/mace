@@ -47,6 +47,7 @@ class ShapeInference(object):
             MaceOp.Softmax.name: self.infer_shape_general,
             MaceOp.FullyConnected.name: self.infer_shape_fully_connected,
             MaceOp.Crop.name: self.infer_shape_crop,
+            MaceOp.BiasAdd.name: self.infer_shape_general,
         }
 
         self._net = net

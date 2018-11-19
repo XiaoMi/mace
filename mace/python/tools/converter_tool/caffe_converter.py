@@ -186,6 +186,7 @@ class CaffeConverter(base_converter.ConverterInterface):
             'InnerProduct': self.convert_fully_connected,
             'BatchNorm': self.convert_folded_batchnorm,
             'Crop': self.convert_crop,
+            'Scale': self.convert_scale,
         }
         self._option = option
         self._mace_net_def = mace_pb2.NetDef()
@@ -604,3 +605,49 @@ class CaffeConverter(base_converter.ConverterInterface):
                             mace_pb2.DT_FLOAT,
                             bias_data)
             op.input.extend([bias_tensor_name])
+
+    def convert_scale(self, caffe_op):
+        op = self.convert_general_op(caffe_op)
+        op.type = MaceOp.Eltwise.name
+
+        scale_op_name = op.name
+        op.name = scale_op_name + '_prod'
+
+        type_arg = op.arg.add()
+        type_arg.name = MaceKeyword.mace_element_type_str
+        type_arg.i = EltwiseType.PROD.value
+
+        scale_tensor_name = scale_op_name + '_scale'
+        scale_data = caffe_op.blobs[0]
+        self.add_tensor(scale_tensor_name, scale_data.shape,
+                        mace_pb2.DT_FLOAT, scale_data)
+        op.input.extend([scale_tensor_name])
+
+        if len(caffe_op.blobs) == 2:
+            bias_tensor_name = scale_op_name + '_offset'
+            bias_data = caffe_op.blobs[1]
+            # caffe of old version has 4-dimension bias, so reshape it
+            # to single dimension
+            self.add_tensor(bias_tensor_name, bias_data.reshape(-1).shape,
+                            mace_pb2.DT_FLOAT,
+                            bias_data)
+            op.input.extend([bias_tensor_name])
+
+            biasadd_op = self._mace_net_def.op.add()
+            biasadd_op.name = scale_op_name + '_biasadd'
+            biasadd_op.type = MaceOp.BiasAdd.name
+            biasadd_op.output.extend(op.output)
+            op.output[:] = [op.output[0] + '_prod_output']
+            biasadd_op.input.extend(op.output)
+            biasadd_op.input.extend([op.input[2]])
+
+            biasadd_op.output_shape.extend(op.output_shape)
+
+            del op.input[2]
+
+            data_type_arg = biasadd_op.arg.add()
+            data_type_arg.name = 'T'
+            data_type_arg.i = self._option.data_type
+
+            ConverterUtil.add_data_format_arg(biasadd_op,
+                                              DataFormat.NCHW)

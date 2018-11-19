@@ -299,8 +299,7 @@ header files.
     ├── include
     │   └── mace
     │       └── public
-    │           ├── mace.h
-    │           └── mace_runtime.h
+    │           └── mace.h
     ├── lib
     │   ├── arm64-v8a
     │   │   └── cpu_gpu
