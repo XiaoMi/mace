@@ -133,7 +133,7 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
     const index_t in_batch_size = in_shape[1] * in_image_size;
     const index_t out_batch_size = out_shape[1] * out_image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < out_shape[0]; ++b) {
       for (index_t c = 0; c < out_shape[1]; ++c) {
         const index_t out_base = b * out_batch_size + c * out_image_size;
@@ -179,7 +179,7 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
     const index_t in_batch_size = in_shape[1] * in_image_size;
     const index_t out_batch_size = out_shape[1] * out_image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < out_shape[0]; ++b) {
       for (index_t c = 0; c < out_shape[1]; ++c) {
         const index_t out_base = b * out_batch_size + c * out_image_size;
@@ -301,7 +301,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                   const int *stride_hw,
                   const int *pad_hw,
                   uint8_t *output) {
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
     for (index_t b = 0; b < out_shape[0]; ++b) {
       for (index_t h = 0; h < out_shape[1]; ++h) {
         for (index_t w = 0; w < out_shape[2]; ++w) {
@@ -358,7 +358,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
                   const int *stride_hw,
                   const int *pad_hw,
                   uint8_t *output) {
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
     for (index_t b = 0; b < out_shape[0]; ++b) {
       for (index_t h = 0; h < out_shape[1]; ++h) {
         for (index_t w = 0; w < out_shape[2]; ++w) {

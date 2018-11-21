@@ -85,7 +85,7 @@ inline void ResizeImage(const float *images,
                         const float height_scale,
                         const float width_scale,
                         float *output) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t y = 0; y < out_height; ++y) {
       std::vector<float> y_weights;

@@ -36,45 +36,98 @@ namespace mace {
 
 int MaceOpenMPThreadCount = 1;
 
+struct CPUFreq {
+  size_t core_id;
+  float freq;
+};
+
 namespace {
-
+#if defined(__ANDROID__)
 int GetCPUCount() {
-  char path[64];
   int cpu_count = 0;
-  int result = 0;
-
-  while (true) {
-    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d", cpu_count);
-    result = access(path, F_OK);
-    if (result != 0) {
-      if (errno != ENOENT) {
-        LOG(ERROR) << "Access " << path << " failed: " << strerror(errno);
-      }
-      return cpu_count;
+  std::string cpu_sys_conf = "/proc/cpuinfo";
+  std::ifstream f(cpu_sys_conf);
+  if (!f.is_open()) {
+    LOG(ERROR) << "failed to open " << cpu_sys_conf;
+    return -1;
+  }
+  std::string line;
+  const std::string processor_key = "processor";
+  while (std::getline(f, line)) {
+    if (line.size() >= processor_key.size()
+        && line.compare(0, processor_key.size(), processor_key) == 0) {
+      ++cpu_count;
     }
-    cpu_count++;
   }
+  if (f.bad()) {
+    LOG(ERROR) << "failed to read " << cpu_sys_conf;
+  }
+  if (!f.eof()) {
+    LOG(ERROR) << "failed to read end of " << cpu_sys_conf;
+  }
+  f.close();
+  VLOG(2) << "CPU cores: " << cpu_count;
+  return cpu_count;
 }
+#endif
 
-int GetCPUMaxFreq(int cpu_id) {
-  char path[64];
-  snprintf(path, sizeof(path),
-           "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
-           cpu_id);
+int GetCPUMaxFreq(std::vector<float> *max_freqs) {
+#if defined(__ANDROID__)
+  int cpu_count = GetCPUCount();
+  for (int cpu_id = 0; cpu_id < cpu_count; ++cpu_id) {
+    std::string cpuinfo_max_freq_sys_conf = MakeString(
+        "/sys/devices/system/cpu/cpu",
+        cpu_id,
+        "/cpufreq/cpuinfo_max_freq");
+    std::ifstream f(cpuinfo_max_freq_sys_conf);
+    if (!f.is_open()) {
+      LOG(ERROR) << "failed to open " << cpuinfo_max_freq_sys_conf;
+      return -1;
+    }
+    std::string line;
+    if (std::getline(f, line)) {
+      float freq = atof(line.c_str());
+      max_freqs->push_back(freq);
+    }
+    if (f.bad()) {
+      LOG(ERROR) << "failed to read " << cpuinfo_max_freq_sys_conf;
+    }
+    f.close();
+  }
+#else
+  std::string cpu_sys_conf = "/proc/cpuinfo";
+  std::ifstream f(cpu_sys_conf);
+  if (!f.is_open()) {
+    LOG(ERROR) << "failed to open " << cpu_sys_conf;
+    return -1;
+  }
+  std::string line;
+  const std::string freq_key = "cpu MHz";
+  while (std::getline(f, line)) {
+    if (line.size() >= freq_key.size()
+        && line.compare(0, freq_key.size(), freq_key) == 0) {
+      size_t pos = line.find(":");
+      if (pos != std::string::npos) {
+        std::string freq_str = line.substr(pos + 1);
+        float freq = atof(freq_str.c_str());
+        max_freqs->push_back(freq);
+      }
+    }
+  }
+  if (f.bad()) {
+    LOG(ERROR) << "failed to read " << cpu_sys_conf;
+  }
+  if (!f.eof()) {
+    LOG(ERROR) << "failed to read end of " << cpu_sys_conf;
+  }
+  f.close();
+#endif
 
-  FILE *fp = fopen(path, "rb");
-  if (!fp) {
-    LOG(WARNING) << "File: " << path << " not exists.";
-    return 0;
+  for (float freq : *max_freqs) {
+    VLOG(2) << "CPU freq: " << freq;
   }
 
-  int freq = 0;
-  int items_read = fscanf(fp, "%d", &freq);
-  if (items_read != 1) {
-    LOG(WARNING) << "Read file: " << path << " failed.";
-  }
-  fclose(fp);
-  return freq;
+  return 0;
 }
 
 MaceStatus SetThreadAffinity(cpu_set_t mask) {
@@ -93,51 +146,14 @@ MaceStatus SetThreadAffinity(cpu_set_t mask) {
   }
 }
 
-MaceStatus GetCPUBigLittleCoreIDs(std::vector<int> *big_core_ids,
-                                  std::vector<int> *little_core_ids) {
-  MACE_CHECK_NOTNULL(big_core_ids);
-  MACE_CHECK_NOTNULL(little_core_ids);
-  int cpu_count = GetCPUCount();
-  std::vector<int> cpu_max_freq(cpu_count);
-
-  // set cpu max frequency
-  for (int i = 0; i < cpu_count; ++i) {
-    cpu_max_freq[i] = GetCPUMaxFreq(i);
-    if (cpu_max_freq[i] == 0) {
-      LOG(WARNING) << "Cannot get CPU" << i
-                   << "'s max frequency info, maybe it is offline.";
-      return MaceStatus(MaceStatus::MACE_INVALID_ARGS,
-                        "Cannot get CPU's max frequency info,"
-                        " maybe it is offline.");
-    }
-  }
-
-  int big_core_freq =
-      *(std::max_element(cpu_max_freq.begin(), cpu_max_freq.end()));
-  int little_core_freq =
-      *(std::min_element(cpu_max_freq.begin(), cpu_max_freq.end()));
-
-  big_core_ids->reserve(cpu_count);
-  little_core_ids->reserve(cpu_count);
-  for (int i = 0; i < cpu_count; ++i) {
-    if (cpu_max_freq[i] == little_core_freq) {
-      little_core_ids->push_back(i);
-    }
-    if (cpu_max_freq[i] == big_core_freq) {
-      big_core_ids->push_back(i);
-    }
-  }
-
-  return MaceStatus::MACE_SUCCESS;
-}
-
 MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
-                                           const std::vector<int> &cpu_ids) {
+                                           const std::vector<size_t> &cpu_ids) {
   MaceOpenMPThreadCount = omp_num_threads;
 
 #ifdef MACE_ENABLE_OPENMP
   VLOG(1) << "Set OpenMP threads number: " << omp_num_threads
           << ", CPU core IDs: " << MakeString(cpu_ids);
+  omp_set_schedule(omp_sched_guided, 1);
   omp_set_num_threads(omp_num_threads);
 #else
   MACE_UNUSED(omp_num_threads);
@@ -174,55 +190,90 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 }  // namespace
 
 MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
-    int omp_num_threads_hint,
+    int num_threads_hint,
     CPUAffinityPolicy policy,
     void *gemm_context) {
+  // get cpu frequency info
+  std::vector<float> cpu_max_freqs;
+  if (GetCPUMaxFreq(&cpu_max_freqs) == -1 || cpu_max_freqs.size() == 0) {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+
+  std::vector<CPUFreq> cpu_freq(cpu_max_freqs.size());
+  for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
+    cpu_freq[i].core_id = i;
+    cpu_freq[i].freq = cpu_max_freqs[i];
+  }
+  if (policy == CPUAffinityPolicy::AFFINITY_POWER_SAVE ||
+      policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
+    std::sort(cpu_freq.begin(),
+              cpu_freq.end(),
+              [=](const CPUFreq &lhs, const CPUFreq &rhs) {
+                return lhs.freq < rhs.freq;
+              });
+  } else if (policy == CPUAffinityPolicy::AFFINITY_HIGH_PERFORMANCE ||
+      policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
+    std::sort(cpu_freq.begin(),
+              cpu_freq.end(),
+              [](const CPUFreq &lhs, const CPUFreq &rhs) {
+                return lhs.freq > rhs.freq;
+              });
+  }
+
+  int cpu_count = static_cast<int>(cpu_freq.size());
+  if (num_threads_hint <= 0 || num_threads_hint > cpu_count) {
+    num_threads_hint = cpu_count;
+  }
+
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
 #ifdef MACE_ENABLE_QUANTIZE
     if (gemm_context) {
       static_cast<gemmlowp::GemmContext*>(gemm_context)->set_max_num_threads(
-          std::max(0, omp_num_threads_hint));
+          num_threads_hint);
     }
 #else
     MACE_UNUSED(gemm_context);
 #endif  // MACE_ENABLE_QUANTIZE
 #ifdef MACE_ENABLE_OPENMP
-    if (omp_num_threads_hint > 0) {
-      omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
-    }
+    omp_set_num_threads(num_threads_hint);
 #else
     LOG(WARNING) << "Set OpenMP threads number failed: OpenMP not enabled.";
 #endif
     return MaceStatus::MACE_SUCCESS;
   }
 
-  std::vector<int> big_core_ids;
-  std::vector<int> little_core_ids;
-  MaceStatus res = GetCPUBigLittleCoreIDs(&big_core_ids, &little_core_ids);
-  if (res != MaceStatus::MACE_SUCCESS) {
-    return res;
-  }
 
-  std::vector<int> use_cpu_ids;
-  if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY) {
-    use_cpu_ids = std::move(big_core_ids);
+  // decide num of cores to use
+  int cores_to_use = 0;
+  if (policy == CPUAffinityPolicy::AFFINITY_BIG_ONLY
+      || policy == CPUAffinityPolicy::AFFINITY_LITTLE_ONLY) {
+    for (size_t i = 0; i < cpu_max_freqs.size(); ++i) {
+      if (cpu_freq[i].freq != cpu_freq[0].freq) {
+        break;
+      }
+      ++cores_to_use;
+    }
+    num_threads_hint = cores_to_use;
   } else {
-    use_cpu_ids = std::move(little_core_ids);
+    cores_to_use = num_threads_hint;
   }
 
-  if (omp_num_threads_hint <= 0 ||
-      omp_num_threads_hint > static_cast<int>(use_cpu_ids.size())) {
-    omp_num_threads_hint = use_cpu_ids.size();
+  VLOG(2) << "Use " << num_threads_hint << " threads";
+  std::vector<size_t> cpu_ids(cores_to_use);
+  for (int i = 0; i < cores_to_use; ++i) {
+    VLOG(2) << "Bind thread to core: " << cpu_freq[i].core_id << " with freq "
+            << cpu_freq[i].freq;
+    cpu_ids[i] = cpu_freq[i].core_id;
   }
 
 #ifdef MACE_ENABLE_QUANTIZE
   if (gemm_context) {
     static_cast<gemmlowp::GemmContext*>(gemm_context)->set_max_num_threads(
-        omp_num_threads_hint);
+        num_threads_hint);
   }
 #endif  // MACE_ENABLE_QUANTIZE
 
-  return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
+  return SetOpenMPThreadsAndAffinityCPUs(num_threads_hint, cpu_ids);
 }
 
 }  // namespace mace

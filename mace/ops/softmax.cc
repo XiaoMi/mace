@@ -59,7 +59,7 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
       const index_t batch_size = class_count * class_size;
 
       for (index_t b = 0; b < batch; ++b) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t k = 0; k < class_size; ++k) {
           const float *input_ptr = input_data + b * batch_size + k;
           float *output_ptr = output_data + b * batch_size + k;
@@ -94,7 +94,7 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
     } else if (input->dim_size() == 2) {  // normal 2d softmax
       const index_t class_size = input->dim(0);
       const index_t class_count = input->dim(1);
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t k = 0; k < class_size; ++k) {
         const float *input_ptr = input_data + k * class_count;
         float *output_ptr = output_data + k * class_count;
@@ -172,7 +172,7 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
     // If depth is short, do it using float32. Float computation should not
     // be here, but as long as it is on CPU, it is fine.
     if (depth < 32) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t b = 0; b < batch; ++b) {
         const uint8_t *input_ptr = input_data + b * depth;
         uint8_t *output_ptr = output_data + b * depth;
@@ -201,7 +201,7 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
         (1ll << 31) - 1.0));
     int32_t input_delta_limit = -((1ll << 31) - 1) / scale_q;
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t b = 0; b < batch; ++b) {
       const uint8_t *input_ptr = input_data + b * depth;
       uint8_t *output_ptr = output_data + b * depth;

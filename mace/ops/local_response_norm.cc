@@ -53,7 +53,7 @@ class LocalResponseNormOp<DeviceType::CPU, float> : public Operation {
     index_t image_size = height * width;
     index_t batch_size = channels * image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < batch; ++b) {
       for (index_t c = 0; c < channels; ++c) {
         const int begin_input_c = std::max(static_cast<index_t>(0),

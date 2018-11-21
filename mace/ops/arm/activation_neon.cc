@@ -25,7 +25,7 @@ namespace ops {
 void ReluNeon(const float *input, const index_t size, float *output) {
 #if defined(MACE_ENABLE_NEON)
   float32x4_t vzero = vdupq_n_f32(0.f);
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t i = 0; i <= size - 4; i += 4) {
     float32x4_t v = vld1q_f32(input + i);
     v = vmaxq_f32(v, vzero);
@@ -36,7 +36,7 @@ void ReluNeon(const float *input, const index_t size, float *output) {
     output[i] = std::max(input[i], 0.f);
   }
 #else
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t i = 0; i < size; ++i) {
     output[i] = std::max(input[i], 0.f);
   }
@@ -48,7 +48,7 @@ void ReluxNeon(const float *input, const float limit,
 #if defined(MACE_ENABLE_NEON)
   float32x4_t vzero = vdupq_n_f32(0.f);
   float32x4_t vlimit = vdupq_n_f32(limit);
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t i = 0; i <= size - 4; i += 4) {
     float32x4_t v = vld1q_f32(input + i);
     v = vmaxq_f32(v, vzero);
@@ -60,7 +60,7 @@ void ReluxNeon(const float *input, const float limit,
     output[i] = std::min(std::max(input[i], 0.f), limit);
   }
 #else
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t i = 0; i < size; ++i) {
     output[i] = std::min(std::max(input[i], 0.f), limit);
   }

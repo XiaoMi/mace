@@ -395,7 +395,7 @@ MaceStatus ConstructNCHWInputWithSpecificPadding(const Tensor *input_tensor,
   const index_t in_batch_size = channels * in_image_size;
   const index_t out_batch_size = channels * out_image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (int i = 0; i < batch; ++i) {
     for (int j = 0; j < channels; ++j) {
       for (int k = 0; k < height; ++k) {
@@ -443,7 +443,7 @@ MaceStatus ConstructNHWCInputWithPadding(const Tensor *input_tensor,
   if (padding_same_value) {
     LOG(FATAL) << "Not implemented";
   } else {
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
     for (int n = 0; n < batch; ++n) {
       for (int h = 0; h < height; ++h) {
         for (int w = 0; w < width; ++w) {

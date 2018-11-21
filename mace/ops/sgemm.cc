@@ -252,7 +252,7 @@ void SGemm::RunInternal(const PackedBlock &lhs,
   }
 
   if (batch >= MaceOpenMPThreadCount) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     MACE_SGEMM_RUN_PER_BATCH
   } else {
     MACE_SGEMM_RUN_PER_BATCH
@@ -279,7 +279,7 @@ void SGemm::RunPerBatch(const float *lhs_data,
   // as possible to cache, by tiling lhs by height and rhs by width.
 
   // w: 4
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t bw = 0; bw < block_w; ++bw) {
     index_t remain_h = height;
     index_t block_h = 0;
@@ -702,7 +702,7 @@ void SGemm::RunPerBatch(const float *lhs_data,
   rhs_data += (width - remain_w) * depth;
 
   // w: 1
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
   for (index_t bw = 0; bw < remain_w; ++bw) {
     index_t remain_h = height;
 
@@ -923,7 +923,7 @@ void SGemm::Pack(const MatrixMap<const float> &src,
       PackPerBatch(src, order, b, packed_data + b * height * width);  \
     }
   if (src.batch() >= MaceOpenMPThreadCount) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     MACE_SGEMM_PACK_PER_BATCH
   } else {
     MACE_SGEMM_PACK_PER_BATCH
@@ -945,7 +945,7 @@ void SGemm::UnPack(const PackedBlock &packed_result,
   }
 
   if (matrix_map->batch() >= MaceOpenMPThreadCount) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     MACE_SGEMM_UNPACK_PER_BATCH
   } else {
     MACE_SGEMM_UNPACK_PER_BATCH
@@ -968,7 +968,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
 #if defined(__aarch64__)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih <= height - 8; ih += 8) {
       const float *src_data_ptr = src_data + ih * width;
       float *packed_data_ptr = packed_data + ih * width;
@@ -989,7 +989,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     h += (height - h) / 8 * 8;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih <= height - 4; ih += 4) {
       const float *src_data_ptr = src_data + ih * width;
       float *packed_data_ptr = packed_data + ih * width;
@@ -1005,7 +1005,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     h += (height - h) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih < height; ++ih) {
       std::copy_n(src_data + ih * width, width, packed_data + ih * width);
     }
@@ -1015,7 +1015,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
 #if defined(__aarch64__)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih <= height - 8; ih += 8) {
       const float *src_data_ptr = src_data + ih;
       float *packed_data_ptr = packed_data + ih * width;
@@ -1030,7 +1030,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     h += (height - h) / 8 * 8;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih <= height - 4; ih += 4) {
       const float *src_data_ptr = src_data + ih;
       float *packed_data_ptr = packed_data + ih * width;
@@ -1043,7 +1043,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     h += (height - h) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t ih = h; ih < height; ++ih) {
       const float *src_data_ptr = src_data + ih;
       float *packed_data_ptr = packed_data + ih * width;
@@ -1056,7 +1056,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     // This is for packing no-transpose rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *src_data_ptr = src_data + iw;
       float *packed_data_ptr = packed_data + iw * height;
@@ -1069,7 +1069,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     w += (width - w) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw < width; ++iw) {
       const float *src_data_ptr = src_data + iw;
       float *packed_data_ptr = packed_data + iw * height;
@@ -1082,7 +1082,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     // This is for packing transpose-needed rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *src_data_ptr = src_data + iw * height;
       float *packed_data_ptr = packed_data + iw * height;
@@ -1098,7 +1098,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
     }
     w += (width - w) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw < width; ++iw) {
       std::copy_n(src_data + iw * height, height, packed_data + iw * height);
     }
@@ -1118,7 +1118,7 @@ void SGemm::UnPackPerBatch(const float *packed_data,
     // This is for non-transposed result
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *packed_data_ptr = packed_data + iw * height;
       float *unpacked_data_ptr = unpacked_data + iw;
@@ -1131,7 +1131,7 @@ void SGemm::UnPackPerBatch(const float *packed_data,
     }
     w += (width - w) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw < width; ++iw) {
       const float *packed_data_ptr = packed_data + iw * height;
       float *unpacked_data_ptr = unpacked_data + iw;
@@ -1143,7 +1143,7 @@ void SGemm::UnPackPerBatch(const float *packed_data,
     // This is for transposed result
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw <= width - 4; iw += 4) {
       const float *packed_data_ptr = packed_data + iw * height;
       float *unpacked_data_ptr = unpacked_data + iw * height;
@@ -1159,7 +1159,7 @@ void SGemm::UnPackPerBatch(const float *packed_data,
     }
     w += (width - w) / 4 * 4;
 #endif
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t iw = w; iw < width; ++iw) {
       std::copy_n(
           packed_data + iw * height, height, unpacked_data + iw * height);

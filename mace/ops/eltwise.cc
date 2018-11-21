@@ -201,7 +201,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
   switch (type) {
     case SUM:
       if (coeff.empty()) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -213,7 +213,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
         if (swapped) {
           std::swap(coeff_copy[0], coeff_copy[1]);
         }
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -225,7 +225,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       break;
     case SUB:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -233,7 +233,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -243,7 +243,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       }
       break;
     case PROD:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t d = 0; d < diff_size; ++d) {
         for (index_t i = 0; i < common_size; ++i) {
           output[i + d * common_size] = input0[i + d * common_size] * input1[i];
@@ -252,7 +252,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       break;
     case DIV:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -260,7 +260,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -270,7 +270,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       }
       break;
     case MIN:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t d = 0; d < diff_size; ++d) {
         for (index_t i = 0; i < common_size; ++i) {
           output[i + d * common_size] =
@@ -279,7 +279,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       }
       break;
     case MAX:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t d = 0; d < diff_size; ++d) {
         for (index_t i = 0; i < common_size; ++i) {
           output[i + d * common_size] =
@@ -288,7 +288,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       }
       break;
     case SQR_DIFF:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t d = 0; d < diff_size; ++d) {
         for (index_t i = 0; i < common_size; ++i) {
           output[i + d * common_size] =
@@ -298,7 +298,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       break;
     case POW:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -306,7 +306,7 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t d = 0; d < diff_size; ++d) {
           for (index_t i = 0; i < common_size; ++i) {
             output[i + d * common_size] =
@@ -316,19 +316,19 @@ inline void TensorBroadcastEltwise(const EltwiseType type,
       }
       break;
     case NEG:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < diff_size * common_size; ++i) {
         output[i] = -input0[i];
       }
       break;
     case ABS:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < diff_size * common_size; ++i) {
         output[i] = std::fabs(input0[i]);
       }
       break;
     case EQUAL:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t d = 0; d < diff_size; ++d) {
         for (index_t i = 0; i < common_size; ++i) {
           output[i + d * common_size] =
@@ -353,7 +353,7 @@ inline void TensorEltwise(const EltwiseType type,
   switch (type) {
     case SUM:
       if (coeff.empty()) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] + input1[i];
         }
@@ -363,7 +363,7 @@ inline void TensorEltwise(const EltwiseType type,
         if (swapped) {
           std::swap(coeff_copy[0], coeff_copy[1]);
         }
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] * coeff_copy[0] + input1[i] * coeff_copy[1];
         }
@@ -371,20 +371,20 @@ inline void TensorEltwise(const EltwiseType type,
       break;
     case SUB:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] - input1[i];
         }
 
       } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input1[i] - input0[i];
         }
       }
       break;
     case PROD:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = input0[i] * input1[i];
       }
@@ -392,34 +392,34 @@ inline void TensorEltwise(const EltwiseType type,
       break;
     case DIV:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] / input1[i];
         }
 
       } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input1[i] / input0[i];
         }
       }
       break;
     case MIN:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::min(input0[i], input1[i]);
       }
 
       break;
     case MAX:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::max(input0[i], input1[i]);
       }
 
       break;
     case SQR_DIFF:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::pow(input0[i] - input1[i], 2.f);
       }
@@ -427,7 +427,7 @@ inline void TensorEltwise(const EltwiseType type,
       break;
     case POW:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = std::pow(input0[i], input1[i]);
         }
@@ -438,19 +438,19 @@ inline void TensorEltwise(const EltwiseType type,
       }
       break;
     case NEG:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = -input0[i];
       }
       break;
     case ABS:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::fabs(input0[i]);
       }
       break;
     case EQUAL:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = input0[i] == input1[i];
       }
@@ -472,7 +472,7 @@ inline void TensorScalarEltwise(const EltwiseType type,
   switch (type) {
     case SUM:
       if (coeff.empty()) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] + input1;
         }
@@ -482,7 +482,7 @@ inline void TensorScalarEltwise(const EltwiseType type,
         if (swapped) {
           std::swap(coeff_copy[0], coeff_copy[1]);
         }
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] * coeff_copy[0] + input1 * coeff_copy[1];
         }
@@ -490,20 +490,20 @@ inline void TensorScalarEltwise(const EltwiseType type,
       break;
     case SUB:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] - input1;
         }
 
       } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input1 - input0[i];
         }
       }
       break;
     case PROD:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = input0[i] * input1;
       }
@@ -511,34 +511,34 @@ inline void TensorScalarEltwise(const EltwiseType type,
       break;
     case DIV:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input0[i] / input1;
         }
 
       } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = input1 / input0[i];
         }
       }
       break;
     case MIN:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::min(input0[i], input1);
       }
 
       break;
     case MAX:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::max(input0[i], input1);
       }
 
       break;
     case SQR_DIFF:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::pow(input0[i] - input1, 2.f);
       }
@@ -546,7 +546,7 @@ inline void TensorScalarEltwise(const EltwiseType type,
       break;
     case POW:
       if (!swapped) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
         for (index_t i = 0; i < size; ++i) {
           output[i] = std::pow(input0[i], input1);
         }
@@ -557,19 +557,19 @@ inline void TensorScalarEltwise(const EltwiseType type,
       }
       break;
     case NEG:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = -input0[i];
       }
       break;
     case ABS:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = std::fabs(input0[i]);
       }
       break;
     case EQUAL:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output[i] = input0[i] == input1;
       }
@@ -594,7 +594,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
   switch (type) {
     case SUM:
       if (coeff.empty()) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -610,7 +610,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
         if (swapped) {
           std::swap(coeff_copy[0], coeff_copy[1]);
         }
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -626,7 +626,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       break;
     case SUB:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -638,7 +638,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -652,7 +652,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       }
       break;
     case PROD:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch0; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -666,7 +666,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       break;
     case DIV:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -678,7 +678,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -692,7 +692,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       }
       break;
     case MIN:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch0; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -705,7 +705,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       }
       break;
     case MAX:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch0; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -718,7 +718,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       }
       break;
     case SQR_DIFF:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch0; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -732,7 +732,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       break;
     case POW:
       if (!swapped) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -744,7 +744,7 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
           }
         }
       } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
         for (index_t b = 0; b < batch0; ++b) {
           for (index_t c = 0; c < channel; ++c) {
             const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -758,19 +758,19 @@ inline void TensorEltwisePerChannel(const EltwiseType type,
       }
       break;
     case NEG:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
         output[i] = -input0[i];
       }
       break;
     case ABS:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < batch0 * channel * image_size; ++i) {
         output[i] = std::fabs(input0[i]);
       }
       break;
     case EQUAL:
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch0; ++b) {
         for (index_t c = 0; c < channel; ++c) {
           const T *in0_ptr = input0 + ((b * channel) + c) * image_size;
@@ -991,7 +991,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
 
     index_t handled_output_size = 0;
 #ifdef MACE_ENABLE_NEON
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(runtime)
     for (index_t i = handled_output_size; i <= output->size() - 8; i += 8) {
       const auto input0_val = vld1_u8(input0_ptr + i);
       const auto input1_val = vld1_u8(input1_ptr + i);
@@ -1037,7 +1037,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
     }
     handled_output_size = output->size() - output->size() % 8;
 #endif  // NEON
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t i = handled_output_size; i < output->size(); ++i) {
       const int32_t offset_input0 = input0_ptr[i] - input0->zero_point();
       const int32_t offset_input1 = input1_ptr[i] - input1->zero_point();

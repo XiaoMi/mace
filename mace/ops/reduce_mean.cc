@@ -134,7 +134,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
           }
           output_ptr[0] = sum / data_reshape_[0];
         } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
           for (int i = 0; i < data_reshape_[0]; ++i) {
             output_ptr[i] = input_ptr[i];
           }
@@ -142,7 +142,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
         break;
       case 2:
         if (reduce_first_axis_) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
           for (int i = 0; i < data_reshape_[1]; ++i) {
             for (int j = 0; j < data_reshape_[0]; ++j) {
               output_ptr[i] += input_ptr[j * data_reshape_[1] + i];
@@ -150,7 +150,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
             output_ptr[i] /= data_reshape_[0];
           }
         } else {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
           for (int i = 0; i < data_reshape_[0]; ++i) {
             for (int j = 0; j < data_reshape_[1]; ++j) {
               output_ptr[i] += input_ptr[i * data_reshape_[1] + j];
@@ -161,7 +161,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
         break;
       case 3:
         if (reduce_first_axis_) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
           for (int i = 0; i < data_reshape_[1]; ++i) {
             for (int j = 0; j < data_reshape_[2]; ++j) {
               for (int k = 0; k < data_reshape_[0]; ++k) {
@@ -173,7 +173,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
             output_ptr[i] /= (data_reshape_[0] * data_reshape_[2]);
           }
         } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
           for (int i = 0; i < data_reshape_[0]; ++i) {
             for (int j = 0; j < data_reshape_[2]; ++j) {
               for (int k = 0; k < data_reshape_[1]; ++k) {
@@ -188,7 +188,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
         break;
       case 4:
         if (reduce_first_axis_) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
           for (int i = 0; i < data_reshape_[1]; ++i) {
             for (int j = 0; j < data_reshape_[3]; ++j) {
               for (int k = 0; k < data_reshape_[2]; ++k) {
@@ -203,7 +203,7 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
             }
           }
         } else {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
           for (int i = 0; i < data_reshape_[0]; ++i) {
             for (int j = 0; j < data_reshape_[2]; ++j) {
               for (int k = 0; k < data_reshape_[1]; ++k) {

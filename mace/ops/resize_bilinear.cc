@@ -95,7 +95,7 @@ inline void ResizeImageNCHW(const T *images,
                             T *output) {
   const CachedInterpolation *xs = xs_vec.data();
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < batch_size; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const T
@@ -141,7 +141,7 @@ inline void ResizeImageNHWC(const T *images,
   for (index_t b = 0; b < batch_size; ++b) {
     const T *input_base = images + b * channels * in_height * in_width;
     T *output_base = output + b * channels * out_height * out_width;
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t y = 0; y < out_height; ++y) {
       const T
           *y_lower_input_ptr = input_base + ys[y].lower * in_width * channels;

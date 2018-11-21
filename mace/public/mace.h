@@ -48,10 +48,28 @@ enum GPUPriorityHint {
   PRIORITY_HIGH = 3
 };
 
+// AFFINITY_NONE: initiate 'num_threads_hint' threads with no affinity
+// scheduled.
+// If 'num_threads_hint' is -1 or greater than number of available cores,
+// 'num_threads_hint' will be reset to number of available cores.
+// AFFINITY_BIG_ONLY: all available big cores are used, and number of threads
+// is equal to numbers of available big cores.
+// AFFINITY_LITTLE_ONLY: all available little cores are used, and number of
+// threads is equal to numbers of available little cores.
+// AFFINITY_HIGH_PERFORMANCE: initiate 'num_threads_hint' threads on different
+// cores with top-num_threads_hint frequencies.
+// If 'num_threads_hint' is -1 or greater than number of available cores,
+// 'num_threads_hint' will be reset to number of available cores.
+// AFFINITY_POWER_SAVE: initiate 'num_threads_hint' threads on different
+// cores with bottom-num_threads_hint frequencies.
+// If 'num_threads_hint' is -1 or greater than number of available cores,
+// 'num_threads_hint' will be reset to number of available cores.
 enum CPUAffinityPolicy {
   AFFINITY_NONE = 0,
   AFFINITY_BIG_ONLY = 1,
   AFFINITY_LITTLE_ONLY = 2,
+  AFFINITY_HIGH_PERFORMANCE = 3,
+  AFFINITY_POWER_SAVE = 4,
 };
 
 struct CallStats {

@@ -66,26 +66,26 @@ void DoActivation(const T *input_ptr,
     case NOOP:
       break;
     case RELU:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::max(input_ptr[i], static_cast<T>(0));
       }
       break;
     case RELUX:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::min(std::max(input_ptr[i], static_cast<T>(0)),
                                  static_cast<T>(relux_max_limit));
       }
       break;
     case TANH:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::tanh(input_ptr[i]);
       }
       break;
     case SIGMOID:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
       }
@@ -111,13 +111,13 @@ inline void DoActivation(const float *input_ptr,
       ReluxNeon(input_ptr, relux_max_limit, size, output_ptr);
       break;
     case TANH:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = std::tanh(input_ptr[i]);
       }
       break;
     case SIGMOID:
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
       for (index_t i = 0; i < size; ++i) {
         output_ptr[i] = 1 / (1 + std::exp(-input_ptr[i]));
       }
@@ -134,7 +134,7 @@ void PReLUActivation(const T *input_ptr,
                      const index_t inner_size,
                      const T *alpha_ptr,
                      T *output_ptr) {
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
   for (index_t i = 0; i < outer_size; ++i) {
     for (index_t chan_idx = 0; chan_idx < input_chan; ++chan_idx) {
       for (index_t j = 0; j < inner_size; ++j) {

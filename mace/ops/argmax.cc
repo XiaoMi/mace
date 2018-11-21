@@ -59,7 +59,7 @@ class ArgMaxOp : public Operation {
     index_t outer_size = output->size();
     index_t inner_size = input->dim(axis_value);
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(runtime)
     for (index_t i = 0; i < outer_size; ++i) {
       int idx = 0;
       T max_value = std::numeric_limits<T>::lowest();
