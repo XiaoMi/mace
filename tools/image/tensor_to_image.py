@@ -4,6 +4,8 @@ import sys
 import numpy as np
 import tensorflow as tf
 
+# TODO(liyin): use dataset api and estimator with distributed strategy
+
 FLAGS = None
 
 
@@ -27,22 +29,26 @@ def parse_args():
 
 
 def tensors_to_images(input_files, image_shape):
-    for i in xrange(len(input_files)):
+    with tf.Graph().as_default():
+        input = tf.placeholder(tf.float32, shape=image_shape, name='input')
+        output = tf.placeholder(tf.string, name='output_file')
+        # use the second channel if it is gray image
+        if image_shape[2] == 2:
+            _, input = tf.split(input, 2, axis=2)
+        tensor_data = tf.image.convert_image_dtype(input,
+                                                   tf.uint8,
+                                                   saturate=True)
+        image_data = tf.image.encode_jpeg(tensor_data, quality=100)
+        writer = tf.write_file(output, image_data, name='output_writer')
+
         with tf.Session() as sess:
-            tensor_data = np.fromfile(input_files[i], dtype=np.float32) \
-                .reshape(image_shape)
-            # use the second channel if it is gray image
-            if image_shape[2] == 2:
-                _, tensor_data = tf.split(tensor_data, 2, axis=2)
-            tensor_data = tf.image.convert_image_dtype(tensor_data,
-                                                       tf.uint8,
-                                                       saturate=True)
-            image_data = tf.image.encode_jpeg(tensor_data, quality=100)
-            image = sess.run(image_data)
-            output_file = os.path.join(FLAGS.output_dir, os.path.splitext(
-                os.path.basename(input_files[i]))[0] + '.jpg')
-            writer = tf.write_file(output_file, image)
-            sess.run(writer)
+            for i in xrange(len(input_files)):
+                input_data = np.fromfile(input_files[i], dtype=np.float32) \
+                    .reshape(image_shape)
+                output_file = os.path.join(FLAGS.output_dir, os.path.splitext(
+                    os.path.basename(input_files[i]))[0] + '.jpg')
+                sess.run(writer, feed_dict={'input:0': input_data,
+                                            'output_file:0': output_file})
 
 
 def main(unused_args):
