@@ -52,7 +52,9 @@ class SqueezeOp : public Operation {
 
 void RegisterSqueeze(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU, float);
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, float);
   MACE_REGISTER_OP(op_registry, "Squeeze", SqueezeOp, DeviceType::GPU, half);

@@ -22,9 +22,13 @@
 #include "mace/core/operator.h"
 #include "mace/core/tensor.h"
 #include "mace/ops/gemm.h"
-#include "mace/ops/gemmlowp_util.h"
 #include "mace/ops/sgemm.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_QUANTIZE
+#include "mace/ops/gemmlowp_util.h"
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/matmul.h"
 #endif  // MACE_ENABLE_OPENCL
@@ -150,6 +154,7 @@ class MatMulOp<CPU, float> : public MatMulOpBase {
   SGemm sgemm_;
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template<gemmlowp::MapOrder AOrder, gemmlowp::MapOrder BOrder,
     typename OutputType>
 class MatMulFixpointImpl;
@@ -311,6 +316,7 @@ class MatMulOp<DeviceType::CPU, uint8_t>: public MatMulOpBase {
     return MaceStatus::MACE_SUCCESS;
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -342,8 +348,11 @@ void RegisterMatMul(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "MatMul", MatMulOp,
                    DeviceType::GPU, float);

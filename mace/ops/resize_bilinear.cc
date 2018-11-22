@@ -244,6 +244,7 @@ class ResizeBilinearOp<DeviceType::CPU, T> : public Operation {
   std::vector<index_t> size_;
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
@@ -317,6 +318,7 @@ class ResizeBilinearOp<DeviceType::CPU, uint8_t> : public Operation {
   bool align_corners_;
   std::vector<index_t> size_;
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -355,8 +357,10 @@ void RegisterResizeBilinear(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
                    DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "ResizeBilinear", ResizeBilinearOp,

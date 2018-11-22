@@ -20,9 +20,11 @@
 #include <string>
 #include <vector>
 
+#ifdef MACE_ENABLE_QUANTIZE
 // We reuse TensorFlow Lite's optimized depthwiseconv_uint8 and parallelized it
 // using OpenMP for MACE's quantized depthwise_conv2d.
 #include "tensorflow/contrib/lite/kernels/internal/optimized/depthwiseconv_uint8.h"
+#endif  // MACE_ENABLE_QUANTIZE
 
 #include "mace/core/future.h"
 #include "mace/core/operator.h"
@@ -276,6 +278,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, float> : public DepthwiseConv2dOpBase {
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
     : public DepthwiseConv2dOpBase {
@@ -479,6 +482,7 @@ class DepthwiseConv2dOp<DeviceType::CPU, uint8_t>
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -520,8 +524,10 @@ void RegisterDepthwiseConv2d(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
                    DepthwiseConv2dOp, DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",
                    DepthwiseConv2dOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "DepthwiseConv2d",

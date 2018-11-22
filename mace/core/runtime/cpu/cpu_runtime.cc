@@ -176,11 +176,16 @@ MaceStatus SetOpenMPThreadsAndAffinityCPUs(int omp_num_threads,
 MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     int omp_num_threads_hint,
     CPUAffinityPolicy policy,
-    gemmlowp::GemmContext *gemm_context) {
+    void *gemm_context) {
   if (policy == CPUAffinityPolicy::AFFINITY_NONE) {
+#ifdef MACE_ENABLE_QUANTIZE
     if (gemm_context) {
-      gemm_context->set_max_num_threads(std::max(0, omp_num_threads_hint));
+      static_cast<gemmlowp::GemmContext*>(gemm_context)->set_max_num_threads(
+          std::max(0, omp_num_threads_hint));
     }
+#else
+    MACE_UNUSED(gemm_context);
+#endif  // MACE_ENABLE_QUANTIZE
 #ifdef MACE_ENABLE_OPENMP
     if (omp_num_threads_hint > 0) {
       omp_set_num_threads(std::min(omp_num_threads_hint, omp_get_num_procs()));
@@ -210,9 +215,12 @@ MaceStatus CPURuntime::SetOpenMPThreadsAndAffinityPolicy(
     omp_num_threads_hint = use_cpu_ids.size();
   }
 
+#ifdef MACE_ENABLE_QUANTIZE
   if (gemm_context) {
-    gemm_context->set_max_num_threads(omp_num_threads_hint);
+    static_cast<gemmlowp::GemmContext*>(gemm_context)->set_max_num_threads(
+        omp_num_threads_hint);
   }
+#endif  // MACE_ENABLE_QUANTIZE
 
   return SetOpenMPThreadsAndAffinityCPUs(omp_num_threads_hint, use_cpu_ids);
 }

@@ -342,6 +342,7 @@ def bazel_build(target,
                 enable_openmp=True,
                 enable_neon=True,
                 enable_opencl=True,
+                enable_quantize=True,
                 address_sanitizer=False,
                 symbol_hidden=True,
                 extra_args=""):
@@ -351,6 +352,8 @@ def bazel_build(target,
             "build",
             "--define",
             "openmp=%s" % str(enable_openmp).lower(),
+            "--define",
+            "quantize=%s" % str(enable_quantize).lower(),
             target,
         )
     else:
@@ -366,6 +369,8 @@ def bazel_build(target,
             "openmp=%s" % str(enable_openmp).lower(),
             "--define",
             "opencl=%s" % str(enable_opencl).lower(),
+            "--define",
+            "quantize=%s" % str(enable_quantize).lower(),
             "--define",
             "hexagon=%s" % str(hexagon_mode).lower())
     if address_sanitizer:

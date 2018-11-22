@@ -63,8 +63,10 @@ void RegisterExpandDims(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
                    DeviceType::CPU, int32_t);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "ExpandDims", ExpandDimsOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace ops

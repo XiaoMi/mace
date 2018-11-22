@@ -59,3 +59,11 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "quantize_enabled",
+    define_values = {
+        "quantize": "true",
+    },
+    visibility = ["//visibility:public"],
+)

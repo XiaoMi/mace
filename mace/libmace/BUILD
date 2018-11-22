@@ -16,6 +16,7 @@ load(
     "if_hexagon_enabled",
     "if_opencl_enabled",
     "if_opencl_enabled_str",
+    "if_quantize_enabled",
 )
 
 cc_library(
@@ -34,6 +35,8 @@ cc_library(
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
