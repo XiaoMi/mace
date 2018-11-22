@@ -64,7 +64,8 @@ cc_library(
             "ops_test_util.h",
             "fixpoint.h",
             "gemmlowp_util.h",
-        ]
+            "arm/fixpoint_*.h",
+        ],
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
         "opencl/image/*.h",
@@ -72,6 +73,7 @@ cc_library(
     ])) + if_quantize_enabled(glob([
         "fixpoint.h",
         "gemmlowp_util.h",
+        "arm/fixpoint_*.h",
     ])),
     copts = [
         "-Werror",
@@ -101,11 +103,10 @@ cc_library(
     ]),
 )
 
-
 cc_library(
     name = "ops",
     srcs = [
-        "ops_registry.cc"
+        "ops_registry.cc",
     ],
     hdrs = [
         "ops_registry.h",
@@ -138,12 +139,12 @@ cc_library(
 cc_library(
     name = "test",
     testonly = 1,
-    hdrs = glob([
-        "*_test_util.h",
-    ]),
     srcs = [
         "ops_test_util.cc",
     ],
+    hdrs = glob([
+        "*_test_util.h",
+    ]),
     copts = [
         "-Werror",
         "-Wextra",
@@ -174,13 +175,12 @@ cc_test(
             "opencl/*_test.cc",
         ],
         exclude = [
-            "fixpoint_test.cc"
+            "fixpoint_test.cc",
         ],
     ) + if_quantize_enabled(glob(
         [
-            "fixpoint_test.cc"
+            "fixpoint_test.cc",
         ],
-
     )),
     copts = [
         "-Werror",

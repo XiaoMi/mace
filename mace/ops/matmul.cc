@@ -27,6 +27,7 @@
 
 #ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/gemmlowp_util.h"
+#include "mace/ops/arm/fixpoint_gemm.h"
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
@@ -169,9 +170,6 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
                   const index_t K,
                   const index_t width,
                   Tensor *C) {
-    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
-    MACE_CHECK_NOTNULL(gemm_context);
-
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);
     Tensor::MappingGuard guardc(C);
@@ -180,6 +178,9 @@ class MatMulFixpointImpl<AOrder, BOrder, uint8_t> {
     auto c_ptr_base = C->mutable_data<uint8_t>();
     index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
                                     std::multiplies<index_t>());
+    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
+    MACE_CHECK_NOTNULL(gemm_context);
+
     index_t a_size = height * K;
     index_t b_size = K * width;
     index_t c_size = height * width;
@@ -213,9 +214,6 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
                   const index_t K,
                   const index_t width,
                   Tensor *C) {
-    auto gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
-    MACE_CHECK_NOTNULL(gemm_context);
-
     Tensor::MappingGuard guarda(A);
     Tensor::MappingGuard guardb(B);
     Tensor::MappingGuard guardc(C);
@@ -224,24 +222,53 @@ class MatMulFixpointImpl<AOrder, BOrder, int32_t> {
     auto c_ptr_base = C->mutable_data<int32_t>();
     index_t batch = std::accumulate(A->shape().begin(), A->shape().end() - 2, 1,
                                     std::multiplies<index_t>());
-    index_t a_size = height * K;
-    index_t b_size = K * width;
-    index_t c_size = height * width;
 
-    const auto output_pipeline = std::make_tuple();
+    if (width == 1 && AOrder == gemmlowp::MapOrder::RowMajor) {
+      // gemv
+      for (index_t i = 0; i < batch; ++i) {
+        FixPointGemv(a_ptr_base + i * height * K,
+                     b_ptr_base + i * K,
+                     A->zero_point(),
+                     B->zero_point(),
+                     height,
+                     K,
+                     c_ptr_base + i * height);
+      }
+    } else if (height == 1 && BOrder == gemmlowp::MapOrder::ColMajor) {
+      // gevm
+      for (index_t i = 0; i < batch; ++i) {
+        FixPointGemv(b_ptr_base + i * K * width,
+                     a_ptr_base + i * K,
+                     B->zero_point(),
+                     A->zero_point(),
+                     width,
+                     K,
+                     c_ptr_base + i * width);
+      }
+    } else {
+      auto
+          gemm_context = context->device()->cpu_runtime()->GetGemmlowpContext();
+      MACE_CHECK_NOTNULL(gemm_context);
 
-    for (index_t i = 0; i < batch; ++i) {
-      gemmlowp::MatrixMap<const uint8_t, AOrder>
-          a_matrix(a_ptr_base + i * a_size, height, K);
-      gemmlowp::MatrixMap<const uint8_t, BOrder>
-          b_matrix(b_ptr_base + i * b_size, K, width);
-      gemmlowp::MatrixMap <int32_t, gemmlowp::MapOrder::RowMajor>
-          c_matrix(c_ptr_base + i * c_size, height, width);
+      index_t a_size = height * K;
+      index_t b_size = K * width;
+      index_t c_size = height * width;
 
-      using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
-      gemmlowp::GemmWithOutputPipeline<uint8_t, int32_t, BitDepthParams>(
-          gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
-          -B->zero_point(), output_pipeline);
+      const auto output_pipeline = std::make_tuple();
+
+      for (index_t i = 0; i < batch; ++i) {
+        gemmlowp::MatrixMap<const uint8_t, AOrder>
+            a_matrix(a_ptr_base + i * a_size, height, K);
+        gemmlowp::MatrixMap<const uint8_t, BOrder>
+            b_matrix(b_ptr_base + i * b_size, K, width);
+        gemmlowp::MatrixMap <int32_t, gemmlowp::MapOrder::RowMajor>
+            c_matrix(c_ptr_base + i * c_size, height, width);
+
+        using BitDepthParams = gemmlowp::L8R8WithLhsNonzeroBitDepthParams;
+        gemmlowp::GemmWithOutputPipeline<uint8_t, int32_t, BitDepthParams>(
+            gemm_context, a_matrix, b_matrix, &c_matrix, -A->zero_point(),
+            -B->zero_point(), output_pipeline);
+      }
     }
 
     C->SetScale(A->scale() * B->scale());
