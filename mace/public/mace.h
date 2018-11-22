@@ -223,7 +223,7 @@ class MACE_API MaceEngineConfig {
   /// \param status MACE_SUCCESS for successful, or it can't reliabley
   /// detect big-LITTLE cores (see GetBigLittleCoreIDs). In such cases, it's
   /// suggested to use AFFINITY_NONE to use all cores.
-  /// \param use_gemmlowp use gemmlowp for quantized inference
+  /// \param use_gemmlowp use gemmlowp for cpu quantized inference
   /// \return MaceStatus::MACE_SUCCESS for success, other for failed.
   MaceStatus SetCPUThreadPolicy(int num_threads_hint,
                                 CPUAffinityPolicy policy,

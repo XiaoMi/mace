@@ -197,6 +197,7 @@ class SpaceToBatchNDOp<DeviceType::CPU, float> : public SpaceToBatchOpBase {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
  public:
@@ -299,6 +300,7 @@ class SpaceToBatchNDOp<DeviceType::CPU, uint8_t> : public SpaceToBatchOpBase {
     return MaceStatus::MACE_SUCCESS;
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -331,8 +333,10 @@ void RegisterSpaceToBatchND(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
                    SpaceToBatchNDOp, DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",
                    SpaceToBatchNDOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "SpaceToBatchND",

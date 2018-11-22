@@ -214,6 +214,7 @@ class PoolingOp<DeviceType::CPU, float> : public PoolingOpBase {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
  public:
@@ -420,6 +421,7 @@ class PoolingOp<DeviceType::CPU, uint8_t> : public PoolingOpBase {
     }
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -451,8 +453,11 @@ class PoolingOp<DeviceType::GPU, T> : public PoolingOpBase {
 void RegisterPooling(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
                    DeviceType::CPU, float);
+
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Pooling", PoolingOp,

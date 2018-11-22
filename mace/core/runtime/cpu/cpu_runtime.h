@@ -18,7 +18,11 @@
 #include <memory>
 #include <vector>
 
+#ifdef MACE_ENABLE_QUANTIZE
 #include "public/gemmlowp.h"
+#endif  // MACE_ENABLE_QUANTIZE
+
+#include "mace/core/macros.h"
 #include "mace/public/mace.h"
 #include "mace/utils/logging.h"
 
@@ -34,22 +38,34 @@ class CPURuntime {
       : num_threads_(num_threads),
         policy_(policy),
         gemm_context_(nullptr) {
+#ifdef MACE_ENABLE_QUANTIZE
     if (use_gemmlowp) {
       MACE_CHECK_NOTNULL(GetGemmlowpContext());
     }
-
+#else
+    MACE_UNUSED(use_gemmlowp);
+#endif  // MACE_ENABLE_QUANTIZE
     SetOpenMPThreadsAndAffinityPolicy(num_threads_,
                                       policy_,
-                                      gemm_context_.get());
+                                      gemm_context_);
   }
-  ~CPURuntime() = default;
+
+#ifdef MACE_ENABLE_QUANTIZE
+  ~CPURuntime() {
+    if (!gemm_context_) {
+      delete static_cast<gemmlowp::GemmContext*>(gemm_context_);
+    }
+  }
 
   gemmlowp::GemmContext *GetGemmlowpContext() {
     if (!gemm_context_) {
-      gemm_context_.reset(new gemmlowp::GemmContext());
+      gemm_context_ = new gemmlowp::GemmContext();
     }
-    return gemm_context_.get();
+    return static_cast<gemmlowp::GemmContext*>(gemm_context_);
   }
+#else
+  ~CPURuntime() = default;
+#endif  // MACE_ENABLE_QUANTIZE
 
   int num_threads() const {
     return num_threads_;
@@ -67,11 +83,11 @@ class CPURuntime {
   MaceStatus SetOpenMPThreadsAndAffinityPolicy(
       int omp_num_threads_hint,
       CPUAffinityPolicy policy,
-      gemmlowp::GemmContext *gemm_context);
+      void *gemm_context);
 
   int num_threads_;
   CPUAffinityPolicy policy_;
-  std::unique_ptr<gemmlowp::GemmContext> gemm_context_;
+  void *gemm_context_;
 };
 }  // namespace mace
 

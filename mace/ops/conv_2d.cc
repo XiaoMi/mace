@@ -31,8 +31,12 @@
 #include "mace/ops/arm/conv_winograd.h"
 #include "mace/ops/conv_pool_2d_base.h"
 #include "mace/ops/conv_pool_2d_util.h"
-#include "mace/ops/gemmlowp_util.h"
 #include "mace/utils/utils.h"
+
+#ifdef MACE_ENABLE_QUANTIZE
+#include "mace/ops/gemmlowp_util.h"
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/conv_2d.h"
 #include "mace/ops/opencl/buffer/conv_2d.h"
@@ -707,6 +711,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 };
 
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
  public:
@@ -943,6 +948,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);
   MACE_OP_OUTPUT_TAGS(OUTPUT);
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -987,8 +993,10 @@ void RegisterConv2D(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
                    DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Conv2D", Conv2dOp,

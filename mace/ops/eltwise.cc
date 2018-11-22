@@ -932,6 +932,7 @@ class EltwiseOp : public Operation {
   Tensor scalar_tensor_;
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
@@ -1072,6 +1073,7 @@ class EltwiseOp<DeviceType::CPU, uint8_t> : public Operation {
   DataFormat data_format_;
   Tensor scalar_tensor_;
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -1113,8 +1115,11 @@ void RegisterEltwise(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
                    DeviceType::CPU, int32_t);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Eltwise", EltwiseOp,
                    DeviceType::GPU, float);

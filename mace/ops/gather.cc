@@ -89,8 +89,11 @@ class GatherOp : public Operation {
 void RegisterGather(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
                    DeviceType::CPU, float);
+
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 }
 
 }  // namespace ops

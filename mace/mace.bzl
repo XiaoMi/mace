@@ -60,6 +60,12 @@ def if_opencl_enabled_str(a):
       "//conditions:default": "",
   })
 
+def if_quantize_enabled(a):
+  return select({
+      "//mace:quantize_enabled": a,
+      "//conditions:default": [],
+  })
+
 def mace_version_genrule():
   native.genrule(
       name = "mace_version_gen",

@@ -14,6 +14,7 @@ load(
     "if_android_armv7",
     "if_hexagon_enabled",
     "if_opencl_enabled",
+    "if_quantize_enabled",
 )
 
 cc_library(
@@ -33,6 +34,7 @@ cc_library(
             "buffer_transform.cc",
             "lstm_cell.cc",
             "winograd_transform.cc",
+            "quantize.cc",
         ],
     ) + if_opencl_enabled(glob(
         [
@@ -47,6 +49,10 @@ cc_library(
         exclude = [
             "opencl/*_test.cc",
         ],
+    )) + if_quantize_enabled(glob(
+        [
+            "quantize.cc",
+        ],
     )),
     hdrs = glob(
         [
@@ -56,11 +62,16 @@ cc_library(
         exclude = [
             "ops_registry.h",
             "ops_test_util.h",
+            "fixpoint.h",
+            "gemmlowp_util.h",
         ]
     ) + if_opencl_enabled(glob([
         "opencl/*.h",
         "opencl/image/*.h",
         "opencl/buffer/*.h",
+    ])) + if_quantize_enabled(glob([
+        "fixpoint.h",
+        "gemmlowp_util.h",
     ])),
     copts = [
         "-Werror",
@@ -76,15 +87,18 @@ cc_library(
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
-        "@gemmlowp",
         "@tflite",
-    ],
+    ] + if_quantize_enabled([
+        "@gemmlowp",
+    ]),
 )
 
 
@@ -110,6 +124,8 @@ cc_library(
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -157,7 +173,15 @@ cc_test(
             "arm/*_test.cc",
             "opencl/*_test.cc",
         ],
-    ),
+        exclude = [
+            "fixpoint_test.cc"
+        ],
+    ) + if_quantize_enabled(glob(
+        [
+            "fixpoint_test.cc"
+        ],
+
+    )),
     copts = [
         "-Werror",
         "-Wextra",
@@ -171,6 +195,8 @@ cc_test(
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -199,6 +225,8 @@ cc_test(
         "-mfloat-abi=softfp",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]),
@@ -208,6 +236,5 @@ cc_test(
         "test",
         "//mace/core:test_benchmark_main",
         "//third_party/eigen3",
-        "@gemmlowp",
     ],
 )

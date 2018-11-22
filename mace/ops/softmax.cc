@@ -18,8 +18,12 @@
 #include <vector>
 
 #include "mace/core/operator.h"
+
+#ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/fixpoint.h"
 #include "mace/ops/gemmlowp_util.h"
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/softmax.h"
 #include "mace/ops/opencl/buffer/softmax.h"
@@ -122,6 +126,7 @@ class SoftmaxOp<DeviceType::CPU, float> : public Operation {
 static const int kInputDeltaIntBits = 6;
 static const int kSumExpIntBits = 12;
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
  public:
@@ -351,6 +356,7 @@ class SoftmaxOp<DeviceType::CPU, uint8_t> : public Operation {
     return MaceStatus::MACE_SUCCESS;
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -382,8 +388,10 @@ void RegisterSoftmax(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Softmax", SoftmaxOp,

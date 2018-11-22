@@ -279,6 +279,17 @@ def get_opencl_mode(configs):
     return False
 
 
+def get_quantize_mode(configs):
+    for model_name in configs[YAMLKeyword.models]:
+        quantize =\
+            configs[YAMLKeyword.models][model_name].get(
+                YAMLKeyword.quantize, 0)
+        if quantize == 1:
+            return True
+
+    return False
+
+
 def md5sum(str):
     md5 = hashlib.md5()
     md5.update(str.encode('utf-8'))
@@ -855,6 +866,7 @@ def build_model_lib(configs, address_sanitizer):
             abi=target_abi,
             hexagon_mode=hexagon_mode,
             enable_opencl=get_opencl_mode(configs),
+            enable_quantize=get_quantize_mode(configs),
             address_sanitizer=address_sanitizer,
             symbol_hidden=True
         )
@@ -968,6 +980,7 @@ def build_mace_run(configs, target_abi, enable_openmp, address_sanitizer,
         hexagon_mode=hexagon_mode,
         enable_openmp=enable_openmp,
         enable_opencl=get_opencl_mode(configs),
+        enable_quantize=get_quantize_mode(configs),
         address_sanitizer=address_sanitizer,
         symbol_hidden=symbol_hidden,
         extra_args=build_arg
@@ -996,6 +1009,7 @@ def build_example(configs, target_abi, enable_openmp, address_sanitizer,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
+                            enable_quantize=get_quantize_mode(configs),
                             hexagon_mode=hexagon_mode,
                             address_sanitizer=address_sanitizer,
                             symbol_hidden=symbol_hidden)
@@ -1025,6 +1039,7 @@ def build_example(configs, target_abi, enable_openmp, address_sanitizer,
                             abi=target_abi,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
+                            enable_quantize=get_quantize_mode(configs),
                             hexagon_mode=hexagon_mode,
                             address_sanitizer=address_sanitizer,
                             extra_args=build_arg)
@@ -1404,6 +1419,7 @@ def build_benchmark_model(configs, target_abi, enable_openmp, mace_lib_type):
                             abi=target_abi,
                             enable_openmp=enable_openmp,
                             enable_opencl=get_opencl_mode(configs),
+                            enable_quantize=get_quantize_mode(configs),
                             hexagon_mode=hexagon_mode,
                             symbol_hidden=symbol_hidden,
                             extra_args=build_arg)

@@ -21,7 +21,10 @@
 #include "mace/core/tensor.h"
 #include "mace/ops/activation.h"
 #include "mace/ops/gemm.h"
+
+#ifdef MACE_ENABLE_QUANTIZE
 #include "mace/ops/gemmlowp_util.h"
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 #include "mace/ops/opencl/image/fully_connected.h"
@@ -106,6 +109,7 @@ class FullyConnectedOp<DeviceType::CPU, float> : public FullyConnectedOpBase {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class FullyConnectedOp<DeviceType::CPU, uint8_t>
     : public FullyConnectedOpBase {
@@ -180,6 +184,7 @@ class FullyConnectedOp<DeviceType::CPU, uint8_t>
     return MaceStatus::MACE_SUCCESS;
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -218,8 +223,11 @@ void RegisterFullyConnected(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "FullyConnected",
                    FullyConnectedOp, DeviceType::CPU, float);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "FullyConnected",
                    FullyConnectedOp, DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
+
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "FullyConnected",
                    FullyConnectedOp, DeviceType::GPU, float);

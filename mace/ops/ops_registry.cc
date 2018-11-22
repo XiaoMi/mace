@@ -33,7 +33,6 @@ extern void RegisterDeconv2D(OpRegistryBase *op_registry);
 extern void RegisterDepthToSpace(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseConv2d(OpRegistryBase *op_registry);
 extern void RegisterDepthwiseDeconv2d(OpRegistryBase *op_registry);
-extern void RegisterDequantize(OpRegistryBase *op_registry);
 extern void RegisterEltwise(OpRegistryBase *op_registry);
 extern void RegisterExpandDims(OpRegistryBase *op_registry);
 extern void RegisterFill(OpRegistryBase *op_registry);
@@ -45,7 +44,6 @@ extern void RegisterLocalResponseNorm(OpRegistryBase *op_registry);
 extern void RegisterMatMul(OpRegistryBase *op_registry);
 extern void RegisterPad(OpRegistryBase *op_registry);
 extern void RegisterPooling(OpRegistryBase *op_registry);
-extern void RegisterQuantize(OpRegistryBase *op_registry);
 extern void RegisterReduceMean(OpRegistryBase *op_registry);
 extern void RegisterReshape(OpRegistryBase *op_registry);
 extern void RegisterResizeBicubic(OpRegistryBase *op_registry);
@@ -63,6 +61,11 @@ extern void RegisterStack(OpRegistryBase *op_registry);
 extern void RegisterStridedSlice(OpRegistryBase *op_registry);
 extern void RegisterTranspose(OpRegistryBase *op_registry);
 extern void RegisterUnstack(OpRegistryBase *op_registry);
+
+#ifdef MACE_ENABLE_QUANTIZE
+extern void RegisterDequantize(OpRegistryBase *op_registry);
+extern void RegisterQuantize(OpRegistryBase *op_registry);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 extern void RegisterBufferTransform(OpRegistryBase *op_registry);
@@ -91,7 +94,6 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterDepthToSpace(this);
   ops::RegisterDepthwiseConv2d(this);
   ops::RegisterDepthwiseDeconv2d(this);
-  ops::RegisterDequantize(this);
   ops::RegisterEltwise(this);
   ops::RegisterExpandDims(this);
   ops::RegisterFill(this);
@@ -103,7 +105,6 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterMatMul(this);
   ops::RegisterPad(this);
   ops::RegisterPooling(this);
-  ops::RegisterQuantize(this);
   ops::RegisterReduceMean(this);
   ops::RegisterReshape(this);
   ops::RegisterResizeBicubic(this);
@@ -121,6 +122,11 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
   ops::RegisterSqueeze(this);
   ops::RegisterTranspose(this);
   ops::RegisterUnstack(this);
+
+#ifdef MACE_ENABLE_QUANTIZE
+  ops::RegisterDequantize(this);
+  ops::RegisterQuantize(this);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   ops::RegisterBufferTransform(this);

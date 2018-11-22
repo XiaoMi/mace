@@ -15,6 +15,7 @@ load(
     "if_openmp_enabled",
     "if_neon_enabled",
     "if_opencl_enabled",
+    "if_quantize_enabled",
 )
 
 cc_library(
@@ -51,6 +52,8 @@ cc_library(
         "-DMACE_ENABLE_OPENMP",
     ]) + if_opencl_enabled([
         "-DMACE_ENABLE_OPENCL",
+    ]) + if_quantize_enabled([
+        "-DMACE_ENABLE_QUANTIZE",
     ]) + if_hexagon_enabled([
         "-DMACE_ENABLE_HEXAGON",
     ]) + if_neon_enabled([
@@ -64,11 +67,12 @@ cc_library(
         "//mace/codegen:generated_version",
         "//mace/proto:mace_cc",
         "//mace/utils",
-        "@gemmlowp",
     ] + if_opencl_enabled([
         ":opencl_headers",
         "//mace/codegen:generated_opencl",
         "@half//:half",
+    ]) + if_quantize_enabled([
+        "@gemmlowp",
     ]) + if_hexagon_enabled([
         "//third_party/nnlib:libhexagon",
     ]),

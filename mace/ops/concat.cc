@@ -108,6 +108,7 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
   }
 };
 
+#ifdef MACE_ENABLE_QUANTIZE
 template <>
 class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
  public:
@@ -177,6 +178,7 @@ class ConcatOp<DeviceType::CPU, uint8_t> : public ConcatOpBase {
     return MaceStatus::MACE_SUCCESS;
   }
 };
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
 template <typename T>
@@ -209,8 +211,10 @@ void RegisterConcat(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
                    DeviceType::CPU, int32_t);
 
+#ifdef MACE_ENABLE_QUANTIZE
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
                    DeviceType::CPU, uint8_t);
+#endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
   MACE_REGISTER_OP(op_registry, "Concat", ConcatOp,
