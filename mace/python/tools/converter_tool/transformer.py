@@ -1652,22 +1652,6 @@ class Transformer(base_converter.ConverterInterface):
                                 [weight_data.shape[1]]
                         return True
 
-            # transform input(2D) -> matmul to fc
-            if op.type == MaceOp.MatMul.name and \
-                    filter_format == FilterFormat.HWIO:
-                producer = self._producer[op.input[0]]
-                weight = self._consts[op.input[1]]
-                if len(weight.dims) == 2 and \
-                        producer.type != MaceOp.Reshape.name and \
-                        len(producer.output_shape[0].dims) == 2 and \
-                        weight.dims[0] == producer.output_shape[0].dims[1]:
-                    six.print_('convert matmul to fc')
-                    op.type = MaceOp.FullyConnected.name
-                    weight_data = np.array(weight.float_data).reshape(
-                        weight.dims)
-                    weight.dims[:] = [1, 1] + list(weight_data.shape)
-                    return True
-
         return False
 
     def add_device(self):
