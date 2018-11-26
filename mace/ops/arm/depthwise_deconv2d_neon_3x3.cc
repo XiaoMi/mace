@@ -163,7 +163,7 @@ void DepthwiseDeconv2dNeonK3x3S2(const float *input,
 
         index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
-        for (; j + 3 < w; j += 4) {
+        for (index_t n = 0; n + 9 < outw; n += 8) {
           float32x4_t in_vec = vld1q_f32(in);
 
           // out row 0
@@ -209,6 +209,7 @@ void DepthwiseDeconv2dNeonK3x3S2(const float *input,
           out_row_0 += 8;
           out_row_1 += 8;
           out_row_2 += 8;
+          j += 4;
         }
 #endif
         for (; j < w; ++j) {
@@ -554,7 +555,7 @@ void GroupDeconv2dNeonK3x3S2(const float *input,
 
             index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
-            for (; j + 3 < w; j += 4) {
+            for (index_t n = 0; n + 9 < outw; n += 8) {
             float32x4_t in_vec = vld1q_f32(in);
 
             // out row 0
@@ -600,6 +601,7 @@ void GroupDeconv2dNeonK3x3S2(const float *input,
             out_row_0 += 8;
             out_row_1 += 8;
             out_row_2 += 8;
+            j += 4;
           }
 #endif
             for (; j < w; ++j) {

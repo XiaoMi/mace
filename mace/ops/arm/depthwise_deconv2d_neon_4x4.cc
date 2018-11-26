@@ -34,8 +34,8 @@ void DepthwiseDeconv2dNeonK4x4S1(const float *input,
   const index_t out_img_size = outh * outw;
 
 #pragma omp parallel for collapse(2)
-  for (int b = 0; b < batch; ++b) {
-    for (int c = 0; c < channels; ++c) {
+  for (index_t b = 0; b < batch; ++b) {
+    for (index_t c = 0; c < channels; ++c) {
       const index_t offset = b * channels + c;
       float *out_base = output + offset * out_img_size;
       const float *input_base = input + offset * in_img_size;
@@ -51,13 +51,13 @@ void DepthwiseDeconv2dNeonK4x4S1(const float *input,
       float32x4_t k2_vec = vld1q_f32(k2);
       float32x4_t k3_vec = vld1q_f32(k3);
 #endif
-      for (int i = 0; i < h; i++) {
+      for (index_t i = 0; i < h; i++) {
         float *out_row = out_base + i * outw;
         float *out_row_0 = out_row;
         float *out_row_1 = out_row_0 + outw;
         float *out_row_2 = out_row_1 + outw;
         float *out_row_3 = out_row_2 + outw;
-        int j = 0;
+        index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
         for (; j + 3 < w; j += 4) {
           float32x4_t in_vec = vld1q_f32(in);
@@ -170,8 +170,8 @@ void DepthwiseDeconv2dNeonK4x4S2(const float *input,
   const index_t out_img_size = outh * outw;
 
 #pragma omp parallel for collapse(2)
-  for (int b = 0; b < out_shape[0]; ++b) {
-    for (int c = 0; c < channels; ++c) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
+    for (index_t c = 0; c < channels; ++c) {
       const index_t offset = b * channels + c;
       float *out_base = output + offset * out_img_size;
       const float *input_base = input + offset * in_img_size;
@@ -188,7 +188,7 @@ void DepthwiseDeconv2dNeonK4x4S2(const float *input,
       float32x4_t k2_vec = vld1q_f32(k2);
       float32x4_t k3_vec = vld1q_f32(k3);
 #endif
-      for (int i = 0; i < h; i++) {
+      for (index_t i = 0; i < h; i++) {
         float *out_row = out_base + 2 * i * outw;
 
         float *out_row_0 = out_row;
@@ -196,9 +196,9 @@ void DepthwiseDeconv2dNeonK4x4S2(const float *input,
         float *out_row_2 = out_row_1 + outw;
         float *out_row_3 = out_row_2 + outw;
 
-        int j = 0;
+        index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
-        for (; j + 3 < w; j += 4) {
+        for (index_t n = 0; n + 9 < outw; n += 8) {
           float32x4_t in_vec = vld1q_f32(in);
 
           // row 0
@@ -262,6 +262,7 @@ void DepthwiseDeconv2dNeonK4x4S2(const float *input,
           out_row_1 += 8;
           out_row_2 += 8;
           out_row_3 += 8;
+          j += 4;
         }
 #endif
         for (; j < w; j++) {
@@ -304,15 +305,15 @@ void GroupDeconv2dNeonK4x4S1(const float *input,
   const index_t outch_g = outch / group;
 
 #pragma omp parallel for collapse(3)
-  for (int b = 0; b < out_shape[0]; ++b) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
     for (int g = 0; g < group; ++g) {
-      for (int oc = 0; oc < outch_g; oc += 2) {
+      for (index_t oc = 0; oc < outch_g; oc += 2) {
         if (oc + 1 < outch_g) {
           const index_t out_offset =
               (b * outch + outch_g * g + oc) * out_img_size;
           float *out_base = output + out_offset;
           float *out_base1 = out_base + out_img_size;
-          for (int ic = 0; ic < inch_g; ic++) {
+          for (index_t ic = 0; ic < inch_g; ic++) {
             const index_t in_offset =
                 (b * inch + inch_g * g + ic) * in_img_size;
             const float *input_base = input + in_offset;
@@ -341,7 +342,7 @@ void GroupDeconv2dNeonK4x4S1(const float *input,
             float32x4_t k12_vec = vld1q_f32(k12);
             float32x4_t k13_vec = vld1q_f32(k13);
 #endif
-            for (int i = 0; i < h; i++) {
+            for (index_t i = 0; i < h; i++) {
               float *out_row = out_base + i * outw;
 
               float *out_row_0 = out_row;
@@ -356,7 +357,7 @@ void GroupDeconv2dNeonK4x4S1(const float *input,
               float *out_row1_2 = out_row1_1 + outw;
               float *out_row1_3 = out_row1_2 + outw;
 
-              int j = 0;
+              index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
               for (; j + 3 < w; j += 4) {
               float32x4_t in_vec = vld1q_f32(in);
@@ -533,7 +534,7 @@ void GroupDeconv2dNeonK4x4S1(const float *input,
           const index_t out_offset =
               (b * outch + outch_g * g + oc) * out_img_size;
           float *out_base = output + out_offset;
-          for (int ic = 0; ic < inch_g; ++ic) {
+          for (index_t ic = 0; ic < inch_g; ++ic) {
             const index_t in_offset =
                 (b * inch + inch_g * g + ic) * in_img_size;
             const index_t kernel_offset =
@@ -552,13 +553,13 @@ void GroupDeconv2dNeonK4x4S1(const float *input,
             float32x4_t k2_vec = vld1q_f32(k2);
             float32x4_t k3_vec = vld1q_f32(k3);
 #endif
-            for (int i = 0; i < h; i++) {
+            for (index_t i = 0; i < h; i++) {
               float *out_row = out_base + i * outw;
               float *out_row_0 = out_row;
               float *out_row_1 = out_row_0 + outw;
               float *out_row_2 = out_row_1 + outw;
               float *out_row_3 = out_row_2 + outw;
-              int j = 0;
+              index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
               for (; j + 3 < w; j += 4) {
               float32x4_t in_vec = vld1q_f32(in);
@@ -679,13 +680,13 @@ void GroupDeconv2dNeonK4x4S2(const float *input,
   const index_t outch_g = outch / group;
 
 #pragma omp parallel for collapse(3)
-  for (int b = 0; b < out_shape[0]; ++b) {
+  for (index_t b = 0; b < out_shape[0]; ++b) {
     for (int g = 0; g < group; ++g) {
-      for (int oc = 0; oc < outch_g; oc++) {
+      for (index_t oc = 0; oc < outch_g; oc++) {
         const index_t out_offset =
             (b * outch + outch_g * g + oc) * out_img_size;
         float *out_base = output + out_offset;
-        for (int ic = 0; ic < inch_g; ic++) {
+        for (index_t ic = 0; ic < inch_g; ic++) {
           const index_t in_offset =
               (b * inch + inch_g * g + ic) * in_img_size;
           const index_t kernel_offset =
@@ -704,7 +705,7 @@ void GroupDeconv2dNeonK4x4S2(const float *input,
           float32x4_t k2_vec = vld1q_f32(k2);
           float32x4_t k3_vec = vld1q_f32(k3);
 #endif
-          for (int i = 0; i < h; i++) {
+          for (index_t i = 0; i < h; i++) {
             float *out_row = out_base + 2 * i * outw;
 
             float *out_row_0 = out_row;
@@ -712,9 +713,9 @@ void GroupDeconv2dNeonK4x4S2(const float *input,
             float *out_row_2 = out_row_1 + outw;
             float *out_row_3 = out_row_2 + outw;
 
-            int j = 0;
+            index_t j = 0;
 #if defined(MACE_ENABLE_NEON)
-            for (; j + 3 < w; j += 4) {
+            for (index_t n = 0; n + 9 < outw; n += 8) {
             float32x4_t in_vec = vld1q_f32(in);
 
             // row 0
@@ -778,6 +779,7 @@ void GroupDeconv2dNeonK4x4S2(const float *input,
             out_row_1 += 8;
             out_row_2 += 8;
             out_row_3 += 8;
+            j += 4;
           }
 #endif
             for (; j < w; j++) {
