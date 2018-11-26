@@ -68,6 +68,7 @@ mace::DeviceType ParseDeviceType(const std::string &device) {
 }
 
 MaceContext& GetMaceContext() {
+  // TODO(yejianwu): In multi-dlopen process, this step may cause memory leak.
   static auto *mace_context = new MaceContext;
 
   return *mace_context;

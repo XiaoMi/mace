@@ -56,7 +56,7 @@ python tools/converter.py convert --config=mace/examples/android/mobilenet.yml -
 cp -rf builds/mobilenet/include/mace/public/*.h $INCLUDE_DIR
 cp -rf builds/mobilenet/model $LIBRARY_DIR
 
-bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define neon=true --define openmp=true --define opencl=true --cpu=$TARGET_ABI
+bazel build --config android --config optimization $BAZEL_LIBMACE_TARGET --define neon=true --define openmp=true --define opencl=true --define quantize=true --cpu=$TARGET_ABI
 cp -rf mace/public/*.h $INCLUDE_DIR
 cp -rf $BAZEL_GEN_LIBMACE_PATH $LIBMACE_DIR
 
