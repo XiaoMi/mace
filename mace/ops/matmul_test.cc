@@ -315,14 +315,20 @@ void QuantOutputInt32(const std::vector<index_t> &batch,
   index_t batch_count = std::accumulate(batch.begin(), batch.end(), 1,
                                         std::multiplies<index_t>());
   if (transpose_a) {
-    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height});
+    net.AddRandomInput<CPU, float>("A", {batch_count, channels, height},
+                                   false);
   } else {
-    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels});
+    net.AddRandomInput<CPU, float>("A", {batch_count, height, channels},
+                                   false);
   }
   if (transpose_b) {
-    net.AddRandomInput<CPU, float>("B", {batch_count, out_width, channels});
+    net.AddRandomInput<CPU, float>("B",
+                                   {batch_count, out_width, channels},
+                                   false);
   } else {
-    net.AddRandomInput<CPU, float>("B", {batch_count, channels, out_width});
+    net.AddRandomInput<CPU, float>("B",
+                                   {batch_count, channels, out_width},
+                                   false);
   }
 
   OpDefBuilder("MatMul", "MatMulTest")
@@ -411,11 +417,18 @@ TEST_F(MatMulOpTest, QuantOutputInt32) {
   QuantOutputInt32({1}, 64, 128, 32, true, true);
   QuantOutputInt32({1}, 64, 32, 128, true, true);
   QuantOutputInt32({2, 3}, 64, 32, 128, true, true);
+  QuantOutputInt32({1}, 1, 30000, 256, false, true);
+  QuantOutputInt32({1}, 30000, 256, 1, false, false);
+  QuantOutputInt32({2}, 1, 256, 128, false, true);
+  QuantOutputInt32({3}, 128, 256, 1, false, false);
+
   // UnAligned
   QuantOutputInt32({2}, 3, 3, 3, false, false);
   QuantOutputInt32({16}, 31, 61, 67, false, true);
   QuantOutputInt32({31}, 31, 61, 67, true, false);
   QuantOutputInt32({2, 3}, 31, 61, 67, true, true);
+  QuantOutputInt32({1}, 1, 30001, 253, false, true);
+  QuantOutputInt32({2}, 253, 300, 1, false, false);
 }
 
 // TODO(liyin): test transpose after implementing gpu runtime
