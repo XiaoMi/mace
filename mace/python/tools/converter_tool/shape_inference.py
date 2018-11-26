@@ -81,7 +81,8 @@ class ShapeInference(object):
     def infer_shape_general(self, op):
         if len(op.input) > 0:
             mace_check(op.input[0] in self._output_shape_cache,
-                       "%s does not exist" % op.input[0])
+                       "Op %s input %s does not exist"
+                       % (op.name, op.input[0]))
             input_shape = self._output_shape_cache[op.input[0]]
             self.add_output_shape(op, [input_shape])
 
