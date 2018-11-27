@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <unistd.h>
+#include <sys/mman.h>
 #include <memory>
 
 #include "mace/ops/sgemm.h"
 #include "mace/core/runtime/cpu/cpu_runtime.h"
-
 
 #if defined(MACE_ENABLE_NEON)
 #include <arm_neon.h>
@@ -25,6 +26,28 @@
 #if defined(MACE_ENABLE_NEON) && !defined(__aarch64__)
 #define vaddvq_f32(v) ((v)[0] + (v)[1] + (v)[2] + (v)[3])
 #endif
+
+namespace {
+
+inline void AdviseFree(void *addr, size_t length) {
+  int page_size = getpagesize();
+  void *addr_aligned =
+      reinterpret_cast<void *>(
+          (reinterpret_cast<uintptr_t>(addr) + page_size - 1)
+              & (~(page_size - 1)));
+  uintptr_t delta =
+      reinterpret_cast<uintptr_t>(addr_aligned)
+          - reinterpret_cast<uintptr_t>(addr);
+  if (length >= delta + page_size) {
+    size_t len_aligned = (length - delta) & (~(page_size - 1));
+    int ret = madvise(addr_aligned, len_aligned, MADV_DONTNEED);
+    if (ret != 0) {
+      LOG(ERROR) << "Advise free failed: " << strerror(errno);
+    }
+  }
+}
+
+}  // namespace
 
 namespace mace {
 namespace ops {
@@ -80,9 +103,17 @@ void SGemm::operator()(const MatrixMap<const float> &lhs,
 
   if (!lhs.is_const() || !packed_) {
     PackLhs(lhs, packed_lhs_.get());
+    if (lhs.is_const()) {
+      AdviseFree(reinterpret_cast<void *>(const_cast<float *>(lhs.data())),
+                 lhs.size() * sizeof(float));
+    }
   }
   if (!rhs.is_const() || !packed_) {
     PackRhs(rhs, packed_rhs_.get());
+    if (rhs.is_const()) {
+      AdviseFree(reinterpret_cast<void *>(const_cast<float *>(rhs.data())),
+                 rhs.size() * sizeof(float));
+    }
   }
   packed_ = true;
 
@@ -128,11 +159,11 @@ void SGemm::Run(const float *A,
                              is_a_weight);
   MatrixMap<const float> matrix_b =
       ops::MatrixMap<const float>(batch,
-                                      height_b,
-                                      width_b,
-                                      ops::RowMajor,
-                                      B,
-                                      is_b_weight);
+                                  height_b,
+                                  width_b,
+                                  ops::RowMajor,
+                                  B,
+                                  is_b_weight);
   if (transpose_a) {
     matrix_a = matrix_a.transpose();
   }
@@ -1010,7 +1041,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
       std::copy_n(src_data + ih * width, width, packed_data + ih * width);
     }
   } else if (src.map_major() == Major::ColMajor &&
-             order == PackOrder::ColMajor) {
+      order == PackOrder::ColMajor) {
     // This is for packing transpose-needed lhs.
     index_t h = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1052,7 +1083,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
       }
     }
   } else if (src.map_major() == Major::RowMajor &&
-             order == PackOrder::RowMajor) {
+      order == PackOrder::RowMajor) {
     // This is for packing no-transpose rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
@@ -1078,7 +1109,7 @@ void SGemm::PackPerBatch(const MatrixMap<const float> &src,
       }
     }
   } else if (src.map_major() == Major::ColMajor &&
-             order == PackOrder::RowMajor) {
+      order == PackOrder::RowMajor) {
     // This is for packing transpose-needed rhs.
     index_t w = 0;
 #if defined(MACE_ENABLE_NEON)
