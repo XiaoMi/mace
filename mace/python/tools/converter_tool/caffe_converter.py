@@ -324,12 +324,17 @@ class CaffeConverter(base_converter.ConverterInterface):
                 global_pooling_arg.i = 1
 
     def convert_ops(self):
+        layer_names = set()
         for layer in self._caffe_layers.layer:
             caffe_op = self._caffe_net.get_op(layer.name)
             if caffe_op not in self._skip_ops:
+                mace_check(layer.name not in layer_names,
+                           "There is duplicate layer name '%s' in your model"
+                           % layer.name)
                 mace_check(layer.type in self._op_converters,
                            "Mace does not support caffe op type %s yet"
                            % layer.type)
+                layer_names.add(layer.name)
                 self._op_converters[layer.type](caffe_op)
 
     def add_tensor(self, name, shape, data_type, value):
