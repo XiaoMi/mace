@@ -32,7 +32,7 @@ void DepthwiseDeconv2dNeonK3x3S1(const float *input,
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const index_t offset = b * channels + c;
@@ -137,7 +137,7 @@ void DepthwiseDeconv2dNeonK3x3S2(const float *input,
   const index_t outw = out_shape[3];
   const index_t out_img_size = outh * outw;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (index_t c = 0; c < channels; ++c) {
       const index_t offset = b * channels + c;
@@ -251,7 +251,7 @@ void GroupDeconv2dNeonK3x3S1(const float *input,
   const index_t inch_g = inch / group;
   const index_t outch_g = outch / group;
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (int g = 0; g < group; ++g) {
       for (index_t oc = 0; oc < outch_g; oc += 2) {
@@ -525,7 +525,7 @@ void GroupDeconv2dNeonK3x3S2(const float *input,
   const index_t inch_g = inch / group;
   const index_t outch_g = outch / group;
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (int g = 0; g < group; ++g) {
       for (index_t oc = 0; oc < outch_g; ++oc) {

@@ -62,7 +62,7 @@ class GatherOp : public Operation {
                         params->shape().end(), 1, std::multiplies<index_t>());
     index_t index_size = indices->size();
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t l = 0; l < lhs_size; ++l) {
       for (index_t idx = 0; idx < index_size; ++idx) {
         MACE_ASSERT(indices_data[idx] < axis_dim_size, "idx out of bound: ",

@@ -276,7 +276,7 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
       const index_t batch = out_shape[0];
       const index_t channels = out_shape[1];
       const index_t img_size = out_shape[2] * out_shape[3];
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channels; ++c) {
           for (index_t i = 0; i < img_size; ++i) {
@@ -324,7 +324,7 @@ class Deconv2dOp<DeviceType::CPU, float> : public Deconv2dOpBase {
     const index_t out_channels = out_shape[1];
     const index_t in_channels = in_shape[1];
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (int b = 0; b < batch; ++b) {
       for (int oc = 0; oc < out_channels; ++oc) {
         float *out_base =

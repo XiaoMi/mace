@@ -475,7 +475,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 
     // unpack output
     if (extra_output_height != height || extra_output_width != width) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channels; ++c) {
           for (index_t h = 0; h < height; ++h) {
@@ -494,7 +494,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
 
     if (bias_data != nullptr) {
       const index_t image_size = height * width;
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
       for (index_t b = 0; b < batch; ++b) {
         for (index_t c = 0; c < channels; ++c) {
           float *output_ptr = output_data + (b * channels + c) * image_size;
@@ -539,7 +539,7 @@ class Conv2dOp<DeviceType::CPU, float> : public ConvPool2dOpBase {
     const index_t out_batch_size = filter_shape[0] * out_image_size;
     const index_t filter_size = filter_shape[2] * filter_shape[3];
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (index_t b = 0; b < in_shape[0]; b++) {
       for (index_t m = 0; m < filter_shape[0]; m += 4) {
         const index_t in_width = in_shape[3];
@@ -867,7 +867,7 @@ class Conv2dOp<DeviceType::CPU, uint8_t> : public ConvPool2dOpBase {
     const index_t input_row_size = in_shape[2] * in_shape[3];
     const index_t patch_row_size = filter_w * in_shape[3];
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
     for (index_t b = 0; b < out_shape[0]; ++b) {
       for (index_t h = 0; h < out_shape[1]; ++h) {
         for (index_t w = 0; w < out_shape[2]; ++w) {

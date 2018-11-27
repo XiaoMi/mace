@@ -34,7 +34,7 @@ void TransformInput4x4(const float *input,
   const index_t input_batch_size = in_height_width * in_channels;
   const index_t output_batch_size = 16 * in_channels * tile_count;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < in_channels; ++c) {
       index_t tile_index = 0;
@@ -155,7 +155,7 @@ void TransformInput8x8(const float *input,
   const index_t input_batch_size = in_height_width * in_channels;
   const index_t output_batch_size = 64 * in_channels * tile_count;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t c = 0; c < in_channels; ++c) {
       index_t tile_index = 0;
@@ -292,7 +292,7 @@ void TransformOutput4x4(const float *input,
   const index_t out_image_size = out_height * out_width;
   const index_t output_batch_size = out_channels * out_image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t m = 0; m < out_channels; ++m) {
       index_t tile_offset = 0;
@@ -388,7 +388,7 @@ void TransformOutput8x8(const float *input,
   const index_t out_image_size = out_height * out_width;
   const index_t output_batch_size = out_channels * out_image_size;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t n = 0; n < batch; ++n) {
     for (index_t m = 0; m < out_channels; ++m) {
       index_t tile_offset = 0;
@@ -471,7 +471,7 @@ void TransformFilter4x4(const float *filter,
                         float *output) {
   const index_t stride = out_channels * in_channels;
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t m = 0; m < out_channels; ++m) {
     for (index_t c = 0; c < in_channels; ++c) {
       float g0, g1, g2, g3, g4, g5, g6, g7, g8;
@@ -573,7 +573,7 @@ void TransformFilter8x8(const float *filter,
                          {1.0f / 45, -1.0f / 90, 1.0f / 180},
                          {0.0f, 0.0f, 1.0f}};
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2) schedule(runtime)
   for (index_t m = 0; m < out_channels; ++m) {
     for (index_t c = 0; c < in_channels; ++c) {
       // load filter
@@ -720,7 +720,7 @@ void ConvRef3x3s1(const float *input,
   index_t out_height = in_height - 2;
   index_t out_width = in_width - 2;
 
-#pragma omp parallel for collapse(4)
+#pragma omp parallel for collapse(4) schedule(runtime)
   for (index_t b = 0; b < batch; ++b) {
     for (index_t m = 0; m < out_channels; ++m) {
       for (index_t h = 0; h < out_height; ++h) {

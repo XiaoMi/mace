@@ -60,7 +60,7 @@ void Conv2dNeonK15x1S1(const float *input,
   const index_t tile_width =
       out_shape[1] < 4 ? RoundUpDiv4(out_shape[3]) : out_shape[3];
 
-#pragma omp parallel for collapse(3)
+#pragma omp parallel for collapse(3) schedule(runtime)
   for (index_t b = 0; b < out_shape[0]; ++b) {
     for (index_t m = 0; m < out_shape[1]; ++m) {
       for (index_t w = 0; w < out_shape[3]; w += tile_width) {
