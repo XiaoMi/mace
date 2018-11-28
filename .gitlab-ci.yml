@@ -120,11 +120,13 @@ model_tests:
     - pwd
     - rm -rf mace-models
     - GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:XiaoMi/mace-models.git
-    - CONF_FILE=mace-models/mobilenet-v1/mobilenet-v1.yml
     - >
+      for CONF_FILE in mace-models/mobilenet-v1/mobilenet-v1.yml mace-models/mobilenet-v1/mobilenet-v1-quantize-retrain.yml;
+      do
       python tools/converter.py convert --config=${CONF_FILE} --target_abis=armeabi-v7a --model_graph_format=file --model_data_format=file --cl_mem_type=buffer || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --round=1 --target_abis=armeabi-v7a --validate --model_graph_format=file --model_data_format=file || exit 1;
       python tools/converter.py run --config=${CONF_FILE} --example --target_abis=armeabi-v7a --round=1 --validate --model_graph_format=file --model_data_format=file || exit 1;
+      done
     - CONF_FILE=mace-models/mobilenet-v2/mobilenet-v2-host.yml
     - >
       python tools/converter.py convert --config=${CONF_FILE} --model_graph_format=file --model_data_format=file || exit 1;
