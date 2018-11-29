@@ -46,28 +46,28 @@ namespace mace {
     break;                            \
   }
 
-#ifdef MACE_ENABLE_OPENCL
-#define MACE_TYPE_ENUM_SWITCH(                                     \
-    TYPE_ENUM, STATEMENTS, INVALID_STATEMENTS, DEFAULT_STATEMENTS) \
-  switch (TYPE_ENUM) {                                             \
-    MACE_CASE(half, MACE_SINGLE_ARG(STATEMENTS))                   \
-    MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
-    MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
-    MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
-    case DT_INVALID:                                               \
-      INVALID_STATEMENTS;                                          \
-      break;                                                       \
-    default:                                                       \
-      DEFAULT_STATEMENTS;                                          \
-      break;                                                       \
-  }
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__) && defined(ANDROID)
+#define MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)             \
+  MACE_CASE(float16_t, MACE_SINGLE_ARG(STATEMENTS))
 #else
+#define MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)
+#endif
+
+#if MACE_ENABLE_OPENCL
+#define MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)           \
+  MACE_CASE(half, MACE_SINGLE_ARG(STATEMENTS))
+#else
+#define MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)
+#endif
+
 #define MACE_TYPE_ENUM_SWITCH(                                     \
     TYPE_ENUM, STATEMENTS, INVALID_STATEMENTS, DEFAULT_STATEMENTS) \
   switch (TYPE_ENUM) {                                             \
     MACE_CASE(float, MACE_SINGLE_ARG(STATEMENTS))                  \
     MACE_CASE(uint8_t, MACE_SINGLE_ARG(STATEMENTS))                \
     MACE_CASE(int32_t, MACE_SINGLE_ARG(STATEMENTS))                \
+    MACE_TYPE_ENUM_SWITCH_CASE_NEON(STATEMENTS)                    \
+    MACE_TYPE_ENUM_SWITCH_CASE_OPENCL(STATEMENTS)                  \
     case DT_INVALID:                                               \
       INVALID_STATEMENTS;                                          \
       break;                                                       \
@@ -75,7 +75,6 @@ namespace mace {
       DEFAULT_STATEMENTS;                                          \
       break;                                                       \
   }
-#endif
 
 // `TYPE_ENUM` will be converted to template `T` in `STATEMENTS`
 #define MACE_RUN_WITH_TYPE_ENUM(TYPE_ENUM, STATEMENTS)                       \

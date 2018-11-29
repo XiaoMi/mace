@@ -140,6 +140,7 @@ def main(unused_args):
     option.winograd = FLAGS.winograd
     option.quantize = FLAGS.quantize
     option.quantize_range_file = FLAGS.quantize_range_file
+    option.fp16_matmul_file = FLAGS.fp16_matmul_file
     option.change_concat_ranges = FLAGS.change_concat_ranges
     option.cl_mem_type = FLAGS.cl_mem_type
     option.device = device_type_map[FLAGS.runtime]
@@ -384,6 +385,11 @@ def parse_args():
         type=str,
         default="",
         help="file path of quantize range for each tensor")
+    parser.add_argument(
+        "--fp16_matmul_file",
+        type=str,
+        default="",
+        help="file path of matmul names for fp16")
     parser.add_argument(
         "--change_concat_ranges",
         type=str2bool,

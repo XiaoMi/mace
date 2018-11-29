@@ -263,8 +263,13 @@ void MatMulBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("A", {batch, height, channels});
-  net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+  if (DataTypeToEnum<T>::value == DT_FLOAT16) {
+    net.AddRandomInput<D, float16_t>("A", {batch, height, channels});
+    net.AddRandomInput<D, float>("B", {batch, channels, out_width});
+  } else {
+    net.AddRandomInput<D, T>("A", {batch, height, channels});
+    net.AddRandomInput<D, T>("B", {batch, channels, out_width});
+  }
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -305,8 +310,13 @@ void MatMulTransposeBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, T>("A", {batch, height, channels});
-  net.AddRandomInput<D, T>("B", {batch, out_width, channels});
+  if (DataTypeToEnum<T>::value == DT_FLOAT16) {
+    net.AddRandomInput<D, float>("A", {batch, height, channels});
+    net.AddRandomInput<D, float16_t>("B", {batch, out_width, channels});
+  } else {
+    net.AddRandomInput<D, T>("A", {batch, height, channels});
+    net.AddRandomInput<D, float>("B", {batch, out_width, channels});
+  }
   net.GetTensor("A")->SetIsWeight(true);
   net.GetTensor("B")->SetIsWeight(true);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -381,11 +391,8 @@ void MatMulTransposeBenchmark(
 #ifdef MACE_ENABLE_QUANTIZE
 #define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
   MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU);     \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU)
-#else
-#define MACE_BM_MATMUL_TRANPOSE(N, H, C, W)                   \
-  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float, CPU)
-#endif
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, float16_t, CPU);     \
+  MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, uint8_t, CPU);
 
 MACE_BM_MATMUL_OP(1, 30000, 256, 1);
 MACE_BM_MATMUL_OP(1, 128, 256, 128);

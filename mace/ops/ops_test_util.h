@@ -162,7 +162,8 @@ class OpsTestNet {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::normal_distribution<float> nd(0, 1);
-    if (DataTypeToEnum<T>::value == DT_HALF) {
+    if (DataTypeToEnum<T>::value == DT_HALF ||
+        DataTypeToEnum<T>::value == DT_FLOAT16) {
       std::generate(
           input_data, input_data + input->size(),
           [&gen, &nd, positive, truncate, truncate_min, truncate_max] {
