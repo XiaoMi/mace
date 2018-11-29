@@ -14,6 +14,10 @@
 
 #include "mace/core/operator.h"
 
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+#include <arm_neon.h>
+#endif
+
 namespace mace {
 namespace ops {
 
@@ -55,6 +59,10 @@ void RegisterCast(OpRegistryBase *op_registry) {
                    DeviceType::CPU, float);
   MACE_REGISTER_OP(op_registry, "Cast", CastOp,
                    DeviceType::CPU, int32_t);
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  MACE_REGISTER_OP(op_registry, "Cast", CastOp,
+                   DeviceType::CPU, float16_t);
+#endif
 }
 
 }  // namespace ops

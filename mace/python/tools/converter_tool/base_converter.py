@@ -315,6 +315,7 @@ class TransformerRule(Enum):
     UPDATE_DATA_FORMAT = 39
     QUANTIZE_SPECIFIC_OPS_ONLY = 40
     FP16_MATMUL_WEIGHT = 41
+    FP16_GATHER_WEIGHT = 42
 
 
 class ConverterInterface(object):

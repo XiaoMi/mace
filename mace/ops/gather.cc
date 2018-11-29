@@ -93,6 +93,10 @@ void RegisterGather(OpRegistryBase *op_registry) {
   MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
                    DeviceType::CPU, uint8_t);
 #endif  // MACE_ENABLE_QUANTIZE
+#if defined(MACE_ENABLE_NEON) && defined(__ANDROID__)
+  MACE_REGISTER_OP(op_registry, "Gather", GatherOp,
+                   DeviceType::CPU, float16_t);
+#endif
 }
 
 }  // namespace ops
