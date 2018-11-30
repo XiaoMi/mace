@@ -15,6 +15,7 @@
 #include "mace/ops/resize_bicubic.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 

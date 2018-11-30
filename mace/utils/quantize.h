@@ -15,8 +15,9 @@
 #ifndef MACE_UTILS_QUANTIZE_H_
 #define MACE_UTILS_QUANTIZE_H_
 
-#include <limits>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace mace {
 

@@ -23,13 +23,16 @@ import struct
 import subprocess
 import sys
 import time
-import urllib
 import platform
-from enum import Enum
 
 import six
 
 import common
+from common import ModelFormat
+from common import ABIType
+from common import SystemType
+from common import YAMLKeyword
+from common import abi_to_internal
 
 sys.path.insert(0, "mace/python/tools")
 try:
@@ -86,11 +89,6 @@ def is_device_locked(serialno):
 
 class BuildType(object):
     proto = 'proto'
-    code = 'code'
-
-
-class ModelFormat(object):
-    file = 'file'
     code = 'code'
 
 
@@ -190,7 +188,7 @@ def adb_pull(src_path, dst_path, serialno):
     try:
         sh.adb("-s", serialno, "pull", src_path, dst_path)
     except Exception as e:
-        six.print_("Error msg: %s" % e.stderr)
+        six.print_("Error msg: %s" % e, file=sys.stderr)
 
 
 def adb_run(abi,
@@ -293,7 +291,7 @@ def find_asan_rt_library(abi, asan_rt_path=''):
         if len(candidates) == 0:
             common.MaceLogger.error(
                 "Toolchain",
-                "Can't find AddressSanitizer runtime library in % s" %
+                "Can't find AddressSanitizer runtime library in %s" %
                 find_path)
         elif len(candidates) > 1:
             common.MaceLogger.info(
@@ -338,6 +336,7 @@ def find_simpleperf_library(abi, simpleperf_path=''):
 ################################
 def bazel_build(target,
                 abi="armeabi-v7a",
+                toolchain='android',
                 hexagon_mode=False,
                 enable_openmp=True,
                 enable_neon=True,
@@ -361,8 +360,8 @@ def bazel_build(target,
             "build",
             target,
             "--config",
-            "android",
-            "--cpu=%s" % abi,
+            toolchain,
+            "--cpu=%s" % abi_to_internal(abi),
             "--define",
             "neon=%s" % str(enable_neon).lower(),
             "--define",
@@ -694,230 +693,20 @@ def push_depended_so_libs(libmace_dynamic_library_path,
     for dep in split_stdout(dep_so_libs):
         if dep == "libgnustl_shared.so":
             adb_push(
-                    "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so"  # noqa
-                    % (os.environ["ANDROID_NDK_HOME"], abi),
-                    phone_data_dir,
-                    serialno)
+                "%s/sources/cxx-stl/gnu-libstdc++/4.9/libs/%s/libgnustl_shared.so"  # noqa
+                % (os.environ["ANDROID_NDK_HOME"], abi),
+                phone_data_dir,
+                serialno)
         elif dep == "libc++_shared.so":
             adb_push(
-                    "%s/sources/cxx-stl/llvm-libc++/libs/%s/libc++_shared.so"  # noqa
-                    % (os.environ["ANDROID_NDK_HOME"], abi),
-                    phone_data_dir,
-                    serialno)
-
-
-def tuning_run(abi,
-               serialno,
-               target_dir,
-               target_name,
-               vlog_level,
-               embed_model_data,
-               model_output_dir,
-               input_nodes,
-               output_nodes,
-               input_shapes,
-               output_shapes,
-               mace_model_dir,
-               model_tag,
-               device_type,
-               running_round,
-               restart_round,
-               limit_opencl_kernel_time,
-               tuning,
-               out_of_range_check,
-               phone_data_dir,
-               model_graph_format,
-               opencl_binary_file,
-               opencl_parameter_file,
-               libmace_dynamic_library_path,
-               omp_num_threads=-1,
-               cpu_affinity_policy=1,
-               gpu_perf_hint=3,
-               gpu_priority_hint=3,
-               input_file_name="model_input",
-               output_file_name="model_out",
-               input_dir="",
-               output_dir="",
-               runtime_failure_ratio=0.0,
-               address_sanitizer=False,
-               link_dynamic=False,
-               quantize_stat=False):
-    six.print_("* Run '%s' with round=%s, restart_round=%s, tuning=%s, "
-               "out_of_range_check=%s, omp_num_threads=%s, "
-               "cpu_affinity_policy=%s, gpu_perf_hint=%s, "
-               "gpu_priority_hint=%s" %
-               (model_tag, running_round, restart_round, str(tuning),
-                str(out_of_range_check), omp_num_threads, cpu_affinity_policy,
-                gpu_perf_hint, gpu_priority_hint))
-    sys.stdout.flush()
-
-    mace_model_path = ""
-    if model_graph_format == ModelFormat.file:
-        mace_model_path = "%s/%s.pb" % (mace_model_dir, model_tag)
-    if abi == "host":
-        libmace_dynamic_lib_path = \
-            os.path.dirname(libmace_dynamic_library_path)
-        cmd = [
-            "env",
-            "LD_LIBRARY_PATH=%s" % libmace_dynamic_lib_path,
-            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-            "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-        ]
-        if quantize_stat:
-            cmd.append("MACE_LOG_TENSOR_RANGE=1")
-        cmd.extend([
-            "%s/%s" % (target_dir, target_name),
-            "--model_name=%s" % model_tag,
-            "--input_node=%s" % ",".join(input_nodes),
-            "--output_node=%s" % ",".join(output_nodes),
-            "--input_shape=%s" % ":".join(input_shapes),
-            "--output_shape=%s" % ":".join(output_shapes),
-            "--input_file=%s/%s" % (model_output_dir, input_file_name),
-            "--output_file=%s/%s" % (model_output_dir, output_file_name),
-            "--input_dir=%s" % input_dir,
-            "--output_dir=%s" % output_dir,
-            "--model_data_file=%s/%s.data" % (mace_model_dir, model_tag),
-            "--device=%s" % device_type,
-            "--round=%s" % running_round,
-            "--restart_round=%s" % restart_round,
-            "--omp_num_threads=%s" % omp_num_threads,
-            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
-            "--gpu_perf_hint=%s" % gpu_perf_hint,
-            "--gpu_priority_hint=%s" % gpu_priority_hint,
-            "--model_file=%s" % mace_model_path,
-        ])
-        p = subprocess.Popen(
-            cmd,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE)
-        out, err = p.communicate()
-        stdout = err + out
-        six.print_(stdout)
-        six.print_("Running finished!\n")
-    else:
-        sh.adb("-s", serialno, "shell", "mkdir", "-p", phone_data_dir)
-        internal_storage_dir = create_internal_storage_dir(
-            serialno, phone_data_dir)
-
-        for input_name in input_nodes:
-            formatted_name = common.formatted_file_name(input_file_name,
-                                                        input_name)
-            adb_push("%s/%s" % (model_output_dir, formatted_name),
-                     phone_data_dir, serialno)
-        if address_sanitizer:
-            adb_push(find_asan_rt_library(abi), phone_data_dir, serialno)
-
-        if not embed_model_data:
-            adb_push("%s/%s.data" % (mace_model_dir, model_tag),
-                     phone_data_dir, serialno)
-
-        if device_type == common.DeviceType.GPU:
-            if os.path.exists(opencl_binary_file):
-                adb_push(opencl_binary_file, phone_data_dir, serialno)
-            if os.path.exists(opencl_parameter_file):
-                adb_push(opencl_parameter_file, phone_data_dir, serialno)
-
-        adb_push("third_party/nnlib/libhexagon_controller.so",
-                 phone_data_dir, serialno)
-
-        mace_model_phone_path = ""
-        if model_graph_format == ModelFormat.file:
-            mace_model_phone_path = "%s/%s.pb" % (phone_data_dir, model_tag)
-            adb_push(mace_model_path,
-                     mace_model_phone_path,
-                     serialno)
-
-        if link_dynamic:
-            adb_push(libmace_dynamic_library_path, phone_data_dir,
-                     serialno)
-            push_depended_so_libs(libmace_dynamic_library_path, abi,
-                                  phone_data_dir, serialno)
-
-        adb_push("%s/%s" % (target_dir, target_name), phone_data_dir,
-                 serialno)
-
-        stdout_buff = []
-        process_output = make_output_processor(stdout_buff)
-        adb_cmd = [
-            "LD_LIBRARY_PATH=%s" % phone_data_dir,
-            "MACE_TUNING=%s" % int(tuning),
-            "MACE_OUT_OF_RANGE_CHECK=%s" % int(out_of_range_check),
-            "MACE_CPP_MIN_VLOG_LEVEL=%s" % vlog_level,
-            "MACE_RUN_PARAMETER_PATH=%s/mace_run.config" % phone_data_dir,
-            "MACE_INTERNAL_STORAGE_PATH=%s" % internal_storage_dir,
-            "MACE_LIMIT_OPENCL_KERNEL_TIME=%s" % limit_opencl_kernel_time,
-            "MACE_RUNTIME_FAILURE_RATIO=%f" % runtime_failure_ratio,
-        ]
-        if quantize_stat:
-            adb_cmd.append("MACE_LOG_TENSOR_RANGE=1")
-        if address_sanitizer:
-            adb_cmd.extend([
-                "LD_PRELOAD=%s/%s" % (phone_data_dir,
-                                      asan_rt_library_names(abi))
-            ])
-        adb_cmd.extend([
-            "%s/%s" % (phone_data_dir, target_name),
-            "--model_name=%s" % model_tag,
-            "--input_node=%s" % ",".join(input_nodes),
-            "--output_node=%s" % ",".join(output_nodes),
-            "--input_shape=%s" % ":".join(input_shapes),
-            "--output_shape=%s" % ":".join(output_shapes),
-            "--input_file=%s/%s" % (phone_data_dir, input_file_name),
-            "--output_file=%s/%s" % (phone_data_dir, output_file_name),
-            "--input_dir=%s" % input_dir,
-            "--output_dir=%s" % output_dir,
-            "--model_data_file=%s/%s.data" % (phone_data_dir, model_tag),
-            "--device=%s" % device_type,
-            "--round=%s" % running_round,
-            "--restart_round=%s" % restart_round,
-            "--omp_num_threads=%s" % omp_num_threads,
-            "--cpu_affinity_policy=%s" % cpu_affinity_policy,
-            "--gpu_perf_hint=%s" % gpu_perf_hint,
-            "--gpu_priority_hint=%s" % gpu_priority_hint,
-            "--model_file=%s" % mace_model_phone_path,
-            "--opencl_binary_file=%s/%s" %
-            (phone_data_dir, os.path.basename(opencl_binary_file)),
-            "--opencl_parameter_file=%s/%s" %
-            (phone_data_dir, os.path.basename(opencl_parameter_file)),
-        ])
-        adb_cmd = ' '.join(adb_cmd)
-        cmd_file_name = "%s-%s-%s" % ('cmd_file', model_tag, str(time.time()))
-        adb_cmd_file = "%s/%s" % (phone_data_dir, cmd_file_name)
-        tmp_cmd_file = "%s/%s" % ('/tmp', cmd_file_name)
-        with open(tmp_cmd_file, 'w') as cmd_file:
-            cmd_file.write(adb_cmd)
-        adb_push(tmp_cmd_file, adb_cmd_file, serialno)
-        os.remove(tmp_cmd_file)
-
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            "sh",
-            adb_cmd_file,
-            _tty_in=True,
-            _out=process_output,
-            _err_to_out=True)
-        stdout = "".join(stdout_buff)
-        if not stdout_success(stdout):
-            common.MaceLogger.error("Mace Run", "Mace run failed.")
-
-        sh.adb(
-            "-s",
-            serialno,
-            "shell",
-            "rm",
-            adb_cmd_file,
-            _fg=True)
-
-        six.print_("Running finished!\n")
-
-    sys.stdout.flush()
-    return stdout
+                "%s/sources/cxx-stl/llvm-libc++/libs/%s/libc++_shared.so"  # noqa
+                % (os.environ["ANDROID_NDK_HOME"], abi),
+                phone_data_dir,
+                serialno)
 
 
 def validate_model(abi,
-                   serialno,
+                   device,
                    model_file_path,
                    weight_file_path,
                    platform,
@@ -927,7 +716,6 @@ def validate_model(abi,
                    input_shapes,
                    output_shapes,
                    model_output_dir,
-                   phone_data_dir,
                    input_data_types,
                    caffe_env,
                    input_file_name="model_input",
@@ -941,8 +729,7 @@ def validate_model(abi,
             if os.path.exists("%s/%s" % (model_output_dir,
                                          formatted_name)):
                 sh.rm("-rf", "%s/%s" % (model_output_dir, formatted_name))
-            adb_pull("%s/%s" % (phone_data_dir, formatted_name),
-                     model_output_dir, serialno)
+            device.pull_from_data_dir(formatted_name, model_output_dir)
 
     if platform == "tensorflow":
         validate(platform, model_file_path, "",
@@ -956,11 +743,10 @@ def validate_model(abi,
         container_name = "mace_caffe_validator"
 
         if caffe_env == common.CaffeEnvType.LOCAL:
-            import imp
             try:
-                imp.find_module('caffe')
+                import caffe
             except ImportError:
-                logger.error('There is no caffe python module.')
+                logging.error('There is no caffe python module.')
             validate(platform, model_file_path, weight_file_path,
                      "%s/%s" % (model_output_dir, input_file_name),
                      "%s/%s" % (model_output_dir, output_file_name),
@@ -1157,8 +943,8 @@ def benchmark_model(abi,
         if link_dynamic:
             adb_push(libmace_dynamic_library_path, phone_data_dir,
                      serialno)
-            push_depended_so_lib(libmace_dynamic_library_path, abi,
-                                 phone_data_dir, serialno)
+            push_depended_so_libs(libmace_dynamic_library_path, abi,
+                                  phone_data_dir, serialno)
 
         adb_push("%s/%s" % (benchmark_binary_dir, benchmark_binary_name),
                  phone_data_dir,

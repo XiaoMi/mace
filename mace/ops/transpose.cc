@@ -16,8 +16,9 @@
 #include <arm_neon.h>
 #endif
 
-#include <vector>
 #include <algorithm>
+#include <cmath>
+#include <vector>
 
 #include "mace/core/operator.h"
 #include "mace/ops/transpose.h"

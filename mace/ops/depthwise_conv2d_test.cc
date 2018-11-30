@@ -233,7 +233,7 @@ void TestNxNS12(const index_t height, const index_t width) {
   auto func = [&](int kernel_h, int kernel_w, int stride_h, int stride_w,
                   Padding type) {
     // generate random input
-    static unsigned int seed = time(NULL);
+    // static unsigned int seed = time(NULL);
     index_t batch = 1;
     index_t channel = 32;
     index_t multiplier = 1;

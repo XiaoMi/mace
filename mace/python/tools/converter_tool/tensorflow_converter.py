@@ -112,6 +112,8 @@ TFSupportedOps = [
 
 TFOpType = Enum('TFOpType', [(op, op) for op in TFSupportedOps], type=str)
 
+TFSupportedOps = [six.b(op) for op in TFSupportedOps]
+
 
 class TensorflowConverter(base_converter.ConverterInterface):
     """A class for convert tensorflow frozen model to mace model.

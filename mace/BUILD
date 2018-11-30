@@ -25,6 +25,24 @@ config_setting(
 )
 
 config_setting(
+    name = "arm_linux_aarch64",
+    values = {
+        "crosstool_top": "//tools/aarch64_compiler:toolchain",
+        "cpu": "aarch64",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "arm_linux_armhf",
+    values = {
+        "crosstool_top": "//tools/arm_compiler:toolchain",
+        "cpu": "armeabi-v7a",
+    },
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "neon_enabled",
     define_values = {
         "neon": "true",

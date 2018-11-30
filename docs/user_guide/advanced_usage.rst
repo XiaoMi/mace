@@ -109,12 +109,74 @@ in one deployment file.
         sha256sum /path/to/your/file
 
 
+
 Advanced usage
 --------------
 
-There are two common advanced use cases:
+There are three common advanced use cases:
+  - run your model on the embedded device
   - converting model to C++ code.
   - tuning GPU kernels for a specific SoC.
+
+Run you model on the embedded device
+------------------
+
+MACE use ssh to connect embedded device, in this case we recommend you to push ``$HOME/.ssh/id_rsa.pub``
+to your device ``$HOME/.ssh/authorized_keys``
+
+.. code:: bash
+
+  cat ~/.ssh/id_rsa.pub | ssh -q {user}@{ip} "cat >> ~/.ssh/authorized_keys"
+
+This part will show you how to write your own device yaml config file.
+
+**Device yaml config file**
+
+The way to run your model on the embedded device is nearly the same as run on android, except you need give a device yaml config file.
+
+MACE get this yaml config via ``--device_yml`` argument, default config value is ``devices.yml``
+, when the yaml config file is not found. we treat as there is no available arm linux device, give a message
+and continue on other device such as plugged android phone.
+
+* **Example**
+
+    Here is an device yaml config demo.
+
+    .. literalinclude:: devices/demo_device_nanopi.yml
+        :language: yaml
+
+* **Configuration**
+
+.. list-table::
+    :header-rows: 1
+
+    * - Options
+      - Usage
+    * - target_abis
+      - Device supported abis, you can get it via ``dpkg --print-architecture`` and
+        ``dpkg --print-foreign-architectures`` command, if more than one abi is supported,
+        separate them by commas.
+    * - target_socs
+      - device soc, you can get it from device manual, we haven't found a way to get it in shell.
+    * - models
+      - device models full name, you can get via get ``lshw`` command (third party package, install it via your package manager).
+        see it's product value.
+    * - address
+      - Since we use ssh to connect device, ip address is required.
+    * - username
+      - login username, required.
+    * - password
+      - login password, optional when you can login into device without password
+
+
+.. note::
+
+    Some command tools:
+
+    .. code:: bash
+
+        # specify device yaml config file via --device_yml argument or put the file under working directory
+        python tools/converter.py run --config=/path/to/mace-models/mobilenet-v2/mobilenet-v2.yml --device_yml=/path/to/devices.yml
 
 Convert model(s) to C++ code
 --------------------------------
@@ -403,6 +465,7 @@ Reduce Library Size
         - It is recommended to use ``version script`` and ``strip`` feature when linking mace static library. The effect is remarkable.
 
 * Remove the unused ops.
+
 Remove the registration of the ops unused for your models in the ``mace/ops/ops_register.cc``,
 which will reduce the library size significantly. the final binary just link the registered ops' code.
 

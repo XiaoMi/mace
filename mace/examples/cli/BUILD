@@ -1,10 +1,10 @@
 # Examples
 load(
     "//mace:mace.bzl",
-    "if_openmp_enabled",
     "if_android",
     "if_hexagon_enabled",
     "if_opencl_enabled",
+    "if_openmp_enabled",
 )
 
 cc_binary(
@@ -18,8 +18,9 @@ cc_binary(
     ]),
     linkopts = [
         "-lm",
+        "-ldl",
     ] + if_openmp_enabled([
-        "-fopenmp"
+        "-fopenmp",
     ]) + if_android([
         "-ldl",
         "-pie",
@@ -47,6 +48,7 @@ cc_binary(
     ]),
     linkopts = [
         "-lm",
+        "-ldl",
     ] + if_android([
         "-ldl",
         "-pie",
@@ -55,8 +57,7 @@ cc_binary(
     linkstatic = 0,
     deps = [
         "//external:gflags_nothreads",
-        "//mace/codegen:generated_mace_engine_factory",
         "//mace/codegen:generated_libmace",
+        "//mace/codegen:generated_mace_engine_factory",
     ],
 )
-
