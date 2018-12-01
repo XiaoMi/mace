@@ -301,26 +301,12 @@ void MatMulBenchmark(
     net.GetTensor("A")->SetScale(0.1);
     net.GetTensor("B")->SetScale(0.1);
   }
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "A", "AImage",
-                        ops::BufferType::IN_OUT_WIDTH);
-    BufferToImage<D, T>(&net, "B", "BImage",
-                        ops::BufferType::IN_OUT_HEIGHT);
-
-    OpDefBuilder("MatMul", "MatMulBM")
-        .Input("AImage")
-        .Input("BImage")
-        .Output("Output")
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("MatMul", "MatMulBM")
-        .Input("A")
-        .Input("B")
-        .Output("Output")
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("MatMul", "MatMulBM")
+      .Input("A")
+      .Input("B")
+      .Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   net.Setup(D);
   if (DataTypeToEnum<T>::value == DT_UINT8) {
@@ -401,8 +387,6 @@ void MatMulTransposeBenchmark(
 
 #define MACE_BM_MATMUL_OP(N, H, C, W)              \
   MACE_BM_MATMUL_MACRO(N, H, C, W, float, CPU);    \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, float, GPU);    \
-  MACE_BM_MATMUL_MACRO(N, H, C, W, half, GPU);     \
   MACE_BM_MATMUL_MACRO(N, H, C, W, uint8_t, CPU);
 
 #define MACE_BM_MATMUL_TRANSPOSE_MACRO(N, H, C, W, TYPE, DEVICE)               \

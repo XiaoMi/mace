@@ -27,6 +27,7 @@ namespace mace {
 
 class RunMetadata;
 class Workspace;
+class MemoryOptimizer;
 
 class NetBase {
  public:
@@ -47,11 +48,19 @@ class SerialNet : public NetBase {
             const NetDef *net_def,
             Workspace *ws,
             Device *target_device,
-            const NetMode mode = NetMode::NORMAL);
+            MemoryOptimizer * mem_optimizer);
 
   MaceStatus Init() override;
 
   MaceStatus Run(RunMetadata *run_metadata = nullptr) override;
+
+ private:
+  std::unique_ptr<Operation> CreateOperation(
+      const OpRegistryBase *op_registry,
+      OpConstructContext *construct_context,
+      std::shared_ptr<OperatorDef> op_def,
+      DataFormat input_format,
+      bool is_quantize_model = false);
 
  protected:
   Workspace *ws_;

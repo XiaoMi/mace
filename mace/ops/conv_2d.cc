@@ -959,8 +959,9 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
       : ConvPool2dOpBase(context),
         activation_(ops::StringToActivationType(
             Operation::GetOptionalArg<std::string>("activation",
-                                                  "NOOP"))),
-        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)) {
+                                                   "NOOP"))),
+        relux_max_limit_(Operation::GetOptionalArg<float>("max_limit", 0.0f)),
+        wino_block_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)) {
     MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       mem_type = MemoryType::GPU_IMAGE;
@@ -969,13 +970,32 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_.reset(new opencl::buffer::Conv2dKernel<T>);
     }
+    context->set_output_mem_type(mem_type);
     // Transform filter tensor to target format
-    MACE_CHECK(TransformFilter<T>(
-        context, operator_def_.get(), 1, BufferType::CONV2D_FILTER, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+    if ((wino_block_size_ == 2 || wino_block_size_ == 4) &&
+        (kernel_->CheckUseWinograd(
+          context->device()->opencl_runtime(),
+          context->workspace()->GetTensor(
+              operator_def_->input(1))->shape(),
+          std::vector<index_t>(operator_def_->output_shape(0).dims().begin(),
+                               operator_def_->output_shape(0).dims().end()),
+          strides_.data(),
+          dilations_.data(),
+          &wino_block_size_))) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 1,
+          OpenCLBufferType::WINOGRAD_FILTER, mem_type, wino_block_size_)
+                     == MaceStatus::MACE_SUCCESS);
+    } else {
+      wino_block_size_ = 0;
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 1,
+          OpenCLBufferType::CONV2D_FILTER, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
+    }
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
-          context, operator_def_.get(), 2, BufferType::ARGUMENT, mem_type)
+          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
   }
@@ -987,13 +1007,14 @@ class Conv2dOp<DeviceType::GPU, T> : public ConvPool2dOpBase {
     return kernel_->Compute(context, input, filter, bias,
                             strides_.data(), padding_type_, paddings_,
                             dilations_.data(), activation_, relux_max_limit_,
-                            output);
+                            wino_block_size_, output);
   }
 
  private:
   const ActivationType activation_;
   const float relux_max_limit_;
   std::unique_ptr<OpenCLConv2dKernel> kernel_;
+  int wino_block_size_;
 
  private:
   MACE_OP_INPUT_TAGS(INPUT, FILTER, BIAS);

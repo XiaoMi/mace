@@ -17,7 +17,7 @@
 namespace mace {
 namespace ops {
 
-std::string TransformedName(const std::string &name) {
+std::string TransformedFilterName(const std::string &name) {
   // TODO(liuqi): This may create a conflict.
   const char *postfix = "_mace_identity_transformed";
   return name + postfix;

@@ -45,8 +45,8 @@ void Simple() {
   std::vector<float> scale(1);
   std::vector<float> offset(1);
   CalculateScaleOffset({4.0f}, {2.0}, {10}, {11.67f}, 1e-3, &scale, &offset);
-  net.AddInputFromArray<D, float>("Scale", {1}, scale);
-  net.AddInputFromArray<D, float>("Offset", {1}, offset);
+  net.AddInputFromArray<D, float>("Scale", {1}, scale, true);
+  net.AddInputFromArray<D, float>("Offset", {1}, offset, true);
 
   if (D == DeviceType::CPU) {
     net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
@@ -60,25 +60,14 @@ void Simple() {
     net.RunOp(D);
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Scale", "ScaleImage",
-                            ops::BufferType::ARGUMENT);
-    BufferToImage<D, float>(&net, "Offset", "OffsetImage",
-                            ops::BufferType::ARGUMENT);
-
     OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
-        .Input("InputImage")
-        .Input("ScaleImage")
-        .Input("OffsetImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Input("Scale")
+        .Input("Offset")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   }
 
   // Check
@@ -108,8 +97,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -132,27 +121,16 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomOPENCL) {
   expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, float>(&net, "Scale", "ScaleImage",
-                                        ops::BufferType::ARGUMENT);
-  BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
-                                        ops::BufferType::ARGUMENT);
-
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
   net.RunOp(DeviceType::GPU);
-  net.Sync();
-
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-5, 1e-4);
 }
 
@@ -170,8 +148,8 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -194,18 +172,11 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
-                                       ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, half>(&net, "Scale", "ScaleImage",
-                                       ops::BufferType::ARGUMENT);
-  BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
-                                       ops::BufferType::ARGUMENT);
-
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
@@ -213,9 +184,7 @@ TEST_F(FoldedBatchNormOpTest, SimpleRandomHalfOPENCL) {
   net.RunOp(DeviceType::GPU);
   net.Sync();
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-2, 1e-2);
 }
 
@@ -233,8 +202,8 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   // Add input data
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels});
-  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels});
+  net.AddRandomInput<DeviceType::GPU, float>("Scale", {channels}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Offset", {channels}, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -257,26 +226,17 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomOPENCL) {
   expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, float>(&net, "Scale", "ScaleImage",
-                                        ops::BufferType::ARGUMENT);
-  BufferToImage<DeviceType::GPU, float>(&net, "Offset", "OffsetImage",
-                                        ops::BufferType::ARGUMENT);
-
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
   net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-5, 1e-4);
 }
 
@@ -318,27 +278,18 @@ TEST_F(FoldedBatchNormOpTest, ComplexRandomHalfOPENCL) {
   expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::GPU, half>(&net, "Input", "InputImage",
-                                       ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, half>(&net, "Scale", "ScaleImage",
-                                       ops::BufferType::ARGUMENT);
-  BufferToImage<DeviceType::GPU, half>(&net, "Offset", "OffsetImage",
-                                       ops::BufferType::ARGUMENT);
-
   OpDefBuilder("BatchNorm", "FoldedBatchNormTest")
-      .Input("InputImage")
-      .Input("ScaleImage")
-      .Input("OffsetImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Scale")
+      .Input("Offset")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
       .Finalize(net.NewOperatorDef());
 
   // Run on opencl
   net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"),
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"),
                           1e-2, 1e-2);
 }
 

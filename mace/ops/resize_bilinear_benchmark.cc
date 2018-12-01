@@ -50,30 +50,12 @@ void ResizeBilinearBenchmark(int iters,
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddInputFromArray<D, int>("OutSize", {2},
-                                    {output_height, output_width});
-
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
+  OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
       .Input("Input")
-      .Input("OutSize")
       .Output("Output")
       .AddIntsArg("size", {output_height, output_width})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("ResizeBilinear", "ResizeBilinearBenchmark")
-        .Input("InputImage")
-        .Input("OutSize")
-        .Output("OutputImage")
-        .AddIntsArg("size", {output_height, output_width})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

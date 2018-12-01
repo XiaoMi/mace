@@ -31,6 +31,7 @@
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/matmul.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -351,11 +352,8 @@ class MatMulOp<DeviceType::GPU, T> : public MatMulOpBase {
  public:
   explicit MatMulOp(OpConstructContext *context)
       : MatMulOpBase(context) {
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
-      kernel_.reset(new opencl::image::MatMulKernel<T>);
-    } else {
-      MACE_NOT_IMPLEMENTED;
-    }
+    MACE_UNUSED(context);
+    MACE_NOT_IMPLEMENTED;
   }
   MaceStatus Run(OpContext *context) override {
     Validate();

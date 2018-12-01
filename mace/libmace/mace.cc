@@ -20,9 +20,11 @@
 
 #include <memory>
 
-#include "mace/core/net.h"
 #include "mace/core/device_context.h"
+#include "mace/core/memory_optimizer.h"
+#include "mace/core/net.h"
 #include "mace/ops/ops_registry.h"
+#include "mace/ops/transpose.h"
 #include "mace/public/mace.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -69,6 +71,7 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
   // Check OpenCL avaliable
   auto runtime = device->opencl_runtime();
   if (!runtime->is_opencl_avaliable()) {
+    LOG(WARNING) << "The device does not support OpenCL";
     return MaceStatus::MACE_OUT_OF_RESOURCES;
   }
 
@@ -84,28 +87,6 @@ MaceStatus CheckGPUAvalibility(const NetDef *net_def, Device *device) {
   const MemoryType mem_type = static_cast<MemoryType>(mem_type_i);
 
   runtime->set_mem_type(mem_type);
-  if (mem_type == MemoryType::GPU_IMAGE) {
-    if (!runtime->IsImageSupport()) {
-      return MaceStatus::MACE_OUT_OF_RESOURCES;
-    }
-
-    auto opencl_max_image_size = runtime->GetMaxImage2DSize();
-    if (opencl_max_image_size.empty()) {
-      return MaceStatus::MACE_OUT_OF_RESOURCES;
-    }
-
-    const std::vector<int64_t> net_max_image_size =
-        ProtoArgHelper::GetRepeatedArgs<NetDef, int64_t>(
-            *net_def, "opencl_max_image_size", {0, 0});
-
-    if (static_cast<uint64_t>(net_max_image_size[0]) > opencl_max_image_size[0]
-        || static_cast<uint64_t>(net_max_image_size[1])
-            > opencl_max_image_size[1]) {
-      LOG(INFO) << "opencl max image size " << MakeString(opencl_max_image_size)
-                << " vs " << MakeString(net_max_image_size);
-      return MaceStatus::MACE_OUT_OF_RESOURCES;
-    }
-  }
 
   return MaceStatus::MACE_SUCCESS;
 }
@@ -288,14 +269,17 @@ class MaceTensor::Impl {
  public:
   std::vector<int64_t> shape;
   std::shared_ptr<float> data;
+  DataFormat format;
 };
 
 MaceTensor::MaceTensor(const std::vector<int64_t> &shape,
-                       std::shared_ptr<float> data) {
+                       std::shared_ptr<float> data,
+                       const DataFormat format) {
   MACE_CHECK_NOTNULL(data.get());
   impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
   impl_->shape = shape;
   impl_->data = data;
+  impl_->format = format;
 }
 
 MaceTensor::MaceTensor() {
@@ -306,23 +290,27 @@ MaceTensor::MaceTensor(const MaceTensor &other) {
   impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
   impl_->shape = other.shape();
   impl_->data = other.data();
+  impl_->format = other.data_format();
 }
 
 MaceTensor::MaceTensor(const MaceTensor &&other) {
   impl_ = std::unique_ptr<MaceTensor::Impl>(new MaceTensor::Impl());
   impl_->shape = other.shape();
   impl_->data = other.data();
+  impl_->format = other.data_format();
 }
 
 MaceTensor &MaceTensor::operator=(const MaceTensor &other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
+  impl_->format = other.data_format();
   return *this;
 }
 
 MaceTensor &MaceTensor::operator=(const MaceTensor &&other) {
   impl_->shape = other.shape();
   impl_->data = other.data();
+  impl_->format = other.data_format();
   return *this;
 }
 
@@ -333,6 +321,10 @@ const std::vector<int64_t> &MaceTensor::shape() const { return impl_->shape; }
 const std::shared_ptr<float> MaceTensor::data() const { return impl_->data; }
 
 std::shared_ptr<float> MaceTensor::data() { return impl_->data; }
+
+DataFormat MaceTensor::data_format() const {
+  return impl_->format;
+}
 
 // Mace Engine
 class MaceEngine::Impl {
@@ -356,6 +348,14 @@ class MaceEngine::Impl {
                  RunMetadata *run_metadata);
 
  private:
+  MaceStatus TransposeInput(
+      const std::pair<const std::string, MaceTensor> &input,
+      Tensor *input_tensor);
+
+  MaceStatus TransposeOutput(const Tensor *output_tensor,
+                             std::pair<const std::string, MaceTensor> *output);
+
+ private:
   const unsigned char *model_data_;
   size_t model_data_size_;
   std::unique_ptr<OpRegistryBase> op_registry_;
@@ -363,11 +363,12 @@ class MaceEngine::Impl {
   std::unique_ptr<Device> device_;
   std::unique_ptr<Workspace> ws_;
   std::unique_ptr<NetBase> net_;
-  std::map<std::string, mace::InputInfo> input_info_map_;
-  std::map<std::string, mace::OutputInfo> output_info_map_;
+  bool is_quantized_model_;
 #ifdef MACE_ENABLE_HEXAGON
   std::unique_ptr<HexagonControlWrapper> hexagon_controller_;
 #endif
+  std::map<std::string, mace::InputInfo> input_info_map_;
+  std::map<std::string, mace::OutputInfo> output_info_map_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Impl);
 };
@@ -379,7 +380,8 @@ MaceEngine::Impl::Impl(const MaceEngineConfig &config)
       device_type_(config.impl_->device_type()),
       device_(nullptr),
       ws_(new Workspace()),
-      net_(nullptr)
+      net_(nullptr),
+      is_quantized_model_(false)
 #ifdef MACE_ENABLE_HEXAGON
       , hexagon_controller_(nullptr)
 #endif
@@ -417,6 +419,8 @@ MaceStatus MaceEngine::Impl::Init(
     MACE_RETURN_IF_ERROR(CheckGPUAvalibility(net_def, device_.get()));
   }
 #endif
+  // mark quantized model flag
+  is_quantized_model_ = IsQuantizedModel(*net_def);
   // Get input and output information.
   for (auto &input_info : net_def->input_info()) {
     input_info_map_[input_info.name()] = input_info;
@@ -431,8 +435,7 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
-    ws_->CreateTensor(MakeString("mace_input_node_", input_name),
-                      device_->allocator(), DT_FLOAT);
+    ws_->CreateTensor(input_name, device_->allocator(), DT_FLOAT);
   }
   for (auto output_name : output_nodes) {
     if (output_info_map_.find(output_name) == output_info_map_.end()) {
@@ -440,8 +443,6 @@ MaceStatus MaceEngine::Impl::Init(
                  << "' does not belong to model's outputs "
                  << MakeString(MapKeys(output_info_map_));
     }
-    ws_->CreateTensor(MakeString("mace_output_node_", output_name),
-                      device_->allocator(), DT_FLOAT);
   }
 #ifdef MACE_ENABLE_HEXAGON
   if (device_type_ == HEXAGON) {
@@ -461,19 +462,19 @@ MaceStatus MaceEngine::Impl::Init(
                                               device_.get(),
                                               model_data));
 
+    MemoryOptimizer mem_optimizer;
     // Init model
-    auto net = std::unique_ptr<NetBase>(new SerialNet(
-        op_registry_.get(),
-        net_def,
-        ws_.get(),
-        device_.get(),
-        NetMode::INIT));
-    MACE_RETURN_IF_ERROR(net->Init());
-    MACE_RETURN_IF_ERROR(net->Run());
     net_ = std::unique_ptr<NetBase>(new SerialNet(op_registry_.get(),
                                                   net_def,
                                                   ws_.get(),
-                                                  device_.get()));
+                                                  device_.get(),
+                                                  &mem_optimizer));
+
+    // Preallocate all output tensors of ops
+    MACE_RETURN_IF_ERROR(ws_->PreallocateOutputTensor(*net_def,
+                                                      &mem_optimizer,
+                                                      device_.get()));
+
     MACE_RETURN_IF_ERROR(net_->Init());
 #ifdef MACE_ENABLE_HEXAGON
   }
@@ -524,6 +525,117 @@ MaceEngine::Impl::~Impl() {
 #endif
 }
 
+MaceStatus MaceEngine::Impl::TransposeInput(
+    const std::pair<const std::string, MaceTensor> &input,
+    Tensor *input_tensor) {
+  if (device_->device_type() == DeviceType::CPU &&
+      input.second.shape().size() == 4 &&
+      input.second.data_format() == NHWC &&
+      !is_quantized_model_) {
+    VLOG(1) << "Transform input " << input.first << " from NHWC to NCHW";
+    input_tensor->set_data_format(DataFormat::NCHW);
+    std::vector<int> dst_dims = {0, 3, 1, 2};
+    std::vector<index_t> output_shape =
+        TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
+    MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
+    Tensor::MappingGuard input_guard(input_tensor);
+    float *input_data = input_tensor->mutable_data<float>();
+    return ops::Transpose(input.second.data().get(),
+                          input.second.shape(),
+                          dst_dims,
+                          input_data);
+  } else if (
+      (is_quantized_model_ || device_->device_type() == DeviceType::GPU) &&
+      input.second.shape().size() == 4 &&
+      input.second.data_format() == DataFormat::NCHW) {
+    VLOG(1) << "Transform input " << input.first << " from NCHW to NHWC";
+    std::vector<int> dst_dims = {0, 2, 3, 1};
+    input_tensor->set_data_format(DataFormat::NHWC);
+    std::vector<index_t> output_shape =
+        TransposeShape<int64_t, index_t>(input.second.shape(), dst_dims);
+    MACE_RETURN_IF_ERROR(input_tensor->Resize(output_shape));
+    Tensor::MappingGuard input_guard(input_tensor);
+    float *input_data = input_tensor->mutable_data<float>();
+    return ops::Transpose(input.second.data().get(),
+                          input.second.shape(),
+                          dst_dims,
+                          input_data);
+  } else {
+    input_tensor->set_data_format(input.second.data_format());
+    MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
+    Tensor::MappingGuard input_guard(input_tensor);
+    float *input_data = input_tensor->mutable_data<float>();
+    memcpy(input_data, input.second.data().get(),
+           input_tensor->size() * sizeof(float));
+    return MaceStatus::MACE_SUCCESS;
+  }
+}
+
+MaceStatus MaceEngine::Impl::TransposeOutput(
+    const mace::Tensor *output_tensor,
+    std::pair<const std::string, mace::MaceTensor> *output) {
+  // save output
+  if (output_tensor != nullptr && output->second.data() != nullptr) {
+    if (device_->device_type() == DeviceType::CPU &&
+        output->second.shape().size() == 4 &&
+        output->second.data_format() != output_tensor->data_format()) {
+      MACE_CHECK(output_tensor->data_format() == NCHW);
+      VLOG(1) << "Transform output " << output->first << " from NCHW to NHWC";
+      std::vector<int> dst_dims = {0, 2, 3, 1};
+      std::vector<index_t> shape =
+          TransposeShape<index_t, index_t>(output_tensor->shape(),
+                                           dst_dims);
+      MACE_CHECK(shape == output->second.shape())
+        << "Output shape mismatch: "
+        << MakeString<int64_t>(shape) << " != "
+        << MakeString<int64_t>(output->second.shape());
+      Tensor::MappingGuard output_guard(output_tensor);
+      const float *output_data = output_tensor->data<float>();
+      return ops::Transpose(output_data,
+                            output_tensor->shape(),
+                            dst_dims,
+                            output->second.data().get());
+    } else if (device_->device_type() == DeviceType::GPU &&
+        output->second.shape().size() == 4 &&
+        output->second.data_format() != output_tensor->data_format()) {
+      VLOG(1) << "Transform output " << output->first << " from "
+              << output_tensor->data_format() << " to "
+              << output->second.data_format();
+      std::vector<int> dst_dims = {0, 3, 1, 2};
+      if (output_tensor->data_format() == NCHW) {
+        dst_dims = {0, 2, 3, 1};
+      }
+      std::vector<index_t> shape =
+          TransposeShape<index_t, index_t>(output_tensor->shape(),
+                                           dst_dims);
+      MACE_CHECK(shape == output->second.shape())
+        << "Output shape mismatch: "
+        << MakeString<int64_t>(shape) << " != "
+        << MakeString<int64_t>(output->second.shape());
+      Tensor::MappingGuard output_guard(output_tensor);
+      const float *output_data = output_tensor->data<float>();
+      return ops::Transpose(output_data,
+                            output_tensor->shape(),
+                            dst_dims,
+                            output->second.data().get());
+    } else {
+      Tensor::MappingGuard output_guard(output_tensor);
+      auto shape = output_tensor->shape();
+      int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
+                                            std::multiplies<int64_t>());
+      MACE_CHECK(shape == output->second.shape())
+        << "Output shape mismatch: "
+        << MakeString<int64_t>(shape) << " != "
+        << MakeString<int64_t>(output->second.shape());
+      std::memcpy(output->second.data().get(), output_tensor->data<float>(),
+                  output_size * sizeof(float));
+      return MaceStatus::MACE_SUCCESS;
+    }
+  } else {
+    return MaceStatus::MACE_INVALID_ARGS;
+  }
+}
+
 MaceStatus MaceEngine::Impl::Run(
     const std::map<std::string, MaceTensor> &inputs,
     std::map<std::string, MaceTensor> *outputs,
@@ -537,15 +649,8 @@ MaceStatus MaceEngine::Impl::Run(
                  << "' does not belong to model's inputs: "
                  << MakeString(MapKeys(input_info_map_));
     }
-    Tensor *input_tensor =
-        ws_->GetTensor(MakeString("mace_input_node_", input.first));
-    MACE_RETURN_IF_ERROR(input_tensor->Resize(input.second.shape()));
-    {
-      Tensor::MappingGuard input_guard(input_tensor);
-      float *input_data = input_tensor->mutable_data<float>();
-      memcpy(input_data, input.second.data().get(),
-             input_tensor->size() * sizeof(float));
-    }
+    Tensor *input_tensor = ws_->GetTensor(input.first);
+    MACE_RETURN_IF_ERROR(TransposeInput(input, input_tensor));
     input_tensors.push_back(input_tensor);
   }
   for (auto &output : *outputs) {
@@ -554,8 +659,7 @@ MaceStatus MaceEngine::Impl::Run(
                  << "' does not belong to model's outputs: "
                  << MakeString(MapKeys(output_info_map_));
     }
-    Tensor *output_tensor =
-        ws_->GetTensor(MakeString("mace_output_node_", output.first));
+    Tensor *output_tensor = ws_->GetTensor(output.first);
     output_tensors.push_back(output_tensor);
   }
 #ifdef MACE_ENABLE_HEXAGON
@@ -577,23 +681,9 @@ MaceStatus MaceEngine::Impl::Run(
   }
 #endif
   for (auto &output : *outputs) {
-    Tensor *output_tensor =
-        ws_->GetTensor(MakeString("mace_output_node_", output.first));
+    Tensor *output_tensor = ws_->GetTensor(output.first);
     // save output
-    if (output_tensor != nullptr && output.second.data() != nullptr) {
-      Tensor::MappingGuard output_guard(output_tensor);
-      auto shape = output_tensor->shape();
-      int64_t output_size = std::accumulate(shape.begin(), shape.end(), 1,
-                                            std::multiplies<int64_t>());
-      MACE_CHECK(shape == output.second.shape())
-          << "Output shape mismatch: "
-          << MakeString<int64_t>(output.second.shape())
-          << " != " << MakeString<int64_t>(shape);
-      std::memcpy(output.second.data().get(), output_tensor->data<float>(),
-                  output_size * sizeof(float));
-    } else {
-      return MaceStatus::MACE_INVALID_ARGS;
-    }
+    MACE_RETURN_IF_ERROR(TransposeOutput(output_tensor, &output));
   }
   return MaceStatus::MACE_SUCCESS;
 }

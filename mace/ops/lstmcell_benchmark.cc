@@ -29,11 +29,11 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
 
   // Add input data
   net.AddRandomInput<D, float>("Input", {batch, input_size});
-  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units});
+  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units}, true);
   net.AddRandomInput<D, float>("Weight", {input_size + hidden_units,
-                                          4 * hidden_units});
-  net.AddRandomInput<D, float>("Bias", {4 * hidden_units});
-  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units});
+                                          4 * hidden_units}, true);
+  net.AddRandomInput<D, float>("Bias", {4 * hidden_units}, true);
+  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units}, true);
 
   const float &forget_add = 0.0f;
 
@@ -45,28 +45,17 @@ void LSTMCell(int iters, int batch, int input_size, int hidden_units) {
     net.CopyData<DeviceType::CPU, float>("PreCell", "PreCellCPU");
 
     LSTMCellCPU<float>(&net, "InputCPU", "PreOutputCPU", "WeightCPU", "BiasCPU",
-                   "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
+                       "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "PreOutput", "PreOutputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Weight", "WeightImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-    BufferToImage<D, T>(&net, "PreCell", "PreCellImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-
     OpDefBuilder("LSTMCell", "LSTMCellTest")
-        .Input("InputImage")
-        .Input("PreOutputImage")
-        .Input("WeightImage")
-        .Input("BiasImage")
-        .Input("PreCellImage")
+        .Input("Input")
+        .Input("PreOutput")
+        .Input("Weight")
+        .Input("Bias")
+        .Input("PreCell")
         .AddFloatArg("scalar_input", forget_add)
-        .Output("CellImage")
-        .Output("OutputImage")
+        .Output("Cell")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
   } else {
     MACE_NOT_IMPLEMENTED;

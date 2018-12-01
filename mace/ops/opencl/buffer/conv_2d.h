@@ -62,6 +62,14 @@ class Conv2dKernel : public OpenCLConv2dKernel {
  public:
   Conv2dKernel() : old_scratch_size_(0) {}
 
+  bool CheckUseWinograd(
+      OpenCLRuntime *runtime,
+      const std::vector<index_t> &filter_shape,
+      const std::vector<index_t> &output_shape,
+      const int *strides,
+      const int *dilations,
+      int *wino_block_size) override;
+
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -73,6 +81,7 @@ class Conv2dKernel : public OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const int winograd_blk_size,
       Tensor *output) override;
 
  private:
@@ -81,6 +90,23 @@ class Conv2dKernel : public OpenCLConv2dKernel {
   uint32_t kwg_size_;
   std::vector<index_t> input_shape_;
 };
+
+
+template <typename T>
+bool Conv2dKernel<T>::CheckUseWinograd(
+    OpenCLRuntime *runtime,
+    const std::vector<index_t> &filter_shape,
+    const std::vector<index_t> &output_shape,
+    const int *strides,
+    const int *dilations,
+    int *wino_block_size) {
+  MACE_UNUSED(runtime);
+  MACE_UNUSED(output_shape);
+  MACE_UNUSED(wino_block_size);
+  return (filter_shape[2] == 3 && filter_shape[3] == 3 &&
+      strides[0] == 1 && strides[1] == 1 &&
+      dilations[0] == 1 && dilations[1] == 1);
+}
 
 template <typename T>
 MaceStatus Conv2dKernel<T>::Compute(
@@ -94,7 +120,9 @@ MaceStatus Conv2dKernel<T>::Compute(
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const int winograd_blk_size,
       Tensor *output) {
+  MACE_UNUSED(winograd_blk_size);
   StatsFuture pad_future, conv_future;
   index_t filter_h = filter->dim(2);
   index_t filter_w = filter->dim(3);

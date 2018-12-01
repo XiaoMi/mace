@@ -108,7 +108,7 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
       MACE_NOT_IMPLEMENTED;
     }
     MACE_CHECK(TransformFilter<T>(
-        context, operator_def_.get(), 1, BufferType::ARGUMENT, mem_type)
+        context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
                    == MaceStatus::MACE_SUCCESS);
   }
   MaceStatus Run(OpContext *context) override {

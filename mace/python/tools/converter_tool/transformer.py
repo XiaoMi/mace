@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import enum
 import re
 
 import numpy as np
@@ -21,7 +20,6 @@ import six
 
 from mace.proto import mace_pb2
 from mace.python.tools.converter_tool import base_converter
-from mace.python.tools.converter_tool.base_converter import ActivationType
 from mace.python.tools.converter_tool.base_converter import ConverterUtil
 from mace.python.tools.converter_tool.base_converter import DataFormat
 from mace.python.tools.converter_tool.base_converter import DeviceType
@@ -32,12 +30,8 @@ from mace.python.tools.converter_tool.base_converter import MaceKeyword
 from mace.python.tools.converter_tool.base_converter import MaceOp
 from mace.python.tools.converter_tool.base_converter import PaddingMode
 from mace.python.tools.converter_tool.base_converter import TransformerRule
-from mace.python.tools.convert_util import calculate_image_shape
 from mace.python.tools.convert_util import mace_check
-from mace.python.tools.convert_util import OpenCLBufferType
 from mace.python.tools.quantization import quantize_util
-
-OPENCL_IMAGE_MAX_SIZE = 16384
 
 
 class Transformer(base_converter.ConverterInterface):
@@ -69,8 +63,6 @@ class Transformer(base_converter.ConverterInterface):
                 self.fold_deconv_and_bn,  # data_format related
             TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN:
                 self.fold_depthwise_conv_and_bn,  # data_format related
-            TransformerRule.TRANSFORM_GPU_WINOGRAD:
-                self.transform_gpu_winograd,  # data_format related
             TransformerRule.TRANSFORM_ADD_TO_BIASADD:
                 self.transform_add_to_biasadd,
             TransformerRule.REARRANGE_BATCH_TO_SPACE:
@@ -84,25 +76,20 @@ class Transformer(base_converter.ConverterInterface):
             TransformerRule.TRANSPOSE_MATMUL_WEIGHT:
                 self.transpose_matmul_weight,
             TransformerRule.TRANSPOSE_DATA_FORMAT: self.transpose_data_format,
+            TransformerRule.ADD_WINOGRAD_ARG: self.add_winograd_arg,
             TransformerRule.ADD_IN_OUT_TENSOR_INFO:
                 self.add_in_out_tensor_info,
             TransformerRule.TRANSFORM_GLOBAL_CONV_TO_FC:
                 self.transform_global_conv_to_fc,
             TransformerRule.RESHAPE_FC_WEIGHT: self.reshape_fc_weight,
-            TransformerRule.ADD_BUFFER_TRANSFORM:
-                self.add_buffer_transform,
             TransformerRule.QUANTIZE_NODES:
                 self.quantize_nodes,
             TransformerRule.ADD_QUANTIZE_TENSOR_RANGE:
                 self.add_quantize_tensor_range,
             TransformerRule.QUANTIZE_WEIGHTS:
                 self.quantize_weights,
-            TransformerRule.ADD_DEVICE:
-                self.add_device,
             TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE:
                 self.update_float_op_data_type,
-            TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES:
-                self.add_mace_input_and_output_nodes,
             TransformerRule.ADD_OPENCL_INFORMATIONS:
                 self.add_opencl_informations,
             TransformerRule.SORT_BY_EXECUTION: self.sort_by_execution,
@@ -112,28 +99,22 @@ class Transformer(base_converter.ConverterInterface):
 
         self._option = option
         self._model = model
-        self._gpu_wino_blk = self._option.winograd
+        self._wino_arg = self._option.winograd
 
         self._ops = {}
         self._consts = {}
         self._consumers = {}
         self._producer = {}
         self._target_data_format = DataFormat.NHWC
-        self._input_output_added = False
-        self._opencl_max_image_size = [0, 0]
         self._output_op_names = set()
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
-
-        if self._option.device == DeviceType.CPU.value and \
-                not self._option.quantize:
-            self._target_data_format = DataFormat.NCHW
 
     def run(self):
         for key in self._option.transformer_option:
             transformer = self._registered_transformers[key]
             while True:
-                self.construct_ops_and_consumers()
+                self.construct_ops_and_consumers(key)
                 changed = transformer()
                 if not changed:
                         break
@@ -162,7 +143,7 @@ class Transformer(base_converter.ConverterInterface):
                                     MaceKeyword.mace_filter_format_str)
         arg.i = filter_format.value
 
-    def construct_ops_and_consumers(self):
+    def construct_ops_and_consumers(self, key):
         self._ops.clear()
         self._consumers.clear()
         self._producer.clear()
@@ -178,27 +159,28 @@ class Transformer(base_converter.ConverterInterface):
 
             for output_tensor in op.output:
                 self._producer[output_tensor] = op
-        for input_node in self._option.input_nodes.values():
-            input_node_existed = False
-            for op in self._model.op:
-                if input_node.name in op.output:
-                    input_node_existed = True
-                    break
-            if not input_node_existed:
-                op = mace_pb2.OperatorDef()
-                op.name = self.normalize_op_name(input_node.name)
-                op.type = 'Input'
-                op.output.extend([input_node.name])
-                output_shape = op.output_shape.add()
-                output_shape.dims.extend(input_node.shape)
-                if ConverterUtil.data_format(
-                        self._consumers[input_node.name][0]) \
-                        == DataFormat.NCHW:
-                    self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
-                    ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
-                else:
-                    ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
-                self._producer[op.output[0]] = op
+        if key != TransformerRule.SORT_BY_EXECUTION:
+            for input_node in self._option.input_nodes.values():
+                input_node_existed = False
+                for op in self._model.op:
+                    if input_node.name in op.output:
+                        input_node_existed = True
+                        break
+                if not input_node_existed:
+                    op = mace_pb2.OperatorDef()
+                    op.name = self.normalize_op_name(input_node.name)
+                    op.type = "Input"
+                    op.output.extend([input_node.name])
+                    output_shape = op.output_shape.add()
+                    output_shape.dims.extend(input_node.shape)
+                    if ConverterUtil.data_format(
+                            self._consumers[input_node.name][0]) \
+                            == DataFormat.NCHW:
+                        self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
+                        ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
+                    else:
+                        ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
+                    self._producer[op.output[0]] = op
 
     @staticmethod
     def replace(obj_list, source, target):
@@ -288,21 +270,17 @@ class Transformer(base_converter.ConverterInterface):
         for input_node in self._option.input_nodes.values():
             input_info = net.input_info.add()
             input_info.name = input_node.name
+            input_info.data_format = input_node.data_format.value
             input_info.dims.extend(input_node.shape)
-            if self._option.quantize:
-                input_info.data_type = mace_pb2.DT_FLOAT
-            else:
-                input_info.data_type = self._option.data_type
+            input_info.data_type = mace_pb2.DT_FLOAT
 
         for output_node in self._option.output_nodes.values():
             output_info = net.output_info.add()
             output_info.name = output_node.name
+            output_info.data_format = output_node.data_format.value
             output_info.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
-            if self._option.quantize:
-                output_info.data_type = mace_pb2.DT_FLOAT
-            else:
-                output_info.data_type = self._option.data_type
+            output_info.data_type = mace_pb2.DT_FLOAT
 
         return False
 
@@ -725,173 +703,6 @@ class Transformer(base_converter.ConverterInterface):
             mace_check(False, "filter format %s not supported" % filter_format)
         return filter_height, filter_width, in_channels, out_channels
 
-    def check_if_gpu_use_winograd_conv(self, op):
-        if not self._option.winograd:
-            return False
-        if op.type != MaceOp.Conv2D.name:
-            return False
-
-        filter_shape = self._consts[op.input[1]].dims
-        output_shape = op.output_shape[0].dims
-        strides = ConverterUtil.get_arg(op, MaceKeyword.mace_strides_str).ints
-        dilations_arg = ConverterUtil.get_arg(op,
-                                              MaceKeyword.mace_dilations_str)
-        if dilations_arg is None:
-            dilations = [1, 1]
-        else:
-            dilations = dilations_arg.ints
-        filter_height, filter_width, in_channels, out_channels = \
-            Transformer.sort_filter_shape(filter_shape, self.filter_format())
-        batch, out_height, out_width, _ = Transformer.sort_feature_map_shape(
-            output_shape, ConverterUtil.data_format(op))
-
-        if filter_height != 3 or filter_width != 3 or strides[0] > 1 \
-                or strides[1] > 1 or dilations[0] > 1 or dilations[1] > 1:
-            return False
-        self._gpu_wino_blk = self._option.winograd
-        block_size = self._option.winograd
-        blk_sqr = (block_size + 2) * (block_size + 2)
-        width =\
-            batch * ((out_height + block_size - 1) / block_size) *\
-            ((out_width + block_size - 1) / block_size)
-        if blk_sqr * in_channels >= OPENCL_IMAGE_MAX_SIZE \
-                or blk_sqr * out_channels >= OPENCL_IMAGE_MAX_SIZE \
-                or width >= OPENCL_IMAGE_MAX_SIZE:
-            self._gpu_wino_blk = 2
-            block_size = self._gpu_wino_blk
-            blk_sqr = (block_size + 2) * (block_size + 2)
-            width = \
-                batch * ((out_height + block_size - 1) / block_size) * \
-                ((out_width + block_size - 1) / block_size)
-        return (blk_sqr * in_channels < OPENCL_IMAGE_MAX_SIZE) and \
-               (blk_sqr * out_channels < OPENCL_IMAGE_MAX_SIZE) and \
-               (width < OPENCL_IMAGE_MAX_SIZE)
-
-    def transform_gpu_winograd(self):
-        """Only gpu needs winograd transform."""
-        net = self._model
-        filter_format = self.filter_format()
-        if self._option.device == DeviceType.GPU.value:
-            for op in net.op:
-                if op.type == MaceOp.Conv2D.name \
-                        and self.check_if_gpu_use_winograd_conv(op):
-                    print("Transform gpu winograd %s(%s)" % (op.name, op.type))
-                    block_size = self._gpu_wino_blk
-                    blk_sqr = (block_size + 2) * (block_size + 2)
-                    output_shape = op.output_shape[0].dims
-                    filter = self._consts[op.input[1]]
-                    filter_shape = filter.dims
-                    data_format = ConverterUtil.data_format(op)
-                    filter_height, filter_width, in_channels, out_channels = \
-                        Transformer.sort_filter_shape(filter_shape,
-                                                      filter_format)
-                    batch, out_height, out_width, _ = \
-                        Transformer.sort_feature_map_shape(output_shape,
-                                                           data_format)
-
-                    # Input transform
-                    wt_op = net.op.add()
-                    wt_op.name = op.name + '_input_transform'
-                    wt_op.type = MaceOp.WinogradTransform.name
-                    wt_op.input.extend([op.input[0]])
-                    wt_op.output.extend([wt_op.name])
-                    wt_output_shape = wt_op.output_shape.add()
-                    wt_output_width =\
-                        batch * ((out_height + block_size - 1) / block_size) *\
-                        ((out_width + block_size - 1) / block_size)
-                    wt_output_shape.dims.extend(
-                        [blk_sqr, in_channels, wt_output_width])
-
-                    blk_size_arg = wt_op.arg.add()
-                    blk_size_arg.name = MaceKeyword.mace_wino_block_size
-                    blk_size_arg.i = block_size
-
-                    if ConverterUtil.get_arg(op,
-                                             MaceKeyword.mace_padding_str) \
-                            is not None:
-                        padding_arg = wt_op.arg.add()
-                        padding_arg.name = MaceKeyword.mace_padding_str
-                        padding_arg.i = ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_str).i
-                    elif ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_values_str) \
-                            is not None:
-                        padding_arg = wt_op.arg.add()
-                        padding_arg.name = MaceKeyword.mace_padding_values_str
-                        padding_arg.ints.extend(ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_values_str).ints)
-
-                    # MatMul
-                    matmul_op = net.op.add()
-                    matmul_op.name = op.name + '_matmul'
-                    matmul_op.type = MaceOp.MatMul.name
-                    matmul_op.input.extend([op.input[1], wt_op.output[0]])
-                    matmul_op.output.extend([matmul_op.name])
-                    matmul_output_shape = matmul_op.output_shape.add()
-                    matmul_output_shape.dims.extend(
-                        [blk_sqr, out_channels, wt_output_width])
-
-                    arg = matmul_op.arg.add()
-                    arg.name = MaceKeyword.mace_winograd_filter_transformed
-                    arg.i = 1
-
-                    shape_op = net.op.add()
-                    shape_op.name = op.name + '_infer_shape'
-                    shape_op.type = MaceOp.InferConv2dShape.name
-                    shape_op.input.extend([op.input[0]])
-                    shape_op.output.extend([shape_op.name])
-                    shape_output_shape = shape_op.output_shape.add()
-                    shape_output_shape.dims.extend([4])
-
-                    kernels_arg = shape_op.arg.add()
-                    kernels_arg.name = MaceKeyword.mace_kernel_str
-                    kernels_arg.ints.extend([out_channels,
-                                             in_channels,
-                                             filter_height,
-                                             filter_width])
-
-                    if data_format is not None:
-                        data_format_arg = shape_op.arg.add()
-                        data_format_arg.name = MaceKeyword.mace_data_format_str
-                        data_format_arg.i = data_format.value
-
-                    if ConverterUtil.get_arg(op,
-                                             MaceKeyword.mace_padding_str) \
-                            is not None:
-                        padding_arg = shape_op.arg.add()
-                        padding_arg.name = MaceKeyword.mace_padding_str
-                        padding_arg.i = ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_str).i
-                    elif ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_values_str) \
-                            is not None:
-                        padding_arg = shape_op.arg.add()
-                        padding_arg.name = MaceKeyword.mace_padding_values_str
-                        padding_arg.ints.extend(ConverterUtil.get_arg(
-                            op, MaceKeyword.mace_padding_values_str).ints)
-
-                    # Inverse transform
-                    iwt_op = net.op.add()
-                    iwt_op.name = op.name + '_inverse_transform'
-                    iwt_op.type = MaceOp.WinogradInverseTransform.name
-                    iwt_op.input.extend([matmul_op.output[0]])
-                    iwt_op.input.extend([shape_op.output[0]])
-                    # biasadd
-                    if len(op.input) >= 3:
-                        iwt_op.input.extend([op.input[2]])
-                    iwt_op.output.extend(op.output)
-                    iwt_output_shape = iwt_op.output_shape.add()
-                    iwt_output_shape.dims.extend(op.output_shape[0].dims)
-
-                    blk_size_arg = iwt_op.arg.add()
-                    blk_size_arg.name = MaceKeyword.mace_wino_block_size
-                    blk_size_arg.i = block_size
-                    ConverterUtil.add_data_format_arg(iwt_op, data_format)
-
-                    self.safe_remove_node(op, iwt_op)
-
-        return False
-
     def transform_add_to_biasadd(self):
         net = self._model
         for op in net.op:
@@ -1105,37 +916,25 @@ class Transformer(base_converter.ConverterInterface):
                     if arg.name == MaceKeyword.mace_paddings_str:
                         mace_check(len(arg.ints) == 8,
                                    "pad dim rank should be 8.")
-                        if ConverterUtil.data_format(op) == DataFormat.NHWC \
-                                and self._target_data_format == DataFormat.NCHW:  # noqa
-                            print("Transpose pad args: %s(%s)"
-                                  % (op.name, op.type))
-                            self.transpose_shape(arg.ints,
-                                                 [0, 1, 6, 7, 2, 3, 4, 5])
-                        elif ConverterUtil.data_format(op) == DataFormat.NCHW \
+                        if ConverterUtil.data_format(op) == DataFormat.NCHW \
                                 and self._target_data_format == DataFormat.NHWC:  # noqa
                             print("Transpose pad args: %s(%s)"
                                   % (op.name, op.type))
                             self.transpose_shape(arg.ints,
                                                  [0, 1, 4, 5, 6, 7, 2, 3])
-            elif op.type == MaceOp.Concat.name or op.type == MaceOp.Slice.name:
+            elif op.type == MaceOp.Concat.name or op.type == MaceOp.Split.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
-                        if ConverterUtil.data_format(op) == DataFormat.NHWC \
-                                and self._target_data_format == DataFormat.NCHW:  # noqa
-                            print("Transpose slice args: %s(%s)"
-                                  % (op.name, op.type))
-                            mace_check(arg.i == 3,
-                                       'only support concat at '
-                                       'channel dimension')
-                            arg.i = 1
-                        elif ConverterUtil.data_format(op) == DataFormat.NCHW \
+                        if ConverterUtil.data_format(op) == DataFormat.NCHW \
                                 and self._target_data_format == DataFormat.NHWC:  # noqa
-                            print("Transpose slice args: %s(%s)"
+                            print("Transpose concat/split args: %s(%s)"
                                   % (op.name, op.type))
-                            mace_check(arg.i == 1,
-                                       "only support concat at "
-                                       "channel dimension")
-                            arg.i = 3
+                            if arg.i == 1:
+                                arg.i = 3
+                            elif arg.i == 2:
+                                arg.i = 1
+                            elif arg.i == 3:
+                                arg.i = 2
 
                         producer = self._producer[op.input[0]]
                         input_shape = producer.output_shape[0].dims
@@ -1150,17 +949,7 @@ class Transformer(base_converter.ConverterInterface):
             elif op.type == MaceOp.Squeeze.name:
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
-                        if ConverterUtil.data_format(
-                                op) == DataFormat.NHWC \
-                                and self._target_data_format == DataFormat.NCHW:  # noqa
-                            print("Transpose squeeze args: %s(%s)"
-                                  % (op.name, op.type))
-                            mace_check(list(arg.ints) == [1, 2],
-                                       'only support squeeze at at [1, 2]')
-                            arg.ints[:] = [2, 3]
-                        elif ConverterUtil.data_format(
-                                op) == DataFormat.NCHW \
-                                and self._target_data_format == DataFormat.NHWC:  # noqa
+                        if ConverterUtil.data_format(op) == DataFormat.NCHW:
                             print("Transpose squeeze args: %s(%s)"
                                   % (op.name, op.type))
                             mace_check(list(arg.ints) == [2, 3],
@@ -1171,24 +960,6 @@ class Transformer(base_converter.ConverterInterface):
                 for arg in op.arg:
                     if arg.name == MaceKeyword.mace_axis_str:
                         if ConverterUtil.data_format(
-                                op) == DataFormat.NHWC \
-                                and self._target_data_format == DataFormat.NCHW:  # noqa
-                            print("Transpose reduce mean args: %s(%s)"
-                                  % (op.name, op.type))
-                            reduce_axises = list(arg.ints)
-                            new_axises = []
-                            for i in range(len(reduce_axises)):
-                                idx = reduce_axises[i]
-                                if idx == 1 or idx == 2:
-                                    new_axises.append(idx + 1)
-                                elif idx == 3:
-                                    new_axises.append(1)
-                                else:
-                                    new_axises.append(idx)
-                            new_axises.sort()
-                            arg.ints[:] = []
-                            arg.ints.extend(new_axises)
-                        elif ConverterUtil.data_format(
                                 op) == DataFormat.NCHW \
                                 and self._target_data_format == DataFormat.NHWC:  # noqa
                             print("Transpose reduce mean args: %s(%s)"
@@ -1212,69 +983,26 @@ class Transformer(base_converter.ConverterInterface):
             if data_format is not None \
                     and data_format != self._target_data_format:
                 print("Transpose output shapes: %s(%s)" % (op.name, op.type))
-                if self._target_data_format == DataFormat.NHWC:  # NCHW -> NHWC
-                    for output_shape in op.output_shape:
-                        if len(output_shape.dims) == 4:
-                            self.transpose_shape(output_shape.dims,
-                                                 [0, 2, 3, 1])
-                else:  # NHWC -> NCHW
-                    for output_shape in op.output_shape:
-                        if len(output_shape.dims) == 4:
-                            self.transpose_shape(output_shape.dims,
-                                                 [0, 3, 1, 2])
+                for output_shape in op.output_shape:
+                    if len(output_shape.dims) == 4:
+                        self.transpose_shape(output_shape.dims,
+                                             [0, 2, 3, 1])
                 ConverterUtil.get_arg(op,
                                       MaceKeyword.mace_data_format_str).i = \
                     self._target_data_format.value
 
-        # transpose input/output
-        if self._target_data_format == DataFormat.NCHW:
-            print("Transpose input/output to NCHW")
-            for input_node in self._option.input_nodes.values():
-                new_input_name = MaceKeyword.mace_input_node_name \
-                                 + '_' + input_node.name
-                op = net.op.add()
-                op.name = self.normalize_op_name(input_node.name)
-                op.input.extend([new_input_name])
-                op.output.extend([input_node.name])
-                output_shape = op.output_shape.add()
-                output_shape.dims.extend(input_node.shape)
-                if len(output_shape.dims) == 4:
-                    op.type = MaceOp.Transpose.name
-                    self.transpose_shape(output_shape.dims, [0, 3, 1, 2])
+        return False
 
-                    dims_arg = op.arg.add()
-                    dims_arg.name = MaceKeyword.mace_dims_str
-                    dims_arg.ints.extend([0, 3, 1, 2])
-                else:
-                    op.type = MaceOp.Identity.name
+    def add_winograd_arg(self):
+        if self._wino_arg == 0:
+            return False
+        net = self._model
 
-                ConverterUtil.add_data_type_arg(op, mace_pb2.DT_FLOAT)
-                ConverterUtil.add_data_format_arg(op, DataFormat.NCHW)
-
-            for output_node in self._option.output_nodes.values():
-                output_name = MaceKeyword.mace_output_node_name \
-                              + '_' + output_node.name
-                op = self._model.op.add()
-                op.name = self.normalize_op_name(output_name)
-                op.input.extend([output_node.name])
-                op.output.extend([output_name])
-                output_shape = op.output_shape.add()
-                output_shape.dims.extend(
-                    self._producer[output_node.name].output_shape[0].dims)
-                if len(output_shape.dims) == 4:
-                    op.type = MaceOp.Transpose.name
-                    self.transpose_shape(output_shape.dims, [0, 2, 3, 1])
-
-                    dims_arg = op.arg.add()
-                    dims_arg.name = MaceKeyword.mace_dims_str
-                    dims_arg.ints.extend([0, 2, 3, 1])
-
-                    ConverterUtil.add_data_format_arg(op, DataFormat.NHWC)
-                else:
-                    op.type = MaceOp.Identity.name
-                ConverterUtil.add_data_type_arg(op, mace_pb2.DT_FLOAT)
-
-            self._input_output_added = True
+        for op in net.op:
+            if op.type == MaceOp.Conv2D.name:
+                winograd_arg = op.arg.add()
+                winograd_arg.name = MaceKeyword.mace_wino_arg_str
+                winograd_arg.i = self._wino_arg
 
         return False
 
@@ -1400,168 +1128,6 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
-    def buffer_transform(self, op, input_idx, input_type):
-        net = self._model
-        input_name = op.input[input_idx]
-        op_def = net.op.add()
-        op_def.name = input_name.replace(':', '_') + "_b2i"
-        output_name = op_def.name
-        op_def.type = MaceKeyword.mace_buffer_transform
-        op_def.input.extend([input_name])
-        op_def.output.extend([output_name])
-
-        arg = op_def.arg.add()
-        arg.name = MaceKeyword.mace_buffer_type
-        arg.i = input_type.value
-        arg = op_def.arg.add()
-        arg.name = MaceKeyword.mace_mode
-        arg.i = 0
-        ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
-
-        tensor_shape = list(self._consts[input_name].dims)
-        if input_type == OpenCLBufferType.WINOGRAD_FILTER:
-            blk_sqr = op.output_shape[0].dims[0]
-            wino_blk = int(np.sqrt(blk_sqr)) - 2
-            wino_arg = op_def.arg.add()
-            wino_arg.name = MaceKeyword.mace_wino_block_size
-            wino_arg.i = wino_blk
-            img_shape = calculate_image_shape(input_type, tensor_shape,
-                                              wino_blk)
-        else:
-            img_shape = calculate_image_shape(input_type, tensor_shape)
-
-        op.input[input_idx] = output_name
-
-        # update OpenCL max image size
-        self._opencl_max_image_size[0] = max(self._opencl_max_image_size[0],
-                                             img_shape[0])
-        self._opencl_max_image_size[1] = max(self._opencl_max_image_size[1],
-                                             img_shape[1])
-
-    def add_buffer_transform(self):
-        if self._option.device != DeviceType.GPU.value:
-            return False
-
-        print("Add buffer transform op")
-
-        net = self._model
-        for op in net.op:
-            if op.type == MaceOp.Conv2D.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.CONV2D_FILTER)
-                if len(op.input) >= 3:
-                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.Deconv2D.name\
-                    or op.type == MaceOp.DepthwiseDeconv2d.name:
-                if op.type == MaceOp.Deconv2D.name:
-                    self.buffer_transform(op, 1,
-                                          OpenCLBufferType.CONV2D_FILTER)
-                elif op.type == MaceOp.DepthwiseDeconv2d.name:
-                    self.buffer_transform(op, 1,
-                                          OpenCLBufferType.DW_CONV2D_FILTER)
-                if ConverterUtil.get_arg(
-                        op,
-                        MaceKeyword.mace_framework_type_str).i == \
-                        FrameworkType.CAFFE.value:
-                    if len(op.input) >= 3:
-                        self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-                elif len(op.input) >= 4:
-                    self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.DepthwiseConv2d.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.DW_CONV2D_FILTER)
-                if len(op.input) >= 3:
-                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.BiasAdd.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.Eltwise.name and len(op.input) == 2:
-                if op.input[0] in self._consts \
-                        and len(self._consts[op.input[0]].dims) == 1:
-                    self.buffer_transform(op, 0, OpenCLBufferType.ARGUMENT)
-                if op.input[1] in self._consts \
-                        and len(self._consts[op.input[1]].dims) == 1:
-                    self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.BatchNorm.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
-                self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-                if len(op.input) >= 4:
-                    self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.MatMul.name and \
-                    ConverterUtil.get_arg(
-                        op,
-                        MaceKeyword.mace_winograd_filter_transformed
-                    ) is not None:  # noqa
-                self.buffer_transform(op, 0, OpenCLBufferType.WINOGRAD_FILTER)
-            elif op.type == MaceOp.WinogradInverseTransform.name \
-                    and len(op.input) >= 3:
-                self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.FullyConnected.name:
-                self.buffer_transform(op, 1, OpenCLBufferType.WEIGHT_WIDTH)
-                if len(op.input) >= 3:
-                    self.buffer_transform(op, 2, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.Activation.name:
-                if ConverterUtil.get_arg(
-                        op,
-                        MaceKeyword.mace_activation_type_str
-                ).s == ActivationType.PRELU.name:  # noqa
-                    self.buffer_transform(op, 1, OpenCLBufferType.ARGUMENT)
-            elif op.type == MaceOp.LSTMCell.name:
-                if op.input[1] in self._consts:
-                    self.buffer_transform(op, 1,
-                                          OpenCLBufferType.IN_OUT_CHANNEL)
-                self.buffer_transform(op, 2, OpenCLBufferType.IN_OUT_CHANNEL)
-                self.buffer_transform(op, 3, OpenCLBufferType.ARGUMENT)
-                if op.input[4] in self._consts:
-                    self.buffer_transform(op, 4,
-                                          OpenCLBufferType.IN_OUT_CHANNEL)
-
-        # Add OpenCL max image size
-        if self._option.cl_mem_type == "image":
-            arg = net.arg.add()
-            arg.name = MaceKeyword.mace_opencl_max_image_size
-            arg.ints.extend(self._opencl_max_image_size)
-
-        for input_node in self._option.input_nodes.values():
-            new_input_name = MaceKeyword.mace_input_node_name \
-                             + '_' + input_node.name
-            op_def = self._model.op.add()
-
-            op_def.name = self.normalize_op_name(input_node.name)
-            op_def.type = MaceKeyword.mace_buffer_transform
-            op_def.input.extend([new_input_name])
-            op_def.output.extend([input_node.name])
-            output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(input_node.shape)
-
-            arg = op_def.arg.add()
-            arg.name = MaceKeyword.mace_buffer_type
-            arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
-
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
-            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
-
-        for output_node in self._option.output_nodes.values():
-            output_name = MaceKeyword.mace_output_node_name \
-                          + '_' + output_node.name
-            op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(output_name)
-            op_def.type = MaceKeyword.mace_buffer_inverse_transform
-            op_def.input.extend([output_node.name])
-            op_def.output.extend([output_name])
-            if output_node.shape:
-                output_shape = op_def.output_shape.add()
-                output_shape.dims.extend(output_node.shape)
-
-            arg = op_def.arg.add()
-            arg.name = MaceKeyword.mace_buffer_type
-            arg.i = OpenCLBufferType.IN_OUT_CHANNEL.value
-
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
-            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
-            self._output_op_names.add(op_def.name)
-
-        self._input_output_added = True
-
-        return False
-
     def fold_reshape(self):
         net = self._model
         for op in net.op:
@@ -1654,37 +1220,33 @@ class Transformer(base_converter.ConverterInterface):
 
         return False
 
-    def add_device(self):
-        # TODO(liuqi) add device definition in OperatorDef
-        net = self._model
-        for op in net.op:
-            arg = op.arg.add()
-            arg.name = MaceKeyword.mace_device
-            arg.i = self._option.device
-
-        return False
-
     def update_float_op_data_type(self):
         if self._option.quantize:
             return
 
         print("update op with float data type")
         net = self._model
+        # TODO(liuqi): unify the data_type when CPU support half storage
+        data_type = self._option.data_type
+        if self._option.device == DeviceType.CPU.value:
+            data_type = mace_pb2.DT_HALF
         for op in net.op:
             data_type_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_op_data_type_str)
             if not data_type_arg:
                 data_type_arg = op.arg.add()
                 data_type_arg.name = MaceKeyword.mace_op_data_type_str
-                data_type_arg.i = self._option.data_type
-            elif data_type_arg.i != self._option.data_type \
+                data_type_arg.i = data_type
+            elif data_type_arg.i != data_type \
                     and data_type_arg.i == mace_pb2.DT_FLOAT \
                     and op.name not in self._output_op_names:
-                data_type_arg.i = self._option.data_type
+                data_type_arg.i = data_type
 
         return False
 
     def sort_dfs(self, op, visited, sorted_nodes):
+        if op.name in visited:
+            return
         visited.update([op.name])
         if len(op.input) > 0:
             for input_tensor in op.input:
@@ -1695,40 +1257,6 @@ class Transformer(base_converter.ConverterInterface):
                     self.sort_dfs(producer_op, visited, sorted_nodes)
         sorted_nodes.append(op)
 
-    def add_mace_input_and_output_nodes(self):
-        if self._input_output_added:
-            return
-
-        print("add mace input and output nodes")
-
-        for input_node in self._option.input_nodes.values():
-            new_input_name = MaceKeyword.mace_input_node_name \
-                             + '_' + input_node.name
-            op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(input_node.name)
-            op_def.type = MaceOp.Identity.name
-            op_def.input.extend([new_input_name])
-            op_def.output.extend([input_node.name])
-            output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(input_node.shape)
-
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
-            ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
-
-        for output_node in self._option.output_nodes.values():
-            output_name = MaceKeyword.mace_output_node_name \
-                          + '_' + output_node.name
-            op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(output_name)
-            op_def.type = MaceOp.Identity.name
-            op_def.input.extend([output_node.name])
-            op_def.output.extend([output_name])
-            output_shape = op_def.output_shape.add()
-            output_shape.dims.extend(
-                self._producer[output_node.name].output_shape[0].dims)
-
-            ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_FLOAT)
-
     def sort_by_execution(self):
         print("Sort by execution")
         net = self._model
@@ -1736,11 +1264,9 @@ class Transformer(base_converter.ConverterInterface):
         sorted_nodes = []
 
         for output_node in self._option.output_nodes:
-            output_tensor = MaceKeyword.mace_output_node_name \
-                            + '_' + output_node
-            mace_check(output_tensor in self._producer,
-                       "output_tensor %s not existed in model" % output_tensor)
-            self.sort_dfs(self._producer[output_tensor], visited, sorted_nodes)
+            mace_check(output_node in self._producer,
+                       "output_tensor %s not existed in model" % output_node)
+            self.sort_dfs(self._producer[output_node], visited, sorted_nodes)
 
         del net.op[:]
         net.op.extend(sorted_nodes)
@@ -1756,28 +1282,50 @@ class Transformer(base_converter.ConverterInterface):
             return False
 
         print("Add mace quantize and dequantize nodes")
+        input_name_map = {}
+        output_name_map = {}
+
+        for input_node in self._option.input_nodes.values():
+            new_input_name = MaceKeyword.mace_input_node_name \
+                             + '_' + input_node.name
+            input_name_map[input_node.name] = new_input_name
+
+        for output_node in self._option.output_nodes.values():
+            new_output_name = MaceKeyword.mace_output_node_name \
+                              + '_' + output_node.name
+            output_name_map[output_node.name] = new_output_name
 
         for op in self._model.op:
+            for i in range(len(op.input)):
+                if op.input[i] in input_name_map:
+                    op.input[i] = input_name_map[op.input[i]]
+            for i in range(len(op.output)):
+                if op.output[i] in output_name_map:
+                    op.output[i] = output_name_map[op.output[i]]
+
             data_type_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_op_data_type_str)
             mace_check(data_type_arg, "Data type does not exist for %s(%s)"
                        % (op.name, op.type))
             if data_type_arg.i == mace_pb2.DT_FLOAT:
                 data_type_arg.i = mace_pb2.DT_UINT8
+            elif data_type_arg.i == mace_pb2.DT_UINT8:
+                mace_check(op.type == MaceOp.Quantize.name
+                           or op.type == MaceOp.Dequantize.name,
+                           "Only Quantization ops support uint8, "
+                           "but got %s(%s)" % (op.name, op.type))
             else:
-                mace_check(False,
+                mace_check(op.type == MaceOp.Quantize.name,
                            "Quantization only support float ops, "
                            "but get %s(%s)"
                            % (op.name, op.type))
 
         for input_node in self._option.input_nodes.values():
-            new_input_name = MaceKeyword.mace_input_node_name \
-                             + '_' + input_node.name
             op_def = self._model.op.add()
             op_def.name = self.normalize_op_name(input_node.name)
             op_def.type = MaceOp.Quantize.name
-            op_def.input.extend([new_input_name])
-            op_def.output.extend([input_node.name])
+            op_def.input.extend([input_node.name])
+            op_def.output.extend([input_name_map[input_node.name]])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(input_node.shape)
 
@@ -1785,13 +1333,12 @@ class Transformer(base_converter.ConverterInterface):
             ConverterUtil.add_data_format_arg(op_def, DataFormat.NHWC)
 
         for output_node in self._option.output_nodes.values():
-            output_name = MaceKeyword.mace_output_node_name \
-                          + '_' + output_node.name
             op_def = self._model.op.add()
-            op_def.name = self.normalize_op_name(output_name)
+            op_def.name = self.normalize_op_name(
+                output_name_map[output_node.name])
             op_def.type = MaceOp.Dequantize.name
-            op_def.input.extend([output_node.name])
-            op_def.output.extend([output_name])
+            op_def.input.extend([output_name_map[output_node.name]])
+            op_def.output.extend([output_node.name])
             output_shape = op_def.output_shape.add()
             output_shape.dims.extend(
                 self._producer[output_node.name].output_shape[0].dims)
@@ -1799,7 +1346,9 @@ class Transformer(base_converter.ConverterInterface):
 
             ConverterUtil.add_data_type_arg(op_def, mace_pb2.DT_UINT8)
 
-        self._input_output_added = True
+        quantize_flag_arg = self._model.arg.add()
+        quantize_flag_arg.name = MaceKeyword.mace_quantize_flag_arg_str
+        quantize_flag_arg.i = 1
 
         return False
 
@@ -2057,6 +1606,8 @@ class Transformer(base_converter.ConverterInterface):
             if input_node.name not in self._quantize_activation_info:
                 print("Input range %s: %s" % (input_node.name,
                                               str(input_node.range)))
+                new_input_name = MaceKeyword.mace_input_node_name \
+                    + '_' + input_node.name
                 scale, zero, minval, maxval = \
                     quantize_util.adjust_range(input_node.range[0],
                                                input_node.range[1],
@@ -2066,7 +1617,7 @@ class Transformer(base_converter.ConverterInterface):
                 quantize_info.maxval = maxval
                 quantize_info.scale = scale
                 quantize_info.zero_point = zero
-                self._quantize_activation_info[input_node.name] = quantize_info
+                self._quantize_activation_info[new_input_name] = quantize_info
 
         return False
 
@@ -2084,9 +1635,6 @@ class Transformer(base_converter.ConverterInterface):
                            "missing quantize info: %s" % op)
 
     def add_opencl_informations(self):
-        if self._option.device != DeviceType.GPU.value:
-            return False
-
         print("Add OpenCL informations")
 
         net = self._model

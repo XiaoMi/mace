@@ -33,7 +33,7 @@ class ImageToBuffer : public OpenCLBufferTransformKernel {
  public:
   MaceStatus Compute(OpContext *context,
                      const Tensor *input,
-                     const BufferType type,
+                     const OpenCLBufferType type,
                      const int wino_blk_size,
                      Tensor *output) override;
 
@@ -45,12 +45,15 @@ class ImageToBuffer : public OpenCLBufferTransformKernel {
 template <typename T>
 MaceStatus ImageToBuffer<T>::Compute(OpContext *context,
                                      const Tensor *input,
-                                     const BufferType type,
+                                     const OpenCLBufferType type,
                                      const int wino_blk_size,
                                      Tensor *output) {
   auto formatted_buffer_shape = FormatBufferShape(input->shape(), type);
   std::vector<size_t> image_shape;
-  CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size);
+  OpenCLUtil::CalImage2DShape(formatted_buffer_shape,
+                              type,
+                              &image_shape,
+                              wino_blk_size);
   MACE_RETURN_IF_ERROR(output->Resize(input->shape()));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),

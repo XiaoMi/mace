@@ -29,6 +29,7 @@
 #include "mace/utils/utils.h"
 #include "mace/public/mace.h"
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/depthwise_deconv2d.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -408,10 +409,20 @@ class DepthwiseDeconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
  public:
   explicit DepthwiseDeconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
+    MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::DepthwiseDeconv2dKernel<T>);
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    MACE_CHECK(TransformFilter<T>(
+        context, operator_def_.get(), 1,
+        OpenCLBufferType::DW_CONV2D_FILTER, mem_type)
+                   == MaceStatus::MACE_SUCCESS);
+    if (operator_def_->input_size() >= 3) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 2,
+          OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
     }
   }
 

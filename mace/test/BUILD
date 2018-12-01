@@ -6,6 +6,14 @@ licenses(["notice"])  # Apache 2.0
 
 load("//mace:mace.bzl", "if_android", "if_neon_enabled", "if_openmp_enabled", "if_android_armv7", "if_hexagon_enabled")
 
+cc_library(
+    name = "mace_api_test_header",
+    hdrs = [
+        "mace_api_test.h",
+    ],
+    copts = ["-Werror", "-Wextra", "-Wno-missing-field-initializers"],
+)
+
 cc_test(
     name = "mace_api_test",
     testonly = 1,
@@ -20,6 +28,7 @@ cc_test(
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
+        ":mace_api_test_header",
         "//mace/ops:test",
         "//mace/libmace:libmace",
         "@gtest//:gtest_main",
@@ -40,6 +49,7 @@ cc_test(
     linkopts = ["-fopenmp"],
     linkstatic = 1,
     deps = [
+        ":mace_api_test_header",
         "//mace/ops:test",
         "//mace/libmace:libmace",
         "@gtest//:gtest_main",

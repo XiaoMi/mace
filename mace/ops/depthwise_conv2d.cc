@@ -499,13 +499,17 @@ class DepthwiseConv2dOp<DeviceType::GPU, T> : public DepthwiseConv2dOpBase {
       mem_type = MemoryType::GPU_BUFFER;
       kernel_.reset(new opencl::buffer::DepthwiseConv2dKernel<T>);
     }
+    context->set_output_mem_type(mem_type);
     // Transform filter tensor to target format
     MACE_CHECK(TransformFilter<T>(
-        context, operator_def_.get(), 1, BufferType::DW_CONV2D_FILTER, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+        context,
+        operator_def_.get(),
+        1,
+        OpenCLBufferType::DW_CONV2D_FILTER,
+        mem_type) == MaceStatus::MACE_SUCCESS);
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
-          context, operator_def_.get(), 2, BufferType::ARGUMENT, mem_type)
+          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
   }

@@ -47,40 +47,21 @@ static void Deconv2d(int iters,
   }
   net.AddRandomInput<D, float>("Filter",
                                {output_channels, channels, kernel_h,
-                                kernel_w});
-  net.AddRandomInput<D, float>("Bias", {output_channels});
+                                kernel_w}, true);
+  net.AddRandomInput<D, float>("Bias", {output_channels}, true);
   net.AddInputFromArray<D, int32_t>("OutputShape", {4},
-                                    {batch, out_h, out_w, output_channels});
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        ops::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-    OpDefBuilder("Deconv2D", "Deconv2dTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Input("OutputShape")
-        .Input("BiasImage")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("Deconv2D", "Deconv2dTest")
-        .Input("Input")
-        .Input("Filter")
-        .Input("OutputShape")
-        .Input("Bias")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  }
-
+                                    {batch, out_h, out_w, output_channels},
+                                    true);
+  OpDefBuilder("Deconv2D", "Deconv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Input("OutputShape")
+      .Input("Bias")
+      .Output("Output")
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntArg("padding", padding)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
   net.Setup(D);
 
   // Warm-up

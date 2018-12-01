@@ -32,11 +32,11 @@ void TestLSTMCell(const uint32_t &batch,
   OpsTestNet net;
 
   net.AddRandomInput<D, float>("Input", {batch, input_size});
-  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units});
+  net.AddRandomInput<D, float>("PreOutput", {batch, hidden_units}, true);
   net.AddRandomInput<D, float>("Weight", {input_size + hidden_units,
-                                          4 * hidden_units});
-  net.AddRandomInput<D, float>("Bias", {4 * hidden_units});
-  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units});
+                                          4 * hidden_units}, true);
+  net.AddRandomInput<D, float>("Bias", {4 * hidden_units}, true);
+  net.AddRandomInput<D, float>("PreCell", {batch, hidden_units}, true);
 
   net.CopyData<DeviceType::CPU, float>("Input", "InputCPU");
   net.CopyData<DeviceType::CPU, float>("PreOutput", "PreOutputCPU");
@@ -46,41 +46,24 @@ void TestLSTMCell(const uint32_t &batch,
 
   // Run on CPU
   LSTMCellCPU<float>(&net, "InputCPU", "PreOutputCPU", "WeightCPU", "BiasCPU",
-                 "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
+                     "PreCellCPU", forget_add, "CellCPU", "OutputCPU");
   // Run
   net.RunOp(DeviceType::CPU);
 
   // Run on GPU
-  BufferToImage<D, T>(&net, "Input", "InputImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(&net, "PreOutput", "PreOutputImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(&net, "Weight", "WeightImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                      ops::BufferType::ARGUMENT);
-  BufferToImage<D, T>(&net, "PreCell", "PreCellImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
-
   OpDefBuilder("LSTMCell", "LSTMCellTest")
-      .Input("InputImage")
-      .Input("PreOutputImage")
-      .Input("WeightImage")
-      .Input("BiasImage")
-      .Input("PreCellImage")
+      .Input("Input")
+      .Input("PreOutput")
+      .Input("Weight")
+      .Input("Bias")
+      .Input("PreCell")
       .AddFloatArg("scalar_input", forget_add)
-      .Output("CellImage")
-      .Output("OutputImage")
+      .Output("Cell")
+      .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(D);
-
-  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  ImageToBuffer<D, float>(&net, "CellImage", "Cell",
-                      ops::BufferType::IN_OUT_CHANNEL);
-
 
   Tensor expected_cell, expected_output;
   expected_cell.Copy(*net.GetOutput("CellCPU"));

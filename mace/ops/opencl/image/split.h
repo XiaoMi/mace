@@ -34,7 +34,9 @@ namespace image {
 template <typename T>
 class SplitKernel : public OpenCLSplitKernel {
  public:
-  explicit SplitKernel(const int32_t axis) : axis_(axis) {}
+  explicit SplitKernel(const int32_t axis) : axis_(axis) {
+    MACE_CHECK(axis == 3) << "GPU only support channel-dimension split";
+  }
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -60,7 +62,9 @@ MaceStatus SplitKernel<T>::Compute(
       {input->dim(0), input->dim(1), input->dim(2), output_channels});
 
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   for (size_t i = 0; i < outputs_count; ++i) {
     MACE_RETURN_IF_ERROR(
         output_list[i]->ResizeImage(output_shape, image_shape));

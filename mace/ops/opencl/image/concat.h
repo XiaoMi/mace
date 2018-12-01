@@ -92,7 +92,9 @@ MaceStatus ConcatKernel<T>::Compute(
       inputs_count == 2 || divisible_four,
       "Dimensions of inputs should be divisible by 4 when inputs_count > 2.");
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   switch (inputs_count) {

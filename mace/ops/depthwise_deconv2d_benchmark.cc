@@ -44,32 +44,16 @@ static void DepthwiseDeconv2d(int iters,
   }
   net.AddRandomInput<D, float>("Filter",
                                {1, channels, kernel_h,
-                                kernel_w});
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        ops::BufferType::DW_CONV2D_FILTER);
-    OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntsArg("padding_values", {padding, padding})
-        .AddIntArg("group", channels)
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
-        .Input("Input")
-        .Input("Filter")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntsArg("padding_values", {padding, padding})
-        .AddIntArg("group", channels)
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<float>::value))
-        .Finalize(net.NewOperatorDef());
-  }
+                                kernel_w}, true);
+  OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
+      .Input("Input")
+      .Input("Filter")
+      .Output("Output")
+      .AddIntsArg("strides", {stride, stride})
+      .AddIntsArg("padding_values", {padding, padding})
+      .AddIntArg("group", channels)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   net.Setup(D);
 

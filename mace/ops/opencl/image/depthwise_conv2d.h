@@ -112,8 +112,8 @@ MaceStatus DepthwiseConv2dKernel<T>::Compute(
   }
 
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   return depthwise::DepthwiseConv2d(

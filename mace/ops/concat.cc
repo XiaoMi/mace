@@ -28,7 +28,8 @@ class ConcatOpBase : public Operation {
  public:
   explicit ConcatOpBase(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 3)) {}
+        axis_(Operation::GetOptionalArg<int>("axis", 3)),
+        checked_(false) {}
 
  protected:
   void Validate() {
@@ -42,6 +43,7 @@ class ConcatOpBase : public Operation {
 
  protected:
   int axis_;
+  bool checked_;
 };
 
 template <DeviceType D, class T>
@@ -55,7 +57,15 @@ class ConcatOp<DeviceType::CPU, T> : public ConcatOpBase {
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    Validate();
+    if (!checked_) {
+      Validate();
+      if (this->Input(0)->dim_size() == 4) {
+        if (axis_ == 3) axis_ = 1;
+        else if (axis_ == 2) axis_ = 3;
+        else if (axis_ == 1) axis_ = 2;
+      }
+      checked_ = true;
+    }
     const std::vector<const Tensor *> &inputs = this->Inputs();
     Tensor *output = this->Output(0);
     const Tensor *input0 = inputs.front();

@@ -21,7 +21,11 @@ template <DeviceType D, typename T>
 class ShapeOp : public Operation {
  public:
   explicit ShapeOp(OpConstructContext *context)
-      : Operation(context) {}
+      : Operation(context) {
+    if (D == DeviceType::GPU) {
+      context->set_output_mem_type(MemoryType::GPU_BUFFER);
+    }
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);

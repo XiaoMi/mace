@@ -132,7 +132,7 @@ void TestRandomResizeBicubic() {
     // Add input data
     net.AddRandomInput<D, float>("Input",
                                  {batch, in_height, in_width, channels},
-                                 true, true);
+                                 false, true, true);
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
 
@@ -151,23 +151,17 @@ void TestRandomResizeBicubic() {
     expected.Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::GPU) {
-      BufferToImage<D, float>(&net, "Input", "InputImage",
-                              ops::BufferType::IN_OUT_CHANNEL);
-
       OpDefBuilder("ResizeBicubic", "ResizeBicubicTest")
-          .Input("InputImage")
-          .Output("OutputImage")
+          .Input("Input")
+          .Output("Output")
           .AddIntArg("align_corners", align_corners)
           .AddIntsArg("size", {height, width})
           .Finalize(net.NewOperatorDef());
       // Run
       net.RunOp(D);
-
-      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
-                              ops::BufferType::IN_OUT_CHANNEL);
     }
     // Check
-    ExpectTensorNear<float>(expected, *net.GetOutput("DeviceOutput"), 1e-2,
+    ExpectTensorNear<float>(expected, *net.GetOutput("Output"), 1e-2,
                             1e-2);
   }
 }

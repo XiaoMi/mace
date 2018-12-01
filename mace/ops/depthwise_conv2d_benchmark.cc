@@ -57,18 +57,17 @@ void DepthwiseConv2d(int iters,
   }
   if (DataTypeToEnum<T>::value != DT_UINT8) {
     net.AddRandomInput<D, float>(
-        "Filter", {multiplier, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier});
+        "Filter", {multiplier, input_channels, kernel_h, kernel_w}, true);
+    net.AddRandomInput<D, float>("Bias", {input_channels * multiplier}, true);
   } else {
     net.AddRandomInput<DeviceType::CPU, uint8_t>(
-        "Filter", {kernel_h, kernel_w, input_channels, multiplier});
+        "Filter", {kernel_h, kernel_w, input_channels, multiplier}, true);
     net.GetTensor("Filter")->SetScale(0.1);
     net.AddRandomInput<DeviceType::CPU, int32_t>(
-        "Bias", {input_channels * multiplier});
+        "Bias", {input_channels * multiplier}, true);
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
+  OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -78,26 +77,6 @@ void DepthwiseConv2d(int iters,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        ops::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-    OpDefBuilder("DepthwiseConv2d", "DepthwiseConv2dTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Input("BiasImage")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {1, 1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   net.Setup(D);
 

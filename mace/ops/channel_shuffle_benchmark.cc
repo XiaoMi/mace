@@ -36,23 +36,11 @@ void ChannelShuffle(
     MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("Softmax", "SoftmaxBM")
+  OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
       .Input("Input")
       .Output("Output")
+      .AddIntArg("group", group)
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
-        .Input("InputImage")
-        .Output("Output")
-        .AddIntArg("group", group)
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

@@ -1097,13 +1097,16 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     }
     // Transform filters
     int input_size = operator_def_->input_size();
+    Workspace *ws = context->workspace();
     for (int i = 0; i < input_size; ++i) {
-      const Tensor *input_tensor = context->workspace()->GetTensor(
-          operator_def_->input(i));
-      if (input_tensor != nullptr && input_tensor->is_weight()) {
+      if (ws->HasTensor(operator_def_->input(i)) &&
+          ws->GetTensor(operator_def_->input(i))->is_weight()) {
         MACE_CHECK(TransformFilter<T>(
-            context, operator_def_.get(), i, BufferType::ARGUMENT, mem_type)
-                       == MaceStatus::MACE_SUCCESS);
+            context,
+            operator_def_.get(),
+            i,
+            OpenCLBufferType::ARGUMENT,
+            mem_type) == MaceStatus::MACE_SUCCESS);
       }
     }
   }

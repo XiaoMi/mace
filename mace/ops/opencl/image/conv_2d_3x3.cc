@@ -59,20 +59,20 @@ std::vector<uint32_t> LocalWS(OpenCLRuntime *runtime,
 
 }  // namespace
 
-extern MaceStatus Conv2dOpenclK3x3(OpContext *context,
-                                   cl::Kernel *kernel,
-                                   const Tensor *input,
-                                   const Tensor *filter,
-                                   const Tensor *bias,
-                                   const int stride,
-                                   const int *padding,
-                                   const int *dilations,
-                                   const ActivationType activation,
-                                   const float relux_max_limit,
-                                   const DataType dt,
-                                   std::vector<index_t> *prev_input_shape,
-                                   Tensor *output,
-                                   uint32_t *kwg_size) {
+extern MaceStatus Conv2dK3x3(OpContext *context,
+                             cl::Kernel *kernel,
+                             const Tensor *input,
+                             const Tensor *filter,
+                             const Tensor *bias,
+                             const int stride,
+                             const int *padding,
+                             const int *dilations,
+                             const ActivationType activation,
+                             const float relux_max_limit,
+                             const DataType dt,
+                             std::vector<index_t> *prev_input_shape,
+                             Tensor *output,
+                             uint32_t *kwg_size) {
   const index_t batch = output->dim(0);
   const index_t height = output->dim(1);
   const index_t width = output->dim(2);

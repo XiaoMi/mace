@@ -59,21 +59,14 @@ TEST_F(ChannelShuffleOpTest, C16G4_OPENCL) {
       "Input", {1, 1, 2, 16},
       {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31});
-  BufferToImage<DeviceType::GPU, float>(&net, "Input", "InputImage",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-
   OpDefBuilder("ChannelShuffle", "ChannelShuffleTest")
-      .Input("InputImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Output("Output")
       .AddIntArg("group", 4)
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::GPU);
-
-  // Transfer output
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                        ops::BufferType::IN_OUT_CHANNEL);
 
   // Check
   auto expected = net.CreateTensor<float>(

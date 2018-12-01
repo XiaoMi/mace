@@ -132,7 +132,7 @@ void CreateOperator{{i}}(mace::OperatorDef *op) {
     quantize_info{{j}}->set_maxval({{ net.op[i].quantize_info[j].maxval }});
   {% endfor %}
 
-  {% if runtime == 'dsp' %}
+  {% if device == 3 %}
     op->set_padding({{ net.op[i].padding }});
     {% if net.op[i].node_input | length > 0 %}
     std::vector<int> input_node_ids({ {{ net.op[i].node_input | map(attribute='node_id') | join(', ') }} });

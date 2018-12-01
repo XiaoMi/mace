@@ -28,34 +28,27 @@ class BufferTransformOp<DeviceType::GPU, T> : public Operation {
  public:
   explicit BufferTransformOp(OpConstructContext *context)
       : Operation(context),
-        wino_blk_size_(Operation::GetOptionalArg<int>("wino_block_size", 2)),
-        out_mem_type_(MemoryType::GPU_BUFFER),
-        transformer_(nullptr) {
-    MemoryType in_mem_type = context->workspace()->GetTensor(
-        operator_def_->input(0))->memory_type();
-    if (context->device()->opencl_runtime()->UseImageMemory()) {
-      out_mem_type_ = MemoryType::GPU_IMAGE;
-    }
-    transformer_.reset(new OpenCLBufferTransformer<T>(in_mem_type,
-                                                      out_mem_type_));
-  }
+        wino_blk_size_(Operation::GetOptionalArg<int>("wino_block_size", 0)),
+        out_mem_type_(static_cast<MemoryType>(Operation::GetOptionalArg<int>(
+            "mem_type", static_cast<int>(MemoryType::GPU_IMAGE)))) {}
 
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
-    ops::BufferType type =
-        static_cast<ops::BufferType>(Operation::GetOptionalArg<int>(
-            "buffer_type", static_cast<int>(ops::CONV2D_FILTER)));
+    auto type =
+        static_cast<OpenCLBufferType>(Operation::GetOptionalArg<int>(
+            "buffer_type", static_cast<int>(CONV2D_FILTER)));
 
-    return transformer_->Transform(
-        context, input, type, wino_blk_size_, out_mem_type_, output);
+    MemoryType in_mem_type = context->workspace()->GetTensor(
+        operator_def_->input(0))->memory_type();
+    return OpenCLBufferTransformer<T>(in_mem_type, out_mem_type_).Transform(
+        context, input, type, out_mem_type_, wino_blk_size_, output);
   }
 
  private:
   const int wino_blk_size_;
   MemoryType out_mem_type_;
-  std::unique_ptr<OpenCLBufferTransformer<T>> transformer_;
 };
 
 

@@ -59,20 +59,13 @@ void Simple() {
     net.GetOutput("Output")->Reshape({1, 1, 2, 4});
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
     OpDefBuilder("Softmax", "SoftmaxTest")
-        .Input("InputImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
 
     ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
@@ -115,22 +108,15 @@ void Complex(const std::vector<index_t> &logits_shape) {
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, float>(&net, "Input", "InputImage",
-                          ops::BufferType::IN_OUT_CHANNEL);
-
   OpDefBuilder("Softmax", "SoftmaxTest")
-      .Input("InputImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Run on gpu
   net.RunOp(D);
 
-  // Transfer output
-  ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
-
-  ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -158,7 +144,7 @@ namespace {
 
 void TestQuantizedSoftmax(const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  net.AddRandomInput<CPU, float>("Input", input_shape, false, true);
+  net.AddRandomInput<CPU, float>("Input", input_shape, false, false, true);
 
   OpDefBuilder("Softmax", "SoftmaxTest")
       .Input("Input")

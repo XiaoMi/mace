@@ -26,7 +26,7 @@ class SplitOpTest : public OpsTestBase {};
 
 namespace {
 template <DeviceType D, typename T>
-void RandomTest(const int num_outputs, const int axis) {
+void RandomTest(const int num_outputs, int axis) {
   static unsigned int seed = time(NULL);
   const index_t output_channels = 4 * (1 + rand_r(&seed) % 10);
   const index_t input_channels = num_outputs * output_channels;
@@ -38,9 +38,9 @@ void RandomTest(const int num_outputs, const int axis) {
   OpsTestNet net;
 
   std::vector<index_t> input_shape;
-  if (axis == 1)
+  if (D == DeviceType::CPU)
     input_shape = {batch, input_channels, height, width};
-  else if (axis == 3)
+  else
     input_shape = {batch, height, width, input_channels};
   const index_t input_size = std::accumulate(
       input_shape.begin(), input_shape.end(), 1, std::multiplies<index_t>());
@@ -48,43 +48,25 @@ void RandomTest(const int num_outputs, const int axis) {
   GenerateRandomRealTypeData(input_shape, &input_data);
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-
-    auto builder = OpDefBuilder("Split", "SplitTest");
-    builder.Input("InputImage");
-    for (int i = 0; i < num_outputs; ++i) {
-      builder = builder.Output(MakeString("OutputImage", i));
-    }
-    builder.AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    auto builder = OpDefBuilder("Split", "SplitTest").AddIntArg("axis", axis);
-    builder.Input("Input");
-    for (int i = 0; i < num_outputs; ++i) {
-      builder = builder.Output(MakeString("Output", i));
-    }
-    builder.Finalize(net.NewOperatorDef());
+  auto builder = OpDefBuilder("Split", "SplitTest").AddIntArg("axis", axis);
+  builder.Input("Input");
+  for (int i = 0; i < num_outputs; ++i) {
+    builder = builder.Output(MakeString("Output", i));
   }
+  builder.AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(D);
 
-  if (D == DeviceType::GPU) {
-    for (int i = 0; i < num_outputs; ++i) {
-      ImageToBuffer<D, float>(&net, MakeString("OutputImage", i),
-                              MakeString("Output", i),
-                              ops::BufferType::IN_OUT_CHANNEL);
-    }
-  }
-
   // Check
   std::vector<index_t> expected_shape;
-  if (axis == 1)
+  if (D == DeviceType::CPU) {
+    if (axis == 3) axis = 1;
     expected_shape = {batch, output_channels, height, width};
-  else if (axis == 3)
+  } else {
     expected_shape = {batch, height, width, output_channels};
+  }
   const index_t outer_size =
       std::accumulate(expected_shape.begin(), expected_shape.begin() + axis, 1,
                       std::multiplies<index_t>());
@@ -117,9 +99,9 @@ TEST_F(SplitOpTest, CPU) {
 }
 
 TEST_F(SplitOpTest, CPUAxis1) {
-  RandomTest<DeviceType::CPU, float>(2, 1);
-  RandomTest<DeviceType::CPU, float>(4, 1);
-  RandomTest<DeviceType::CPU, float>(11, 1);
+  RandomTest<DeviceType::CPU, float>(2, 3);
+  RandomTest<DeviceType::CPU, float>(4, 3);
+  RandomTest<DeviceType::CPU, float>(11, 3);
 }
 
 TEST_F(SplitOpTest, OPENCLFloat) {

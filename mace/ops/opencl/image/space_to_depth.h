@@ -74,7 +74,9 @@ MaceStatus SpaceToDepthKernel<T>::Compute(
                                        output_depth};
 
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   auto runtime = context->device()->opencl_runtime();

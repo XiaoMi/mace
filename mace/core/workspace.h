@@ -27,6 +27,8 @@
 
 namespace mace {
 
+class MemoryOptimizer;
+
 class Workspace {
  public:
   typedef std::map<std::string, std::unique_ptr<Tensor>> TensorMap;
@@ -36,7 +38,8 @@ class Workspace {
 
   Tensor *CreateTensor(const std::string &name,
                        Allocator *alloc,
-                       DataType type);
+                       DataType type,
+                       bool is_weight = false);
 
   inline bool HasTensor(const std::string &name) const {
     return tensor_map_.find(name) != tensor_map_.end();
@@ -52,11 +55,18 @@ class Workspace {
                              Device *device,
                              const unsigned char *model_data);
 
+  MaceStatus PreallocateOutputTensor(const NetDef &net_def,
+                                     const MemoryOptimizer *mem_optimizer,
+                                     Device *device);
+
   void RemoveUnusedBuffer();
 
   void RemoveAndReloadBuffer(const NetDef &net_def,
                              const unsigned char *model_data,
                              Allocator *alloc);
+
+  void RemoveTensor(const std::string &name);
+
 
  private:
   MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,

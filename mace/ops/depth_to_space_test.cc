@@ -45,21 +45,15 @@ void RunDepthToSpace(const std::vector<index_t> &input_shape,
                                                     "Output", NHWC);
 
   } else {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
-        .Input("InputImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Output("Output")
         .AddIntArg("block_size", block_size)
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
   }
 
-  if (D == DeviceType::GPU) {
-    ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "Output",
-                                          ops::BufferType::IN_OUT_CHANNEL);
-  }
   auto expected = net.CreateTensor<float>(expected_shape, expected_data);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
@@ -134,28 +128,23 @@ void RandomTest(const int block_size,
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW, "Output",
                                                   NHWC);
 
-  BufferToImage<D, T>(&net, "Input", "InputImg",
-                      ops::BufferType::IN_OUT_CHANNEL);
-
   OpDefBuilder("DepthToSpace", "DepthToSpaceTest")
-      .Input("InputImg")
+      .Input("Input")
       .AddIntArg("block_size", block_size)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Output("OutputImg")
+      .Output("GPUOutput")
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(D);
 
-  ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-5);
+                            *net.GetOutput("GPUOutput"), 1e-5);
   } else {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
-                            *net.GetOutput("OPENCLOutput"), 1e-3, 1e-4);
+                            *net.GetOutput("GPUOutput"), 1e-3, 1e-4);
   }
 }
 }  // namespace

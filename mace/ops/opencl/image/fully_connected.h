@@ -60,8 +60,8 @@ MaceStatus FullyConnectedKernel<T>::Compute(
     Tensor *output) {
   std::vector<index_t> output_shape = {input->dim(0), 1, 1, weight->dim(0)};
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   auto runtime = context->device()->opencl_runtime();

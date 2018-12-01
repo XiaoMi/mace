@@ -69,10 +69,7 @@ extern void RegisterQuantize(OpRegistryBase *op_registry);
 
 #ifdef MACE_ENABLE_OPENCL
 extern void RegisterBufferTransform(OpRegistryBase *op_registry);
-extern void RegisterBufferInverseTransform(OpRegistryBase *op_registry);
 extern void RegisterLSTMCell(OpRegistryBase *op_registry);
-extern void RegisterWinogradInverseTransform(OpRegistryBase *op_registry);
-extern void RegisterWinogradTransform(OpRegistryBase *op_registry);
 #endif  // MACE_ENABLE_OPENCL
 }  // namespace ops
 
@@ -130,10 +127,7 @@ OpRegistry::OpRegistry() : OpRegistryBase() {
 
 #ifdef MACE_ENABLE_OPENCL
   ops::RegisterBufferTransform(this);
-  ops::RegisterBufferInverseTransform(this);
   ops::RegisterLSTMCell(this);
-  ops::RegisterWinogradInverseTransform(this);
-  ops::RegisterWinogradTransform(this);
 #endif  // MACE_ENABLE_OPENCL
 }
 

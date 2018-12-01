@@ -27,25 +27,19 @@ void ReduceMean(int iters, int batch, int channels,
 
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
-
+  std::vector<int> axis = {1, 2};
   if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("ReduceMean", "ReduceMeanBM")
-        .Input("InputImage")
-        .AddIntsArg("axis", {1, 2})
-        .Output("OutputImage")
-        .Finalize(net.NewOperatorDef());
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
-                                                    NCHW);
-    OpDefBuilder("ReduceMean", "ReduceMeanBM")
-        .Input("InputNCHW")
-        .AddIntsArg("axis", {2, 3})
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   }
+
+  OpDefBuilder("ReduceMean", "ReduceMeanBM")
+      .Input("Input")
+      .AddIntsArg("axis", axis)
+      .Output("OutputImage")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

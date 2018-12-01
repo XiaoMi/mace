@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_COMMON_H_
-#define MACE_OPS_OPENCL_COMMON_H_
+#ifndef MACE_CORE_RUNTIME_OPENCL_OPENCL_UTIL_H_
+#define MACE_CORE_RUNTIME_OPENCL_OPENCL_UTIL_H_
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "mace/core/types.h"
 
 namespace mace {
-namespace ops {
-
-enum BufferType {
+enum OpenCLBufferType {
   CONV2D_FILTER = 0,
   IN_OUT_CHANNEL = 1,
   ARGUMENT = 2,
@@ -29,6 +33,22 @@ enum BufferType {
   WEIGHT_HEIGHT = 7,
   WEIGHT_WIDTH = 8,
 };
-}  // namespace ops
+
+
+class OpenCLUtil {
+ public:
+  static void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
+                              const OpenCLBufferType type,
+                              std::vector<size_t> *image_shape,
+                              const int wino_blk_size = 2);
+
+  static std::shared_ptr<OperatorDef> CreateTransformOpDef(
+      const std::string &input_name,
+      const std::vector<mace::index_t> &input_shape,
+      const std::string &output_name,
+      const mace::DataType dt,
+      const MemoryType mem_type);
+};
+
 }  // namespace mace
-#endif  // MACE_OPS_OPENCL_COMMON_H_
+#endif  // MACE_CORE_RUNTIME_OPENCL_OPENCL_UTIL_H_

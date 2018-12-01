@@ -36,13 +36,12 @@ void BatchNorm(
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddRandomInput<D, T>("Scale", {channels});
-  net.AddRandomInput<D, T>("Offset", {channels});
-  net.AddRandomInput<D, T>("Mean", {channels});
-  net.AddRandomInput<D, T>("Var", {channels}, true);
+  net.AddRandomInput<D, T>("Scale", {channels}, true);
+  net.AddRandomInput<D, T>("Offset", {channels}, true);
+  net.AddRandomInput<D, T>("Mean", {channels}, true);
+  net.AddRandomInput<D, T>("Var", {channels}, true, true);
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("BatchNorm", "BatchNormBM")
+  OpDefBuilder("BatchNorm", "BatchNormBM")
       .Input("Input")
       .Input("Scale")
       .Input("Offset")
@@ -50,30 +49,8 @@ void BatchNorm(
       .Input("Var")
       .AddFloatArg("epsilon", 1e-3)
       .Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Scale", "ScaleImage",
-                            ops::BufferType::ARGUMENT);
-    BufferToImage<D, float>(&net, "Offset", "OffsetImage",
-                            ops::BufferType::ARGUMENT);
-    BufferToImage<D, float>(&net, "Mean", "MeanImage",
-                            ops::BufferType::ARGUMENT);
-    BufferToImage<D, float>(&net, "Var", "VarImage",
-                            ops::BufferType::ARGUMENT);
-    OpDefBuilder("BatchNorm", "BatchNormBM")
-        .Input("InputImage")
-        .Input("ScaleImage")
-        .Input("OffsetImage")
-        .Input("MeanImage")
-        .Input("VarImage")
-        .AddFloatArg("epsilon", 1e-3)
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // tuning
   setenv("MACE_TUNING", "1", 1);

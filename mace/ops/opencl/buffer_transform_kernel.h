@@ -15,7 +15,7 @@
 #ifndef MACE_OPS_OPENCL_BUFFER_TRANSFORM_KERNEL_H_
 #define MACE_OPS_OPENCL_BUFFER_TRANSFORM_KERNEL_H_
 
-#include "mace/ops/opencl/common.h"
+#include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
 
@@ -27,10 +27,10 @@ class OpenCLBufferTransformKernel {
  public:
   virtual MaceStatus Compute(OpContext *context,
                              const Tensor *input,
-                             const BufferType type,
+                             const OpenCLBufferType type,
                              const int wino_blk_size,
                              Tensor *output) = 0;
- MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLBufferTransformKernel)
+  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLBufferTransformKernel)
 };
 }  // namespace ops
 }  // namespace mace

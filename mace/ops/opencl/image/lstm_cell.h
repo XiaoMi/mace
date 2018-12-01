@@ -98,8 +98,9 @@ MaceStatus LSTMCellKernel<T>::Compute(
   if (!IsVecEqual(input_shape_, input->shape())) {
     std::vector<index_t> output_shape_padded = {height, 1, 1, hidden_units};
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape_padded, BufferType::IN_OUT_CHANNEL,
-                    &output_image_shape);
+    OpenCLUtil::CalImage2DShape(output_shape_padded,
+                                OpenCLBufferType::IN_OUT_CHANNEL,
+                                &output_image_shape);
     MACE_RETURN_IF_ERROR(output->ResizeImage(pre_output->shape(),
                                              output_image_shape));
     MACE_RETURN_IF_ERROR(cell->ResizeImage(pre_cell->shape(),

@@ -72,8 +72,8 @@ MaceStatus ReduceMeanKernel<T>::Compute(
   std::vector<uint32_t> lws(3);
   std::vector<index_t> output_shape{batch, 1, 1, channels};
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
 
   auto runtime = context->device()->opencl_runtime();

@@ -30,6 +30,7 @@
 #include "mace/ops/arm/deconv_2d_neon.h"
 #include "mace/utils/utils.h"
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/deconv_2d.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -358,10 +359,26 @@ class Deconv2dOp<DeviceType::GPU, T> : public Deconv2dOpBase {
  public:
   explicit Deconv2dOp(OpConstructContext *context)
       : Deconv2dOpBase(context) {
+    MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::Deconv2dKernel<T>);
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    MACE_CHECK(TransformFilter<T>(
+        context, operator_def_.get(), 1,
+        OpenCLBufferType::CONV2D_FILTER, mem_type)
+                   == MaceStatus::MACE_SUCCESS);
+    if (model_type_ == FrameworkType::CAFFE) {
+      if (operator_def_->input_size() >= 3) {
+        MACE_CHECK(TransformFilter<T>(
+            context, operator_def_.get(), 2,
+            OpenCLBufferType::ARGUMENT, mem_type) == MaceStatus::MACE_SUCCESS);
+      }
+    } else if (operator_def_->input_size() >= 4) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 3, OpenCLBufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {

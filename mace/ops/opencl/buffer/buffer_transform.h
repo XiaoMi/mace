@@ -63,7 +63,7 @@ class BufferTransform: public OpenCLBufferTransformKernel {
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
-      const BufferType type,
+      const OpenCLBufferType type,
       const int wino_blk_size,
       Tensor *output) override;
 
@@ -75,7 +75,7 @@ class BufferTransform: public OpenCLBufferTransformKernel {
 template <typename T>
 MaceStatus BufferTransform<T>::Compute(OpContext *context,
                                        const Tensor *input,
-                                       const BufferType type,
+                                       const OpenCLBufferType type,
                                        const int wino_blk_size,
                                        Tensor *output) {
   MACE_UNUSED(type);
@@ -92,8 +92,8 @@ MaceStatus BufferTransform<T>::Compute(OpContext *context,
       if (input->dtype() != dt) {
         return BufferTypeTransform(context, &kernel_, input, dt, output);
       } else {
-        SetFutureDefaultWaitFn(context->future());
-        output->ReuseTensorBuffer(*input);
+        LOG(FATAL) << "Should not reach here. " << input->name()
+                   << "<" << type << "> to " << output->name();
         return MaceStatus::MACE_SUCCESS;
       }
   }

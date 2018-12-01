@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "mace/core/operator.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/lstm_cell.h"
 
 namespace mace {
@@ -30,12 +31,42 @@ class LSTMCellOp<DeviceType::GPU, T> : public Operation {
   explicit LSTMCellOp(OpConstructContext *context)
       : Operation(context) {
     T forget_bias = static_cast<T>(
-                     Operation::GetOptionalArg<float>("scalar_input",
-                                                         0.0));
+        Operation::GetOptionalArg<float>("scalar_input",
+                                         0.0));
+    MemoryType mem_type = MemoryType::GPU_IMAGE;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::LSTMCellKernel<T>(forget_bias));
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    // Transform filters
+    const Tensor *pre_output = context->workspace()->GetTensor(
+        operator_def_->input(1));
+    if (pre_output->is_weight()) {
+      MACE_CHECK(TransformFilter<T>(context,
+                                    operator_def_.get(),
+                                    1,
+                                    OpenCLBufferType::IN_OUT_CHANNEL,
+                                    mem_type) == MaceStatus::MACE_SUCCESS);
+    }
+    MACE_CHECK(TransformFilter<T>(context,
+                                  operator_def_.get(),
+                                  2,
+                                  OpenCLBufferType::IN_OUT_CHANNEL,
+                                  mem_type) == MaceStatus::MACE_SUCCESS);
+    MACE_CHECK(TransformFilter<T>(context,
+                                  operator_def_.get(),
+                                  3,
+                                  OpenCLBufferType::ARGUMENT,
+                                  mem_type) == MaceStatus::MACE_SUCCESS);
+    const Tensor *pre_cell = context->workspace()->GetTensor(
+        operator_def_->input(4));
+    if (pre_cell->is_weight()) {
+      MACE_CHECK(TransformFilter<T>(context,
+                                    operator_def_.get(),
+                                    4,
+                                    OpenCLBufferType::IN_OUT_CHANNEL,
+                                    mem_type) == MaceStatus::MACE_SUCCESS);
     }
   }
 

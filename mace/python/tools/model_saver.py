@@ -20,6 +20,7 @@ import hashlib
 from enum import Enum
 
 from mace.proto import mace_pb2
+from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.convert_util import mace_check
 from jinja2 import Environment, FileSystemLoader
 
@@ -82,20 +83,24 @@ def generate_in_out_map(ops, tensor_map):
     return in_out_map
 
 
-def obfuscate_name(net_def):
-    input_node = "mace_input_node"
-    output_node = "mace_output_node"
+def obfuscate_name(option, net_def):
+    input_nodes = set()
+    for name in option.input_nodes:
+        input_nodes.add(name)
+    output_nodes = set()
+    for name in option.output_nodes:
+        output_nodes.add(name)
     tensor_map = generate_tensor_map(net_def.tensors)
     in_out_map = generate_in_out_map(net_def.op, tensor_map)
     for t in net_def.tensors:
-        if input_node not in t.name and output_node not in t.name:
+        if t.name not in input_nodes and t.name not in output_nodes:
             t.name = tensor_map[t.name]
     for op in net_def.op:
         for i in range(len(op.input)):
-            if input_node not in op.input[i]:
+            if op.input[i] not in input_nodes:
                 op.input[i] = in_out_map[op.input[i]]
         for i in range(len(op.output)):
-            if output_node not in op.output[i]:
+            if op.output[i] not in output_nodes:
                 op.output[i] = in_out_map[op.output[i]]
 
 
@@ -124,15 +129,14 @@ class TensorInfo:
                             tensor.data_type)
 
 
-def update_tensor_infos(net_def, runtime, data_type):
+def update_tensor_infos(net_def, data_type, device):
     offset = 0
     counter = 0
     tensor_infos = []
     for tensor in net_def.tensors:
-        # update data_type
-        if tensor.data_type == mace_pb2.DT_FLOAT and runtime == 'gpu' \
-                and data_type == GPUDataType.fp16_fp32:
-            tensor.data_type = mace_pb2.DT_HALF
+        if device == cvt.DeviceType.GPU.value and\
+                tensor.data_type == mace_pb2.DT_FLOAT:
+            tensor.data_type = data_type
 
         # Add offset and data_size
         tensor_info = TensorInfo(counter, tensor)
@@ -195,7 +199,7 @@ def save_model_to_proto(net_def, model_tag, output_dir):
         f.write(str(net_def))
 
 
-def save_model_to_code(net_def, model_tag, runtime,
+def save_model_to_code(net_def, model_tag, device,
                        template_dir, output_dir, embed_model_data,
                        model_checksum, weight_checksum,
                        obfuscate, winograd_conv):
@@ -241,7 +245,7 @@ def save_model_to_code(net_def, model_tag, runtime,
             end=min(start + 10, op_size),
             net=net_def,
             tag=model_tag,
-            runtime=runtime,
+            device=device,
         )
         with open(output_dir + 'op' + str(counter) + '.cc', "w") as f:
             f.write(source)
@@ -256,7 +260,6 @@ def save_model_to_code(net_def, model_tag, runtime,
     source = j2_env.get_template(template_name).render(
         net=net_def,
         tag=model_tag,
-        runtime=runtime,
         obfuscate=obfuscate,
         embed_model_data=embed_model_data,
         winograd_conv=winograd_conv,
@@ -272,15 +275,15 @@ def save_model_to_code(net_def, model_tag, runtime,
         f.write(source)
 
 
-def save_model(net_def, model_checksum, weight_checksum, template_dir,
-               obfuscate, model_tag, output_dir, runtime, embed_model_data,
-               winograd_conv, data_type, model_graph_format):
+def save_model(option, net_def, model_checksum, weight_checksum, template_dir,
+               obfuscate, model_tag, output_dir, embed_model_data,
+               winograd_conv, model_graph_format):
     if obfuscate:
-        obfuscate_name(net_def)
+        obfuscate_name(option, net_def)
 
     output_dir = output_dir + '/'
     # update tensor type
-    update_tensor_infos(net_def, runtime, data_type)
+    update_tensor_infos(net_def, option.data_type, option.device)
 
     if model_graph_format == ModelFormat.file or not embed_model_data:
         save_model_data(net_def, model_tag, output_dir)
@@ -288,7 +291,7 @@ def save_model(net_def, model_checksum, weight_checksum, template_dir,
     if model_graph_format == ModelFormat.file:
         save_model_to_proto(net_def, model_tag, output_dir)
     else:
-        save_model_to_code(net_def, model_tag, runtime,
+        save_model_to_code(net_def, model_tag, option.device,
                            template_dir, output_dir, embed_model_data,
                            model_checksum, weight_checksum,
                            obfuscate, winograd_conv)

@@ -64,8 +64,8 @@ MaceStatus Deconv2dKernel<T>::Compute(
       const std::vector<index_t> &output_shape,
       Tensor *output) {
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, output_image_shape));
   const DataType dt = DataTypeToEnum<T>::value;
   const index_t batch = output->dim(0);

@@ -285,7 +285,8 @@ OpenCLRuntime::OpenCLRuntime(
     is_profiling_enabled_(false),
     opencl_version_(CL_VER_UNKNOWN),
     gpu_type_(UNKNOWN),
-    mem_type_(MemoryType::GPU_IMAGE) {
+    mem_type_(MemoryType::GPU_IMAGE),
+    scratch_image_manager_(new ScratchImageManager) {
   std::vector<cl::Platform> all_platforms;
   cl::Platform::get(&all_platforms);
   if (all_platforms.size() == 0) {
@@ -789,6 +790,10 @@ bool OpenCLRuntime::IsOutOfRangeCheckEnabled() const {
 
 bool OpenCLRuntime::is_profiling_enabled() const {
   return is_profiling_enabled_;
+}
+
+ScratchImageManager* OpenCLRuntime::scratch_image_manager() const {
+  return scratch_image_manager_.get();
 }
 
 }  // namespace mace

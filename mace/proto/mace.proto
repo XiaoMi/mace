@@ -7,11 +7,6 @@ option optimize_for = LITE_RUNTIME;
 // For better compatibility,
 // the mace.proto is refered from tensorflow and caffe2.
 
-enum NetMode {
-  INIT = 0;
-  NORMAL = 1;
-}
-
 enum DataType {
   DT_INVALID = 0;
   DT_FLOAT = 1;
@@ -90,18 +85,6 @@ message OperatorDef {
   repeated int32 out_max_byte_size = 104;  // only support 32-bit len
 }
 
-// for memory optimization
-message MemoryBlock {
-  optional int32 mem_id = 1;
-  optional int32 device_type = 2;
-  optional MemoryType mem_type = 3;
-  optional uint32 x = 4;
-  optional uint32 y = 5;
-}
-message MemoryArena {
-  repeated MemoryBlock mem_block = 1;
-}
-
 // for hexagon mace-nnlib
 message InputInfo {
   optional string name = 1;
@@ -109,6 +92,7 @@ message InputInfo {
   repeated int32 dims = 3;
   optional int32 max_byte_size = 4;  // only support 32-bit len
   optional DataType data_type = 5 [default = DT_FLOAT];
+  optional int32 data_format = 6 [default = 1];  // NHWC
 }
 message OutputInfo {
   optional string name = 1;
@@ -116,15 +100,13 @@ message OutputInfo {
   repeated int32 dims = 3;
   optional int32 max_byte_size = 4;  // only support 32-bit len
   optional DataType data_type = 5 [default = DT_FLOAT];
+  optional int32 data_format = 6 [default = 1];  // NHWC
 }
 
 message NetDef {
   repeated OperatorDef op = 1;
   repeated Argument arg = 2;
   repeated ConstTensor tensors = 3;
-
-  // for mem optimization
-  optional MemoryArena mem_arena = 10;
 
   // for hexagon mace-nnlib
   repeated InputInfo input_info = 100;

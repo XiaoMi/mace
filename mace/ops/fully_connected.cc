@@ -202,11 +202,14 @@ class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
     }
     // Transform filter tensor to target format
     MACE_CHECK(TransformFilter<T>(
-        context, operator_def_.get(), 1, BufferType::WEIGHT_WIDTH, mem_type)
-                   == MaceStatus::MACE_SUCCESS);
+        context,
+        operator_def_.get(),
+        1,
+        OpenCLBufferType::WEIGHT_WIDTH,
+        mem_type) == MaceStatus::MACE_SUCCESS);
     if (operator_def_->input_size() > 2) {
       MACE_CHECK(TransformFilter<T>(
-          context, operator_def_.get(), 2, BufferType::ARGUMENT, mem_type)
+          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
                      == MaceStatus::MACE_SUCCESS);
     }
   }

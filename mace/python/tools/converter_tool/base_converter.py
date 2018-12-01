@@ -25,15 +25,16 @@ class DeviceType(Enum):
 
 
 class DataFormat(Enum):
-    NHWC = 0
-    NCHW = 1
+    DF_NONE = 0
+    NHWC = 1
+    NCHW = 2
 
 
 class FilterFormat(Enum):
-    HWIO = 0
-    OIHW = 1
-    HWOI = 2
-    OHWI = 3
+    HWIO = 100
+    OIHW = 101
+    HWOI = 102
+    OHWI = 103
 
 
 class PaddingMode(Enum):
@@ -113,7 +114,6 @@ MaceSupportedOps = [
     'ResizeBilinear',
     'Reverse',
     'ScalarMath',
-    'Slice',
     'Split',
     'Shape',
     'Squeeze',
@@ -137,9 +137,6 @@ class MaceKeyword(object):
     mace_input_node_name = 'mace_input_node'
     mace_output_node_name = 'mace_output_node'
     mace_buffer_type = 'buffer_type'
-    mace_mode = 'mode'
-    mace_buffer_transform = 'BufferTransform'
-    mace_buffer_inverse_transform = 'BufferInverseTransform'
     # arg related str
     mace_padding_str = 'padding'
     mace_padding_values_str = 'padding_values'
@@ -185,6 +182,8 @@ class MaceKeyword(object):
     mace_opencl_mem_type = "opencl_mem_type"
     mace_framework_type_str = "framework_type"
     mace_group_str = "group"
+    mace_wino_arg_str = "wino_block_size"
+    mace_quantize_flag_arg_str = "quantize_flag"
 
 
 class TransformerRule(Enum):
@@ -195,7 +194,7 @@ class TransformerRule(Enum):
     FOLD_BATCHNORM = 5
     FOLD_CONV_AND_BN = 6
     FOLD_DEPTHWISE_CONV_AND_BN = 7
-    TRANSFORM_GPU_WINOGRAD = 8
+    ADD_WINOGRAD_ARG = 8
     TRANSFORM_ADD_TO_BIASADD = 9
     FOLD_BIASADD = 10
     FLATTEN_ATROUS_CONV = 11
@@ -238,6 +237,7 @@ class NodeInfo(object):
     def __init__(self):
         self._name = None
         self._shape = []
+        self._data_format = DataFormat.NHWC
         self._range = [-1.0, 1.0]
 
     @property
@@ -247,6 +247,10 @@ class NodeInfo(object):
     @property
     def shape(self):
         return self._shape
+
+    @property
+    def data_format(self):
+        return self._data_format
 
     @property
     def range(self):
@@ -259,6 +263,10 @@ class NodeInfo(object):
     @shape.setter
     def shape(self, shape):
         self._shape = shape
+
+    @data_format.setter
+    def data_format(self, data_format):
+        self._data_format = data_format
 
     @range.setter
     def range(self, range):
@@ -410,7 +418,6 @@ class ConverterOption(object):
                 TransformerRule.FOLD_CONV_AND_BN,
                 TransformerRule.FOLD_DECONV_AND_BN,
                 TransformerRule.FOLD_DEPTHWISE_CONV_AND_BN,
-                TransformerRule.TRANSFORM_GPU_WINOGRAD,
                 TransformerRule.TRANSFORM_ADD_TO_BIASADD,
                 TransformerRule.REARRANGE_BATCH_TO_SPACE,
                 TransformerRule.FOLD_BIASADD,
@@ -422,16 +429,14 @@ class ConverterOption(object):
                 # Model data format related transformation
                 TransformerRule.TRANSPOSE_FILTERS,
                 TransformerRule.TRANSPOSE_DATA_FORMAT,
+                # Add winograd argument
+                TransformerRule.ADD_WINOGRAD_ARG,
                 # Mace model structure related transformation
                 TransformerRule.ADD_IN_OUT_TENSOR_INFO,
-                # Device related transformation
-                TransformerRule.ADD_BUFFER_TRANSFORM,
-                TransformerRule.ADD_DEVICE,
                 # Data type related transformation
                 TransformerRule.UPDATE_FLOAT_OP_DATA_TYPE,
                 # Transform finalization
                 TransformerRule.ADD_OPENCL_INFORMATIONS,
-                TransformerRule.ADD_MACE_INPUT_AND_OUTPUT_NODES,
                 # for quantization entropy calibration use
                 TransformerRule.SORT_BY_EXECUTION,
                 # Need to be put after SORT_BY_EXECUTION

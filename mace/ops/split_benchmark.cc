@@ -37,26 +37,14 @@ void BMSplitHelper(int iters,
   GenerateRandomRealTypeData(input_shape, &input_data);
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-
-    auto builder = OpDefBuilder("Split", "SplitTest");
-    builder.Input("InputImage");
-    for (int i = 0; i < num_outputs; ++i) {
-      builder = builder.Output(MakeString("OutputImage", i));
-    }
-    builder
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    auto builder = OpDefBuilder("Split", "SplitTest");
-    builder.Input("Input");
-    for (int i = 0; i < num_outputs; ++i) {
-      builder = builder.Output(MakeString("Output", i));
-    }
-    builder.Finalize(net.NewOperatorDef());
+  auto builder = OpDefBuilder("Split", "SplitTest");
+  builder.Input("Input");
+  for (int i = 0; i < num_outputs; ++i) {
+    builder = builder.Output(MakeString("Output", i));
   }
+  builder
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 2; ++i) {
