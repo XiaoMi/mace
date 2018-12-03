@@ -163,6 +163,16 @@ DSPDataType = Enum('DSPDataType', [(ele, ele) for ele in DSPDataTypeStrs],
 
 WinogradParameters = [0, 2, 4]
 
+DataFormatStrs = [
+    "NONE",
+    "NHWC",
+]
+
+
+class DataFormat(object):
+    NONE = "NONE"
+    NHWC = "NHWC"
+
 
 class DefaultValues(object):
     mace_lib_type = MACELibType.static
@@ -195,6 +205,8 @@ class YAMLKeyword(object):
     runtime = 'runtime'
     data_type = 'data_type'
     input_data_types = 'input_data_types'
+    input_data_formats = 'input_data_formats'
+    output_data_formats = 'output_data_formats'
     limit_opencl_kernel_time = 'limit_opencl_kernel_time'
     nnlib_graph_mode = 'nnlib_graph_mode'
     obfuscate = 'obfuscate'
@@ -487,13 +499,56 @@ def format_model_config(flags):
             if input_data_types:
                 if not isinstance(input_data_types, list):
                     subgraph[YAMLKeyword.input_data_types] = [input_data_types]
-                for input_data_type in input_data_types:
+                for input_data_type in subgraph[YAMLKeyword.input_data_types]:
                     mace_check(input_data_type in InputDataTypeStrs,
                                ModuleName.YAML_CONFIG,
                                "'input_data_types' must be in "
                                + str(InputDataTypeStrs))
             else:
                 subgraph[YAMLKeyword.input_data_types] = []
+
+            input_data_formats = subgraph.get(YAMLKeyword.input_data_formats,
+                                              [])
+            if input_data_formats:
+                if not isinstance(input_data_formats, list):
+                    subgraph[YAMLKeyword.input_data_formats] =\
+                        [input_data_formats]
+                else:
+                    mace_check(len(input_data_formats)
+                               == len(subgraph[YAMLKeyword.input_tensors]),
+                               ModuleName.YAML_CONFIG,
+                               "input_data_formats should match"
+                               " the size of input")
+                for input_data_format in\
+                        subgraph[YAMLKeyword.input_data_formats]:
+                    mace_check(input_data_format in DataFormatStrs,
+                               ModuleName.YAML_CONFIG,
+                               "'input_data_formats' must be in "
+                               + str(DataFormatStrs) + ", but got "
+                               + input_data_formats)
+            else:
+                subgraph[YAMLKeyword.input_data_formats] = [DataFormat.NHWC]
+
+            output_data_formats = subgraph.get(YAMLKeyword.output_data_formats,
+                                               [])
+            if output_data_formats:
+                if not isinstance(output_data_formats, list):
+                    subgraph[YAMLKeyword.output_data_formats] = \
+                        [output_data_formats]
+                else:
+                    mace_check(len(output_data_formats)
+                               == len(subgraph[YAMLKeyword.output_tensors]),
+                               ModuleName.YAML_CONFIG,
+                               "output_data_formats should match"
+                               " the size of output")
+                for output_data_format in\
+                        subgraph[YAMLKeyword.output_data_formats]:
+                    mace_check(output_data_format in DataFormatStrs,
+                               ModuleName.YAML_CONFIG,
+                               "'input_data_formats' must be in "
+                               + str(DataFormatStrs))
+            else:
+                subgraph[YAMLKeyword.output_data_formats] = [DataFormat.NHWC]
 
             validation_threshold = subgraph.get(
                 YAMLKeyword.validation_threshold, {})
@@ -803,7 +858,9 @@ def convert_model(configs, cl_mem_type):
             model_config[YAMLKeyword.model_sha256_checksum],
             model_config[YAMLKeyword.weight_sha256_checksum],
             ",".join(subgraphs[0][YAMLKeyword.input_tensors]),
+            ",".join(subgraphs[0][YAMLKeyword.input_data_formats]),
             ",".join(subgraphs[0][YAMLKeyword.output_tensors]),
+            ",".join(subgraphs[0][YAMLKeyword.output_data_formats]),
             ",".join(subgraphs[0][YAMLKeyword.check_tensors]),
             runtime,
             model_name,

@@ -33,7 +33,10 @@ class PadOp<DeviceType::CPU, T> : public Operation {
       : Operation(context),
         paddings_(Operation::GetRepeatedArgs<int>("paddings")),
         constant_value_(Operation::GetOptionalArg<float>(
-            "constant_value", 0.0)) {}
+            "constant_value", 0.0)) {
+    MACE_CHECK(paddings_.size() == 8);
+    paddings_ = TransposeShape<int, int>(paddings_, {0, 1, 6, 7, 2, 3, 4, 5});
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);

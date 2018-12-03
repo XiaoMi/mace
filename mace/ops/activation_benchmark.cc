@@ -30,31 +30,19 @@ void ReluBenchmark(int iters, int batch, int channels, int height, int width) {
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("Activation", "ReluBM")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("Activation", "ReluBM")
-        .Input("InputImage")
-        .Output("Output")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
+  OpDefBuilder("Activation", "ReluBM")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELU")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -100,29 +88,18 @@ void ReluxBenchmark(int iters, int batch, int channels, int height, int width) {
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
-    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("Activation", "ReluxBM")
-        .Input("InputImage")
-        .Output("Output")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6.0)
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("Activation", "ReluxBM")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6.0)
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("Activation", "ReluxBM")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELUX")
+      .AddFloatArg("max_limit", 6.0)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -168,36 +145,21 @@ void PreluBenchmark(int iters, int batch, int channels, int height, int width) {
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
-    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddRandomInput<D, float>("Alpha", {channels});
+  net.AddRandomInput<D, T>("Alpha", {channels}, true);
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("Activation", "PreluBM")
-        .Input("Input")
-        .Input("Alpha")
-        .Output("Output")
-        .AddStringArg("activation", "PRELU")
-        .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
-                            ops::BufferType::ARGUMENT);
-
-    OpDefBuilder("Activation", "PreluBM")
-        .Input("InputImage")
-        .Input("AlphaImage")
-        .Output("Output")
-        .AddStringArg("activation", "PRELU")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
+  OpDefBuilder("Activation", "PreluBM")
+      .Input("Input")
+      .Input("Alpha")
+      .Output("Output")
+      .AddStringArg("activation", "PRELU")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -243,27 +205,17 @@ void TanhBenchmark(int iters, int batch, int channels, int height, int width) {
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
-    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("Activation", "TanhBM")
-        .Input("InputImage")
-        .Output("Output")
-        .AddStringArg("activation", "TANH")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("Activation", "TanhBM")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "TANH")
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("Activation", "TanhBM")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "TANH")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {
@@ -310,27 +262,17 @@ void SigmoidBenchmark(
 
   // Add input data
   if (D == DeviceType::CPU) {
-    net.AddRandomInput<D, float>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else {
-    net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("Activation", "SigmoidBM")
-        .Input("InputImage")
-        .Output("Output")
-        .AddStringArg("activation", "SIGMOID")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("Activation", "SigmoidBM")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "SIGMOID")
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("Activation", "SigmoidBM")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "SIGMOID")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

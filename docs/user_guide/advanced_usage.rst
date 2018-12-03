@@ -69,9 +69,9 @@ in one deployment file.
       - The output tensor name(s) (tensorflow) or top name(s) of outputs' layer (caffe).
         If there are more than one tensors, use one line for a tensor.
     * - input_shapes
-      - The shapes of the input tensors, in NHWC order.
+      - The shapes of the input tensors, default is NHWC order.
     * - output_shapes
-      - The shapes of the output tensors, in NHWC order.
+      - The shapes of the output tensors, default is NHWC order.
     * - input_ranges
       - The numerical range of the input tensors' data, default [-1, 1]. It is only for test.
     * - validation_inputs_data
@@ -84,6 +84,10 @@ in one deployment file.
       - [optional] The data type used for specified runtime. [fp16_fp32, fp32_fp32] for GPU, default is fp16_fp32, [fp32] for CPU and [uint8] for DSP.
     * - input_data_types
       - [optional] The input data type for specific op(eg. gather), which can be [int32, float32], default to float32.
+    * - input_data_formats
+      - [optional] The format of the input tensors, one of [NONE, NHWC]. If there is no format of the input, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
+    * - output_data_formats
+      - [optional] The format of the output tensors, one of [NONE, NHWC]. If there is no format of the output, please use NONE. If only one single format is specified, all inputs will use that format, default is NHWC order.
     * - limit_opencl_kernel_time
       - [optional] Whether splitting the OpenCL kernel within 1 ms to keep UI responsiveness, default is 0.
     * - obfuscate

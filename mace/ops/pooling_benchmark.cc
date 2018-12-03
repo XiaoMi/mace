@@ -52,8 +52,7 @@ void Pooling(int iters,
     MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("Pooling", "PoolingTest")
+  OpDefBuilder("Pooling", "PoolingTest")
       .Input("Input")
       .Output("Output")
       .AddIntArg("pooling_type", pooling_type)
@@ -63,22 +62,6 @@ void Pooling(int iters,
       .AddIntsArg("dilations", {1, 1})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
-      .AddIntArg("pooling_type", pooling_type)
-      .AddIntsArg("kernels", {kernel, kernel})
-      .AddIntsArg("strides", {stride, stride})
-      .AddIntArg("padding", padding)
-      .AddIntsArg("dilations", {1, 1})
-      .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

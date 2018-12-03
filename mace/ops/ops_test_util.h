@@ -29,9 +29,9 @@
 #include "mace/core/net.h"
 #include "mace/core/device_context.h"
 #include "mace/core/runtime/opencl/gpu_device.h"
+#include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/core/tensor.h"
 #include "mace/core/workspace.h"
-#include "mace/ops/opencl/common.h"
 #include "mace/ops/ops_registry.h"
 #include "mace/public/mace.h"
 #include "mace/utils/utils.h"
@@ -43,73 +43,29 @@ namespace test {
 
 class OpDefBuilder {
  public:
-  OpDefBuilder(const char *type, const std::string &name) {
-    op_def_.set_type(type);
-    op_def_.set_name(name);
-  }
+  OpDefBuilder(const char *type, const std::string &name);
 
-  OpDefBuilder &Input(const std::string &input_name) {
-    op_def_.add_input(input_name);
-    return *this;
-  }
+  OpDefBuilder &Input(const std::string &input_name);
 
-  OpDefBuilder &Output(const std::string &output_name) {
-    op_def_.add_output(output_name);
-    return *this;
-  }
+  OpDefBuilder &Output(const std::string &output_name);
 
-  OpDefBuilder &OutputType(const std::vector<DataType> &output_type) {
-    for (auto out_t : output_type) {
-      op_def_.add_output_type(out_t);
-    }
-    return *this;
-  }
+  OpDefBuilder &OutputType(const std::vector<DataType> &output_type);
 
-  OpDefBuilder AddIntArg(const std::string &name, const int value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_i(value);
-    return *this;
-  }
+  OpDefBuilder &OutputShape(const std::vector<index_t> &output_shape);
 
-  OpDefBuilder AddFloatArg(const std::string &name, const float value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_f(value);
-    return *this;
-  }
+  OpDefBuilder AddIntArg(const std::string &name, const int value);
 
-  OpDefBuilder AddStringArg(const std::string &name, const char *value) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    arg->set_s(value);
-    return *this;
-  }
+  OpDefBuilder AddFloatArg(const std::string &name, const float value);
+
+  OpDefBuilder AddStringArg(const std::string &name, const char *value);
 
   OpDefBuilder AddIntsArg(const std::string &name,
-                          const std::vector<int> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_ints(value);
-    }
-    return *this;
-  }
+                          const std::vector<int> &values);
 
   OpDefBuilder AddFloatsArg(const std::string &name,
-                            const std::vector<float> &values) {
-    auto arg = op_def_.add_arg();
-    arg->set_name(name);
-    for (auto value : values) {
-      arg->add_floats(value);
-    }
-    return *this;
-  }
+                            const std::vector<float> &values);
 
-  void Finalize(OperatorDef *op_def) const {
-    MACE_CHECK(op_def != nullptr, "input should not be null.");
-    *op_def = op_def_;
-  }
+  void Finalize(OperatorDef *op_def) const;
 
   OperatorDef op_def_;
 };
@@ -146,11 +102,12 @@ class OpsTestNet {
   void AddInputFromArray(const std::string &name,
                          const std::vector<index_t> &shape,
                          const std::vector<T> &data,
+                         bool is_weight = false,
                          const float scale = 0.0,
                          const int32_t zero_point = 0) {
     Tensor *input =
         ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
-                         DataTypeToEnum<T>::v());
+                         DataTypeToEnum<T>::v(), is_weight);
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -163,10 +120,11 @@ class OpsTestNet {
   template <DeviceType D, typename T>
   void AddRepeatedInput(const std::string &name,
                         const std::vector<index_t> &shape,
-                        const T data) {
+                        const T data,
+                        bool is_weight = false) {
     Tensor *input =
         ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
-                         DataTypeToEnum<T>::v());
+                         DataTypeToEnum<T>::v(), is_weight);
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -176,13 +134,14 @@ class OpsTestNet {
   template<DeviceType D, typename T>
   void AddRandomInput(const std::string &name,
                       const std::vector<index_t> &shape,
+                      bool is_weight = false,
                       bool positive = true,
                       bool truncate = false,
                       const float truncate_min = 0.001f,
                       const float truncate_max = 100.f) {
     Tensor *input =
         ws_.CreateTensor(name, OpTestContext::Get()->GetDevice(D)->allocator(),
-                         DataTypeToEnum<T>::v());
+                         DataTypeToEnum<T>::v(), is_weight);
     input->Resize(shape);
     Tensor::MappingGuard input_mapper(input);
     T *input_data = input->mutable_data<T>();
@@ -221,35 +180,14 @@ class OpsTestNet {
   }
 
   template <DeviceType D, typename T>
-  void Transpose2D(const std::string &src_name, const std::string &dst_name) {
-    Tensor *input = ws_.GetTensor(src_name);
-    Tensor *output = ws_.CreateTensor(
-        dst_name,
-        OpTestContext::Get()->GetDevice(D)->allocator(),
-        DataTypeToEnum<T>::v());
-    const std::vector<index_t> input_shape = input->shape();
-    MACE_CHECK(input_shape.size() == 2, "input shape != 2");
-    output->Resize({input_shape[1], input_shape[0]});
-    Tensor::MappingGuard input_guard(input);
-    Tensor::MappingGuard output_guard(output);
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
-    for (index_t i = 0; i < input_shape[0]; ++i) {
-      for (index_t j = 0; j < input_shape[1]; ++j) {
-        output_data[j * input_shape[0] + i] =
-            input_data[i * input_shape[1] + j];
-      }
-    }
-  }
-
-  template <DeviceType D, typename T>
   void CopyData(const std::string &src_name,
                 const std::string &dst_name) {
     Tensor *input = ws_.GetTensor(src_name);
     Tensor *output = ws_.CreateTensor(
         dst_name,
         OpTestContext::Get()->GetDevice(D)->allocator(),
-        DataTypeToEnum<T>::v());
+        DataTypeToEnum<T>::v(),
+        input->is_weight());
 
     const std::vector<index_t> input_shape = input->shape();
     output->Resize(input_shape);
@@ -267,7 +205,8 @@ class OpsTestNet {
     Tensor *output = ws_.CreateTensor(
         dst_name,
         OpTestContext::Get()->GetDevice(D)->allocator(),
-        DataTypeToEnum<T>::v());
+        DataTypeToEnum<T>::v(),
+        input->is_weight());
     const std::vector<index_t> input_shape = input->shape();
     MACE_CHECK(input_shape.size() == 4, "input shape != 4");
 
@@ -311,7 +250,25 @@ class OpsTestNet {
           }
         }
       }
-    } else if (src_format == HWOI && dst_format == OIHW) {
+    } else {
+      MACE_NOT_IMPLEMENTED;
+    }
+  }
+
+  template <DeviceType D, typename T>
+  void TransformFilterDataFormat(const std::string &src_name,
+                                 const FilterDataFormat src_format,
+                                 const std::string &dst_name,
+                                 const FilterDataFormat dst_format) {
+    Tensor *input = ws_.GetTensor(src_name);
+    Tensor *output = ws_.CreateTensor(
+        dst_name,
+        OpTestContext::Get()->GetDevice(D)->allocator(),
+        DataTypeToEnum<T>::v(),
+        input->is_weight());
+    const std::vector<index_t> input_shape = input->shape();
+    MACE_CHECK(input_shape.size() == 4, "input shape != 4");
+    if (src_format == HWOI && dst_format == OIHW) {
       index_t height = input_shape[0];
       index_t width = input_shape[1];
       index_t out_channels = input_shape[2];
@@ -392,34 +349,6 @@ class OpsTestNet {
     }
   }
 
-  template <DeviceType D, typename T>
-  void FillNHWCInputToNCHWInput(const std::string &name_nchw,
-                                const std::string &name_nhwc) {
-    Tensor *input = ws_.GetTensor(name_nhwc);
-    Tensor *output = ws_.CreateTensor(
-        name_nchw,
-        OpTestContext::Get()->GetDevice(D)->allocator(),
-        DataTypeToEnum<T>::v());
-    const std::vector<index_t> input_shape = input->shape();
-    index_t batch = input_shape[0];
-    index_t height = input_shape[1];
-    index_t width = input_shape[2];
-    index_t channels = input_shape[3];
-    output->Resize({batch, channels, height, width});
-    const T *input_data = input->data<T>();
-    T *output_data = output->mutable_data<T>();
-    for (index_t b = 0; b < batch; ++b) {
-      for (index_t c = 0; c < channels; ++c) {
-        for (index_t h = 0; h < height; ++h) {
-          for (index_t w = 0; w < width; ++w) {
-            output_data[((b * channels + c) * height + h) * width + w] =
-                input_data[((b * height + h) * width + w) * channels + c];
-          }
-        }
-      }
-    }
-  }
-
   // Create standalone tensor on device D with T type.
   template <typename T, DeviceType D = DeviceType::CPU>
   std::unique_ptr<Tensor> CreateTensor(
@@ -447,89 +376,33 @@ class OpsTestNet {
     return &op_defs_[op_defs_.size() - 1];
   }
 
-  Workspace *ws() { return &ws_; }
+  inline Workspace *ws() { return &ws_; }
 
-  bool Setup(DeviceType device) {
-    NetDef net_def;
-    for (auto &op_def_ : op_defs_) {
-      net_def.add_op()->CopyFrom(op_def_);
-    }
-    net_ = std::unique_ptr<NetBase>(new SerialNet(
-        op_registry_.get(),
-        &net_def,
-        &ws_,
-        OpTestContext::Get()->GetDevice(device)));
-    MaceStatus status = net_->Init();
-    device_type_ = device;
-    return status == MaceStatus::MACE_SUCCESS;
-  }
+  bool Setup(DeviceType device);
 
-  MaceStatus Run() {
-    MACE_CHECK_NOTNULL(net_);
-    MACE_RETURN_IF_ERROR(net_->Run());
-    Sync();
-    return MaceStatus::MACE_SUCCESS;
-  }
+  MaceStatus Run();
 
   // DEPRECATED(liyin):
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
-  MaceStatus RunOp(DeviceType device) {
-    if (device == DeviceType::GPU) {
-      auto opencl_mem_types = OpTestContext::Get()->opencl_mem_types();
-      for (auto type : opencl_mem_types) {
-        OpTestContext::Get()->GetDevice(device)
-            ->opencl_runtime()->set_mem_type(type);
-        Setup(device);
-        MACE_RETURN_IF_ERROR(Run());
-      }
-      return MaceStatus::MACE_SUCCESS;
-    } else {
-      Setup(device);
-      return Run();
-    }
-  }
+  MaceStatus RunOp(DeviceType device);
 
   // DEPRECATED(liyin):
   // Test and benchmark should setup model once and run multiple times.
   // Setup time should not be counted during benchmark.
-  MaceStatus RunOp() { return RunOp(DeviceType::CPU); }
+  MaceStatus RunOp();
 
-  MaceStatus RunNet(const NetDef &net_def, const DeviceType device) {
-    device_type_ = device;
-    auto net = std::unique_ptr<NetBase>(new SerialNet(
-        op_registry_.get(),
-        &net_def,
-        &ws_,
-        OpTestContext::Get()->GetDevice(device),
-        NetMode::INIT));
-    MACE_RETURN_IF_ERROR(net->Init());
-    MACE_RETURN_IF_ERROR(net->Run());
-    net_ = std::unique_ptr<NetBase>(new SerialNet(
-        op_registry_.get(),
-        &net_def,
-        &ws_,
-        OpTestContext::Get()->GetDevice(device)));
-    MACE_RETURN_IF_ERROR(net_->Init());
-    return net_->Run();
-  }
+  MaceStatus RunNet(const NetDef &net_def, const DeviceType device);
 
-  Tensor *GetOutput(const char *output_name) {
+  inline Tensor *GetOutput(const char *output_name) {
     return ws_.GetTensor(output_name);
   }
 
-  Tensor *GetTensor(const char *tensor_name) {
+  inline Tensor *GetTensor(const char *tensor_name) {
     return ws_.GetTensor(tensor_name);
   }
 
-  void Sync() {
-#ifdef MACE_ENABLE_OPENCL
-    if (net_ && device_type_ == DeviceType::GPU) {
-      OpTestContext::Get()->GetDevice(DeviceType::GPU)->opencl_runtime()
-          ->command_queue().finish();
-    }
-#endif
-  }
+  void Sync();
 
  public:
   std::shared_ptr<OpRegistryBase> op_registry_;
@@ -771,50 +644,6 @@ void ExpectTensorSimilar(const Tensor &x,
   }
   double similarity = dot_product / (sqrt(x_norm) * sqrt(y_norm));
   EXPECT_NEAR(1.0, similarity, abs_err);
-}
-
-template <DeviceType D, typename T>
-void BufferToImage(OpsTestNet *net,
-                   const std::string &input_name,
-                   const std::string &output_name,
-                   const ops::BufferType type,
-                   const int wino_block_size = 2) {
-  MACE_CHECK_NOTNULL(net);
-
-  OpDefBuilder("BufferTransform", "BufferTransformTest")
-    .Input(input_name)
-    .Output(output_name)
-    .AddIntArg("buffer_type", type)
-    .AddIntArg("wino_block_size", wino_block_size)
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-    .Finalize(net->NewOperatorDef());
-
-  // TODO(liuqi): Use AddNewOperatorDef, and run all ops with same NetDef.
-  net->RunOp(D);
-
-  net->Sync();
-}
-
-template <DeviceType D, typename T>
-void ImageToBuffer(OpsTestNet *net,
-                   const std::string &input_name,
-                   const std::string &output_name,
-                   const ops::BufferType type,
-                   const int wino_block_size = 2) {
-  MACE_CHECK_NOTNULL(net);
-
-  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
-    .Input(input_name)
-    .Output(output_name)
-    .AddIntArg("buffer_type", type)
-    .AddIntArg("wino_block_size", wino_block_size)
-    .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-    .Finalize(net->NewOperatorDef());
-
-  // Run
-  net->RunOp(D);
-
-  net->Sync();
 }
 
 }  // namespace test

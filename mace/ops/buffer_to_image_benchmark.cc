@@ -14,6 +14,7 @@
 
 #include "mace/core/runtime/opencl/opencl_runtime.h"
 #include "mace/core/testing/test_benchmark.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -28,26 +29,36 @@ void FilterBufferToImage(int iters,
   mace::testing::StopTiming();
 
   OpsTestNet net;
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetDevice(DeviceType::GPU));
 
   // Add input data
   net.AddRandomInput<D, T>("Input",
                            {out_channel, in_channel, height, width});
+  // Create output
+  Tensor *b2i_output = net.ws()->CreateTensor(
+      "B2IOutput", context.device()->allocator(), DataTypeToEnum<T>::value);
 
-  OpDefBuilder("BufferToImage", "BufferToImageBM")
-      .Input("Input")
-      .Output("Output")
-      .Finalize(net.NewOperatorDef());
+  auto transform_func = [&]() {
+    OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER, MemoryType::GPU_IMAGE)
+        .Transform(&context,
+                   net.ws()->GetTensor("Input"),
+                   OpenCLBufferType::IN_OUT_CHANNEL,
+                   MemoryType::GPU_IMAGE,
+                   0,
+                   b2i_output);
+  };
 
   // Warm-up
   net.Setup(D);
   for (int i = 0; i < 5; ++i) {
-    net.Run();
+    transform_func();
   }
   net.Sync();
 
   mace::testing::StartTiming();
   while (iters--) {
-    net.Run();
+    transform_func();
   }
   net.Sync();
 }

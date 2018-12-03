@@ -58,6 +58,7 @@ TEST_F(SqueezeOpTest, TestSqueeze) {
   TestSqueeze({1, 2, 1, 4}, {1}, {1, 2, 1, 4});
   TestSqueeze({1, 2, 1, 4}, {2}, {1, 2, 4});
   TestSqueeze({1}, {}, {});
+  TestSqueeze({1, 4, 1, 1}, {1, 2}, {1, 4});
 }
 
 }  // namespace test

@@ -25,7 +25,11 @@ class StackOp : public Operation {
  public:
   explicit StackOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 0)) {}
+        axis_(Operation::GetOptionalArg<int>("axis", 0)) {
+    if (D == DeviceType::GPU) {
+      context->set_output_mem_type(MemoryType::GPU_BUFFER);
+    }
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);

@@ -23,16 +23,12 @@ namespace mace {
 
 OpConstructContext::OpConstructContext(Workspace *ws)
     : operator_def_(nullptr), ws_(ws), device_(nullptr) {}
-OpConstructContext::OpConstructContext(OperatorDef *operator_def,
-                                       Workspace *ws,
-                                       Device *device)
-    : operator_def_(operator_def), ws_(ws), device_(device) {}
 
 OpInitContext::OpInitContext(Workspace *ws, Device *device)
     : ws_(ws), device_(device) {}
 
 Operation::Operation(OpConstructContext *context)
-    : operator_def_(std::make_shared<OperatorDef>(*(context->operator_def())))
+    : operator_def_(context->operator_def())
 {}
 
 MaceStatus Operation::Init(OpInitContext *context) {
@@ -43,11 +39,9 @@ MaceStatus Operation::Init(OpInitContext *context) {
                ": Encountered a non-existing input tensor: ", input_str);
     inputs_.push_back(tensor);
   }
-  // TODO(liuqi): filter transform
   for (int i = 0; i < operator_def_->output_size(); ++i) {
     const std::string output_str = operator_def_->output(i);
     if (ws->HasTensor(output_str)) {
-      // TODO(liuqi): Workspace should pre-allocate all of the output tensors
       outputs_.push_back(ws->GetTensor(output_str));
     } else {
       MACE_CHECK(
@@ -66,15 +60,14 @@ MaceStatus Operation::Init(OpInitContext *context) {
       }
       outputs_.push_back(MACE_CHECK_NOTNULL(ws->CreateTensor(
           output_str, context->device()->allocator(), output_type)));
-
-      if (i < operator_def_->output_shape_size()) {
-        std::vector<index_t>
-            shape_configured(operator_def_->output_shape(i).dims_size());
-        for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
-          shape_configured[dim] = operator_def_->output_shape(i).dims(dim);
-        }
-        ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
+    }
+    if (i < operator_def_->output_shape_size()) {
+      std::vector<index_t>
+          shape_configured(operator_def_->output_shape(i).dims_size());
+      for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
+        shape_configured[dim] = operator_def_->output_shape(i).dims(dim);
       }
+      ws->GetTensor(output_str)->SetShapeConfigured(shape_configured);
     }
   }
   return MaceStatus::MACE_SUCCESS;
@@ -164,33 +157,34 @@ const std::set<DeviceType> OpRegistryBase::AvailableDevices(
 
 std::unique_ptr<Operation> OpRegistryBase::CreateOperation(
     OpConstructContext *context,
-    DeviceType device_type,
-    const NetMode mode) const {
-  OperatorDef *operator_def = context->operator_def();
-  const DataType dtype = static_cast<DataType>(
+    DeviceType device_type) const {
+  auto operator_def = context->operator_def();
+  DataType dtype = static_cast<DataType>(
       ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
           *operator_def, "T", static_cast<int>(DT_FLOAT)));
-  const int op_mode_i = ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-      *operator_def, "mode", static_cast<int>(NetMode::NORMAL));
-  const NetMode op_mode = static_cast<NetMode>(op_mode_i);
-  VLOG(3) << "Creating operator " << operator_def->name() << "("
+  if (device_type == DeviceType::CPU && dtype == DT_HALF) {
+    int arg_size = operator_def->arg_size();
+    for (int i = 0; i < arg_size; ++i) {
+      if (operator_def->arg(i).name() == "T") {
+        operator_def->mutable_arg(i)->set_i(DT_FLOAT);
+      }
+    }
+    dtype = DT_FLOAT;
+  }
+  VLOG(1) << "Creating operator " << operator_def->name() << "("
           << operator_def->type() << "<" << dtype << ">" << ") on "
           << device_type;
-  if (op_mode == mode) {
-    const std::string op_type = context->operator_def()->type();
-    MACE_CHECK(registry_.count(op_type) != 0,
-               op_type, " operation is not registered.");
+  const std::string op_type = context->operator_def()->type();
+  MACE_CHECK(registry_.count(op_type) != 0,
+             op_type, " operation is not registered.");
 
-    std::string key = OpKeyBuilder(op_type)
-        .Device(device_type)
-        .TypeConstraint("T", dtype)
-        .Build();
-    if (registry_.at(op_type)->creators.count(key) == 0) {
-      LOG(FATAL) << "Key not registered: " << key;
-    }
-    return registry_.at(op_type)->creators.at(key)(context);
-  } else {
-    return nullptr;
+  std::string key = OpKeyBuilder(op_type)
+      .Device(device_type)
+      .TypeConstraint("T", dtype)
+      .Build();
+  if (registry_.at(op_type)->creators.count(key) == 0) {
+    LOG(FATAL) << "Key not registered: " << key;
   }
+  return registry_.at(op_type)->creators.at(key)(context);
 }
 }  // namespace mace

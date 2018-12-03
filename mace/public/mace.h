@@ -34,6 +34,8 @@ class NetDef;
 
 enum DeviceType { CPU = 0, GPU = 2, HEXAGON = 3 };
 
+enum DataFormat { DF_NONE = 0, NHWC = 1, NCHW = 2};
+
 enum GPUPerfHint {
   PERF_DEFAULT = 0,
   PERF_LOW = 1,
@@ -259,7 +261,8 @@ class MACE_API MaceTensor {
   // data - the buffer of the tensor, must not be null with size equals
   //        shape[0] * shape[1] * ... * shape[n-1]
   MaceTensor(const std::vector<int64_t> &shape,
-             std::shared_ptr<float> data);
+             std::shared_ptr<float> data,
+             const DataFormat format = DataFormat::NHWC);
   MaceTensor();
   MaceTensor(const MaceTensor &other);
   MaceTensor(const MaceTensor &&other);
@@ -270,6 +273,7 @@ class MACE_API MaceTensor {
   const std::vector<int64_t> &shape() const;
   const std::shared_ptr<float> data() const;
   std::shared_ptr<float> data();
+  DataFormat data_format() const;
 
  private:
   class Impl;

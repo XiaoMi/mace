@@ -33,14 +33,13 @@ namespace mace {
 class OpConstructContext {
  public:
   explicit OpConstructContext(Workspace *ws);
-  OpConstructContext(OperatorDef *operator_def, Workspace *ws, Device *device);
   ~OpConstructContext() = default;
 
-  inline void set_operator_def(OperatorDef *operator_def) {
+  inline void set_operator_def(std::shared_ptr<OperatorDef> operator_def) {
     operator_def_ = operator_def;
   }
 
-  inline OperatorDef *operator_def() const {
+  inline std::shared_ptr<OperatorDef> operator_def() const {
     return operator_def_;
   }
 
@@ -56,10 +55,19 @@ class OpConstructContext {
     return device_;
   }
 
+  inline void set_output_mem_type(MemoryType type) {
+    output_mem_type_ = type;
+  }
+
+  inline MemoryType output_mem_type() const {
+    return output_mem_type_;
+  }
+
  private:
-  OperatorDef *operator_def_;
+  std::shared_ptr<OperatorDef> operator_def_;
   Workspace *ws_;
   Device *device_;
+  MemoryType output_mem_type_;  // used for transform memory
 };
 
 // memory_optimizer, device
@@ -131,14 +139,18 @@ class Operation {
   }
 
   inline void set_debug_def(
-      const std::shared_ptr<const OperatorDef> &operator_def) {
+      const std::shared_ptr<OperatorDef> &operator_def) {
     operator_def_ = operator_def;
   }
 
   inline bool has_debug_def() const { return operator_def_ != nullptr; }
 
+  inline std::shared_ptr<OperatorDef> operator_def() {
+    return operator_def_;
+  }
+
  protected:
-  std::shared_ptr<const OperatorDef> operator_def_;
+  std::shared_ptr<OperatorDef> operator_def_;
   std::vector<const Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
 
@@ -190,8 +202,7 @@ class OpRegistryBase {
 
   std::unique_ptr<Operation> CreateOperation(
       OpConstructContext *context,
-      DeviceType device_type,
-      const NetMode mode) const;
+      DeviceType device_type) const;
 
   template <class DerivedType>
   static std::unique_ptr<Operation> DefaultCreator(

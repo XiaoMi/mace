@@ -36,23 +36,12 @@ void DepthToSpace(
     MACE_NOT_IMPLEMENTED;
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("DepthToSpace", "DepthToSpaceBM")
+  OpDefBuilder("DepthToSpace", "DepthToSpaceBM")
       .Input("Input")
       .Output("Output")
+      .AddIntArg("block_size", block_size)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    OpDefBuilder("DepthToSpace", "DepthToSpaceBM")
-        .Input("InputImage")
-        .Output("Output")
-        .AddIntArg("block_size", block_size)
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

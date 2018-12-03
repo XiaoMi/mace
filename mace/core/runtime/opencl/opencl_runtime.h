@@ -25,6 +25,7 @@
 #include "mace/core/file_storage.h"
 #include "mace/core/future.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
+#include "mace/core/runtime/opencl/scratch_image.h"
 #include "mace/proto/mace.pb.h"
 #include "mace/utils/string_util.h"
 #include "mace/utils/timer.h"
@@ -82,6 +83,7 @@ class OpenCLRuntime {
   uint64_t device_global_mem_cache_size() const;
   uint32_t device_compute_units() const;
   Tuner<uint32_t> *tuner();
+  ScratchImageManager *scratch_image_manager() const;
   bool is_opencl_avaliable();
   // TODO(liuqi): remove this function in the future, make decision at runtime.
   bool UseImageMemory();
@@ -134,6 +136,7 @@ class OpenCLRuntime {
   OpenCLVersion opencl_version_;
   GPUType gpu_type_;
   MemoryType mem_type_;
+  std::unique_ptr<ScratchImageManager> scratch_image_manager_;
   // All OpenCL object must be a pointer and manually deleted before unloading
   // OpenCL library.
   std::shared_ptr<cl::Context> context_;

@@ -86,8 +86,6 @@ MaceStatus BufferTypeTransform(
       }
     };
   }
-  // Mark the buffer unused.
-  const_cast<Tensor *>(input)->MarkUnused();
   return MaceStatus::MACE_SUCCESS;
 }
 

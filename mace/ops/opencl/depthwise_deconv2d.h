@@ -15,6 +15,7 @@
 #ifndef MACE_OPS_OPENCL_DEPTHWISE_DECONV2D_H_
 #define MACE_OPS_OPENCL_DEPTHWISE_DECONV2D_H_
 
+#include <string>
 #include <vector>
 
 #include "mace/ops/activation.h"

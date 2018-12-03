@@ -118,23 +118,17 @@ void TestRandomResizeBilinear() {
     expected->Copy(*net.GetOutput("Output"));
 
     if (D == DeviceType::GPU) {
-      BufferToImage<D, float>(&net, "Input", "InputImage",
-                              ops::BufferType::IN_OUT_CHANNEL);
-
       OpDefBuilder("ResizeBilinear", "ResizeBilinearTest")
-          .Input("InputImage")
-          .Output("OutputImage")
+          .Input("Input")
+          .Output("Output")
           .AddIntArg("align_corners", align_corners)
           .AddIntsArg("size", {height, width})
           .Finalize(net.NewOperatorDef());
       // Run
       net.RunOp(D);
-
-      ImageToBuffer<D, float>(&net, "OutputImage", "DeviceOutput",
-                              ops::BufferType::IN_OUT_CHANNEL);
     }
     // Check
-    ExpectTensorNear<float>(*expected, *net.GetOutput("DeviceOutput"), 1e-5,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5,
                             1e-6);
   }
 }
@@ -156,6 +150,7 @@ void TestQuantizedResizeBilinear() {
     // Add input data
     net.AddRandomInput<CPU, float>("Input",
                                    {batch, in_height, in_width, channels},
+                                   false,
                                    false,
                                    true,
                                    -1.f,

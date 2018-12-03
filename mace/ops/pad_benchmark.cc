@@ -31,23 +31,13 @@ void Pad(int iters, int batch, int height,
   net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
 
   const std::vector<int> paddings = {0, 0, pad, pad, pad, pad, 0, 0};
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("Pad", "PadTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddIntsArg("paddings", paddings)
-        .AddFloatArg("constant_value", 1.0)
-        .Finalize(net.NewOperatorDef());
-  } else {
-    OpDefBuilder("Pad", "PadTest")
-        .Input("Input")
-        .Output("Output")
-        .AddIntsArg("paddings", paddings)
-        .AddFloatArg("constant_value", 1.0)
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("Pad", "PadTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("paddings", paddings)
+      .AddFloatArg("constant_value", 1.0)
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

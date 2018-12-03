@@ -32,23 +32,13 @@ void BMBatchToSpace(
     net.AddRandomInput<D, float>("Input", {batch, height, width, channels});
   }
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
-        .Input("Input")
-        .Output("Output")
-        .AddIntsArg("crops", {0, 0, 0, 0})
-        .AddIntsArg("block_shape", {arg, arg})
-        .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddIntsArg("crops", {0, 0, 0, 0})
-        .AddIntsArg("block_shape", {arg, arg})
-        .Finalize(net.NewOperatorDef());
-  }
+  OpDefBuilder("BatchToSpaceND", "BatchToSpaceNDTest")
+      .Input("Input")
+      .Output("Output")
+      .AddIntsArg("crops", {0, 0, 0, 0})
+      .AddIntsArg("block_shape", {arg, arg})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
   // Warm-up
   for (int i = 0; i < 5; ++i) {
     net.RunOp(D);

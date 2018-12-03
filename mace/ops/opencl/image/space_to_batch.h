@@ -56,8 +56,8 @@ MaceStatus SpaceToBatchKernel<T>::Compute(
     const std::vector<index_t> &output_shape,
     Tensor *batch_tensor) {
   std::vector<size_t> output_image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                  &output_image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                              &output_image_shape);
   MACE_RETURN_IF_ERROR(
       batch_tensor->ResizeImage(output_shape, output_image_shape));
   const char *kernel_name = "space_to_batch";

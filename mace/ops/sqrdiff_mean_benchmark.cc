@@ -29,34 +29,20 @@ void SqrDiffMean(int iters, int batch, int channels,
 
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
-  net.AddRandomInput<D, T>("Input1", {batch, 1, 1, channels});
-
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Input1", "InputImage1",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
-        .Input("InputImage")
-        .Input("InputImage1")
-        .Output("OutputImage")
-        .Finalize(net.NewOperatorDef());
+  if (D == DeviceType::CPU) {
+    net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
+    net.AddRandomInput<D, T>("Input1", {batch, channels, 1, 1});
   } else {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                    NHWC,
-                                                    "InputNCHW",
-                                                    NCHW);
-    net.TransformDataFormat<DeviceType::CPU, float>("Input1",
-                                                    NHWC,
-                                                    "InputNCHW1",
-                                                    NCHW);
-    OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
-        .Input("InputNCHW")
-        .Input("InputNCHW1")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
+    net.AddRandomInput<D, T>("Input1", {batch, 1, 1, channels});
   }
+
+  OpDefBuilder("SqrDiffMean", "SqrDiffMeanBM")
+      .Input("Input")
+      .Input("Input1")
+      .Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

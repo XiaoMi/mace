@@ -24,8 +24,8 @@
 #include "mace/core/macros.h"
 #include "mace/core/runtime/opencl/cl2_header.h"
 #include "mace/core/runtime/opencl/opencl_runtime.h"
+#include "mace/core/runtime/opencl/opencl_util.h"
 #include "mace/core/types.h"
-#include "mace/ops/opencl/common.h"
 #include "mace/utils/utils.h"
 
 namespace mace {
@@ -92,14 +92,9 @@ const float kMaxKernelExecTime = 1000.0;  // microseconds
 // Base GPU cache size used for computing local work group size.
 const int32_t kBaseGPUMemCacheSize = 16384;
 
-void CalImage2DShape(const std::vector<index_t> &shape, /* NHWC */
-                     const BufferType type,
-                     std::vector<size_t> *image_shape,
-                     const int wino_blk_size = 2);
-
 std::vector<index_t> FormatBufferShape(
     const std::vector<index_t> &buffer_shape,
-    const BufferType type);
+    const OpenCLBufferType type);
 
 // CPU data type to OpenCL command data type
 std::string DtToCLCMDDt(const DataType dt);

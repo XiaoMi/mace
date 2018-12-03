@@ -26,6 +26,14 @@ class OpContext;
 namespace ops {
 class OpenCLConv2dKernel {
  public:
+  virtual bool CheckUseWinograd(
+      OpenCLRuntime *runtime,
+      const std::vector<index_t> &filter_shape,
+      const std::vector<index_t> &output_shape,
+      const int *strides,
+      const int *dilations,
+      int *wino_block_size) = 0;
+
   virtual MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
@@ -37,6 +45,7 @@ class OpenCLConv2dKernel {
       const int *dilations,
       const ActivationType activation,
       const float relux_max_limit,
+      const int winograd_blk_size,
       Tensor *output) = 0;
   MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLConv2dKernel);
 };

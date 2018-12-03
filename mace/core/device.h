@@ -34,7 +34,7 @@ class Device {
 
 #ifdef MACE_ENABLE_OPENCL
   virtual OpenCLRuntime *opencl_runtime() = 0;
-#endif
+#endif  // MACE_ENABLE_OPENCL
   virtual CPURuntime *cpu_runtime() = 0;
 
   virtual Allocator *allocator() = 0;

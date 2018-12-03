@@ -82,20 +82,15 @@ void SimpleTensorScalar(const ops::EltwiseType type,
     net.RunOp(D);
     net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
   } else {
-    BufferToImage<D, T>(&net, "Input", "InputImg",
-                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("InputImg")
+        .Input("Input")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatArg("scalar_input", x)
-        .Output("OutputImg")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
-
-    ImageToBuffer<D, DstType>(&net, "OutputImg", "Output",
-                              ops::BufferType::IN_OUT_CHANNEL);
   }
 
   auto expected = net.CreateTensor<DstType>(shape, output);
@@ -145,23 +140,16 @@ void SimpleTensorEltwise(const ops::EltwiseType type,
     net.RunOp(D);
     net.TransformDataFormat<D, DstType>("TOutput", NCHW, "Output", NHWC);
   } else {
-    BufferToImage<D, T>(&net, "Input0", "InputImg0",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Input1", "InputImg1",
-                        ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("InputImg0")
-        .Input("InputImg1")
+        .Input("Input0")
+        .Input("Input1")
         .AddIntArg("type", static_cast<int>(type))
         .AddFloatsArg("coeff", coeff)
-        .Output("OutputImg")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
-
-    ImageToBuffer<D, DstType>(&net, "OutputImg", "Output",
-                              ops::BufferType::IN_OUT_CHANNEL);
   }
 
   std::vector<index_t> output_shape = shape0;
@@ -204,26 +192,19 @@ void TensorGeneralBroadcastEltwise(const ops::EltwiseType type,
     // Run
     net.RunOp(D);
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input0", "InputImage0",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Input1", "InputImage1",
-                        ops::BufferType::IN_OUT_CHANNEL);
     auto op_builder =
         OpDefBuilder("Eltwise", "EltwiseTest")
             .AddIntArg("T", DataTypeToEnum<T>::v())
-            .Input("InputImage0")
-            .Input("InputImage1")
+            .Input("Input0")
+            .Input("Input1")
             .AddIntArg("type", static_cast<int>(type))
             .AddFloatsArg("coeff", coeff)
             .OutputType({ops::IsLogicalType(type) ? DT_INT32 : DT_FLOAT})
-            .Output("OutputImage");
+            .Output("Output");
     op_builder.Finalize(net.NewOperatorDef());
 
     // Run
     net.RunOp(D);
-
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -483,7 +464,7 @@ void RandomTensorScalar(const ops::EltwiseType type,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input", shape, true, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Input", shape, false, true, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "TInput",
                                                   NCHW);
@@ -501,26 +482,21 @@ void RandomTensorScalar(const ops::EltwiseType type,
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
-  BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImg",
-                                    ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
-      .Input("InputImg")
+      .Input("Input")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatArg("scalar_input", 0.1)
-      .Output("OutputImg")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImg", "GPUOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-2);
   }
 }
 
@@ -533,8 +509,16 @@ void RandomTensorEltwise(const ops::EltwiseType type,
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0, true, true);
-  net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1, true, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Input0",
+                                             shape0,
+                                             false,
+                                             true,
+                                             true);
+  net.AddRandomInput<DeviceType::GPU, float>("Input1",
+                                             shape1,
+                                             false,
+                                             true,
+                                             true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "TInput0",
                                                   NCHW);
@@ -556,29 +540,22 @@ void RandomTensorEltwise(const ops::EltwiseType type,
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
-  BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImg0",
-                                    ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImg1",
-                                    ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Eltwise", "EltwiseTest")
-      .Input("InputImg0")
-      .Input("InputImg1")
+      .Input("Input0")
+      .Input("Input1")
       .AddIntArg("type", static_cast<int>(type))
       .AddFloatsArg("coeff", coeff)
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-      .Output("OutputImg")
+      .Output("Output")
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImg", "GPUOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
-
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("GPUOutput"), 1e-2, 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2, 1e-2);
   }
 }
 
@@ -587,8 +564,16 @@ void QuantizedSum(const std::vector<index_t> &shape) {
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<DeviceType::CPU, float>("Input0", shape, true, true);
-  net.AddRandomInput<DeviceType::CPU, float>("Input1", shape, true, true);
+  net.AddRandomInput<DeviceType::CPU, float>("Input0",
+                                             shape,
+                                             false,
+                                             true,
+                                             true);
+  net.AddRandomInput<DeviceType::CPU, float>("Input1",
+                                             shape,
+                                             false,
+                                             true,
+                                             true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input0", NHWC, "TInput0",
                                                   NCHW);

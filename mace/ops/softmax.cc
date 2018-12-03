@@ -367,6 +367,7 @@ class SoftmaxOp<DeviceType::GPU, T> : public Operation {
     if (context->device()->opencl_runtime()->UseImageMemory()) {
       kernel_.reset(new opencl::image::SoftmaxKernel<T>);
     } else {
+      context->set_output_mem_type(MemoryType::GPU_BUFFER);
       kernel_.reset(new opencl::buffer::SoftmaxKernel<T>);
     }
   }

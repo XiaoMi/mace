@@ -27,6 +27,7 @@
 #endif  // MACE_ENABLE_QUANTIZE
 
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/fully_connected.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -192,10 +193,24 @@ class FullyConnectedOp<DeviceType::GPU, T> : public FullyConnectedOpBase {
  public:
   explicit FullyConnectedOp(OpConstructContext *context)
       : FullyConnectedOpBase(context) {
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::FullyConnectedKernel<T>);
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    // Transform filter tensor to target format
+    MACE_CHECK(TransformFilter<T>(
+        context,
+        operator_def_.get(),
+        1,
+        OpenCLBufferType::WEIGHT_WIDTH,
+        mem_type) == MaceStatus::MACE_SUCCESS);
+    if (operator_def_->input_size() > 2) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 2, OpenCLBufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {

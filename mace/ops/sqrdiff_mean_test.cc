@@ -58,19 +58,13 @@ void Simple(const std::vector<index_t> &input_shape0,
                                                     "Output",
                                                     NHWC);
   } else {
-    BufferToImage<D, float>(&net, "Input0", "InputImg0",
-                           ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Input1", "InputImg1",
-                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
-        .Input("InputImg0")
-        .Input("InputImg1")
-        .Output("OutputImg")
+        .Input("Input0")
+        .Input("Input1")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-    ImageToBuffer<D, float>(&net, "OutputImg", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   }
   auto expected = net.CreateTensor<float>(output_shape, output);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
@@ -126,19 +120,13 @@ void RandomTest(const std::vector<index_t> &input_shape0,
   net.RunOp();
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                   "Output", NHWC);
-  BufferToImage<D, T>(&net, "Input0", "InputImg0",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<D, T>(&net, "Input1", "InputImg1",
-                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("SqrDiffMean", "SqrDiffMeanTest")
-      .Input("InputImg0")
-      .Input("InputImg1")
-      .Output("OutputImg")
+      .Input("Input0")
+      .Input("Input1")
+      .Output("OPENCLOutput")
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
-  ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
                             *net.GetOutput("OPENCLOutput"), 1e-4, 1e-3);

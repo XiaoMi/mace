@@ -76,7 +76,7 @@ MACE_BM_CONCAT_CPU(1, 1225, 128);
 
 namespace {
 template <typename T>
-void OpenclConcatHelper(int iters,
+void OpenCLConcatHelper(int iters,
                         const std::vector<index_t> &shape0,
                         const std::vector<index_t> &shape1,
                         int concat_dim) {
@@ -88,15 +88,11 @@ void OpenclConcatHelper(int iters,
   net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0);
   net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
 
-  BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImage0",
-                                       ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImage1",
-                                       ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Concat", "ConcatBM")
-      .Input("InputImage0")
-      .Input("InputImage1")
+      .Input("Input0")
+      .Input("Input1")
       .AddIntArg("axis", concat_dim)
-      .Output("OutputImage")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -120,7 +116,7 @@ void OpenclConcatHelper(int iters,
 #define MACE_BM_CONCAT_OPENCL_MACRO(N, H, W, C, TYPE)                          \
   static void MACE_BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE(int iters) {\
     std::vector<index_t> shape = {N, H, W, C};                                 \
-    OpenclConcatHelper<TYPE>(iters, shape, shape, 3);                          \
+    OpenCLConcatHelper<TYPE>(iters, shape, shape, 3);                          \
   }                                                                            \
   MACE_BENCHMARK(MACE_BM_CONCAT_OPENCL_##N##_##H##_##W##_##C##_##TYPE)
 

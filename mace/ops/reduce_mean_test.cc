@@ -34,6 +34,17 @@ void Simple(const std::vector<index_t> &input_shape,
   net.AddInputFromArray<D, float>("Input", input_shape, input);
 
   if (D == DeviceType::CPU) {
+    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    OpDefBuilder("ReduceMean", "ReduceMeanTest")
+        .Input("InputNCHW")
+        .AddIntsArg("axis", axis)
+        .AddIntArg("keepdims", keepdims ? 1 : 0)
+        .Output("OutputNCHW")
+        .Finalize(net.NewOperatorDef());
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
+  } else {
     OpDefBuilder("ReduceMean", "ReduceMeanTest")
         .Input("Input")
         .AddIntsArg("axis", axis)
@@ -42,20 +53,31 @@ void Simple(const std::vector<index_t> &input_shape,
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-  } else {
-    BufferToImage<D, float>(&net, "Input", "InputImg",
-                           ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("ReduceMean", "ReduceMeanTest")
-        .Input("InputImg")
-        .AddIntsArg("axis", axis)
-        .AddIntArg("keepdims", keepdims ? 1 : 0)
-        .Output("OutputImg")
-        .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
-    ImageToBuffer<D, float>(&net, "OutputImg", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   }
+  auto expected = net.CreateTensor<float>(output_shape, output);
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
+}
+
+template <DeviceType D>
+void Simple3D(const std::vector<index_t> &input_shape,
+              const std::vector<float> &input,
+              const std::vector<int> &axis,
+              const std::vector<index_t> &output_shape,
+              const std::vector<float> &output,
+              const bool keepdims = true) {
+  // Construct graph
+  OpsTestNet net;
+  // Add input data
+  net.AddInputFromArray<D, float>("Input", input_shape, input);
+
+  OpDefBuilder("ReduceMean", "ReduceMeanTest")
+      .Input("Input")
+      .AddIntsArg("axis", axis)
+      .AddIntArg("keepdims", keepdims ? 1 : 0)
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  // Run
+  net.RunOp(D);
   auto expected = net.CreateTensor<float>(output_shape, output);
   ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5, 1e-3);
 }
@@ -157,26 +179,6 @@ void Simple2Axis() {
             {0, 1},
             {1, 1, 3, 4},
             {6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
-  Simple<D>({2, 3, 4},
-            {0, 1, 2, 3,
-             4, 5, 6, 7,
-             8, 9, 10, 11,
-             12, 13, 14, 15,
-             16, 17, 18, 19,
-             20, 21, 22, 23},
-            {0, 1},
-            {1, 1, 4},
-            {10, 11, 12, 13});
-  Simple<D>({2, 3, 4},
-            {0, 1, 2, 3,
-             4, 5, 6, 7,
-             8, 9, 10, 11,
-             12, 13, 14, 15,
-             16, 17, 18, 19,
-             20, 21, 22, 23},
-            {1, 2},
-            {2, 1, 1},
-            {5.5, 17.5});
   Simple<D>({1, 2, 3, 4},
             {0, 1, 2, 3,
              4, 5, 6, 7,
@@ -219,6 +221,31 @@ void Simple2Axis() {
             {1, 3, 1, 1},
             {4, 13, 22});
 }
+
+template <DeviceType D>
+void Simple2Axis3D() {
+  Simple3D<D>({2, 3, 4},
+              {0, 1, 2, 3,
+               4, 5, 6, 7,
+               8, 9, 10, 11,
+               12, 13, 14, 15,
+               16, 17, 18, 19,
+               20, 21, 22, 23},
+              {0, 1},
+              {1, 1, 4},
+              {10, 11, 12, 13});
+  Simple3D<D>({2, 3, 4},
+              {0, 1, 2, 3,
+               4, 5, 6, 7,
+               8, 9, 10, 11,
+               12, 13, 14, 15,
+               16, 17, 18, 19,
+               20, 21, 22, 23},
+              {1, 2},
+              {2, 1, 1},
+              {5.5, 17.5});
+}
+
 
 template <DeviceType D>
 void Simple3Axis() {
@@ -310,21 +337,22 @@ TEST_F(ReduceMeanOpTest, CPUSimple2Axis) {
   Simple2Axis<DeviceType::CPU>();
 }
 
+TEST_F(ReduceMeanOpTest, CPUSimple2Axis3D) {
+  Simple2Axis3D<DeviceType::CPU>();
+}
+
 TEST_F(ReduceMeanOpTest, CPUSimple3Axis) {
   Simple3Axis<DeviceType::CPU>();
 }
 
 TEST_F(ReduceMeanOpTest, CPUSimpleReduceDims) {
-  Simple<CPU>({2, 2, 3, 4},
-              {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-               0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
-              {1, 2},
-              {2, 4},
-              {10, 11, 12, 13,
-               10, 11, 12, 13},
-              false);
+  Simple3D<CPU>({2, 3, 4},
+                {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+                {0, 1},
+                {4},
+                {10, 11, 12, 13},
+                false);
 }
 
 namespace {
@@ -338,21 +366,11 @@ void RandomTest(const std::vector<index_t> &input_shape,
   // Add input data
   net.AddRandomInput<D, float>("Input", input_shape);
 
-  std::vector<int> axis_cpu(axis.size());
-  for (unsigned int i = 0; i < axis.size(); ++i) {
-    if (axis[i] == 1 || axis[i] == 2)
-      axis_cpu[i] = axis[i] + 1;
-    else if (axis[i] == 3)
-      axis_cpu[i] = 1;
-    else
-      axis_cpu[i] = axis[i];
-  }
-
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
   OpDefBuilder("ReduceMean", "ReduceMeanTest")
       .Input("InputNCHW")
-      .AddIntsArg("axis", axis_cpu)
+      .AddIntsArg("axis", axis)
       .AddIntArg("keepdims", 1)
       .Output("OutputNCHW")
       .Finalize(net.NewOperatorDef());
@@ -360,18 +378,14 @@ void RandomTest(const std::vector<index_t> &input_shape,
   net.RunOp();
   net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                   "Output", NHWC);
-  BufferToImage<D, T>(&net, "Input", "InputImg",
-                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("ReduceMean", "ReduceMeanTest")
-      .Input("InputImg")
+      .Input("Input")
       .AddIntsArg("axis", axis)
       .AddIntArg("keepdims", 1)
-      .Output("OutputImg")
+      .Output("OPENCLOutput")
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
-  ImageToBuffer<D, float>(&net, "OutputImg", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
     ExpectTensorNear<float>(*net.GetTensor("Output"),
                             *net.GetOutput("OPENCLOutput"), 1e-5, 1e-4);

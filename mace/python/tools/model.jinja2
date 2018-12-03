@@ -80,6 +80,7 @@ void CreateInputInfo(NetDef *net_def) {
   input_info = net_def->add_input_info();
   input_info->set_name({{ net.input_info[idx].name|tojson }});
   input_info->set_data_type(static_cast<DataType>({{ net.input_info[idx].data_type }}));
+  input_info->set_data_format(static_cast<DataFormat>({{ net.input_info[idx].data_format }}));
   input_info->mutable_dims()->Reserve({{ net.input_info[idx].dims|length }});
   {% for dim in net.input_info[idx].dims %}
   input_info->add_dims({{ dim }});
@@ -96,6 +97,7 @@ void CreateOutputInfo(NetDef *net_def) {
   output_info = net_def->add_output_info();
   output_info->set_name({{ net.output_info[idx].name|tojson }});
   output_info->set_data_type(static_cast<DataType>({{ net.output_info[idx].data_type }}));
+  output_info->set_data_format(static_cast<DataFormat>({{ net.output_info[idx].data_format }}));
   output_info->mutable_dims()->Reserve({{ net.output_info[idx].dims|length }});
   {% for dim in net.output_info[idx].dims %}
   output_info->add_dims({{dim}});
@@ -121,23 +123,6 @@ void CreateTensors(NetDef *net_def) {
   mace::{{tag}}::CreateTensor{{ i }}(net_def->add_tensors());
   {% endfor %}
 }
-
-{% if net.mem_arena.mem_block|length != 0 %}
-void CreateMemoryArena(mace::MemoryArena *mem_arena) {
-  mem_arena->mutable_mem_block()->Reserve({{ net.mem_arena.mem_block|length }});
-  {% for i in range(net.mem_arena.mem_block|length) %}
-
-  mace::MemoryBlock* mem_block{{i}} = mem_arena->add_mem_block();
-  mem_block{{i}}->set_mem_id({{net.mem_arena.mem_block[i].mem_id}});
-  mem_block{{i}}->set_device_type(static_cast<DeviceType>({{net.mem_arena.mem_block[i].device_type}}));
-  mem_block{{i}}->set_mem_type(static_cast<MemoryType>({{net.mem_arena.mem_block[i].mem_type}}));
-  mem_block{{i}}->set_x({{net.mem_arena.mem_block[i].x}});
-  mem_block{{i}}->set_y({{net.mem_arena.mem_block[i].y}});
-
-  {% endfor %}
-}
-{% endif %}
-
 }  // namespace
 
 namespace {{tag}} {
@@ -152,9 +137,6 @@ const std::shared_ptr<NetDef> CreateNet() {
 
   {% if net.arg|length != 0 %}
   CreateNetArg(net_def.get());
-  {% endif %}
-  {% if net.mem_arena.mem_block|length != 0 %}
-  CreateMemoryArena(net_def->mutable_mem_arena());
   {% endif %}
   {% if net.input_info | length > 0 %}
   CreateInputInfo(net_def.get());
@@ -179,8 +161,8 @@ const std::string ModelBuildTime() {
 }
 
 const std::string ModelBuildOptions() {
-  return {{ "runtime: {}, obfuscate: {}, embed_model_data: {}, winograd: {}"
-        .format(runtime, obfuscate, embed_model_data, winograd_conv)|tojson }};
+  return {{ "obfuscate: {}, embed_model_data: {}, winograd: {}"
+        .format(obfuscate, embed_model_data, winograd_conv)|tojson }};
 }
 
 }  // namespace {{tag}}

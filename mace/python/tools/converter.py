@@ -21,7 +21,6 @@ import copy
 import six
 
 from mace.proto import mace_pb2
-from mace.python.tools import memory_optimizer
 from mace.python.tools import model_saver
 from mace.python.tools.converter_tool import base_converter as cvt
 from mace.python.tools.converter_tool import transformer
@@ -36,7 +35,13 @@ FLAGS = None
 
 device_type_map = {'cpu': cvt.DeviceType.CPU.value,
                    'gpu': cvt.DeviceType.GPU.value,
-                   'dsp': cvt.DeviceType.HEXAGON.value}
+                   'dsp': cvt.DeviceType.HEXAGON.value,
+                   'cpu+gpu': cvt.DeviceType.CPU.value}
+
+data_format_map = {
+    'NONE': cvt.DataFormat.DF_NONE,
+    'NHWC': cvt.DataFormat.NHWC,
+}
 
 
 def parse_data_type(data_type, device_type):
@@ -117,6 +122,7 @@ def main(unused_args):
 
     input_node_names = FLAGS.input_node.split(',')
     input_node_shapes = FLAGS.input_shape.split(':')
+    input_node_formats = FLAGS.input_data_formats.split(",")
     if FLAGS.input_range:
         input_node_ranges = FLAGS.input_range.split(':')
     else:
@@ -126,6 +132,10 @@ def main(unused_args):
     for i in six.moves.range(len(input_node_names)):
         input_node = cvt.NodeInfo()
         input_node.name = input_node_names[i]
+        if len(input_node_formats) == 1:
+            input_node.data_format = data_format_map[input_node_formats[0]]
+        else:
+            input_node.data_format = data_format_map[input_node_formats[i]]
         input_node.shape = parse_int_array_from_str(input_node_shapes[i])
         if len(input_node_ranges) > i:
             input_node.range = parse_float_array_from_str(input_node_ranges[i])
@@ -133,11 +143,16 @@ def main(unused_args):
 
     output_node_names = FLAGS.output_node.split(',')
     output_node_shapes = FLAGS.output_shape.split(':')
+    output_node_formats = FLAGS.output_data_formats.split(",")
     if len(output_node_names) != len(output_node_shapes):
         raise Exception('output node count and shape count do not match.')
     for i in six.moves.range(len(output_node_names)):
         output_node = cvt.NodeInfo()
         output_node.name = output_node_names[i]
+        if len(output_node_formats) == 1:
+            output_node.data_format = data_format_map[output_node_formats[0]]
+        else:
+            output_node.data_format = data_format_map[output_node_formats[i]]
         output_node.shape = parse_int_array_from_str(output_node_shapes[i])
         option.add_output_node(output_node)
 
@@ -179,74 +194,25 @@ def main(unused_args):
 
         output_graph_def = converter.run()
 
-        if FLAGS.runtime == 'cpu+gpu':
-            cpu_graph_def = copy.deepcopy(output_graph_def)
+        option.device = device_type_map[FLAGS.runtime]
+        option.data_type = parse_data_type(
+            FLAGS.data_type, option.device)
+        mace_transformer = transformer.Transformer(
+            option, output_graph_def)
+        output_graph_def, quantize_activation_info = mace_transformer.run()
 
-            option.device = cvt.DeviceType.GPU.value
-            option.data_type = parse_data_type(
-                FLAGS.data_type, cvt.DeviceType.GPU.value)
-            mace_gpu_transformer = transformer.Transformer(
-                option, output_graph_def)
-            output_graph_def, _ = mace_gpu_transformer.run()
-            six.print_("start optimize gpu memory.")
-            memory_optimizer.optimize_gpu_memory(output_graph_def)
-            six.print_("GPU memory optimization done.")
-
-            option.device = cvt.DeviceType.CPU.value
-            option.data_type = parse_data_type(
-                FLAGS.data_type, cvt.DeviceType.CPU.value)
-            option.disable_transpose_filters()
-            mace_cpu_transformer = transformer.Transformer(
-                option, cpu_graph_def)
-            cpu_graph_def, _ = mace_cpu_transformer.run()
-            print("start optimize cpu memory.")
-            memory_optimizer.optimize_cpu_memory(cpu_graph_def)
-            print("CPU memory optimization done.")
-
-            print("Merge cpu and gpu ops together")
-            output_graph_def.op.extend(cpu_graph_def.op)
-            output_graph_def.mem_arena.mem_block.extend(
-                cpu_graph_def.mem_arena.mem_block)
-            output_graph_arg_names = set()
-            for arg in output_graph_def.arg:
-                output_graph_arg_names.add(arg.name)
-
-            for arg in cpu_graph_def.arg:
-                if arg.name not in output_graph_arg_names:
-                    output_graph_def.arg.extend(arg)
-            print("Merge done")
-        else:
-            option.device = device_type_map[FLAGS.runtime]
-            option.data_type = parse_data_type(
-                FLAGS.data_type, option.device)
-            mace_transformer = transformer.Transformer(
-                option, output_graph_def)
-            output_graph_def, quantize_activation_info = mace_transformer.run()
-
-            if FLAGS.runtime == 'dsp':
-                from mace.python.tools.converter_tool import hexagon_converter
-                converter = hexagon_converter.HexagonConverter(
-                    option, output_graph_def, quantize_activation_info)
-                output_graph_def = converter.run()
-
-            print("start optimize memory.")
-            if FLAGS.runtime == 'gpu':
-                memory_optimizer.optimize_gpu_memory(output_graph_def)
-            elif FLAGS.runtime == 'cpu':
-                memory_optimizer.optimize_cpu_memory(output_graph_def)
-            elif FLAGS.runtime == 'dsp':
-                pass
-            else:
-                mace_check(False, "runtime only support [gpu|cpu|dsp]")
-
-            print("Memory optimization done.")
+        if FLAGS.runtime == 'dsp':
+            from mace.python.tools.converter_tool import hexagon_converter
+            converter = hexagon_converter.HexagonConverter(
+                option, output_graph_def, quantize_activation_info)
+            output_graph_def = converter.run()
 
     model_saver.save_model(
-        output_graph_def, model_checksum, weight_checksum,
+        option, output_graph_def, model_checksum, weight_checksum,
         FLAGS.template_dir, FLAGS.obfuscate, FLAGS.model_tag,
-        FLAGS.output_dir, FLAGS.runtime,
+        FLAGS.output_dir,
         FLAGS.embed_model_data,
-        FLAGS.winograd, FLAGS.data_type,
+        FLAGS.winograd,
         FLAGS.model_graph_format)
 
 
@@ -294,7 +260,17 @@ def parse_args():
         default="input_node",
         help="e.g., input_node")
     parser.add_argument(
+        "--input_data_formats",
+        type=str,
+        default="NHWC",
+        help="e.g., NHWC,NONE")
+    parser.add_argument(
         "--output_node", type=str, default="softmax", help="e.g., softmax")
+    parser.add_argument(
+        "--output_data_formats",
+        type=str,
+        default="NHWC",
+        help="e.g., NHWC,NONE")
     parser.add_argument(
         "--check_node", type=str, default="softmax", help="e.g., softmax")
     parser.add_argument(

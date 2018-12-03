@@ -97,7 +97,7 @@ inline std::ostream &operator<<(std::ostream &os, unsigned char c) {
 }
 }  // namespace numerical_chars
 
-enum DataFormat { NHWC = 0, NCHW = 1, HWOI = 2, OIHW = 3, HWIO = 4, OHWI = 5 };
+enum FilterDataFormat { HWOI = 100, OIHW = 101, HWIO = 102, OHWI = 103 };
 
 class Tensor {
  public:
@@ -220,6 +220,25 @@ class Tensor {
 
   inline bool has_opencl_buffer() const {
     return buffer_ != nullptr && !buffer_->OnHost() && !has_opencl_image();
+  }
+
+  inline MemoryType memory_type() const {
+    MACE_CHECK(buffer_ != nullptr, "Tensor ", name_, " is empty");
+    if (buffer_->OnHost()) {
+      return MemoryType::CPU_BUFFER;
+    } else if (typeid(*buffer_) == typeid(Image)) {
+      return MemoryType::GPU_IMAGE;
+    } else {
+      return MemoryType::GPU_BUFFER;
+    }
+  }
+
+  inline void set_data_format(DataFormat data_format) {
+    data_format_ = data_format;
+  }
+
+  inline DataFormat data_format() const {
+    return data_format_;
   }
 
 #ifdef MACE_ENABLE_OPENCL
@@ -488,6 +507,7 @@ class Tensor {
   int32_t zero_point_;
   float minval_;
   float maxval_;
+  DataFormat data_format_;  // used for 4D input/output tensor
 
   MACE_DISABLE_COPY_AND_ASSIGN(Tensor);
 };

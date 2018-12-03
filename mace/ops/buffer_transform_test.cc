@@ -15,6 +15,7 @@
 #include <cstring>
 
 #include "gtest/gtest.h"
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/ops_test_util.h"
 
 namespace mace {
@@ -30,31 +31,31 @@ class BufferTransformTest : public OpsTestBase {
 
 namespace {
 template <typename OrgType, typename DstType>
-void TestBidirectionTransform(const int type,
+void TestBidirectionTransform(const OpenCLBufferType type,
                               const std::vector<index_t> &input_shape) {
   OpsTestNet net;
-  OpDefBuilder("BufferTransform", "BufferTransformTest")
-      .Input("Input")
-      .Output("TransformedOutput")
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", DataTypeToEnum<DstType>::value)
-      .Finalize(net.NewOperatorDef());
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetDevice(DeviceType::GPU));
 
   // Add input data
   net.AddRandomInput<DeviceType::GPU, OrgType>("Input", input_shape);
+  Tensor *bt_output = net.ws()->CreateTensor(
+      "BtOutput", context.device()->allocator(),
+      DataTypeToEnum<DstType>::value);
 
-  // Run
-  net.RunOp(DeviceType::GPU);
+  OpenCLBufferTransformer<DstType>(MemoryType::GPU_BUFFER,
+                                   MemoryType::GPU_BUFFER)
+      .Transform(&context, net.ws()->GetTensor("Input"),
+                 type, MemoryType::GPU_BUFFER, 0, bt_output);
 
-  OpDefBuilder("BufferInverseTransform", "BufferInverseTransformTest")
-      .Input("TransformedOutput")
-      .Output("Output")
-      .AddIntArg("buffer_type", type)
-      .AddIntArg("T", DataTypeToEnum<OrgType>::value)
-      .Finalize(net.NewOperatorDef());
-
-  // Run
-  net.RunOp(DeviceType::GPU);
+  // Inverse Transform
+  Tensor *output = net.ws()->CreateTensor(
+      "Output", context.device()->allocator(),
+      DataTypeToEnum<OrgType>::value);
+  OpenCLBufferTransformer<OrgType>(MemoryType::GPU_BUFFER,
+                                   MemoryType::GPU_BUFFER)
+      .Transform(&context, bt_output,
+                 type, MemoryType::GPU_BUFFER, 0, output);
 
   if (DataTypeToEnum<OrgType>::value == DataTypeToEnum<DstType>::value) {
     EXPECT_EQ(net.GetOutput("Input")->UnderlyingBuffer(),
@@ -69,38 +70,35 @@ void TestBidirectionTransform(const int type,
 }  // namespace
 
 TEST_F(BufferTransformTest, FloatToHalf) {
-  TestBidirectionTransform<float, half>(ops::BufferType::IN_OUT_CHANNEL,
+  TestBidirectionTransform<float, half>(OpenCLBufferType::IN_OUT_CHANNEL,
                                         {1, 2, 3, 4});
-}
-
-TEST_F(BufferTransformTest, HalfToHalf) {
-  TestBidirectionTransform<half, half>(ops::BufferType::IN_OUT_CHANNEL,
-                                       {1, 2, 3, 4});
 }
 
 namespace {
 template <typename T>
 void TestArgumentTransform(const index_t input_size) {
   OpsTestNet net;
-  OpDefBuilder("BufferTransform", "BufferTransformTest")
-      .Input("Input")
-      .Output("Output")
-      .AddIntArg("buffer_type", ops::BufferType::ARGUMENT)
-      .AddIntArg("T", DataTypeToEnum<T>::value)
-      .Finalize(net.NewOperatorDef());
+  OpContext context(net.ws(),
+                    OpTestContext::Get()->GetDevice(DeviceType::GPU));
 
   // Add input data
   net.AddRandomInput<DeviceType::GPU, T>("Input", {input_size});
 
   // Run
-  net.RunOp(DeviceType::GPU);
+  Tensor *output = net.ws()->CreateTensor(
+      "Output", context.device()->allocator(),
+      DataTypeToEnum<T>::value);
+  OpenCLBufferTransformer<T>(MemoryType::GPU_BUFFER,
+                             MemoryType::GPU_BUFFER)
+      .Transform(&context, net.ws()->GetTensor("Input"),
+                 OpenCLBufferType::ARGUMENT, MemoryType::GPU_BUFFER,
+                 0, output);
 
-  auto output_tensor = net.GetOutput("Output");
   index_t expected_size = RoundUp<index_t>(input_size, 4);
-  EXPECT_EQ(expected_size, output_tensor->buffer_shape()[0]);
+  EXPECT_EQ(expected_size, output->buffer_shape()[0]);
 
   // Check
-  ExpectTensorNear<T>(*net.GetTensor("Input"), *output_tensor,
+  ExpectTensorNear<T>(*net.GetTensor("Input"), *output,
                       1e-3, 1e-4);
 }
 }  // namespace

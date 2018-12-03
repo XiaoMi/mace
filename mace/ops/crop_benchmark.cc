@@ -66,7 +66,7 @@ MACE_BM_CROP_CPU_MACRO(2, 512, 6);
 
 namespace {
 template <typename T>
-void OpenclCropHelper(int iters,
+void OpenCLCropHelper(int iters,
                       const std::vector<index_t> &shape0,
                       const std::vector<index_t> &shape1,
                       int crop_axis,
@@ -79,16 +79,12 @@ void OpenclCropHelper(int iters,
   net.AddRandomInput<DeviceType::GPU, float>("Input0", shape0);
   net.AddRandomInput<DeviceType::GPU, float>("Input1", shape1);
 
-  BufferToImage<DeviceType::GPU, T>(&net, "Input0", "InputImage0",
-                                       ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, T>(&net, "Input1", "InputImage1",
-                                       ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Crop", "CropBM")
-      .Input("InputImage0")
-      .Input("InputImage1")
+      .Input("Input0")
+      .Input("Input1")
       .AddIntArg("axis", crop_axis)
       .AddIntsArg("offset", {offset})
-      .Output("OutputImage")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
@@ -114,7 +110,7 @@ void OpenclCropHelper(int iters,
   _##TYPE(int iters) {                                                        \
     std::vector<index_t> shape0 = {N, H, W, C};                              \
     std::vector<index_t> shape1 = {N / 2, H / 2, W / 2, C / 2};              \
-    OpenclCropHelper<TYPE>(iters, shape0, shape1, AXIS, OFFSET);             \
+    OpenCLCropHelper<TYPE>(iters, shape0, shape1, AXIS, OFFSET);             \
   }                                                                          \
   MACE_BENCHMARK(MACE_BM_CROP_GPU_##N##_##H##_##W##_##C##_##AXIS##_##OFFSET\
   ##_##TYPE)

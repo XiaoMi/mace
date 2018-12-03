@@ -233,6 +233,11 @@ class Image : public BufferBase {
     }
   }
 
+  inline DataType dtype() const {
+    MACE_CHECK_NOTNULL(buf_);
+    return data_type_;
+  }
+
   void *buffer() {
     MACE_CHECK_NOTNULL(buf_);
     return buf_;

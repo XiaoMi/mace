@@ -174,5 +174,16 @@ inline bool EnvEnabled(std::string env_name) {
   return !(!env || env[0] == 0 || env[0] == '0');
 }
 
+template <typename SrcType, typename DstType>
+std::vector<DstType> TransposeShape(const std::vector<SrcType> &shape,
+                                    const std::vector<int> &dst_dims) {
+  size_t shape_dims = shape.size();
+  std::vector<DstType> output_shape(shape_dims);
+  for (size_t i = 0; i < shape_dims; ++i) {
+    output_shape[i] = static_cast<DstType>(shape[dst_dims[i]]);
+  }
+  return output_shape;
+}
+
 }  // namespace mace
 #endif  // MACE_UTILS_UTILS_H_

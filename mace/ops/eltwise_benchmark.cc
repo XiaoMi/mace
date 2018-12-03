@@ -30,36 +30,22 @@ void EltwiseBenchmark(
 
   OpsTestNet net;
   // Add input data
-  net.AddRandomInput<D, T>("Input0", {n, h, w, c});
-  net.AddRandomInput<D, T>("Input1", {n, h, w, c});
-
   if (D == DeviceType::GPU) {
-    BufferToImage<D, half>(&net, "Input0", "InputImg0",
-                           ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, half>(&net, "Input1", "InputImg1",
-                           ops::BufferType::IN_OUT_CHANNEL);
-    OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("InputImg0")
-        .Input("InputImg1")
-        .AddIntArg("type", static_cast<int>(type))
-        .AddFloatsArg("coeff", {1.2, 2.1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Output("OutputImg")
-        .Finalize(net.NewOperatorDef());
+    net.AddRandomInput<D, T>("Input0", {n, h, w, c});
+    net.AddRandomInput<D, T>("Input1", {n, h, w, c});
   } else {
-    net.TransformDataFormat<D, float>("Input0", NHWC,
-                                      "TInput0", NCHW);
-    net.TransformDataFormat<D, float>("Input1", NHWC,
-                                      "TInput1", NCHW);
-    OpDefBuilder("Eltwise", "EltwiseTest")
-        .Input("TInput0")
-        .Input("TInput1")
-        .AddIntArg("type", static_cast<int>(type))
-        .AddFloatsArg("coeff", {1.2, 2.1})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
+    net.AddRandomInput<D, T>("Input0", {n, c, h, w});
+    net.AddRandomInput<D, T>("Input1", {n, c, h, w});
   }
+
+  OpDefBuilder("Eltwise", "EltwiseTest")
+      .Input("Input0")
+      .Input("Input1")
+      .AddIntArg("type", static_cast<int>(type))
+      .AddFloatsArg("coeff", {1.2, 2.1})
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

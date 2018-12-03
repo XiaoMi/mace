@@ -68,7 +68,9 @@ MaceStatus PadKernel<T>::Compute(
       input_shape[3] + this->paddings_[6] + this->paddings_[7]};
 
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   const index_t batch = output->dim(0);

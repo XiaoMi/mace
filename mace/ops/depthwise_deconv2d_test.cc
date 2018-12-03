@@ -38,33 +38,23 @@ void RunTestSimple(const int group,
   OpsTestNet net;
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
-  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
-  net.TransformDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
+  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data, true);
+  net.TransformFilterDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
   const index_t out_channels = expected_shape[3];
-  net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data);
+  net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
 
   if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "FilterOIHW", "FilterImage",
-                            ops::BufferType::DW_CONV2D_FILTER);
-    BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            ops::BufferType::ARGUMENT);
     OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Input("BiasImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Input("FilterOIHW")
+        .Input("Bias")
+        .Output("Output")
         .AddIntsArg("strides", {stride, stride})
         .AddIntArg("group", group)
         .AddIntsArg("padding_values", paddings)
         .Finalize(net.NewOperatorDef());
 
     net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC,
                                                     "InputNCHW", NCHW);
@@ -161,22 +151,22 @@ TEST_F(DepthwiseDeconv2dOpTest, CPUSimple3X3Depthwise) {
 }
 
 TEST_F(DepthwiseDeconv2dOpTest, CPUSimple3X3Group) {
-TestNHWCSimple3x3_Group<DeviceType::CPU>();
+  TestNHWCSimple3x3_Group<DeviceType::CPU>();
 }
 
 TEST_F(DepthwiseDeconv2dOpTest, GPUSimple3X3Depthwise) {
-TestNHWCSimple3x3_DW<DeviceType::GPU>();
+  TestNHWCSimple3x3_DW<DeviceType::GPU>();
 }
 
 namespace {
 template <typename T>
 void RandomTest(index_t batch,
-                      index_t channel,
-                      index_t height,
-                      index_t width,
-                      index_t kernel,
-                      int stride,
-                      int padding) {
+                index_t channel,
+                index_t height,
+                index_t width,
+                index_t kernel,
+                int stride,
+                int padding) {
   testing::internal::LogToStderr();
   // Construct graph
   OpsTestNet net;
@@ -195,12 +185,12 @@ void RandomTest(index_t batch,
   GenerateRandomRealTypeData({multiplier, channel, kernel, kernel},
                              &filter_data);
   net.AddInputFromArray<DeviceType::GPU, float>(
-      "Filter", {multiplier, channel, kernel, kernel}, filter_data);
+      "Filter", {multiplier, channel, kernel, kernel}, filter_data, true);
   std::vector<float> bias_data(channel * multiplier);
   GenerateRandomRealTypeData({channel * multiplier}, &bias_data);
   net.AddInputFromArray<DeviceType::GPU, float>("Bias",
                                                 {channel * multiplier},
-                                                bias_data);
+                                                bias_data, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -226,17 +216,11 @@ void RandomTest(index_t batch,
   expected->Copy(*net.GetOutput("Output"));
 
 
-  BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, T>(&net, "Filter", "FilterImage",
-                      ops::BufferType::DW_CONV2D_FILTER);
-  BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
-                      ops::BufferType::ARGUMENT);
   OpDefBuilder("DepthwiseDeconv2d", "DepthwiseDeconv2dTest")
-      .Input("InputImage")
-      .Input("FilterImage")
-      .Input("BiasImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Filter")
+      .Input("Bias")
+      .Output("Output")
       .AddIntsArg("strides", {stride, stride})
       .AddIntsArg("padding_values", {padding, padding})
       .AddIntArg("group", channel)
@@ -245,14 +229,10 @@ void RandomTest(index_t batch,
 
   net.RunOp(DeviceType::GPU);
 
-  // Transfer output
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                      ops::BufferType::IN_OUT_CHANNEL);
-
   if (DataTypeToEnum<T>::value == DT_FLOAT) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2);
   }
 }
 

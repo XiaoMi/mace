@@ -34,14 +34,10 @@ void RunCrop(const std::vector<index_t> &input_shape,
   net.AddRandomInput<D, float>("Input1", input_shape2);
 
   if (D == GPU) {
-    BufferToImage<D, float>(&net, "Input0", "InputImage0",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Input1", "InputImage1",
-                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Crop", "CropTest")
-        .Input("InputImage0")
-        .Input("InputImage1")
-        .Output("OutputImage")
+        .Input("Input0")
+        .Input("Input1")
+        .Output("Output")
         .AddIntsArg("offset", offset)
         .AddIntArg("axis", axis)
         .Finalize(net.NewOperatorDef());
@@ -66,10 +62,7 @@ void RunCrop(const std::vector<index_t> &input_shape,
   // Run
   net.RunOp(D);
 
-  if (D == GPU) {
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else if (D == CPU) {
+  if (D == CPU) {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);
   }

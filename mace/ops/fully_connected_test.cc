@@ -36,8 +36,8 @@ void Simple(const std::vector<index_t> &input_shape,
 
   // Add input data
   net.AddInputFromArray<D, float>("Input", input_shape, input_value);
-  net.AddInputFromArray<D, float>("Weight", weight_shape, weight_value);
-  net.AddInputFromArray<D, float>("Bias", bias_shape, bias_value);
+  net.AddInputFromArray<D, float>("Weight", weight_shape, weight_value, true);
+  net.AddInputFromArray<D, float>("Bias", bias_shape, bias_value, true);
 
   if (D == DeviceType::CPU) {
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
@@ -50,25 +50,14 @@ void Simple(const std::vector<index_t> &input_shape,
     net.RunOp(D);
     net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Weight", "WeightImage",
-                            ops::BufferType::WEIGHT_WIDTH);
-    BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            ops::BufferType::ARGUMENT);
-
     OpDefBuilder("FullyConnected", "FullyConnectedTest")
-        .Input("InputImage")
-        .Input("WeightImage")
-        .Input("BiasImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Input("Weight")
+        .Input("Bias")
+        .Output("Output")
         .Finalize(net.NewOperatorDef());
     // Run
     net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     MACE_NOT_IMPLEMENTED;
   }
@@ -136,8 +125,8 @@ void Random(const index_t batch,
   net.AddRandomInput<DeviceType::GPU, float>("Input",
                                              {batch, height, width, channels});
   net.AddRandomInput<DeviceType::GPU, float>(
-      "Weight", {out_channel, channels, height, width});
-  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel});
+      "Weight", {out_channel, channels, height, width}, true);
+  net.AddRandomInput<DeviceType::GPU, float>("Bias", {out_channel}, true);
 
   net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                   NCHW);
@@ -158,31 +147,22 @@ void Random(const index_t batch,
   expected->Copy(*net.GetOutput("Output"));
 
   // Run on opencl
-  BufferToImage<DeviceType::GPU, T>(&net, "Input", "InputImage",
-                                    ops::BufferType::IN_OUT_CHANNEL);
-  BufferToImage<DeviceType::GPU, T>(&net, "Weight", "WeightImage",
-                                    ops::BufferType::WEIGHT_WIDTH);
-  BufferToImage<DeviceType::GPU, T>(&net, "Bias", "BiasImage",
-                                    ops::BufferType::ARGUMENT);
-
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
-      .Input("InputImage")
-      .Input("WeightImage")
-      .Input("BiasImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Input("Weight")
+      .Input("Bias")
+      .Output("Output")
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
 
   // Run
   net.RunOp(DeviceType::GPU);
 
-  ImageToBuffer<DeviceType::GPU, float>(&net, "OutputImage", "OPENCLOutput",
-                                        ops::BufferType::IN_OUT_CHANNEL);
   if (DataTypeToEnum<T>::value == DataType::DT_HALF) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-1,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-1,
                             1e-1);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2,
                             1e-3);
   }
 }
@@ -228,10 +208,10 @@ void QuantRandom(const index_t batch,
   net.AddRandomInput<CPU, float>(
       "Input", {batch, height, width, channels});
   net.AddRandomInput<CPU, float>(
-      "Weight", {out_channel, height, width, channels});
-  net.AddRandomInput<CPU, float>("Bias", {out_channel});
+      "Weight", {out_channel, height, width, channels}, true);
+  net.AddRandomInput<CPU, float>("Bias", {out_channel}, true);
   net.TransformDataFormat<CPU, float>("Input", NHWC, "InputNCHW", NCHW);
-  net.TransformDataFormat<CPU, float>("Weight", OHWI, "WeightOIHW", OIHW);
+  net.TransformFilterDataFormat<CPU, float>("Weight", OHWI, "WeightOIHW", OIHW);
 
   OpDefBuilder("FullyConnected", "FullyConnectedTest")
       .Input("InputNCHW")

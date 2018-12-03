@@ -101,8 +101,8 @@ MaceStatus AddNKernel<T>::Compute(
   MACE_OUT_OF_RANGE_INIT(kernel_);
   if (!IsVecEqual(input_shape_, input_tensors[0]->shape())) {
     std::vector<size_t> output_image_shape;
-    CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL,
-                    &output_image_shape);
+    OpenCLUtil::CalImage2DShape(output_shape, OpenCLBufferType::IN_OUT_CHANNEL,
+                                &output_image_shape);
     MACE_RETURN_IF_ERROR(
         output_tensor->ResizeImage(output_shape, output_image_shape));
 

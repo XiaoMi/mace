@@ -30,32 +30,14 @@ void TestSimpleRelu() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "ReluTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELU")
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "ReluTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "ReluTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 7, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
@@ -78,32 +60,14 @@ void TestUnalignedSimpleRelu() {
   // Add input data
   net.AddInputFromArray<D, float>("Input", {1, 3, 2, 1}, {-7, 7, -6, 6, -5, 5});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "ReluTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELU")
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "ReluTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "ReluTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELU")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>({1, 3, 2, 1}, {0, 7, 0, 6, 0, 5});
 
@@ -129,34 +93,15 @@ void TestSimpleRelux() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "ReluxTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELUX")
+      .AddFloatArg("max_limit", 6)
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "ReluxTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6)
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "ReluxTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6)
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 6, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
@@ -179,34 +124,15 @@ void TestSimpleReluRelux() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "ReluxTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "RELUX")
+      .AddFloatArg("max_limit", 6)
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "ReluxTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6)
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "ReluxTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "RELUX")
-        .AddFloatArg("max_limit", 6)
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2}, {0, 6, 0, 6, 0, 5, 0, 4, 0, 3, 0, 2, 0, 1, 0, 0});
@@ -232,28 +158,9 @@ void TestSimplePrelu() {
   net.AddInputFromArray<D, float>(
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, -5, -4, -4, -3, 3, -2, 2, -1, -1, 0, 0});
-  net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0});
+  net.AddInputFromArray<D, float>("Alpha", {2}, {2.0, 3.0}, true);
 
   if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Alpha", "AlphaImage",
-                            ops::BufferType::ARGUMENT);
-
-    OpDefBuilder("Activation", "PreluTest")
-        .Input("InputImage")
-        .Input("AlphaImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "PRELU")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
     OpDefBuilder("Activation", "PreluTest")
         .Input("Input")
         .Input("Alpha")
@@ -263,14 +170,24 @@ void TestSimplePrelu() {
 
     // Run
     net.RunOp(D);
+  } else {
+    net.TransformDataFormat<D, float>("Input", NHWC, "InputNCHW", NCHW);
+    OpDefBuilder("Activation", "PreluTest")
+        .Input("InputNCHW")
+        .Input("Alpha")
+        .Output("OutputNCHW")
+        .AddStringArg("activation", "PRELU")
+        .Finalize(net.NewOperatorDef());
+
+    // Run
+    net.RunOp(D);
+    net.TransformDataFormat<D, float>("OutputNCHW", NCHW, "Output", NHWC);
   }
 
-  if (D == DeviceType::CPU) {
-    auto expected = net.CreateTensor<float>(
-        {2, 2, 2, 2},
-        {-14, 7, -12, 6, -15, -15, -12, -12, -6, 3, -4, 2, -3, -3, 0, 0});
-    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
-  }
+  auto expected = net.CreateTensor<float>(
+      {2, 2, 2, 2},
+      {-14, 7, -12, 6, -10, -15, -8, -12, -6, 3, -4, 2, -2, -3, 0, 0});
+  ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
 }
 }  // namespace
 
@@ -290,32 +207,14 @@ void TestSimpleTanh() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "TanhTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "TANH")
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "TanhTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "TANH")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "TanhTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "TANH")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2},
@@ -343,32 +242,14 @@ void TestSimpleSigmoid() {
       "Input", {2, 2, 2, 2},
       {-7, 7, -6, 6, -5, 5, -4, 4, -3, 3, -2, 2, -1, 1, 0, 0});
 
-  if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
+  OpDefBuilder("Activation", "SigmoidTest")
+      .Input("Input")
+      .Output("Output")
+      .AddStringArg("activation", "SIGMOID")
+      .Finalize(net.NewOperatorDef());
 
-    OpDefBuilder("Activation", "SigmoidTest")
-        .Input("InputImage")
-        .Output("OutputImage")
-        .AddStringArg("activation", "SIGMOID")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("Activation", "SigmoidTest")
-        .Input("Input")
-        .Output("Output")
-        .AddStringArg("activation", "SIGMOID")
-        .Finalize(net.NewOperatorDef());
-
-    // Run
-    net.RunOp(D);
-  }
+  // Run
+  net.RunOp(D);
 
   auto expected = net.CreateTensor<float>(
       {2, 2, 2, 2},

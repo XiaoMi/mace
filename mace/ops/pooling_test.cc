@@ -190,11 +190,9 @@ void SimpleMaxPooling3S2() {
     net.TransformDataFormat<DeviceType::CPU, float>("OutputNCHW", NCHW,
                                                     "Output", NHWC);
   } else if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
     OpDefBuilder("Pooling", "PoolingTest")
-        .Input("InputImage")
-        .Output("OutputImage")
+        .Input("Input")
+        .Output("Output")
         .AddIntArg("pooling_type", PoolingType::MAX)
         .AddIntsArg("kernels", {3, 3})
         .AddIntsArg("strides", {2, 2})
@@ -202,8 +200,6 @@ void SimpleMaxPooling3S2() {
         .AddIntsArg("dilations", {1, 1})
         .Finalize(net.NewOperatorDef());
     net.RunOp(D);
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   }
 
   // Check
@@ -250,11 +246,9 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(&net, "Input", "InputImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Output("Output")
       .AddIntArg("pooling_type", PoolingType::MAX)
       .AddIntsArg("kernels", {3, 3})
       .AddIntsArg("strides", strides)
@@ -263,14 +257,12 @@ void MaxPooling3S2(const std::vector<index_t> &input_shape,
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
-  ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3,
                             1e-4);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   }
 }
 }  // namespace
@@ -349,11 +341,9 @@ void SimpleAvgPoolingTest() {
       "Input", {1, 2, 8, 1},
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
-  BufferToImage<D, float>(&net, "Input", "InputImage",
-                          ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Output("Output")
       .AddIntArg("pooling_type", PoolingType::AVG)
       .AddIntsArg("kernels", {2, 2})
       .AddIntsArg("strides", {2, 2})
@@ -362,9 +352,6 @@ void SimpleAvgPoolingTest() {
       .Finalize(net.NewOperatorDef());
   // Run
   net.RunOp(D);
-  ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                          ops::BufferType::IN_OUT_CHANNEL);
-
   // Check
   auto expected = net.CreateTensor<float>({1, 1, 4, 1}, {4.5, 6.5, 8.5, 10.5});
 
@@ -408,11 +395,9 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
   auto expected = net.CreateTensor<float>();
   expected->Copy(*net.GetOutput("Output"));
 
-  BufferToImage<D, T>(&net, "Input", "InputImage",
-                      ops::BufferType::IN_OUT_CHANNEL);
   OpDefBuilder("Pooling", "PoolingTest")
-      .Input("InputImage")
-      .Output("OutputImage")
+      .Input("Input")
+      .Output("Output")
       .AddIntArg("pooling_type", PoolingType::AVG)
       .AddIntsArg("kernels", kernels)
       .AddIntsArg("strides", strides)
@@ -421,14 +406,12 @@ void AvgPoolingTest(const std::vector<index_t> &shape,
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
   net.RunOp(D);
-  ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                          ops::BufferType::IN_OUT_CHANNEL);
 
   if (DataTypeToEnum<T>::value == DT_HALF) {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-3,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-3,
                             1e-3);
   } else {
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-5);
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-5);
   }
 }
 }  // namespace
@@ -578,12 +561,12 @@ void TestQuant(const index_t batch,
   OpsTestNet net;
   std::vector<index_t> input_shape{batch, in_height, in_width, channels};
   net.AddRandomInput<CPU, float>(
-      "Input", input_shape, false);
+      "Input", input_shape, false, false);
   net.TransformDataFormat<DeviceType::CPU, float>(
       "Input", NHWC, "InputNCHW", NCHW);
 
   net.AddRandomInput<DeviceType::CPU, float>(
-      "OutputNCHW", input_shape, true, true);
+      "OutputNCHW", input_shape, false, true, true);
   OpDefBuilder("Pooling", "PoolingTest")
       .Input("InputNCHW")
       .Output("OutputNCHW")

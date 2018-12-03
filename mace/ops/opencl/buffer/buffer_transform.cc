@@ -91,8 +91,6 @@ MaceStatus TransformConv2DFilter(
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION
-  // Mark the buffer unused.
-  const_cast<Tensor *>(input)->MarkUnused();
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -159,8 +157,6 @@ MaceStatus TransformDWConv2DFilter(
   MACE_RETURN_IF_ERROR(TuningOrRun3DKernel(runtime, *kernel, tuning_key,
                                            gws, lws, context->future()));
   MACE_OUT_OF_RANGE_VALIDATION
-  // Mark the buffer unused.
-  const_cast<Tensor *>(input)->MarkUnused();
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -230,8 +226,6 @@ MaceStatus TransformArgument(
       }
     };
   }
-  // Mark the buffer unused.
-  const_cast<Tensor *>(input)->MarkUnused();
   return MaceStatus::MACE_SUCCESS;
 }
 

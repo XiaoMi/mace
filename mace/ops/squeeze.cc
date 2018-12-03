@@ -25,10 +25,20 @@ class SqueezeOp : public Operation {
  public:
   explicit SqueezeOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetRepeatedArgs<int>("axis", {})) {}
+        axis_(Operation::GetRepeatedArgs<int>("axis", {})),
+        checked_(false) {}
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
+    if (!checked_ && D == DeviceType::CPU
+        && DataTypeToEnum<T>::value != DT_UINT8
+        && this->Input(0)->dim_size() == 4) {
+      if (axis_.size() == 2 && axis_[0] == 1 && axis_[1] == 2) {
+        axis_[0] = 2;
+        axis_[1] = 3;
+      }
+      checked_ = true;
+    }
     const Tensor *input = this->Input(0);
     Tensor *output = this->Output(0);
 
@@ -48,6 +58,7 @@ class SqueezeOp : public Operation {
 
  private:
   std::vector<int> axis_;
+  bool checked_;
 };
 
 void RegisterSqueeze(OpRegistryBase *op_registry) {

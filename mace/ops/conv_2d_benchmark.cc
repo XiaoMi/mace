@@ -49,11 +49,10 @@ void Conv2d(int iters,
   }
   net.AddRandomInput<D, float>("Filter",
                                {output_channels, channels, kernel_h,
-                                kernel_w});
-  net.AddRandomInput<D, float>("Bias", {output_channels});
+                                kernel_w}, true);
+  net.AddRandomInput<D, float>("Bias", {output_channels}, true);
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("Conv2D", "Conv2dTest")
+  OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")
       .Input("Bias")
@@ -63,26 +62,6 @@ void Conv2d(int iters,
       .AddIntsArg("dilations", {dilation, dilation})
       .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        ops::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-    OpDefBuilder("Conv2D", "Conv2dTest")
-        .Input("InputImage")
-        .Input("FilterImage")
-        .Input("BiasImage")
-        .Output("Output")
-        .AddIntsArg("strides", {stride, stride})
-        .AddIntArg("padding", padding)
-        .AddIntsArg("dilations", {dilation, dilation})
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   net.Setup(D);
 
@@ -123,9 +102,9 @@ void Conv2d<CPU, uint8_t>(int iters,
       "Input", {batch, height, width, channels});
   net.GetTensor("Input")->SetScale(0.1);
   net.AddRandomInput<DeviceType::CPU, uint8_t>(
-      "Filter", {output_channels, kernel_h, kernel_w, channels});
+      "Filter", {output_channels, kernel_h, kernel_w, channels}, true);
   net.GetTensor("Filter")->SetScale(0.1);
-  net.AddRandomInput<DeviceType::CPU, int32_t>("Bias", {output_channels});
+  net.AddRandomInput<DeviceType::CPU, int32_t>("Bias", {output_channels}, true);
   OpDefBuilder("Conv2D", "Conv2dTest")
       .Input("Input")
       .Input("Filter")

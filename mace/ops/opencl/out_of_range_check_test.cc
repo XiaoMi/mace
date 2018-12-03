@@ -144,7 +144,9 @@ TEST(OutOfRangeCheckTest, RandomTest) {
   std::vector<size_t> image_shape;
   Tensor *image = ws.CreateTensor("Image", device->allocator(),
                                   DataTypeToEnum<float>::v());
-  CalImage2DShape(buffer->shape(), IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(buffer->shape(),
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   image->ResizeImage(buffer->shape(), image_shape);
   ASSERT_FALSE(BufferToImageOpImpl(&context, buffer, image, image_shape)
                    != MaceStatus::MACE_SUCCESS);

@@ -21,7 +21,6 @@ py_library(
     ],
     srcs_version = "PY2AND3",
     deps = [
-        ":memory_optimizer",
         ":quantization_lib",
         "//mace/proto:mace_py",
         "//third_party/caffe:caffe_py",
@@ -33,15 +32,6 @@ py_library(
     srcs = [
         "model_saver.py",
     ],
-    srcs_version = "PY2AND3",
-    deps = [
-        "//mace/proto:mace_py",
-    ],
-)
-
-py_binary(
-    name = "memory_optimizer",
-    srcs = ["memory_optimizer.py"],
     srcs_version = "PY2AND3",
     deps = [
         "//mace/proto:mace_py",

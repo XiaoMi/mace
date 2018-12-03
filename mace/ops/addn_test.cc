@@ -62,39 +62,15 @@ void SimpleAdd3() {
   net.AddInputFromArray<D, float>("Input3", {1, 2, 3, 1},
                                   {-0.1582, 2, 3, 4, 5, 6});
 
-  const int input_num = 4;
-  if (D == DeviceType::GPU) {
-    // run on gpu
-    for (int i = 0; i < input_num; ++i) {
-      BufferToImage<D, half>(&net, MakeString("Input", i),
-                             MakeString("InputImage", i),
-                             ops::BufferType::IN_OUT_CHANNEL);
-    }
-
-    auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
-    for (int i = 0; i < input_num; ++i) {
-      op_def_cl.Input(MakeString("InputImage", i));
-    }
-    op_def_cl.Output("OutputImage")
-        .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
-        .Finalize(net.NewOperatorDef());
-
-    // Run on device
-    net.RunOp(D);
-
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
-  } else {
-    OpDefBuilder("AddN", "AddNTest")
-        .Input("Input0")
-        .Input("Input1")
-        .Input("Input2")
-        .Input("Input3")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
-    // Run
-    net.RunOp(D);
-  }
+  OpDefBuilder("AddN", "AddNTest")
+      .Input("Input0")
+      .Input("Input1")
+      .Input("Input2")
+      .Input("Input3")
+      .Output("Output")
+      .Finalize(net.NewOperatorDef());
+  // Run
+  net.RunOp(D);
 
   auto expected =
       net.CreateTensor<float>({1, 2, 3, 1}, {-0.000713, 8, 12, 16, 20, 24});
@@ -138,28 +114,10 @@ void RandomTest() {
     auto expected = net.CreateTensor<float>();
     expected->Copy(*net.GetOutput("Output"));
 
-    // run on gpu
-    for (int i = 0; i < input_num; ++i) {
-      BufferToImage<D, half>(&net, MakeString("Input", i),
-                             MakeString("InputImage", i),
-                             ops::BufferType::IN_OUT_CHANNEL);
-    }
-
-    auto op_def_cl = OpDefBuilder("AddN", "AddNTest");
-    for (int i = 0; i < input_num; ++i) {
-      op_def_cl.Input(MakeString("InputImage", i));
-    }
-    op_def_cl.Output("OutputImage")
-        .AddIntArg("T", static_cast<int>(DataType::DT_HALF))
-        .Finalize(net.NewOperatorDef());
-
-    // Run on device
+    // run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, float>(&net, "OutputImage", "OPENCLOutput",
-                            ops::BufferType::IN_OUT_CHANNEL);
-
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-2,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-2,
                             1e-2);
   }
 }

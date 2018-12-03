@@ -19,6 +19,7 @@
 #include "mace/core/operator.h"
 
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/activation.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -79,11 +80,18 @@ class ActivationOp<DeviceType::GPU, T> : public Operation {
                                               "NOOP"));
     auto relux_max_limit = static_cast<T>(
         Operation::GetOptionalArg<float>("max_limit", 0.0f));
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(
           new opencl::image::ActivationKernel<T>(type, relux_max_limit));
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    if (type == ActivationType::PRELU) {
+      MACE_CHECK(TransformFilter<T>(
+          context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
+                     == MaceStatus::MACE_SUCCESS);
     }
   }
   MaceStatus Run(OpContext *context) override {

@@ -41,40 +41,34 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
                    ops::FrameworkType model_type) {
   OpsTestNet net;
   // Add input data
-  const index_t batch = input_shape[0];
   const index_t out_channels = filter_shape[2];
 
   net.AddInputFromArray<D, float>("Input", input_shape, input_data);
-  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data);
-  net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data);
-  net.TransformDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
+  net.AddInputFromArray<D, float>("Filter", filter_shape, filter_data, true);
+  net.AddInputFromArray<D, float>("Bias", {out_channels}, bias_data, true);
+  // TODO(liutuo): remove the unused transform
+  net.TransformFilterDataFormat<D, float>("Filter", HWOI, "FilterOIHW", OIHW);
   if (D == DeviceType::GPU) {
-    BufferToImage<D, float>(&net, "Input", "InputImage",
-                            ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, float>(&net, "Bias", "BiasImage",
-                            ops::BufferType::ARGUMENT);
-    BufferToImage<D, float>(&net, "FilterOIHW", "FilterImage",
-                            ops::BufferType::CONV2D_FILTER);
     if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
-          .Input("InputImage")
-          .Input("FilterImage")
-          .Input("BiasImage")
-          .Output("OutputImage")
+          .Input("Input")
+          .Input("FilterOIHW")
+          .Input("Bias")
+          .Output("Output")
           .AddIntsArg("strides", {stride, stride})
           .AddIntArg("padding", padding)
           .AddIntsArg("padding_values", padding_size)
           .AddIntArg("framework_type", model_type)
           .Finalize(net.NewOperatorDef());
     } else {
-      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape);
+      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape, true);
 
       OpDefBuilder("Deconv2D", "Deconv2dTest")
-          .Input("InputImage")
-          .Input("FilterImage")
+          .Input("Input")
+          .Input("FilterOIHW")
           .Input("OutputShape")
-          .Input("BiasImage")
-          .Output("OutputImage")
+          .Input("Bias")
+          .Output("Output")
           .AddIntsArg("strides", {stride, stride})
           .AddIntArg("padding", padding)
           .AddIntsArg("padding_values", padding_size)
@@ -82,10 +76,6 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
           .Finalize(net.NewOperatorDef());
     }
     net.RunOp(D);
-
-    // Transfer output
-    ImageToBuffer<D, float>(&net, "OutputImage", "Output",
-                            ops::BufferType::IN_OUT_CHANNEL);
   } else {
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
@@ -102,7 +92,7 @@ void RunTestSimple(const std::vector<index_t> &input_shape,
           .AddIntArg("framework_type", model_type)
           .Finalize(net.NewOperatorDef());
     } else {
-      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape);
+      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape, true);
 
       OpDefBuilder("Deconv2D", "Deconv2dTest")
           .Input("InputNCHW")
@@ -387,8 +377,8 @@ void TestComplexDeconvNxN(const int batch,
     // Add input data
     net.AddRandomInput<D, T>("Input", {batch, height, width, input_channels});
     net.AddRandomInput<D, T>(
-        "Filter", {output_channels, input_channels, kernel_h, kernel_w});
-    net.AddRandomInput<D, T>("Bias", {output_channels});
+        "Filter", {output_channels, input_channels, kernel_h, kernel_w}, true);
+    net.AddRandomInput<D, T>("Bias", {output_channels}, true);
     net.TransformDataFormat<DeviceType::CPU, float>("Input", NHWC, "InputNCHW",
                                                     NCHW);
     int out_h = 0;
@@ -413,7 +403,7 @@ void TestComplexDeconvNxN(const int batch,
       output_shape.push_back(out_h);
       output_shape.push_back(out_w);
       output_shape.push_back(output_channels);
-      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape);
+      net.AddInputFromArray<D, int32_t>("OutputShape", {4}, output_shape, true);
     } else {
       paddings.push_back(padding);
       paddings.push_back(padding);
@@ -455,19 +445,12 @@ void TestComplexDeconvNxN(const int batch,
     expected->Copy(*net.GetOutput("Output"));
 
     // run on gpu
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Filter", "FilterImage",
-                        ops::BufferType::CONV2D_FILTER);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-
     if (model_type == ops::FrameworkType::CAFFE) {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
-          .Input("InputImage")
-          .Input("FilterImage")
-          .Input("BiasImage")
-          .Output("OutputImage")
+          .Input("Input")
+          .Input("Filter")
+          .Input("Bias")
+          .Output("Output")
           .AddIntsArg("strides", {stride_h, stride_w})
           .AddIntsArg("padding_values", paddings)
           .AddIntArg("framework_type", model_type)
@@ -475,11 +458,11 @@ void TestComplexDeconvNxN(const int batch,
           .Finalize(net.NewOperatorDef());
     } else {
       OpDefBuilder("Deconv2D", "Deconv2dTest")
-          .Input("InputImage")
-          .Input("FilterImage")
+          .Input("Input")
+          .Input("Filter")
           .Input("OutputShape")
-          .Input("BiasImage")
-          .Output("OutputImage")
+          .Input("Bias")
+          .Output("Output")
           .AddIntsArg("strides", {stride_h, stride_w})
           .AddIntArg("padding", type)
           .AddIntArg("framework_type", model_type)
@@ -489,9 +472,7 @@ void TestComplexDeconvNxN(const int batch,
     // Run on device
     net.RunOp(D);
 
-    ImageToBuffer<D, T>(&net, "OutputImage", "OPENCLOutput",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    ExpectTensorNear<float>(*expected, *net.GetOutput("OPENCLOutput"), 1e-4,
+    ExpectTensorNear<float>(*expected, *net.GetOutput("Output"), 1e-4,
                             1e-4);
   };
 

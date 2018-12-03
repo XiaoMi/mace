@@ -28,35 +28,24 @@ void BiasAdd(int iters, int batch, int channels, int height, int width) {
   OpsTestNet net;
 
   // Add input data
+  DataFormat data_format = NHWC;
   if (D == DeviceType::CPU) {
+    data_format = NCHW;
     net.AddRandomInput<D, T>("Input", {batch, channels, height, width});
   } else if (D == DeviceType::GPU) {
     net.AddRandomInput<D, T>("Input", {batch, height, width, channels});
   } else {
     MACE_NOT_IMPLEMENTED;
   }
-  net.AddRandomInput<D, T>("Bias", {channels}, true);
+  net.AddRandomInput<D, T>("Bias", {channels}, true, true);
 
-  if (D == DeviceType::CPU) {
-    OpDefBuilder("BiasAdd", "BiasAddBM")
+  OpDefBuilder("BiasAdd", "BiasAddBM")
       .Input("Input")
       .Input("Bias")
-      .AddIntArg("data_format", NCHW)
+      .AddIntArg("data_format", data_format)
       .Output("Output")
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-    OpDefBuilder("BiasAdd", "BiasAddBM")
-        .Input("InputImage")
-        .Input("BiasImage")
-        .Output("Output")
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

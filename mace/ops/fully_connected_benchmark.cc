@@ -30,42 +30,25 @@ void FCBenchmark(
   OpsTestNet net;
 
   // Add input data
-  net.AddRandomInput<D, float>("Input", {batch, height, width, channel});
-  net.AddRandomInput<D, float>("Weight",
-                               {out_channel, channel, height, width});
-  net.AddRandomInput<D, float>("Bias", {out_channel});
+  if (D == DeviceType::GPU) {
+    net.AddRandomInput<D, float>("Input", {batch, height, width, channel});
+  } else {
+    net.AddRandomInput<D, float>("Input", {batch, channel, height, width});
+  }
 
-  if (D == DeviceType::CPU) {
-    net.TransformDataFormat<DeviceType::CPU, float>("Input",
-                                                    NHWC,
-                                                    "InputNCHW",
-                                                    NCHW);
-    OpDefBuilder("FullyConnected", "FullyConnectedTest")
-      .Input("InputNCHW")
+  net.AddRandomInput<D, float>("Weight",
+                               {out_channel, channel, height, width}, true);
+  net.AddRandomInput<D, float>("Bias", {out_channel}, true);
+
+  OpenCLBufferType weight_type = OpenCLBufferType::WEIGHT_WIDTH;
+  OpDefBuilder("FullyConnected", "FullyConnectedTest")
+      .Input("Input")
       .Input("Weight")
       .Input("Bias")
       .Output("Output")
+      .AddIntArg("weight_type", static_cast<int>(weight_type))
+      .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
       .Finalize(net.NewOperatorDef());
-  } else if (D == DeviceType::GPU) {
-    ops::BufferType weight_type = ops::BufferType::WEIGHT_WIDTH;
-    BufferToImage<D, T>(&net, "Weight", "WeightImage",
-                        weight_type);
-    BufferToImage<D, T>(&net, "Input", "InputImage",
-                        ops::BufferType::IN_OUT_CHANNEL);
-    BufferToImage<D, T>(&net, "Bias", "BiasImage",
-                        ops::BufferType::ARGUMENT);
-
-    OpDefBuilder("FullyConnected", "FullyConnectedTest")
-        .Input("InputImage")
-        .Input("WeightImage")
-        .Input("BiasImage")
-        .Output("OutputImage")
-        .AddIntArg("weight_type", static_cast<int>(weight_type))
-        .AddIntArg("T", static_cast<int>(DataTypeToEnum<T>::value))
-        .Finalize(net.NewOperatorDef());
-  } else {
-    MACE_NOT_IMPLEMENTED;
-  }
 
   // Warm-up
   for (int i = 0; i < 5; ++i) {

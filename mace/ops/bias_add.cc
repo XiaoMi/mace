@@ -19,6 +19,7 @@
 #include "mace/core/operator.h"
 #include "mace/ops/activation.h"
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/bias_add.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -99,11 +100,16 @@ class BiasAddOp<DeviceType::GPU, T> : public Operation {
       : Operation(context),
         data_format_(static_cast<DataFormat>(Operation::GetOptionalArg<int>(
             "data_format", NHWC))) {
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::BiasAddKernel<T>);
     } else {
       MACE_NOT_IMPLEMENTED;
     }
+    MACE_CHECK(TransformFilter<T>(
+        context, operator_def_.get(), 1, OpenCLBufferType::ARGUMENT, mem_type)
+                   == MaceStatus::MACE_SUCCESS);
   }
   MaceStatus Run(OpContext *context) override {
     const Tensor *input = this->Input(0);

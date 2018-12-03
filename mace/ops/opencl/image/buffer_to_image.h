@@ -15,7 +15,7 @@
 #ifndef MACE_OPS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 #define MACE_OPS_OPENCL_IMAGE_BUFFER_TO_IMAGE_H_
 
-#include "mace/ops/opencl/buffer_transform.h"
+#include "mace/ops/opencl/buffer_transform_kernel.h"
 
 #include <set>
 #include <string>
@@ -36,7 +36,7 @@ class BufferToImage : public OpenCLBufferTransformKernel {
   MaceStatus Compute(
       OpContext *context,
       const Tensor *input,
-      const BufferType type,
+      const OpenCLBufferType type,
       const int wino_blk_size,
       Tensor *output) override;
 
@@ -49,20 +49,16 @@ template <typename T>
 MaceStatus BufferToImage<T>::Compute(
     OpContext *context,
     const Tensor *input,
-    const BufferType type,
+    const OpenCLBufferType type,
     const int wino_blk_size,
     Tensor *output) {
   auto formatted_buffer_shape = FormatBufferShape(input->shape(), type);
   std::vector<size_t> image_shape;
-  CalImage2DShape(formatted_buffer_shape, type, &image_shape, wino_blk_size);
-  if (type == WINOGRAD_FILTER) {
-    std::vector<index_t> new_shape =
-        {(wino_blk_size + 2) * (wino_blk_size + 2),
-         input->dim(0), input->dim(1)};
-    MACE_RETURN_IF_ERROR(output->ResizeImage(new_shape, image_shape));
-  } else {
-    MACE_RETURN_IF_ERROR(output->ResizeImage(input->shape(), image_shape));
-  }
+  OpenCLUtil::CalImage2DShape(formatted_buffer_shape,
+                              type,
+                              &image_shape,
+                              wino_blk_size);
+  MACE_RETURN_IF_ERROR(output->ResizeImage(input->shape(), image_shape));
 
   uint32_t gws[2] = {static_cast<uint32_t>(image_shape[0]),
                      static_cast<uint32_t>(image_shape[1])};
@@ -195,9 +191,6 @@ MaceStatus BufferToImage<T>::Compute(
       }
     };
   }
-
-  // Mark the buffer unused.
-  const_cast<Tensor *>(input)->MarkUnused();
 
   return MaceStatus::MACE_SUCCESS;
 }

@@ -12,30 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MACE_OPS_OPENCL_BUFFER_INVERSE_TRANSFORM_H_
-#define MACE_OPS_OPENCL_BUFFER_INVERSE_TRANSFORM_H_
+#ifndef MACE_OPS_TRANSPOSE_H_
+#define MACE_OPS_TRANSPOSE_H_
 
-#include "mace/ops/opencl/common.h"
+#include <vector>
+
 #include "mace/public/mace.h"
-#include "mace/utils/utils.h"
 
 namespace mace {
-
-class OpContext;
-class Tensor;
-
 namespace ops {
-class OpenCLBufferInverseTransformKernel {
- public:
-  virtual MaceStatus Compute(OpContext *context,
-                             const Tensor *input,
-                             const BufferType type,
-                             const int wino_blk_size,
-                             Tensor *output) = 0;
-  MACE_EMPTY_VIRTUAL_DESTRUCTOR(OpenCLBufferInverseTransformKernel)
-};
+
+MaceStatus Transpose(const float *input,
+                     const std::vector<int64_t> &input_shape,
+                     const std::vector<int> &dst_dims,
+                     float *output);
 
 }  // namespace ops
 }  // namespace mace
 
-#endif  // MACE_OPS_OPENCL_BUFFER_INVERSE_TRANSFORM_H_
+#endif  // MACE_OPS_TRANSPOSE_H_

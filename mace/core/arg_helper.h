@@ -55,6 +55,8 @@ class ProtoArgHelper {
   std::map<std::string, Argument> arg_map_;
 };
 
+bool IsQuantizedModel(const NetDef &def);
+
 }  // namespace mace
 
 #endif  // MACE_CORE_ARG_HELPER_H_

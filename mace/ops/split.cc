@@ -31,16 +31,27 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
  public:
   explicit SplitOp(OpConstructContext *context)
       : Operation(context),
-        axis_(Operation::GetOptionalArg<int>("axis", 3)) {}
+        axis_(Operation::GetOptionalArg<int>("axis", 3)),
+        checked_(false) {}
+
+  void Validate() {
+    if (this->Input(0)->dim_size() == 4) {
+      if (axis_ == 3) axis_ = 1;
+      else if (axis_ == 2) axis_ = 3;
+      else if (axis_ == 1) axis_ = 2;
+    }
+    MACE_CHECK(this->OutputSize() >= 2)
+      << "There must be at least two outputs for slicing";
+    MACE_CHECK((this->Input(0)->dim(axis_) % this->OutputSize()) == 0)
+      << "Outputs do not split input equally.";
+    checked_ = true;
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
-    MACE_CHECK(this->OutputSize() >= 2)
-      << "There must be at least two outputs for slicing";
+    if (!checked_) Validate();
     const Tensor *input = this->Input(0);
     const std::vector<Tensor *> output_list = this->Outputs();
-    MACE_CHECK((input->dim(axis_) % this->OutputSize()) == 0)
-      << "Outputs do not split input equally.";
     const index_t input_channels = input->dim(axis_);
     const size_t outputs_count = output_list.size();
     const index_t output_channels = input_channels / outputs_count;
@@ -83,6 +94,7 @@ class SplitOp<DeviceType::CPU, T> : public Operation {
 
  private:
   int32_t axis_;
+  bool checked_;
 };
 
 

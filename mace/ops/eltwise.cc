@@ -26,6 +26,7 @@
 #include "mace/core/tensor.h"
 #include "mace/utils/quantize.h"
 #ifdef MACE_ENABLE_OPENCL
+#include "mace/ops/opencl/buffer_transformer.h"
 #include "mace/ops/opencl/image/eltwise.h"
 #endif  // MACE_ENABLE_OPENCL
 
@@ -1086,11 +1087,27 @@ class EltwiseOp<DeviceType::GPU, T> : public Operation {
     float scalar_input = Operation::GetOptionalArg<float>("scalar_input", 1.0);
     int32_t scalar_input_index = Operation::GetOptionalArg<int32_t>(
             "scalar_input_index", 1);
+    MemoryType mem_type;
     if (context->device()->opencl_runtime()->UseImageMemory()) {
+      mem_type = MemoryType::GPU_IMAGE;
       kernel_.reset(new opencl::image::EltwiseKernel<T>(
           type, coeff, scalar_input, scalar_input_index));
     } else {
       MACE_NOT_IMPLEMENTED;
+    }
+    // Transform filters
+    int input_size = operator_def_->input_size();
+    Workspace *ws = context->workspace();
+    for (int i = 0; i < input_size; ++i) {
+      if (ws->HasTensor(operator_def_->input(i)) &&
+          ws->GetTensor(operator_def_->input(i))->is_weight()) {
+        MACE_CHECK(TransformFilter<T>(
+            context,
+            operator_def_.get(),
+            i,
+            OpenCLBufferType::ARGUMENT,
+            mem_type) == MaceStatus::MACE_SUCCESS);
+      }
     }
   }
   MaceStatus Run(OpContext *context) override {

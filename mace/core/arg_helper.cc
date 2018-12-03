@@ -95,4 +95,12 @@ MACE_GET_REPEATED_ARGUMENT_FUNC(float, floats, false)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int, ints, true)
 MACE_GET_REPEATED_ARGUMENT_FUNC(int64_t, ints, true)
 #undef MACE_GET_REPEATED_ARGUMENT_FUNC
+
+
+bool IsQuantizedModel(const NetDef &net_def) {
+  return
+      ProtoArgHelper::GetOptionalArg<NetDef, int>(net_def, "quantize_flag", 0)
+          == 1;
+}
+
 }  // namespace mace

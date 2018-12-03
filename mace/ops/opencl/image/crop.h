@@ -129,7 +129,9 @@ MaceStatus CropKernel<T>::Compute(
       << input1->dim(i) << "and offset" << offsets[i];
   }
   std::vector<size_t> image_shape;
-  CalImage2DShape(output_shape, BufferType::IN_OUT_CHANNEL, &image_shape);
+  OpenCLUtil::CalImage2DShape(output_shape,
+                              OpenCLBufferType::IN_OUT_CHANNEL,
+                              &image_shape);
   MACE_RETURN_IF_ERROR(output->ResizeImage(output_shape, image_shape));
 
   const index_t offset_chan_blk = RoundUpDiv4(offsets[3]);

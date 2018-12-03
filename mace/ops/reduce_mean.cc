@@ -47,7 +47,7 @@ class ReduceMeanOpBase : public Operation {
   }
 
  protected:
-  const std::vector<int> axis_;
+  std::vector<int> axis_;
   bool keep_dims_;
 };
 
@@ -58,7 +58,8 @@ template <typename T>
 class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
  public:
   explicit ReduceMeanOp(OpConstructContext *context)
-      : ReduceMeanOpBase(context) {}
+      : ReduceMeanOpBase(context) {
+  }
 
   MaceStatus Run(OpContext *context) override {
     MACE_UNUSED(context);
@@ -80,9 +81,15 @@ class ReduceMeanOp<DeviceType::CPU, T> : public ReduceMeanOpBase {
       }
     } else {
       for (unsigned int i = 0; i < axis_.size(); ++i) {
-        const int index = axis_[i] >= 0 ?
-                          axis_[i] :
-                          axis_[i] + input->dim_size();
+        int index = axis_[i] >= 0 ?
+                    axis_[i] :
+                    axis_[i] + input->dim_size();
+        // axis format is NHWC
+        if (input->dim_size() == 4) {
+          if (index == 1) index = 2;
+          else if (index == 2) index = 3;
+          else if (index == 3) index = 1;
+        }
         bitmap[index] = true;
       }
     }

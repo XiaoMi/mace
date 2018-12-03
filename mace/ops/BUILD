@@ -30,10 +30,8 @@ cc_library(
             "arm/*_test.cc",
             "ops_registry.cc",
             "ops_test_util.cc",
-            "buffer_inverse_transform.cc",
             "buffer_transform.cc",
             "lstm_cell.cc",
-            "winograd_transform.cc",
             "quantize.cc",
         ],
     ) + if_opencl_enabled(glob(
@@ -41,10 +39,8 @@ cc_library(
             "opencl/*.cc",
             "opencl/image/*.cc",
             "opencl/buffer/*.cc",
-            "buffer_inverse_transform.cc",
             "buffer_transform.cc",
             "lstm_cell.cc",
-            "winograd_transform.cc",
         ],
         exclude = [
             "opencl/*_test.cc",

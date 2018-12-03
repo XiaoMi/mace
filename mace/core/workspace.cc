@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "mace/core/arg_helper.h"
+#include "mace/core/memory_optimizer.h"
 #include "mace/utils/quantize.h"
 
 #ifdef MACE_ENABLE_OPENCL
@@ -27,13 +28,6 @@
 namespace mace {
 
 namespace {
-bool ShouldPreallocateMemoryForOp(const OperatorDef &op) {
-  static const std::unordered_set<std::string> reuse_buffer_ops {
-      "Reshape", "Identity", "Squeeze"
-  };
-  return reuse_buffer_ops.find(op.type()) == reuse_buffer_ops.end();
-}
-
 bool HasQuantizeOp(const NetDef &net_def) {
   for (auto &op : net_def.op()) {
     if (op.type() == "Quantize") {
@@ -48,13 +42,14 @@ Workspace::Workspace() = default;
 
 Tensor *Workspace::CreateTensor(const std::string &name,
                                 Allocator *alloc,
-                                DataType type) {
+                                DataType type,
+                                bool is_weight) {
   if (HasTensor(name)) {
     VLOG(3) << "Tensor " << name << " already exists. Skipping.";
   } else {
     VLOG(3) << "Creating Tensor " << name;
     tensor_map_[name] = std::unique_ptr<Tensor>(new Tensor(alloc, type,
-                                                           false, name));
+                                                           is_weight, name));
   }
   return GetTensor(name);
 }
@@ -199,13 +194,79 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
       fused_buffer_ = true;
     }
   }
+  return MaceStatus::MACE_SUCCESS;
+}
 
-  if (device_type == DeviceType::CPU || device_type == DeviceType::GPU) {
-    MaceStatus status = CreateOutputTensorBuffer(net_def, device);
-    if (status != MaceStatus::MACE_SUCCESS) return status;
+MaceStatus Workspace::PreallocateOutputTensor(
+    const mace::NetDef &net_def,
+    const mace::MemoryOptimizer *mem_optimizer,
+    Device *device) {
+  auto &mem_blocks = mem_optimizer->mem_blocks();
+  for (auto &mem_block : mem_blocks) {
+    VLOG(3) << "Preallocate memory block. id: " << mem_block.mem_id()
+            << ", memory type: " << mem_block.mem_type()
+            << ", size: " << mem_block.x() << "x" << mem_block.y();
+    if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
+      std::unique_ptr<BufferBase> tensor_buf(
+          new Buffer(GetCPUAllocator()));
+      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+          mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(tensor_buf));
+    } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
+      std::unique_ptr<BufferBase> image_buf(
+          new Image(device->allocator()));
+      MACE_RETURN_IF_ERROR(image_buf->Allocate(
+          {static_cast<size_t>(mem_block.x()),
+           static_cast<size_t>(mem_block.y())}, mem_block.data_type()));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(image_buf));
+    } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
+      std::unique_ptr<BufferBase> tensor_buf(
+          new Buffer(device->allocator()));
+      MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
+          mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
+      preallocated_allocator_.SetBuffer(mem_block.mem_id(),
+                                        std::move(tensor_buf));
+    }
+  }
+  VLOG(1) << "Preallocate buffer to tensors";
+  bool is_quantize_model = IsQuantizedModel(net_def);
+  for (auto &tensor_mem : mem_optimizer->tensor_mem_map()) {
+    std::unique_ptr<Tensor> tensor
+        (new Tensor(preallocated_allocator_.GetBuffer(tensor_mem.second.first),
+                    tensor_mem.second.second,
+                    false, tensor_mem.first));
+    if (mem_blocks[tensor_mem.second.first].mem_type()
+        == MemoryType::GPU_IMAGE) {
+      VLOG(1) << "Tensor: " << tensor_mem.first
+              << " Mem: " << tensor_mem.second.first
+              << " Data type: " << tensor->dtype()
+              << " Image shape: "
+              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                  ->image_shape()[0]
+              << ", "
+              << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
+                  ->image_shape()[1];
+     tensor->set_data_format(DataFormat::NHWC);
+    } else {
+      VLOG(1) << "Tensor: " << tensor_mem.first
+              << " Mem: " << tensor_mem.second.first
+              << " Data type: " << tensor->dtype()
+              << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
+      if (mem_blocks[tensor_mem.second.first].mem_type()
+          == MemoryType::GPU_BUFFER ||
+          is_quantize_model) {
+        tensor->set_data_format(DataFormat::NHWC);
+      } else {
+        tensor->set_data_format(DataFormat::NCHW);
+      }
+    }
+    tensor_map_[tensor_mem.first] = std::move(tensor);
   }
 
-  if (device_type == DeviceType::CPU) {
+  // add quantize info for output tensors.
+  if (device->device_type() == DeviceType::CPU) {
     for (const auto &op : net_def.op()) {
       VLOG(2) << "Add quantize info for op: " << op.name();
       MACE_CHECK(op.quantize_info().empty()
@@ -222,139 +283,6 @@ MaceStatus Workspace::LoadModelTensor(const NetDef &net_def,
     }
   }
 
-  return MaceStatus::MACE_SUCCESS;
-}
-
-MaceStatus Workspace::CreateOutputTensorBuffer(const NetDef &net_def,
-                                               Device *device) {
-  DeviceType device_type = device->device_type();
-  DataType dtype = DataType::DT_INVALID;
-  if (net_def.mem_arena().mem_block_size() > 0) {
-    // We use the data type of the first op with mem id,
-    // as CPU&GPU have consistent data type for each layer for now.
-    // As DSP may have different data output type for each op,
-    // we stick to the same concept.
-    for (auto &op : net_def.op()) {
-      // TODO(liuqi): refactor to add device_type to OperatorDef
-      const int op_device =
-          ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-              op, "device", static_cast<int>(device_type));
-      if (op_device == device_type && !op.mem_id().empty()) {
-        const DataType op_dtype = static_cast<DataType>(
-            ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-                op, "T", static_cast<int>(DT_FLOAT)));
-        if (op_dtype != DataType::DT_INVALID) {
-          dtype = op_dtype;
-          // find first valid data type, break
-          break;
-        }
-      }
-    }
-    MACE_CHECK(dtype != DataType::DT_INVALID, "data type is invalid.");
-  }
-  // TODO(liyin): memory block should not have concept of type, but to be
-  // consistent with gpu, all memory block use float/half as unit
-  for (auto &mem_block : net_def.mem_arena().mem_block()) {
-    if (mem_block.device_type() == device_type) {
-      VLOG(3) << "Preallocate memory block. id: " << mem_block.mem_id()
-              << ", device type: " << mem_block.device_type()
-              << ", memory type: " << mem_block.mem_type();
-      if (mem_block.mem_type() == MemoryType::CPU_BUFFER) {
-        std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(GetCPUAllocator()));
-        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-            mem_block.x() + MACE_EXTRA_BUFFER_PAD_SIZE));
-        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                          std::move(tensor_buf));
-      } else if (mem_block.mem_type() == MemoryType::GPU_IMAGE) {
-        std::unique_ptr<BufferBase> image_buf(
-            new Image(device->allocator()));
-        MACE_RETURN_IF_ERROR(image_buf->Allocate(
-            {mem_block.x(), mem_block.y()}, dtype));
-        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                          std::move(image_buf));
-      } else if (mem_block.mem_type() == MemoryType::GPU_BUFFER) {
-        std::unique_ptr<BufferBase> tensor_buf(
-            new Buffer(device->allocator()));
-        MACE_RETURN_IF_ERROR(tensor_buf->Allocate(
-            mem_block.x() * GetEnumTypeSize(dtype)
-                + MACE_EXTRA_BUFFER_PAD_SIZE));
-        preallocated_allocator_.SetBuffer(mem_block.mem_id(),
-                                          std::move(tensor_buf));
-      }
-    }
-  }
-  VLOG(3) << "Preallocate buffer to tensors";
-  for (auto &op : net_def.op()) {
-    // TODO(liuqi): refactor to add device_type to OperatorDef
-    const int op_device =
-        ProtoArgHelper::GetOptionalArg<OperatorDef, int>(
-            op, "device", static_cast<int>(device_type));
-    if (op_device == device_type) {
-      if (!op.mem_id().empty()
-          && ShouldPreallocateMemoryForOp(op)) {
-        auto mem_ids = op.mem_id();
-        int count = mem_ids.size();
-        for (int i = 0; i < count; ++i) {
-          DataType output_type;
-          if (i < op.output_type_size()) {
-            output_type = op.output_type(i);
-          } else {
-            output_type = dtype;
-          }
-          std::unique_ptr<Tensor> tensor
-              (new Tensor(preallocated_allocator_.GetBuffer(mem_ids[i]),
-                          output_type, false, op.output(i)));
-          if (device_type == DeviceType::GPU && tensor->has_opencl_image()) {
-            VLOG(3) << "Tensor: " << op.output(i) << "(" << op.type() << ")"
-                    << " Mem: " << mem_ids[i]
-                    << " Image shape: "
-                    << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                        ->image_shape()[0]
-                    << ", "
-                    << dynamic_cast<Image *>(tensor->UnderlyingBuffer())
-                        ->image_shape()[1];
-          } else {
-            VLOG(3) << "Tensor: " << op.output(i) << "(" << op.type() << ")"
-                    << " Mem: " << mem_ids[i]
-                    << ", Buffer size: " << tensor->UnderlyingBuffer()->size();
-          }
-          tensor_map_[op.output(i)] = std::move(tensor);
-        }
-      } else {
-        for (int i = 0; i < op.output().size(); ++i) {
-          MACE_CHECK(
-              op.output_type_size() == 0
-                  || op.output_size()
-                      == op.output_type_size(),
-              "operator output size != operator output type size",
-              op.output_size(),
-              op.output_type_size());
-          DataType output_type;
-          if (i < op.output_type_size()) {
-            output_type = op.output_type(i);
-          } else {
-            output_type = static_cast<DataType>(ProtoArgHelper::GetOptionalArg(
-                op, "T", static_cast<int>(DT_FLOAT)));
-          }
-          CreateTensor(op.output(i),
-                       device->allocator(),
-                       output_type);
-        }
-      }
-
-      for (int output_idx = 0; output_idx < op.output_shape_size();
-           ++output_idx) {
-        std::vector<index_t>
-            shape_configured(op.output_shape(output_idx).dims_size());
-        for (size_t dim = 0; dim < shape_configured.size(); ++dim) {
-          shape_configured[dim] = op.output_shape(output_idx).dims(dim);
-        }
-        tensor_map_[op.output(output_idx)]->SetShapeConfigured(
-            shape_configured);
-      }
-    }
-  }
   return MaceStatus::MACE_SUCCESS;
 }
 
@@ -396,6 +324,13 @@ void Workspace::RemoveAndReloadBuffer(const NetDef &net_def,
     }
   }
   tensor_buffer_.reset(nullptr);
+}
+
+void Workspace::RemoveTensor(const std::string &name) {
+  auto iter = tensor_map_.find(name);
+  if (iter != tensor_map_.end()) {
+    tensor_map_.erase(iter);
+  }
 }
 
 }  // namespace mace
