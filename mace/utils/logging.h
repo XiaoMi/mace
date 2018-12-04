@@ -71,12 +71,13 @@ class LogMessage : public std::ostringstream {
 // which are not safe for MACE_ASSERT.
 #define MACE_CHECK(condition, ...) \
   if (!(condition)) \
-  LOG(FATAL) << "Check failed: " #condition " " << MakeString(__VA_ARGS__)
+  LOG(FATAL) << "Check failed: " #condition " " << mace::MakeString(__VA_ARGS__)
 
 #ifndef NDEBUG
 #define MACE_ASSERT(condition, ...) \
   if (!(condition)) \
-  LOG(FATAL) << "Assert failed: " #condition " " << MakeString(__VA_ARGS__)
+  LOG(FATAL) << "Assert failed: " #condition " " \
+             << mace::MakeString(__VA_ARGS__)
 #else
 #define MACE_ASSERT(condition, ...) ((void)0)
 #endif
