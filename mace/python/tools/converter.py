@@ -45,13 +45,12 @@ data_format_map = {
 
 
 def parse_data_type(data_type, device_type):
-    if device_type == cvt.DeviceType.GPU.value:
+    if device_type == cvt.DeviceType.CPU.value or\
+            device_type == cvt.DeviceType.GPU.value:
         if data_type == 'fp32_fp32':
             return mace_pb2.DT_FLOAT
         else:
             return mace_pb2.DT_HALF
-    elif device_type == cvt.DeviceType.CPU.value:
-        return mace_pb2.DT_FLOAT
     elif device_type == cvt.DeviceType.HEXAGON.value:
         return mace_pb2.DT_UINT8
     else:

@@ -45,6 +45,10 @@ class Workspace {
     return tensor_map_.find(name) != tensor_map_.end();
   }
 
+  inline bool diffused_buffer() const {
+    return diffused_buffer_;
+  }
+
   const Tensor *GetTensor(const std::string &name) const;
 
   Tensor *GetTensor(const std::string &name);
@@ -67,18 +71,14 @@ class Workspace {
 
   void RemoveTensor(const std::string &name);
 
-
  private:
-  MaceStatus CreateOutputTensorBuffer(const NetDef &net_def,
-                                      Device *device);
-
   TensorMap tensor_map_;
 
   std::unique_ptr<BufferBase> tensor_buffer_;
 
   PreallocatedPooledAllocator preallocated_allocator_;
 
-  bool fused_buffer_;
+  bool diffused_buffer_;
 
   MACE_DISABLE_COPY_AND_ASSIGN(Workspace);
 };

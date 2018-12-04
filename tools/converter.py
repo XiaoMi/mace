@@ -138,21 +138,13 @@ InputDataType = Enum('InputDataType',
                      [(ele, ele) for ele in InputDataTypeStrs],
                      type=str)
 
-
-CPUDataTypeStrs = [
-    "fp32",
-]
-
-CPUDataType = Enum('CPUDataType', [(ele, ele) for ele in CPUDataTypeStrs],
-                   type=str)
-
-GPUDataTypeStrs = [
+FPDataTypeStrs = [
     "fp16_fp32",
     "fp32_fp32",
 ]
 
-GPUDataType = Enum('GPUDataType', [(ele, ele) for ele in GPUDataTypeStrs],
-                   type=str)
+FPDataType = Enum('GPUDataType', [(ele, ele) for ele in FPDataTypeStrs],
+                  type=str)
 
 DSPDataTypeStrs = [
     "uint8",
@@ -438,28 +430,7 @@ def format_model_config(flags):
                        "host only support cpu runtime now.")
 
         data_type = model_config.get(YAMLKeyword.data_type, "")
-        if runtime == RuntimeType.cpu_gpu and data_type not in GPUDataTypeStrs:
-            model_config[YAMLKeyword.data_type] = \
-                GPUDataType.fp16_fp32.value
-        elif runtime == RuntimeType.cpu:
-            if len(data_type) > 0:
-                mace_check(data_type in CPUDataTypeStrs,
-                           ModuleName.YAML_CONFIG,
-                           "'data_type' must be in " + str(CPUDataTypeStrs)
-                           + " for cpu runtime")
-            else:
-                model_config[YAMLKeyword.data_type] = \
-                    CPUDataType.fp32.value
-        elif runtime == RuntimeType.gpu:
-            if len(data_type) > 0:
-                mace_check(data_type in GPUDataTypeStrs,
-                           ModuleName.YAML_CONFIG,
-                           "'data_type' must be in " + str(GPUDataTypeStrs)
-                           + " for gpu runtime")
-            else:
-                model_config[YAMLKeyword.data_type] =\
-                    GPUDataType.fp16_fp32.value
-        elif runtime == RuntimeType.dsp:
+        if runtime == RuntimeType.dsp:
             if len(data_type) > 0:
                 mace_check(data_type in DSPDataTypeStrs,
                            ModuleName.YAML_CONFIG,
@@ -468,6 +439,19 @@ def format_model_config(flags):
             else:
                 model_config[YAMLKeyword.data_type] = \
                     DSPDataType.uint8.value
+        else:
+            if len(data_type) > 0:
+                mace_check(data_type in FPDataTypeStrs,
+                           ModuleName.YAML_CONFIG,
+                           "'data_type' must be in " + str(FPDataTypeStrs)
+                           + " for cpu runtime")
+            else:
+                if runtime == RuntimeType.cpu:
+                    model_config[YAMLKeyword.data_type] = \
+                        FPDataType.fp32_fp32.value
+                else:
+                    model_config[YAMLKeyword.data_type] = \
+                        FPDataType.fp16_fp32.value
 
         subgraphs = model_config.get(YAMLKeyword.subgraphs, "")
         mace_check(len(subgraphs) > 0, ModuleName.YAML_CONFIG,

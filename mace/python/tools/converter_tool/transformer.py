@@ -106,7 +106,6 @@ class Transformer(base_converter.ConverterInterface):
         self._consumers = {}
         self._producer = {}
         self._target_data_format = DataFormat.NHWC
-        self._output_op_names = set()
         self._quantize_activation_info = {}
         self._quantized_tensor = set()
 
@@ -1226,10 +1225,7 @@ class Transformer(base_converter.ConverterInterface):
 
         print("update op with float data type")
         net = self._model
-        # TODO(liuqi): unify the data_type when CPU support half storage
         data_type = self._option.data_type
-        if self._option.device == DeviceType.CPU.value:
-            data_type = mace_pb2.DT_HALF
         for op in net.op:
             data_type_arg = ConverterUtil.get_arg(
                 op, MaceKeyword.mace_op_data_type_str)
@@ -1238,8 +1234,7 @@ class Transformer(base_converter.ConverterInterface):
                 data_type_arg.name = MaceKeyword.mace_op_data_type_str
                 data_type_arg.i = data_type
             elif data_type_arg.i != data_type \
-                    and data_type_arg.i == mace_pb2.DT_FLOAT \
-                    and op.name not in self._output_op_names:
+                    and data_type_arg.i == mace_pb2.DT_FLOAT:
                 data_type_arg.i = data_type
 
         return False

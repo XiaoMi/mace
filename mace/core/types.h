@@ -19,17 +19,13 @@
 #include <string>
 
 #include "mace/proto/mace.pb.h"
-#ifdef MACE_ENABLE_OPENCL
 #include "include/half.hpp"
-#endif
 
 namespace mace {
 
 typedef int64_t index_t;
 
-#ifdef MACE_ENABLE_OPENCL
 using half = half_float::half;
-#endif
 
 bool DataTypeCanUseMemcpy(DataType dt);
 
@@ -54,9 +50,7 @@ struct EnumToDataType;
     typedef DATA_TYPE Type;                                     \
   };
 
-#ifdef MACE_ENABLE_OPENCL
 MACE_MAPPING_DATA_TYPE_AND_ENUM(half, DT_HALF);
-#endif
 MACE_MAPPING_DATA_TYPE_AND_ENUM(float, DT_FLOAT);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(uint8_t, DT_UINT8);
 MACE_MAPPING_DATA_TYPE_AND_ENUM(int32_t, DT_INT32);

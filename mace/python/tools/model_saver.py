@@ -26,14 +26,6 @@ from jinja2 import Environment, FileSystemLoader
 
 GENERATED_NAME = set()
 
-GPUDataTypeStrs = [
-    "fp16_fp32",
-    "fp32_fp32",
-]
-
-GPUDataType = \
-    Enum('GPUDataType', [(ele, ele) for ele in GPUDataTypeStrs], type=str)
-
 
 class ModelFormat(object):
     file = "file"
@@ -129,13 +121,12 @@ class TensorInfo:
                             tensor.data_type)
 
 
-def update_tensor_infos(net_def, data_type, device):
+def update_tensor_infos(net_def, data_type):
     offset = 0
     counter = 0
     tensor_infos = []
     for tensor in net_def.tensors:
-        if device == cvt.DeviceType.GPU.value and\
-                tensor.data_type == mace_pb2.DT_FLOAT:
+        if tensor.data_type == mace_pb2.DT_FLOAT:
             tensor.data_type = data_type
 
         # Add offset and data_size
@@ -283,7 +274,7 @@ def save_model(option, net_def, model_checksum, weight_checksum, template_dir,
 
     output_dir = output_dir + '/'
     # update tensor type
-    update_tensor_infos(net_def, option.data_type, option.device)
+    update_tensor_infos(net_def, option.data_type)
 
     if model_graph_format == ModelFormat.file or not embed_model_data:
         save_model_data(net_def, model_tag, output_dir)
