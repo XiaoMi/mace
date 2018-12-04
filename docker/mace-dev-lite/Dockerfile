@@ -22,6 +22,7 @@ RUN apt-get install -y --no-install-recommends \
     python-dev \
     python-pip \
     protobuf-compiler \
+    libprotoc-dev \
     rsync \
     software-properties-common \
     unzip \
@@ -95,7 +96,6 @@ RUN apt-get install -y --no-install-recommends \
     android-tools-adb
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com setuptools
 RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
-    tensorflow==1.8.0 \
     "numpy>=1.14.0" \
     scipy \
     jinja2 \
@@ -103,6 +103,19 @@ RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com
     sh==1.12.14 \
     pycodestyle==2.4.0 \
     filelock
+
+# Install Tensorflow
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    tensorflow==1.8.0
+
+# Install pytorch (refer to: https://pytorch.org/get-started/locally/)
+RUN pip install future==0.17.1 torchvision_nightly
+RUN pip install torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+
+# Install ONNX
+RUN pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com \
+    onnx==1.3.0 \
+    onnx-tf==1.2.0
 
 # fix docker in docker error: `error while loading shared libraries: libltdl.so.7`
 # refer to: https://github.com/jenkinsci/docker/issues/506

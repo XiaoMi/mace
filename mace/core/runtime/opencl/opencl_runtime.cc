@@ -425,7 +425,7 @@ OpenCLRuntime::OpenCLRuntime(
   }
 
   device_->getInfo(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,
-                   &device_gloabl_mem_cache_size_);
+                   &device_global_mem_cache_size_);
 
   device_->getInfo(CL_DEVICE_MAX_COMPUTE_UNITS,
                    &device_compute_units_);
@@ -464,7 +464,7 @@ cl::CommandQueue &OpenCLRuntime::command_queue() { return *command_queue_; }
 Tuner<uint32_t> *OpenCLRuntime::tuner() { return tuner_.get(); }
 
 uint64_t OpenCLRuntime::device_global_mem_cache_size() const {
-  return device_gloabl_mem_cache_size_;
+  return device_global_mem_cache_size_;
 }
 
 uint32_t OpenCLRuntime::device_compute_units() const {
