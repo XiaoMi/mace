@@ -91,7 +91,7 @@ MaceStatus OpenCLAllocator::NewImage(const std::vector<size_t> &image_shape,
   if (error != CL_SUCCESS) {
     LOG(WARNING) << "Allocate OpenCL image with shape: ["
                  << image_shape[0] << ", " << image_shape[1]
-                 << "] failed because of"
+                 << "] failed because of "
                  << OpenCLErrorToString(error);
     delete cl_image;
     *result = nullptr;
