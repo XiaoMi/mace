@@ -93,8 +93,8 @@ cc_library(
     linkopts = if_android(["-lm"]),
     deps = [
         "//mace/core",
-        "@tflite",
     ] + if_quantize_enabled([
+        "@tflite",
         "@gemmlowp",
     ]),
 )
